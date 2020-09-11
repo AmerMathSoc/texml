@@ -1,0 +1,128 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PRD::StdLogger;
+
+my $LOG = PRD::StdLogger->get_logger();
+
+$LOG->set_verbose(1);
+$LOG->set_debug(1);
+
+use TeX::KPSE qw(kpse_lookup);
+
+use TeX::WEB2C qw(:command_codes :type_bounds :eqtb_codes);
+
+use TeX::FMT::File;
+
+my $file = shift || 'tex.fmt';
+
+$ENV{engine} = "/";
+
+my $path = kpse_lookup($file);
+
+$LOG->notify("path = $path\n");
+
+my $fmt = TeX::FMT::File->new({ file_name => $path, debug_mode => 0 });
+
+$fmt->open('r');
+
+$fmt->load();
+
+my $params = $fmt->get_params();
+my $hash   = $fmt->get_hash();
+my $eqtb   = $fmt->get_eqtb();
+
+$LOG->notify("\n");
+
+$LOG->notify("engine = ". $fmt->get_engine() . "\n");
+
+$LOG->notify("ACTIVE CHARS:\n\n");
+
+for my $ptr ($params->active_base() .. $params->single_base() - 1) {
+    my $meaning = $eqtb->get_word($ptr);
+
+    my $equiv = $meaning->get_equiv();
+
+    next if $equiv == null_ptr;
+
+    $fmt->show_active_char($ptr);
+}
+
+$LOG->notify("\nSINGLE-CHARACTER CONTROL SEQUENCES:\n\n");
+
+for my $ptr ($params->single_base() .. $params->null_cs() - 1) {
+    my $meaning = $eqtb->get_word($ptr);
+
+    my $equiv = $meaning->get_equiv();
+
+    next if $equiv == null_ptr;
+
+    $fmt->show_meaning(chr($ptr - single_base));
+}
+
+$LOG->notify("\nMULTI-CHARACTER CONTROL SEQUENCES:\n\n");
+
+# for my $entry (sort { lc($a->[0]) cmp lc($b->[0]) } $hash->csnames()) {
+#     my ($csname, $ptr) = @{ $entry };
+# 
+#     $fmt->show_meaning($csname);
+# }
+
+for my $eqtb_ptr ($params->hash_base() .. $params->frozen_control_sequence() - 1) {
+    my $string_no = $hash->get_text($eqtb_ptr);
+
+    next unless defined $string_no;
+
+    my $csname = $fmt->get_string($string_no);
+
+    $fmt->show_meaning($csname);
+}
+
+my $eqtb_size = $fmt->get_eqtb_size();
+
+for my $eqtb_ptr ($eqtb_size + 1 .. $eqtb_size + $fmt->get_hash_high()) {
+    my $string_no = $hash->get_text($eqtb_ptr);
+
+    next unless defined $string_no;
+
+    my $csname = $fmt->get_string($string_no);
+
+    $fmt->show_meaning($csname);
+}
+
+__END__
+
+$LOG->notify("\nPUBLIC MULTI-CHARACTER CONTROL SEQUENCES:\n\n");
+
+for my $entry (sort { $a->[0] cmp $b->[0] } $hash->csnames()) {
+    my ($csname, $ptr) = @{ $entry };
+
+    next if $csname =~ m{\@};
+
+    $fmt->show_meaning($csname);
+}
+
+$LOG->notify("\nPRIVATE MULTI-CHARACTER CONTROL SEQUENCES:\n\n");
+
+for my $entry (sort { $a->[0] cmp $b->[0] } $hash->csnames()) {
+    my ($csname, $ptr) = @{ $entry };
+
+    next unless $csname =~ m{\@};
+
+    $fmt->show_meaning($csname);
+}
+
+__END__
+
+# for my $ptr (math_code_base .. math_code_base + 255) {
+#     my $code = $eqtb->get_word($ptr)->get_equiv();
+# 
+#     printf "%s: %04X\n", chr($ptr - math_code_base), $code;
+# }
+
+__END__

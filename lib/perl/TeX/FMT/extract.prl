@@ -1,0 +1,99 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+our $VERSION = '0.00';
+
+use lib qw(/ams/texmf/lib/perl5/site_perl);
+
+BEGIN {
+    use FindBin;
+
+    if ($FindBin::Bin =~ m{/work/ptg/src}) {
+        lib->import('/work/ptg/src/perl/trunk');
+    }
+}
+
+use Getopt::Long qw(:config no_ignore_case);
+
+use PTG::Errors;
+use PTG::Utils;
+
+use PTG::teTeX;
+
+use TeX::FMT::File;
+
+use TeX::Output::AITT;
+use TeX::Output::String;
+
+use Class::Multimethods qw(ship_out);
+
+use File::Basename;
+use File::Spec::Functions;
+
+######################################################################
+##                                                                  ##
+##                           ENVIRONMENT                            ##
+##                                                                  ##
+######################################################################
+
+my $FMT_DIR = dirname($INC{"TeX/FMT/File.pm"});
+
+$ENV{TEXFORMATS} = "${FMT_DIR}:" . ($ENV{TEXFORMATS} || "");
+
+######################################################################
+##                                                                  ##
+##                             OPTIONS                              ##
+##                                                                  ##
+######################################################################
+
+my %OPT = (verbose => 0,
+           format  => 'extract.fmt',
+           output  => 'String',
+    );
+
+######################################################################
+##                                                                  ##
+##                               MAIN                               ##
+##                                                                  ##
+######################################################################
+
+program_banner;
+
+GetOptions("format=s" => \$OPT{format},
+           "output=s" => \$OPT{output},
+           help       => \&usage,
+           "verbose!" => \&set_verbosity);
+
+$OPT{format} =~ s/(\.fmt)?$/.fmt/;
+
+my $fmt_file = kpsewhich($OPT{format});
+
+my $fmt = TeX::FMT::File->new({ file_name => $fmt_file });
+
+$fmt->open('r');
+
+print STDERR "Loading format file\n";
+
+$fmt->load();
+
+print STDERR "Extracting box register\n";
+
+my $box = $fmt->extract_box_register(32);
+
+print STDERR "Dropping fmt file\n";
+
+undef $fmt;
+
+print STDERR "Translating box register\n";
+
+my $translator = "TeX::Output::$OPT{output}"->new();
+
+$translator->write_header();
+
+ship_out($translator, $box);
+
+$translator->write_trailer();
+
+__END__

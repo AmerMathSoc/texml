@@ -1,0 +1,2297 @@
+package TeX::Interpreter::FMT::latex;
+
+use strict;
+use warnings;
+
+use version; our $VERSION = qv '1.104.0';
+
+use Image::PNG;
+
+use List::Util qw(all);
+
+use TeX::Utils::Misc qw(empty file_mimetype empty nonempty pluralize trim);
+
+use TeX::Constants qw(:named_args);
+
+use TeX::Token qw(:factories);
+use TeX::TokenList qw(:factories);
+
+use TeX::WEB2C qw(:token_types);
+
+use File::Basename;
+use File::Spec::Functions qw(catfile);
+
+sub install ( $ ) {
+    my $class = shift;
+
+    my $tex     = shift;
+    my @options = @_;
+
+    (my $module = __PACKAGE__ . ".pm") =~ s{::}{\/}g;
+    
+    my $fmt_file = catfile(dirname($INC{$module}), 'laTeXML.fmt');
+
+    $tex->load_fmt_file($fmt_file);
+
+    $tex->read_package_data(*TeX::Interpreter::FMT::latex::DATA{IO});
+
+    $tex->load_package("AMSBlackList");
+
+    $tex->load_package("Diacritics");
+
+    ## Override definition of \leavevmode from latex.fmt
+    $tex->define_csname(leavevmode => $tex->load_primitive('leavevmode'));
+    $tex->define_csname(fontencoding => $tex->load_primitive('fontencoding'));
+
+    $tex->define_csname('@push@sectionstack'  => \&do_push_section_stack);
+    $tex->define_pseudo_macro('@pop@sectionstack'    => \&do_pop_section_stack);
+    $tex->define_csname('@clear@sectionstack' => \&do_clear_section_stack);
+
+    $tex->define_csname('@push@tocstack'  => \&do_push_toc_stack);
+    $tex->define_pseudo_macro('@pop@tocstack'    => \&do_pop_toc_stack);
+    $tex->define_csname('@clear@tocstack' => \&do_clear_toc_stack);
+    # $tex->define_csname('@show@tocstack'  => \&do_show_toc_stack);
+
+    $tex->define_csname('TeXML@resolveXMLxrefs' => \&do_resolve_xrefs);
+
+    $tex->define_csname('TeXML@sortXMLcites' => \&do_sort_cites);
+
+    $tex->define_csname('TeXML@setliststyle' => \&do_set_list_style);
+
+    $tex->define_csname('TeXML@add@graphic@attributes' => \&do_graphic_attibutes);
+
+    $tex->define_pseudo_macro('auto@ref@label' => \&do_auto_ref_label);
+
+    return;
+}
+
+######################################################################
+##                                                                  ##
+##                             COMMANDS                             ##
+##                                                                  ##
+######################################################################
+
+sub do_push_section_stack {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $level = $tex->read_undelimited_parameter(EXPANDED);
+    my $tag   = $tex->read_undelimited_parameter(EXPANDED);
+
+    $tex->push_section_stack([ $level, $tag ]);
+
+    return;
+}
+
+sub do_pop_section_stack {
+    my $self = shift;
+
+    my $tex   = shift;
+    my $token = shift;
+
+    my $token_list = new_token_list();
+
+    my $target_level = $tex->read_undelimited_parameter(EXPANDED);
+
+    my @stack = reverse  $tex->get_section_stacks();
+
+    while (defined(my $entry = $tex->pop_section_stack())) {
+        my ($level, $tag) = @{ $entry };
+
+        if ($level < $target_level) {
+            $tex->push_section_stack([ $level, $tag ]);
+
+            last;
+        } else {
+            $token_list->push($tex->tokenize(qq{\\par\\endXMLelement{$tag}}));
+
+            if ($level == $target_level) {
+                last;
+            }
+        } 
+    }
+
+    return $token_list;
+}
+
+sub do_clear_section_stack {
+    my $tex   = shift;
+    my $token = shift;
+
+    while (defined(my $entry = $tex->pop_section_stack())) {
+        my ($level, $tag) = @{ $entry };
+
+        $tex->end_par();
+
+        $tex->end_xml_element($tag);
+    }
+
+    return;
+}
+
+## There should be a cleaner way to create and manage stacks.
+
+sub do_push_toc_stack {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $level = $tex->read_undelimited_parameter(EXPANDED);
+
+    $tex->push_toc_stack($level);
+
+    return;
+}
+
+sub do_pop_toc_stack {
+    my $self = shift;
+
+    my $tex   = shift;
+    my $token = shift;
+
+    my $token_list = new_token_list();
+
+    my $target_level = $tex->read_undelimited_parameter(EXPANDED);
+
+    while (defined(my $level = $tex->pop_toc_stack())) {
+        if ($level >= $target_level) {
+            $tex->end_xml_element("toc-entry");
+        } else {
+            # Popped one level too far.  Back it up.
+
+            $tex->push_toc_stack($level);
+
+            last;
+        } 
+    }
+
+    return $token_list;
+}
+
+sub do_clear_toc_stack {
+    my $tex   = shift;
+    my $token = shift;
+
+    while (defined(my $level = $tex->pop_toc_stack())) {
+        $tex->end_xml_element("toc-entry");
+    }
+
+    return;
+}
+
+# sub do_show_toc_stack {
+#     my $tex   = shift;
+#     my $token = shift;
+# 
+#     my @stack = reverse $tex->get_toc_stacks();
+# 
+#     $tex->DEBUG("toc_stack: @stack");
+# 
+#     return;
+# }
+
+sub __parse_ref_record( $ ) {
+    my $ref_record = shift;
+
+    if ($ref_record =~ m{\A \{(.*)\} \{(.*)\} \{(.*)\} \{(.*)\} \z}smx) {
+        return ($3, $1, $2, $4);
+    }
+
+    return;
+}
+
+sub do_resolve_xrefs {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $handle = $tex->get_output_handle();
+
+    my $body = $handle->get_dom();
+
+    my $pass = 0;
+
+    $tex->print_nl("Resolving \\ref's and \\cite's");
+
+    my $num_xrefs = 0;
+    my $num_cites = 0;
+
+    while (my @xrefs = $body->findnodes(qq{descendant::xref[starts-with(attribute::specific-use, "unresolved")]})) {
+        if (++$pass > 10) {
+            $tex->print_nl("resolve_xrefs: Bailing on pass number $pass");
+
+            last;
+        }
+
+        for my $xref (@xrefs) {
+            (undef, my $ref_cmd) = split / /, $xref->getAttribute('specific-use');
+
+            if ($ref_cmd eq 'cite') {
+                (my $key = $xref->getAttribute("rid")) =~ s{^bibr-}{b\@};
+
+                my $token = make_csname_token($key);
+
+                my $token_list = TeX::TokenList->new({ tokens => [ $token ] });
+
+                my $label = $tex->convert_token_list($token_list);
+
+                ## TODO: Why doesn't this work?  \csname not working?
+                # my $label = $tex->convert_fragment(qq{\\csname $key \\endcsname});
+
+                if (defined $label && $label->hasChildNodes()) {
+                    $xref->setAttribute('specific-use', 'cite');
+
+                    my $first = $xref->firstChild();
+
+                    $xref->replaceChild($label, $first);
+
+                    $num_cites++;
+                }
+            } else {
+                my $ref_key = $xref->getAttribute('ref-key');
+
+                if ($ref_cmd eq 'hyperref') {
+                    my $r = $tex->get_macro_expansion_text("r\@$ref_key");
+
+                    $xref->setAttribute('specific-use' => 'undefined');
+
+                    if (defined $r) {
+                        my ($xml_id) = __parse_ref_record($r);
+
+                        if (nonempty($xml_id)) {
+                            $xref->setAttribute(rid => $xml_id);
+                            $xref->setAttribute('specific-use' => $ref_cmd);
+                            $xref->setAttribute('ref-type' => 'text');
+                            $xref->removeAttribute('ref-key');
+                        }
+
+                        $num_xrefs++;
+                    }
+                } else {
+                    my $new_node = $tex->convert_fragment(qq{\\${ref_cmd}{$ref_key}});
+
+                    my $flag = $new_node->firstChild()->getAttribute("specific-use");
+
+                    $xref->replaceNode($new_node);
+
+                    if (nonempty($flag) && $flag !~ m{^un(defined|resolved)}) {
+                        $num_xrefs++;
+                    }
+                }
+            }
+        }
+    }
+
+    my $refs  = pluralize("reference", $num_xrefs);
+    my $cites = pluralize("cite", $num_cites);
+
+    $tex->print_nl("Resolved $num_xrefs $refs and $num_cites $cites");
+
+    # $tex->print_ln();
+
+    my @xrefs = $body->findnodes(qq{descendant::xref[attribute::specific-use="undefined"]});
+
+    if (@xrefs) {
+        $tex->print_nl("Unable to resolve the following xrefs after $pass tries:");
+
+        for my $xref (@xrefs) {
+            $tex->print_nl("    $xref");
+        }
+    }
+
+    my @cites = $body->findnodes(qq{descendant::xref[attribute::specific-use="unresolved cite"]});
+
+    if (@cites) {
+        $tex->print_nl("Unable to resolve the following cites:");
+
+        for my $xref (@cites) {
+            $tex->print_nl("    $xref");
+        }
+    }
+
+    return;
+}
+
+sub __extract_cite_label( $ ) {
+    my $xref_node = shift;
+
+    my $label = $xref_node->firstChild();
+
+    return "$label" + 0;
+}
+
+sub do_sort_cites {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $handle = $tex->get_output_handle();
+
+    my $body = $handle->get_dom();
+
+    my @groups = $body->findnodes(qq{descendant::cite-group});
+
+    $tex->print_nl("Sorting cite groups");
+
+    my $num_sorted = 0;
+
+    for my $cite_group (@groups) {
+        my @xrefs = $cite_group->findnodes(qq{descendant::xref});
+
+        next if @xrefs < 2;
+
+        my @labels = map { $_->firstChild() } @xrefs;
+
+        return unless all { m{^\d+$} } @labels;
+
+        my @new = map { [ __extract_cite_label($_), $_->cloneNode(1) ] } @xrefs;
+
+        my @sorted = sort { $a->[0] <=> $b->[0] } @new;
+
+        for (my $i = 0; $i < @new; $i++) {
+            $xrefs[$i]->replaceNode($sorted[$i]->[1]);
+        }
+
+        $num_sorted++;
+    }
+
+    $tex->print_ln();
+
+    $tex->print_nl(sprintf "Sorted %d cite group%s",
+                   $num_sorted,
+                   $num_sorted == 1 ? "" : "s"
+        );
+
+    return;
+}
+
+my %LIST_STYLE_TYPE = (alph   => 'a', # 'lower-alpha',
+                       Alph   => 'A', # 'upper-alpha',
+                       arabic => '1', # 'decimal',
+                       roman  => 'i', # 'lower-roman',
+                       Roman  => 'I', # 'upper-roman',
+                       );
+
+sub do_set_list_style {
+    my $tex   = shift;
+    my $token = shift;
+
+    $tex->begingroup();
+
+    $tex->define_csname('@arabic'   => \&do_counter_style);
+    $tex->define_csname('@roman'    => \&do_counter_style);
+    $tex->define_csname('@Roman'    => \&do_counter_style);
+    $tex->define_csname('@alph'     => \&do_counter_style);
+    $tex->define_csname('@Alph'     => \&do_counter_style);
+    # $tex->define_csname('@fnsymbol' => \&do_counter_style);
+
+    my $item_label = $tex->convert_fragment('\\csname @itemlabel\\endcsname');
+
+    $tex->endgroup();
+
+    if ($item_label =~ m{\A (.*?) (?:\\\@(arabic|roman|alph)) (.*) \z}ismx) {
+        my ($prefix, $list_style, $suffix) = ($1, $2, $3);
+
+        $tex->set_xml_attribute('html:type', $LIST_STYLE_TYPE{$list_style});
+
+        if (nonempty($prefix) || nonempty($suffix)) {
+            my $content = 'counter(counter)';
+
+            if (nonempty($prefix)) {
+                $content = qq{'$prefix' } . $content;
+            }
+
+            if (nonempty($suffix)) {
+            $content .= qq{ '$suffix'};
+            }
+
+            $tex->set_xml_attribute('html:style' => qq{content: $content});
+        }
+    } else {
+        if ($item_label eq "\x{2022}") {
+            $tex->set_xml_attribute('html:style', qq{list-style-type: disc});
+        } else {
+            $tex->set_xml_attribute('html:style', qq{list-style-type: '$item_label'});
+        }
+    }
+
+    return;
+}
+
+sub do_counter_style {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $arg = $tex->read_undelimited_parameter();
+
+    $tex->conv_toks($token);
+
+    return;
+}
+
+sub __get_graphic_dimens( $ ) {
+    my $file = shift;
+
+    if ($file =~ m{\.svg$}) {
+        my $parser = XML::LibXML->new();
+        $parser->set_option(huge => 1);
+
+        my $doc = eval { $parser->load_xml(location => $file) };
+
+        if (! defined $doc) {
+            warn "Can't parse SVG file to read dimensions\n";
+
+            return;
+        }
+
+        my $root = $doc->documentElement();
+
+        my $width  = $root->getAttribute("width");
+        my $height = $root->getAttribute("height");
+
+        return ($width, $height);
+    }
+
+    if ($file =~ m{\.png$}) {
+        my $png = Image::PNG->new();
+
+        return unless $png->read($file);
+        # or do {
+        #     die "Can't read $file: $!\n";
+        # };
+
+        return ($png->width(), $png->height());
+    }
+
+    return;
+}
+
+sub do_graphic_attibutes {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $file = $tex->read_undelimited_parameter();
+
+    if (nonempty(my $mime_type = file_mimetype($file))) {
+        $tex->set_xml_attribute(mimetype => $mime_type);
+    }
+
+    if (my ($width, $height) = __get_graphic_dimens($file)) {
+        $tex->set_xml_attribute(width => $width);
+        $tex->set_xml_attribute(height => $height);
+    }
+
+    return;
+}
+
+sub do_auto_ref_label {
+    my $self = shift;
+
+    my $tex   = shift;
+    my $token = shift;
+
+    my $id = $tex->read_undelimited_parameter(EXPANDED);
+
+    return auto_ref_label($tex, $id);
+}
+
+sub auto_ref_label {
+    my $tex = shift;
+    my $id  = shift;
+
+    my $handle;
+
+    if (defined (my $main = $tex->get_output_stack(0))) {
+        $handle = $main->get_handle();
+    } else {
+        $handle = $tex->get_output_handle();
+    }
+
+    my $dom = $handle->get_dom();
+
+    my $type;
+
+    my @nodes = $dom->findnodes(qq{descendant::*[attribute::id="$id"]});
+
+    if (@nodes) {
+        my $node = pop @nodes;
+
+        if ($node->hasAttribute('specific-use')) {
+            $type = $node->getAttribute('specific-use');
+
+            ## Inside of appendixes, autoref uses a different name for
+            ## sections, but not for subsections, etc.  Since we
+            ## haven't replaced <sec> by <app> yet (see jats.xsl), we
+            ## check to see whether the parent element is an app-group
+            ## rather than checking $node->nodeName() directly.
+
+            if ($type eq 'section') {
+                if (defined (my $parent = $node->parentNode())) {
+                    if ($parent->nodeName() eq 'app-group') {
+                        $type = "appendix";
+                    }
+                }
+            }
+        }
+        elsif ($node->hasAttribute('content_type')) {
+            ($type) = split / /, $node->getAttribute('specific-use');
+        }
+    }
+
+    if (defined $type) {
+        if (defined (my $name = $tex->get_macro_expansion_text("${type}autorefname"))) {
+            return $name;
+        }
+
+        if (defined (my $name = $tex->get_macro_expansion_text("${type}name"))) {
+            return $name;
+        }
+
+        return $tex->tokenize($type);
+    }
+
+    return new_token_list();
+}
+
+1;
+
+__DATA__
+
+\setXSLfile{jats}
+
+\AtTeXMLend{\TeXML@resolveXMLxrefs}
+
+\def\TeXMLNoResolveXrefs{\let\TeXML@resolveXMLxrefs\@empty}
+
+% \AtTeXMLend{\TeXML@resolveXMLcites}
+
+% \def\TeXMLnoResolveCites{\let\TeXML@resolveXMLcites\@empty}
+
+\newif\ifTeXMLsortcites@
+\TeXMLsortcites@false
+
+\def\TeXMLsortCites{\TeXMLsortcites@true}
+\def\TeXMLnoSortCites{\TeXMLsortcites@false}
+
+\AtTeXMLend{\ifTeXMLsortcites@ \TeXML@sortXMLcites \fi}
+
+\def\@no@lnbk #1[#2]{ }% *sigh*
+
+\def\controldates#1{}
+
+% It's not clear that it's worth preserving these outside of math
+% mode, since they are typically used for fine tuning that is highly
+% font specific.
+
+\UCSchardef\,"2009 % THIN SPACE
+\UCSchardef\;"2005 % FOUR-PER-EM SPACE
+\UCSchardef\:"2004 % THREE-PER-EM SPACE
+
+\def\@gobbleopt{\@ifnextchar[{\@gobbleopt@}{}}
+\def\@gobbleopt@[#1]{}
+\def\@gobble@opt{\@ifnextchar[{\@gobble@opt@}{\@gobble}}
+\def\@gobble@opt@[#1]#2{}
+
+\def\!{}
+
+\def\HyperFirstAtBeginDocument#1{}
+
+% \def\mathscr{\mathcal}
+
+\def\startXMLspan#1{%
+    \startXMLelement{span}%
+    \setXMLclass{#1}%
+}
+
+\def\endXMLspan{%
+    \endXMLelement{span}%
+}
+
+\def\emptyXMLelement#1{%
+    \startXMLelement{#1}\endXMLelement{#1}%
+}
+
+\def\XMLelement#1#2{\startXMLelement{#1}#2\endXMLelement{#1}}
+
+\def\XMLgeneratedText{\XMLelement{x}}
+
+\def\JATStyledContent#1#2{%
+    \leavevmode
+    \startXMLelement{styled-content}%
+    \setXMLattribute{style-type}{#1}%
+    #2%
+    \endXMLelement{styled-content}%
+}
+
+\UCSchardef\UnicodeLineFeed"000A
+
+%% Save the current definition of a macro to be restored at the
+%% beginning of the document, after all other packages and classes
+%% have been loaded.
+
+\def\SaveMacroDefinition#1{%
+    \expandafter\global\expandafter\let\csname frozen@\string#1\endcsname#1%
+}
+
+\def\RestoreMacroDefinition#1{%
+    \begingroup
+        \edef\@tempa{%
+            \let\noexpand#1\expandafter\noexpand\csname frozen@\string#1\endcsname
+        }%
+    \expandafter\endgroup
+    \@tempa
+}
+
+\def\PreserveMacroDefinition#1{%
+    \SaveMacroDefinition#1%
+    \AtBeginDocument{\RestoreMacroDefinition#1}%
+}
+
+\def\SaveEnvironmentDefinition#1{%
+    \expandafter\SaveMacroDefinition\csname#1\endcsname
+    \expandafter\SaveMacroDefinition\csname end#1\endcsname
+}
+
+\def\RestoreEnvironmentDefinition#1{%
+    \expandafter\RestoreMacroDefinition\csname#1\endcsname
+    \expandafter\RestoreMacroDefinition\csname end#1\endcsname
+}
+
+\def\PreserveEnvironmentDefinition#1{%
+    \expandafter\PreserveMacroDefinition\csname#1\endcsname
+    \expandafter\PreserveMacroDefinition\csname end#1\endcsname
+}
+
+%% Now that MathJax supports scaling of images in scripts, we should
+%% replace \TeXMLSVGmathchoice by something that creates SVGs that use
+%% relative units:
+%%
+%%     https://github.com/mathjax/MathJax/issues/2124
+
+\def\TeXMLSVGmathchoice#1{%
+     \string\mathchoice
+         {\TeXMLCreateSVG{$\displaystyle#1$}}%
+         {\TeXMLCreateSVG{$\textstyle#1$}}%
+         {\TeXMLCreateSVG{$\scriptstyle#1$}}%
+         {\TeXMLCreateSVG{$\scriptscriptstyle#1$}}%
+}
+
+%% Example: \DeclareSVGMathChar\Lbag\mathopen
+
+\def\DeclareSVGMathChar#1#2{\def#1{#2{\TeXMLSVGmathchoice{#1}}}}
+
+% * = preserve line breaks (for verbatim-type environments)
+
+\def\DeclareSVGEnvironment{%
+    \@ifstar{\@DeclareSVGEnvironment*}{\@DeclareSVGEnvironment{}}%
+}
+
+%% Other than \unitlength and \arraystretch, is there anything else we
+%% should preserve?
+
+\def\@DeclareSVGEnvironment#1#2{%
+    \@namedef{#2}{%
+        \texml@process@env#1{#2}{%
+            \toks@\expandafter{\texml@body}%
+            \edef\next@{%
+%%
+%% If we're in math mode, use the * version of TeXMLCreateSVG
+%% 
+                \noexpand\TeXMLCreateSVG\ifmmode*\fi{%
+                    \noexpand\renewcommand{\noexpand\arraystretch}{\arraystretch}
+                    \noexpand\setlength{\noexpand\unitlength}{\the\unitlength}
+                    \@ifundefined{extrarowheight}{}{%
+                        \noexpand\setlength{\noexpand\extrarowheight}{\the\extrarowheight}%
+                    }%
+                    \the\toks@
+                }%
+            }%
+            \next@
+        }%
+    }%
+}
+
+\def\jats@graphics@element{inline-graphic}
+
+%% Note that the optional argument is currently ignored.
+
+\newcommand{\TeXMLImportGraphic}[2][]{%
+    \ifmmode
+        \string\vcenter\string{%
+            \string\img\string{#2\string}%
+        \string}%
+    \else
+        \startXMLelement{\jats@graphics@element}%
+        \setXMLattribute{xlink:href}{#2}%
+        \TeXML@add@graphic@attributes{#2}%
+        \endXMLelement{\jats@graphics@element}%
+    \fi
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                      BEGINNING OF LATEX.LTX                      %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTSPACE.DTX                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\UCSchardef\nobreakspace"00A0
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTFILES.DTX                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\long\def\InputIfFileExists#1#2{%
+    \IfFileExists{#1}{%
+        \@filtered@input\@filef@und
+    }%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTOUTENC.DTX                           %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\UCSchardef\{"007B
+\UCSchardef\}"007D
+\UCSchardef\$"0024
+\UCSchardef\#"0023
+\UCSchardef\%"0025
+
+% \begingroup
+% 
+% \catcode`\&=12
+
+% \gdef\&{&amp;}  %%* FIX
+
+\gdef\&{\string&}  %%* FIX
+
+% \endgroup
+
+% \UCSchardef\&"0026    % Really \string&
+
+\UCSchardef\_"005F
+\UCSchardef\|"007C
+
+\UCSchardef\AA"00C5
+\UCSchardef\aa"00E5
+\UCSchardef\AE"00C6
+\UCSchardef\ae"00E6
+\UCSchardef\cent"00A2
+% \UCSchardef\copy"00A9    % WTF?!!?
+\UCSchardef\copyright"00A9
+\UCSchardef\curren"00A4
+\UCSchardef\DH"00D0
+\UCSchardef\dh"00F0
+\UCSchardef\DJ"0110
+\UCSchardef\dj"0111
+\UCSchardef\dots"2026
+\UCSchardef\iexcl"00A1
+\UCSchardef\IJlig"0132
+\UCSchardef\ijlig"0133
+\UCSchardef\IJ"0132
+\UCSchardef\ij"0133
+\UCSchardef\iquest"00BF
+\UCSchardef\i"0131
+\UCSchardef\j"0237
+\UCSchardef\laquo"00AB
+\UCSchardef\ldots"2026
+\UCSchardef\Lsoft"013D
+\UCSchardef\lsoft"013E
+\UCSchardef\L"0141
+\UCSchardef\l"0142
+\UCSchardef\OE"0152
+\UCSchardef\oe"0153
+\UCSchardef\O"00D8
+\UCSchardef\o"00F8
+\UCSchardef\pounds"00A3
+\UCSchardef\raquo"00BB
+\UCSchardef\P"00B6
+\UCSchardef\S"00A7
+\UCSchardef\sect"00A7
+\UCSchardef\ss"00DF
+\UCSchardef\TH"00DE
+\UCSchardef\th"00FE
+\UCSchardef\yen"00A5
+
+%% LaTeX \text... symbols
+
+\UCSchardef\textdollar"0024
+\UCSchardef\textbacklash"005C
+
+\UCSchardef\textacutedbl"02DD
+\UCSchardef\textasciiacute"00B4
+\UCSchardef\textasciibreve"02D8
+\UCSchardef\textasciicaron"02C7
+\UCSchardef\textasciicircum"02C6
+\UCSchardef\textasciidieresis"00A8
+\UCSchardef\textasciimacron"00AF
+\UCSchardef\textasciitilde"02DC
+\UCSchardef\textasteriskcentered"204E
+\UCSchardef\textbaht"0E3F
+\UCSchardef\textbardbl"2016
+\UCSchardef\textbigcircle"25EF
+\UCSchardef\textblank"2422
+\UCSchardef\textbrokenbar"00A6
+\UCSchardef\textbullet"2022
+\UCSchardef\textcelsius"2103
+\UCSchardef\textcent"00A2
+\UCSchardef\textcircledP"2117
+\UCSchardef\textcolonmonetary"20A1
+\UCSchardef\textcompwordmark"200C
+\UCSchardef\textcopyright"00A9
+\UCSchardef\textcurrency"00A4
+\UCSchardef\textdagger"2020
+\UCSchardef\textdaggerdbl"2021
+\UCSchardef\textdegree"00B0
+\UCSchardef\textdiscount"2052
+\UCSchardef\textdiv"00F7
+\UCSchardef\textdong"20AB
+\UCSchardef\textdownarrow"2193
+\UCSchardef\textellipsis"2026
+\UCSchardef\textemdash"2014
+\UCSchardef\textendash"2013
+\UCSchardef\textestimated"212E
+\UCSchardef\texteuro"20AC
+\UCSchardef\textexclamdown"00A1
+\UCSchardef\textflorin"0192
+\UCSchardef\textfractionsolidus"2044
+\UCSchardef\textinterrobang"203D
+\UCSchardef\textlangle"2329
+\UCSchardef\textleftarrow"2190
+\UCSchardef\textlira"20A4
+\UCSchardef\textlnot"00AC
+\UCSchardef\textmho"2127
+\UCSchardef\textmu"00B5
+\UCSchardef\textmusicalnote"266A
+\UCSchardef\textnaira"20A6
+\UCSchardef\textnumero"2116
+\UCSchardef\textohm"2126
+\UCSchardef\textonehalf"00BD
+\UCSchardef\textonequarter"00BC
+\UCSchardef\textonesuperior"00B9
+\UCSchardef\textopenbullet"25E6
+\UCSchardef\textordfeminine"00AA
+\UCSchardef\textordmasculine"00BA
+\UCSchardef\textparagraph"00B6
+\UCSchardef\textperiodcentered"00B7
+\UCSchardef\textpertenthousand"2031
+\UCSchardef\textperthousand"2030
+\UCSchardef\textpeso"20B1
+\UCSchardef\textpm"00B1
+\UCSchardef\textprime"2032
+\UCSchardef\textquestiondown"00BF
+\UCSchardef\textquotedblleft"201C
+\UCSchardef\textquotedblright"201D
+\UCSchardef\textquoteleft"2018
+\UCSchardef\textquoteright"2019
+\UCSchardef\textrangle"232A
+\UCSchardef\textrecipe"211E
+\UCSchardef\textreferencemark"203B
+\UCSchardef\textregistered"00AE
+\UCSchardef\textrightarrow"2192
+\UCSchardef\textsection"00A7
+\UCSchardef\textservicemark"2120
+\UCSchardef\textsterling"00A3
+\UCSchardef\textthreequarters"00BE
+\UCSchardef\textthreesuperior"00B3
+\UCSchardef\texttimes"00D7
+\UCSchardef\texttrademark"2122
+\UCSchardef\texttwosuperior"00B2
+\UCSchardef\textunderscore"005F
+\UCSchardef\textuparrow"2191
+\UCSchardef\textvisiblespace"2423
+\UCSchardef\textwon"20A9
+\UCSchardef\textyen"00A5
+
+\def\Mc{Mc}
+
+%%
+%% Miscellaneous
+%%
+
+\UCSchardef\backslash"005C
+\UCSchardef\colon"003A
+\UCSchardef\enspace"2002
+\UCSchardef\emspace"2003
+\UCSchardef\thinspace"2009
+\UCSchardef\quad"2001
+\UCSchardef\lbrace"007B
+\UCSchardef\rbrace"007D
+\UCSchardef\lt"003C
+\UCSchardef\gt"003E
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTCOUNTS.DTX                           %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTLENGTH.DTX                           %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Disabling \@settodim shouldn't be necessary once the emulations of
+% the box operations are working.
+
+\def\@settodim#1#2#3{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTFNTCMD.DTX                           %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\@declarestyledcommand#1#2#3{%
+    \DeclareRobustCommand#1[1]{%
+        \ifmmode
+            \string#2{##1}%
+        \else
+            \JATStyledContent{#3}{##1}%
+        \fi
+    }%
+}
+
+\@declarestyledcommand\textsl\mathsl{oblique}
+%\@declarestyledcommand\textup{font-style: normal}
+% \@declarestyledcommand\textsc{font-variant: small-caps}
+
+\def\@declarefontcommand#1#2#3{%
+    \DeclareRobustCommand#1[1]{%
+        \ifmmode
+            \string#2{##1}%
+        \else
+            \leavevmode
+            \startXMLelement{#3}%
+            ##1%
+            \endXMLelement{#3}%
+        \fi
+    }%
+}
+
+\@declarefontcommand\textup\text{roman}
+
+% The following aren't quite right because, for example, \textrm{foo
+% bar} retains the space, but \mathrm{foo bar} does not.  But it's
+% probably correct most of the time.
+
+\@declarefontcommand\textrm\mathrm{roman}
+\@declarefontcommand\textnormal\mathrm{roman}
+\@declarefontcommand\textsc\mathsc{sc}
+\@declarefontcommand\textbf\mathbf{bold}
+\@declarefontcommand\texttt\mathtt{monospace}
+\@declarefontcommand\textit\mathit{italic}
+\@declarefontcommand\textsf\mathsf{sans-serif}
+
+\@declarefontcommand\underline\underline{underline}
+\@declarefontcommand\textsuperscript\sp{sup}
+\@declarefontcommand\textsubscript\sb{sub}
+
+%% Defer \overline until \begin{document} to avoid warnings from
+%% amsmath.sty.
+
+\AtBeginDocument{\@declarefontcommand\overline\overline{overline}}
+
+\DeclareRobustCommand\emph[1]{%
+    \ifmmode
+        \string\mathit{#1}%
+    \else
+        \leavevmode
+        \startXMLelement{italic}%
+        \setXMLattribute{toggle}{yes}%
+        #1%
+        \endXMLelement{italic}%
+    \fi
+}%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                            LTXREF.DTX                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\let\@currentlabel\@empty
+\let\@currentXMLid\@empty
+\def\@currentreftype{sec}
+
+\newcounter{xmlid}
+
+\def\stepXMLid{%
+    \stepcounter{xmlid}%
+    \edef\@currentXMLid{ltxid\arabic{xmlid}}%
+}
+
+\def\addXMLid{%
+    \stepXMLid
+    \setXMLattribute{id}{\@currentXMLid}%
+}
+
+\def\label#1{%
+    \@bsphack
+    \begingroup
+        \let\ref\relax
+        \protected@edef\@tempa{%
+            \noexpand\newlabel{#1}{%
+                {\@currentlabel}%
+                {\thepage}%
+                {\@currentXMLid}%
+                {\ifmmode disp-formula\else\@currentreftype\fi}%
+            }%
+        }%
+    \expandafter\endgroup
+    \@tempa
+    % \protected@write\@auxout{}{%
+    %     \string\newlabel{#1}{{\@currentlabel}%
+    %                          {\thepage}%
+    %                          {\@currentXMLid}%
+    %                          {\ifmmode disp-formula\else\@currentreftype\fi}}}%
+    \@esphack
+}
+
+\newcommand{\@noref}[1]{%
+    \G@refundefinedtrue
+    \textbf{??}%
+    \@latex@warning{Reference `#1' on page \thepage\space undefined}%
+}
+
+\long\def \@firstoffour#1#2#3#4{#1}
+\long\def\@secondoffour#1#2#3#4{#2}
+\long\def \@thirdoffour#1#2#3#4{#3}
+\long\def\@fourthoffour#1#2#3#4{#4}
+
+\def\ref#1{%
+    \expandafter\@setref\csname r@#1\endcsname\@firstoffour{#1}\ref
+}
+
+\def\pageref#1{%
+    \expandafter\@setref\csname r@#1\endcsname\@secondoffour{#1}\pageref
+}
+
+\def\double@expand#1{%
+    \begingroup
+        \protected@edef\@temp@expand{#1}%
+    \expandafter\endgroup
+    \@temp@expand
+}
+
+% #1 = \r@LABEL
+% #2 = getter
+% #3 = LABEL
+% %4 = \ref | \autoref | \pageref
+
+\def\@setref#1#2#3#4{%
+    \leavevmode
+    \startXMLelement{xref}%
+    \if@TeXMLend
+        \@ifundefined{r@#3}{%
+            \setXMLattribute{specific-use}{undefined}%
+            \texttt{?#3}%
+        }{%
+            \begingroup
+                \double@expand{%
+                    \edef\noexpand\@ref@label@attr{%
+                        \noexpand\auto@ref@label{\expandafter\@thirdoffour#1}%
+                    }%
+                }%
+                \ifx\@ref@label@attr\@empty\else
+                    \setXMLattribute{ref-label}{\@ref@label@attr}%
+                \fi
+            \endgroup
+            \setXMLattribute{specific-use}{\expandafter\@gobble\string#4}%
+            \setXMLattribute{rid}{\expandafter\@thirdoffour#1}%
+            \setXMLattribute{ref-type}{\expandafter\@fourthoffour#1}%
+            \protect\printref{\expandafter#2#1}%
+        }%
+    \else
+        \setXMLattribute{ref-key}{#3}%
+        \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#4}%
+    \fi
+    \endXMLelement{xref}%
+}
+
+\let\printref\@firstofone
+
+%% Wrap \@newl@bel in \begingroup...\endgroup instead of {...} for
+%% compatibility with texml processing of math mode.
+
+\def\@newl@bel#1#2#3{%
+    \begingroup
+        \@ifundefined{#1@#2}{%
+            \let\prev@value\@empty
+        }{%
+            \edef\prev@value{\@nameuse{#1@#2}}%
+        }%
+        \double@expand{\global\noexpand\@namedef{#1@#2}{#3}}%
+        \ifx\prev@value\@empty\else
+            \expandafter\ifx\csname #1@#2\endcsname \prev@value\else
+                \gdef\@multiplelabels{%
+                    \@latex@warning@no@line{There were multiply-defined labels}%
+                }%
+                \@latex@warning@no@line{Label `#2' multiply defined: changed from '\prev@value' to '#3'}%
+            \fi
+        \fi
+    \endgroup
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTMISCEN.DTX                           %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\renewenvironment{center}{%
+    \par
+    \startXMLelement{disp-quote}%
+    \setXMLattribute{specific-use}{text-align: center}
+}{%
+    \par
+    \endXMLelement{disp-quote}%
+}
+
+\renewenvironment{flushright}{%
+    \par
+    \startXMLelement{disp-quote}%
+    \setXMLattribute{specific-use}{text-align: right}%
+}{%
+    \par
+    \endXMLelement{disp-quote}%
+}
+
+\renewenvironment{flushleft}{%
+    \par
+    \startXMLelement{disp-quote}%
+    \setXMLattribute{specific-use}{text-align: left}%
+}{%
+    \par
+    \endXMLelement{disp-quote}%
+}
+
+{\catcode`\^^M=\active % these lines must end with %
+  \gdef\obeylines{\catcode`\^^M\active \let^^M\UnicodeLineFeed}%
+  \global\let^^M\UnicodeLineFeed} % this is in case ^^M appears in a \write
+
+\def\@verbatim{
+    \par
+    \xmlpartag{}%
+    \everypar{}%
+    \startXMLelement{pre}%
+    \let\do\@makeother \dospecials
+    \suppressligatures=1
+    \obeylines
+}
+
+\def\verbatim{\@verbatim \frenchspacing\@vobeyspaces \@xverbatim}
+
+\def\endverbatim{%
+    \par
+    \endXMLelement{pre}%
+    \par
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                            LTMATH.DTX                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\[{$$}
+\def\]{$$}
+\def\({$}
+\def\){$}
+
+%% For now assume that \bordermatrix only occurs in display math.
+
+\def\bordermatrix#1{\TeXMLCreateSVG{$$\bordermatrix{#1}$$}}
+
+\def\makeph@nt#1{}
+%\def\mathph@nt#1#2{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTLISTS.DTX                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newif\if@newitem
+\@newitemfalse
+
+%% We need a hook to add XML ids to <ref-list>s.  We don't want to add
+%% an id to every list environment because in obscure borderline cases
+%% where, for example, there is a \label embedded inside an unnumbered
+%% list, it could cause the label to resolve to a different location.
+
+\newif\if@listXMLid
+\@listXMLidfalse
+
+%% 
+
+\newif\if@stdList
+
+\def\@listelementname{def-list}
+\def\@listitemname{def-item}
+\def\@listlabelname{term}
+\def\@listdefname{def}
+\let\@listconfig\@empty
+
+\newif\ifafterfigureinlist@
+\afterfigureinlist@false
+
+\let\@listpartag\@empty
+
+\newif\if@texml@inlist@
+\@texml@inlist@false
+
+\renewenvironment{list}[2]{%
+    \@@par
+    \ifnum \@listdepth >5\relax
+        \@toodeep
+    \else
+        \global\advance\@listdepth\@ne
+    \fi
+    \@texml@inlist@true
+    \global\@newitemfalse
+    \csname @list\romannumeral\the\@listdepth\endcsname
+    \def\@itemlabel{#1}%
+    \let\makelabel\@mklab
+    \@nmbrlistfalse
+    \@listXMLidfalse
+    \@stdListtrue
+    #2\relax
+    %% The setting of listpartag probably still isn't robust enough.
+    \edef\@tempa{\the\xmlpartag}%
+    \ifx\@tempa\@empty
+        \def\@listpartag{p}%
+    \else
+        \let\@listpartag\@tempa
+    \fi
+    \xmlpartag{}%
+    \ifx\@listelementname\@empty\else
+        \startXMLelement{\@listelementname}%
+        \setXMLattribute{content-type}{\@currenvir}%
+        \if@listXMLid
+            \addXMLid
+        \fi
+    \fi
+    \def\@currentreftype{list}%
+    \@listconfig
+    \global\@newlisttrue
+    \afterfigureinlist@false
+}{%
+    \@@par
+    \if@newlist\else
+        \ifafterfigureinlist@
+        \else
+            \list@endpar
+        \fi
+        \ifx\@listitemname\@empty\else
+            \ifx\@listdefname\@empty\else
+                \endXMLelement{\@listdefname}%
+            \fi
+            \endXMLelement{\@listitemname}%
+        \fi
+    \fi
+    \ifx\@listelementname\@empty\else
+        \if@stdList
+            \TeXML@setliststyle
+        \fi
+        \endXMLelement{\@listelementname}%
+    \fi
+    \global\advance\@listdepth\m@ne
+}
+
+\def\list@beginpar{%
+    \ifx\@listpartag\@empty\else
+        \startXMLelement{\@listpartag}%
+    \fi
+}
+
+\def\list@endpar{%
+    \ifx\@listpartag\@empty\else
+        \endXMLelement{\@listpartag}%
+    \fi
+}
+
+% \def\@mklab#1{%
+%     \everypar{\addXMLid}%
+% %    \thisxmlpartag{term}%
+%     #1%
+%     \par
+% }
+
+\def\@mklab#1{%
+    \gdef\list@item@init{%
+        \ifx\@listlabelname\@empty\else
+            \startXMLelement{\@listlabelname}%
+        \fi
+        {#1}% Braces handle abominations like \item[\bf 1.]
+        \ifx\@listlabelname\@empty\else
+            \endXMLelement{\@listlabelname}
+        \fi
+        \ifx\@listdefname\@empty\else
+            \startXMLelement{\@listdefname}%
+        \fi
+    }%
+}
+
+\def\item{%
+    \@inmatherr\item
+    \@ifnextchar [{\@stdListfalse\@item}{\@noitemargtrue \@item[\@itemlabel]}%
+}
+
+\def\@item[#1]{%
+    \ifafterfigureinlist@
+        \ifafterfigureinlist@
+            \global\afterfigureinlist@false
+        \else
+            \list@endpar
+        \fi
+        \list@beginpar
+    \fi
+    \@@par
+    \if@newlist
+        \global\@newlistfalse
+    \else
+        \list@endpar
+        \ifx\@listitemname\@empty\else
+            \ifx\@listdefname\@empty\else
+                \endXMLelement{\@listdefname}%
+            \fi
+            \endXMLelement{\@listitemname}%
+        \fi
+    \fi
+    \global\@newitemtrue
+    \if@noitemarg
+        \if@nmbrlist
+            \refstepcounter\@listctr
+        \fi
+    \fi
+    \stepXMLid
+    \makelabel{#1}%
+    \everypar{\list@everypar}%
+    \ignorespaces
+}
+
+\let\list@item@init\@empty
+
+\def\list@everypar{%
+    \if@newitem
+        \global\@newitemfalse
+        \ifx\@listitemname\@empty\else
+            \startXMLelement{\@listitemname}%
+            \setXMLattribute{id}{\@currentXMLid}%
+            \if@nmbrlist
+                \if@noitemarg
+                    \setXMLattribute{html:value}{\expandafter\the\csname c@\@listctr\endcsname}%
+                \fi
+            \fi
+            \list@item@init
+            \global\let\list@item@init\@empty
+        \fi
+    \else
+        \ifafterfigureinlist@
+            \global\afterfigureinlist@false
+        \else
+            \list@endpar
+        \fi
+    \fi
+    \list@beginpar
+    \@noitemargfalse
+}
+
+\renewenvironment{itemize}{%
+    \if@newitem\leavevmode\fi
+    \ifnum \@itemdepth >\thr@@
+        \@toodeep
+    \else
+        \advance\@itemdepth\@ne
+        \edef\@itemitem{labelitem\romannumeral\the\@itemdepth}%
+        \expandafter\list
+            \csname\@itemitem\endcsname{}%
+    \fi
+}{%
+    \endlist
+}
+
+\SaveEnvironmentDefinition{itemize}
+
+\renewenvironment{enumerate}{%
+    \if@newitem\leavevmode\fi
+    \ifnum \@enumdepth >\thr@@
+        \@toodeep
+    \else
+        \advance\@enumdepth\@ne
+        \edef\@enumctr{enum\romannumeral\the\@enumdepth}%
+        \expandafter\list
+            \csname label\@enumctr\endcsname{%
+                \usecounter\@enumctr
+            }%
+    \fi
+}{%
+    \endlist
+}
+
+\SaveEnvironmentDefinition{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTBOXES.DTX                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Preserve \llap and \rlap in math mode.
+
+\let\ltx@rlap\rlap
+
+%% Add an extra \hbox around the argument of \rlap and \llap to
+%% compensate for the fact that MathJax correctly switches to text
+%% mode inside \hbox but not inside \rlap and \llap.
+
+\def\rlap#1{%
+    \ifmmode
+        \string\rlap\string{\string\hbox\string{\hbox{#1}\string}\string}%
+    \else
+        \ltx@rlap{#1}%
+    \fi
+}
+
+\let\ltx@llap\llap
+
+\def\llap#1{%
+    \ifmmode
+        \string\llap\string{\string\hbox\string{\hbox{#1}\string}\string}%
+    \else
+        \ltx@llap{#1}%
+    \fi
+}
+
+\def\centerline#1{\par#1\par}
+
+\DeclareRobustCommand\parbox{%
+    \@latex@warning@no@line{This document uses \string\parbox!}%
+  \@ifnextchar[%]
+    \@iparbox
+    {\@iiiparbox c\relax[s]}}%
+
+\long\def\@iiiparbox#1#2[#3]#4#5{%
+    \leavevmode
+    \@pboxswfalse
+    \startXMLelement{span}%
+    \setXMLattribute{specific-use}{parbox}%
+    \ifmmode
+        \text{#5}%
+    \else
+        #5\@@par
+    \fi
+    \endXMLelement{span}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                            LTTAB.DTX                             %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\array{%
+    \string\begin{array}%
+    \let\\\@arraycr
+    \let\par\UnicodeLineFeed
+}
+
+\def\endarray{\string\end{array}}
+
+\def\@arraycr{\@ifstar\@xarraycr\@xarraycr}
+
+\def\@xarraycr{\@ifnextchar[\@argarraycr{\string\\}}
+
+\def\@argarraycr[#1]{%
+    \@tempdima=#1\relax
+    \string\\[\the\@tempdima]
+}
+
+\DeclareSVGEnvironment{tabular}
+\DeclareSVGEnvironment{tabular*}
+\DeclareSVGEnvironment{tabbing}
+%\DeclareSVGEnvironment{table}
+
+\DeclareSVGEnvironment{SVG}
+\DeclareSVGEnvironment{SVG*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTPICTUR.DTX                           %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\DeclareSVGEnvironment{picture}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                            LTSECT.DTX                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newif\if@ams@empty
+
+\def\ams@measure#1{%
+    \if###1##%
+        \@ams@emptytrue
+    \else
+        \@ams@emptyfalse
+    \fi
+}
+
+\PreserveMacroDefinition\ams@measure
+
+\newif\ifst@rred
+
+\def\@startsection#1#2#3#4#5#6{%
+    \everypar{}%
+    \leavevmode
+    \par
+    \def\@tempa{\@dblarg{\@sect{#1}{#2}{#3}{#4}{#5}{#6}}}%
+    \@ifstar{\st@rredtrue\@tempa}{\st@rredfalse\@tempa}%
+}
+
+\PreserveMacroDefinition\@startsection
+
+% \@sect{NAME}{LEVEL}{INDENT}{BEFORESKIP}{AFTERSKIP}{STYLE}[ARG1]{ARG2}
+%
+% LEVEL = \@m if *-ed
+
+\def\@sect#1#2#3#4#5#6[#7]#8{%
+    \ams@measure{#8}%
+    \edef\@toclevel{\number#2}%
+    \ifst@rred
+        \let\@secnumber\@empty
+        \let\@svsec\@empty
+    \else
+        \ifnum #2>\c@secnumdepth
+            \let\@secnumber\@empty
+            \let\@svsec\@empty
+        \else
+            \expandafter\let\expandafter\@secnumber\csname the#1\endcsname
+            \refstepcounter{#1}%
+            \typeout{#1\space\@secnumber}%
+            \protected@edef\@svsec{%
+                \ifnum#2<\@m
+                    \@ifundefined{#1name}{}{%
+                        \ignorespaces\csname #1name\endcsname\space
+                    }%
+                \fi
+                \@seccntformat{#1}%
+            }%
+        \fi
+    \fi
+    \start@XML@section{#1}{\@toclevel}{\@svsec}{#8}%
+    \ifnum#2>\@m \else \@tocwrite{#1}{#8}\fi
+}
+
+% #1 = section type  (part, chapter, section, subsection, etc.)
+% #2 = section level (-1,   0,       1,       2,          etc.)
+% #3 = section label (including punctuation)
+% #4 = section title
+
+%% TODO: Add sec-type for things like acknowledgements?
+
+\def\XML@section@tag{sec}
+
+\def\start@XML@section#1#2#3#4{
+    \par
+    \stepXMLid
+    \begingroup
+        \ifinXMLelement{statement}%
+            \startXMLelement{\XML@section@tag heading}%
+        \else
+            \@pop@sectionstack{#2}%
+            \startXMLelement{\XML@section@tag}%
+        \fi
+        \setXMLattribute{id}{\@currentXMLid}%
+        \setXMLattribute{disp-level}{#2}%
+        \setXMLattribute{specific-use}{#1}%
+        \ifinXMLelement{statement}\else
+            \@push@sectionstack{#2}{\XML@section@tag}%
+        \fi
+        \par
+        \xmlpartag{}%
+        \edef\@tempa{\zap@space#3 \@empty}% Is this \edef safe?
+        \ifx\@tempa\@empty\else
+            \startXMLelement{label}%
+            \ignorespaces#3%
+            \endXMLelement{label}%
+        \fi
+        \begingroup
+            \let\label\@gobble
+            \protected@xdef\@tempa{\zap@space#4 \@empty}%
+        \endgroup
+        \ifx\@tempa\@empty\else
+            \startXMLelement{title}%
+            \ignorespaces#4%
+            \endXMLelement{title}%
+        \fi
+        \par
+        \ifinXMLelement{statement}%
+            \endXMLelement{\XML@section@tag heading}%
+        \fi
+    \endgroup
+}
+
+\PreserveMacroDefinition\@sect
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTFLOAT.DTX                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\set@float@fps@attribute#1{%
+    \def\@fps{#1}%
+    \@onelevel@sanitize \@fps 
+    \expandafter \@tfor \expandafter \reserved@a
+        \expandafter :\expandafter =\@fps \do{%
+            \if \reserved@a H%
+                \setXMLattribute{position}{anchor}%
+            \fi
+    }%
+}
+
+% cf. amscommon.pm
+
+\def\footnote{%
+    \stepcounter{xmlid}%
+    \@ifnextchar[\@xfootnote
+                 {\stepcounter\@mpfn
+                   \protected@xdef\@thefnmark{\thempfn}%
+                    \@footnotemark\@footnotetext}%
+}
+
+\def\footnotemark{%
+    \stepcounter{xmlid}%
+    \@ifnextchar[\@xfootnotemark
+     {\stepcounter{footnote}%
+      \protected@xdef\@thefnmark{\thefootnote}%
+      \@footnotemark}}
+
+\def\@makefnmark{%
+    \char"2060 % WORD JOINER
+    \startXMLelement{xref}%
+        \setXMLattribute{ref-type}{fn}%
+        \begingroup
+            %% TODO: Where else might we need to nullify \protect?
+            \let\protect\@empty
+            \setXMLattribute{rid}{ltxid\arabic{xmlid}}%
+            \setXMLattribute{alt}{Footnote \@thefnmark}%
+        \endgroup
+        \@thefnmark
+    \endXMLelement{xref}%
+}
+
+\PreserveMacroDefinition\@makefnmark
+
+\long\def\@footnotetext#1{%
+    \begingroup
+        \edef\@currentXMLid{ltxid\arabic{xmlid}}%
+        \def\@currentreftype{fn}%
+        \protected@edef\@currentlabel{%
+           \csname p@footnote\endcsname\@thefnmark
+        }%
+        \startXMLelement{fn}%
+        \setXMLattribute{id}{\@currentXMLid}%
+        \vbox{%
+            \everypar{}%
+            % The braces around the next line should not be necessary,
+            % but without them one of the footnotes in car/brown2 came
+            % out with all of the contents surrounded by label tags.
+            % See bugs/footnote.tex
+            {\thisxmlpartag{label}\@currentlabel\par}%
+            \xmlpartag{p}%
+            \color@begingroup#1\color@endgroup\par
+        }%
+        \endXMLelement{fn}%
+    \endgroup
+}
+
+\PreserveMacroDefinition\@footnotetext
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                            LTBIBL.DTX                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Standard LaTeX two-pass cycle:
+%%
+%% FIRST PASS: (K = key, L = label)
+%%
+%%     \cite{K}       writes \citation{K} to aux file; calls \@cite@ofmt
+%%     \@cite@ofmt    typesets \textbf{?}
+%%
+%%     \bibitem[L]{K} writes \bibcite{K}{L} to aux file
+%%                    does *not* define \b@K
+%%
+%%  SECOND PASS:
+%%
+%%  Read aux file:
+%%      \citation{K} ->     % no-op
+%%      \bibcite{K}{L} -> \def\b@K{L}
+%%
+%%  In document:
+%%
+%%      \cite{K}    typsets \b@K    % in \@cite@ofmt
+
+%% TeXML one-pass algorithm:
+%%
+%%     \cite{K}       writes \citation{K} to aux file; calls \@cite@ofmt
+%%     \@cite@ofmt    creates <xref> element with
+%%                    -- @rid = bibr-K
+%%                    -- @ref-type = bibr
+%%                    -- @specific-use = 'unresolved cite'
+%%                    -- contents \texttt{?K}
+%%                    (if \b@K already defined, then @specific-use = 'cite'
+%%                    and contents = \b@K)
+%%
+%%     \bibitem[L]{K} writes \bibcite{K}{L} to aux file
+%%                    *and* defines \b@K immediately
+%%
+%%     \enddocument   invokes do_resolve_xrefs(), which cycles through
+%%                    all xref nodes with @specific-use = 'unresolved
+%%                    cite' and, if \b@K is defined, replaces
+%%                    the contents of the node by \b@K and resets
+%%                    @specific-use = 'cite'.
+
+\let\bibliographystyle\@gobble
+
+\def\citeleft{%
+    \startXMLelement{cite-group}%
+    \leavevmode\XMLgeneratedText[%
+}
+
+\def\citeright{%
+    \XMLgeneratedText]%
+    \endXMLelement{cite-group}%
+}
+
+\def\citemid{\XMLgeneratedText{,\space}}
+
+\def\@cite@ofmt#1#2{%
+    \begingroup
+        \edef\@tempa{\expandafter\@firstofone#1\@empty}%
+        \if@filesw\immediate\write\@auxout{\string\citation{\@tempa}}\fi
+        \startXMLelement{xref}%
+        \setXMLattribute{rid}{bibr-\@tempa}%
+        \setXMLattribute{ref-type}{bibr}%
+        \@ifundefined{b@\@tempa}{%
+            \setXMLattribute{specific-use}{unresolved cite}%
+            \texttt{?\@tempa}%
+        }{%
+            \setXMLattribute{specific-use}{cite}%
+            \csname b@\@tempa\endcsname
+        }%
+        \@ifnotempty{#2}{\citemid#2}%
+        \endXMLelement{xref}%
+    \endgroup
+}
+
+\PreserveMacroDefinition\@cite@ofmt
+
+\def\@citex[#1]#2{%
+    \leavevmode
+    \citeleft
+    \begingroup
+        \let\@citea\@empty
+        \@for\@citeb:=#2\do{%
+            \ifx\@citea\@empty\else
+                \@cite@ofmt\@citea{}%
+                \citemid
+            \fi
+            \let\@citea\@citeb
+        }%
+        \ifx\@citea\@empty\else
+            \@cite@ofmt\@citea{#1}%
+        \fi
+    \endgroup
+    \citeright
+}
+
+\PreserveMacroDefinition\@citex
+
+\def\@biblabel#1#2{%
+    \setXMLattribute{id}{bibr-#2}%
+    \startXMLelement{label}[#1]\endXMLelement{label}%
+}
+
+\PreserveMacroDefinition\@biblabel
+
+%% For compatibility with amsrefs, we don't write \bibcite to the .aux
+%% file.
+
+\def\@lbibitem[#1]#2{%
+    \item[\@biblabel{#1}{#2}]\leavevmode
+    \bibcite{#2}{#1}%
+    % \if@filesw
+    %     \begingroup
+    %         \let\protect\noexpand
+    %         \immediate\write\@auxout{\string\bibcite{#2}{#1}}%
+    %     \endgroup
+    % \fi
+    \ignorespaces
+}
+
+\def\@bibitem#1{%
+    \item[\refstepcounter{enumiv}\@biblabel{\theenumiv}{#1}]\leavevmode
+    \bibcite{#1}{\the\value{\@listctr}}%
+    % \if@filesw
+    %     \immediate\write\@auxout{\string\bibcite{#1}{\the\value{\@listctr}}}%
+    % \fi
+    \ignorespaces
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                            LTPAGE.DTX                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTOUTPUT.DTX                           %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\@enlargepage#1#2{} % should be \@enlargepage?
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           LTCLASS.DTX                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\TeXMLprovidesFile#1#2{%
+    \@pushfilename
+    \xdef\@currname{#1}%
+    \global\let\@currext#2%
+    \begingroup
+        \ifx\@currext\@clsextension
+            \def\@tempa{\ProvidesClass{#1}}%
+        \else
+            \def\@tempa{\ProvidesPackage{#1}}%
+        \fi
+    \expandafter\endgroup
+    \@tempa
+}
+
+\def\TeXMLprovidesPackage#1{\TeXMLprovidesFile{#1}\@pkgextension}
+\def\TeXMLprovidesClass#1{\TeXMLprovidesFile{#1}\@clsextension}
+
+\def\TeXMLendPackage{\@popfilename\endinput}
+\let\TeXMLendClass\TeXMLendPackage
+
+\let\@classoptionslist\@empty
+
+%% Suppress "Unknown option" warnings when loading perl-only
+%% implementations of packages.  We need a better solution to this.
+
+\let\@@unprocessedoptions\relax
+
+%% Disable "You have requested version blah but only version blah is
+%% available" warnings.
+
+\def\@ifl@t@r#1#2{%
+  % \ifnum\expandafter\@parse@version#1//00\@nil<%
+  %       \expandafter\@parse@version#2//00\@nil
+  %   \expandafter\@secondoftwo
+  % \else
+    \expandafter\@firstoftwo
+  %\fi
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                         END OF LATEX.LTX                         %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \let\everymath\frozen@everymath
+% \let\everydisplay\frozen@everydisplay
+
+% \def\texml@init@math{
+%     \def\vcenter#1{#1}%
+%     \let\mbox\math@mbox
+% }
+% 
+% \everymath{\texml@init@math}
+% \everydisplay{\texml@init@math}
+
+\def\mbox{%
+  \ifmmode\expandafter\math@mbox\else\expandafter\@firstofone\fi
+}
+
+\def\math@mbox#1{%
+    \string\mbox\string{\hbox{#1}\string}%
+}
+
+% \let\frozen@hbox\hbox
+% 
+% \def\hbox{%
+%   \ifmmode\expandafter\math@hbox\else\expandafter\frozen@hbox\fi
+% }
+% 
+% \def\math@hbox#1{%
+%     \string\hbox\string{\frozen@hbox{#1}\string}%
+% }
+
+\def\vcenter{%
+  \ifmmode\expandafter\math@vcenter\else\expandafter\vcenter\fi
+}
+
+% \math@vcenter doesn't change mode...
+
+\def\math@vcenter#1{%
+    \string\vcenter\string{#1\string}%
+}
+
+\let\texml@body\@empty
+\let\texml@callback\@empty
+
+\newif\iftexml@process@obeylines@
+\texml@process@obeylines@false
+
+\def\texml@process@env{%
+    \endgroup
+    \begingroup
+        \@ifstar{%
+            \global\texml@process@obeylines@true\texml@process@env@
+        }{%
+            \global\texml@process@obeylines@false\texml@process@env@
+        }%
+}
+
+\def\texml@process@env@#1{%
+        \iftexml@process@obeylines@ \obeylines \fi
+        \def\texml@body{\begin{#1}}%
+        \def\@tempa{#1}%
+        \afterassignment\texml@collect
+        \def\texml@callback
+}
+
+\long\def\texml@collect#1\end{%
+    \g@addto@macro\texml@body{#1}%
+    \texml@collect@iterate
+}%
+
+\def\texml@collect@iterate#1{%
+    \g@addto@macro\texml@body{\end{#1}}%
+    \def\@tempb{#1}%
+    \ifx\@tempa\@tempb
+        \def\next@{\texml@callback\endgroup}%
+    \else
+        \let\next@\texml@collect
+    \fi
+    \next@
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                          MATH ALPHABETS                          %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\@ifrobust#1{%
+    \begingroup
+        \edef\@tempa{%
+            \noexpand\protect
+            \expandafter\noexpand
+            \csname\expandafter\@gobble\string#1 \endcsname
+        }%
+        \ifx#1\@tempa
+            \let\@tempa\@firstoftwo
+        \else
+            \let\@tempa\@secondoftwo
+        \fi
+    \expandafter\endgroup
+    \@tempa
+}
+
+% Make sure the arguments to \mathbf, etc., are surrounded by braces
+% because apparently MathJax demands them.
+
+\def\DeclareTeXMLMathAlphabet#1{%
+    \ifMathJaxMacro#1%
+        % \typeout{\string#1 is already a TeXMLMathAlphabet}%
+    \else
+        % \typeout{Rewriting \string#1 as a TeXMLMathAlphabet}%
+        \@DeclareTeXMLMathAlphabet#1%
+    \fi
+}
+
+% This could be unified with \@DeclareMathJaxMacro with a little work.
+
+\let\DeclareTeXMLMathAccent\DeclareTeXMLMathAlphabet
+
+\DeclareTeXMLMathAlphabet\mathbb
+\DeclareTeXMLMathAlphabet\mathbf
+\DeclareTeXMLMathAlphabet\mathbfit
+\DeclareTeXMLMathAlphabet\mathcal
+\DeclareTeXMLMathAlphabet\mathfrak
+\DeclareTeXMLMathAlphabet\mathit
+\DeclareTeXMLMathAlphabet\mathnormal
+\DeclareTeXMLMathAlphabet\mathrm
+\DeclareTeXMLMathAlphabet\mathsf
+\DeclareTeXMLMathAlphabet\mathtt
+
+\DeclareTeXMLMathAccent\underbrace
+
+\def\underbar{\underline} % Sort of.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                          MATHJAX MACROS                          %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\let\txt@hspace\hspace
+
+\def\math@hspace{\@ifstar{\string\hspace}{\string\hspace}}
+
+\def\hspace{\ifmmode\expandafter\math@hspace\else\expandafter\txt@hspace\fi}
+
+\edef\MathJaxImg[#1]#2{%
+    \string\vcenter\string{%
+        \string\img[#1]\string{#2\string}%
+    \string}%
+}
+
+\def\DeclareMathJaxMacro{%
+  \@ifstar{\@DeclareMathJaxMacro{}}{\@DeclareMathJaxMacro{ }}%
+}
+
+\def\@DeclareMathJaxMacro#1#2{%
+    \ifMathJaxMacro#2%
+        % \typeout{\string#2 is already a MathJaxMacro}%
+    \else
+        % \typeout{Rewriting \string#2 as a MathJaxMacro}%
+        \@@DeclareMathJaxMacro{#1}{#2}%
+    \fi
+}
+
+\def\@@DeclareMathJaxMacro#1#2{%
+    \@ifrobust{#2}{%
+        \edef\@tempa{%
+            \let\expandafter\noexpand\csname non@mathmode@\string#2\endcsname
+            \expandafter\noexpand\csname \expandafter\@gobble\string#2 \endcsname
+        }%
+        \@tempa
+    }{%
+        \expandafter\let\csname non@mathmode@\string#2\endcsname#2%
+    }%
+    \let#2\relax
+    \begingroup
+        \edef\@tempa{%
+            \noexpand\DeclareRobustCommand\noexpand#2{%
+                \relax
+                \noexpand\ifmmode
+                    \string#2#1%
+                \noexpand\else
+                    \noexpand\expandafter
+                    \expandafter\noexpand\csname non@mathmode@\string#2\endcsname
+                \noexpand\fi
+            }%
+        }%
+    \expandafter\endgroup
+    \@tempa
+}
+
+%% See HTMLtable.pm.  These shouldn't be passed along to MathJax.
+
+\let\noalign\@gobble
+\DeclareMathJaxMacro\multicolumn %% NOT REALLY
+% \DeclareMathJaxMacro\omit        %% Ha ha!  Not really!
+\DeclareMathJaxMacro\hskip
+% \DeclareMathJaxMacro\cr
+\DeclareMathJaxMacro\hline
+
+\DeclareMathJaxMacro\newline
+
+\DeclareMathJaxMacro*\ %
+\DeclareMathJaxMacro*\!
+\DeclareMathJaxMacro*\#
+\DeclareMathJaxMacro*\$
+\DeclareMathJaxMacro*\%
+\DeclareMathJaxMacro*\&
+\DeclareMathJaxMacro*\,
+\DeclareMathJaxMacro*\:
+\DeclareMathJaxMacro*\;
+\DeclareMathJaxMacro*\>
+\DeclareMathJaxMacro*\_
+\DeclareMathJaxMacro*\{
+\DeclareMathJaxMacro*\|
+\DeclareMathJaxMacro*\}
+
+% We once had a paper that used \big in text mode.  Srsly.
+
+\let\Big\@empty
+\let\big\@empty
+\let\Bigg\@empty
+\let\bigg\@empty
+\let\Biggl\@empty
+\let\biggl\@empty
+\let\Biggm\@empty
+\let\biggm\@empty
+\let\Biggr\@empty
+\let\biggr\@empty
+\let\Bigl\@empty
+\let\bigl\@empty
+\let\Bigm\@empty
+\let\bigm\@empty
+\let\Bigr\@empty
+\let\bigr\@empty
+
+\DeclareMathJaxMacro\Big
+\DeclareMathJaxMacro\big
+\DeclareMathJaxMacro\Bigg
+\DeclareMathJaxMacro\bigg
+\DeclareMathJaxMacro\Biggl
+\DeclareMathJaxMacro\biggl
+\DeclareMathJaxMacro\Biggm
+\DeclareMathJaxMacro\biggm
+\DeclareMathJaxMacro\Biggr
+\DeclareMathJaxMacro\biggr
+\DeclareMathJaxMacro\Bigl
+\DeclareMathJaxMacro\bigl
+\DeclareMathJaxMacro\Bigm
+\DeclareMathJaxMacro\bigm
+\DeclareMathJaxMacro\Bigr
+\DeclareMathJaxMacro\bigr
+
+\DeclareMathJaxMacro\LaTeX
+\DeclareMathJaxMacro\TeX
+
+\DeclareMathJaxMacro\displaystyle
+\DeclareMathJaxMacro\scriptscriptstyle
+\DeclareMathJaxMacro\scriptstyle
+\DeclareMathJaxMacro\textstyle
+
+\DeclareMathJaxMacro\Huge
+\DeclareMathJaxMacro\huge
+\DeclareMathJaxMacro\LARGE
+\DeclareMathJaxMacro\large
+\DeclareMathJaxMacro\Large
+\DeclareMathJaxMacro\normalsize
+\DeclareMathJaxMacro\scriptsize
+\DeclareMathJaxMacro\small
+\DeclareMathJaxMacro\Tiny
+\DeclareMathJaxMacro\tiny
+
+\DeclareMathJaxMacro\bf
+\DeclareMathJaxMacro\cal
+\DeclareMathJaxMacro\it
+\DeclareMathJaxMacro\mit
+\DeclareMathJaxMacro\rm
+\DeclareMathJaxMacro\scr
+\DeclareMathJaxMacro\sf
+\DeclareMathJaxMacro\tt
+
+\DeclareMathJaxMacro\strut
+\DeclareMathJaxMacro\smash
+\DeclareMathJaxMacro\hphantom
+\DeclareMathJaxMacro\fbox
+\DeclareMathJaxMacro\stackrel
+
+\DeclareMathJaxMacro\mathbin
+\DeclareMathJaxMacro\mathchoice
+\DeclareMathJaxMacro\mathclose
+\DeclareMathJaxMacro\mathinner
+\DeclareMathJaxMacro\mathop
+\DeclareMathJaxMacro\mathopen
+\DeclareMathJaxMacro\mathord
+\DeclareMathJaxMacro\mathpunct
+\DeclareMathJaxMacro\mathrel
+\DeclareMathJaxMacro\mathstrut
+
+\DeclareMathJaxMacro\nolimits
+
+\DeclareMathJaxMacro\buildrel
+\DeclareMathJaxMacro\cases
+\DeclareMathJaxMacro\choose
+\DeclareMathJaxMacro\eqalign
+\DeclareMathJaxMacro\eqalignno
+\DeclareMathJaxMacro\leqalignno
+\DeclareMathJaxMacro\pmatrix
+\DeclareMathJaxMacro\root
+
+\DeclareMathJaxMacro\lefteqn
+\DeclareMathJaxMacro\moveleft
+\DeclareMathJaxMacro\moveright
+\DeclareMathJaxMacro\raise
+
+\DeclareMathJaxMacro\enspace
+\DeclareMathJaxMacro\kern
+\DeclareMathJaxMacro\mkern
+\DeclareMathJaxMacro\mskip
+\DeclareMathJaxMacro\negthinspace
+\DeclareMathJaxMacro\qquad
+\DeclareMathJaxMacro\quad
+\DeclareMathJaxMacro\thinspace
+
+% \DeclareMathJaxMacro\mmlToken
+
+\DeclareMathJaxMacro\displaylines
+
+\DeclareMathJaxMacro\Arrowvert
+\DeclareMathJaxMacro\arrowvert
+\DeclareMathJaxMacro\backslash
+\DeclareMathJaxMacro\brace
+\DeclareMathJaxMacro\bracevert
+\DeclareMathJaxMacro\brack
+\DeclareMathJaxMacro\dots
+\DeclareMathJaxMacro\Downarrow
+\DeclareMathJaxMacro\downarrow
+\DeclareMathJaxMacro\gets
+\DeclareMathJaxMacro\int
+\DeclareMathJaxMacro\langle
+\DeclareMathJaxMacro\lbrace
+\DeclareMathJaxMacro\lbrack
+\DeclareMathJaxMacro\lceil
+\DeclareMathJaxMacro\ldots
+\DeclareMathJaxMacro\lfloor
+\DeclareMathJaxMacro\lgroup
+\DeclareMathJaxMacro\limits
+\DeclareMathJaxMacro\lmoustache
+\DeclareMathJaxMacro\lower
+\DeclareMathJaxMacro\matrix
+\DeclareMathJaxMacro\mho
+\DeclareMathJaxMacro\middle
+\DeclareMathJaxMacro\models
+\DeclareMathJaxMacro\overbrace
+\DeclareMathJaxMacro\owns
+\DeclareMathJaxMacro\phantom
+\DeclareMathJaxMacro\rangle
+\DeclareMathJaxMacro\rbrace
+\DeclareMathJaxMacro\rbrack
+\DeclareMathJaxMacro\rceil
+\DeclareMathJaxMacro\rfloor
+\DeclareMathJaxMacro\rgroup
+\DeclareMathJaxMacro\rmoustache
+% \DeclareMathJaxMacro\Rule
+\DeclareMathJaxMacro\S
+\DeclareMathJaxMacro\skew
+\DeclareMathJaxMacro\sqrt
+\DeclareMathJaxMacro\sqsubset
+\DeclareMathJaxMacro\sqsupset
+\DeclareMathJaxMacro\to
+\DeclareMathJaxMacro\Uparrow
+\DeclareMathJaxMacro\uparrow
+\DeclareMathJaxMacro\Updownarrow
+\DeclareMathJaxMacro\updownarrow
+
+\DeclareMathJaxMacro\vphantom
+
+\endinput
+
+__END__

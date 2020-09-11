@@ -1,0 +1,180 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+binmode STDERR, ":utf8";
+binmode STDOUT, ":utf8";
+
+#use lib qw(/ams/texmf/lib/perl);
+use lib qw(/work/ptg/src/perl/trunk);
+
+# use lib qw(/work/ptg/src/texml/trunk/lib/perl);
+
+use FindBin;
+
+BEGIN { lib->import("$FindBin::RealBin/lib/perl") }
+
+# if ($FindBin::RealBin =~ m{/work/ptg/src}) {
+#     lib->import("$FindBin::RealBin/lib/perl");
+# } else {
+#     lib->import("$FindBin::RealBin/../lib/perl");
+# }
+
+use version; our $VERSION = qv '0.5.0';
+
+######################################################################
+##                                                                  ##
+##                         IMPORTED MODULES                         ##
+##                                                                  ##
+######################################################################
+
+use Cwd;
+
+# use File::Basename qw(dirname);
+
+use Getopt::Long qw(:config no_ignore_case);
+
+use TeX::Interpreter::LaTeX;
+
+######################################################################
+##                                                                  ##
+##                            CONSTANTS                             ##
+##                                                                  ##
+######################################################################
+
+(my $PROGRAM_NAME = $0) =~ s{^.*/}{};
+
+my $DEFAULT_XML_INC_PATH = qq{$FindBin::RealBin/lib/xml/docs};
+
+######################################################################
+##                                                                  ##
+##                             OPTIONS                              ##
+##                                                                  ##
+######################################################################
+
+our %OPT = (debug        => 0,
+            profiling    => 0,
+            pretty_print => 1,
+            utf8         => 1,
+            do_svg       => 1,
+            use_xetex    => 0,
+            job_name     => undef,
+    );
+
+######################################################################
+##                                                                  ##
+##                           SUBROUTINES                            ##
+##                                                                  ##
+######################################################################
+
+sub usage() {
+    my $usage = << "EOF";
+Usage: $PROGRAM_NAME [options] filename
+
+Options:
+    -help           Print this help text and quit.
+
+    -debug
+
+EOF
+
+    print STDERR $usage;
+
+    exit 0;
+}
+
+sub first_line( $ ) {
+    my $filename = shift;
+
+    open(my $fh, "<", $filename) or do {
+        die "Can't find $filename: $!\n";
+    };
+
+    my $first_line = <$fh>;
+
+    close($fh);
+
+    return $first_line;
+}
+
+sub process_file( $ ) {
+    my $tex_file = shift;
+
+    my $use_xetex = $OPT{use_xetex};
+
+    my $first_line = first_line($tex_file);
+
+    if ($first_line =~ m{^%% AMS prdxelatex}) {
+        $use_xetex = 1;
+    }
+
+    $ENV{TEXINPUTS} = ".//:${DEFAULT_XML_INC_PATH}:";
+
+    # my $dirname = dirname($tex_file);
+    # 
+    # if ($dirname ne '.') {
+    #     $ENV{TEXINPUTS} = ".:$dirname//:";
+    # }
+
+    my $convert = TeX::Interpreter::LaTeX->new({ fmt => 'latex',
+                                                 unicode_input => $OPT{utf8},
+                                                 do_svg    => $OPT{do_svg},
+                                                 use_xetex => $use_xetex,
+                                                 debugging => $OPT{debug},
+                                                 profiling => $OPT{profiling},
+                                                 job_name  => $OPT{job_name},
+ });
+
+    $convert->set_use_mathjax(1);
+
+    eval { $convert->TeX($tex_file) };
+
+    if ($@) {
+        print STDERR "$@\n";
+    }
+
+    if ($OPT{pretty_print}) {
+        my $xml_file = $convert->get_output_file_name();
+
+        system q{/usr/bin/xml_pp}, '-i', $xml_file;
+    }
+
+    return;
+}
+
+######################################################################
+##                                                                  ##
+##                               MAIN                               ##
+##                                                                  ##
+######################################################################
+
+print "This is $PROGRAM_NAME version $VERSION.\n\n";
+
+GetOptions("help"   => \&usage,
+           "jobname:s" => \$OPT{job_name},
+           "profile!" => \$OPT{profiling},
+           "debug!" => \$OPT{debug},
+           "svg!"   => \$OPT{do_svg},
+           "xetex!" => \$OPT{use_xetex},
+           "pp!"    => \$OPT{pretty_print},
+           "utf8!"  => \$OPT{utf8},
+    );
+
+usage() unless @ARGV;
+
+if ($OPT{debug}) {
+    $ENV{TMPDIR} = getcwd();
+}
+
+while (my $tex_file = shift @ARGV) {
+    do { warn "Can't find $tex_file\n"; next; } unless -e $tex_file;
+
+    do { warn "Can't read $tex_file\n"; next; } unless -r $tex_file;
+
+    process_file($tex_file);
+
+    print "\n" if @ARGV;
+}
+
+__END__
