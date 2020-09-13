@@ -3,11 +3,11 @@ package TeX::Interpreter::LaTeX::Class::amscommon;
 use strict;
 use warnings;
 
-use PRD::Document;
+#* use PRD::Document;
 
-use PRD::Document::Date;
+#* use PRD::Document::Date;
 
-use PRD::Document::Utils qw(extract_dates);
+#* use PRD::Document::Utils qw(extract_dates);
 
 # use PTG::Unicode::Translators qw(normalize_tex);
 
@@ -48,16 +48,16 @@ sub install ( $ ) {
 
     $tex->class_load_notification(__PACKAGE__, @options);
 
-    if (! defined $tex->get_parcel('document')) {
-        $tex->set_parcel(document => PRD::Document->new({ SUPPLY_DEFAULTS => 1 }));
-    }
+    #* if (! defined $tex->get_parcel('document')) {
+    #*     $tex->set_parcel(document => PRD::Document->new({ SUPPLY_DEFAULTS => 1 }));
+    #* }
 
     $tex->load_package("amsthm");
     $tex->load_package("amsfonts");
     # $tex->load_package("amsmath");
     # $tex->load_package("mathjax");
 
-    $tex->load_package("AMSMeta");
+    #* $tex->load_package("AMSMeta");
 
     $tex->define_csname(em => make_font_declaration("italic"));
     $tex->define_csname(it => make_font_declaration("italic"));
@@ -375,14 +375,14 @@ sub do_pagespan {
     my $start_page = $tex->read_undelimited_parameter();
     my $end_page   = $tex->read_undelimited_parameter();
 
-    if (nonempty($start_page) || nonempty($end_page)) {
-        if (defined(my $document = $tex->get_parcel('document'))) {
-            my $page_range = PRD::Document::PageRange->new({ start => $start_page,
-                                                             end   => $end_page });
-
-            $document->add_page_range($page_range);
-        }
-    }
+    #* if (nonempty($start_page) || nonempty($end_page)) {
+    #*     if (defined(my $document = $tex->get_parcel('document'))) {
+    #*         my $page_range = PRD::Document::PageRange->new({ start => $start_page,
+    #*                                                          end   => $end_page });
+    #* 
+    #*         $document->add_page_range($page_range);
+    #*     }
+    #* }
 
     return;
 }
@@ -444,22 +444,22 @@ sub do_subjclass( $ ) {
 
     return unless nonempty($primaries);
 
-    my $msc = PRD::Document::MSC->new({ schema => $schema,
-                                        source => "author" });
-
-    if (nonempty($primaries)) {
-        for my $primary (split / /, $primaries) {  #/ for emacs
-            $msc->add_primary(trim($primary));
-        }
-    }
-
-    if (nonempty($secondaries)) {
-        for my $secondary (split / /, $secondaries) {   #/  for emacs
-            $msc->add_secondary(trim($secondary));
-        }
-    }
-
-    $document->add_msc($msc);
+    #* my $msc = PRD::Document::MSC->new({ schema => $schema,
+    #*                                     source => "author" });
+    #* 
+    #* if (nonempty($primaries)) {
+    #*     for my $primary (split / /, $primaries) {  #/ for emacs
+    #*         $msc->add_primary(trim($primary));
+    #*     }
+    #* }
+    #* 
+    #* if (nonempty($secondaries)) {
+    #*     for my $secondary (split / /, $secondaries) {   #/  for emacs
+    #*         $msc->add_secondary(trim($secondary));
+    #*     }
+    #* }
+    #* 
+    #* $document->add_msc($msc);
 
     return;
 }
@@ -779,14 +779,16 @@ sub __new_contributor( $$ ) {
         PTG::RunError->throw("Unknown contributor type '$token'");
     }
 
-    my $contributor = PRD::Document::Contributor->new({ SUPPLY_DEFAULTS => 1,
-                                                        type => $type });
+    #* my $contributor = PRD::Document::Contributor->new({ SUPPLY_DEFAULTS => 1,
+    #*                                                     type => $type });
+    #* 
+    #* if (defined $document) {
+    #*     $document->add($type, $contributor);
+    #* }
+    #* 
+    #* return $contributor;
 
-    if (defined $document) {
-        $document->add($type, $contributor);
-    }
-
-    return $contributor;
+    return;
 }
 
 sub make_contributor_handler( ;$ ) {

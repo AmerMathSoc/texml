@@ -3,11 +3,13 @@ package TeX::Output::XML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.19.2';
+use version; our $VERSION = qv '1.0.0';
+
+use FindBin;
 
 use List::Util qw(min);
 
-use TeX::Utils::XML;
+# use TeX::Utils::XML;
 
 use TeX::Class;
 
@@ -31,7 +33,7 @@ use XML::LibXSLT;
 my %SYSTEM_ID = ("-//W3C//DTD XHTML 1.0 Transitional//EN" => "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd",
     );
 
-use constant DEFAULT_XSL_PATH => qq{/work/ptg/src/texml/trunk/lib/xsl};
+my $DEFAULT_XSL_PATH = qq{$FindBin::RealBin/../lib/xsl};
 
 ## U+003A COLON is deliberately omitted because xsltproc doesn't like them.
 
@@ -494,31 +496,33 @@ sub add_alt_title {
     my $parent = shift;
     my $dom    = shift;
 
-    for my $title ($parent->findnodes("title")) { # There should be at most one
-        my $utf8 = xml_to_utf8_string($title);
-
-        $utf8 =~ s{ \x{2060}?\z}{};
-
-        my $alt_title = $dom->createElement("alt-title");
-
-        $alt_title->appendText($utf8);
-
-        $parent->insertAfter($alt_title, $title);
-    }
-
-    for my $title ($parent->findnodes("subtitle")) { # There should be at most one
-        my $utf8 = xml_to_utf8_string($title);
-
-        $utf8 =~ s{ \x{2060}?\z}{};
-
-        my $alt_title = $dom->createElement("alt-subtitle");
-
-        $alt_title->appendText($utf8);
-
-        $parent->insertAfter($alt_title, $title);
-    }
-
     return;
+
+    #* for my $title ($parent->findnodes("title")) { # There should be at most one
+    #*     my $utf8 = xml_to_utf8_string($title);
+    #* 
+    #*     $utf8 =~ s{ \x{2060}?\z}{};
+    #* 
+    #*     my $alt_title = $dom->createElement("alt-title");
+    #* 
+    #*     $alt_title->appendText($utf8);
+    #* 
+    #*     $parent->insertAfter($alt_title, $title);
+    #* }
+    #* 
+    #* for my $title ($parent->findnodes("subtitle")) { # There should be at most one
+    #*     my $utf8 = xml_to_utf8_string($title);
+    #* 
+    #*     $utf8 =~ s{ \x{2060}?\z}{};
+    #* 
+    #*     my $alt_title = $dom->createElement("alt-subtitle");
+    #* 
+    #*     $alt_title->appendText($utf8);
+    #* 
+    #*     $parent->insertAfter($alt_title, $title);
+    #* }
+    #* 
+    #* return;
 }
 
 sub add_toc_alt_titles {
@@ -600,7 +604,7 @@ sub close_document {
     }
 
     if (nonempty(my $name = $tex->get_xsl_file())) {
-        my $search_path = $ENV{TEXML_XSL_PATH} || DEFAULT_XSL_PATH;
+        my $search_path = $ENV{TEXML_XSL_PATH} || $DEFAULT_XSL_PATH;
 
         my $xsl_path;
 

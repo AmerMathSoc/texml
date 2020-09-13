@@ -1,6 +1,6 @@
 #!/bin/bash
 
-texml="../texml -profile"
+texml="../bin/texml -profile"
 
 declare -i numtests=0
 declare -i numfailed=0
