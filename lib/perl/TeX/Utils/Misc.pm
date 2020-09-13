@@ -3,7 +3,7 @@ package TeX::Utils::Misc;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.6.0';
+use version; our $VERSION = qv '1.0.0';
 
 use UNIVERSAL;
 
@@ -25,13 +25,15 @@ our @EXPORT =  ( @{ $EXPORT_TAGS{all} } );
 
 use Exception::Class qw(TeX::RunError);
 
-use File::MMagic;
+use File::MMagic::XS;
 
-my $MMAGIC = new File::MMagic;
+my $MMAGIC = new File::MMagic::XS;
 
-$MMAGIC->addSpecials("image/eps", qr/\xc5\xd0\xd3\xc6/);
+## I don't think these are currently needed for texml.  If they do,
+## I'll have to figure out how to specify them in File::MMagic::XS.
 
-$MMAGIC->addSpecials("image/svg+xml", qr/<\?xml\b/, qr/<svg\b/);
+# $MMAGIC->addSpecials("image/eps",     qr/\xc5\xd0\xd3\xc6/);
+# $MMAGIC->addSpecials("image/svg+xml", qr/<\?xml\b/, qr/<svg\b/);
 
 sub concat {
     return join '', @_;

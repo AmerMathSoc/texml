@@ -11,10 +11,6 @@ use integer;
 
 use Fcntl qw(:seek);
 
-use PRD::StdLogger;
-
-my $LOG = PRD::StdLogger->get_logger();
-
 use TeX::Arithmetic qw(scaled_to_string);
 
 use TeX::Utils;
@@ -169,15 +165,15 @@ sub list_strings {
 
     my @strings = @{ $strings{ident $self} };
 
-    $LOG->notify("\nSTRING POOL:\n\n");
+    print "\nSTRING POOL:\n\n";
 
     for (my $i = 0; $i < @strings; $i++) {
         if (defined $strings[$i]) {
-            $LOG->notify("string($i) = '$strings[$i]'\n");
+            print "string($i) = '$strings[$i]'\n";
         }
     }
 
-    $LOG->notify("\n");
+    print "\n";
 
     return;
 }
@@ -354,7 +350,7 @@ sub load_through_eqtb {
 sub load_header {
     my $self = shift;
 
-    $LOG->verbose("Loading fmt file\n");
+    # $LOG->verbose("Loading fmt file\n");
 
     my $checksum = $self->read_integer();
 
@@ -399,7 +395,7 @@ sub load_format_engine {
 sub load_translation_tables {
     my $self = shift;
 
-    $LOG->verbose("Loading translation\n");
+    # $LOG->verbose("Loading translation\n");
 
     my @xord = unpack("C*", $self->read_bytes(256));
     my @xchr = unpack("C*", $self->read_bytes(256));
@@ -415,7 +411,7 @@ sub load_translation_tables {
 sub load_constants {
     my $self = shift;
 
-    $LOG->verbose("Loading constants\n");
+    # $LOG->verbose("Loading constants\n");
 
     my $params = $self->get_params();
 
@@ -430,7 +426,7 @@ sub load_constants {
     if ($self->get_engine() eq 'pdftex') {
         my $eTeX_mode = $self->read_integer();
 
-        $LOG->debug("eTeX_mode = $eTeX_mode\n");
+        # $LOG->debug("eTeX_mode = $eTeX_mode\n");
 
         $self->set_eTeX_mode($eTeX_mode);
     }
@@ -498,7 +494,7 @@ sub load_enctex_data {
 sub load_string_pool {
     my $self = shift;
 
-    $LOG->verbose("Loading string pool\n");
+    # $LOG->verbose("Loading string pool\n");
 
     my $pool_ptr = $self->read_integer();
     my $str_ptr  = $self->read_integer();
@@ -531,7 +527,7 @@ sub load_string_pool {
 sub load_dynamic_memory {
     my $self = shift;
 
-    $LOG->verbose("Loading dynamic memory\n");
+    # $LOG->verbose("Loading dynamic memory\n");
 
     my $params = $self->get_params();
 
@@ -597,7 +593,7 @@ sub load_dynamic_memory {
 sub load_eqtb {
     my $self = shift;
 
-    $LOG->verbose("Loading eqtb\n");
+    # $LOG->verbose("Loading eqtb\n");
 
     my $params = $self->get_params();
 
@@ -654,12 +650,12 @@ sub load_eqtb {
 sub load_hash_table {
     my $self = shift;
 
-    $LOG->verbose("Loading hash table\n");
+    # $LOG->verbose("Loading hash table\n");
 
     my $params = $self->get_params();
 
     if ($params->prim_size() > 0) {
-        $LOG->verbose("Loading primitives table\n");
+        # $LOG->verbose("Loading primitives table\n");
 
         ## Skip over the prim and prim_eqtb tables used to implement
         ## the \pdfprimitive and \ifpdfprimitive extensions.
@@ -686,15 +682,15 @@ sub load_hash_table {
 
     my $ptr = $params->hash_base() - 1;
 
-    $LOG->verbose("Reading hash region 1\n\n");
+    # $LOG->verbose("Reading hash region 1\n\n");
 
     do {
         my $next_ptr = $self->read_integer();
 
         if ($next_ptr < $ptr + 1 || $next_ptr > $hash_used) {
-            $LOG->fatal("Bad fmt: ptr = $ptr; next_ptr = $next_ptr; hash_used = $hash_used\n");
+            die "Bad fmt: ptr = $ptr; next_ptr = $next_ptr; hash_used = $hash_used\n";
 
-            exit 1;
+            # exit 1;
         }
 
         $ptr = $next_ptr;
@@ -704,7 +700,7 @@ sub load_hash_table {
         $hash->set_word($ptr, $word);
     } until $ptr == $hash_used;
 
-    $LOG->verbose("Reading hash region 2\n\n");
+    # $LOG->verbose("Reading hash region 2\n\n");
 
     for my $ptr ($hash_used + 1 .. $params->undefined_control_sequence() - 1) {
         my $word = $self->read_memory_word();
@@ -712,7 +708,7 @@ sub load_hash_table {
         $hash->set_word($ptr, $word);
     }
 
-    $LOG->verbose("Reading hash region 3\n\n");
+    # $LOG->verbose("Reading hash region 3\n\n");
     
     my $hash_high = $self->get_hash_high();
 
@@ -736,15 +732,15 @@ sub load_hash_table {
 sub load_font_info {
     my $self = shift;
 
-    $LOG->verbose("Loading font info\n");
+    # $LOG->verbose("Loading font info\n");
 
     my $params = $self->get_params();
 
     my $fmem_ptr = $self->read_integer();
 
     if ($fmem_ptr < 7 || $fmem_ptr > $params->font_mem_size()) {
-        $LOG->fatal("Bad fmt: fmem_ptr = $fmem_ptr; font_mem_size=" . $params->font_mem_size() . "\n");
-        exit 1;
+        die "Bad fmt: fmem_ptr = $fmem_ptr; font_mem_size=" . $params->font_mem_size() . "\n";
+        # exit 1;
     }
 
     $self->set_fmem_ptr($fmem_ptr);
@@ -797,7 +793,7 @@ sub load_font_info {
 sub load_hyphenation_tables {
     my $self = shift;
 
-    $LOG->verbose("Loading hyphenation tables\n");
+    # $LOG->verbose("Loading hyphenation tables\n");
 
     my $params = $self->get_params();
 
@@ -821,8 +817,8 @@ sub load_hyphenation_tables {
         $j = $self->read_integer();
 
         if ($j < 0) {
-            $LOG->fatal("load_hyphenation_tables: Bad format: k = $k; j = $j\n");
-            exit 1;
+            die "load_hyphenation_tables: Bad format: k = $k; j = $j\n";
+            # exit 1;
         }
 
         if ($j > 65535) {
@@ -833,9 +829,9 @@ sub load_hyphenation_tables {
         }
 
         if ( $j >= $hyph_size || $hyph_next > $hyph_size) {
-            $LOG->fatal("Bad format: k=$k; j=$j; hyph_size=$hyph_size; hyph_next=$hyph_next\n");
+            die "Bad format: k=$k; j=$j; hyph_size=$hyph_size; hyph_next=$hyph_next\n";
 
-            exit 1;
+            # exit 1;
         }
 
         $hyph_link[$j] = $hyph_next;
@@ -960,7 +956,7 @@ sub load_pdftex_data {
 sub undump_image_meta {
     my $self = shift;
 
-    $LOG->verbose("Reading image metadata\n");
+    # $LOG->verbose("Reading image metadata\n");
 
     # my $pdfversion = shift;
     # my $pdfinclusionerrorlevel = shift;
@@ -995,7 +991,7 @@ sub undump_image_meta {
 sub finish_load {
     my $self = shift;
 
-    $LOG->verbose("Loading trailer\n");
+    # $LOG->verbose("Loading trailer\n");
 
     $self->set_interaction_level($self->read_integer());
     $self->set_format_ident($self->read_integer());
@@ -1003,7 +999,7 @@ sub finish_load {
     my $magic_constant = $self->read_integer();
 
     if ($magic_constant != 69069) {
-        $LOG->warn("Invalid file tail: $magic_constant\n");
+        warn "Invalid file tail: $magic_constant\n";
     }
 
     return;
@@ -1030,7 +1026,7 @@ sub show_meaning {
     } elsif ($eqtb_ptr = $hash->lookup($csname)) {
         ## no-op
     } else {
-        $LOG->verbose(print_esc(slow_print($csname)) . ": **UNDEFINED**\n\n");
+        # $LOG->verbose(print_esc(slow_print($csname)) . ": **UNDEFINED**\n\n");
 
         return;
     }
@@ -1038,7 +1034,7 @@ sub show_meaning {
     my $eq_type = $self->get_eqtb()->get_word($eqtb_ptr)->get_eq_type();
 
     # if ($eq_type < $params->call() || $eq_type > $params->long_outer_call()) {
-        $LOG->notify(print_esc(slow_print($csname)) . ": ");
+        print print_esc(slow_print($csname)) . ": ";
 
         $self->show_eqtb_entry($eqtb_ptr);
     # }
@@ -1050,7 +1046,7 @@ sub show_active_char {
     my $self = shift;
     my $eqtb_ptr = shift;
 
-    $LOG->notify(print_char_code($eqtb_ptr - 1) . ": ");
+    print print_char_code($eqtb_ptr - 1) . ": ";
 
     $self->show_eqtb_entry($eqtb_ptr);
 
@@ -1079,20 +1075,20 @@ sub show_eqtb_entry {
         my $meaning = $params->print_cmd_chr($eq_type, $equiv);
 
         if (! defined $meaning) {
-            $LOG->notify("UNKNOWN: eq_type=$eq_type, equiv=$equiv");
+            print "UNKNOWN: eq_type=$eq_type, equiv=$equiv";
         } else {
-            $LOG->notify($meaning);
+            print $meaning;
         }
 
         if ($params->call() <= $eq_type && $eq_type <= $params->long_outer_call()) {
-            $LOG->notify(":");
+            print ":";
             $mem->show_token_list($self, $equiv);
         } else {
             #$LOG->notify(" (primitive)");
         }
     }
 
-    $LOG->notify("\n\n");
+    print "\n\n";
 
     return;
 }
@@ -1125,15 +1121,15 @@ sub show_font_def {
     my $self = shift;
     my $fnt_num = shift;
 
-    $LOG->notify("select font ");
+    print "select font ";
 
-    $LOG->notify(slow_print($self->get_string($self->get_font_names()->[$fnt_num])));
+    print slow_print($self->get_string($self->get_font_names()->[$fnt_num]));
 
     my $size  = $self->get_font_size($fnt_num);
     my $dsize = $self->get_font_dsize($fnt_num);
 
     if ($size != $dsize) {
-        $LOG->notify(" at " . scaled_to_string($size) . "pt");
+        print " at ", scaled_to_string($size), "pt";
     }
 
     return;
@@ -1167,9 +1163,9 @@ sub show_box {
     my $ptr = $self->get_equiv($params->box_base() + $index);
 
     if ($ptr == $params->null()) {
-        $LOG->notify("\\box${index}=void\n");
+        print "\\box${index}=void\n";
     } else {
-        $LOG->notify("\\box${index}=");
+        print "\\box${index}=";
         $self->show_node_list($ptr);
     }
 

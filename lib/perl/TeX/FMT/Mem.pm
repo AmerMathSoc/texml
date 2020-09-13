@@ -3,7 +3,7 @@ package TeX::FMT::Mem;
 use strict;
 use warnings;
 
-use PRD::StdLogger;
+use version; our $VERSION = qv '1.0.0';
 
 use TeX::Arithmetic qw(scaled_to_string);
 
@@ -19,12 +19,10 @@ use TeX::FMT::MemoryWord;
 
 use Carp;
 
-my $LOG = PRD::StdLogger->get_logger();
-
 sub print_esc {
     my $string = shift;
 
-    $LOG->notify("\\$string");
+    print "\\$string";
 
     return;
 }
@@ -267,7 +265,7 @@ sub show_word {
     my $type = $self->get_type($ptr);
     my $subtype = $self->get_subtype($ptr);
 
-    $LOG->notify("mem($ptr): info=$info; link=$link; type=$type; subtype=$subtype\n");
+    print "mem($ptr): info=$info; link=$link; type=$type; subtype=$subtype\n";
 
     return;
 }
@@ -282,10 +280,10 @@ sub show_token_list {
 
     my $ref_count = shift;
 
-    # $LOG->notify("show_token_list: ref_count = $ref_count\n");
+    # print "show_token_list: ref_count = $ref_count\n";
 
-    # $LOG->notify("\ntoken_ref_count($ref_count) = " . $self->get_token_ref_count($ref_count) . "\n");
-    # $LOG->notify("link($ref_count) = " . $self->get_link($ref_count) . "\n");
+    # print "\ntoken_ref_count($ref_count) = " . $self->get_token_ref_count($ref_count) . "\n";
+    # print "link($ref_count) = " . $self->get_link($ref_count) . "\n";
 
     $param_no = 0;
 
@@ -293,10 +291,10 @@ sub show_token_list {
         eval { $self->show_token($p, $fmt) };
 
         if ($@) {
-            $LOG->notify("show_token error for token $p:\n");
-            $LOG->notify("\t$@\n");
-            $LOG->notify("end error\n");
-            $LOG->notify("NULL=" . NULL . "\n");
+            print "show_token error for token $p:\n";
+            print "\t$@\n";
+            print "end error\n";
+            print "NULL=" . NULL . "\n";
         }
     }
 
@@ -320,34 +318,34 @@ sub show_token {
 
         if ($m < car_ret || $m == sup_mark || $m == sub_mark || $m == spacer
             || $m == letter || $m == other_char) {
-            $LOG->notify(chr($c));
+            print chr($c);
             return;
         }
 
         if ($m == mac_param) {
-            $LOG->notify(chr($c) . chr($c));
+            print chr($c) . chr($c);
             return;
         }
 
         if ($m == out_param) {
-            $LOG->notify("#");
+            print "#";
 
             if ($c <= 9) {
-                $LOG->notify(chr($c + ord("0")));
+                print chr($c + ord("0"));
             } else {
-                $LOG->notify("!");
+                print "!";
             }
 
             return;
         }
 
         if ($m == match) {
-            $LOG->notify("#" . ++$param_no);
+            print "#" . ++$param_no;
             return;
         }
 
         if ($m == end_match) {
-            $LOG->notify("->");
+            print "->";
             return;
         }
 
@@ -368,27 +366,27 @@ sub print_cs {
     if ($p < active_base) {
         print_esc("IMPOSSIBLE ");
     } elsif ($p < single_base) {
-        $LOG->notify(chr($p));
+        print chr($p);
     } elsif ($p < null_cs) {
         my $char = chr($p - single_base);
         print_esc $char;
         if ($char =~ /[a-z]/i) {
-            $LOG->notify(" ");
+            print " ";
         }
     } else {
         my $string_no = $fmt->get_hash()->get_text($p);
 
         if (! defined $string_no) {
-            $LOG->notify("\n\\WOAH!($p)");
+            print "\n\\WOAH!($p)";
 
             return;
         }
 
         print_esc $fmt->get_string($string_no);
-        $LOG->notify(" ");
+        print " ";
     }
 
-    # $LOG->notify("\n");
+    # print "\n";
 
     return;
 }
@@ -404,12 +402,12 @@ sub show_node_list {
 
     while ($p > mem_min) {
         if ($p > $mem_end) {
-            $LOG->notify(("Bad link, display aborted."));
+            print "Bad link, display aborted.";
             return;
         }
 
         if ($p >= $hi_mem_min) {
-            $LOG->notify(" " . chr($self->get_subtype($p)));
+            print " " . chr($self->get_subtype($p));
         } else {
 
             for my $type ($self->get_type($p)) {
@@ -424,7 +422,7 @@ sub show_node_list {
                     next;
                 }
 
-                $LOG->notify("Node type $type\n");
+                print "Node type $type\n";
                 
 
             #     rule_node:                          @<Display rule |p|@>;
@@ -446,7 +444,7 @@ sub show_node_list {
             }
         }
 
-        $LOG->notify("\n");
+        print "\n";
 
         $p = $self->get_link($p);
     }
@@ -469,16 +467,16 @@ sub display_box {
         print_esc("unset");
     }
 
-    $LOG->notify("box(");
+    print "box(";
 
-    $LOG->notify(scaled_to_string($self->get_height($node)));
-    $LOG->notify(("+"));
-    $LOG->notify(scaled_to_string($self->get_depth($node)));
-    $LOG->notify((")x"));
-    $LOG->notify(scaled_to_string($self->get_width($node)));
+    print scaled_to_string($self->get_height($node));
+    print "+";
+    print scaled_to_string($self->get_depth($node));
+    print ")x";
+    print scaled_to_string($self->get_width($node));
 
     if ($type == unset_node) {
-        $LOG->notify("<special unset node fields>");
+        print "<special unset node fields>";
         # @<Display special fields of the unset node |p|@>
     } else {
         # @<Display the value of |glue_set(p)|@>;
@@ -486,8 +484,8 @@ sub display_box {
         my $shifted = $self->get_shift_amount($node);
 
         if ($shifted != 0) {
-            $LOG->notify((", shifted "));
-            $LOG->notify(scaled_to_string($shifted));
+            print ", shifted ";
+            print scaled_to_string($shifted);
         }
 
         # $self->show_node_list($self->get_list_ptr($node));
@@ -504,16 +502,16 @@ sub display_math_node {
     print_esc("math");
 
     if ($self->get_subtype($node) == before) {
-        $LOG->notify(("on"));
+        print "on";
     } else {
-        $LOG->notify(("off"));
+        print "off";
     }
 
     my $width = $self->get_width($node);
 
     if ($width != 0) {
-        $LOG->notify((", surrounded "));
-        $LOG->notify(scaled_to_string($width));
+        print ", surrounded ";
+        print scaled_to_string($width);
     }
 
     return;
@@ -850,7 +848,7 @@ sub extract_whatsit_node {
 
     my $ptr = shift;
 
-    $LOG->warn("extract_whatsit_node not implemented\n");
+    print STDERR "extract_whatsit_node not implemented\n";
 
     return new_whatsit();
 }
@@ -860,7 +858,7 @@ sub extract_noad {
 
     my $ptr = shift;
 
-    $LOG->warn("Didn't expect to see a noad (type=" . $self->get_type($ptr) . ")\n");
+    print STDERR "Didn't expect to see a noad (type=", $self->get_type($ptr), ")\n";
 
     return;
 }

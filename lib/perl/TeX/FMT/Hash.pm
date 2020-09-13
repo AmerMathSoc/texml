@@ -11,10 +11,6 @@ use TeX::Utils::Binary;
 
 use TeX::Class;
 
-use PRD::StdLogger;
-
-my $LOG = PRD::StdLogger->get_logger();
-
 my %words_of :HASH(:name<word> :set<_set_word>);
 my %fmt_of   :ATTR(:name<fmt>);
 
@@ -36,7 +32,7 @@ sub set_word {
 
         my $csname = $text > 0 ? $fmt->get_string($text) : '<none>';
 
-        $LOG->notify("hash($ptr): text = $text, next = $next; csname = '$csname'\n");
+        print "hash($ptr): text = $text, next = $next; csname = '$csname'\n";
     }
 
     $self->_set_word($ptr, $word);
