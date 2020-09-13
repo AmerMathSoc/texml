@@ -3,7 +3,7 @@ package TeX::KPSE;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 use base qw(Exporter);
 
@@ -21,7 +21,7 @@ sub kpse_lookup( $ ) {
 
     chomp(my $path = qx{kpsewhich '$file_name'});
 
-    return $path;
+    return $path eq '' ? undef : $path;
 }
 
 sub kpse_path_search( $$ ) {
@@ -30,7 +30,7 @@ sub kpse_path_search( $$ ) {
 
     chomp(my $path = qx{kpsewhich -path '$search_path' '$file_name'});
 
-    return $path;
+    return $path eq '' ? undef : $path;
 }
 
 sub kpse_reset_program_name( $ ) {
