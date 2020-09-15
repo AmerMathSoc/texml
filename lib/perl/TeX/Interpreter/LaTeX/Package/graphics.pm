@@ -56,7 +56,7 @@ sub do_include_graphics {
     }
 
     if (! defined $expansion) {
-        $expansion = qq{\\TeXMLCreateSVG*{\\includegraphics${opt}{${filename}}}};
+        $expansion = qq{\\TeXMLCreateSVG{\\includegraphics${opt}{${filename}}}};
     }
 
     return $tex->tokenize($expansion);
@@ -74,11 +74,11 @@ __DATA__
 
 \@ifpackagewith{graphics}{demo}{%
     \def\@includegraphics#1#2{%
-        % \TeXMLCreateSVG*{\includegraphics#1{#2}}%
+        % \TeXMLCreateSVG{\includegraphics#1{#2}}%
     }%
 }{%
     \def\@includegraphics#1#2{%
-        \TeXMLCreateSVG*{\includegraphics#1{#2}}%
+        \TeXMLCreateSVG{\includegraphics#1{#2}}%
     }%
 }
 
@@ -88,10 +88,10 @@ __DATA__
 \def\scalebox#1{\@ifnextchar[{\@scalebox{#1}}{\@scalebox{#1}[]}}
 
 \def\@scalebox#1[#2]#3{%
-    \TeXMLCreateSVG*{\scalebox{#1}[#2]{#3}}%
+    \TeXMLCreateSVG{\scalebox{#1}[#2]{#3}}%
 }
 
-\def\reflectbox#1{\TeXMLCreateSVG*{\reflectbox{#1}}}
+\def\reflectbox#1{\TeXMLCreateSVG{\reflectbox{#1}}}
 
 \TeXMLendPackage
 
