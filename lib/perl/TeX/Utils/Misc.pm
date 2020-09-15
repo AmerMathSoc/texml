@@ -3,7 +3,7 @@ package TeX::Utils::Misc;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.0.1';
 
 use UNIVERSAL;
 
@@ -98,7 +98,7 @@ sub file_mimetype($) {
         return;
     };
 
-    my $mimetype = $MMAGIC->checktype_filehandle($FH);
+    my $mimetype = $MMAGIC->fhmagic($FH);
 
     close($FH);
 
