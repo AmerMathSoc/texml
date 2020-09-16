@@ -3,7 +3,7 @@ package TeX::Output::XML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
+use version; our $VERSION = qv '1.2.0';
 
 use FindBin;
 
@@ -496,30 +496,40 @@ sub add_alt_title {
     my $parent = shift;
     my $dom    = shift;
 
-    return;
-
     for my $title ($parent->findnodes("title")) { # There should be at most one
         my $utf8 = xml_to_utf8_string($title);
+
+        if (nonempty($utf8)) {
+            $utf8 =~ s{ \x{2060}?\z}{};
+
+            my $raw = $title->firstChild()->textContent();
+
+            if ($utf8 ne $raw) {
+                my $alt_title = $dom->createElement("alt-title");
     
-        $utf8 =~ s{ \x{2060}?\z}{};
+                $alt_title->appendText($utf8);
     
-        my $alt_title = $dom->createElement("alt-title");
-    
-        $alt_title->appendText($utf8);
-    
-        $parent->insertAfter($alt_title, $title);
+                $parent->insertAfter($alt_title, $title);
+            }
+        }
     }
     
     for my $title ($parent->findnodes("subtitle")) { # There should be at most one
         my $utf8 = xml_to_utf8_string($title);
     
-        $utf8 =~ s{ \x{2060}?\z}{};
-    
-        my $alt_title = $dom->createElement("alt-subtitle");
-    
-        $alt_title->appendText($utf8);
-    
-        $parent->insertAfter($alt_title, $title);
+        if (nonempty($utf8)) {
+            $utf8 =~ s{ \x{2060}?\z}{};
+            
+            my $raw = $title->firstChild()->textContent();
+
+            if ($utf8 ne $raw) {
+                my $alt_title = $dom->createElement("alt-subtitle");
+                
+                $alt_title->appendText($utf8);
+                
+                $parent->insertAfter($alt_title, $title);
+            }
+        }
     }
     
     return;
