@@ -3,7 +3,7 @@ package TeX::Output::XML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.0.1';
 
 use FindBin;
 
@@ -15,7 +15,7 @@ use TeX::Class;
 
 use TeX::Utils::Misc;
 
-use TeX::KPSE qw(kpse_path_search);
+use TeX::KPSE qw(kpse_lookup);
 
 use TeX::Interpreter;
 
@@ -609,7 +609,7 @@ sub close_document {
         my $xsl_path;
 
         for my $path ($name, "$name.xsl") {
-            $xsl_path = kpse_path_search($search_path, $path);
+            $xsl_path = kpse_lookup($path, $search_path);
 
             last if defined $xsl_path;
         }
