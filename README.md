@@ -3,9 +3,13 @@ A repository for texml development
 
 Starting with an Ubuntu 18.04.5 LTS installation:
 
-* apt install texlive
+* apt install texlive texlive-extra-utils texlive-xetex
+
+* apt install texlive-fonts-extra (STIX Two)
 
 * apt install libexception-class-perl
+
+* apt install libconfig-inifiles-perl
 
 * apt install libfile-mmagic-xs-perl
 
@@ -23,13 +27,12 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * cpan Image::PNG
 
-At this point, should be able to compile tests/hello.tex, but probably
-not much more.
+* apt install pdf2svg
+
+At this point, should be able to compile tests/hello.tex and (maybe)
+tests/graphics.tex, but probably not much more.
 
 ## Modules that have been neutered
-
-TeX::Utils::SVG: Can't generate SVGs yet.  Some prereqs
-missing. Eventually need replacment for distill.
 
 TeX::KPSE
 
