@@ -29,8 +29,11 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * apt install pdf2svg
 
-At this point, should be able to compile tests/hello.tex and (maybe)
-tests/graphics.tex, but probably not much more.
+At this point, should be able to compile tests/hello.tex, but probably
+not much more.
+
+If you install the STIX Two fonts somewhere where fontconfig can find
+them, you might also be able to compile test/graphics.tex.
 
 ## Modules that have been neutered
 
