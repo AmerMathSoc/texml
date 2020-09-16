@@ -322,9 +322,13 @@ __DATA__
 \DeclareMathJaxMacro\atopwithdelims
 \DeclareMathJaxMacro\abovewithdelims
 
-\DeclareMathJaxMacro\frac
-\DeclareMathJaxMacro\dfrac
-\DeclareMathJaxMacro\tfrac
+% \DeclareMathJaxMacro\frac
+% \DeclareMathJaxMacro\dfrac
+% \DeclareMathJaxMacro\tfrac
+
+\def\frac#1#2{\string\frac{#1}{#2}}
+\def\dfrac#1#2{\string\dfrac{#1}{#2}}
+\def\tfrac#1#2{\string\tfrac{#1}{#2}}
 
 \DeclareMathJaxMacro\binom
 \DeclareMathJaxMacro\dbinom
