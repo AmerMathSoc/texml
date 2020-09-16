@@ -17,7 +17,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.156.0';
+use version; our $VERSION = qv '1.0.0';
 
 use base qw(Exporter);
 
@@ -43,6 +43,8 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} },
 our @EXPORT;
 
 use Carp;
+
+use TeXML::CFG;
 
 use TeX::Class;
 
@@ -149,6 +151,8 @@ sub __DEBUG {
 ##                                                                  ##
 ######################################################################
 
+my $CFG = TeXML::CFG->get_cfg();
+
 use constant LEFT_BRACE_TOKEN => make_character_token('{', CATCODE_BEGIN_GROUP);
 use constant RIGHT_BRACE_TOKEN => make_character_token('}', CATCODE_END_GROUP);
 use constant MATH_SHIFT_TOKEN => make_character_token('\$', CATCODE_MATH_SHIFT);
@@ -235,7 +239,9 @@ sub START {
 
     $tex->set_encoding("T1");
 
-    kpse_reset_program_name('prdlatex');
+    if (nonempty(my $progname = $CFG->val(__PACKAGE__, 'engine'))) {
+        kpse_reset_program_name($progname);
+    }
 
     return;
 }
