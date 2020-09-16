@@ -52,6 +52,8 @@ __DATA__
     \TeXMLCreateSVG{$\xhookrightarrow[#1]{#2}$}%
 }
 
+\DeclareMathJaxMacro\xleftrightarrow
+
 \TeXMLendPackage
 
 __END__
