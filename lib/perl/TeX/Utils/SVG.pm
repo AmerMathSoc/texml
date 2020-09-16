@@ -3,7 +3,7 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.19.0';
+use version; our $VERSION = qv '1.0.0';
 
 use Cwd;
 
@@ -22,15 +22,24 @@ use TeX::Arithmetic qw(sprint_scaled);
 
 use TeX::Utils::Misc;
 
+use TeXML::CFG;
+
+my $CFG = TeXML::CFG->get_cfg();
+
 use XML::LibXML;
 
-my $PDFTEX  = q{/ams/texmf/archive/texlive2016/bin/x86_64-linux/pdflatex};
-my $XETEX   = q{/ams/texmf/archive/texlive2016/bin/x86_64-linux/xelatex};
-my $DVIPS   = q{/ams/texmf/archive/texlive2016/bin/x86_64-linux/dvips};
-my $PDFCROP = q{/ams/texmf/archive/texlive2016/bin/x86_64-linux/pdfcrop -debug};
-my $PDF2SVG = q{/usr/bin/pdf2svg};
-# my $PS2PDF  = q{/usr/bin/ps2pdf};
-my $PS2PDF  = q{/ams/texmf/bin/distill};
+my $DVI_ENGINE = $CFG->val(__PACKAGE__, 'dvi_engine', 'pdflatex -output-format dvi');
+my $PDF_ENGINE = $CFG->val(__PACKAGE__, 'pdf_engine', 'xelatex');
+my $DVIPS   = $CFG->val(__PACKAGE__, 'dvips',         'dvips');
+my $PDFCROP = $CFG->val(__PACKAGE__, 'pdfcrop',       'pdfcrop');
+my $PDF2SVG = $CFG->val(__PACKAGE__, 'pdf2svg',       'pdf2svg');
+my $PS2PDF  = $CFG->val(__PACKAGE__, 'ps2pdf',        'ps2pdf');
+
+######################################################################
+##                                                                  ##
+##                            ATTRIBUTES                            ##
+##                                                                  ##
+######################################################################
 
 my %base_file_of :ATTR(:name<base_file>);
 my %interpreter_of :ATTR(:name<interpreter>);
@@ -140,9 +149,11 @@ sub system {
     my $self = shift;
 
     my $command = shift;
-    my $args    = shift;
+    my @args    = @_;
 
-    my $status = CORE::system qq{$command $args};
+    my $cmd = qq{$command @args};
+
+    my $status = CORE::system qq{$command @args};
 
     if ($status) {
         my $dirname = basename(getcwd());
@@ -174,25 +185,25 @@ sub generate_svg {
     my $base = basename($tex_file, '.tex');
 
     if ($use_xetex) {
-        $self->system($XETEX, qq{--progname=prdxelatex --interaction batchmode $tex_file});
+        $self->system($PDF_ENGINE, '-interaction' => 'batchmode', $tex_file);
     } else {
-        $self->system($PDFTEX, qq{--progname=prdlatex --interaction batchmode $tex_file});
+        $self->system($DVI_ENGINE, '-interaction' => 'batchmode', $tex_file);
 
-        $self->system($DVIPS, qq{$base.dvi -o});
+        $self->system($DVIPS, "$base.dvi", '-o');
 
-        $self->system($PS2PDF, qq{-pd +AMSPress $base.ps});
+        $self->system($PS2PDF, "$base.ps");
     }
 
     my $svg_file;
 
-    $self->system($PDFCROP, qq{$base.pdf});
+    $self->system($PDFCROP, "$base.pdf");
 
     my $cropped_pdf = "$base-crop.pdf";
 
     $svg_file = "$base.svg";
 
     if (-e $cropped_pdf) {
-        $self->system($PDF2SVG, qq{$cropped_pdf $svg_file});
+        $self->system($PDF2SVG, $cropped_pdf, $svg_file);
     }
 
     $self->add_title($svg_file, $svg_title, $id);
