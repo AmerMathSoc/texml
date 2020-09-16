@@ -3,40 +3,45 @@ package TeX::KPSE;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
+use version; our $VERSION = qv '1.2.0';
 
 use base qw(Exporter);
 
-our %EXPORT_TAGS = (all => [ qw(kpse_lookup
-                             kpse_path_search
-                             kpse_reset_program_name)
-                    ]);
+our %EXPORT_TAGS = (all => [ qw(kpse_lookup kpse_reset_program_name) ]);
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
 
 our @EXPORT = ( @{ $EXPORT_TAGS{all} } );
 
-sub kpse_lookup( $ ) {
-    my $file_name = shift;
+my $KPSE_PROGRAM_NAME;
 
-    chomp(my $path = qx{kpsewhich '$file_name'});
+sub _nonempty( $ ) {
+    my $string = shift;
 
-    return $path eq '' ? undef : $path;
+    return defined $string && $string =~ /\S/;
 }
 
-sub kpse_path_search( $$ ) {
-    my $search_path = shift;
+sub kpse_lookup( $; $ ) {
     my $file_name   = shift;
+    my $search_path = shift;
 
-    chomp(my $path = qx{kpsewhich -path '$search_path' '$file_name'});
+    my $KPSEWHICH = qq{kpsewhich};
+
+    if (_nonempty($KPSE_PROGRAM_NAME)) {
+        $KPSEWHICH .= qq{ --progname='$KPSE_PROGRAM_NAME'};
+    }
+
+    if (_nonempty($search_path)) {
+        $KPSEWHICH .= qq{ --path='$search_path'};
+    }
+
+    chomp(my $path = qx{$KPSEWHICH '$file_name'});
 
     return $path eq '' ? undef : $path;
 }
 
 sub kpse_reset_program_name( $ ) {
-    my $progname = shift;
-
-    # NO_OP
+    $KPSE_PROGRAM_NAME = shift;
 
     return;
 }
