@@ -3,16 +3,13 @@ package TeX::Parser;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.14.0';
+use version; our $VERSION = qv '2.0.0';
 
 use base qw(TeX::Lexer);
 
-use PTG::Class;
+use TeX::Class;
 
 use Carp;
-
-use PTG::Errors;
-use PTG::Utils;
 
 use TeX::WEB2C qw(:catcodes);
 use TeX::Token qw(:factories);
@@ -806,7 +803,7 @@ sub read_alphabetic_constant {
         if (length($char) != 1) {
             my $line = $self->get_line_no();
 
-            fatal_error "Improper alphabetic constant \\$char on line $line";
+            die "Improper alphabetic constant \\$char on line $line";
         }
 
         return ord($char);
@@ -847,7 +844,7 @@ sub read_literal_integer {
 
     my $line = $self->get_line_no();
 
-    fatal_error "Invalid integer: '$next_token' on line $line\n";
+    die "Invalid integer: '$next_token' on line $line\n";
 }
 
 sub read_unsigned_number {
@@ -925,7 +922,7 @@ sub read_balanced_text {
             if (! $def) {
                 my $line = $self->get_line_no();
 
-                fatal_error "Not a definition: You can't use the macro parameter $token here on line $line\n";
+                die "Not a definition: You can't use the macro parameter $token here on line $line\n";
             }
 
             my $next = $self->get_maybe_expanded_token();
@@ -942,7 +939,7 @@ sub read_balanced_text {
             } else {
                 my $line = $self->get_line_no();
 
-                fatal_error "You can't the macro parameter $token before $next on line $line\n";
+                die "You can't the macro parameter $token before $next on line $line\n";
             }
 
             next;
@@ -965,12 +962,12 @@ sub read_parameter_text {
         last if $token == CATCODE_BEGIN_GROUP;
 
         if ($token == CATCODE_END_GROUP) {
-            fatal_error("Illegal end of group $token in parameter text ",
-                        "on line ",
-                        $self->get_line_no(),
-                        " of ",
-                        $self->get_file_name(),
-                        "\n");
+            die ("Illegal end of group $token in parameter text ",
+                 "on line ",
+                 $self->get_line_no(),
+                 " of ",
+                 $self->get_file_name(),
+                 "\n");
         }
 
         if ($token == CATCODE_PARAMETER) {
@@ -987,12 +984,12 @@ sub read_parameter_text {
                     if ($char == ++$max_arg) {
                         push @parameter_text, make_param_ref_token($char);
                     } else {
-                        fatal_error("Parameter numbers must be consecutive ",
-                                    "on line ",
-                                    $self->get_line_no(),
-                                    " of ",
-                                    $self->get_file_name(),
-                                    "\n");
+                        die("Parameter numbers must be consecutive ",
+                            "on line ",
+                            $self->get_line_no(),
+                            " of ",
+                            $self->get_file_name(),
+                            "\n");
                     }
                 } else {
                     push @parameter_text, $next_token;

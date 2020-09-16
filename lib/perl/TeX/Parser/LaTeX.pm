@@ -2,18 +2,36 @@ package TeX::Parser::LaTeX;
 
 use strict;
 
-use version; our $VERSION = qv '1.5.0';
+use version; our $VERSION = qv '2.0.0';
 
 use base qw(TeX::Parser);
 
 use Carp;
 
-use PTG::Class;
+use TeX::Class;
 
-#use TeX::KPSE  qw(kpse_lookup);
+use TeX::KPSE  qw(kpse_lookup);
 use TeX::Token qw(:factories);
-use TeX::Token::Constants qw(:all);
 use TeX::WEB2C qw(:catcodes);
+
+######################################################################
+##                                                                  ##
+##                            CONSTANTS                             ##
+##                                                                  ##
+######################################################################
+
+use constant {
+    BEGIN_OPT => make_character_token('[', CATCODE_OTHER),
+    END_OPT   => make_character_token(']', CATCODE_OTHER),
+};
+
+use constant {
+    OPT_ARG   => [ BEGIN_OPT, make_param_ref_token(1), END_OPT],
+};
+
+use constant {
+    STAR => make_character_token('*', CATCODE_OTHER),
+};
 
 ######################################################################
 ##                                                                  ##

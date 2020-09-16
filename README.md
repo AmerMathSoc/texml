@@ -5,8 +5,6 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * apt install texlive texlive-extra-utils texlive-xetex
 
-* apt install texlive-fonts-extra (STIX Two)
-
 * apt install libexception-class-perl
 
 * apt install libconfig-inifiles-perl
@@ -33,14 +31,22 @@ At this point, should be able to compile tests/hello.tex, but probably
 not much more.
 
 If you install the STIX Two fonts somewhere where fontconfig can find
-them, you might also be able to compile test/graphics.tex.
+them, you might also be able to compile test/graphics.tex.  (If you
+want to be able to use stix2.sty, you'll need pieces from the Ubuntu
+texlive-fonts-extra package.)
 
 ## Modules that have been neutered
-
-TeX::KPSE
-
-TeX::Output::XML
 
 TeX::Interpreter::LaTeX::Package::AMSMeta
 
 TeX::Interpreter::LaTeX::Class::amscommon
+
+## Reimplemented
+
+TeX::KPSE (not so much)
+
+## Aliens
+
+TeX::Lexer, TeX::Parser, TeX::Parser::LaTeX (needed only for
+PTG::Unicode::Translators, which is needed for TeX::Output::XML, but
+should be replaced someday)

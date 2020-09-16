@@ -3,13 +3,13 @@ package TeX::Output::XML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.1';
+use version; our $VERSION = qv '1.1.0';
 
 use FindBin;
 
 use List::Util qw(min);
 
-# use TeX::Utils::XML;
+use TeX::Utils::XML;
 
 use TeX::Class;
 
@@ -498,31 +498,31 @@ sub add_alt_title {
 
     return;
 
-    #* for my $title ($parent->findnodes("title")) { # There should be at most one
-    #*     my $utf8 = xml_to_utf8_string($title);
-    #* 
-    #*     $utf8 =~ s{ \x{2060}?\z}{};
-    #* 
-    #*     my $alt_title = $dom->createElement("alt-title");
-    #* 
-    #*     $alt_title->appendText($utf8);
-    #* 
-    #*     $parent->insertAfter($alt_title, $title);
-    #* }
-    #* 
-    #* for my $title ($parent->findnodes("subtitle")) { # There should be at most one
-    #*     my $utf8 = xml_to_utf8_string($title);
-    #* 
-    #*     $utf8 =~ s{ \x{2060}?\z}{};
-    #* 
-    #*     my $alt_title = $dom->createElement("alt-subtitle");
-    #* 
-    #*     $alt_title->appendText($utf8);
-    #* 
-    #*     $parent->insertAfter($alt_title, $title);
-    #* }
-    #* 
-    #* return;
+    for my $title ($parent->findnodes("title")) { # There should be at most one
+        my $utf8 = xml_to_utf8_string($title);
+    
+        $utf8 =~ s{ \x{2060}?\z}{};
+    
+        my $alt_title = $dom->createElement("alt-title");
+    
+        $alt_title->appendText($utf8);
+    
+        $parent->insertAfter($alt_title, $title);
+    }
+    
+    for my $title ($parent->findnodes("subtitle")) { # There should be at most one
+        my $utf8 = xml_to_utf8_string($title);
+    
+        $utf8 =~ s{ \x{2060}?\z}{};
+    
+        my $alt_title = $dom->createElement("alt-subtitle");
+    
+        $alt_title->appendText($utf8);
+    
+        $parent->insertAfter($alt_title, $title);
+    }
+    
+    return;
 }
 
 sub add_toc_alt_titles {

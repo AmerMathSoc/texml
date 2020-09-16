@@ -3,7 +3,7 @@ package PTG::Unicode;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.1';
+use version; our $VERSION = qv '2.0.0';
 
 use base qw(Exporter);
 
@@ -17,7 +17,7 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
 
 our @EXPORT;
 
-use PTG::Utils;
+use TeX::Utils::Misc;
 
 use Unicode::UCD qw(charinfo);
 

@@ -3,7 +3,7 @@ package PTG::Unicode::Translators;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.29.0';
+use version; our $VERSION = qv '2.0.0';
 
 use base qw(Exporter);
 
@@ -28,9 +28,8 @@ use Carp;
 
 use Encode;
 
-use PRD::StdLogger;
+use TeX::Utils::Misc;
 
-use PTG::Utils;
 use PTG::Unicode qw(ascii_base decompose);
 use PTG::Unicode::Accents qw(apply_accent :names);
 
@@ -56,11 +55,6 @@ our $CURRENT_MATH_STYLE_OFFSET;
 ##                            CONSTANTS                             ##
 ##                                                                  ##
 ######################################################################
-
-my $LOG = PRD::StdLogger->get_logger();
-
-## Avoid finalization segfault.
-END { undef $LOG };
 
 my $STAR = make_character_token('*', CATCODE_OTHER);
 
@@ -660,7 +654,7 @@ BEGIN {
         );
 }
 
-my %TEX_SKIPPED_TOKEN = array_to_hash qw(- ! @ : / > ;
+my %TEX_SKIPPED_TOKEN = map { $_ => 1 } qw(- ! @ : / > ;
                                          ifttl@toclabel
                                          ttl@a
                                          fi
@@ -700,7 +694,7 @@ my %TEX_SKIPPED_TOKEN = array_to_hash qw(- ! @ : / > ;
 
 $TEX_SKIPPED_TOKEN{q{,}} = 1;
 
-my %TEX_MATH_OPERATOR_NAME = array_to_hash qw(Pr
+my %TEX_MATH_OPERATOR_NAME = map { $_ => 1 } qw(Pr
                                               arccos arcsin arctan arg
                                               cos cosh cot coth csc
                                               deg det dim
@@ -3881,7 +3875,7 @@ sub do_math_version {
     my $style = $parser->read_undelimited_parameter();
 
     if ($style ne 'bold') {
-        $LOG->warn("Ingoring unknown mathversion '$style'\n");
+        carp "Ingoring unknown mathversion '$style'\n";
 
         return;
     }
@@ -4242,7 +4236,7 @@ sub tex_to_unicode( $ ) {
     $parser->parse();
 
     if ($parser->math_nesting() > 0) {
-        $LOG->warn("Unbalanced math delimiters in '$tex_string'\n");
+        carp "Unbalanced math delimiters in '$tex_string'\n";
 
         while ($parser->math_nesting() > 0) {
             do_math_shift_off($parser, undef);
@@ -4276,7 +4270,7 @@ sub tex_to_unicode_no_math( $ ) {
     $parser->parse();
 
     if ($parser->math_nesting() > 0) {
-        $LOG->warn("Unbalanced math delimiters in '$tex_string'\n");
+        carp "Unbalanced math delimiters in '$tex_string'\n";
 
         while ($parser->math_nesting() > 0) {
             do_math_shift_off($parser, undef);
@@ -4312,7 +4306,7 @@ sub tex_math_to_unicode( $ ) {
     $parser->parse();
 
     if ($parser->math_nesting() > 0) {
-        $LOG->warn("Unbalanced math delimiters in '$tex_string'\n");
+        carp "Unbalanced math delimiters in '$tex_string'\n";
 
         while ($parser->math_nesting() > 0) {
             do_math_shift_off($parser, undef);
@@ -4359,7 +4353,7 @@ sub tex_to_unicode_lossless( $ ) {
     $parser->parse();
 
     if ($parser->math_nesting() > 0) {
-        $LOG->warn("Unbalanced math delimiters in '$tex_string'\n");
+        carp "Unbalanced math delimiters in '$tex_string'\n";
 
         while ($parser->math_nesting() > 0) {
             do_math_shift_off($parser, undef);

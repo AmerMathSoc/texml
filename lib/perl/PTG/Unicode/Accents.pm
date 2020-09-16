@@ -6,13 +6,13 @@ package PTG::Unicode::Accents;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.1';
+use version; our $VERSION = qv '2.0.0';
 
 use base qw(Exporter);
 
 use Carp;
 
-use PTG::Utils::String;
+use TeX::Utils::Misc;
 
 use UNIVERSAL;
 
