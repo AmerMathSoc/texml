@@ -3,7 +3,7 @@ package TeX::Utils::Misc;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.1';
+use version; our $VERSION = qv '1.1.0';
 
 use UNIVERSAL;
 
@@ -34,6 +34,8 @@ my $MMAGIC = new File::MMagic::XS;
 
 # $MMAGIC->addSpecials("image/eps",     qr/\xc5\xd0\xd3\xc6/);
 # $MMAGIC->addSpecials("image/svg+xml", qr/<\?xml\b/, qr/<svg\b/);
+
+$MMAGIC->add_file_ext('svg', 'image/svg+xml');
 
 sub concat {
     return join '', @_;
@@ -92,6 +94,10 @@ sub file_mimetype($) {
     ## look at the contents of the file.
 
     return unless nonempty $filename;
+
+    # Hack until I figure out how add_magic works.
+
+    return "image/svg+xml" if $filename =~ m{\.svg\z}i;
 
     open(my $FH, "<", $filename) or do {
         warn "Can't open $filename: $!\n";
