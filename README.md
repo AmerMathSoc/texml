@@ -5,6 +5,8 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * apt install texlive texlive-extra-utils texlive-xetex
 
+* apt install texlive-bibtex-extra [amsrefs]
+
 * apt install libexception-class-perl
 
 * apt install libconfig-inifiles-perl
@@ -40,6 +42,11 @@ texlive-fonts-extra package.)
 TeX::Interpreter::LaTeX::Package::AMSMeta
 
 TeX::Interpreter::LaTeX::Class::amscommon
+
+All of the metada-related code has been ripped out of these, so
+basically there will be no <front> element.  Eventually this should be
+reimplemented in a way that doesn't presume the existence of the whole
+AMS environment.
 
 ## Reimplemented
 
