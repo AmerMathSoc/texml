@@ -1,15 +1,11 @@
 package TeX::Interpreter::LaTeX::Class::amscommon;
 
+## All of the metadata-related code has been ripped out of this.
+
 use strict;
 use warnings;
 
-#* use PRD::Document;
-
-#* use PRD::Document::Date;
-
-#* use PRD::Document::Utils qw(extract_dates);
-
-# use PTG::Unicode::Translators qw(normalize_tex);
+use version; our $VERSION = qv '1.0.0';
 
 use TeX::Utils::Misc;
 
@@ -22,17 +18,6 @@ use TeX::WEB2C qw(:save_stack_codes :token_types :catcodes);
 use TeX::Command::Executable::Assignment qw(:modifiers);
 
 use TeX::Node::Extension::UnicodeCharNode qw(:factories);
-
-## I started getting weird errors from use
-## PTG::Unicode::Translators::normalize_tex() when it was passed UTF8,
-## so I disabled it.  It's probably not really needed, because this
-## isn't the right place to be extracting all of that information.
-
-sub normalize_tex( $ ) {
-    my $tex = shift;
-
-    return $tex;
-}
 
 ######################################################################
 ##                                                                  ##
@@ -48,16 +33,8 @@ sub install ( $ ) {
 
     $tex->class_load_notification(__PACKAGE__, @options);
 
-    #* if (! defined $tex->get_parcel('document')) {
-    #*     $tex->set_parcel(document => PRD::Document->new({ SUPPLY_DEFAULTS => 1 }));
-    #* }
-
     $tex->load_package("amsthm");
     $tex->load_package("amsfonts");
-    # $tex->load_package("amsmath");
-    # $tex->load_package("mathjax");
-
-    #* $tex->load_package("AMSMeta");
 
     $tex->define_csname(em => make_font_declaration("italic"));
     $tex->define_csname(it => make_font_declaration("italic"));
@@ -67,7 +44,7 @@ sub install ( $ ) {
     $tex->define_csname(tt => make_font_declaration("monospace"));
     $tex->define_csname(sf => make_font_declaration("sans-serif"));
 
-    $tex->define_csname(sl => make_font_declaration("styled-content", "oblique"));
+    $tex->define_csname(sl => make_font_declaration("styled-content", "oblique") );
 
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.
@@ -186,19 +163,6 @@ sub make_font_declaration( $;$ ) {
 ##                                                                  ##
 ######################################################################
 
-my %MONTH_TO_INT = (January   =>  1,
-                    February  =>  2,
-                    March     =>  3,
-                    April     =>  4,
-                    May       =>  5,
-                    June      =>  6,
-                    July      =>  7,
-                    August    =>  8,
-                    September =>  9,
-                    October   => 10,
-                    November  => 11,
-                    December  => 12);
-
 sub do_issueinfo {
     my $tex   = shift;
     my $token = shift;
@@ -208,21 +172,7 @@ sub do_issueinfo {
     my $month  = $tex->read_undelimited_parameter();
     my $year   = $tex->read_undelimited_parameter();
 
-    if (defined(my $document = $tex->get_parcel('document'))) {
-        $document->set_volume("$volume");
-        $document->set_number("$number");
-        
-        my $issue_date = $document->get_issuedate();
-
-        if (nonempty($month)) {
-            $issue_date->set_month($MONTH_TO_INT{"$month"});
-            $issue_date->set_day(1);
-        }
-         
-        if (nonempty($year)) {
-            $issue_date->set_year("$year");
-        }
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -235,11 +185,7 @@ sub do_publinfo {
     my $volume_id = $tex->read_undelimited_parameter();
     my $volume    = $tex->read_undelimited_parameter();
 
-    if (defined(my $document = $tex->get_parcel('document'))) {
-        $document->set_publ_key("$publ_key");
-        $document->set_volume_id("$volume_id");
-        $document->set_volume($volume);
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -252,11 +198,7 @@ sub do_seriesinfo {
     my $volume_id = $tex->read_undelimited_parameter();
     my $volume    = $tex->read_undelimited_parameter();
 
-    if (defined(my $document = $tex->get_parcel('document'))) {
-        $document->set_publ_key("$publ_key");
-        $document->set_volume_id("$volume_id");
-        $document->set_volume($volume);
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -267,9 +209,7 @@ sub do_PII {
 
     my $pii = $tex->read_undelimited_parameter();
 
-    if (defined(my $document = $tex->get_parcel('document'))) {
-        $document->set_pii($pii);
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -280,11 +220,7 @@ sub do_commby {
 
     my $commby = $tex->read_undelimited_parameter();
 
-    if (nonempty($commby)) {
-        if (defined(my $document = $tex->get_parcel('document'))) {
-            $document->set_commby($commby);
-        }
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -295,17 +231,7 @@ sub do_date {
 
     my $raw_date = $tex->read_undelimited_parameter(EXPANDED);
 
-    my @dates = extract_dates($raw_date);
-
-    if (defined(my $document = $tex->get_parcel('document'))) {
-        if (@dates) {
-            $document->set_received(shift @dates);
-        }
-
-        for my $date (@dates) {
-            $document->add_revised($date);
-        }
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -316,13 +242,7 @@ sub do_dateposted {
 
     my $raw_date = $tex->read_undelimited_parameter();
 
-    my ($date) = extract_dates($raw_date);
-
-    if (defined(my $document = $tex->get_parcel('document'))) {
-        if (defined $date) {
-            $document->set_postdate($date);
-        }
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -333,15 +253,9 @@ sub do_keywords {
 
     my $keywords = $tex->read_undelimited_parameter();
 
-    $keywords = normalize_tex($keywords);
-
     my $atoms = qr{ ( \$\$ [^\$]+ \$\$ | \$ [^\$]+ \$ | [^,] ) }smx;
 
-    if (defined(my $document = $tex->get_parcel('document'))) {
-        while ($keywords =~ s{\A ($atoms+) \s* , \s* }{}smx) {
-            $document->add_keyword($1);
-        }
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -353,17 +267,7 @@ sub do_copyrightinfo( $ ) {
     my $year   = $tex->read_undelimited_parameter();
     my $holder = $tex->read_undelimited_parameter();
 
-    if (defined(my $document = $tex->get_parcel('document'))) {
-        my $copyright = $document->get_copyright();
-
-        $copyright->set_year($year)    if nonempty($year);
-
-        if (nonempty($holder)) {
-            $copyright->set_owner($holder);
-        } else {
-            $copyright->set_owner("American Mathematical Society");
-        }
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -375,14 +279,7 @@ sub do_pagespan {
     my $start_page = $tex->read_undelimited_parameter();
     my $end_page   = $tex->read_undelimited_parameter();
 
-    #* if (nonempty($start_page) || nonempty($end_page)) {
-    #*     if (defined(my $document = $tex->get_parcel('document'))) {
-    #*         my $page_range = PRD::Document::PageRange->new({ start => $start_page,
-    #*                                                          end   => $end_page });
-    #* 
-    #*         $document->add_page_range($page_range);
-    #*     }
-    #* }
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -391,37 +288,9 @@ sub do_revertcopyright {
     my $tex   = shift;
     my $token = shift;
 
-    my $document = $tex->get_parcel('document');
-
-    if (defined $document) {
-        $document->get_copyright()->set_revert(28);
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
-}
-
-sub __sanitize_msc( $ ) {
-    my $text = shift;
-
-    return unless defined $text;
-
-    my @classes = ($text =~ m/ \b (\d\S\S\S\S) \b /sgmx);
-
-    return join(" ", @classes);
-}
-
-sub __parse_subjclass {
-    my $subjclass = shift;
-
-    $subjclass =~ s/[;,]/ /g;
-
-    $subjclass = trim(normalize_tex($subjclass));
-
-    $subjclass =~ s{\A Primary\:? \s* }{}smx;
-
-    my ($primary, $secondary) = split m{\s* Secondary:? \s*}smx, $subjclass;
-
-    return (__sanitize_msc($primary), __sanitize_msc($secondary));
 }
 
 sub do_subjclass( $ ) {
@@ -432,34 +301,7 @@ sub do_subjclass( $ ) {
 
     my $subjclass = $tex->read_undelimited_parameter();
 
-    my $document = $tex->get_parcel('document');
-
-    return unless defined $document;
-
-    $schema = '2000' if empty($schema);
-
-    my ($primaries, $secondaries) = __parse_subjclass($subjclass);
-
-    ##* Warn if secondaries but no primaries?
-
-    return unless nonempty($primaries);
-
-    #* my $msc = PRD::Document::MSC->new({ schema => $schema,
-    #*                                     source => "author" });
-    #* 
-    #* if (nonempty($primaries)) {
-    #*     for my $primary (split / /, $primaries) {  #/ for emacs
-    #*         $msc->add_primary(trim($primary));
-    #*     }
-    #* }
-    #* 
-    #* if (nonempty($secondaries)) {
-    #*     for my $secondary (split / /, $secondaries) {   #/  for emacs
-    #*         $msc->add_secondary(trim($secondary));
-    #*     }
-    #* }
-    #* 
-    #* $document->add_msc($msc);
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -470,13 +312,9 @@ sub do_title {
     
     my $short_title = $tex->scan_optional_argument();
 
-    my $title = normalize_tex($tex->read_undelimited_parameter());
+    my $title = $tex->read_undelimited_parameter();
 
-    my $document = $tex->get_parcel('document');
-
-    if (defined $document) {
-        $document->set_title($title);
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -487,13 +325,9 @@ sub do_subtitle {
     
     my $short_title = $tex->scan_optional_argument();
 
-    my $title = normalize_tex($tex->read_undelimited_parameter());
+    my $title = $tex->read_undelimited_parameter();
 
-    my $document = $tex->get_parcel('document');
-
-    if (defined $document) {
-        $document->set_subtitle($title);
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
 }
@@ -503,216 +337,6 @@ sub do_maketitle {
     my $token = shift;
     
     $tex->end_par();
-
-    my $document = $tex->get_parcel('document');
-
-    return unless defined $document;
-
-    $tex->ensure_output_open();
-
-    my $xml = $tex->get_output_handle();
-
-    $tex->new_graf();
-
-    $tex->process_string(qq{\\frontmatter});
-
-    ## In the normal course of things, the entire <front> element will
-    ## be rewritten and replaced with much more complete information
-    ## based on the gentag file by do_add_ams_metadata() (defined in
-    ## TeX::Interpreter::LaTeX::Package::AMSMeta).
-
-    if (nonempty(my $doc_class = $tex->get_document_class())) {
-        ## Supply just enough information for do_add_ams_metadata() to
-        ## find the gentag file.
-
-        (my $publ_key = $doc_class) =~ s{-l\z}{};
-
-        $tex->start_xml_element("journal-meta");
-
-        $tex->start_xml_element("journal-id");
-        $tex->set_xml_attribute("journal-id-type", "publisher");
-        $tex->process_string($publ_key);
-        $tex->end_xml_element("journal-id");
-
-        $tex->end_xml_element("journal-meta");
-    }
-
-    $tex->start_xml_element("article-meta");
-
-    if (nonempty(my $pii = $document->get_pii())) {
-        $tex->start_xml_element("article-id");
-        $tex->set_xml_attribute("pub-id-type", "pii");
-        $tex->process_string("$pii");
-        $tex->end_xml_element("article-id");
-    }
-
-    if (nonempty(my $tex_title = $document->get_title()->get_tex())) {
-        $tex->begingroup();
-
-        $tex->set_xml_par_tag();
-
-        $tex->start_xml_element("title-group");
-
-        $tex->start_xml_element("article-title");
-
-        $tex->process_string($tex_title->get_value());
-
-        $tex->end_xml_element("article-title");
-
-        if (nonempty(my $tex_subtitle = $document->get_subtitle()->get_tex())) {
-            $tex->start_xml_element("subtitle");
-
-            $tex->process_string($tex_subtitle->get_value());
-
-            $tex->end_xml_element("subtitle");
-        }
-
-        $tex->end_xml_element("title-group");
-
-        $tex->end_par();
-
-        $tex->endgroup();
-    }
-
-    $tex->end_par();
-
-    for my $author ($document->get_authors()) {
-        my $name  = $author->get_name()->get_unparsed()->get_tex();
-        my $affil = $author->get_affiliation(0);
-        my $email = $author->get_email(0);
-
-        $tex->begingroup();
-
-        $tex->set_xml_par_tag();
-
-        $tex->start_xml_element("contrib-group");
-
-        $tex->set_xml_attribute("content-type", "authors");
-
-        if (nonempty($name)) {
-            $tex->new_graf();
-
-            $tex->start_xml_element("contrib");
-
-            $tex->set_xml_attribute("contrib-type", "author");
-
-            $tex->start_xml_element("name");
-
-            $tex->start_xml_element("given-names");
-
-            $tex->process_string($name->get_value());
-
-            $tex->end_xml_element("given-names");
-
-            $tex->end_xml_element("name");
-
-            $tex->end_xml_element("contrib");
-
-            $tex->end_par();
-        }
-
-        if (nonempty($affil)) {
-            $tex->new_graf();
-
-            $tex->start_xml_element("aff");
-
-            $tex->process_string($affil->get_value());
-
-            $tex->end_xml_element("aff");
-
-            $tex->end_par();
-        }
-
-        if (nonempty($email)) {
-            $tex->new_graf();
-
-            $tex->start_xml_element("email");
-
-            $tex->process_string($email->get_value());
-
-            $tex->end_xml_element("email");
-
-            $tex->end_par();
-        }
-
-        $tex->end_xml_element("contrib-group");
-
-        $tex->endgroup();
-    }
-
-    $tex->end_par();
-
-    if (nonempty(my $issue_date = $document->get_issuedate())) {
-        $tex->start_xml_element("history");
-
-        $tex->start_xml_element("date");
-        $tex->set_xml_attribute("date-type", "issue-date");
-
-        $tex->set_this_xml_par_tag("month");
-        $tex->process_string($issue_date->get_month()->get_value());
-        $tex->end_par();
-
-        $tex->set_this_xml_par_tag("year");
-        $tex->process_string($issue_date->get_year()->get_value());
-        $tex->end_par();
-
-        $tex->end_xml_element("date");
-
-        my $iso_8601_time = iso_8601_timestamp();
-        
-        $tex->start_xml_element("date");
-        $tex->set_xml_attribute("date-type", 'xml-last-modified');
-        $tex->set_xml_attribute("iso-8601-date", $iso_8601_time);
-        
-        $tex->set_this_xml_par_tag("string-date");
-        $tex->process_string($iso_8601_time);
-        $tex->end_par();
-        
-        $tex->end_xml_element("date");
-
-        $tex->end_xml_element("history");
-    }
-
-    $tex->end_par();
-
-    if (nonempty(my $volume = $document->get_volume())) {
-        $tex->set_this_xml_par_tag("volume");
-        $tex->process_string($volume->get_value());
-    }
-
-    $tex->end_par();
-
-    if (nonempty(my $number = $document->get_number())) {
-        $tex->set_this_xml_par_tag("issue");
-        ($number = $number->get_value()) =~ s{^0+}{};
-        $tex->process_string($number);
-    }
-
-    $tex->end_par();
-
-    $tex->end_par();
-
-    my $abstract = $document->get_abstract()->get_tex();
-
-    if (nonempty(my $abstract = $document->get_abstract()->get_tex())) {
-        $tex->start_xml_element("abstract");
-
-        $tex->set_this_xml_par_tag("title");
-
-        $tex->process_string("Abstract");
-
-        $tex->end_par();
-
-        $tex->new_graf();
-
-        $tex->process_string($abstract->get_value());
-
-        $tex->end_par();
-
-        $tex->end_xml_element("abstract");
-    }
-
-    $tex->end_xml_element("article-meta");
 
     $tex->process_string(qq{\\mainmatter});
 
@@ -756,41 +380,6 @@ EOF
 ##                                                                  ##
 ######################################################################
 
-my %TYPEOF_CONTRIBUTOR = (author     => 'author',
-                          editor     => 'editor',
-                          contrib    => 'contributor',
-                          translator => 'translator',
-                          ## 
-                          ## Book reviews:
-                          ## 
-                          reviewer   => 'reviewer',
-                          revtransl  => 'translator',
-                          bktransl   => 'translator',
-                          bkcontrib  => 'contributor',
-    );
-
-sub __new_contributor( $$ ) {
-    my $document = shift;
-    my $token    = shift;
-
-    my $type = $TYPEOF_CONTRIBUTOR{ $token->get_csname() };
-
-    if (empty($type)) {
-        PTG::RunError->throw("Unknown contributor type '$token'");
-    }
-
-    #* my $contributor = PRD::Document::Contributor->new({ SUPPLY_DEFAULTS => 1,
-    #*                                                     type => $type });
-    #* 
-    #* if (defined $document) {
-    #*     $document->add($type, $contributor);
-    #* }
-    #* 
-    #* return $contributor;
-
-    return;
-}
-
 sub make_contributor_handler( ;$ ) {
     my $document = shift;
 
@@ -798,71 +387,10 @@ sub make_contributor_handler( ;$ ) {
         my $tex   = shift;
         my $token = shift;
         
-        $document ||= $tex->get_parcel('document');
-
         my $description = $tex->scan_optional_argument();
 
-        my $unparsed = normalize_tex($tex->read_undelimited_parameter());
+        my $unparsed = $tex->read_undelimited_parameter();
 
-        my $contributor = __new_contributor($document, $token);
-
-        if ($unparsed =~ s[\A \\deceased\{ (.*)? \} \z][$1]smx) {
-            $contributor->set_deceased(1);
-        }
-
-        $contributor->get_name()->set_unparsed(trim($unparsed));
-
-        if (nonempty($description)) {
-            if ($contributor->get_type() eq 'contributor') {
-                $contributor->set_description($description);
-            } else { # abbreviated name
-                # my $line = $tex->get_line_no();
-                # 
-                # $LOG->warn("Ignoring optional argument '$description' for $token on line $line.\n");
-            }
-        }
-
-        for my $tag (qw(address email curraddr urladdr)) {
-            $tex->define_csname($tag, contributor_property_handler($contributor));
-        }
-
-        return;
-    };
-}
-
-## Contributor properties: address email curraddr urladdr 
-
-##* TODO: Implement optional arguments and inherited \address's (see
-##* amsclass.dtx).
-
-sub contributor_property_handler( $ ) {
-    my $contributor = shift;
-
-    return sub {
-        my $tex   = shift;
-        my $token = shift;
-        
-        my $prop_name = $token->get_csname();
-
-        $tex->scan_optional_argument(); ##* IMPLEMENT THIS
-
-        my $value = normalize_tex($tex->read_undelimited_parameter());
-
-        if ($prop_name eq 'address') {
-            $contributor->add_affiliation($value);
-        } elsif ($prop_name eq 'curraddr') {
-            $contributor->add_affiliation($value, { current => "yes" });
-        } elsif ($prop_name eq 'email') {
-            $contributor->add_email($value);
-        } elsif ($prop_name eq 'urladdr') {
-            $contributor->add_url($value);
-        } else {
-            my $line = $tex->get_line_no();
-
-            $tex->print_err("Ignoring unknown contributor property '$prop_name' on line $line");
-            $tex->error();
-        }
-        
         return;
     };
 }
@@ -879,9 +407,7 @@ sub do_abstract( $$ ) {
 
     my $abstract = $tex->scan_environment_body("abstract");
 
-    if (defined(my $document = $tex->get_parcel('document'))) {
-        $document->set_abstract($abstract->to_string());
-    }
+    ## DO SOMETHING WITH THIS
 
     return;
 }

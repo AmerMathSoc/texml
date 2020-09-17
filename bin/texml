@@ -3,18 +3,16 @@
 use strict;
 use warnings;
 
+use version; our $VERSION = qv '1.1.0';
+
 binmode STDERR, ":utf8";
 binmode STDOUT, ":utf8";
 
 use lib;
 
-#use lib qw(/ams/texmf/lib/perl);
-
 use FindBin;
 
 BEGIN { lib->import("$FindBin::RealBin/../lib/perl") }
-
-use version; our $VERSION = qv '1.0.1';
 
 ######################################################################
 ##                                                                  ##
@@ -36,9 +34,33 @@ use TeX::Interpreter::LaTeX;
 ##                                                                  ##
 ######################################################################
 
-(my $PROGRAM_NAME = $0) =~ s{^.*/}{};
+my $PROGRAM_NAME;
+
+BEGIN { ($PROGRAM_NAME = $0) =~ s{^.*/}{} };
 
 my $DEFAULT_XML_INC_PATH = qq{$FindBin::RealBin/../lib/xml/docs};
+
+######################################################################
+##                                                                  ##
+##                          CONFIGURATION                           ##
+##                                                                  ##
+######################################################################
+
+use TeXML::CFG;
+
+my $CFG;
+
+BEGIN {
+    $CFG = TeXML::CFG->get_cfg();
+
+    my $extra_lib = $CFG->val($PROGRAM_NAME, 'extra_lib');
+
+    if (defined $extra_lib && $extra_lib =~ /\S/) {
+        my @libs = split /:/, $extra_lib;
+
+        lib->import($_) for @libs;
+    }
+};
 
 ######################################################################
 ##                                                                  ##
@@ -51,7 +73,7 @@ our %OPT = (debug        => 0,
             pretty_print => 1,
             utf8         => 1,
             do_svg       => 1,
-            use_xetex    => 1,
+            use_xetex    => $CFG->val($PROGRAM_NAME, 'use_xetex', 1),
             job_name     => undef,
     );
 
@@ -105,7 +127,7 @@ sub process_file( $ ) {
     $ENV{TEXINPUTS} = ".//:${DEFAULT_XML_INC_PATH}:";
 
     # my $dirname = dirname($tex_file);
-    # 
+    #
     # if ($dirname ne '.') {
     #     $ENV{TEXINPUTS} = ".:$dirname//:";
     # }
@@ -154,6 +176,8 @@ GetOptions("help"   => \&usage,
            "utf8!"  => \$OPT{utf8},
     );
 
+die "*** use_xetex = $OPT{use_xetex}\n";
+
 usage() unless @ARGV;
 
 if ($OPT{debug}) {
@@ -168,6 +192,10 @@ while (my $tex_file = shift @ARGV) {
     process_file($tex_file);
 
     print "\n" if @ARGV;
+}
+
+while (my ($k, $v) = each %INC) {
+    print "$k => $v\n";
 }
 
 __END__
