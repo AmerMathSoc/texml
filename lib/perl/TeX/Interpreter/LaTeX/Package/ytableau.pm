@@ -31,7 +31,7 @@ __DATA__
 \DeclareSVGEnvironment{ytableau}
 
 \def\ydiagram#1{%
-    \TeXMLCreateSVG*{\ydiagram{#1}}%
+    \TeXMLCreateSVG{\ydiagram{#1}}%
 }
 
 \TeXMLendPackage

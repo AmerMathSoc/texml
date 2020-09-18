@@ -3,6 +3,8 @@ package TeX::Interpreter::LaTeX::Package::tikz;
 use strict;
 use warnings;
 
+use version; our $VERSION = qv '0.0.0';
+
 sub install ( $ ) {
     my $class = shift;
 
@@ -58,7 +60,7 @@ __DATA__
 \DeclareSVGEnvironment{tikzcd}
 
 \newcommand{\rotatebox}[3][]{%
-    \TeXMLCreateSVG*{\rotatebox[#1]{#2}{#3}}%
+    \TeXMLCreateSVG{\rotatebox[#1]{#2}{#3}}%
 }
 
 \TeXMLendPackage

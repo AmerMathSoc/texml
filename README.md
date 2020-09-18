@@ -44,9 +44,9 @@ TeX::Interpreter::LaTeX::Package::AMSMeta
 TeX::Interpreter::LaTeX::Class::amscommon
 
 All of the metada-related code has been ripped out of these, so
-basically there will be no <front> element.  Eventually this should be
-reimplemented in a way that doesn't presume the existence of the whole
-AMS environment.
+basically there will be no `<front>` element.  Eventually this should
+be reimplemented in a way that doesn't presume the existence of the
+whole AMS environment.
 
 ## Reimplemented
 

@@ -85,7 +85,7 @@ __DATA__
             \TeXML@extract@caption
             \TeXML@extract@caption % Delete an empty \caption/\label
             \toks@\expandafter{\texml@body}%
-            \edef\next@{\noexpand\TeXMLCreateSVG*{\the\toks@}}%
+            \edef\next@{\noexpand\TeXMLCreateSVG{\the\toks@}}%
             \next@
             \if@tempswa
                 \ifx\algocf@algocfref\@empty\else
