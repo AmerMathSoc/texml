@@ -639,7 +639,6 @@ __DATA__
                 \@preamble \cr
         }%
         \let\hline\HTMLtable@hline
-        \let\index\@gobble
         \let\\\@tabularcr
         \let\tabularnewline\\%
         \let\color\set@cell@fg@color
