@@ -613,7 +613,6 @@ __DATA__
     \xmltabletag{}%
     \xmlpartag{}%
     \let\@footnotetext\tab@footnotetext
-    \let\hline\HTMLtable@hline
     \startXMLelement{table}%
     \addTBLRid
     \edef\@thistable{table\string##\@currentTBLRid}%
@@ -639,6 +638,8 @@ __DATA__
             \noexpand\ialign\bgroup
                 \@preamble \cr
         }%
+        \let\hline\HTMLtable@hline
+        \let\index\@gobble
         \let\\\@tabularcr
         \let\tabularnewline\\%
         \let\color\set@cell@fg@color
