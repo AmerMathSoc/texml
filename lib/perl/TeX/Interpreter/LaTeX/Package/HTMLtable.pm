@@ -613,6 +613,7 @@ __DATA__
     \xmltabletag{}%
     \xmlpartag{}%
     \let\@footnotetext\tab@footnotetext
+    \let\hline\HTMLtable@hline
     \startXMLelement{table}%
     \addTBLRid
     \edef\@thistable{table\string##\@currentTBLRid}%
@@ -690,7 +691,7 @@ __DATA__
     \ignorespaces
 }
 
-\def\hline{%
+\def\HTMLtable@hline{%
     \noalign{\ifnum0=`}\fi % I'm frankly astonished that this works.
         \futurelet\@let@token\do@hline
 }
