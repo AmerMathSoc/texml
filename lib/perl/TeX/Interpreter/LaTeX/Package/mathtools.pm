@@ -41,6 +41,7 @@ __DATA__
 \DefineAMSMathSimpleEnvironment{psmallmatrix}
 
 \DefineAMSMathSimpleEnvironment{dcases}
+\DefineAMSMathSimpleEnvironment{rcases}
 
 \let\xrightharpoonup\relax
 \newcommand{\xrightharpoonup}[2][]{%
