@@ -34,6 +34,8 @@ __DATA__
 
 \let\pgfmathsetmacro\@gobbletwo
 
+\let\pgfdeclareshape\@gobbletwo
+
 \TeXMLendPackage
 
 \endinput
