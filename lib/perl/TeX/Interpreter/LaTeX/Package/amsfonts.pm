@@ -69,6 +69,8 @@ __DATA__
 \DeclareMathJaxMacro\lozenge    % U+25CA [AMSsymbols.js]
 \DeclareMathJaxMacro\square     % U+25FB [AMSsymbols.js]
 
+\RequirePackage{latexsym}
+
 \TeXMLendPackage
 
 \endinput
