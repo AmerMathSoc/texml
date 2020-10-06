@@ -6,7 +6,7 @@ package TeX::Constants;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.7.0';
+use version; our $VERSION = qv '1.0.0';
 
 use base qw(Exporter);
 

@@ -3,7 +3,7 @@ package TeX::Interpreter::Constants;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.0.1';
+use version; our $VERSION = qv '1.0.0';
 
 use base qw(Exporter);
 

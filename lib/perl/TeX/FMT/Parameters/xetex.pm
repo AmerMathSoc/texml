@@ -5,7 +5,7 @@ package TeX::FMT::Parameters::xetex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.0.3';
+use version; our $VERSION = qv '1.0.0';
 
 use base qw(TeX::FMT::Parameters::tex);
 

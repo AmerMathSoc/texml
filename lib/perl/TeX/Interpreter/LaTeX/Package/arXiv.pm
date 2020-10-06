@@ -5,7 +5,7 @@ package TeX::Interpreter::LaTeX::Package::arXiv;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.0.0';
+use version; our $VERSION = qv '1.0.0';
 
 sub install ( $ ) {
     my $class = shift;

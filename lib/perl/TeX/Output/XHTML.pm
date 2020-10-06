@@ -3,7 +3,7 @@ package TeX::Output::XHTML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.1.0';
+use version; our $VERSION = qv '1.0.0';
 
 use UNIVERSAL;
 

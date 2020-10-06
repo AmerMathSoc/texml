@@ -3,7 +3,7 @@ package TeX::Output::XML::Fragment;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.3.1';
+use version; our $VERSION = qv '1.0.0';
 
 use base qw(TeX::Output::XML);
 

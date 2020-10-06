@@ -3,7 +3,7 @@ package TeX::Primitive::Extension::ifinXMLelement;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.0.0';
+use version; our $VERSION = qv '1.0.0';
 
 use base qw(TeX::Primitive::If);
 

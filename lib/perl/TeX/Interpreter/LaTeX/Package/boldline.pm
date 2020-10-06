@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::boldline;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.0.0';
+use version; our $VERSION = qv '1.0.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -33,7 +33,7 @@ __DATA__
 }
 
 \def\clineB#1#2{%
-    \noalign{\ifnum0=`}\fi % I'm frankly astonished that this works.
+    \noalign{\ifnum0=`}\fi % I'm still astonished that this works.
         \def\current@border@width{medium}%
         \@cline#1\@nil
 }

@@ -9,7 +9,7 @@ package TeX::Class;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.15.1';
+use version; our $VERSION = qv '1.0.0';
 
 ## This is a modified version of Class::Std, v0.011, with the
 ## following modifications:

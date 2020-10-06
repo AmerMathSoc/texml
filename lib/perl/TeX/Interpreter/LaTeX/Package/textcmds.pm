@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::textcmds;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.0.0';
+use version; our $VERSION = qv '1.0.0';
 
 use TeX::Class;
 
