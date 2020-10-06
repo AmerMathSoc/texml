@@ -1,0 +1,202 @@
+package TeX::Nodes;
+
+use strict;
+use warnings;
+
+use base qw(Exporter);
+
+our %EXPORT_TAGS = (factories => [ qw(new_character
+                                      new_null_vbox
+                                      new_rule
+                                      new_ins
+                                      new_mark
+                                      new_adjust
+                                      new_ligature
+                                      new_lig_item
+                                      new_disc
+                                      new_math
+                                      new_glue
+                                      new_kern
+                                      new_penalty
+                                      new_unset
+                                      new_whatsit
+                                      new_open
+                                      new_close
+                                      new_write_whatsit
+                                      new_special
+                                      new_language_mode
+                                   ) ] );
+
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{factories} } );
+
+our @EXPORT = ();
+
+use TeX::WEB2C qw(:node_params);
+
+use TeX::Node::AdjustNode;
+use TeX::Node::CharNode;
+use TeX::Node::DiscretionaryNode;
+use TeX::Node::GlueNode;
+use TeX::Node::InsertNode;
+use TeX::Node::KernNode;
+use TeX::Node::LigatureNode;
+use TeX::Node::MarkNode;
+use TeX::Node::MathNode;
+use TeX::Node::PenaltyNode;
+use TeX::Node::RuleNode;
+use TeX::Node::UnsetNode;
+use TeX::Node::VListNode;
+use TeX::Node::OpenNode;
+use TeX::Node::CloseNode;
+use TeX::Node::WriteNode;
+use TeX::Node::SpecialNode;
+use TeX::Node::LanguageNode;
+
+sub new_character {
+    my $font = shift;
+    my $char = shift;
+
+    return TeX::Node::CharNode->new({ font => $font, char_code => $char });
+}
+
+######################################################################
+##                                                                  ##
+##         DATA STRUCTURES FOR BOXES AND THEIR FRIENDS [10]         ##
+##                                                                  ##
+######################################################################
+
+sub new_null_vbox {
+    my $arg_hash = shift;
+
+    return TeX::Node::VListNode->new($arg_hash);
+}
+
+sub new_rule {
+    my $width  = shift;
+    my $height = shift;
+    my $depth  = shift;
+
+    return TeX::Node::RuleNode->new({ width  => $width,
+                                      height => $height,
+                                      depth  => $depth });
+}
+
+sub new_ligature {
+    my $arg_hash = shift;
+
+    return TeX::Node::LigatureNode->new($arg_hash);
+}
+
+sub new_lig_item {
+    my $char_code = shift;
+
+    return TeX::Node::LigatureNode->new({ char_code => $char_code });
+}
+
+sub new_disc {
+    my $arg_hash = shift;
+
+    return TeX::Node::DiscNode->new($arg_hash);
+}
+
+sub new_math {
+    my $subtype = shift;
+    my $width = shift;
+
+    return TeX::Node::MathNode->new({ subtype => $subtype, width => $width });
+}
+
+sub new_glue {
+    my $arg_hash = shift;
+
+    return TeX::Node::GlueNode->new($arg_hash);
+}
+
+sub new_kern {
+    my $width = shift;
+    my $subtype = shift || normal;
+
+    return TeX::Node::KernNode->new({ width => $width, subtype => $subtype });
+}
+
+sub new_penalty {
+    my $penalty = shift;
+
+    return TeX::Node::PenaltyNode->new({ penalty => $penalty });
+}
+
+######################################################################
+##                                                                  ##
+##                         EXTENSIONS [53]                          ##
+##                                                                  ##
+######################################################################
+
+sub new_whatsit {
+    my $arg_hash = shift;
+
+    return TeX::Node::WhatsitNode->new($arg_hash);
+}
+
+sub new_write_whatsit {
+    my $arg_hash = shift;
+
+    return TeX::Node::WriteNode->new($arg_hash);
+}
+
+######################################################################
+##                                                                  ##
+##                              EXTRA                               ##
+##                                                                  ##
+######################################################################
+
+sub new_ins {
+    my $arg_hash = shift;
+
+    return TeX::Node::InsertNode->new($arg_hash);
+}
+
+sub new_mark {
+    my $arg_hash = shift;
+
+    return TeX::Node::MarkNode->new($arg_hash);
+}
+
+sub new_adjust {
+    my $arg_hash = shift;
+
+    return TeX::Node::AdjustNode->new($arg_hash);
+}
+
+sub new_unset {
+    my $arg_hash = shift;
+
+    return TeX::Node::UnsetNode->new($arg_hash);
+}
+
+sub new_open {
+    my $arg_hash = shift;
+
+    return TeX::Node::OpenNode->new($arg_hash);
+}
+
+sub new_close {
+    my $arg_hash = shift;
+
+    return TeX::Node::CloseNode->new($arg_hash);
+}
+
+sub new_special {
+    my $arg_hash = shift;
+
+    return TeX::Node::SpecialNode->new($arg_hash);
+}
+
+sub new_language {
+    my $arg_hash = shift;
+
+    return TeX::Node::LanguageNode->new($arg_hash);
+}
+
+1;
+
+__END__
