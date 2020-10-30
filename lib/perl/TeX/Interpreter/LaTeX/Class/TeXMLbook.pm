@@ -112,6 +112,8 @@ __DATA__
 
 \LoadPackage{NLM}
 
+\RequirePackage{hyperref}
+
 \def\insertAMSDRMstatement{%
     \begin{NLMnote}{Publisher's Notice}
     \setXMLattribute{specific-use}{epub-opening-page}
