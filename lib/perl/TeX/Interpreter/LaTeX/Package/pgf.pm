@@ -36,6 +36,8 @@ __DATA__
 
 \let\pgfdeclareshape\@gobbletwo
 
+\let\usepgflibrary\@gobble
+
 \TeXMLendPackage
 
 \endinput
