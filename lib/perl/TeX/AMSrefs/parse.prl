@@ -1,0 +1,125 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl5/site_perl);
+
+BEGIN {
+    use FindBin;
+
+    if ($FindBin::Bin =~ m{/work/ptg/src}) {
+        lib->import('/work/ptg/src/perl/trunk');
+    }
+}
+
+use TeX::LaTeX::Parser;
+
+use TeX::AMSrefs;
+use TeX::AMSrefs::BibItem;
+use TeX::AMSrefs::Parser;
+
+## An AMSrefs object is needed to hold \bib* items so that
+## cross-references can be resolved properly.
+
+my $AMSREFS_CONTAINER = TeX::AMSrefs->new();
+
+sub do_bib($$) {
+    my $parser = shift;
+    my $csname = shift;
+
+    my $entry = parse_amsrefs_bib($parser, $csname, $AMSREFS_CONTAINER);
+
+    if ($entry->is_starred()) {
+        ## This is a \bib* entry that exists only to hold data to be
+        ## inherited by another entry.
+
+        return;
+    }
+
+    print $entry->get_canonical_tex_source(), "\n\n";
+
+    return;
+
+    ##  print "Citekey: ", $entry->get_citekey(), "\n";
+    ##  
+    ##  print "Type: ", $entry->get_type(), "\n";
+    ##  
+    ##  ## See the %ADDITIVE_FIELD and %SIMPLE_FIELD hashes in
+    ##  ## TeX::AMSrefs::BibItem for the list of supported fields.
+    ##  
+    ##  ## Repeatable fields can be retrieved either as an array ref...
+    ##  
+    ##  if (my $authors = $entry->get_authors()) {
+    ##      for my $author (@{ $authors }) {
+    ##  
+    ##          ## Note that names are always returned as strings in the
+    ##          ## form
+    ##          ##
+    ##          ##     von Last, First, Jr.
+    ##          ##
+    ##          ## rather than as PRD::Name objects.  (Maybe that should
+    ##          ## be changed.)
+    ##  
+    ##          print "Author: $author\n";
+    ##      }
+    ##  }
+    ##  
+    ##  ## ... or directly as an array.
+    ##  
+    ##  for my $editor ($entry->get_editors()) {
+    ##      print "Editor: $editor\n";
+    ##  }
+    ##  
+    ##  for my $translator ($entry->get_translators()) {
+    ##      print "Translator: $translator\n";
+    ##  }
+    ##  
+    ##  if (my $title = $entry->get_title()) {
+    ##      print "Title: ", $title, "\n";
+    ##  }
+    ##  
+    ##  if (my $journal = $entry->get_journal()) {
+    ##      print "Journal: ", $journal, "\n";
+    ##  }
+    ##  
+    ##  ## etc., etc.
+    ##  
+    ##  ## Compound fields such as 'translation' can contain either an
+    ##  ## embedded object (cf. KostrikinS1965 in nonsense.tex) or a
+    ##  ## crossref to another item (cf. KostrikinS1965a).  The get_???
+    ##  ## method for the field returns either the embedded object or the
+    ##  ## literal xref key:
+    ##  
+    ##  if (my $translation = $entry->get_translation()) {
+    ##      print "Literal translation: $translation\n";
+    ##  }
+    ##  
+    ##  ## The get_inner_item method will automatically resolve the xref
+    ##  ## if necessary:
+    ##  
+    ##  if (my $translation = $entry->get_inner_item('translation')) {
+    ##      print "Translation:\n";
+    ##      print "\tJournal: ", $translation->get_journal(), "\n";
+    ##      # etc.        
+    ##  }
+    ##  
+    ##  ## Arguably, this is backwards and get_translation should do the
+    ##  ## xref resolution.  Hmmm.
+    ##  
+    ##  print "\n";
+    ##  
+    ##  return;
+}
+
+my $p = TeX::LaTeX::Parser->new();
+
+add_amsrefs_handlers($p, $AMSREFS_CONTAINER);
+
+$p->set_handler('bib', \&do_bib);
+
+while (my $file = shift) {
+    $p->parse_file($file);
+}
+
+__END__
