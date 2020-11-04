@@ -5,7 +5,7 @@ package TeX::Interpreter::LaTeX::Class::amscommon;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 use TeX::Utils::Misc;
 
@@ -694,6 +694,7 @@ __DATA__
     \def\@captype{figure}%
     \def\jats@graphics@element{graphic}
     \startXMLelement{\jats@figure@element}%
+    \set@float@fps@attribute{#1}%
     \addXMLid
 }{%
     \endXMLelement{\jats@figure@element}%
@@ -720,6 +721,7 @@ __DATA__
     \def\@captype{table}%
     \def\jats@graphics@element{graphic}
     \startXMLelement{\jats@figure@element}%
+    \set@float@fps@attribute{#1}%
     \addXMLid
 }{%
     \endXMLelement{\jats@figure@element}%
