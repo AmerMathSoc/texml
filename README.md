@@ -29,13 +29,15 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * apt install pdf2svg
 
+* apt install liblingua-en-numbers-ordinate-perl
+
 At this point, should be able to compile tests/hello.tex, but probably
 not much more.
 
 If you install the STIX Two fonts somewhere where fontconfig can find
 them, you might also be able to compile test/graphics.tex.  (If you
-want to be able to use stix2.sty, you'll need pieces from the Ubuntu
-texlive-fonts-extra package.)
+want to be able to use stix2.sty (or stix.sty), you'll need the Ubuntu
+fonts-stix package (I think).)
 
 ## Modules that have been neutered
 
