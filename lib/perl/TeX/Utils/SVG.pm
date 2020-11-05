@@ -3,7 +3,7 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 use Cwd;
 
@@ -24,16 +24,16 @@ use TeX::Utils::Misc;
 
 use TeXML::CFG;
 
-my $CFG = TeXML::CFG->get_cfg();
+my $CFG;
 
 use XML::LibXML;
 
-my $DVI_ENGINE = $CFG->val(__PACKAGE__, 'dvi_engine', 'pdflatex -output-format dvi');
-my $PDF_ENGINE = $CFG->val(__PACKAGE__, 'pdf_engine', 'xelatex');
-my $DVIPS   = $CFG->val(__PACKAGE__, 'dvips',         'dvips');
-my $PDFCROP = $CFG->val(__PACKAGE__, 'pdfcrop',       'pdfcrop');
-my $PDF2SVG = $CFG->val(__PACKAGE__, 'pdf2svg',       'pdf2svg');
-my $PS2PDF  = $CFG->val(__PACKAGE__, 'ps2pdf',        'ps2pdf');
+sub DVI_ENGINE() { $CFG->val(__PACKAGE__, 'dvi_engine', 'pdflatex -output-format dvi') }
+sub PDF_ENGINE() { $CFG->val(__PACKAGE__, 'pdf_engine', 'xelatex') }
+sub DVIPS  () { $CFG->val(__PACKAGE__, 'dvips',         'dvips') }
+sub PDFCROP() { $CFG->val(__PACKAGE__, 'pdfcrop',       'pdfcrop') }
+sub PDF2SVG() { $CFG->val(__PACKAGE__, 'pdf2svg',       'pdf2svg') }
+sub PS2PDF () { $CFG->val(__PACKAGE__, 'ps2pdf',        'ps2pdf') }
 
 ######################################################################
 ##                                                                  ##
@@ -99,12 +99,19 @@ sub extract_preamble :PRIVATE {
     while (<$fh>) {
         last if m{\A \s* \\begin\{document\}}smx;
 
+        next if m{\A \s* \\controldates\b}smx;
+
         $preamble .= $_;
 
         next if m{\A\s*%};
 
         m{\\documentclass \s* (?: \[.*?\])? \s* \{(.*?)\}}smx and do {
             $self->set_docclass($1);
+
+            ## Some commands not in the public version of the AMS classes.
+            $preamble .= qq{\\providecommand{\\DOI}[1]{}\n};
+            $preamble .= qq{\\providecommand{\\datepreposted}[1]{}\n};
+            $preamble .= qq{\\providecommand{\\datereceived}[1]{}\n};
         };
     }
 
@@ -185,25 +192,25 @@ sub generate_svg {
     my $base = basename($tex_file, '.tex');
 
     if ($use_xetex) {
-        $self->system($PDF_ENGINE, '-interaction' => 'batchmode', $tex_file);
+        $self->system(PDF_ENGINE, '-interaction' => 'batchmode', $tex_file);
     } else {
-        $self->system($DVI_ENGINE, '-interaction' => 'batchmode', $tex_file);
+        $self->system(DVI_ENGINE, '-interaction' => 'batchmode', $tex_file);
 
-        $self->system($DVIPS, "$base.dvi", '-o');
+        $self->system(DVIPS, "$base.dvi", '-o');
 
-        $self->system($PS2PDF, "$base.ps");
+        $self->system(PS2PDF, "$base.ps");
     }
 
     my $svg_file;
 
-    $self->system($PDFCROP, "$base.pdf");
+    $self->system(PDFCROP, "$base.pdf");
 
     my $cropped_pdf = "$base-crop.pdf";
 
     $svg_file = "$base.svg";
 
     if (-e $cropped_pdf) {
-        $self->system($PDF2SVG, $cropped_pdf, $svg_file);
+        $self->system(PDF2SVG, $cropped_pdf, $svg_file);
     }
 
     $self->add_title($svg_file, $svg_title, $id);
@@ -226,6 +233,8 @@ sub convert_tex {
     my $tex = shift;
 
     my $starred = shift;
+
+    $CFG = TeXML::CFG->get_cfg();
 
     ## The use_xetex flag needs to be a lot more sophisticated.
 
@@ -262,7 +271,9 @@ sub convert_tex {
     # symbol fonts that we might need later for the stix2 package.
 
     if (! $use_xetex) {
-        print { $fh } qq{\\RequirePackage{stix2}\n\n};
+        my $pkg = $CFG->val(__PACKAGE__, 'stix_dvi_pkg', 'stix2');
+
+        print { $fh } qq{\\RequirePackage{$pkg}\n\n};
     }
 
     if (nonempty(my $docclass = $self->get_docclass())) {
@@ -336,8 +347,18 @@ sub convert_tex {
 
     local $ENV{TEXMFCNF} = undef;
 
-    my @texinputs = (".", $self->get_texinputs(), "");
+    my @texinputs = ($self->get_texinputs(), "");
 
+    if (my $pre = $CFG->val(__PACKAGE__, 'pre_texinputs')) {
+        unshift @texinputs, $pre;
+    }
+
+    if (my $post = $CFG->val(__PACKAGE__, 'post_texinputs')) {
+        push @texinputs, $post;
+    }
+    
+    unshift @texinputs, ".";
+    
     local $ENV{TEXINPUTS} = join(":", @texinputs);
 
     my $svg_file = eval {
