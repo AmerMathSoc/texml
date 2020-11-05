@@ -5,7 +5,7 @@ package TeX::Interpreter::LaTeX::Class::amscommon;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
+use version; our $VERSION = qv '1.2.0';
 
 use TeX::Utils::Misc;
 
@@ -440,6 +440,11 @@ __DATA__
 \setcounter{tocdepth}{1}
 
 \def\nonbreakingspace{\unskip\nobreakspace\ignorespaces}
+
+\let\datepreposted\@gobble
+\let\daterevised\@gobble
+\let\datereceived\@gobble
+\let\DOI\@gobble
 
 %% Begin extract from new version of amsbook
 
