@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::amsrefs;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 use TeX::AMSrefs::Parser;
 
@@ -448,6 +448,25 @@ __DATA__
 }
 
 \catcode`\'=12
+
+\def\parse@arXiv#1 [#2]#3\@nnil{%
+    \def\arXiv@number{#1}%
+    \def\arXiv@category{#2}%
+    \def\arXiv@url{https://arxiv.org/abs/#1}%
+}
+
+\providecommand{\arXiv}[1]{%
+    \begingroup
+        \parse@arXiv#1 []\@nil\@nnil
+        \href{\arXiv@url}{%
+            \texttt{arXiv:\arXiv@number
+                \ifx\arXiv@category\@empty\else
+                    \space[\arXiv@category]%
+                \fi
+            }%
+        }%
+    \endgroup
+}
 
 \endinput
 
