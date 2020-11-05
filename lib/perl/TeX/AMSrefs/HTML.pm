@@ -16,7 +16,7 @@ my %suppress_hyperrefs_of :ATTR(:default<0> :name<suppress_hyperrefs>);
 my %suppress_doi_of       :ATTR(:default<0> :name<suppress_doi>);
 my %suppress_reviews_of   :ATTR(:default<0> :name<suppress_reviews>);
 
-use PRD::DOI;
+use TeX::Utils::DOI;
 
 use PTG::Unicode::Translators qw(tex_math_to_unicode
                                  tex_to_unicode_no_math
@@ -25,7 +25,7 @@ use PTG::Unicode::Translators qw(tex_math_to_unicode
                                  xml_entities_to_unicode
     );
 
-use PTG::Utils::String;
+use TeX::Utils::Misc;
 
 use TeX::WEB2C qw(:selector_codes);
 

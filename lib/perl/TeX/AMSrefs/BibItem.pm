@@ -5,14 +5,17 @@ use warnings;
 
 use Carp;
 
-use PTG::Class;
+use TeX::Class;
 
 use TeX::AMSrefs::BibItem::Entry;
 
-use PTG::Errors;
-use PTG::Utils;
+use TeX::Utils::Misc;
 
 use Text::Wrap;
+
+sub array_to_hash(@) {
+    return map { $_ => 1 } @_;
+}
 
 my %ADDITIVE_FIELD = array_to_hash qw(author editor translator
                                       contribution isbn issn review
@@ -152,7 +155,7 @@ sub retrieve_xreffed_bibitem {
         my $container = $self->get_container();
 
         if (! defined $container) {
-            error("No AMSrefs container to resolve xref '$xref_key' ",
+            warn("No AMSrefs container to resolve xref '$xref_key' ",
                   "in ", $self->get_citekey(), "\n");
 
             return $xref_key;
@@ -163,7 +166,7 @@ sub retrieve_xreffed_bibitem {
         if (defined $xref) {
             return $xref;
         } else {
-            error "Xref '$xref_key' undefined\n";
+            warn "Xref '$xref_key' undefined\n";
         }
     }
 }
@@ -202,7 +205,7 @@ sub resolve_xrefs {
     return unless nonempty $xref_key;
 
     if (! defined $self->get_container()) {
-        error("No AMSrefs container to resolve xref '$xref_key' ",
+        warn("No AMSrefs container to resolve xref '$xref_key' ",
               "in ", $self->get_citekey(), "\n");
     }
 
@@ -223,7 +226,7 @@ sub resolve_xrefs {
                     push @{ $entries->{$key} }, $value;
                 }
             } else {
-                error "Unknown key in xref: '$key'\n";
+                warn "Unknown key in xref: '$key'\n";
             }
         }
     }
@@ -250,11 +253,11 @@ sub get_inner_item {
             if (defined $inner_item) {
                 return $inner_item;
             } else {
-                error "Xref '$field' undefined\n";
+                warn "Xref '$field' undefined\n";
                 return;
             }
         } else {
-            error("No AMSrefs container to resolve xref '$field'",
+            warn("No AMSrefs container to resolve xref '$field'",
                   " in ", $self->get_citekey(), "\n");
         }
     }
@@ -310,10 +313,10 @@ sub add_entry {
                 } else {
                     my $cite_key = $self->get_citekey();
 
-                    error "Abbreviation '$value' undefined in $new_key in $cite_key\n";
+                    warn "Abbreviation '$value' undefined in $new_key in $cite_key\n";
                 }
             } else {
-                error("No AMSrefs container to resolve abbreviation '$value'",
+                warn("No AMSrefs container to resolve abbreviation '$value'",
                       " in ", $self->get_citekey(), "\n");
             }
         }
@@ -341,7 +344,7 @@ sub add_entry {
     } elsif ($ADDITIVE_FIELD{$new_key}) {
         push @{ $entries->{$new_key} }, $entry;
     } else {
-        error "Unknown key: '$key'\n";
+        warn "Unknown key: '$key'\n";
     }
 
     return $entry;

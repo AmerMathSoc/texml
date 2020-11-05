@@ -11,10 +11,9 @@ use Lingua::EN::Numbers::Ordinate;
 
 use TeX::AMSrefs::BibItem;
 
-use PRD::DOI;
+use TeX::Utils::DOI;
 
-use PTG::Errors;
-use PTG::Utils;
+use TeX::Utils::Misc;
 
 ######################################################################
 ##                                                                  ##
@@ -1095,7 +1094,7 @@ sub print_partials {
 
                 push @items, $clone;
             } else {
-                error "Xref '$value' undefined\n";
+                warn "Xref '$value' undefined\n";
             }
         }
     }

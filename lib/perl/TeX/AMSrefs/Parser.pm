@@ -13,18 +13,20 @@ our @EXPORT_OK = @{ $EXPORT_TAGS{all} };
 
 our @EXPORT =  @{ $EXPORT_TAGS{all} };
 
-use PTG::Errors;
-use PTG::Utils;
-
-use PTG::L2H::Utils;
+use TeX::Utils::Misc;
 
 use TeX::Token qw(:factories);
 use TeX::WEB2C qw(:catcodes);
 
 use TeX::Parser::LaTeX;
 
-my %COMPOUND_FIELD = array_to_hash qw(book conference contribution
-                                      partial reprint translation);
+my %COMPOUND_FIELD = (book => 1,
+                      conference => 1,
+                      contribution => 1,
+                      partial => 1,
+                      reprint => 1,
+                      translation => 1,
+    );
 
 ######################################################################
 ##                                                                  ##
@@ -43,6 +45,10 @@ my $EQUAL = make_character_token("=", CATCODE_OTHER);
 ##                        INTERNAL UTILITIES                        ##
 ##                                                                  ##
 ######################################################################
+
+sub cant( $ ) {
+    die "Can't find $_[0]\n";
+}
 
 sub __skip_comma( $ ) {
     my $parser = shift;

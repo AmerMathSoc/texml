@@ -3,9 +3,9 @@ package TeX::AMSrefs::BibItem::Entry;
 use strict;
 use warnings;
 
-use PTG::Class;
+use TeX::Class;
 
-use PTG::Utils;
+use TeX::Utils::Misc;
 
 use overload (
     q{""}   => 'to_string',
