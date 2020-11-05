@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::AMSBlackList;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.0.1';
 
 sub install ( $ ) {
     my $class = shift;
@@ -29,6 +29,8 @@ __DATA__
 %\AMSBlackListPackage{mathabx}
 
 \AMSBlackListPackage{amstix2}
+
+\AMSBlackListPackage{iftexml}
 
 \AMSBlackListPackage{etoolbox}
 \AMSBlackListPackage{footmisc}
