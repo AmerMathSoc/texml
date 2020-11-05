@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.1';
+use version; our $VERSION = qv '1.2.0';
 
 binmode STDERR, ":utf8";
 binmode STDOUT, ":utf8";
@@ -28,6 +28,8 @@ use Getopt::Long qw(:config no_ignore_case);
 
 use TeX::Interpreter::LaTeX;
 
+use TeX::Utils;
+
 ######################################################################
 ##                                                                  ##
 ##                            CONSTANTS                             ##
@@ -40,6 +42,10 @@ BEGIN { ($PROGRAM_NAME = $0) =~ s{^.*/}{} };
 
 my $DEFAULT_XML_INC_PATH = qq{$FindBin::RealBin/../lib/xml/docs};
 
+# kpsewhich interprets an empty path element as <insert default paths here>
+
+use constant DEFAULT_TEXINPUTS => '';
+
 ######################################################################
 ##                                                                  ##
 ##                          CONFIGURATION                           ##
@@ -49,18 +55,6 @@ my $DEFAULT_XML_INC_PATH = qq{$FindBin::RealBin/../lib/xml/docs};
 use TeXML::CFG;
 
 my $CFG;
-
-BEGIN {
-    $CFG = TeXML::CFG->get_cfg();
-
-    my $extra_lib = $CFG->val($PROGRAM_NAME, 'extra_lib');
-
-    if (defined $extra_lib && $extra_lib =~ /\S/) {
-        my @libs = split /:/, $extra_lib;
-
-        lib->import($_) for @libs;
-    }
-};
 
 ######################################################################
 ##                                                                  ##
@@ -73,8 +67,10 @@ our %OPT = (debug        => 0,
             pretty_print => 1,
             utf8         => 1,
             do_svg       => 1,
-            use_xetex    => $CFG->val($PROGRAM_NAME, 'use_xetex', 1),
+            use_xetex    => undef,
             job_name     => undef,
+            cfg_file     => undef,
+            list_cfg     => undef,
     );
 
 ######################################################################
@@ -95,6 +91,28 @@ Options:
 EOF
 
     print STDERR $usage;
+
+    exit 0;
+}
+
+sub init_config() {
+    return if defined $CFG;
+
+    $CFG = TeXML::CFG->get_cfg( { cfg_file => $OPT{cfg_file} } );
+
+    return;
+}
+
+sub list_cfg() {
+    if (! defined $CFG) {
+        print STDERR "No config file loaded\n";
+    }
+
+    my $cfg_file = $CFG->GetFileName();
+
+    print STDERR "Contents of '$cfg_file':\n\n";
+
+    $CFG->OutputConfigToFileHandle(*STDOUT, 0);
 
     exit 0;
 }
@@ -124,7 +142,19 @@ sub process_file( $ ) {
         $use_xetex = 1;
     }
 
-    $ENV{TEXINPUTS} = ".//:${DEFAULT_XML_INC_PATH}:";
+    my @texinputs = ($DEFAULT_XML_INC_PATH, DEFAULT_TEXINPUTS);
+
+    if (my $pre = $CFG->val($PROGRAM_NAME, 'pre_texinputs')) {
+        unshift @texinputs, $pre;
+    }
+
+    if (my $post = $CFG->val($PROGRAM_NAME, 'post_texinputs')) {
+        push @texinputs, $post;
+    }
+
+    unshift @texinputs, ".//";
+
+    $ENV{TEXINPUTS} = join ":", @texinputs;
 
     # my $dirname = dirname($tex_file);
     #
@@ -166,17 +196,37 @@ sub process_file( $ ) {
 
 print "This is $PROGRAM_NAME version $VERSION.\n\n";
 
-GetOptions("help"   => \&usage,
+GetOptions("help"      => \&usage,
            "jobname:s" => \$OPT{job_name},
-           "profile!" => \$OPT{profiling},
-           "debug!" => \$OPT{debug},
-           "svg!"   => \$OPT{do_svg},
-           "xetex!" => \$OPT{use_xetex},
-           "pp!"    => \$OPT{pretty_print},
-           "utf8!"  => \$OPT{utf8},
+           "profile!"  => \$OPT{profiling},
+           "debug!"    => \$OPT{debug},
+           "svg!"      => \$OPT{do_svg},
+           "xetex!"    => \$OPT{use_xetex},
+           "pp!"       => \$OPT{pretty_print},
+           "utf8!"     => \$OPT{utf8},
+           "list_cfg!" => \$OPT{list_cfg},
+           "cfg=s"     => \$OPT{cfg_file},
     );
 
+init_config();
+
+if ($OPT{list_cfg}) {
+    list_cfg();
+}
+
 usage() unless @ARGV;
+
+my $extra_lib = $CFG->val($PROGRAM_NAME, 'extra_lib');
+
+if (defined $extra_lib && $extra_lib =~ /\S/) {
+    my @libs = split /:/, $extra_lib;
+
+    lib->import($_) for @libs;
+}
+
+if (! defined $OPT{use_xetex}) {
+    $OPT{use_xetx} = $CFG->val($PROGRAM_NAME, 'use_xetex', 1);
+}
 
 if ($OPT{debug}) {
     $ENV{TMPDIR} = getcwd();
