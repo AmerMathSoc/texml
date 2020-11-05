@@ -3,7 +3,7 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
+use version; our $VERSION = qv '1.2.0';
 
 use Cwd;
 
@@ -279,6 +279,13 @@ sub convert_tex {
     if (nonempty(my $docclass = $self->get_docclass())) {
         print { $fh } qq{\\PassOptionsToClass{noamsfonts}{$docclass}\n\n};
     }
+
+    ## If images are pushed too far to the right on extra-wide pages,
+    ## it seems to confuse pdfcrop.  This has especially been a
+    ## problem with tikz images inside equations (cf. mcom3338).  This
+    ## helps.
+
+    print { $fh } qq{\\PassOptionsToPackage{fleqn}{amsmath}\n\n};
 
     my $preamble = $self->get_preamble();
 
