@@ -17,7 +17,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.0.1';
 
 use base qw(Exporter);
 
@@ -151,8 +151,6 @@ sub __DEBUG {
 ##                                                                  ##
 ######################################################################
 
-my $CFG = TeXML::CFG->get_cfg();
-
 use constant LEFT_BRACE_TOKEN => make_character_token('{', CATCODE_BEGIN_GROUP);
 use constant RIGHT_BRACE_TOKEN => make_character_token('}', CATCODE_END_GROUP);
 use constant MATH_SHIFT_TOKEN => make_character_token('\$', CATCODE_MATH_SHIFT);
@@ -238,6 +236,8 @@ sub START {
     $tex->init_prim();
 
     $tex->set_encoding("T1");
+
+    my $CFG = TeXML::CFG->get_cfg();
 
     if (nonempty(my $progname = $CFG->val(__PACKAGE__, 'engine'))) {
         kpse_reset_program_name($progname);
