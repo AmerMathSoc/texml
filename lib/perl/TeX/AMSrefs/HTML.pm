@@ -3,7 +3,7 @@ package TeX::AMSrefs::HTML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.11.2';
+use version; our $VERSION = qv '2.0.0';
 
 use UNIVERSAL;
 

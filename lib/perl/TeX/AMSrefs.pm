@@ -3,7 +3,7 @@ package TeX::AMSrefs;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.8.4';
+use version; our $VERSION = qv '2.0.0';
 
 use Class::Std;
 

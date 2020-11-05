@@ -3,7 +3,7 @@ package TeX::AMSrefs::Parser;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.3';
+use version; our $VERSION = qv '2.0.0';
 
 use base qw(Exporter);
 
