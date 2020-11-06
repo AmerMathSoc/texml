@@ -322,17 +322,14 @@ __DATA__
 \DeclareMathJaxMacro\atopwithdelims
 \DeclareMathJaxMacro\abovewithdelims
 
-% \DeclareMathJaxMacro\frac
-% \DeclareMathJaxMacro\dfrac
-% \DeclareMathJaxMacro\tfrac
+\DeclareMathPassThrough{frac}[2]
+\DeclareMathPassThrough{dfrac}[2]
+\DeclareMathPassThrough{tfrac}[2]
 
-\def\frac#1#2{\string\frac{#1}{#2}}
-\def\dfrac#1#2{\string\dfrac{#1}{#2}}
-\def\tfrac#1#2{\string\tfrac{#1}{#2}}
+\DeclareMathPassThrough{binom}[2]
+\DeclareMathPassThrough{dbinom}[2]
+\DeclareMathPassThrough{tbinom}[2]
 
-\DeclareMathJaxMacro\binom
-\DeclareMathJaxMacro\dbinom
-\DeclareMathJaxMacro\tbinom
 \DeclareMathJaxMacro\genfrac
 
 \DeclareMathJaxMacro\leftroot
@@ -434,13 +431,9 @@ __DATA__
 \DeclareMathJaxMacro\mod
 \DeclareMathJaxMacro\cfrac
 
-% \DeclareMathJaxMacro\overset
-% \DeclareMathJaxMacro\underset
-% \DeclareMathJaxMacro\sideset
-
-\def\overset#1#2{\string\overset{#1}{#2}}
-\def\underset#1#2{\string\underset{#1}{#2}}
-\def\sideset#1#2#3{\string\sideset{#1}{#2}{#3}}
+\DeclareMathPassThrough{overset}[2]
+\DeclareMathPassThrough{underset}[2]
+\DeclareMathPassThrough{sideset}[3]
 
 %\DeclareMathJaxMacro\substack
 
