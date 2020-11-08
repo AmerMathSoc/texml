@@ -3,23 +3,15 @@ package TeX::Interpreter::LaTeX::Package::amsrefs;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
-
-use TeX::AMSrefs::Parser;
-
-use TeX::Parser::LaTeX;
+use version; our $VERSION = qv '1.2.0';
 
 use TeX::Utils::Misc qw(nonempty trim);
 
-use TeX::AMSrefs;
-
 use TeX::Constants qw(EXPANDED);
 
-use TeX::Command::Executable::Assignment qw(:modifiers);
+use TeX::Command::Executable::Assignment qw(MODIFIER_GLOBAL);
 
 use TeX::WEB2C qw(:catcodes);
-
-use TeX::Node::Extension::UnicodeStringNode qw(new_unicode_string);
 
 sub install ( $ ) {
     my $class = shift;
