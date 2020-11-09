@@ -11,11 +11,9 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
 
 our @EXPORT = @EXPORT_OK;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 use TeX::Utils;
-
-use URI::Escape;
 
 ######################################################################
 ##                                                                  ##
@@ -25,10 +23,8 @@ use URI::Escape;
 
 my $DOI_URL_PREFIX = qq{https://doi.org};
 
-sub doi_to_url( $;$ ) {
+sub doi_to_url( $ ) {
     my $doi = shift;
-
-    my $escape = shift;
 
     ## Translate old-style DOI links.
 
@@ -36,8 +32,13 @@ sub doi_to_url( $;$ ) {
 
     return $doi if $doi =~ m{\A $DOI_URL_PREFIX}smx;
 
-    if ($escape) {
-        $doi = uri_escape($doi);
+    ## Don't try to encode anything that already has a % in it,
+    ## because that probably means it has already been URL-encoded.
+
+    ## This is kind of like URI::Escape::escape_uri, but it doesn't replace /
+
+    if ($doi !~ m{%}) {
+        $doi =~ s{([^A-Za-z0-9/\-\._~])}{ sprintf("%%%02X", ord($1)) }eg;
     }
 
     return qq{$DOI_URL_PREFIX/$doi};

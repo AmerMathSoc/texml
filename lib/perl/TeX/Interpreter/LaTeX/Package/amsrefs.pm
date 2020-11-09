@@ -420,7 +420,7 @@ __DATA__
 }
 
 \renewcommand{\PrintDOI}[1]{%
-    DOI \href{https://doi.org/#1}{#1}%
+    DOI \href{\TeXML@DOItoURI{#1}}{#1}%
 }
 
 \catcode`\'=11

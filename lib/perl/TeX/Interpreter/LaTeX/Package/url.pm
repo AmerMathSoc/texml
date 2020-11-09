@@ -3,6 +3,12 @@ package TeX::Interpreter::LaTeX::Package::url;
 use strict;
 use warnings;
 
+use TeX::Constants qw(EXPANDED);
+
+use TeX::WEB2C qw(:catcodes);
+
+use TeX::Utils::DOI qw(doi_to_url);
+
 use TeX::Token qw(make_character_token);
 
 use TeX::WEB2C qw(:catcodes);
@@ -28,7 +34,34 @@ sub install ( $ ) {
 
     $tex->define_pseudo_macro('Url@FormatString' => \&do_url_formatstring);
 
+    $tex->define_pseudo_macro('TeXML@DOItoURI' => \&do_texml_doi_to_uri);
+
     return;
+}
+
+sub do_texml_doi_to_uri {
+    my $self = shift;
+
+    my $tex   = shift;
+    my $token = shift;
+
+    $tex->begingroup();
+
+    for my $char (split '', '\\$&%^_~') {
+        $tex->set_catcode(ord($char), CATCODE_OTHER);
+    }
+
+    $tex->set_catcode(ord('$'), CATCODE_OTHER);
+
+    my $doi = $tex->read_undelimited_parameter(EXPANDED);
+
+    my $uri = doi_to_url($doi);
+
+    my $tokens = $tex->tokenize($uri);
+
+    $tex->endgroup();
+
+    return $tokens;
 }
 
 sub do_url_formatstring {
