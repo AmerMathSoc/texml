@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::cancel;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -26,11 +26,10 @@ __DATA__
 
 \TeXMLprovidesPackage{cancel}
 
-% \newcommand{\cancel}[1]{%
-%     \TeXMLCreateSVG{\leavevmode\cancel{#1}}
-% }
-
-\DeclareMathOnlyMacro\cancel
+\DeclareMathPassThrough{cancel}[1]
+\DeclareMathPassThrough{bcancel}[1]
+\DeclareMathPassThrough{xancel}[1]
+\DeclareMathPassThrough{cancelto}[2]
 
 \TeXMLendPackage
 
