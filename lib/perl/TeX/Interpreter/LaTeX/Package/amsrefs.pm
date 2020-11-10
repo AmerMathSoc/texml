@@ -419,8 +419,10 @@ __DATA__
     \expandafter\@gobblethree\string#1%
 }
 
+\providecommand{\DOIURLPrefix}{https://doi.org/}
+
 \renewcommand{\PrintDOI}[1]{%
-    DOI \href{\TeXML@DOItoURI{#1}}{#1}%
+    DOI \href{\DOIURLPrefix#1}{#1}%
 }
 
 \catcode`\'=11

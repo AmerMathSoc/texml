@@ -69,9 +69,8 @@ __DATA__
 
 \newcommand{\href}[3][]{%
     \begingroup
-        \protected@edef\@tempa{#2}%
-        \TeXML@NormalizeURL\@tempa
-        \setbox\@tempboxa\hbox{\@tempa}%
+        \setbox\@tempboxa\hbox{#2}%
+        \TeXML@NormalizeURL\@tempboxa
         \leavevmode
         \startXMLelement{ext-link}%
         \setXMLattribute{xlink:href}{\boxtostring\@tempboxa}%

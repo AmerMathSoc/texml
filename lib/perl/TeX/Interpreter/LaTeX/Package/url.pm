@@ -5,9 +5,12 @@ use warnings;
 
 use TeX::Constants qw(EXPANDED);
 
+use TeX::Node::Extension::UnicodeStringNode qw(:factories);
+
 use TeX::WEB2C qw(:catcodes);
 
 use TeX::Utils::DOI qw(doi_to_url);
+use TeX::Utils::Misc qw(nonempty);
 
 use TeX::Token qw(make_character_token);
 
@@ -34,34 +37,7 @@ sub install ( $ ) {
 
     $tex->define_pseudo_macro('Url@FormatString' => \&do_url_formatstring);
 
-    $tex->define_pseudo_macro('TeXML@DOItoURI' => \&do_texml_doi_to_uri);
-
     return;
-}
-
-sub do_texml_doi_to_uri {
-    my $self = shift;
-
-    my $tex   = shift;
-    my $token = shift;
-
-    $tex->begingroup();
-
-    for my $char (split '', '\\$&%^_~') {
-        $tex->set_catcode(ord($char), CATCODE_OTHER);
-    }
-
-    $tex->set_catcode(ord('$'), CATCODE_OTHER);
-
-    my $doi = $tex->read_undelimited_parameter(EXPANDED);
-
-    my $uri = doi_to_url($doi);
-
-    my $tokens = $tex->tokenize($uri);
-
-    $tex->endgroup();
-
-    return $tokens;
 }
 
 sub do_url_formatstring {
@@ -114,39 +90,37 @@ sub do_normalize_url {
     my $tex   = shift;
     my $token = shift;
 
-    my $arg = $tex->read_undelimited_parameter();
+    my $index = $tex->scan_eight_bit_int();
 
-    if ($arg->length() != 1) {
-        $tex->latex_error("Expected a single control sequence, got '$arg' ");
+    my $box_ref = $tex->find_box_register($index);
 
-        return;
+    my $box = ${ $box_ref }->get_equiv();
+
+    my $url = $box->to_string();
+
+    # Although fundamentally misguided
+    # (https://unspecified.wordpress.com/2012/02/12/how-do-you-escape-a-complete-uri/),
+    # hopefully this is useful heuristic:
+
+    if ($url !~ m{%} && $url =~ m{\A(?: (ftp|https?)://)? (.*?) / (.*?) (?: \? (.*))? \z}smx) {
+        my $proto = $1 || 'http';
+        my $host  = $2;
+        my $path  = $3;
+        my $query = $4;
+
+        ## This is kind of like URI::Escape::escape_uri, but it
+        ## doesn't replace /
+
+        $path =~ s{([^A-Za-z0-9/\-\._~])}{ sprintf("%%%02X", ord($1)) }eg;
+
+        $url = qq{$proto://$host/$path};
+
+        $url .= qq{?$query} if nonempty $query;
     }
 
-    my $cstoken = $arg->head();
+    $box->delete_nodes();
 
-    if (! $cstoken->is_csname()) {
-        $tex->latex_error("Expected control sequence, got '$cstoken' ");
-
-        return;
-    }
-
-    my $csname = $cstoken->get_csname();
-
-    my $url_string = $tex->get_csname($csname);
-
-    if (! defined $url_string) {
-        $tex->latex_error("$cstoken is undefined");
-
-        return;
-    }
-
-    my $eqvt = $url_string->get_equiv();
-
-    my $url = $eqvt->get_replacement_text();
-
-    if ($url !~ m{^(ftp|https?)://}) {
-        $url->unshift($tex->tokenize('http://'));
-    }
+    $box->push_node(new_unicode_string($url));
 
     return;
 }
