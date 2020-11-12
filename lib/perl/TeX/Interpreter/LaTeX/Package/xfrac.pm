@@ -26,7 +26,7 @@ __DATA__
 
 \TeXMLprovidesPackage{xfrac}
 
-\DeclareMathJaxMacro\sfrac
+\DeclareMathPassThrough{sfrac}[2]
 
 \TeXMLendPackage
 

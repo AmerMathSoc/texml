@@ -24,7 +24,7 @@ __DATA__
 
 \TeXMLprovidesPackage{accents}
 
-\DeclareMathJaxMacro\accentset
+\DeclareMathPassThrough{accentset}[2]
 
 \TeXMLendPackage
 

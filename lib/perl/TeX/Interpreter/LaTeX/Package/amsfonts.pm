@@ -49,7 +49,7 @@ __DATA__
 \UnicodeMathSymbol{"22B4}{\rhd  }{\mathbin}{}
 \UnicodeMathSymbol{"22B5}{\unrhd}{\mathbin}{}
 
-\DeclareMathJaxMacro\hbar   % U+0127 [TeX/jax.js]
+\DeclareMathPassThrough{hbar}   % U+0127 [TeX/jax.js]
 
 \def\yen{\mathyen}
 
@@ -66,8 +66,8 @@ __DATA__
 % \def\dashrightarrow{\mathrel{\rightdasharrow}}
 % \def\dashleftarrow {\mathrel{\leftdasharrow}}
 
-\DeclareMathJaxMacro\lozenge    % U+25CA [AMSsymbols.js]
-\DeclareMathJaxMacro\square     % U+25FB [AMSsymbols.js]
+\DeclareMathPassThrough{lozenge}    % U+25CA [AMSsymbols.js]
+\DeclareMathPassThrough{square}     % U+25FB [AMSsymbols.js]
 
 \RequirePackage{latexsym}
 

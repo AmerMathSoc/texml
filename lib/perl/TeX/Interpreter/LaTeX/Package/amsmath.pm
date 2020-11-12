@@ -309,18 +309,18 @@ __DATA__
 \DeclareMathJaxMacro\thickspace
 \DeclareMathJaxMacro\negthickspace
 
-\DeclareMathJaxMacro\lvert
-\DeclareMathJaxMacro\rvert
+\DeclareMathPassThrough{lvert}
+\DeclareMathPassThrough{rvert}
 
-\DeclareMathJaxMacro\lVert
-\DeclareMathJaxMacro\rVert
+\DeclareMathPassThrough{lVert}
+\DeclareMathPassThrough{rVert}
 
-\DeclareMathJaxMacro\over
-\DeclareMathJaxMacro\atop
-\DeclareMathJaxMacro\above
-\DeclareMathJaxMacro\overwithdelims
-\DeclareMathJaxMacro\atopwithdelims
-\DeclareMathJaxMacro\abovewithdelims
+\DeclareMathPassThrough{over}
+\DeclareMathPassThrough{atop}
+\DeclareMathPassThrough{above}
+\DeclareMathPassThrough{overwithdelims}
+\DeclareMathPassThrough{atopwithdelims}
+\DeclareMathPassThrough{abovewithdelims}
 
 \DeclareMathPassThrough{frac}[2]
 \DeclareMathPassThrough{dfrac}[2]
@@ -330,63 +330,65 @@ __DATA__
 \DeclareMathPassThrough{dbinom}[2]
 \DeclareMathPassThrough{tbinom}[2]
 
-\DeclareMathJaxMacro\genfrac
+\DeclareMathPassThrough{genfrac}
 
-\DeclareMathJaxMacro\leftroot
-\DeclareMathJaxMacro\uproot
+\DeclareMathPassThrough{leftroot}
+\DeclareMathPassThrough{uproot}
 
-\DeclareMathJaxMacro\varGamma
-\DeclareMathJaxMacro\varDelta
-\DeclareMathJaxMacro\varTheta
-\DeclareMathJaxMacro\varLambda
-\DeclareMathJaxMacro\varXi
-\DeclareMathJaxMacro\varPi
-\DeclareMathJaxMacro\varSigma
-\DeclareMathJaxMacro\varUpsilon
-\DeclareMathJaxMacro\varPhi
-\DeclareMathJaxMacro\varPsi
-\DeclareMathJaxMacro\varOmega
+\DeclareMathPassThrough{varGamma}
+\DeclareMathPassThrough{varDelta}
+\DeclareMathPassThrough{varTheta}
+\DeclareMathPassThrough{varLambda}
+\DeclareMathPassThrough{varXi}
+\DeclareMathPassThrough{varPi}
+\DeclareMathPassThrough{varSigma}
+\DeclareMathPassThrough{varUpsilon}
+\DeclareMathPassThrough{varPhi}
+\DeclareMathPassThrough{varPsi}
+\DeclareMathPassThrough{varOmega}
 
-\DeclareMathJaxMacro\overline
-\DeclareMathJaxMacro\boxed
-\DeclareMathJaxMacro\implies
-\DeclareMathJaxMacro\impliedby
+\DeclareMathPassThrough{overline}[1]
+\DeclareMathPassThrough{boxed}
+\DeclareMathPassThrough{implies}
+\DeclareMathPassThrough{impliedby}
 \DeclareMathJaxMacro\nobreakspace
 
-\DeclareMathJaxMacro\colon
+\DeclareMathPassThrough{colon}
 
 \DeclareMathJaxMacro\ldots
 \DeclareMathJaxMacro\dots
 \DeclareMathJaxMacro\mdots
 \DeclareMathJaxMacro\cdots
 
-\DeclareMathJaxMacro\dotsi
-\DeclareMathJaxMacro\dotso
-\DeclareMathJaxMacro\dotsc
-\DeclareMathJaxMacro\dotsb
-\DeclareMathJaxMacro\dotsm
+\DeclareMathPassThrough{dotsi}
+\DeclareMathPassThrough{dotso}
+\DeclareMathPassThrough{dotsc}
+\DeclareMathPassThrough{dotsb}
+\DeclareMathPassThrough{dotsm}
 
-\DeclareMathJaxMacro\longrightarrow
-\DeclareMathJaxMacro\Longrightarrow
-\DeclareMathJaxMacro\longleftarrow
-\DeclareMathJaxMacro\Longleftarrow
-\DeclareMathJaxMacro\longleftrightarrow
-\DeclareMathJaxMacro\Longleftrightarrow
+\DeclareMathPassThrough{longrightarrow}
+\DeclareMathPassThrough{Longrightarrow}
+\DeclareMathPassThrough{longleftarrow}
+\DeclareMathPassThrough{Longleftarrow}
+\DeclareMathPassThrough{longleftrightarrow}
+\DeclareMathPassThrough{Longleftrightarrow}
 
-\DeclareMathJaxMacro\mapsto
-\DeclareMathJaxMacro\longmapsto
-\DeclareMathJaxMacro\hookrightarrow
-\DeclareMathJaxMacro\hookleftarrow
+\DeclareMathPassThrough{mapsto}
+\DeclareMathPassThrough{longmapsto}
+\DeclareMathPassThrough{hookrightarrow}
+\DeclareMathPassThrough{hookleftarrow}
 
-\DeclareMathJaxMacro\iff
-\DeclareMathJaxMacro\doteq
+\DeclareMathPassThrough{iff}
+\DeclareMathPassThrough{doteq}
 
-\DeclareMathJaxMacro\int
-\DeclareMathJaxMacro\oint
-\DeclareMathJaxMacro\iint
-\DeclareMathJaxMacro\iiint
-\DeclareMathJaxMacro\iiiint
-\DeclareMathJaxMacro\idotsint
+\DeclareMathPassThrough{int}
+\DeclareMathPassThrough{oint}
+\DeclareMathPassThrough{iint}
+\DeclareMathPassThrough{iiint}
+\DeclareMathPassThrough{iiiint}
+\DeclareMathPassThrough{idotsint}
+
+% We once had a paper that used \big in text mode.  Srsly.
 
 \let\big\@empty
 \let\Big\@empty
@@ -410,26 +412,26 @@ __DATA__
 \DeclareMathJaxMacro\Bigm
 \DeclareMathJaxMacro\Bigr
 
-\DeclareTeXMLMathAccent\dddot
-\DeclareTeXMLMathAccent\ddddot
+\DeclareMathPassThrough{dddot}
+\DeclareMathPassThrough{ddddot}
 
-\DeclareTeXMLMathAccent\hat
-\DeclareTeXMLMathAccent\acute
-\DeclareTeXMLMathAccent\breve
-\DeclareTeXMLMathAccent\bar
-\DeclareTeXMLMathAccent\tilde
-\DeclareTeXMLMathAccent\check
-\DeclareTeXMLMathAccent\grave
-\DeclareTeXMLMathAccent\dot
-\DeclareTeXMLMathAccent\ddot
-\DeclareTeXMLMathAccent\vec
-\DeclareTeXMLMathAccent\mathring
+\DeclareMathPassThrough{hat}[1]
+\DeclareMathPassThrough{acute}[1]
+\DeclareMathPassThrough{breve}[1]
+\DeclareMathPassThrough{bar}[1]
+\DeclareMathPassThrough{tilde}[1]
+\DeclareMathPassThrough{check}[1]
+\DeclareMathPassThrough{grave}[1]
+\DeclareMathPassThrough{dot}[1]
+\DeclareMathPassThrough{ddot}[1]
+\DeclareMathPassThrough{vec}[1]
+\DeclareMathPassThrough{mathring}[1]
 
-\DeclareMathJaxMacro\bmod
-\DeclareMathJaxMacro\pod
-\DeclareMathJaxMacro\pmod
-\DeclareMathJaxMacro\mod
-\DeclareMathJaxMacro\cfrac
+\DeclareMathPassThrough{bmod}
+\DeclareMathPassThrough{pod}
+\DeclareMathPassThrough{pmod}
+\DeclareMathPassThrough{mod}
+\DeclareMathPassThrough{cfrac}
 
 \DeclareMathPassThrough{overset}[2]
 \DeclareMathPassThrough{underset}[2]
@@ -444,22 +446,22 @@ __DATA__
     \endgroup
 }
 
-\DeclareMathJaxMacro\shoveleft
-\DeclareMathJaxMacro\shoveright
+\DeclareMathPassThrough{shoveleft}[1]
+\DeclareMathPassThrough{shoveright}[1]
 
-\DeclareMathJaxMacro\smash
+\DeclareMathPassThrough{smash}
 
-\DeclareMathJaxMacro\underleftarrow
-\DeclareMathJaxMacro\underleftrightarrow
-\DeclareMathJaxMacro\overleftarrow
-\DeclareMathJaxMacro\overleftrightarrow
-\DeclareMathJaxMacro\overrightarrow
-\DeclareMathJaxMacro\underrightarrow
+\DeclareMathPassThrough{underleftarrow}
+\DeclareMathPassThrough{underleftrightarrow}
+\DeclareMathPassThrough{overleftarrow}
+\DeclareMathPassThrough{overleftrightarrow}
+\DeclareMathPassThrough{overrightarrow}
+\DeclareMathPassThrough{underrightarrow}
 
-\DeclareMathJaxMacro\tag
+\DeclareMathPassThrough{tag}[1]
 
-\DeclareMathJaxMacro\xleftarrow
-\DeclareMathJaxMacro\xrightarrow
+\DeclareMathPassThrough{xleftarrow}%[2][]
+\DeclareMathPassThrough{xrightarrow}%[2][]
 
 \endinput
 

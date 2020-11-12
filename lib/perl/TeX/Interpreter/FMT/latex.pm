@@ -2172,10 +2172,10 @@ __DATA__
 \DeclareMathJaxMacro\LaTeX
 \DeclareMathJaxMacro\TeX
 
-\DeclareMathJaxMacro\displaystyle
-\DeclareMathJaxMacro\scriptscriptstyle
-\DeclareMathJaxMacro\scriptstyle
-\DeclareMathJaxMacro\textstyle
+\DeclareMathPassThrough{displaystyle}
+\DeclareMathPassThrough{scriptscriptstyle}
+\DeclareMathPassThrough{scriptstyle}
+\DeclareMathPassThrough{textstyle}
 
 \DeclareMathJaxMacro\Huge
 \DeclareMathJaxMacro\huge
@@ -2189,46 +2189,51 @@ __DATA__
 \DeclareMathJaxMacro\tiny
 
 \DeclareMathJaxMacro\bf
-\DeclareMathJaxMacro\cal
+\DeclareMathPassThrough{cal}
 \DeclareMathJaxMacro\it
-\DeclareMathJaxMacro\mit
+\DeclareMathPassThrough{mit}
 \DeclareMathJaxMacro\rm
-\DeclareMathJaxMacro\scr
+\DeclareMathPassThrough{scr}
 \DeclareMathJaxMacro\sf
 \DeclareMathJaxMacro\tt
 
+\DeclareMathJaxMacro\hphantom
+\DeclareMathJaxMacro\vphantom
+\DeclareMathJaxMacro\phantom
+
 \DeclareMathJaxMacro\strut
 \DeclareMathJaxMacro\smash
-\DeclareMathJaxMacro\hphantom
 \DeclareMathJaxMacro\fbox
-\DeclareMathJaxMacro\stackrel
+\DeclareMathPassThrough{stackrel}[2]
 
-\DeclareMathJaxMacro\mathbin
-\DeclareMathJaxMacro\mathchoice
-\DeclareMathJaxMacro\mathclose
-\DeclareMathJaxMacro\mathinner
-\DeclareMathJaxMacro\mathop
-\DeclareMathJaxMacro\mathopen
-\DeclareMathJaxMacro\mathord
-\DeclareMathJaxMacro\mathpunct
-\DeclareMathJaxMacro\mathrel
-\DeclareMathJaxMacro\mathstrut
+\DeclareMathPassThrough{mathbin}[1]
+\DeclareMathPassThrough{mathchoice}[4]
+\DeclareMathPassThrough{mathclose}[1]
+\DeclareMathPassThrough{mathinner}[1]
+\DeclareMathPassThrough{mathop}[1]
+\DeclareMathPassThrough{mathopen}[1]
+\DeclareMathPassThrough{mathord}[1]
+\DeclareMathPassThrough{mathpunct}[1]
+\DeclareMathPassThrough{mathrel}[1]
 
-\DeclareMathJaxMacro\nolimits
+\DeclareMathPassThrough{mathstrut}
 
-\DeclareMathJaxMacro\buildrel
-\DeclareMathJaxMacro\cases
+\DeclareMathPassThrough{limits}
+\DeclareMathPassThrough{nolimits}
+
+\DeclareMathPassThrough{buildrel}
+\DeclareMathPassThrough{cases}[1]
 \DeclareMathJaxMacro\choose
-\DeclareMathJaxMacro\eqalign
-\DeclareMathJaxMacro\eqalignno
-\DeclareMathJaxMacro\leqalignno
-\DeclareMathJaxMacro\pmatrix
+\DeclareMathPassThrough{eqalign}[1]
+\DeclareMathPassThrough{eqalignno}[1]
+\DeclareMathPassThrough{leqalignno}[1]
+\DeclareMathPassThrough{pmatrix}[1]
 \DeclareMathJaxMacro\root
 
-\DeclareMathJaxMacro\lefteqn
-\DeclareMathJaxMacro\moveleft
-\DeclareMathJaxMacro\moveright
-\DeclareMathJaxMacro\raise
+\DeclareMathPassThrough{lefteqn}[1]
+\DeclareMathPassThrough{moveleft}
+\DeclareMathPassThrough{moveright}
+\DeclareMathPassThrough{raise}
 
 \DeclareMathJaxMacro\enspace
 \DeclareMathJaxMacro\kern
@@ -2241,56 +2246,52 @@ __DATA__
 
 % \DeclareMathJaxMacro\mmlToken
 
-\DeclareMathJaxMacro\displaylines
+\DeclareMathPassThrough{displaylines}[1]
 
-\DeclareMathJaxMacro\Arrowvert
-\DeclareMathJaxMacro\arrowvert
-\DeclareMathJaxMacro\backslash
-\DeclareMathJaxMacro\brace
-\DeclareMathJaxMacro\bracevert
-\DeclareMathJaxMacro\brack
+\DeclareMathPassThrough{Arrowvert}
+\DeclareMathPassThrough{arrowvert}
+\DeclareMathPassThrough{backslash}
+\DeclareMathPassThrough{brace}
+\DeclareMathPassThrough{bracevert}
+\DeclareMathPassThrough{brack}
 \DeclareMathJaxMacro\dots
-\DeclareMathJaxMacro\Downarrow
-\DeclareMathJaxMacro\downarrow
-\DeclareMathJaxMacro\gets
-\DeclareMathJaxMacro\int
-\DeclareMathJaxMacro\langle
-\DeclareMathJaxMacro\lbrace
-\DeclareMathJaxMacro\lbrack
-\DeclareMathJaxMacro\lceil
+\DeclareMathPassThrough{Downarrow}
+\DeclareMathPassThrough{downarrow}
+\DeclareMathPassThrough{gets}
+\DeclareMathPassThrough{int}
+\DeclareMathPassThrough{langle}
+\DeclareMathPassThrough{lbrace}
+\DeclareMathPassThrough{lbrack}
+\DeclareMathPassThrough{lceil}
 \DeclareMathJaxMacro\ldots
-\DeclareMathJaxMacro\lfloor
-\DeclareMathJaxMacro\lgroup
-\DeclareMathJaxMacro\limits
-\DeclareMathJaxMacro\lmoustache
+\DeclareMathPassThrough{lfloor}
+\DeclareMathPassThrough{lgroup}
+\DeclareMathPassThrough{lmoustache}
 \DeclareMathJaxMacro\lower
-\DeclareMathJaxMacro\matrix
-\DeclareMathJaxMacro\mho
-\DeclareMathJaxMacro\middle
-\DeclareMathJaxMacro\models
-\DeclareMathJaxMacro\overbrace
-\DeclareMathJaxMacro\owns
-\DeclareMathJaxMacro\phantom
-\DeclareMathJaxMacro\rangle
-\DeclareMathJaxMacro\rbrace
-\DeclareMathJaxMacro\rbrack
-\DeclareMathJaxMacro\rceil
-\DeclareMathJaxMacro\rfloor
-\DeclareMathJaxMacro\rgroup
-\DeclareMathJaxMacro\rmoustache
+\DeclareMathPassThrough{matrix}[1]
+\DeclareMathPassThrough{mho}
+\DeclareMathPassThrough{middle}
+\DeclareMathPassThrough{models}
+\DeclareMathPassThrough{overbrace}
+\DeclareMathPassThrough{owns}
+\DeclareMathPassThrough{rangle}
+\DeclareMathPassThrough{rbrace}
+\DeclareMathPassThrough{rbrack}
+\DeclareMathPassThrough{rceil}
+\DeclareMathPassThrough{rfloor}
+\DeclareMathPassThrough{rgroup}
+\DeclareMathPassThrough{rmoustache}
 % \DeclareMathJaxMacro\Rule
 \DeclareMathJaxMacro\S
-\DeclareMathJaxMacro\skew
-\DeclareMathJaxMacro\sqrt
-\DeclareMathJaxMacro\sqsubset
-\DeclareMathJaxMacro\sqsupset
-\DeclareMathJaxMacro\to
-\DeclareMathJaxMacro\Uparrow
-\DeclareMathJaxMacro\uparrow
-\DeclareMathJaxMacro\Updownarrow
-\DeclareMathJaxMacro\updownarrow
-
-\DeclareMathJaxMacro\vphantom
+\DeclareMathPassThrough{skew}
+\DeclareMathPassThrough{sqrt}
+\DeclareMathPassThrough{sqsubset}
+\DeclareMathPassThrough{sqsupset}
+\DeclareMathPassThrough{to}
+\DeclareMathPassThrough{Uparrow}
+\DeclareMathPassThrough{uparrow}
+\DeclareMathPassThrough{Updownarrow}
+\DeclareMathPassThrough{updownarrow}
 
 \endinput
 

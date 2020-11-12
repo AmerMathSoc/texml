@@ -28,8 +28,8 @@ __DATA__
     \def\coloneqq{\coloneq}
 }
 
-\DeclareMathJaxMacro\coloneq
-\DeclareMathJaxMacro\underbrace
+\DeclareMathPassThrough{coloneq}
+\DeclareMathPassThrough{underbrace}[1]
 
 \DefineAMSMathSimpleEnvironment{multlined}
 
@@ -53,7 +53,7 @@ __DATA__
     \TeXMLCreateSVG{$\xhookrightarrow[#1]{#2}$}%
 }
 
-\DeclareMathJaxMacro\xleftrightarrow
+\DeclareMathPassThrough{xleftrightarrow}%[2][]
 
 \TeXMLendPackage
 

@@ -40,14 +40,14 @@ __DATA__
 \@onlypreamble\DeclareMathOperator
 \@onlypreamble\@declmathop
 
-\DeclareMathJaxMacro\operatorname
+\DeclareMathPassThrough{operatorname}%*[1]
 
-\DeclareMathJaxMacro\injlim
-\DeclareMathJaxMacro\projlim
-\DeclareMathJaxMacro\varinjlim
-\DeclareMathJaxMacro\varliminf
-\DeclareMathJaxMacro\varlimsup
-\DeclareMathJaxMacro\varprojlim
+\DeclareMathPassThrough{injlim}
+\DeclareMathPassThrough{projlim}
+\DeclareMathPassThrough{varinjlim}
+\DeclareMathPassThrough{varliminf}
+\DeclareMathPassThrough{varlimsup}
+\DeclareMathPassThrough{varprojlim}
 
 \RequirePackage{amsgen}
 

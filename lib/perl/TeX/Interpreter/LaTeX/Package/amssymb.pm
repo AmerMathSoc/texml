@@ -34,14 +34,14 @@ __DATA__
 
 \def\backepsilon{\smallni}
 
-\DeclareMathJaxMacro\varkappa
+\DeclareMathPassThrough{varkappa}
 
 % \DeclareSVGMathChar\blacklozenge\mathord
 % \DeclareSVGMathChar\blacksquare\mathord
 \def\centerdot{\smblkcircle}
 \DeclareSVGMathChar\circlearrowleft\mathrel
 \DeclareSVGMathChar\circlearrowright\mathrel
-\DeclareMathJaxMacro\circledS    % U+24C8 [AMSsymbols.js]
+\DeclareMathPassThrough{circledS}    % U+24C8 [AMSsymbols.js]
 \DeclareSVGMathChar\diagdown\mathord
 \DeclareSVGMathChar\diagup\mathord
 \DeclareSVGMathChar\digamma\mathord
@@ -66,7 +66,7 @@ __DATA__
 \DeclareSVGMathChar\nsupseteqq\mathrel
 \DeclareSVGMathChar\ntriangleleft\mathrel
 \DeclareSVGMathChar\ntriangleright\mathrel
-\DeclareMathJaxMacro\restriction
+\DeclareMathPassThrough{restriction}
 \DeclareSVGMathChar\shortmid\mathrel
 \DeclareSVGMathChar\shortparallel\mathrel
 \DeclareSVGMathChar\smallfrown\mathrel

@@ -30,7 +30,7 @@ __DATA__
 
 \DefineAMSTaggedEnvironment{empheq}\st@rredfalse
 
-\DeclareMathJaxMacro\empheqlbrace
+\DeclareMathPassThrough{empheqlbrace}
 
 \TeXMLendPackage
 
