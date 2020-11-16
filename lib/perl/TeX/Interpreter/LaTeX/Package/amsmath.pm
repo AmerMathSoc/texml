@@ -55,6 +55,24 @@ __DATA__
     \XMLgeneratedText)%
 }
 
+\renewenvironment{subequations}{%
+  \refstepcounter{equation}%
+  \protected@edef\theparentequation{\theequation}%
+  \setcounter{parentequation}{\value{equation}}%
+  \setcounter{equation}{0}%
+  \def\theequation{\theparentequation\alph{equation}}%
+    \par
+    \startXMLelement{disp-formula-group}%
+    \addXMLid
+    \xmlpartag{}%
+  \ignorespaces
+}{%
+    \endXMLelement{disp-formula-group}%
+    \par
+  \setcounter{equation}{\value{parentequation}}%
+  \ignorespacesafterend
+}
+
 \def\math@cr{\@ifstar{\math@cr@}{\math@cr@}}
 
 \def\math@cr@{\new@ifnextchar[{\math@cr@@}{\math@cr@@[0pt]}}
