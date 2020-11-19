@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::algorithm;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -42,6 +42,7 @@ __DATA__
 \let\algorithm\relax
 \let\endalgorithm\relax
 \newenvironment{algorithm}[1][]{%
+    \TeXMLSVGpaperwidth8in
     \let\center\@empty
     \let\endcenter\@empty
     \par
