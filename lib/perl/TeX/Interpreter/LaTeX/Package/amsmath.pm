@@ -64,6 +64,9 @@ __DATA__
     \par
     \startXMLelement{disp-formula-group}%
     \addXMLid
+    \startXMLelement{label}%
+    \ignorespaces\theparentequation%
+    \endXMLelement{label}%
     \xmlpartag{}%
   \ignorespaces
 }{%
