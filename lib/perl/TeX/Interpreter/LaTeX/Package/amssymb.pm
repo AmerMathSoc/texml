@@ -39,17 +39,17 @@ __DATA__
 % \DeclareSVGMathChar\blacklozenge\mathord
 % \DeclareSVGMathChar\blacksquare\mathord
 \def\centerdot{\smblkcircle}
-\DeclareSVGMathChar\circlearrowleft\mathrel
-\DeclareSVGMathChar\circlearrowright\mathrel
+\def\circlearrowleft{\acwopencirclearrow}
+\def\circlearrowright{\cwopencirclearrow}
 \DeclareMathPassThrough{circledS}    % U+24C8 [AMSsymbols.js]
 \DeclareSVGMathChar\diagdown\mathord
 \DeclareSVGMathChar\diagup\mathord
 \DeclareSVGMathChar\digamma\mathord
-\DeclareSVGMathChar\doteqdot\mathrel
+\def\doteqdot{\Doteq}
 \def\Doteq{\doteqdot}
 \def\doublecap{\Cap}
 \def\doublecup{\Cup}
-\DeclareSVGMathChar\eth\mathord
+\def\eth{\matheth}
 \def\gggtr{\ggg}
 \DeclareSVGMathChar\gvertneqq\mathrel
 \def\llless{\lll}
