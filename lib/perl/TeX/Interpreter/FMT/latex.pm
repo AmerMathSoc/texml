@@ -3,7 +3,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.104.0';
+use version; our $VERSION = qv '1.105.0';
 
 use Image::PNG;
 
@@ -769,7 +769,8 @@ __DATA__
 
 % \gdef\&{&amp;}  %%* FIX
 
-\gdef\&{\string&}  %%* FIX
+% \gdef\&{\string&}  %%* FIX
+\UCSchardef\&"0026
 
 % \endgroup
 
