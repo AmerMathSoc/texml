@@ -3,7 +3,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.105.0';
+use version; our $VERSION = qv '1.106.0';
 
 use Image::PNG;
 
@@ -763,18 +763,7 @@ __DATA__
 \UCSchardef\#"0023
 \UCSchardef\%"0025
 
-% \begingroup
-% 
-% \catcode`\&=12
-
-% \gdef\&{&amp;}  %%* FIX
-
-% \gdef\&{\string&}  %%* FIX
 \UCSchardef\&"0026
-
-% \endgroup
-
-% \UCSchardef\&"0026    % Really \string&
 
 \UCSchardef\_"005F
 \UCSchardef\|"007C
@@ -2124,7 +2113,9 @@ __DATA__
 \DeclareMathJaxMacro*\#
 \DeclareMathJaxMacro*\$
 \DeclareMathJaxMacro*\%
-\DeclareMathJaxMacro*\&
+
+% \DeclareMathJaxMacro*\&
+
 \DeclareMathJaxMacro*\,
 \DeclareMathJaxMacro*\:
 \DeclareMathJaxMacro*\;
