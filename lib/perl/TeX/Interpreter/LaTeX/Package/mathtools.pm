@@ -28,6 +28,8 @@ __DATA__
     \def\coloneqq{\coloneq}
 }
 
+\let\smashoperator\@gobbleopt
+
 \DeclareMathPassThrough{coloneq}
 \DeclareMathPassThrough{underbrace}[1]
 
