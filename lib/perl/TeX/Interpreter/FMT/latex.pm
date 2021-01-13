@@ -3,7 +3,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.106.0';
+use version; our $VERSION = qv '1.107.0';
 
 use Image::PNG;
 
@@ -28,7 +28,7 @@ sub install ( $ ) {
     my @options = @_;
 
     (my $module = __PACKAGE__ . ".pm") =~ s{::}{\/}g;
-    
+
     my $fmt_file = catfile(dirname($INC{$module}), 'laTeXML.fmt');
 
     $tex->load_fmt_file($fmt_file);
@@ -108,7 +108,7 @@ sub do_pop_section_stack {
             if ($level == $target_level) {
                 last;
             }
-        } 
+        }
     }
 
     return $token_list;
@@ -161,7 +161,7 @@ sub do_pop_toc_stack {
             $tex->push_toc_stack($level);
 
             last;
-        } 
+        }
     }
 
     return $token_list;
@@ -181,11 +181,11 @@ sub do_clear_toc_stack {
 # sub do_show_toc_stack {
 #     my $tex   = shift;
 #     my $token = shift;
-# 
+#
 #     my @stack = reverse $tex->get_toc_stacks();
-# 
+#
 #     $tex->DEBUG("toc_stack: @stack");
-# 
+#
 #     return;
 # }
 
@@ -246,6 +246,14 @@ sub do_resolve_xrefs {
                     $num_cites++;
                 }
             } else {
+                my $linked = 1;
+
+                my $link_att = $xref->getAttribute('linked');
+
+                if (defined $link_att && $link_att eq 'no') {
+                    $linked = 0;
+                }
+
                 my $ref_key = $xref->getAttribute('ref-key');
 
                 if ($ref_cmd eq 'hyperref') {
@@ -270,11 +278,15 @@ sub do_resolve_xrefs {
 
                     my $flag = $new_node->firstChild()->getAttribute("specific-use");
 
-                    $xref->replaceNode($new_node);
-
                     if (nonempty($flag) && $flag !~ m{^un(defined|resolved)}) {
                         $num_xrefs++;
+
+                        if (! $linked) {
+                            $new_node = $new_node->firstChild()->firstChild()->cloneNode(1);
+                        }
                     }
+
+                    $xref->replaceNode($new_node);
                 }
             }
         }
@@ -574,6 +586,12 @@ __DATA__
 
 \def\@no@lnbk #1[#2]{ }% *sigh*
 
+\newif\ifst@rred
+
+\def\maybe@st@rred#1{%
+    \@ifstar{\st@rredtrue#1}{\st@rredfalse#1}%
+}
+
 \def\controldates#1{}
 
 % It's not clear that it's worth preserving these outside of math
@@ -693,7 +711,7 @@ __DATA__
             \edef\next@{%
 %%
 %% If we're in math mode, use the * version of TeXMLCreateSVG
-%% 
+%%
                 \noexpand\TeXMLCreateSVG\ifmmode*\fi{%
                     \noexpand\renewcommand{\noexpand\arraystretch}{\arraystretch}
                     \noexpand\setlength{\noexpand\unitlength}{\the\unitlength}
@@ -1056,11 +1074,15 @@ __DATA__
 \long\def \@thirdoffour#1#2#3#4{#3}
 \long\def\@fourthoffour#1#2#3#4{#4}
 
-\def\ref#1{%
+\def\ref{\maybe@st@rred\@ref}
+
+\def\@ref#1{%
     \expandafter\@setref\csname r@#1\endcsname\@firstoffour{#1}\ref
 }
 
-\def\pageref#1{%
+\def\pageref{\maybe@st@rred\@pageref}
+
+\def\@pageref#1{%
     \expandafter\@setref\csname r@#1\endcsname\@secondoffour{#1}\pageref
 }
 
@@ -1076,9 +1098,14 @@ __DATA__
 % #3 = LABEL
 % %4 = \ref | \autoref | \pageref
 
-\def\@setref#1#2#3#4{%
+\def\@setref{\csname @setref@\ifst@rred no\fi link\endcsname}
+
+\def\@setref@link#1#2#3#4{%
     \leavevmode
     \startXMLelement{xref}%
+    \ifst@rred
+        \setXMLattribute{linked}{no}%
+    \fi
     \if@TeXMLend
         \@ifundefined{r@#3}{%
             \setXMLattribute{specific-use}{undefined}%
@@ -1104,6 +1131,23 @@ __DATA__
         \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#4}%
     \fi
     \endXMLelement{xref}%
+}
+
+\def\@setref@nolink#1#2#3#4{%
+    \leavevmode
+    \if@TeXMLend
+        \@ifundefined{r@#3}{%
+            \texttt{?#3}%
+        }{%
+            \protect\printref{\expandafter#2#1}%
+        }%
+    \else
+        \startXMLelement{xref}%
+        \setXMLattribute{linked}{no}%
+        \setXMLattribute{ref-key}{#3}%
+        \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#4}%
+        \endXMLelement{xref}%
+    \fi
 }
 
 \let\printref\@firstofone
@@ -1220,7 +1264,7 @@ __DATA__
 \newif\if@listXMLid
 \@listXMLidfalse
 
-%% 
+%%
 
 \newif\if@stdList
 
@@ -1539,8 +1583,6 @@ __DATA__
 
 \PreserveMacroDefinition\ams@measure
 
-\newif\ifst@rred
-
 \def\@startsection#1#2#3#4#5#6{%
     \everypar{}%
     \leavevmode
@@ -1642,7 +1684,7 @@ __DATA__
 
 \def\set@float@fps@attribute#1{%
     \def\@fps{#1}%
-    \@onelevel@sanitize \@fps 
+    \@onelevel@sanitize \@fps
     \expandafter \@tfor \expandafter \reserved@a
         \expandafter :\expandafter =\@fps \do{%
             \if \reserved@a H%
@@ -1914,7 +1956,7 @@ __DATA__
 %     \def\vcenter#1{#1}%
 %     \let\mbox\math@mbox
 % }
-% 
+%
 % \everymath{\texml@init@math}
 % \everydisplay{\texml@init@math}
 
@@ -1927,11 +1969,11 @@ __DATA__
 }
 
 % \let\frozen@hbox\hbox
-% 
+%
 % \def\hbox{%
 %   \ifmmode\expandafter\math@hbox\else\expandafter\frozen@hbox\fi
 % }
-% 
+%
 % \def\math@hbox#1{%
 %     \string\hbox\string{\frozen@hbox{#1}\string}%
 % }
