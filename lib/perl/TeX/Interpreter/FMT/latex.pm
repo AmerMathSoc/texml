@@ -3,7 +3,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.107.0';
+use version; our $VERSION = qv '1.108.0';
 
 use Image::PNG;
 
@@ -830,7 +830,7 @@ __DATA__
 %% LaTeX \text... symbols
 
 \UCSchardef\textdollar"0024
-\UCSchardef\textbacklash"005C
+\UCSchardef\textbackslash"005C
 
 \UCSchardef\textacutedbl"02DD
 \UCSchardef\textasciiacute"00B4
