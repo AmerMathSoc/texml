@@ -3,7 +3,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.108.0';
+use version; our $VERSION = qv '1.109.0';
 
 use Image::PNG;
 
@@ -2156,7 +2156,7 @@ __DATA__
 \DeclareMathJaxMacro*\$
 \DeclareMathJaxMacro*\%
 
-% \DeclareMathJaxMacro*\&
+\DeclareMathJaxMacro*\&
 
 \DeclareMathJaxMacro*\,
 \DeclareMathJaxMacro*\:
