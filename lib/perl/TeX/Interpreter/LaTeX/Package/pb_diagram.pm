@@ -26,6 +26,8 @@ __DATA__
 
 \TeXMLprovidesPackage{pb_diagram}
 
+\newskip\dgARROWLENGTH
+
 \DeclareSVGEnvironment{diagram}
 
 \TeXMLendPackage
