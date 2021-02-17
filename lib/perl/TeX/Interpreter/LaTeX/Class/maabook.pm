@@ -65,7 +65,7 @@ __DATA__
     \ifx\@authorlist\@empty
         \gdef\@authorlist{\@authorname{#1}}%
     \else
-        \g@addto@macro\@authorlist{\and\@authorname{#1}}%
+        \g@addto@macro\@authorlist{\protect\and\@authorname{#1}}%
     \fi
 }
 
@@ -97,6 +97,11 @@ __DATA__
     \ifx\@title\@empty
         \PackageError{chapauthor}{No title!}\@ehd
     \else
+    \begingroup
+        \let\and\relax
+        \let\@authorname\relax
+        \addtocontents{toc}{\def\protect\@authorlist{\@authorlist}}%
+    \endgroup
         \chapter{\@title}
         \ifx\@subtitle\@empty\else
             \begingroup

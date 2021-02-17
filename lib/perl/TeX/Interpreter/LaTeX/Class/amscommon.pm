@@ -805,10 +805,29 @@ __DATA__
     \startXMLelement{title}%
     #3%
     \endXMLelement{title}%
+    \ifx\@authorlist\@empty\else
+        \begingroup
+            \let\and\@empty
+            \let\@authorname\toc@contrib@group
+            \par
+            \startXMLelement{contrib-group}%
+                \@authorlist
+            \endXMLelement{contrib-group}%
+        \endgroup
+        \global\let\@authorlist\@empty
+    \fi
     \startXMLelement{nav-pointer}%
     \setXMLattribute{rid}{#4}%
     \endXMLelement{nav-pointer}%
     \par
+}
+
+\def\toc@contrib@group#1{%
+    \startXMLelement{contrib}%
+        \startXMLelement{string-name}%
+            #1\par
+        \endXMLelement{string-name}%
+    \endXMLelement{contrib}%
 }
 
 \providecommand{\setTrue}[1]{}
@@ -832,6 +851,7 @@ __DATA__
         \endXMLelement{title}%
         \endXMLelement{title-group}%
         \gdef\@currtoclevel{-1}%
+        \let\@authorlist\@empty
         \makeatletter
         \@input{\jobname.#1}%
         \@clear@tocstack
