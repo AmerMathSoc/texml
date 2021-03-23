@@ -17,7 +17,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.1';
+use version; our $VERSION = qv '1.1.0';
 
 use base qw(Exporter);
 
@@ -3835,13 +3835,13 @@ sub get_next {
         }
 
         $tex->begin_diagnostic();
-        
+
         $tex->print_nl("");
-        
+
         my $catcode = $cur_tok->get_catcode();
-        
+
         $tex->print("get_next: $prefix $cur_tok ($catcode)");
-        
+
         $tex->end_diagnostic(false);
     }
 
@@ -7165,6 +7165,8 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
     my %num_rows_of :COUNTER(:name<num_rows>);
     my %num_cols_of :COUNTER(:name<num_cols>);
 
+    my %top_row_of :COUNTER(:name<top_row>);
+
     my %span_cols_of :COUNTER(:name<span_cols>); # For \span
 
     sub is_new {
@@ -7187,7 +7189,7 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
         my $num_rows = $self->num_rows();
         my $num_cols = $self->num_cols();
 
-        return qq{SpanRecord[$id](state = $state, rows = $num_rows, cols = $num_cols)};
+        return sprintf qq{SpanRecord[%2d](state = %d, rows = %d, cols = %d)}, $id, $state, $num_rows, $num_cols;
     }
 }
 
@@ -7205,6 +7207,52 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
 
     my %span_records_of :ARRAY(:name<span_record>); # indexed by col_ptr
 
+    my %top_row_of :ARRAY(:name<col_top_row> :get<*custom*> :set<*custom*>);
+
+    sub START {
+        my ($tex, $ident, $arg_ref) = @_;
+
+        $top_row_of{$ident} = [ ];
+
+        return;
+    }
+
+    sub top_row {
+        my $self = shift;
+
+        my $row = shift;
+        my $col = shift;
+
+        my $ident = ident $self;
+
+        my $rows = $top_row_of{$ident};
+
+        if (! defined $rows->[$row]) {
+            $rows->[$row] = [];
+        }
+
+        if (! defined $rows->[$row]->[$col]) {
+            $rows->[$row]->[$col] = $row;
+        }
+
+        return $rows->[$row]->[$col];
+    }
+
+    sub set_top_row {
+        my $self = shift;
+
+        my $row = shift;
+        my $col = shift;
+
+        my $top_row = shift;
+
+        $self->top_row($row, $col);
+
+        my $ident = ident $self;
+
+        return $top_row_of{$ident}->[$row]->[$col] = $top_row;
+    }
+
     sub cur_col {
         my $self = shift;
 
@@ -7217,7 +7265,7 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
         return;
     }
 
-    sub new_span_record( $$;$ ) {
+    sub new_span_record( $$ ) {
         my $num_rows = shift;
         my $num_cols = shift;
 
@@ -7267,7 +7315,7 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
         }
 
         return;
-    }        
+    }
 
     sub update_span_records {
         my $self = shift;
@@ -7293,7 +7341,7 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
             $already_updated[$span_record->id()] = 1;
         }
     }
-    
+
     sub next_col {
         my $self = shift;
 
@@ -7786,10 +7834,16 @@ sub insert_v_template {
 sub __add_hidden_cell {
     my $tex = shift;
 
+    my $top_row = shift;
+
     my $col_tag = $tex->xml_table_col_tag();
 
     $tex->start_xml_element($col_tag, { hidden => "hidden" });
     $tex->end_xml_element($col_tag);
+
+    my $cur_align = $tex->get_cur_alignment();
+
+    $cur_align->set_top_row($tex->alignrowno(), $tex->aligncolno(), $top_row);
 
     $tex->incr_aligncolno();
 
@@ -7850,6 +7904,8 @@ sub fin_col {
         my $num_cols = $span_record->num_cols();
 
         if ($span_record->is_new()) {
+            $span_record->set_top_row($tex->alignrowno());
+
             if (nonempty($col_tag)) {
                 $tex->start_xml_element($col_tag);
 
@@ -7879,14 +7935,14 @@ sub fin_col {
 
             for (1..$span_record->span_cols()) {
                 if (nonempty($col_tag)) {
-                    $tex->__add_hidden_cell();
+                    $tex->__add_hidden_cell($span_record->top_row());
                 }
             }
 
             $span_record->set_state(1);
         } else {
             if (nonempty($col_tag)) {
-                $tex->__add_hidden_cell();
+                $tex->__add_hidden_cell($span_record->top_row());
             }
 
             if (@{ $head } ) {
@@ -8712,9 +8768,9 @@ sub handle_right_brace {
     }
     elsif ($cur_group == no_align_group) {
         $tex->end_graf;
-    
+
         $tex->unsave();
-    
+
         my $align = $tex->get_cur_alignment();
 
         $tex->align_peek($align);
@@ -11011,7 +11067,7 @@ sub group_trace {
 ##                                                                  ##
 ######################################################################
 
-my @EXTENSIONS = qw(leavevmode UCSchar UCSchardef ifMathJaxMacro TeXMLrowspan);
+my @EXTENSIONS = qw(leavevmode UCSchar UCSchardef ifMathJaxMacro TeXMLrowspan TeXMLtoprow);
 
 sub load_extension( $;$ ) {
     my $tex = shift;
@@ -11305,7 +11361,7 @@ sub define_macro {
 
     my $macro_text = $tex->tokenize($raw_macro);
 
-    my $macro = 
+    my $macro =
         TeX::Primitive::Macro->new({ parameter_text   => $param_text,
                                      replacement_text => $macro_text,
                                      outer => $modifier & MODIFIER_OUTER,
@@ -12188,7 +12244,7 @@ sub load_format {
         # $tex->print_err("Can't load format '$fmt': $@");
         # $tex->print_err("Will try '$fmt.fmt'");
         # $tex->print_nl();
-        # 
+        #
         # return $tex->load_fmt_file($fmt);
 
         # $@ =~ s{\n}{};

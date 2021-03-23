@@ -728,7 +728,7 @@ __DATA__
 \def\@cline#1-#2\@nil{%
         \def\@selector{%
             \@thistable\space
-            \nth@row\space
+            tr:nth-child(\the\TeXMLtoprow \alignrowno \count@)\space
             \nth@col{\the\count@}%
         }%
         \count@#1
