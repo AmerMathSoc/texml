@@ -57,6 +57,8 @@ __DATA__
 
 \DeclareMathPassThrough{xleftrightarrow}%[2][]
 
+\DefineAMSMathSimpleEnvironment{gathered}
+
 \TeXMLendPackage
 
 __END__
