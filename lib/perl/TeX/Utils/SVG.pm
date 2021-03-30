@@ -3,7 +3,7 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.0';
+use version; our $VERSION = qv '1.3.0';
 
 use Cwd;
 
@@ -303,6 +303,9 @@ sub convert_tex {
         print { $fh } qq{\\usepackage{unicode-math}\n};
         print { $fh } qq{\\setmainfont{STIX Two Text}[Ligatures=TeX,Script=Default]\n};
         print { $fh } qq{\\setmathfont{STIX Two Math}\n};
+        print { $fh } qq{\\setmathfontface\\mathbf{STIX Two Text Bold}\n};
+        print { $fh } qq{\\setmathfontface\\mathit{STIX Two Text Italic}\n};
+        print { $fh } qq{\\setmathfontface\\mathsf{UniversLTStd}\n};
         print { $fh } qq{\\let\\bm\\mathbfit\n};
     } else {
         # print { $fh } qq{\\usepackage{stix2}\n};
