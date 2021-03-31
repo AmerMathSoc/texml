@@ -28,6 +28,8 @@ __DATA__
     \def\coloneqq{\coloneq}
 }
 
+\let\adjustlimits\@empty
+
 \let\smashoperator\@gobbleopt
 
 \DeclareMathPassThrough{coloneq}
