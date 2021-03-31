@@ -40,6 +40,17 @@ __DATA__
     \next@
 }
 
+\def\yng(#1){%
+    \begingroup
+        \edef\next@{%
+            \noexpand\TeXMLCreateSVG{%
+                $\noexpand\Yvcentermath\the\Yvcentermath\noexpand\yng(#1)$%
+            }%
+        }%
+    \expandafter\endgroup
+    \next@
+}
+
 \endinput
 
 __END__
