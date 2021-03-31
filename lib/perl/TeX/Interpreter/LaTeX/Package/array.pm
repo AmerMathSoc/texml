@@ -35,6 +35,8 @@ __DATA__
     \setlength{\extrarowheight}{0pt}%
 }{}
 
+\def\arraybackslash{\let\\\tabularnewline}
+
 \TeXMLendPackage
 
 \endinput
