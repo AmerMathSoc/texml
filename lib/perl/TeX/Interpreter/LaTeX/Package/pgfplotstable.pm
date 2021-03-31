@@ -30,6 +30,9 @@ __DATA__
 
 \RequirePackage{pgfplots}
 
+\let\pgfplotstableset\@gobble
+\let\pgfplotscreateplotcyclelist\@gobble
+
 \TeXMLendPackage
 
 \endinput
