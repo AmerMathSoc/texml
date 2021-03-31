@@ -30,6 +30,7 @@ __DATA__
 \DeclareTeXMLMathAlphabet\mathscr
 
 \let\EuScript\mathscr
+\let\CMcal\mathscr
 
 \endinput
 
