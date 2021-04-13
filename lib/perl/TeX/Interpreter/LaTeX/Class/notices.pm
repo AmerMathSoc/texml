@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Class::notices;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -29,7 +29,7 @@ __DATA__
 
 \TeXMLprovidesClass{notices}
 
-\setcounter{secnumdepth}{-1}
+\setcounter{secnumdepth}{3}
 
 \RequirePackage{amssymb}
 \RequirePackage{amsmath}
