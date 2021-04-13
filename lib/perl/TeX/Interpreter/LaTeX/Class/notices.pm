@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Class::notices;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
+use version; our $VERSION = qv '1.1.1';
 
 sub install ( $ ) {
     my $class = shift;
@@ -160,7 +160,7 @@ __DATA__
 
 \newenvironment{acknowledgment}[1][Acknowledgment]{%
     \def\XML@section@tag{sec}
-    \section{#1}
+    \section*{#1}
 }{%
 }
 
