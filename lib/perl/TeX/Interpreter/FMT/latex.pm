@@ -3,7 +3,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.109.0';
+use version; our $VERSION = qv '1.110.0';
 
 use Image::PNG;
 
@@ -693,7 +693,7 @@ __DATA__
 
 %% Example: \DeclareSVGMathChar\Lbag\mathopen
 
-\def\DeclareSVGMathChar#1#2{\def#1{#2{\TeXMLSVGmathchoice{#1}}}}
+\def\DeclareSVGMathChar#1#2{\newcommand{#1}{#2{\TeXMLSVGmathchoice{#1}}}}
 
 % * = preserve line breaks (for verbatim-type environments)
 
