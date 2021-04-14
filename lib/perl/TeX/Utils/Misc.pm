@@ -3,7 +3,7 @@ package TeX::Utils::Misc;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
+use version; our $VERSION = qv '1.2.0';
 
 use UNIVERSAL;
 
@@ -17,6 +17,7 @@ our %EXPORT_TAGS = (all => [ qw(concat
                                 file_mimetype
                                 file_mtime
                                 iso_8601_timestamp
+                                string_to_chars
                              ) ]);
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
@@ -39,6 +40,12 @@ $MMAGIC->add_file_ext('svg', 'image/svg+xml');
 
 sub concat {
     return join '', @_;
+}
+
+sub string_to_chars( $ ) {
+    my $string = shift;
+
+    return split '', $string;
 }
 
 ## I'm not completely happy with how complicated nonempty() has
