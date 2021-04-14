@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Class::notices;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.1';
+use version; our $VERSION = qv '1.1.2';
 
 sub install ( $ ) {
     my $class = shift;
@@ -37,6 +37,7 @@ __DATA__
 \RequirePackage{xspace}
 \RequirePackage{amsthm}
 \RequirePackage{subfig}
+\RequirePackage{xcolor}
 
 \RequirePackage[lite,nobysame]{amsrefs}
 
