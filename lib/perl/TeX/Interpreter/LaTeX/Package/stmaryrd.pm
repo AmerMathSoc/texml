@@ -87,8 +87,10 @@ __DATA__
 \DeclareSVGMathChar\rightslice\mathbin
 \DeclareSVGMathChar\rrceil\mathclose
 \DeclareSVGMathChar\rrfloor\mathclose
-\DeclareSVGMathChar\subsetplus\mathrel      % OVERRIDES UNICODE-MATH
-\DeclareSVGMathChar\supsetplus\mathrel      % OVERRIDES UNICODE-MATH
+\let\subsetplus\relax
+\DeclareSVGMathChar\subsetplus\mathrel      % OVERRIDES UNICODE-MATH (different shape)
+\let\supsetplus\relax
+\DeclareSVGMathChar\supsetplus\mathrel      % OVERRIDES UNICODE-MATH (different shape)
 \DeclareSVGMathChar\subsetpluseq\mathrel
 \DeclareSVGMathChar\supsetpluseq\mathrel
 \DeclareSVGMathChar\trianglelefteqslant\mathrel
