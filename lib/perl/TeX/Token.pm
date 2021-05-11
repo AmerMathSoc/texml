@@ -4,12 +4,10 @@ package TeX::Token;
 ## time there should only be a single object with a given catcode and
 ## datum.  This saves memory and speeds up token equality checks.
 
-## NOTE: This object needs to be made immutable!
-
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.16.0';
+use version; our $VERSION = qv '1.17.0';
 
 use base qw(Exporter);
 
@@ -22,44 +20,121 @@ our %EXPORT_TAGS = (
                       make_frozen_token
                    ) ],
     constants => [ qw(UNIQUE_TOKEN) ],
-);
+    catcodes  => [ qw(CATCODE_ESCAPE
+                      CATCODE_BEGIN_GROUP
+                      CATCODE_END_GROUP
+                      CATCODE_MATH_SHIFT
+                      CATCODE_ALIGNMENT
+                      CATCODE_END_OF_LINE
+                      CATCODE_PARAMETER
+                      CATCODE_SUPERSCRIPT
+                      CATCODE_SUBSCRIPT
+                      CATCODE_IGNORED
+                      CATCODE_SPACE
+                      CATCODE_LETTER
+                      CATCODE_OTHER
+                      CATCODE_ACTIVE
+                      CATCODE_COMMENT
+                      CATCODE_INVALID
+                      CATCODE_CSNAME
+                      CATCODE_PARAM_REF
+                      CATCODE_ANONYMOUS
+                   ) ],
+    );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{factories} },
                    @{ $EXPORT_TAGS{constants} },
-                   qw(tokens_to_string) );
+                   @{ $EXPORT_TAGS{catcodes} } );
 
 our @EXPORT = ();
 
 use Carp;
 
-my @CACHE;
+use UNIVERSAL;
 
-my $DISTINCT_TOKENS = 0;
-my $TOTAL_TOKENS = 0;
-
-use constant UNIQUE_TOKEN => 1;
-
-our $DEBUG = 0;
+######################################################################
+##                                                                  ##
+##                            ATTRIBUTES                            ##
+##                                                                  ##
+######################################################################
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:catcodes);
-
-use UNIVERSAL;
-
 my %catcode_of :ATTR(:init_arg => 'catcode' :get<catcode>);
-my %datum_of   :ATTR(:name => 'datum');
+my %datum_of   :ATTR(:init_arg => 'datum'   :get<datum>);
 
 my %frozen_name_of :ATTR(:name<frozen_name>);
+
+######################################################################
+##                                                                  ##
+##                            OVERLOADS                             ##
+##                                                                  ##
+######################################################################
 
 use overload
     q{0+}  => \&get_catcode,
     q{""}  => \&to_string,
     q{==}  => \&token_equal,     ## See description below
-#    q{>}   => \&token_gt,
     q{<=>} => \&catcode_compare,
-#    q{!=} => \&token_not_equal,
-    q{eq}  => \&token_eq;
+    q{eq}  => \&token_eq,
+    fallback => 1,
+;
+
+######################################################################
+##                                                                  ##
+##                         GLOBAL VARIABLES                         ##
+##                                                                  ##
+######################################################################
+
+my @CACHE;
+
+## DEBUGGING
+
+our $DEBUG = 0;
+
+my $DISTINCT_TOKENS = 0;
+my $TOTAL_TOKENS = 0;
+
+######################################################################
+##                                                                  ##
+##                            CONSTANTS                             ##
+##                                                                  ##
+######################################################################
+
+use constant UNIQUE_TOKEN => 1;
+
+use constant {
+    CATCODE_ESCAPE      =>  0,
+    CATCODE_BEGIN_GROUP =>  1,
+    CATCODE_END_GROUP   =>  2,
+    CATCODE_MATH_SHIFT  =>  3,
+    CATCODE_ALIGNMENT   =>  4,
+    CATCODE_END_OF_LINE =>  5,
+    CATCODE_PARAMETER   =>  6,
+    CATCODE_SUPERSCRIPT =>  7,
+    CATCODE_SUBSCRIPT   =>  8,
+    CATCODE_IGNORED     =>  9,
+    CATCODE_SPACE       => 10,
+    CATCODE_LETTER      => 11,
+    CATCODE_OTHER       => 12,
+    CATCODE_ACTIVE      => 13,
+    CATCODE_COMMENT     => 14,
+    CATCODE_INVALID     => 15,
+    ##
+    ## EXTENSIONS
+    ##
+    CATCODE_CSNAME      => 16,
+    CATCODE_PARAM_REF   => 17,
+    CATCODE_ANONYMOUS   => 18,
+};
+
+######################################################################
+##                                                                  ##
+##                           CONSTRUCTOR                            ##
+##                                                                  ##
+######################################################################
+
+sub BUILD :RESTRICTED { }
 
 ######################################################################
 ##                                                                  ##
@@ -115,9 +190,7 @@ sub __make_token($$;$) {
 
     $DISTINCT_TOKENS++;
 
-    $token = TeX::Token->new({ catcode => $catcode,
-                               datum   => $datum
-                             });
+    $token = TeX::Token->new({ catcode => $catcode, datum => $datum });
 
     if (! $unique) {
         if ($catcode != CATCODE_ANONYMOUS) {
@@ -173,16 +246,6 @@ sub make_comment_token($) {
     my $comment = shift;
 
     return __make_token(CATCODE_COMMENT, $comment, 0);
-}
-
-######################################################################
-##                                                                  ##
-##                            UTILITIES                             ##
-##                                                                  ##
-######################################################################
-
-sub tokens_to_string(@) {
-    return join '', map { $_->to_string() } @_;
 }
 
 ######################################################################
@@ -284,28 +347,10 @@ sub token_equal {
         croak "Can't compare a ", __PACKAGE__, " to a ", ref($other);
     }
 
-    ## Otherwise, 
+    ## Otherwise,
 
     return $catcode_of{$ident_self} == $other;
 }
-
-# sub token_gt {
-#     my $self = shift;
-# 
-#     my $other = shift;
-# 
-#     if (isa($other, __PACKAGE__)) {
-#         # return ident($self) == ident($other);
-# 
-#         return $self->get_catcode() > $other->get_catcode();
-#     }
-# 
-#     if (ref($other)) {
-#         croak "Can't compare a ", __PACKAGE__, " to a ", ref($other);
-#     }
-# 
-#     return $self->get_catcode() > $other;
-# }
 
 sub catcode_compare {
     my $self = shift;
@@ -328,22 +373,6 @@ sub catcode_compare {
 
     return $self->get_catcode() <=> $other;
 }
-
-# sub token_not_equal {
-#     my $self = shift;
-# 
-#     my $other = shift;
-# 
-#     if (isa($other, __PACKAGE__)) {
-#         return ident($self) != ident($other);
-#     }
-# 
-#     if (ref($other)) {
-#         croak "Can't compare a ", __PACKAGE__, " to a ", ref($other);
-#     }
-# 
-#     return $self->get_catcode() != $other;
-# }
 
 sub token_eq {
     my $self = shift;
@@ -412,3 +441,40 @@ sub to_string {
 1;
 
 __END__
+
+=head1 NAME
+
+TeX::Token -- Immutable flyweight object representing a TeX token
+
+=head1 SYNOPSIS
+
+    use TeX::Token qw(:catcodes :factories);
+
+    $A = make_character_token('A', CATCODE_LETTER);
+
+    $at = make_character_token('@', CATCODE_OTHER);
+
+    $f = make_csname_token('foo'); # \foo
+    $f_unique = make_csname_token('foo', UNIQUE_TOKEN); # A \foo different from any other \foo
+
+    $token = make_param_ref_token(1); # #1
+
+=head1 DESCRIPTION
+
+=head1 EXPORTS
+
+=head1 WARNINGS
+
+Objects of this class should only be created using the supplied
+factory methods.  For this reason, access to the constructor has been
+restricted.  However, you can easily get around that, e.g.,
+
+    my $c = eval {
+        package TeX::Token;
+
+        TeX::Token->new({ datum => 'C', catcode => 12 })
+    };
+
+Don't do that unless you are very, very sure what you are doing.
+
+=cut
