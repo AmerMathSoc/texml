@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::siunitx;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -31,6 +31,8 @@ __DATA__
 \def\siunitx@num#1e#2\@nil{
     \ensuremath{#1 \times 10^{#2}}%
 }
+
+\let\sisetup\@gobble
 
 \TeXMLendPackage
 
