@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Class::amstext_l;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -18,7 +18,7 @@ sub install ( $ ) {
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.
 
-    # $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::amstext_l::DATA{IO});
+    $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::amstext_l::DATA{IO});
 
     return;
 }
@@ -28,6 +28,21 @@ sub install ( $ ) {
 __DATA__
 
 \TeXMLprovidesClass{amstext-l}
+
+\newenvironment{inclusion}[1]{%
+    \quotation
+    \if###1##\else\textbf{#1}\par\fi
+}{%
+    \endquotation
+}
+
+\newenvironment{framedthm}[1]{%
+    \def\@current@framed{#1}%
+    \csname \@current@framed\endcsname
+    % \setXMLattribute{framed}{yes}%
+}{
+    \csname end\@current@framed\endcsname
+}
 
 \TeXMLendClass
 
