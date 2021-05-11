@@ -7,8 +7,6 @@ use base qw(TeX::Command::Executable::Assignment);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:catcodes);
-
 use TeX::Interpreter qw(FROZEN_RELAX);
 
 use TeX::Interpreter::Constants qw(DEFAULT_CHARACTER_ENCODING);

@@ -7,14 +7,10 @@ use TeX::Constants qw(EXPANDED);
 
 use TeX::Node::Extension::UnicodeStringNode qw(:factories);
 
-use TeX::WEB2C qw(:catcodes);
-
 use TeX::Utils::DOI qw(doi_to_url);
 use TeX::Utils::Misc qw(nonempty);
 
-use TeX::Token qw(make_character_token);
-
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes make_character_token);
 
 use constant LEFT_BRACE_TOKEN => make_character_token('{', CATCODE_BEGIN_GROUP);
 use constant RIGHT_BRACE_TOKEN => make_character_token('}', CATCODE_END_GROUP);

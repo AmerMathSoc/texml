@@ -3,7 +3,7 @@ package TeX::Utils::Unicode;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.0.1';
 
 use base qw(Exporter);
 
@@ -23,9 +23,9 @@ use TeX::Interpreter::Constants qw(DEFAULT_CHARACTER_ENCODING);
 
 use TeX::Output::FontMapper qw(decode_character);
 
-use TeX::TokenList qw(:factories);
+use TeX::Token qw(:catcodes);
 
-use TeX::WEB2C qw(:token_types :catcodes);
+use TeX::TokenList qw(:factories);
 
 sub make_accenter( @ ) {
     my @accents = @_;

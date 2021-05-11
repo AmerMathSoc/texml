@@ -7,7 +7,7 @@ use warnings;
 
 use base qw(TeX::Command::Expandable);
 
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes);
 
 use TeX::Interpreter qw(FROZEN_PRIMITIVE_TOKEN);
 

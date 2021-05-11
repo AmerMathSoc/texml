@@ -7,7 +7,7 @@ use base qw(TeX::Command::Expandable);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes);
 
 sub expand {
     my $self = shift;

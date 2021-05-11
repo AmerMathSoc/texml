@@ -11,7 +11,7 @@ use TeX::Constants qw(EXPANDED);
 
 use TeX::Command::Executable::Assignment qw(MODIFIER_GLOBAL);
 
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes);
 
 sub install ( $ ) {
     my $class = shift;

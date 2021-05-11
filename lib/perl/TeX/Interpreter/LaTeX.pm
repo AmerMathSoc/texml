@@ -38,10 +38,10 @@ use TeX::Node::Utils qw(nodes_to_string);
 
 use TeX::Constants qw(:booleans :named_args :module_codes);
 
-use TeX::Token qw(:factories);
+use TeX::Token qw(:catcodes :factories);
 use TeX::TokenList;
 
-use TeX::WEB2C qw(:catcodes :command_codes :scan_types :selector_codes :token_types);
+use TeX::WEB2C qw(:command_codes :scan_types :selector_codes :token_types);
 
 use TeX::Primitive::Parameter qw(:factories);
 

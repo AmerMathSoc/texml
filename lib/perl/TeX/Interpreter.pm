@@ -17,7 +17,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
+use version; our $VERSION = qv '1.1.1';
 
 use base qw(Exporter);
 
@@ -74,7 +74,7 @@ use TeX::Command::Executable::Assignment qw(:modifiers);
 
 use TeX::Interpreter::Constants;
 
-use TeX::Token qw(:factories :constants);
+use TeX::Token qw(:catcodes :constants :factories);
 
 use TeX::TokenList qw(:factories);
 

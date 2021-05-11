@@ -3,7 +3,7 @@ package TeX::Lexer;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.0.0';
+use version; our $VERSION = qv '2.0.1';
 
 use UNIVERSAL;
 
@@ -11,9 +11,9 @@ use TeX::Class;
 
 use Carp;
 
-use TeX::WEB2C qw(:catcodes :type_bounds :lexer_states);
+use TeX::WEB2C qw(:type_bounds :lexer_states);
 
-use TeX::Token qw(:factories);
+use TeX::Token qw(:catcodes :factories);
 
 use TeX::TokenList;
 

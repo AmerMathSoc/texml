@@ -9,7 +9,7 @@ use TeX::Class;
 
 use TeX::Constants qw(:booleans :tracing_macro_codes);
 
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes);
 
 sub execute {
     my $self = shift;

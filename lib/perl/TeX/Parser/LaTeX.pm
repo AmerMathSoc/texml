@@ -11,8 +11,7 @@ use Carp;
 use TeX::Class;
 
 use TeX::KPSE  qw(kpse_lookup);
-use TeX::Token qw(:factories);
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes :factories);
 
 ######################################################################
 ##                                                                  ##

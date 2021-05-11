@@ -11,7 +11,7 @@ use TeX::Token qw(:factories);
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
 
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes);
 
 my %FONT_STYLE = (
     rmfamily => { "font-family" => "serif" },

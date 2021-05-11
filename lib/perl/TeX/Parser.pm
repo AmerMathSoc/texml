@@ -11,8 +11,7 @@ use TeX::Class;
 
 use Carp;
 
-use TeX::WEB2C qw(:catcodes);
-use TeX::Token qw(:factories);
+use TeX::Token qw(:catcodes :factories);
 use TeX::TokenList;
 
 use UNIVERSAL;

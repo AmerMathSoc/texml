@@ -7,7 +7,7 @@ package TeX::Token;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.17.0';
+use version; our $VERSION = qv '1.17.1';
 
 use base qw(Exporter);
 
@@ -242,10 +242,11 @@ sub make_param_ref_token($) {
     return __make_token(CATCODE_PARAM_REF, $param_no, 0);
 }
 
-sub make_comment_token($) {
+sub make_comment_token($;$) {
     my $comment = shift;
+    my $flag    = shift;
 
-    return __make_token(CATCODE_COMMENT, $comment, 0);
+    return __make_token(CATCODE_COMMENT, $comment, $flag);
 }
 
 ######################################################################

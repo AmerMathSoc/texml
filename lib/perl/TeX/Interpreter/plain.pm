@@ -2,14 +2,13 @@ package TeX::Interpreter::plain;
 
 use strict;
 
-use version; our $VERSION = qv '1.2.0';
+use version; our $VERSION = qv '1.2.1';
 
 use base qw(TeX::Interpreter);
 
 use TeX::Class;
 
-use TeX::Token qw(:factories);
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes :factories);
 
 ######################################################################
 ##                                                                  ##

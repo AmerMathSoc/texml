@@ -7,7 +7,7 @@ use base qw(TeX::Primitive::If);
 
 use TeX::Interpreter qw(UNDEFINED_CS);
 use TeX::Constants qw(:booleans :tracing_macro_codes);
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes);
 
 use TeX::Class;
 

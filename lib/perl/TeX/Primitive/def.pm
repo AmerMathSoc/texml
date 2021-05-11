@@ -13,7 +13,7 @@ use TeX::Class;
 
 my %modifier_of :ATTR(:get<modifier> :init_arg<modifier> :default(0));
 
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes);
 
 use TeX::Constants qw(:booleans :tracing_macro_codes);
 

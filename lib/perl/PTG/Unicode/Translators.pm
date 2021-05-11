@@ -3,7 +3,7 @@ package PTG::Unicode::Translators;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.0.0';
+use version; our $VERSION = qv '2.0.1';
 
 use base qw(Exporter);
 
@@ -35,8 +35,7 @@ use PTG::Unicode::Accents qw(apply_accent :names);
 
 use TeX::Parser::LaTeX;
 
-use TeX::Token qw(make_character_token make_csname_token make_param_ref_token);
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes make_character_token make_csname_token make_param_ref_token);
 
 use Unicode::UCD qw(charinfo);
 

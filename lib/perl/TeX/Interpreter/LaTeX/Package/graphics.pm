@@ -6,7 +6,7 @@ use File::Basename qw(fileparse);
 
 use TeX::Constants qw(:named_args);
 
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes);
 
 use TeX::KPSE qw(kpse_lookup);
 

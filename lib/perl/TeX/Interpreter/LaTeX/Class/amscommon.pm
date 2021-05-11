@@ -11,9 +11,9 @@ use TeX::Utils::Misc;
 
 use TeX::Constants qw(:named_args);
 
-use TeX::Token qw(:factories);
+use TeX::Token qw(:catcodes :factories);
 
-use TeX::WEB2C qw(:save_stack_codes :token_types :catcodes);
+use TeX::WEB2C qw(:save_stack_codes :token_types);
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
 

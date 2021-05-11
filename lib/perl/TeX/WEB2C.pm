@@ -3,7 +3,7 @@ package TeX::WEB2C;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.12.0';
+use version; our $VERSION = qv '1.13.0';
 
 use base qw(Exporter);
 
@@ -968,33 +968,6 @@ my %MATH_CLASSES = (
 
 install math_classes => %MATH_CLASSES;
 
-my %CATCODES = (
-    CATCODE_ESCAPE      =>  0,
-    CATCODE_BEGIN_GROUP =>  1,
-    CATCODE_END_GROUP   =>  2,
-    CATCODE_MATH_SHIFT  =>  3,
-    CATCODE_ALIGNMENT   =>  4,
-    CATCODE_END_OF_LINE =>  5,
-    CATCODE_PARAMETER   =>  6,
-    CATCODE_SUPERSCRIPT =>  7,
-    CATCODE_SUBSCRIPT   =>  8,
-    CATCODE_IGNORED     =>  9,
-    CATCODE_SPACE       => 10,
-    CATCODE_LETTER      => 11,
-    CATCODE_OTHER       => 12,
-    CATCODE_ACTIVE      => 13,
-    CATCODE_COMMENT     => 14,
-    CATCODE_INVALID     => 15,
-    ##
-    ## EXTENSIONS
-    ##
-    CATCODE_CSNAME      => 16,
-    CATCODE_PARAM_REF   => 17,
-    CATCODE_ANONYMOUS   => 18,
-);
-
-install catcodes => %CATCODES;
-
 ######################################################################
 ##                                                                  ##
 ##                          MISCELLANEOUS                           ##
@@ -1091,3 +1064,26 @@ $EXPORT_TAGS{all} = [ @EXPORT_MISC, map { @{ $_ } } values %EXPORT_TAGS ];
 1;
 
 __END__
+
+=head1 NAME
+
+TeX::WEB2C - symbolic names for various constants used in tex.web
+
+=head1 SYNOPSIS
+
+    use TeX::WEB2C qw(:type_bounds);
+
+= head1 DESCRIPTION
+
+C<TeX::WEB2C> provides 
+
+=head1 WARNINGS
+
+Much of this is only useful if you want to read, for example, a
+C<.fmt> file and then, of course, it's only useful if the C<.fmt> file
+was created by the exact version of TeX that the constants in this
+file were drawn from.
+
+=head1 EXPORTS
+
+=cut

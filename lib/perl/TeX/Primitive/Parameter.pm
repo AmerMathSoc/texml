@@ -25,7 +25,8 @@ use TeX::Command::Executable::Assignment qw(:modifiers);
 
 use TeX::Constants qw(:named_args);
 
-use TeX::WEB2C qw(:scan_types :catcodes);
+use TeX::Token qw(:catcodes);
+use TeX::WEB2C qw(:scan_types);
 
 use TeX::Class;
 

@@ -5,7 +5,7 @@ use warnings;
 
 use base qw(TeX::Command::Executable);
 
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes);
 
 use TeX::Class;
 

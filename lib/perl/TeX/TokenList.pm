@@ -19,9 +19,7 @@ use Carp;
 
 use TeX::Class;
 
-use TeX::Token qw(:factories);
-
-use TeX::WEB2C qw(:catcodes);
+use TeX::Token qw(:catcodes :factories);
 
 use constant EOL => make_character_token("\n", CATCODE_END_OF_LINE);
 
