@@ -3,7 +3,7 @@ package TeX::TokenList;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.11.1';
+use version; our $VERSION = qv '1.12.0';
 
 use base qw(Exporter);
 
@@ -33,7 +33,7 @@ use overload
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
-    if (exists $arg_ref->{tokens}) {
+    if (defined $arg_ref->{tokens}) {
         my @tokens = @{ $arg_ref->{tokens} };
 
         $tokens_of{$ident} = \@tokens;
@@ -45,7 +45,7 @@ sub BUILD {
 }
 
 sub new_token_list {
-    return __PACKAGE__->new();
+    return __PACKAGE__->new({ tokens => [ @_ ] });
 }
 
 sub get_tokens :ARRAYIFY {
