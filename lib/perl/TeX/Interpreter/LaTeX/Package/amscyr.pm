@@ -22,7 +22,9 @@ __DATA__
 
 \TeXMLprovidesPackage{amscyr}
 
-\UCSchardef\Sha"0428
+\def\Sha{\mathrm{\char"0428}}
+\def\Shcha{\mathrm{\char"0429}}
+\def\De{\mathrm{\char"0434}}
 
 \TeXMLendPackage
 
