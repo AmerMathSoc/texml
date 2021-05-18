@@ -294,6 +294,11 @@ __DATA__
     \protected@edef\refname{#1}%
 }{}
 
+\renewenvironment{bibchapter}[1][\bibname]{%
+    % \backmatter
+    \protected@edef\refname{#1}%
+}{}
+
 \let\current@raw@bib\@empty
 
 \gdef\raw@bbl@write#1{%
