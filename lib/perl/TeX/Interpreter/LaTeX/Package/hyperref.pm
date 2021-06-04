@@ -29,6 +29,7 @@ __DATA__
 \let\@currentHref\@empty
 
 \def\autoref#1{%
+    \st@rredfalse
     \expandafter\@setref\csname r@#1\endcsname\set@autoref{#1}\autoref
 }
 
