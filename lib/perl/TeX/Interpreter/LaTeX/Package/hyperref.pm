@@ -28,8 +28,9 @@ __DATA__
 \newcommand{\pdfbookmark}[3][]{}
 \let\@currentHref\@empty
 
-\def\autoref#1{%
-    \st@rredfalse
+\def\autoref{\maybe@st@rred\@autoref}
+
+\def\@autoref#1{%
     \expandafter\@setref\csname r@#1\endcsname\set@autoref{#1}\autoref
 }
 
