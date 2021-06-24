@@ -44,30 +44,26 @@ __DATA__
 %% These 4 are mathrel in unicode-math (which, FWIW, matches Unicode's
 %% description of them as "relations").
 
-\UnicodeMathSymbol{"22B2}{\lhd  }{\mathbin}{}
-\UnicodeMathSymbol{"22B3}{\unlhd}{\mathbin}{}
-\UnicodeMathSymbol{"22B4}{\rhd  }{\mathbin}{}
-\UnicodeMathSymbol{"22B5}{\unrhd}{\mathbin}{}
+\def\lhd  {\mathbin{\vartriangleleft}}  % U+22B2
+\def\unlhd{\mathbin{\trianglelefteq}}   % U+22B4
+\def\rhd  {\mathbin{\vartriangleright}} % U+22B3
+\def\unrhd{\mathbin{\trianglerighteq}}  % U+22B5
 
-\DeclareMathPassThrough{hbar}   % U+0127 [TeX/jax.js]
+\DeclareMathPassThrough{hbar}           % U+0127 [TeX/jax.js]
 
-\def\yen{\mathyen}
+\def\yen{\mathyen}                      % U+00A5
 
 \DeclareSVGMathChar\circledR\mathord
 
 %% These three arrows are declared mathord in unicode-math, which is
 %% probably a bug.
 
-\UnicodeMathSymbol{"21E2}{\dasharrow}     {\mathrel}{rightwards dashed arrow}
-\UnicodeMathSymbol{"21E2}{\dashrightarrow}{\mathrel}{rightwards dashed arrow}
-\UnicodeMathSymbol{"21E0}{\dashleftarrow} {\mathrel}{leftwards dashed arrow}
+\def\dasharrow     {\mathrel{\rightdasharrow}}  % U+21E2
+\def\dashrightarrow{\mathrel{\rightdasharrow}}  % U+21E2
+\def\dashleftarrow {\mathrel{\leftdasharrow}}   % U+21E0
 
-% \def\dasharrow     {\mathrel{\rightdasharrow}}
-% \def\dashrightarrow{\mathrel{\rightdasharrow}}
-% \def\dashleftarrow {\mathrel{\leftdasharrow}}
-
-\DeclareMathPassThrough{lozenge}    % U+25CA [AMSsymbols.js]
-\DeclareMathPassThrough{square}     % U+25FB [AMSsymbols.js]
+\DeclareMathPassThrough{lozenge}                % U+25CA [AMSsymbols.js]
+\DeclareMathPassThrough{square}                 % U+25FB [AMSsymbols.js]
 
 \RequirePackage{latexsym}
 
