@@ -3,7 +3,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.110.0';
+use version; our $VERSION = qv '1.110.1';
 
 use Image::PNG;
 
@@ -1074,7 +1074,7 @@ __DATA__
 \long\def \@thirdoffour#1#2#3#4{#3}
 \long\def\@fourthoffour#1#2#3#4{#4}
 
-\def\ref{\maybe@st@rred\@ref}
+\DeclareRobustCommand\ref{\maybe@st@rred\@ref}
 
 \def\@ref#1{%
     \expandafter\@setref\csname r@#1\endcsname\@firstoffour{#1}\ref
