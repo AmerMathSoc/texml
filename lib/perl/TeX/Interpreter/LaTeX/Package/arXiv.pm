@@ -5,7 +5,7 @@ package TeX::Interpreter::LaTeX::Package::arXiv;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -28,7 +28,7 @@ __DATA__
 
 % \newcommand{\arXiv}[1]{\href{https://arxiv.org/abs/#1}{\texttt{arXiv:#1}}}
 
-\newcommand{\wikiurl}[1]{\url{https://en.wikipedia.org/wiki/#1}}
+\def\wikiurl#1{\url{https://en.wikipedia.org/wiki/#1}}
 %    \begin{macro}{\parse@arXiv}
 %    \begin{macrocode}
 \def\parse@arXiv#1 [#2]#3\@nnil{%
@@ -41,7 +41,7 @@ __DATA__
 %
 %    \begin{macro}{\arXiv}
 %    \begin{macrocode}
-\newcommand{\arXiv}[1]{%
+\def\arXiv#1{%
     \begingroup
         \parse@arXiv#1 []\@nil\@nnil
         \href{\arXiv@url}{%
