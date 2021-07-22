@@ -46,7 +46,6 @@ __DATA__
 \DeclareSVGMathChar\diagup\mathord
 \DeclareSVGMathChar\digamma\mathord
 \def\doteqdot{\Doteq}
-\def\Doteq{\doteqdot}
 \def\doublecap{\Cap}
 \def\doublecup{\Cup}
 \def\eth{\matheth}
