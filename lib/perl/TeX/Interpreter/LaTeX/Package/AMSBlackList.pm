@@ -26,25 +26,23 @@ __DATA__
 
 \def\AMSBlackListPackage#1{\@namedef{ver@#1.sty}{Skip}}
 
+% \AMSBlackListPackage{listings}
 %\AMSBlackListPackage{mathabx}
-
 \AMSBlackListPackage{amstix2}
-
-\AMSBlackListPackage{iftexml}
-
+\AMSBlackListPackage{backrefs}
+\AMSBlackListPackage{ctable}
 \AMSBlackListPackage{etoolbox}
 \AMSBlackListPackage{footmisc}
 \AMSBlackListPackage{geometry}
+\AMSBlackListPackage{iftexml}
 \AMSBlackListPackage{layout}
-% \AMSBlackListPackage{listings}
 \AMSBlackListPackage{lmodern}
-\AMSBlackListPackage{tabularx}
-\AMSBlackListPackage{thm-listof}
-\AMSBlackListPackage{ctable}
+\AMSBlackListPackage{makeidx}
 \AMSBlackListPackage{pictexwd}
 \AMSBlackListPackage{pspicture}
 \AMSBlackListPackage{shaderef}
-\AMSBlackListPackage{backrefs}
+\AMSBlackListPackage{tabularx}
+\AMSBlackListPackage{thm-listof}
 \AMSBlackListPackage{tikz-qtree-compat}
 
 \TeXMLendPackage
