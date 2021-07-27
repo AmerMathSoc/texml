@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::amsrefs;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.0';
+use version; our $VERSION = qv '1.2.1';
 
 use TeX::Utils::Misc qw(nonempty trim);
 
@@ -268,6 +268,7 @@ __DATA__
     \let\@listlabelname\@empty
     \def\@listdefname{mixed-citation}
     \let\TeXML@setliststyle\@empty
+    \typeout{Entering biblist}%
     \list{\BibLabel}{%
         % \def\@listconfig{\addXMLclass{thebibliography}}%
         \@listXMLidtrue
@@ -317,6 +318,7 @@ __DATA__
 %      => \BibLabel (<label>...</label>)
 
 \def\BibItem#1#2#3{%
+    \typeout{Processing \string\bib{#1}{#2}}%
     \gdef\current@raw@bib{\bib{#1}{#2}{#3}}%
     \vdef\@tempa{#1}%
     \edef\@tempa{%
