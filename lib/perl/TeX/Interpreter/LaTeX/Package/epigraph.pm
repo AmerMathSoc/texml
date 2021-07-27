@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::epigraph;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.0.1';
 
 sub install ( $ ) {
     my $class = shift;
@@ -25,6 +25,8 @@ sub install ( $ ) {
 __DATA__
 
 \TeXMLprovidesPackage{epigraph}
+
+\providecommand{\epigraphsize}{}
 
 \def\epigraph#1#2{%
     \startXMLelement{disp-quote}%
