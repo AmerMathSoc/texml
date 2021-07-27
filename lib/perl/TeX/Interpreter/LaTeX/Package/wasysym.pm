@@ -32,6 +32,8 @@ __DATA__
 
 \DeclareSVGMathChar\currency\mathord
 
+\def\smiley{\ensuremath{\char"263A}}
+
 \TeXMLendPackage
 
 \endinput
