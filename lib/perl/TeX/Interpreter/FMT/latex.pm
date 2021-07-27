@@ -3,7 +3,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.110.1';
+use version; our $VERSION = qv '1.110.2';
 
 use Image::PNG;
 
@@ -1854,6 +1854,7 @@ __DATA__
 \PreserveMacroDefinition\@citex
 
 \def\@biblabel#1#2{%
+    \typeout{Processing \string\@biblabel{#1}{#2}}%
     \setXMLattribute{id}{bibr-#2}%
     \startXMLelement{label}[#1]\endXMLelement{label}%
 }
