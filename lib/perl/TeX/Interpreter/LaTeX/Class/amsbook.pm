@@ -39,6 +39,31 @@ __DATA__
 \let\maketitle\@empty
 \let\chap@maketitle\@empty
 
+\let\c@xcb=\c@section
+\let\p@xcb=\p@section
+\let\xcbname=\sectionname
+\def\thexcb{\thesection}
+\let\tocxcb\tocsection
+
+\renewenvironment{xcb}{%
+  \setcounter{enumi}{0}%
+  \settowidth{\leftmargini}{\labelenumi\hskip\labelsep}%
+  \setcounter{enumii}{4}% letter d
+  \settowidth{\leftmarginii}{\labelenumii\hskip\labelsep}%
+  \@startsection{xcb}% counter name; ignored because of the
+                                % * below
+  {1}% sectioning level
+  {\z@}% indent to the left of the section title
+  {18\p@\@plus2\p@}% vertical space above
+  {1sp}% Space below of 13pt base-to-base, so none needs to be added
+      % here; but \z@ would cause the following text to be run-in, so we
+      % use 1sp instead.
+  {\bfseries}% The font of the subsection title
+  *% always unnumbered
+}{%
+  \par
+}
+
 \endinput
 
 __END__
