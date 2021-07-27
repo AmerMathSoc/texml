@@ -3,7 +3,7 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.0';
+use version; our $VERSION = qv '1.3.1';
 
 use Cwd;
 
@@ -59,7 +59,7 @@ my %use_xetex_of :BOOLEAN(:name<use_xetex> :default<0>);
 ##                                                                  ##
 ######################################################################
 
-sub BUILD {
+sub START {
     my ($self, $ident, $arg_ref) = @_;
 
     if (nonempty(my $base_file = $arg_ref->{base_file})) {
@@ -90,9 +90,13 @@ sub extract_preamble :PRIVATE {
 
     local $_;
 
+    my $tex = $self->get_interpreter();
+
+    my $mode = $tex->is_unicode_input() ? "<:utf8" : "<";
+
     ## Subtlety be damned.
 
-    open(my $fh, "<", $base_file) or do {
+    open(my $fh, $mode, $base_file) or do {
         die "Can't open $base_file: $!\n";
     };
 
@@ -263,7 +267,9 @@ sub convert_tex {
 
     my $tex_file = "$base.tex";
 
-    open(my $fh, ">", $tex_file) or do {
+    my $mode = $tex->is_unicode_input() ? ">:utf8" : ">";
+
+    open(my $fh, $mode, $tex_file) or do {
         die "Can't open $tex_file\n";
     };
 
