@@ -22,6 +22,8 @@ __DATA__
 
 \newdimen\multicolsep
 
+\newenvironment{multicols}[1]{}{}
+
 \endinput
 
 __END__
