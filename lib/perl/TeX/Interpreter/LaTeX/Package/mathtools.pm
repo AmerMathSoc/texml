@@ -59,6 +59,8 @@ __DATA__
 
 \DeclareMathPassThrough{xleftrightarrow}%[2][]
 
+\DeclareMathPassThrough{xmapsto}%[2][]
+
 \DefineAMSMathSimpleEnvironment{gathered}
 
 \TeXMLendPackage
