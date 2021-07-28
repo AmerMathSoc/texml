@@ -41,6 +41,7 @@ __DATA__
 
 \let\c@xcb=\c@section
 \let\p@xcb=\p@section
+\let\l@xcb=\l@section
 \let\xcbname=\sectionname
 \def\thexcb{\thesection}
 \let\tocxcb\tocsection
