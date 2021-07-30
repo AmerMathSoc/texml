@@ -64,10 +64,10 @@ __DATA__
     \par
     \startXMLelement{disp-formula-group}%
     \addXMLid
-    \def\@currentreftype{disp-formula}%
-    \startXMLelement{label}%
-    \ignorespaces\theparentequation%
-    \endXMLelement{label}%
+    % \def\@currentreftype{disp-formula}%
+    % \startXMLelement{label}%
+    % \ignorespaces\theparentequation%
+    % \endXMLelement{label}%
     \xmlpartag{}%
   \ignorespaces
 }{%
