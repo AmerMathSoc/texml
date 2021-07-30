@@ -5,7 +5,7 @@ package TeX::Interpreter::LaTeX::Class::amscommon;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.0';
+use version; our $VERSION = qv '1.3.0';
 
 use TeX::Utils::Misc;
 
