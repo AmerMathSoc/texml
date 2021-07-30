@@ -5,7 +5,7 @@ package TeX::Interpreter::LaTeX::Class::amscommon;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.0';
+use version; our $VERSION = qv '1.3.0';
 
 use TeX::Utils::Misc;
 
@@ -52,6 +52,8 @@ sub install ( $ ) {
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::amscommon::DATA{IO});
 
     $tex->define_csname(revertcopyright => \&do_revertcopyright);
+
+    $tex->define_csname('@finishtoc' => \&do_finish_toc);
 
     ## TODO: Much of this should probably be redone at the TeX macro level.
 
@@ -423,6 +425,61 @@ sub do_endabstract( $$ ) {
     return;
 }
 
+######################################################################
+##                                                                  ##
+##                        TABLE OF CONTENTS                         ##
+##                                                                  ##
+######################################################################
+
+sub do_finish_toc {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $type   = $tex->read_undelimited_parameter(1);
+    my $xml_id = $tex->read_undelimited_parameter();
+
+    my $fragment = << "EOF";
+        \\makeatletter
+        \\immediate\\closeout\\tf\@$type
+        \\gdef\\\@currtoclevel{-1}%
+        \\let\\\@authorlist\\\@empty
+        \\makeatletter
+        \\\@input{\\\jobname.$type}%
+        \\\@clear\@tocstack
+        \\makeatother
+EOF
+
+    my $new = $tex->convert_fragment($fragment);
+
+    my $handle = $tex->get_output_handle();
+
+    my $body = $handle->get_dom();
+
+    my $toc_list = $body->findnodes(qq{//*[\@id='$xml_id']});
+
+    my $num_found = $toc_list->size();
+
+    if ($num_found == 0) {
+        $tex->print_err("Unable to finish TOC $type: can't find XML element '$xml_id'");
+
+        $tex->error();
+
+        return;
+    }
+
+    if ($num_found > 1) {
+        $tex->print_err("That's weird.  I found $num_found XML elements with ID '$xml_id'.  I'll use the first one");
+
+        $tex->error();
+    }
+
+    my $toc = $toc_list->get_node(0);
+
+    $toc->appendChild($new);
+
+    return;
+}
+
 1;
 
 __DATA__
@@ -494,7 +551,7 @@ __DATA__
     \@frontmatterfalse
     \@mainmatterfalse
     \@backmatterfalse
-    \global\let\XML@component@tag\@empty    
+    \global\let\XML@component@tag\@empty
 }
 
 \AtEndDocument{\end@component}
@@ -761,7 +818,7 @@ __DATA__
     \else
         \def\@toclevel{#1}%
         \par
-        \begingroup 
+        \begingroup
             \disable@footnotes
              \xmlpartag{}%
              #6\relax
@@ -850,15 +907,18 @@ __DATA__
         {\xmlpartag{}#2\par}%
         \endXMLelement{title}%
         \endXMLelement{title-group}%
-        \gdef\@currtoclevel{-1}%
-        \let\@authorlist\@empty
-        \makeatletter
-        \@input{\jobname.#1}%
-        \@clear@tocstack
+
+        % \gdef\@currtoclevel{-1}%
+        % \let\@authorlist\@empty
+        % \makeatletter
+        % \@input{\jobname.#1}%
+        % \@clear@tocstack
+
         \endXMLelement{toc}%
         \if@filesw
             \@xp\newwrite\csname tf@#1\endcsname
             \immediate\@xp\openout\csname tf@#1\endcsname \jobname.#1\relax
+            \AtTeXMLend*{\@nx\@finishtoc{#1}{\@currentXMLid}}
         \fi
         \global\@nobreakfalse
     \endgroup
