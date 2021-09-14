@@ -5,7 +5,7 @@ package TeX::Interpreter::LaTeX::Class::amscommon;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.0';
+use version; our $VERSION = qv '1.3.1';
 
 use TeX::Utils::Misc;
 
@@ -441,6 +441,7 @@ sub do_finish_toc {
     my $fragment = << "EOF";
         \\makeatletter
         \\immediate\\closeout\\tf\@$type
+        \\typeout{Generating TOC $type}%
         \\gdef\\\@currtoclevel{-1}%
         \\let\\\@authorlist\\\@empty
         \\makeatletter
