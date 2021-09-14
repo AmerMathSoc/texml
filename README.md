@@ -27,6 +27,8 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * cpan Image::PNG
 
+* cpan Image::JPEG::Size
+
 * apt install pdf2svg
 
 * apt install liblingua-en-numbers-ordinate-perl

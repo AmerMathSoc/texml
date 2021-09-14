@@ -3,9 +3,10 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.110.2';
+use version; our $VERSION = qv '1.111.0';
 
 use Image::PNG;
+use Image::JPEG::Size;
 
 use List::Util qw(all);
 
@@ -438,10 +439,11 @@ sub do_counter_style {
     return;
 }
 
-sub __get_graphic_dimens( $ ) {
+sub __get_graphic_dimens( $$ ) {
     my $file = shift;
+    my $mime_type = shift;
 
-    if ($file =~ m{\.svg$}) {
+    if ($mime_type eq 'image/svg+xml') {
         my $parser = XML::LibXML->new();
         $parser->set_option(huge => 1);
 
@@ -461,7 +463,13 @@ sub __get_graphic_dimens( $ ) {
         return ($width, $height);
     }
 
-    if ($file =~ m{\.png$}) {
+    if ($mime_type eq 'image/jpeg') {
+        my $jpg_util = Image::JPEG::Size->new();
+
+        return $jpg_util->file_dimensions($file);
+    }
+
+    if ($mime_type eq 'image/png') {
         my $png = Image::PNG->new();
 
         return unless $png->read($file);
@@ -481,11 +489,13 @@ sub do_graphic_attibutes {
 
     my $file = $tex->read_undelimited_parameter();
 
-    if (nonempty(my $mime_type = file_mimetype($file))) {
+    my $mime_type = file_mimetype($file);
+
+    if (nonempty($mime_type)) {
         $tex->set_xml_attribute(mimetype => $mime_type);
     }
 
-    if (my ($width, $height) = __get_graphic_dimens($file)) {
+    if (my ($width, $height) = __get_graphic_dimens($file, $mime_type)) {
         $tex->set_xml_attribute(width => $width);
         $tex->set_xml_attribute(height => $height);
     }
