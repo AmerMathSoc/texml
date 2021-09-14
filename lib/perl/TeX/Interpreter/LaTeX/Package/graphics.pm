@@ -41,7 +41,10 @@ sub do_include_graphics {
 
     my ($basename, $dir, $suffix) = fileparse($filename, qr{\.[^.]*});
 
-    for my $ext ('.svg', "$suffix.svg", '.png', "$suffix.png") {
+    for my $ext ('.svg', "$suffix.svg",
+                 '.png', "$suffix.png",
+                 '.jpg', "$suffix.jpg",
+                 '.jpeg', "$suffix.jpeg") {
         if (defined (my $path = kpse_lookup("$basename$ext"))) {
             $path =~ s{\A\./}{};
 
