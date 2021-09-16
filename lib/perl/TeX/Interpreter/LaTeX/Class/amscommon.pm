@@ -499,6 +499,12 @@ __DATA__
 
 \def\nonbreakingspace{\unskip\nobreakspace\ignorespaces}
 
+\DeclareRobustCommand{\forcelinebreak}{%
+    \@ifstar{\unskip\space\ignorespaces}{\unskip\space}%
+}
+
+\DeclareRobustCommand{\forcehyphenbreak}{-\ignorespaces}%
+
 \let\datepreposted\@gobble
 \let\daterevised\@gobble
 \let\datereceived\@gobble

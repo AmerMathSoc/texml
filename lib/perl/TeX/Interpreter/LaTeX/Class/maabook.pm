@@ -44,12 +44,6 @@ __DATA__
 
 \renewcommand{\makehalftitle}{}
 
-\DeclareRobustCommand{\forcelinebreak}{%
-    \@ifstar{\unskip\space\ignorespaces}{\unskip\space}%
-}
-
-\DeclareRobustCommand{\forcehyphenbreak}{-\ignorespaces}%
-
 %% maabook.cls rewrites \caption if it notices that float has been
 %% loaded, but since we've suppressed the float package, the maabook
 %% patches end up restoring the behaviour we were trying to fix.  The
