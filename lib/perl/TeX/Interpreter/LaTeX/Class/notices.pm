@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Class::notices;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.2';
+use version; our $VERSION = qv '1.2.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -49,7 +49,10 @@ __DATA__
 
 \let\@titlepic\@empty
 
-\newcommand{\notiemail}[1]{\texttt{\upshape\nolinkurl{#1}}}
+\def\thanks{\authorbio}
+
+% \newcommand{\notiemail}[1]{\texttt{\upshape\nolinkurl{#1}}}
+\newcommand{\notiemail}{\XMLelement{email}}
 
 % Doesn't handle catcode changes
 
