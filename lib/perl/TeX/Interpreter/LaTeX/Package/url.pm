@@ -58,9 +58,6 @@ sub do_url_formatstring {
         $url_for_link->unshift($tex->tokenize('http://'));
     }
 
-print STDERR "*** do_url_formatstring: url_for_display = '$url_for_display'\n";
-print STDERR "*** do_url_formatstring: url_for_link    = '$url_for_link'\n";
-
     my $formatted = TeX::TokenList->new();
 
     $tex->begingroup();
