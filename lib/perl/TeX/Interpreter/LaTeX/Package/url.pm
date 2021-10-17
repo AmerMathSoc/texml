@@ -130,10 +130,11 @@ __DATA__
 % \Url@actpercent: convert `other' % to active %
 \lccode`+=`\#
 \lccode`\~=`\#
+\catcode`\#=12
 \lowercase{%
     \long\gdef\Url@acthash{%
         \Url@Edit\Url@String{++}{~}%
-        \ifnum\mathcode`\#<32768 \edef~{\string#}\fi
+        \ifnum\mathcode`\#<32768 \edef~{#}\fi
     }
 }%
 \lccode`+=`\%
