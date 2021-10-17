@@ -58,6 +58,9 @@ sub do_url_formatstring {
         $url_for_link->unshift($tex->tokenize('http://'));
     }
 
+print STDERR "*** do_url_formatstring: url_for_display = '$url_for_display'\n";
+print STDERR "*** do_url_formatstring: url_for_link    = '$url_for_link'\n";
+
     my $formatted = TeX::TokenList->new();
 
     $tex->begingroup();
@@ -133,7 +136,7 @@ __DATA__
 \lowercase{%
     \long\gdef\Url@acthash{%
         \Url@Edit\Url@String{++}{~}%
-        \ifnum\mathcode`\#<32768 \def~{\#}\fi
+        \ifnum\mathcode`\#<32768 \edef~{\string#}\fi
     }
 }%
 \lccode`+=`\%
