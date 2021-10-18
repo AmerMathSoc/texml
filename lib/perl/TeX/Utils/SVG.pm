@@ -3,7 +3,7 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.1';
+use version; our $VERSION = qv '1.3.2';
 
 use Cwd;
 
@@ -333,7 +333,8 @@ sub convert_tex {
     # if ($is_external_graphic) {
         print { $fh } qq{\\TeXMLrealhsize\\textwidth\n};
         print { $fh } qq{\\paperwidth ${paper_width}pt\n};
-        print { $fh } qq{\\paperheight\\paperwidth\n};
+        print { $fh } qq{\\textheight22in\n};
+        print { $fh } qq{\\paperheight22in\n};
         print { $fh } qq{\\special{papersize=\\the\\paperwidth,\\the\\paperheight}\n};
     # }
 
