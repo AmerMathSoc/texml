@@ -56,25 +56,26 @@ __DATA__
 }
 
 \renewenvironment{subequations}{%
-  \refstepcounter{equation}%
-  \protected@edef\theparentequation{\theequation}%
-  \setcounter{parentequation}{\value{equation}}%
-  \setcounter{equation}{0}%
-  \def\theequation{\theparentequation\alph{equation}}%
+    \par
+    \refstepcounter{equation}%
+    \protected@edef\theparentequation{\theequation}%
+    \setcounter{parentequation}{\value{equation}}%
+    \setcounter{equation}{0}%
+    \def\theequation{\theparentequation\alph{equation}}%
     \par
     \startXMLelement{disp-formula-group}%
-    \addXMLid
-    % \def\@currentreftype{disp-formula}%
-    % \startXMLelement{label}%
-    % \ignorespaces\theparentequation%
-    % \endXMLelement{label}%
-    \xmlpartag{}%
-  \ignorespaces
+        \def\@currentreftype{disp-formula}%
+        \addXMLid
+        \startXMLelement{label}%
+            \ignorespaces\theparentequation
+        \endXMLelement{label}%
+        \xmlpartag{}%
+        \ignorespaces
 }{%
     \endXMLelement{disp-formula-group}%
     \par
-  \setcounter{equation}{\value{parentequation}}%
-  \ignorespacesafterend
+    \setcounter{equation}{\value{parentequation}}%
+    \ignorespacesafterend
 }
 
 \def\math@cr{\@ifstar{\math@cr@}{\math@cr@}}
