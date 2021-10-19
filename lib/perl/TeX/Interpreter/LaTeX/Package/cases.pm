@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::cases;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -83,12 +83,23 @@ __DATA__
 \let\numc@resetsub\relax
 
 \def\subnumcases{%
-    \let\numc@setsub\subequations 
-    \let\numc@resetsub\endsubequations
+    \let\numc@setsub\cases@subeq
+    \let\numc@resetsub\endcases@subeq
     \numcases
 }
 
-\let\endsubnumcases\endnumcases 
+\let\endsubnumcases\endnumcases
+
+\newenvironment{cases@subeq}{%
+    \refstepcounter{equation}%
+    \protected@edef\theparentequation{\theequation}%
+    \setcounter{parentequation}{\value{equation}}%
+    \setcounter{equation}{0}%
+    \def\theequation{\theparentequation\alph{equation}}%
+}{
+    \setcounter{equation}{\value{parentequation}}%
+    \ignorespacesafterend
+}
 
 \DeclareOption{subnum}{
     \let\numc@setsub\subequations 
