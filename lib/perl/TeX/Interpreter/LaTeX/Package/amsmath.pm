@@ -56,6 +56,7 @@ __DATA__
 }
 
 \renewenvironment{subequations}{%
+    \everypar{}%
     \par
     \refstepcounter{equation}%
     \protected@edef\theparentequation{\theequation}%
