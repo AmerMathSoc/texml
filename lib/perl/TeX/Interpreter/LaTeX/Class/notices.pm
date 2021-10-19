@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Class::notices;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.0';
+use version; our $VERSION = qv '1.2.1';
 
 sub install ( $ ) {
     my $class = shift;
@@ -67,26 +67,24 @@ __DATA__
     \endgroup
 }
 
-\newcounter{@authcnt}
 \newcommand{\authorgraphics}[1][0pt]{%
   \let\endauthorgraphics\relax%
   \par
   \begingroup
-    \baselineskip=0pt\parindent=0pt%
-    \setcounter{@authcnt}{0}%
-    \sffamily\fontsize{9}{11}\selectfont
-    \@tempdima 1pc
-    \advance\@tempdima #1%
-    \addvspace\@tempdima
     \@authorgraphicsi
 }
-\newcommand{\@authorgraphicsi}{\@ifnextchar\endauthorgraphics{\@endauthorgraphics}{\@authorgraphicsii}}
+
+\newcommand{\@authorgraphicsi}{%
+    \@ifnextchar\endauthorgraphics{\@endauthorgraphics}{\@authorgraphicsii}}
+
 \newcommand{\@authorgraphicsii}[2]{%
-%   \ifodd\value{@authcnt}\kern1pc\else
-%   \ifnum\value{@authcnt}>0 \\[1pc]\fi\fi
-%   \parbox[t]{7pc}{\baselineskip=0pt\includegraphics[width=7pc,height=9pc]{#2}\\[3bp]#1}%
-  \stepcounter{@authcnt}\@authorgraphicsi%
+    \begin{figure}
+        \includegraphics[width=7pc,height=9pc]{#2}
+        \caption*{#1}%
+    \end{figure}
+    \@authorgraphicsi
 }
+
 \newcommand{\@endauthorgraphics}{\endgroup\par}
 
 \let\c@refhead\c@section
