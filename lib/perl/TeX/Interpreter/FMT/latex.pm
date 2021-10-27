@@ -3,7 +3,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.111.0';
+use version; our $VERSION = qv '1.112.0';
 
 use Image::PNG;
 use Image::JPEG::Size;
@@ -1084,13 +1084,19 @@ __DATA__
 \long\def \@thirdoffour#1#2#3#4{#3}
 \long\def\@fourthoffour#1#2#3#4{#4}
 
-\DeclareRobustCommand\ref{\maybe@st@rred\@ref}
+\DeclareRobustCommand\ref{%
+    \begingroup
+        \maybe@st@rred\@ref
+}
 
 \def\@ref#1{%
     \expandafter\@setref\csname r@#1\endcsname\@firstoffour{#1}\ref
 }
 
-\def\pageref{\maybe@st@rred\@pageref}
+\def\pageref{%
+    \begingroup
+        \maybe@st@rred\@pageref
+}
 
 \def\@pageref#1{%
     \expandafter\@setref\csname r@#1\endcsname\@secondoffour{#1}\pageref
@@ -1111,53 +1117,55 @@ __DATA__
 \def\@setref{\csname @setref@\ifst@rred no\fi link\endcsname}
 
 \def\@setref@link#1#2#3#4{%
-    \leavevmode
-    \startXMLelement{xref}%
-    \ifst@rred
-        \setXMLattribute{linked}{no}%
-    \fi
-    \if@TeXMLend
-        \@ifundefined{r@#3}{%
-            \setXMLattribute{specific-use}{undefined}%
-            \texttt{?#3}%
-        }{%
-            \begingroup
-                \double@expand{%
-                    \edef\noexpand\@ref@label@attr{%
-                        \noexpand\auto@ref@label{\expandafter\@thirdoffour#1}%
+        \leavevmode
+        \startXMLelement{xref}%
+        \ifst@rred
+            \setXMLattribute{linked}{no}%
+        \fi
+        \if@TeXMLend
+            \@ifundefined{r@#3}{%
+                \setXMLattribute{specific-use}{undefined}%
+                \texttt{?#3}%
+            }{%
+                \begingroup
+                    \double@expand{%
+                        \edef\noexpand\@ref@label@attr{%
+                            \noexpand\auto@ref@label{\expandafter\@thirdoffour#1}%
+                        }%
                     }%
-                }%
-                \ifx\@ref@label@attr\@empty\else
-                    \setXMLattribute{ref-label}{\@ref@label@attr}%
-                \fi
-            \endgroup
-            \setXMLattribute{specific-use}{\expandafter\@gobble\string#4}%
-            \setXMLattribute{rid}{\expandafter\@thirdoffour#1}%
-            \setXMLattribute{ref-type}{\expandafter\@fourthoffour#1}%
-            \protect\printref{\expandafter#2#1}%
-        }%
-    \else
-        \setXMLattribute{ref-key}{#3}%
-        \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#4}%
-    \fi
-    \endXMLelement{xref}%
+                    \ifx\@ref@label@attr\@empty\else
+                        \setXMLattribute{ref-label}{\@ref@label@attr}%
+                    \fi
+                \endgroup
+                \setXMLattribute{specific-use}{\expandafter\@gobble\string#4}%
+                \setXMLattribute{rid}{\expandafter\@thirdoffour#1}%
+                \setXMLattribute{ref-type}{\expandafter\@fourthoffour#1}%
+                \protect\printref{\expandafter#2#1}%
+            }%
+        \else
+            \setXMLattribute{ref-key}{#3}%
+            \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#4}%
+        \fi
+        \endXMLelement{xref}%
+    \endgroup
 }
 
 \def\@setref@nolink#1#2#3#4{%
-    \leavevmode
-    \if@TeXMLend
-        \@ifundefined{r@#3}{%
-            \texttt{?#3}%
-        }{%
-            \protect\printref{\expandafter#2#1}%
-        }%
-    \else
-        \startXMLelement{xref}%
-        \setXMLattribute{linked}{no}%
-        \setXMLattribute{ref-key}{#3}%
-        \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#4}%
-        \endXMLelement{xref}%
-    \fi
+        \leavevmode
+        \if@TeXMLend
+            \@ifundefined{r@#3}{%
+                \texttt{?#3}%
+            }{%
+                \protect\printref{\expandafter#2#1}%
+            }%
+        \else
+            \startXMLelement{xref}%
+            \setXMLattribute{linked}{no}%
+            \setXMLattribute{ref-key}{#3}%
+            \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#4}%
+            \endXMLelement{xref}%
+        \fi
+    \endgroup
 }
 
 \let\printref\@firstofone
