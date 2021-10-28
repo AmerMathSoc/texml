@@ -356,6 +356,7 @@ __DATA__
         \tab@prevclass\tab@class
         \tab@prevsubclass\tab@subclass
     }%
+    %% Finalize the preamble
     \ifcase \tab@prevclass
         \@righttbs                  %  0 clr
     \or % no-op                     %  1 |
@@ -365,7 +366,7 @@ __DATA__
             % no-op
         \or \@righttbs
         \fi
-    \or \@righttbs                  %  5 [pmb]-arg
+    \or %\@righttbs                  %  5 [pmb]-arg
     \or                             %  6 <start>
     \or                             %  7 V
     \or                             %  8 V-arg
@@ -561,6 +562,7 @@ __DATA__
                            \or bottom%  2 b
                            \fi%
     }%
+    \@righttbs
     \insert@column
     \prepnext@tok
 }
