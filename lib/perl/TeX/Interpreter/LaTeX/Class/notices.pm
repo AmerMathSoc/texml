@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Class::notices;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.1';
+use version; our $VERSION = qv '1.2.2';
 
 sub install ( $ ) {
     my $class = shift;
@@ -50,6 +50,9 @@ __DATA__
 \let\@titlepic\@empty
 
 \def\thanks{\authorbio}
+
+\def\commbytext{\def\@commbytext}
+\def\@commbytext{Communicated by \emph{Notices} Associate Editor }
 
 % \newcommand{\notiemail}[1]{\texttt{\upshape\nolinkurl{#1}}}
 \newcommand{\notiemail}{\XMLelement{email}}
