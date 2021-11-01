@@ -3,7 +3,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.112.0';
+use version; our $VERSION = qv '1.113.0';
 
 use Image::PNG;
 use Image::JPEG::Size;
@@ -246,6 +246,18 @@ sub do_resolve_xrefs {
 
                     $num_cites++;
                 }
+            } elsif ($ref_cmd eq 'cref') {
+                my $ref_key = $xref->getAttribute('ref-key');
+
+                my $new_node = $tex->convert_fragment(qq{\\${ref_cmd}{$ref_key}});
+
+                my $flag = $new_node->firstChild()->getAttribute("specific-use");
+
+                if (nonempty($flag) && $flag !~ m{^un(defined|resolved)}) {
+                    $num_xrefs++;
+                }
+
+                $xref->replaceNode($new_node);
             } else {
                 my $linked = 1;
 
