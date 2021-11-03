@@ -5,7 +5,7 @@ package TeX::Interpreter::LaTeX::Class::amscommon;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.1';
+use version; our $VERSION = qv '1.3.2';
 
 use TeX::Utils::Misc;
 
@@ -723,17 +723,20 @@ __DATA__
         %%
         %% Try very very hard not to output an empty <label/>
         %%
-        \protected@edef\@tempa{\csname #1name\endcsname}%
-        \ifx\@tempa\@empty\else
-            \protected@edef\@tempa{\@tempa\space}%
+        %% Use a dedicated \@temp macro here because cleveref steals
+        %% \@tempa in its redefinition of \refstepcounter
+        %%
+        \protected@edef\@templabel{\csname #1name\endcsname}%
+        \ifx\@templabel\@empty\else
+            \protected@edef\@templabel{\@templabel\space}%
         \fi
         \expandafter\ifx\csname the#1\endcsname \@empty \else
             \refstepcounter{#1}%
-            \protected@edef\@tempa{\@tempa\csname the#1\endcsname}%
+            \protected@edef\@templabel{\@templabel\csname the#1\endcsname}%
         \fi
-        \ifx\@tempa\@empty\else
+        \ifx\@templabel\@empty\else
             \startXMLelement{label}%
-            \ignorespaces\@tempa
+            \ignorespaces\@templabel
             \endXMLelement{label}%
         \fi
     \fi
