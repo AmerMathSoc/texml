@@ -28,6 +28,11 @@ __DATA__
 
 \@namedef{ver@algorithmic.sty}{XXX}
 
+\def\ALC@NS{alg}
+
+\newcommand{\ALC@open}[1]{\startXMLelement{\ALC@NS:#1}}
+\newcommand{\ALC@close}[1]{\endXMLelement{\ALC@NS:#1}}
+
 \newcommand{\TRUE}{\algorithmictrue{}}
 \newcommand{\FALSE}{\algorithmicfalse{}}
 \newcommand{\AND}{\algorithmicand{} }
@@ -36,9 +41,6 @@ __DATA__
 \newcommand{\NOT}{\algorithmicnot{} }
 \newcommand{\TO}{\algorithmicto{} }
 
-\newif\ifALC@toplevel@
-\ALC@toplevel@false
-
 \let\ALC@tagstack\@empty
 
 \long\def\g@stack@push#1#2{%
@@ -46,8 +48,8 @@ __DATA__
 }
 
 \def\ALC@pushtag#1{%
-    \startXMLelement{algo-#1}%
-    \g@stack@push\ALC@tagstack{\endXMLelement{algo-#1}}%
+    \ALC@open{#1}%
+    \g@stack@push\ALC@tagstack{\ALC@close{#1}}%
 }
 
 \def\ALC@poptags{%
@@ -62,12 +64,12 @@ __DATA__
     \ALC@endline
     \let\ALC@endline\ALC@endline@
     \par
-    \startXMLelement{algo-line}%
+    \ALC@open{line}%
 }
 
 \def\ALC@endline@{%
     \par
-    \endXMLelement{algo-line}%
+    \ALC@close{line}%
     \let\ALC@endline\@empty
     \par
 }
@@ -97,7 +99,7 @@ __DATA__
 }
 
 \newcommand{\RETURN}{%
-    \STATE \algorithmicreturn{} % keep this space 
+    \STATE \algorithmicreturn{} % keep this space
 }
 
 \newcommand{\STMT}{\STATE}
@@ -108,12 +110,12 @@ __DATA__
     \newenvironment{ALC@#1}{%
         \ALC@poptags
         \par
-        \startXMLelement{algo-#2}%
+        \ALC@open{#2}%
     }{%
         %% TODO: ALC@noend
         \ALC@poptags
         \par
-        \endXMLelement{algo-#2}%
+        \ALC@close{#2}%
         \par
     }%
 }
@@ -128,113 +130,113 @@ __DATA__
 \ALC@g{loop}{loop}
 \ALC@g{rpt}{repeat}
 
+\newcommand{\ALC@com}[1]{%
+    \ifthenelse{\equal{#1}{default}}{}{\ \algorithmiccomment{#1}}%
+}
+
+\newcommand{\INPUTS}[1][default]{%
+    \ALC@it\algorithmicinputs\ \ALC@com{#1}\begin{ALC@inputs}%
+}
+\newcommand{\ENDINPUTS}{\end{ALC@inputs}}
+
+\newcommand{\OUTPUTS}[1][default]{%
+    \ALC@it\algorithmicoutputs\ \ALC@com{#1}\begin{ALC@outputs}%
+}
+\newcommand{\ENDOUTPUTS}{\end{ALC@outputs}}
+
+\newcommand{\GLOBALS}{\ALC@it\algorithmicglobals\ }
+
+\newcommand{\BODY}[1][default]{%
+    \ALC@it\algorithmicbody\ \ALC@com{#1}\begin{ALC@body}%
+}
+\newcommand{\ENDBODY}{\end{ALC@body}}
+
+\newcommand{\IF}[2][default]{%
+    \begin{ALC@if}%
+    \ALC@open{condition}%
+    \ALC@startline
+        #2%\ \algorithmicthen
+        \ALC@com{#1}
+    \ALC@endline
+    \ALC@close{condition}%
+}
+
+\newcommand{\ELSE}[1][default]{%
+    \end{ALC@if}%
+    \begin{ALC@if}%
+    \setXMLattribute{type}{else}%
+}
+
+\newcommand{\ELSIF}[2][default]{%
+    \end{ALC@if}%
+    \begin{ALC@if}%
+    \setXMLattribute{type}{elsif}%
+    \ALC@startline
+        % \algorithmicelseif
+        #2%\ \algorithmicthen
+        \ALC@com{#1}%
+    \ALC@endline
+}
+
+\newcommand{\FOR}[2][default]{%
+    \ALC@it\algorithmicfor\ #2\ \algorithmicdo
+    \ALC@com{#1}\begin{ALC@for}%
+}
+
+\newcommand{\FORALL}[2][default]{%
+    \ALC@it\algorithmicforall\ #2\ \algorithmicdo
+    \ALC@com{#1}\begin{ALC@for}%
+}
+
+\newcommand{\WHILE}[2][default]{%
+    \begin{ALC@while}%
+    \ALC@open{condition}%
+    \ALC@startline
+        #2%\ \algorithmicdo
+    \ALC@endline
+    \ALC@close{condition}%
+    \ALC@com{#1}
+}
+
+\newcommand{\LOOP}[1][default]{%
+    \ALC@it\algorithmicloop \ALC@com{#1}\begin{ALC@loop}%
+}
+\newcommand{\REPEAT}[1][default]{%
+    \ALC@it\algorithmicrepeat \ALC@com{#1}\begin{ALC@rpt}%
+}
+\newcommand{\UNTIL}[1]{\end{ALC@rpt}\ALC@it\algorithmicuntil\ #1}
+
+% \ifthenelse{\boolean{ALC@noend}}{
+    \newcommand{\ENDIF}{\end{ALC@if}}
+    \newcommand{\ENDFOR}{\end{ALC@for}}
+    \newcommand{\ENDWHILE}{\end{ALC@while}}
+    \newcommand{\ENDLOOP}{\end{ALC@loop}}
+% }{%
+%     \newcommand{\ENDIF}{\end{ALC@if}\ALC@it\algorithmicendif}
+%     \newcommand{\ENDFOR}{\end{ALC@for}\ALC@it\algorithmicendfor}
+%     \newcommand{\ENDWHILE}{\end{ALC@while}\ALC@it\algorithmicendwhile}
+%     \newcommand{\ENDLOOP}{\end{ALC@loop}\ALC@it\algorithmicendloop}
+% }
+
 \renewenvironment{algorithmic}[1][0]{
     \par
     \xmlpartag{}%
-    \startXMLelement{algo-algo}
+    \ALC@open{algorithm}
 %
-    \let\@item\ALC@item
-
-    \renewcommand{\\}{\@centercr}
-
-    \ALC@toplevel@true
-
+    \renewcommand{\\}{\@centercr}% TBD
     \newcommand{\ALC@it}{%
         \stepcounter{ALC@rem}%
+    % UGGGG
         \ifthenelse{\equal{\arabic{ALC@rem}}{#1}}{\setcounter{ALC@rem}{0}}{}%
         \stepcounter{ALC@line}%
         \refstepcounter{ALC@unique}%
         % \item\def\@currentlabel{\theALC@line}%
         \par
     }
-
-    \newcommand{\ALC@com}[1]{%
-        \ifthenelse{\equal{##1}{default}}{}{\ \algorithmiccomment{##1}}%
-    }
-
-    \newcommand{\INPUTS}[1][default]{%
-        \ALC@it\algorithmicinputs\ \ALC@com{##1}\begin{ALC@inputs}%
-    }
-    \newcommand{\ENDINPUTS}{\end{ALC@inputs}}
-
-    \newcommand{\OUTPUTS}[1][default]{%
-        \ALC@it\algorithmicoutputs\ \ALC@com{##1}\begin{ALC@outputs}%
-    }
-    \newcommand{\ENDOUTPUTS}{\end{ALC@outputs}}
-
-    \newcommand{\GLOBALS}{\ALC@it\algorithmicglobals\ }
-
-    \newcommand{\BODY}[1][default]{%
-        \ALC@it\algorithmicbody\ \ALC@com{##1}\begin{ALC@body}%
-    }
-    \newcommand{\ENDBODY}{\end{ALC@body}}
-
-    \newcommand{\IF}[2][default]{%
-        \begin{ALC@if}%
-        \ALC@startline
-            ##2%\ \algorithmicthen
-            \ALC@com{##1}
-        \ALC@endline
-    }
-
-    \newcommand{\ELSE}[1][default]{%
-        \end{ALC@if}%
-        \begin{ALC@if}%
-        \setXMLattribute{type}{else}%
-    }
-
-    \newcommand{\ELSIF}[2][default]{%
-        \end{ALC@if}%
-        \begin{ALC@if}%
-        \setXMLattribute{type}{elsif}%
-        \ALC@startline
-            % \algorithmicelseif
-            ##2%\ \algorithmicthen
-            \ALC@com{##1}%
-        \ALC@endline
-    }
-
-    \newcommand{\FOR}[2][default]{%
-        \ALC@it\algorithmicfor\ ##2\ \algorithmicdo
-        \ALC@com{##1}\begin{ALC@for}%
-    }
-
-    \newcommand{\FORALL}[2][default]{%
-        \ALC@it\algorithmicforall\ ##2\ \algorithmicdo
-        \ALC@com{##1}\begin{ALC@for}%
-    }
-
-    \newcommand{\WHILE}[2][default]{%
-        \begin{ALC@while}%
-        \ALC@startline
-            ##2%\ \algorithmicdo
-        \ALC@endline
-        \ALC@com{##1}
-    }
-
-    \newcommand{\LOOP}[1][default]{%
-        \ALC@it\algorithmicloop \ALC@com{##1}\begin{ALC@loop}%
-    }
-    \newcommand{\REPEAT}[1][default]{%
-        \ALC@it\algorithmicrepeat \ALC@com{##1}\begin{ALC@rpt}%
-    }
-    \newcommand{\UNTIL}[1]{\end{ALC@rpt}\ALC@it\algorithmicuntil\ ##1}
-
-    % \ifthenelse{\boolean{ALC@noend}}{
-        \newcommand{\ENDIF}{\end{ALC@if}}
-        \newcommand{\ENDFOR}{\end{ALC@for}}
-        \newcommand{\ENDWHILE}{\end{ALC@while}}
-        \newcommand{\ENDLOOP}{\end{ALC@loop}}
-    % }{%
-    %     \newcommand{\ENDIF}{\end{ALC@if}\ALC@it\algorithmicendif}
-    %     \newcommand{\ENDFOR}{\end{ALC@for}\ALC@it\algorithmicendfor}
-    %     \newcommand{\ENDWHILE}{\end{ALC@while}\ALC@it\algorithmicendwhile}
-    %     \newcommand{\ENDLOOP}{\end{ALC@loop}\ALC@it\algorithmicendloop}
-    % }
 }{%
     \ALC@poptags
     \par
-    \endXMLelement{algo-algo}
+    \ALC@close{algorithm}
     \par
 }
 
