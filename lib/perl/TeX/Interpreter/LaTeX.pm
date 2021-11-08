@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX;
 
 use strict;
 
-use version; our $VERSION = qv '1.66.0';
+use version; our $VERSION = qv '1.66.1';
 
 use base qw(TeX::Interpreter Exporter);
 
@@ -654,7 +654,10 @@ sub do_texml_create_svg {
     if (-e $out_file) {
         my $tex_file = $tex->get_file_name();
 
-        if (file_mtime($tex_file) < file_mtime($out_file)) {
+        my $m_in  = file_mtime($tex_file);
+        my $m_out = file_mtime($out_file);
+
+        if (defined $m_in && defined $m_out && $m_in < $m_out) {
             $tex->print_nl("Found up-to-date $out_file.  Not regenerating.");
 
             $regenerate = 0;
