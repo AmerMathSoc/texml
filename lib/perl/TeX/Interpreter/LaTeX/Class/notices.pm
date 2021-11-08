@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Class::notices;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.2';
+use version; our $VERSION = qv '1.2.3';
 
 sub install ( $ ) {
     my $class = shift;
@@ -74,6 +74,7 @@ __DATA__
   \let\endauthorgraphics\relax%
   \par
   \begingroup
+    \let\textcolor\@secondoftwo
     \@authorgraphicsi
 }
 
