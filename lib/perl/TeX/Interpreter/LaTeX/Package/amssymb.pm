@@ -68,7 +68,8 @@ __DATA__
 \DeclareMathPassThrough{restriction}
 \DeclareSVGMathChar\shortmid\mathrel
 \DeclareSVGMathChar\shortparallel\mathrel
-\DeclareSVGMathChar\smallfrown\mathrel
+% \DeclareSVGMathChar\smallfrown\mathrel
+\def\smallfrown{\frown}
 \DeclareSVGMathChar\smallsmile\mathrel
 \DeclareSVGMathChar\thickapprox\mathrel
 \DeclareSVGMathChar\thicksim\mathrel
