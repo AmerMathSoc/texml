@@ -24,7 +24,7 @@ __DATA__
 
 \TeXMLprovidesPackage{imakeidx}
 
-
+\let\makeindex\@gobbleopt
 
 \TeXMLendPackage
 
