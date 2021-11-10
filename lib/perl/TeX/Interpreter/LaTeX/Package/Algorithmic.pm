@@ -58,6 +58,30 @@ __DATA__
     \global\let\ALC@tagstack\@empty
 }
 
+\let\ALC@elsestack\@empty
+
+\def\ALC@pushelse#1{%
+    \ALC@open{#1}%
+    \g@stack@push\ALC@elsestack{\ALC@close{#1}}%
+}
+
+\def\ALC@popelse{%
+    \par
+    \ALC@elsestack
+    \global\let\ALC@elsestack\@empty
+}
+
+% \def\ALC@pushelse#1{%
+%     \ALC@poptags
+%     \ALC@open{#1}%
+%     \gdef\ALC@close@else{%
+%         \ALC@close{#1}%
+%         \global\let\ALC@close@else\@empty
+%     }%
+% }
+
+\let\ALC@close@else\@empty
+
 \def\ALC@startline{%
     \ALC@poptags
     \par
@@ -75,6 +99,26 @@ __DATA__
 }
 
 \let\ALC@endline\@empty
+
+\def\ALC@startblock{%
+    \ALC@poptags
+    \par
+    \ALC@endblock
+    \let\ALC@endblock\ALC@endblock@
+    \par
+    \ALC@open{block}%
+}
+
+\def\ALC@endblock@{%
+    \par
+    \ALC@poptags
+    \par
+    \ALC@close{block}%
+    \let\ALC@endblock\@empty
+    \par
+}
+
+\let\ALC@endblock\@empty
 
 %% Top-level
 
@@ -104,35 +148,43 @@ __DATA__
 
 \newcommand{\STMT}{\STATE}
 
-\newcommand{\COMMENT}[1]{\algorithmiccomment{##1}}
+\def\algorithmiccomment#1{%
+    \ALC@open{comment}#1\ALC@close{comment}%
+}
 
-\def\ALC@g#1#2{%
+\newcommand{\COMMENT}[1]{\algorithmiccomment{#1}}
+
+\newcommand{\ALC@com}[1]{%
+    \ifthenelse{\equal{#1}{default}}{}{\ \COMMENT{#1}}%
+}
+
+\def\ALC@g#1{%
     \newenvironment{ALC@#1}{%
         \ALC@poptags
         \par
-        \ALC@open{#2}%
+        \ALC@open{#1}%
     }{%
         %% TODO: ALC@noend
         \ALC@poptags
         \par
-        \ALC@close{#2}%
+        \ALC@close{#1}%
         \par
     }%
 }
 
-\ALC@g{inputs}{inputs}
-\ALC@g{outputs}{outputs}
-\ALC@g{globals}{globals}
-\ALC@g{body}{body}
-\ALC@g{if}{if}
-\ALC@g{for}{for}
-\ALC@g{while}{while}
-\ALC@g{loop}{loop}
-\ALC@g{rpt}{repeat}
-
-\newcommand{\ALC@com}[1]{%
-    \ifthenelse{\equal{#1}{default}}{}{\ \algorithmiccomment{#1}}%
-}
+\ALC@g{inputs}
+\ALC@g{outputs}
+\ALC@g{globals}
+\ALC@g{body}
+\ALC@g{if}
+\ALC@g{elsif}
+\ALC@g{else}
+\ALC@g{for}
+\ALC@g{forall}
+\ALC@g{while}
+\ALC@g{loop}
+\ALC@g{repeat}
+\ALC@g{until}
 
 \newcommand{\INPUTS}[1][default]{%
     \ALC@it\algorithmicinputs\ \ALC@com{#1}\begin{ALC@inputs}%
@@ -155,68 +207,114 @@ __DATA__
     \begin{ALC@if}%
     \ALC@open{condition}%
     \ALC@startline
-        #2%\ \algorithmicthen
-        \ALC@com{#1}
+        #2%
+        \ALC@com{#1}%
     \ALC@endline
     \ALC@close{condition}%
-}
-
-\newcommand{\ELSE}[1][default]{%
-    \end{ALC@if}%
-    \begin{ALC@if}%
-    \setXMLattribute{type}{else}%
+    \ALC@startblock
 }
 
 \newcommand{\ELSIF}[2][default]{%
-    \end{ALC@if}%
-    \begin{ALC@if}%
-    \setXMLattribute{type}{elsif}%
+    \ALC@endblock
+    \ALC@popelse
+    \ALC@pushelse{elsif}
+    \ALC@open{condition}%
     \ALC@startline
-        % \algorithmicelseif
-        #2%\ \algorithmicthen
-        \ALC@com{#1}%
+         #2%
+         \ALC@com{#1}%
     \ALC@endline
+    \ALC@close{condition}%
+    \ALC@startblock
+}
+
+\newcommand{\ELSE}[1][default]{%
+    \ALC@endblock
+    \ALC@popelse
+    \ALC@pushelse{else}
+    \ALC@com{#1}%
+    \ALC@startblock
+}
+
+\newcommand{\ENDIF}{%
+    \ALC@endblock
+    \ALC@popelse
+    \end{ALC@if}%
 }
 
 \newcommand{\FOR}[2][default]{%
-    \ALC@it\algorithmicfor\ #2\ \algorithmicdo
-    \ALC@com{#1}\begin{ALC@for}%
+    \begin{ALC@for}
+    \def\ALC@end@for{\end{ALC@for}}%
+    \ALC@open{condition}%
+    \ALC@startline
+        #2%
+        \ALC@com{#1}%
+    \ALC@endline
+    \ALC@close{condition}%
+    \ALC@startblock
 }
 
 \newcommand{\FORALL}[2][default]{%
-    \ALC@it\algorithmicforall\ #2\ \algorithmicdo
-    \ALC@com{#1}\begin{ALC@for}%
+    \begin{ALC@forall}
+    \def\ALC@end@for{\end{ALC@forall}}%
+    \ALC@open{condition}%
+    \ALC@startline
+        #2%
+        \ALC@com{#1}%
+    \ALC@endline
+    \ALC@close{condition}%
+    \ALC@startblock
+}
+
+\newcommand{\ENDFOR}{%
+    \ALC@endblock
+    \ALC@end@for
 }
 
 \newcommand{\WHILE}[2][default]{%
     \begin{ALC@while}%
     \ALC@open{condition}%
     \ALC@startline
-        #2%\ \algorithmicdo
+        #2%
     \ALC@endline
     \ALC@close{condition}%
-    \ALC@com{#1}
+    \ALC@com{#1}%
+    \ALC@startblock
 }
+
+\newcommand{\ENDWHILE}{\ALC@endblock\end{ALC@while}}
 
 \newcommand{\LOOP}[1][default]{%
-    \ALC@it\algorithmicloop \ALC@com{#1}\begin{ALC@loop}%
+    \begin{ALC@loop}%
+    \ALC@open{condition}%
+    \ALC@startline
+        #1%
+    \ALC@endline
+    \ALC@close{condition}%
+    \ALC@startblock
 }
-\newcommand{\REPEAT}[1][default]{%
-    \ALC@it\algorithmicrepeat \ALC@com{#1}\begin{ALC@rpt}%
-}
-\newcommand{\UNTIL}[1]{\end{ALC@rpt}\ALC@it\algorithmicuntil\ #1}
 
-% \ifthenelse{\boolean{ALC@noend}}{
-    \newcommand{\ENDIF}{\end{ALC@if}}
-    \newcommand{\ENDFOR}{\end{ALC@for}}
-    \newcommand{\ENDWHILE}{\end{ALC@while}}
-    \newcommand{\ENDLOOP}{\end{ALC@loop}}
-% }{%
-%     \newcommand{\ENDIF}{\end{ALC@if}\ALC@it\algorithmicendif}
-%     \newcommand{\ENDFOR}{\end{ALC@for}\ALC@it\algorithmicendfor}
-%     \newcommand{\ENDWHILE}{\end{ALC@while}\ALC@it\algorithmicendwhile}
-%     \newcommand{\ENDLOOP}{\end{ALC@loop}\ALC@it\algorithmicendloop}
-% }
+\newcommand{\REPEAT}[1][default]{%
+    \begin{ALC@repeat}%
+    \ALC@com{#1}%
+    \ALC@startblock
+}
+
+\newcommand{\UNTIL}[1]{%
+    \ALC@endblock
+    \end{ALC@repeat}%
+    \begin{ALC@until}%
+    \ALC@open{condition}%
+    \ALC@startline
+        #1%
+    \ALC@endline
+    \ALC@close{condition}%
+    \end{ALC@until}%
+}
+
+\newcommand{\ENDLOOP}{%
+    \ALC@endblock
+    \end{ALC@loop}%
+}
 
 \renewenvironment{algorithmic}[1][0]{
     \par
