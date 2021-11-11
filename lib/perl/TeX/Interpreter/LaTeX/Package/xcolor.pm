@@ -54,13 +54,12 @@ __DATA__
 % text color       => CSS color
 % background color => CSS background-color
 
-% Put an ID on the styled-content; write an entry to the .css file
-% with the color spec.
-
 \def\textcolor#1#2{%
     \leavevmode
     \startXMLelement{styled-content}%
-    \setXMLattribute{style}{color #1}%
+    \setXMLattribute{text-color}{#1}%
+    % \setXMLattribute{background-color}{#1}%
+    % \setXMLattribute{border-color}{#1}%
     #2%
     \endXMLelement{styled-content}%
 }
