@@ -30,118 +30,72 @@ __DATA__
 
 \def\ALC@NS{alg}
 
-\newcommand{\ALC@open}[1]{\startXMLelement{\ALC@NS:#1}}
-\newcommand{\ALC@close}[1]{\endXMLelement{\ALC@NS:#1}}
+\newcommand{\ALC@open}[1]{%
+    \typeout{*** OPEN #1}%
+    \par
+    \startXMLelement{\ALC@NS:#1}%
+}
 
-\newcommand{\TRUE}{\algorithmictrue{}}
-\newcommand{\FALSE}{\algorithmicfalse{}}
-\newcommand{\AND}{\algorithmicand{} }
-\newcommand{\OR}{\algorithmicor{} }
-\newcommand{\XOR}{\algorithmicxor{} }
-\newcommand{\NOT}{\algorithmicnot{} }
-\newcommand{\TO}{\algorithmicto{} }
+\newcommand{\ALC@close}[1]{%
+    \typeout{*** CLOSE #1}%
+    \par
+    \endXMLelement{\ALC@NS:#1}%
+}
 
 \let\ALC@tagstack\@empty
 
-\long\def\g@stack@push#1#2{%
-    \protected@xdef#1{\protect#2#1}%
+\long\def\g@push@stack#1#2{%
+    \protected@edef#1{\protect#2#1}%
 }
+
+\def\ALC@clearstack{\let\ALC@tagstack\@empty}
 
 \def\ALC@pushtag#1{%
     \ALC@open{#1}%
-    \g@stack@push\ALC@tagstack{\ALC@close{#1}}%
+    \g@push@stack\ALC@tagstack{\ALC@close{#1}}%
 }
 
-\def\ALC@poptags{%
+\def\ALC@popstack{%
     \par
     \ALC@tagstack
-    \global\let\ALC@tagstack\@empty
+    \ALC@clearstack
 }
 
-\let\ALC@elsestack\@empty
-
-\def\ALC@pushelse#1{%
-    \ALC@open{#1}%
-    \g@stack@push\ALC@elsestack{\ALC@close{#1}}%
+\def\ALC@begingroup{%
+    \begingroup
+        \ALC@clearstack
+        \let\ALC@endstatement\@empty
 }
 
-\def\ALC@popelse{%
-    \par
-    \ALC@elsestack
-    \global\let\ALC@elsestack\@empty
-}
-
-% \def\ALC@pushelse#1{%
-%     \ALC@poptags
-%     \ALC@open{#1}%
-%     \gdef\ALC@close@else{%
-%         \ALC@close{#1}%
-%         \global\let\ALC@close@else\@empty
-%     }%
-% }
-
-\let\ALC@close@else\@empty
-
-\def\ALC@startline{%
-    \ALC@poptags
-    \par
-    \ALC@endline
-    \let\ALC@endline\ALC@endline@
-    \par
-    \ALC@open{line}%
-}
-
-\def\ALC@endline@{%
-    \par
-    \ALC@close{line}%
-    \let\ALC@endline\@empty
-    \par
-}
-
-\let\ALC@endline\@empty
-
-\def\ALC@startblock{%
-    \ALC@poptags
-    \par
-    \ALC@endblock
-    \let\ALC@endblock\ALC@endblock@
-    \par
-    \ALC@open{block}%
-}
-
-\def\ALC@endblock@{%
-    \par
-    \ALC@poptags
-    \par
-    \ALC@close{block}%
-    \let\ALC@endblock\@empty
-    \par
+\def\ALC@endgroup{%
+        \ALC@popstack
+    \endgroup
 }
 
 \let\ALC@endblock\@empty
 
-%% Top-level
+%% Top-level (sort of)
 
-\newcommand{\REQUIRE}{%
-    \ALC@poptags
-    \ALC@pushtag{require}%
+\def\ALC@toplevel{\maybe@st@rred{\ALC@toplevel@}}
+
+\def\ALC@toplevel@#1{%
+    \ALC@endstatement
+    \ALC@begingroup
+        \let\ALC@endstatement\ALC@endgroup
+        \ifst@rred\else
+            \ALC@pushtag{line}%
+        \fi
+        \ALC@pushtag{#1}%
 }
 
-\newcommand{\ENSURE}{
-    \ALC@poptags
-    \ALC@pushtag{ensure}%
-}
+\let\ALC@endstatement\@empty
 
-\newcommand{\GLOBALS}{%
-    \ALC@poptags
-    \ALC@pushtag{globals}%
-}
+\newcommand{\STATE}{\ALC@toplevel{statement}}
+\newcommand{\GLOBALS}{\ALC@toplevel{globals}}
+\newcommand{\REQUIRE}{\ALC@toplevel*{require}}
+\newcommand{\ENSURE}{\ALC@toplevel*{ensure}}
 
-\newcommand{\STATE}{%
-    \ALC@poptags
-    \ALC@pushtag{line}%
-    \ALC@pushtag{state}%
-}
+\let\STMT\STATE
 
 \newcommand{\PRINT}{%
     \STATE \algorithmicprint{} % keep this space
@@ -151,207 +105,187 @@ __DATA__
     \STATE \algorithmicreturn{} % keep this space
 }
 
-\newcommand{\STMT}{\STATE}
-
 \def\algorithmiccomment#1{%
     \ALC@open{comment}#1\ALC@close{comment}%
 }
 
-\newcommand{\COMMENT}[1]{\algorithmiccomment{#1}}
+\let\COMMENT\algorithmiccomment
 
 \newcommand{\ALC@com}[1]{%
     \ifthenelse{\equal{#1}{default}}{}{\ \COMMENT{#1}}%
 }
 
-\def\ALC@g#1{%
-    \newenvironment{ALC@#1}{%
-        \ALC@poptags
-        \par
-        \ALC@open{#1}%
-    }{%
-        %% TODO: ALC@noend
-        \ALC@poptags
-        \par
-        \ALC@close{#1}%
-        \par
-    }%
-}
-
-\ALC@g{inputs}
-\ALC@g{outputs}
-\ALC@g{globals}
-\ALC@g{body}
-\ALC@g{if}
-\ALC@g{elsif}
-\ALC@g{else}
-\ALC@g{for}
-\ALC@g{forall}
-\ALC@g{while}
-\ALC@g{loop}
-\ALC@g{repeat}
-\ALC@g{until}
-
-\newcommand{\INPUTS}[1][default]{%
-    \begin{ALC@inputs}%
-    \ALC@com{#1}%
-}
-
-\newcommand{\ENDINPUTS}{%
-    \end{ALC@inputs}%
-}
-
-\newcommand{\OUTPUTS}[1][default]{%
-    \begin{ALC@outputs}%
-    \ALC@com{#1}%
-}
-
-\newcommand{\ENDOUTPUTS}{%
-    \end{ALC@outputs}%
-}
-
-\newcommand{\BODY}[1][default]{%
-    \begin{ALC@body}%
-    \ALC@com{#1}%
-}
-
-\newcommand{\ENDBODY}{%
-    \end{ALC@body}%
-}
-
-\newcommand{\IF}[2][default]{%
-    \begin{ALC@if}%
-    \ALC@open{condition}%
-    \ALC@startline
-        #2%
-        \ALC@com{#1}%
-    \ALC@endline
-    \ALC@close{condition}%
-    \ALC@startblock
-}
-
-\newcommand{\ELSIF}[2][default]{%
-    \ALC@endblock
-    \ALC@popelse
-    \ALC@pushelse{elsif}
-    \ALC@open{condition}%
-    \ALC@startline
-         #2%
-         \ALC@com{#1}%
-    \ALC@endline
-    \ALC@close{condition}%
-    \ALC@startblock
-}
-
-\newcommand{\ELSE}[1][default]{%
-    \ALC@endblock
-    \ALC@popelse
-    \ALC@pushelse{else}
-    \ALC@com{#1}%
-    \ALC@startblock
-}
-
-\newcommand{\ENDIF}{%
-    \ALC@endblock
-    \ALC@popelse
-    \end{ALC@if}%
-}
-
-\newcommand{\FOR}[2][default]{%
-    \begin{ALC@for}
-    \def\ALC@end@for{\end{ALC@for}}%
-    \ALC@open{condition}%
-    \ALC@startline
-        #2%
-        \ALC@com{#1}%
-    \ALC@endline
-    \ALC@close{condition}%
-    \ALC@startblock
-}
-
-\newcommand{\FORALL}[2][default]{%
-    \begin{ALC@forall}
-    \def\ALC@end@for{\end{ALC@forall}}%
-    \ALC@open{condition}%
-    \ALC@startline
-        #2%
-        \ALC@com{#1}%
-    \ALC@endline
-    \ALC@close{condition}%
-    \ALC@startblock
-}
-
-\newcommand{\ENDFOR}{%
-    \ALC@endblock
-    \ALC@end@for
-}
-
-\newcommand{\WHILE}[2][default]{%
-    \begin{ALC@while}%
-    \ALC@open{condition}%
-    \ALC@startline
-        #2%
-    \ALC@endline
-    \ALC@close{condition}%
-    \ALC@com{#1}%
-    \ALC@startblock
-}
-
-\newcommand{\ENDWHILE}{\ALC@endblock\end{ALC@while}}
-
-\newcommand{\LOOP}[1][default]{%
-    \begin{ALC@loop}%
-    \ALC@open{condition}%
-    \ALC@startline
-        #1%
-    \ALC@endline
-    \ALC@close{condition}%
-    \ALC@startblock
-}
-
-\newcommand{\REPEAT}[1][default]{%
-    \begin{ALC@repeat}%
-    \ALC@com{#1}%
-    \ALC@startblock
-}
-
-\newcommand{\UNTIL}[1]{%
-    \ALC@endblock
-    \end{ALC@repeat}%
-    \begin{ALC@until}%
-    \ALC@open{condition}%
-    \ALC@startline
-        #1%
-    \ALC@endline
-    \ALC@close{condition}%
-    \end{ALC@until}%
-}
-
-\newcommand{\ENDLOOP}{%
-    \ALC@endblock
-    \end{ALC@loop}%
-}
+\newcommand{\TRUE}{\algorithmictrue{}}
+\newcommand{\FALSE}{\algorithmicfalse{}}
+\newcommand{\AND}{\algorithmicand{} }
+\newcommand{\OR}{\algorithmicor{} }
+\newcommand{\XOR}{\algorithmicxor{} }
+\newcommand{\NOT}{\algorithmicnot{} }
+\newcommand{\TO}{\algorithmicto{} }
 
 \renewenvironment{algorithmic}[1][0]{
     \par
     \xmlpartag{}%
-    \ALC@open{algorithm}
-%
-    \renewcommand{\\}{\@centercr}% TBD
-    \newcommand{\ALC@it}{%
-        \stepcounter{ALC@rem}%
-    % UGGGG
-        \ifthenelse{\equal{\arabic{ALC@rem}}{#1}}{\setcounter{ALC@rem}{0}}{}%
-        \stepcounter{ALC@line}%
-        \refstepcounter{ALC@unique}%
-        % \item\def\@currentlabel{\theALC@line}%
-        \par
-    }
+    \def\\{\emptyXMLelement{br}}%
+    \ALC@begingroup
+        \ALC@pushtag{algorithm}
+    % \newcommand{\ALC@it}{%       TBD
+    %     \stepcounter{ALC@rem}%
+    % % UGGGG
+    %     \ifthenelse{\equal{\arabic{ALC@rem}}{#1}}{\setcounter{ALC@rem}{0}}{}%
+    %     \stepcounter{ALC@line}%
+    %     \refstepcounter{ALC@unique}%
+    %     % \item\def\@currentlabel{\theALC@line}%
+    %     \par
+    % }
 }{%
-    \ALC@poptags
-    \par
-    \ALC@close{algorithm}
+        \ALC@endstatement
+    \ALC@endgroup
     \par
 }
+
+\newcommand{\INPUTS}[1][default]{%
+    \ALC@endstatement
+    \ALC@begingroup
+        \ALC@pushtag{inputs}
+        \ALC@com{#1}%
+}
+
+\newcommand{\ENDINPUTS}{%
+        \ALC@endstatement
+    \ALC@endgroup
+}
+
+\newcommand{\OUTPUTS}[1][default]{%
+    \ALC@endstatement
+    \ALC@begingroup
+        \ALC@pushtag{outputs}
+        \ALC@com{#1}%
+}
+
+\newcommand{\ENDOUTPUTS}{%
+        \ALC@endstatement
+    \ALC@endgroup
+}
+
+\newcommand{\BODY}[1][default]{%
+    \ALC@endstatement
+    \ALC@begingroup
+        \ALC@pushtag{body}
+        \ALC@com{#1}%
+}
+
+\newcommand{\ENDBODY}{%
+        \ALC@endstatement
+    \ALC@endgroup
+}
+
+\newcommand{\ALC@begin@structure}[3]{%
+    \ALC@endstatement
+    \ALC@begingroup % LEVEL 1
+        \ALC@pushtag{#1}%
+        \ALC@open{condition}%
+        \ALC@open{line}%
+        \ALC@begingroup
+            #3%
+        \ALC@endgroup
+        \ALC@close{line}%
+        \ALC@close{condition}%
+        \ALC@com{#2}%
+        \ALC@begingroup % LEVEL 2
+            \ALC@pushtag{block}%
+}
+
+\newcommand{\ALC@end@structure}{%
+            \ALC@endstatement
+        \ALC@endgroup  % LEVEL 2
+    \ALC@endgroup % LEVEL
+}
+
+\newcommand{\WHILE}[2][default]{%
+    \ALC@begin@structure{while}{#1}{#2}
+}
+
+\let\ENDWHILE\ALC@end@structure
+
+\newcommand{\IF}[2][default]{%
+    \ALC@begin@structure{if}{#1}{#2}%
+    \let\ALC@end@else\@empty
+}
+
+\newcommand{\ELSIF}[2][default]{%
+                \ALC@endstatement
+            \ALC@end@else
+        \ALC@endgroup % end the block (LEVEL 2)
+        \let\ALC@end@else\ALC@endgroup % (LEVEL 1)
+        \ALC@begin@structure{elsif}{#1}{#2}% LEVEL 3
+}
+
+\newcommand{\ELSE}[1][default]{% No condition
+                \ALC@endstatement
+            \ALC@end@else
+        \ALC@endgroup % end if block
+        \let\ALC@end@else\ALC@endgroup
+        \ALC@begingroup
+            \ALC@pushtag{else}
+            \ALC@begingroup
+                \ALC@pushtag{block}%
+}
+
+\def\ENDIF{%
+                \ALC@endstatement
+            \ALC@end@else
+        \ALC@endgroup % END BLOCK (LEVEL 2)
+    \ALC@endgroup
+}
+
+\newcommand{\FOR}[2][default]{%
+    \ALC@begin@structure{for}{#1}{#2}
+}
+
+\newcommand{\FORALL}[2][default]{%
+    \ALC@begin@structure{forall}{#1}{#2}
+}
+
+\let\ENDFOR\ALC@end@structure
+
+\newcommand{\LOOP}[1][default]{% No condition
+    % \ALC@begin@structure{loop}{#1}{#2}
+    \ALC@endstatement
+    \ALC@begingroup
+        \ALC@pushtag{loop}%
+        \ALC@com{#1}%
+        \ALC@begingroup
+            \ALC@pushtag{block}%
+}
+
+\newcommand{\REPEAT}[1][default]{% No condition
+    \ALC@endstatement
+    \ALC@begingroup
+        \ALC@pushtag{repeat}%
+        \ALC@com{#1}%
+        \ALC@begingroup
+            \ALC@pushtag{block}%
+}
+
+\newcommand{\UNTIL}[1]{%
+            \ALC@endstatement
+        \ALC@endgroup
+        \ALC@begingroup
+            \ALC@pushtag{until}%
+            \ALC@open{condition}%
+            \ALC@open{line}%
+            \ALC@begingroup
+                #1%
+            \ALC@endgroup
+            \ALC@close{line}%
+            \ALC@close{condition}%
+            \ALC@com{#1}%
+        \ALC@endgroup
+    \ALC@endgroup
+}
+
+\let\ENDLOOP\ALC@end@structure
 
 \TeXMLendPackage
 
