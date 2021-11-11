@@ -132,6 +132,11 @@ __DATA__
     \ALC@pushtag{ensure}%
 }
 
+\newcommand{\GLOBALS}{%
+    \ALC@poptags
+    \ALC@pushtag{globals}%
+}
+
 \newcommand{\STATE}{%
     \ALC@poptags
     \ALC@pushtag{line}%
@@ -187,21 +192,31 @@ __DATA__
 \ALC@g{until}
 
 \newcommand{\INPUTS}[1][default]{%
-    \ALC@it\algorithmicinputs\ \ALC@com{#1}\begin{ALC@inputs}%
+    \begin{ALC@inputs}%
+    \ALC@com{#1}%
 }
-\newcommand{\ENDINPUTS}{\end{ALC@inputs}}
+
+\newcommand{\ENDINPUTS}{%
+    \end{ALC@inputs}%
+}
 
 \newcommand{\OUTPUTS}[1][default]{%
-    \ALC@it\algorithmicoutputs\ \ALC@com{#1}\begin{ALC@outputs}%
+    \begin{ALC@outputs}%
+    \ALC@com{#1}%
 }
-\newcommand{\ENDOUTPUTS}{\end{ALC@outputs}}
 
-\newcommand{\GLOBALS}{\ALC@it\algorithmicglobals\ }
+\newcommand{\ENDOUTPUTS}{%
+    \end{ALC@outputs}%
+}
 
 \newcommand{\BODY}[1][default]{%
-    \ALC@it\algorithmicbody\ \ALC@com{#1}\begin{ALC@body}%
+    \begin{ALC@body}%
+    \ALC@com{#1}%
 }
-\newcommand{\ENDBODY}{\end{ALC@body}}
+
+\newcommand{\ENDBODY}{%
+    \end{ALC@body}%
+}
 
 \newcommand{\IF}[2][default]{%
     \begin{ALC@if}%
