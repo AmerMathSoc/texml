@@ -31,13 +31,13 @@ __DATA__
 \def\ALC@NS{alg}
 
 \newcommand{\ALC@open}[1]{%
-    \typeout{*** OPEN #1}%
+    % \typeout{*** OPEN #1}%
     \par
     \startXMLelement{\ALC@NS:#1}%
 }
 
 \newcommand{\ALC@close}[1]{%
-    \typeout{*** CLOSE #1}%
+    % \typeout{*** CLOSE #1}%
     \par
     \endXMLelement{\ALC@NS:#1}%
 }
@@ -72,28 +72,43 @@ __DATA__
     \endgroup
 }
 
-\let\ALC@endblock\@empty
-
 %% Top-level (sort of)
 
-\def\ALC@toplevel{\maybe@st@rred{\ALC@toplevel@}}
+\newif\if@ALCnumbered
+\@ALCnumberedfalse
 
-\def\ALC@toplevel@#1{%
-    \ALC@endstatement
-    \ALC@begingroup
-        \let\ALC@endstatement\ALC@endgroup
-        \ifst@rred\else
-            \ALC@pushtag{line}%
+\def\ALC@addlineno{%
+    \if@ALCnumbered
+        \refstepcounter{ALC@line}%
+        \stepcounter{ALC@rem}%
+        \ifnum\c@ALC@rem=\ALC@frequency
+            \setXMLattribute{lineno}{\the\c@ALC@line}%
+            \c@ALC@rem\z@
         \fi
-        \ALC@pushtag{#1}%
+    \fi
+}
+
+\def\defALC@toplevel{\maybe@st@rred{\defALC@toplevel@}}
+
+\def\defALC@toplevel@#1#2{%
+    \edef#1{%
+        \@nx\ALC@endstatement
+        \@nx\ALC@begingroup
+            \let\@nx\ALC@endstatement\@nx\ALC@endgroup
+            \ifst@rred\else
+                \@nx\ALC@pushtag{line}%
+                \@nx\ALC@addlineno
+            \fi
+            \@nx\ALC@pushtag{#2}%
+    }%
 }
 
 \let\ALC@endstatement\@empty
 
-\newcommand{\STATE}{\ALC@toplevel{statement}}
-\newcommand{\GLOBALS}{\ALC@toplevel{globals}}
-\newcommand{\REQUIRE}{\ALC@toplevel*{require}}
-\newcommand{\ENSURE}{\ALC@toplevel*{ensure}}
+\defALC@toplevel{\STATE}   {statement}
+\defALC@toplevel{\GLOBALS} {globals}
+\defALC@toplevel*{\REQUIRE}{require}
+\defALC@toplevel*{\ENSURE} {ensure}
 
 \let\STMT\STATE
 
@@ -115,6 +130,9 @@ __DATA__
     \ifthenelse{\equal{#1}{default}}{}{\ \COMMENT{#1}}%
 }
 
+% These are defined inside the definition of \algorithmic in
+%  algorithmic.sty, so we need to repeat them here.
+
 \newcommand{\TRUE}{\algorithmictrue{}}
 \newcommand{\FALSE}{\algorithmicfalse{}}
 \newcommand{\AND}{\algorithmicand{} }
@@ -123,21 +141,31 @@ __DATA__
 \newcommand{\NOT}{\algorithmicnot{} }
 \newcommand{\TO}{\algorithmicto{} }
 
+\newcount\ALC@frequency
+
+% TODO: linenodelimiter
+
 \renewenvironment{algorithmic}[1][0]{
     \par
     \xmlpartag{}%
     \def\\{\emptyXMLelement{br}}%
+    \ALC@frequency=#1\relax
+    \ifnum\ALC@frequency=\z@
+        \@ALCnumberedfalse
+    \else
+        \@ALCnumberedtrue
+        \c@ALC@line\z@
+        \c@ALC@rem\z@
+    \fi
+    % TBD: Do we need ALC@unique?
     \ALC@begingroup
-        \ALC@pushtag{algorithm}
-    % \newcommand{\ALC@it}{%       TBD
-    %     \stepcounter{ALC@rem}%
-    % % UGGGG
-    %     \ifthenelse{\equal{\arabic{ALC@rem}}{#1}}{\setcounter{ALC@rem}{0}}{}%
-    %     \stepcounter{ALC@line}%
-    %     \refstepcounter{ALC@unique}%
-    %     % \item\def\@currentlabel{\theALC@line}%
-    %     \par
-    % }
+        \ALC@pushtag{algorithm}%
+        \setXMLattribute{linenodelimiter}{\ALC@linenodelimiter}%
+        \ifALC@noend
+            \setXMLattribute{endtags}{no}%
+        \else
+            \setXMLattribute{endtags}{yes}%
+        \fi
 }{%
         \ALC@endstatement
     \ALC@endgroup
@@ -184,13 +212,9 @@ __DATA__
     \ALC@endstatement
     \ALC@begingroup % LEVEL 1
         \ALC@pushtag{#1}%
-        \ALC@open{condition}%
-        \ALC@open{line}%
-        \ALC@begingroup
+        \ALC@start@condition
             #3%
-        \ALC@endgroup
-        \ALC@close{line}%
-        \ALC@close{condition}%
+        \ALC@end@condition
         \ALC@com{#2}%
         \ALC@begingroup % LEVEL 2
             \ALC@pushtag{block}%
@@ -200,6 +224,19 @@ __DATA__
             \ALC@endstatement
         \ALC@endgroup  % LEVEL 2
     \ALC@endgroup % LEVEL
+}
+
+\newcommand{\ALC@start@condition}{%
+    \ALC@open{condition}%
+    \ALC@open{line}%
+    \ALC@addlineno
+    \ALC@begingroup
+}
+
+\newcommand{\ALC@end@condition}{%
+    \ALC@endgroup
+    \ALC@close{line}%
+    \ALC@close{condition}%
 }
 
 \newcommand{\WHILE}[2][default]{%
@@ -273,13 +310,10 @@ __DATA__
         \ALC@endgroup
         \ALC@begingroup
             \ALC@pushtag{until}%
-            \ALC@open{condition}%
-            \ALC@open{line}%
-            \ALC@begingroup
+
+            \ALC@start@condition
                 #1%
-            \ALC@endgroup
-            \ALC@close{line}%
-            \ALC@close{condition}%
+            \ALC@end@condition
             \ALC@com{#1}%
         \ALC@endgroup
     \ALC@endgroup
