@@ -37,7 +37,6 @@ __DATA__
 
 % \let\colorbox\@secondoftwo
 
-\DeclareMathJaxMacro\color
 % \DeclareMathJaxMacro\colorbox
 \DeclareMathJaxMacro\fcolorbox
 \DeclareMathJaxMacro\definecolor
@@ -50,6 +49,17 @@ __DATA__
     \fi
 
 }
+
+\def\color#1{%
+    \startXMLelement{styled-content}%
+    \setXMLattribute{text-color}{#1}%
+    \aftergroup\XCOLOR@end@styled
+    \ignorespaces
+}
+
+\def\XCOLOR@end@styled{\endXMLelement{styled-content}}
+
+\DeclareMathJaxMacro\color
 
 % text color       => CSS color
 % background color => CSS background-color
