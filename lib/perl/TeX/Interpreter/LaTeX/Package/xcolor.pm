@@ -502,7 +502,7 @@ my %X11NAMES = (
 );
 
 sub __rgb {
-    my @rgb = map { sprintf q{%.3f\\csname @percentchar\\endcsname}, $_ } splice(@_, 0, 3);
+    my @rgb = map { sprintf q{%.3f\\csname @percentchar\\endcsname}, 100 * $_ } splice(@_, 0, 3);
 
     return 'rgb(' . join(", ", @rgb) . ')';
 }
