@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::AMSBlackList;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.1';
+use version; our $VERSION = qv '1.0.2';
 
 sub install ( $ ) {
     my $class = shift;
@@ -42,6 +42,7 @@ __DATA__
 \AMSBlackListPackage{pspicture}
 \AMSBlackListPackage{shaderef}
 \AMSBlackListPackage{tabularx}
+\AMSBlackListPackage{textcomp}
 \AMSBlackListPackage{thm-listof}
 \AMSBlackListPackage{tikz-qtree-compat}
 
