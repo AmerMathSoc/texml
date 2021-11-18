@@ -21,6 +21,8 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * apt install libpng-dev
 
+* apt install libjpeg-dev
+
 * apt install gcc
 
 * apt install make
