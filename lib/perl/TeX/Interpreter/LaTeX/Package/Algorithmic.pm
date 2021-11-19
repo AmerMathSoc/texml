@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
+use version; our $VERSION = qv '1.2.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -88,10 +88,14 @@ __DATA__
     \fi
 }
 
-\def\ALC@line#1{%
+\def\ALC@line#1#2{%
     \ALC@open{line}%
         \ALC@addlineno
-        #1
+        \ALC@begingroup
+        \ALC@pushtag{statement}%
+            #1\par
+        \ALC@endgroup
+%        \if###2##\else\ALC@com{#2}\par\fi
     \ALC@close{line}%
 }
 
@@ -102,8 +106,8 @@ __DATA__
         \@nx\ALC@endstatement
         \@nx\ALC@begingroup
             \let\@nx\ALC@endstatement\@nx\ALC@endgroup
+            \@nx\ALC@pushtag{line}%
             \ifst@rred\else
-                \@nx\ALC@pushtag{line}%
                 \@nx\ALC@addlineno
             \fi
             \@nx\ALC@pushtag{#3}%
@@ -116,6 +120,7 @@ __DATA__
 \let\ALC@endstatement\@empty
 
 \defALC@toplevel{\STATE}{statement}
+
 \defALC@toplevel[\algorithmicglobals]{\GLOBALS} {globals}
 \defALC@toplevel*[\algorithmicrequire]{\REQUIRE}{require}
 \defALC@toplevel*[\algorithmicensure]{\ENSURE} {ensure}
@@ -131,6 +136,7 @@ __DATA__
 }
 
 \def\algorithmiccomment#1{%
+    %\ALC@endstatement
     \ALC@open{comment}#1\ALC@close{comment}%
 }
 
@@ -181,7 +187,7 @@ __DATA__
     \ALC@endstatement
     \ALC@begingroup
         \ALC@pushtag{inputs}%
-        \ALC@line{\algorithmicinputs\ALC@com{#1}}%
+        \ALC@line{\algorithmicinputs}{#1}%
         \ALC@begingroup % LEVEL 2
             \ALC@pushtag{block}%
 }
@@ -196,7 +202,7 @@ __DATA__
     \ALC@endstatement
     \ALC@begingroup
         \ALC@pushtag{outputs}%
-        \ALC@line{\algorithmicoutputs\ALC@com{#1}}%
+        \ALC@line{\algorithmicoutputs}{#1}%
         \ALC@begingroup % LEVEL 2
             \ALC@pushtag{block}%
 }
@@ -211,7 +217,7 @@ __DATA__
     \ALC@endstatement
     \ALC@begingroup
         \ALC@pushtag{body}%
-        \ALC@line{\algorithmicbody\ALC@com{#1}}%
+        \ALC@line{\algorithmicbody}{#1}%
         \ALC@begingroup % LEVEL 2
             \ALC@pushtag{block}%
 }
@@ -233,7 +239,10 @@ __DATA__
     \ALC@begingroup % LEVEL 1
         \ALC@pushtag{#1}%
         \ALC@start@condition
-            #2 #3 #5 \ALC@com{#4}\par
+            \ALC@pushtag{statement}%
+                #2 #3 #5\par
+            \ALC@popstack
+            \ALC@com{#4}\par
         \ALC@end@condition
         \ALC@begingroup % LEVEL 2
             \ALC@pushtag{block}%
@@ -245,7 +254,7 @@ __DATA__
             \ALC@endstatement
         \ALC@endgroup  % LEVEL 2
         \ifALC@noend\else
-            \ALC@line{#1}%
+            \ALC@line{#1}{}%
         \fi
     \ALC@endgroup % LEVEL
 }
@@ -289,7 +298,7 @@ __DATA__
         \let\ALC@end@else\ALC@endgroup
         \ALC@begingroup
             \ALC@pushtag{else}
-            \ALC@line{\algorithmicelse\ALC@com{#1}}%
+            \ALC@line{\algorithmicelse}{#1}%
             \ALC@begingroup
                 \ALC@pushtag{block}%
 }
@@ -299,7 +308,7 @@ __DATA__
             \ALC@end@else
         \ALC@endgroup % END BLOCK (LEVEL 2)
         \ifALC@noend\else
-            \ALC@line{\algorithmicendif}
+            \ALC@line{\algorithmicendif}{}
         \fi
     \ALC@endgroup
 }
@@ -319,7 +328,7 @@ __DATA__
     \ALC@endstatement
     \ALC@begingroup
         \ALC@pushtag{loop}%
-        \ALC@line{\algorithmicloop\ALC@com{#1}}%
+        \ALC@line{\algorithmicloop}{#1}%
         \ALC@begingroup
             \ALC@pushtag{block}%
 }
@@ -328,7 +337,7 @@ __DATA__
     \ALC@endstatement
     \ALC@begingroup
         \ALC@pushtag{repeat}%
-        \ALC@line{\algorithmicrepeat\ALC@com{#1}}%
+        \ALC@line{\algorithmicrepeat}{#1}%
         \ALC@begingroup
             \ALC@pushtag{block}%
 }
@@ -339,7 +348,9 @@ __DATA__
         \ALC@begingroup
             \ALC@pushtag{until}%
             \ALC@start@condition
-                #1%
+                \ALC@pushtag{statement}%
+                    #1\par
+                \ALC@popstack
             \ALC@end@condition
         \ALC@endgroup
     \ALC@endgroup
