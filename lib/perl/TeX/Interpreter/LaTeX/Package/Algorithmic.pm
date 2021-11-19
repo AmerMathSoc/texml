@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.0';
+use version; our $VERSION = qv '1.2.1';
 
 sub install ( $ ) {
     my $class = shift;
@@ -64,7 +64,7 @@ __DATA__
 \def\ALC@begingroup{%
     \begingroup
         \ALC@clearstack
-        \let\ALC@endstatement\@empty
+        \let\ALC@endtoplevel\@empty
 }
 
 \def\ALC@endgroup{%
@@ -103,21 +103,24 @@ __DATA__
 
 \newcommand{\defALC@toplevel@}[3][]{%
     \edef#2{%
-        \@nx\ALC@endstatement
+        \@nx\ALC@endtoplevel
         \@nx\ALC@begingroup
-            \let\@nx\ALC@endstatement\@nx\ALC@endgroup
+            \let\@nx\ALC@endtoplevel\@nx\ALC@endtoplevel@
             \@nx\ALC@pushtag{line}%
             \ifst@rred\else
                 \@nx\ALC@addlineno
             \fi
-            \@nx\ALC@pushtag{#3}%
-            \if###1##\else
-                #1
-            \fi
+            \@nx\ALC@begingroup
+                \let\@nx\ALC@endtoplevel\@nx\ALC@endtoplevel@
+                \@nx\ALC@pushtag{#3}%
+                \if###1##\else
+                    #1
+                \fi
     }%
 }
 
-\let\ALC@endstatement\@empty
+\let\ALC@endtoplevel\@empty
+\def\ALC@endtoplevel@{\ALC@endgroup\ALC@endgroup}
 
 \defALC@toplevel{\STATE}{statement}
 
@@ -136,7 +139,7 @@ __DATA__
 }
 
 \def\algorithmiccomment#1{%
-    %\ALC@endstatement
+    %\ALC@endtoplevel
     \ALC@open{comment}#1\ALC@close{comment}%
 }
 
@@ -178,13 +181,13 @@ __DATA__
         \ALC@pushtag{algorithm}%
         \setXMLattribute{linenodelimiter}{\ALC@linenodelimiter}%
 }{%
-        \ALC@endstatement
+        \ALC@endtoplevel
     \ALC@endgroup
     \par
 }
 
 \newcommand{\INPUTS}[1][default]{%
-    \ALC@endstatement
+    \ALC@endtoplevel
     \ALC@begingroup
         \ALC@pushtag{inputs}%
         \ALC@line{\algorithmicinputs}{#1}%
@@ -193,13 +196,13 @@ __DATA__
 }
 
 \newcommand{\ENDINPUTS}{%
-            \ALC@endstatement
+            \ALC@endtoplevel
         \ALC@endgroup
     \ALC@endgroup
 }
 
 \newcommand{\OUTPUTS}[1][default]{%
-    \ALC@endstatement
+    \ALC@endtoplevel
     \ALC@begingroup
         \ALC@pushtag{outputs}%
         \ALC@line{\algorithmicoutputs}{#1}%
@@ -208,13 +211,13 @@ __DATA__
 }
 
 \newcommand{\ENDOUTPUTS}{%
-            \ALC@endstatement
+            \ALC@endtoplevel
         \ALC@endgroup
     \ALC@endgroup
 }
 
 \newcommand{\BODY}[1][default]{%
-    \ALC@endstatement
+    \ALC@endtoplevel
     \ALC@begingroup
         \ALC@pushtag{body}%
         \ALC@line{\algorithmicbody}{#1}%
@@ -223,7 +226,7 @@ __DATA__
 }
 
 \newcommand{\ENDBODY}{%
-            \ALC@endstatement
+            \ALC@endtoplevel
         \ALC@endgroup
     \ALC@endgroup
 }
@@ -235,7 +238,7 @@ __DATA__
 % #5 post-condition keyword
 
 \newcommand{\ALC@begin@structure}[5]{%
-    \ALC@endstatement
+    \ALC@endtoplevel
     \ALC@begingroup % LEVEL 1
         \ALC@pushtag{#1}%
         \ALC@start@condition
@@ -251,7 +254,7 @@ __DATA__
 % #1 keyword text
 
 \newcommand{\ALC@end@structure}[1]{%
-            \ALC@endstatement
+            \ALC@endtoplevel
         \ALC@endgroup  % LEVEL 2
         \ifALC@noend\else
             \ALC@line{#1}{}%
@@ -284,7 +287,7 @@ __DATA__
 }
 
 \newcommand{\ELSIF}[2][default]{%
-                \ALC@endstatement
+                \ALC@endtoplevel
             \ALC@end@else
         \ALC@endgroup % end the block (LEVEL 2)
         \let\ALC@end@else\ALC@endgroup % (LEVEL 1)
@@ -292,7 +295,7 @@ __DATA__
 }
 
 \newcommand{\ELSE}[1][default]{% No condition
-                \ALC@endstatement
+                \ALC@endtoplevel
             \ALC@end@else
         \ALC@endgroup % end if block
         \let\ALC@end@else\ALC@endgroup
@@ -304,7 +307,7 @@ __DATA__
 }
 
 \def\ENDIF{%
-                \ALC@endstatement
+                \ALC@endtoplevel
             \ALC@end@else
         \ALC@endgroup % END BLOCK (LEVEL 2)
         \ifALC@noend\else
@@ -325,7 +328,7 @@ __DATA__
 
 \newcommand{\LOOP}[1][default]{% No condition
     % \ALC@begin@structure{loop}{}{#2}{#1}
-    \ALC@endstatement
+    \ALC@endtoplevel
     \ALC@begingroup
         \ALC@pushtag{loop}%
         \ALC@line{\algorithmicloop}{#1}%
@@ -334,7 +337,7 @@ __DATA__
 }
 
 \newcommand{\REPEAT}[1][default]{% No condition
-    \ALC@endstatement
+    \ALC@endtoplevel
     \ALC@begingroup
         \ALC@pushtag{repeat}%
         \ALC@line{\algorithmicrepeat}{#1}%
@@ -343,7 +346,7 @@ __DATA__
 }
 
 \newcommand{\UNTIL}[1]{%
-            \ALC@endstatement
+            \ALC@endtoplevel
         \ALC@endgroup
         \ALC@begingroup
             \ALC@pushtag{until}%
