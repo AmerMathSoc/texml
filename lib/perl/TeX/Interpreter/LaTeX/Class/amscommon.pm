@@ -5,7 +5,7 @@ package TeX::Interpreter::LaTeX::Class::amscommon;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.2';
+use version; our $VERSION = qv '1.3.3';
 
 use TeX::Utils::Misc;
 
@@ -503,7 +503,7 @@ __DATA__
     \@ifstar{\unskip\space\ignorespaces}{\unskip\space}%
 }
 
-\DeclareRobustCommand{\forcehyphenbreak}{-\ignorespaces}%
+\DeclareRobustCommand{\forcehyphenbreak}{\ignorespaces}%
 
 \let\datepreposted\@gobble
 \let\daterevised\@gobble
