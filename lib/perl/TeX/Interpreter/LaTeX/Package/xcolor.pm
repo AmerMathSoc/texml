@@ -513,6 +513,7 @@ sub install ( $ ) {
     my $tex     = shift;
     my @options = @_;
 
+    ## ARGH!  This is still loading svgnam.def and x11nam.def!
     $tex->load_latex_package("xcolor"); # suppress all options
 
     $tex->package_load_notification(__PACKAGE__, @options);
@@ -522,19 +523,44 @@ sub install ( $ ) {
     $tex->define_csname(definecolor => \&do_definecolor);
 
     for my $svg_name (keys %SVGNAMES) {
-        $tex->define_simple_macro("XCOLOR\@svg\@$svg_name", $svg_name);
+        $tex->define_simple_macro("XCOLOR\@svg\@$svg_name", lc($svg_name));
+        $tex->define_simple_macro("XCOLOR\@math\@$svg_name", lc("{$svg_name}"));
     }
 
     while (my ($name, $raw_spec) = each %XCOLORNAMES) {
-        my $spec = ref($raw_spec) ? __rgb(@{ $raw_spec}) : $raw_spec;
+        my $model = '[rgb]';
+        my $svg_spec;
+        my $math_spec;
 
-        $tex->define_simple_macro("XCOLOR\@svg\@$name", $spec);
+        if (ref($raw_spec)) {
+            $svg_spec = __rgb(@{ $raw_spec });
+            $math_spec = join ", ", @{ $raw_spec };
+        } else {
+            $model = '';
+            $svg_spec = $math_spec = lc $raw_spec;
+        }
+
+        $tex->define_simple_macro("XCOLOR\@svg\@$name", $svg_spec);
+
+        $tex->define_simple_macro("XCOLOR\@math\@$name", qq{${model}\\string{$math_spec\\string}});
     }
 
     while (my ($name, $raw_spec) = each %X11NAMES) {
-        my $spec = ref($raw_spec) ? __rgb(@{ $raw_spec}) : $raw_spec;
+        my $model = '[rgb]';
+        my $svg_spec;
+        my $math_spec;
 
-        $tex->define_simple_macro("XCOLOR\@svg\@$name", $spec);
+        if (ref($raw_spec)) {
+            $svg_spec = __rgb(@{ $raw_spec });
+            $math_spec = join ", ", @{ $raw_spec };
+        } else {
+            $model = '';
+            $svg_spec = $math_spec = lc $raw_spec;
+        }
+
+        $tex->define_simple_macro("XCOLOR\@svg\@$name", $svg_spec);
+
+        $tex->define_simple_macro("XCOLOR\@math\@$name", qq{${model}\\string{$math_spec\\string}});
     }
 
     return;
@@ -557,6 +583,9 @@ sub do_definecolor {
         my $spec = sprintf __rgb($r, $g, $b);
 
         $tex->define_simple_macro("XCOLOR\@svg\@$name", $spec);
+
+        $tex->define_simple_macro("XCOLOR\@math\@$name", 
+                                  qq{[rgb]\\string{$r, $g, $b\\string}});
     }
     elsif ($model_list eq 'RGB') {
         my ($r, $g, $b) = split /\s*,\s*/, $spec_list;
@@ -564,6 +593,9 @@ sub do_definecolor {
         my $spec = sprintf qq{rgb(%d, %d, %d)}, $r, $g, $b;
 
         $tex->define_simple_macro("XCOLOR\@svg\@$name", $spec);
+
+        $tex->define_simple_macro("XCOLOR\@math\@$name", 
+                                  qq{[RGB]\\string{$r, $g, $b\\string}});
     }
     else {
         $tex->print_err("Unsupported color model '$model_list'");
@@ -589,53 +621,77 @@ __DATA__
 \let\colorlet\@gobbletwo
 
 \def\XCOLOR@SVG@color#1{\@nameuse{XCOLOR@svg@#1}}
+\def\XCOLOR@math@color#1{\@nameuse{XCOLOR@math@#1}}
 
 % Just implement the simple cases for now.
 
-\def\color#1{%
+\def\XC@choose@mode#1{%
+    \@nameuse{\ifmmode math\else text\fi @\@xp\@gobble\string#1}%
+}
+
+\def\color{\XC@choose@mode\color}
+
+\def\XCOLOR@end@styled{\endXMLelement{styled-content}}
+
+\def\text@color#1{%
     \startXMLelement{styled-content}%
     \setXMLattribute{text-color}{\XCOLOR@SVG@color{#1}}%
     \aftergroup\XCOLOR@end@styled
     \ignorespaces
 }
 
-\def\XCOLOR@end@styled{\endXMLelement{styled-content}}
+\def\math@color#1{%
+    \string\color\XCOLOR@math@color{#1}%
+}
 
-\def\textcolor#1#2{%
+\def\textcolor{\XC@choose@mode\textcolor}
+
+\def\text@textcolor#1#2{%
     \leavevmode
     \startXMLelement{styled-content}%
     \setXMLattribute{text-color}{\XCOLOR@SVG@color{#1}}%
     #2%
-    \XCOLOR@end@styled%
+    \XCOLOR@end@styled
 }
 
-\def\colorbox#1#2{%
-    \ifmmode
-        \string\colorbox\string{#1\string}\string{\hbox{#2}\string}%
-    \else
-        \leavevmode
-        \startXMLelement{styled-content}%
-        \setXMLattribute{background-color}{\XCOLOR@SVG@color{#1}}%
-            #2%
-        \XCOLOR@end@styled%
-    \fi
-
+\def\math@textcolor#1#2{%
+    \string\textcolor\XCOLOR@math@color{#1}\string{#2\string}%
 }
 
-\def\fcolorbox#1#2#3{%
+\def\colorbox{\XC@choose@mode\colorbox}
+
+\def\text@colorbox#1#2{%
+    \leavevmode
+    \startXMLelement{styled-content}%
+    \setXMLattribute{background-color}{\XCOLOR@SVG@color{#1}}%
+        #2%
+    \XCOLOR@end@styled
+}
+
+\def\math@colorbox#1#2{%
+    \string\colorbox\XCOLOR@math@color{#1}\string{\hbox{#2}\string}%
+}
+
+\def\fcolorbox{\XC@choose@mode\fcolorbox}
+
+\def\text@fcolorbox#1#2#3{%
     \leavevmode
     \startXMLelement{styled-content}%
     \setXMLattribute{border-color}{\XCOLOR@SVG@color{#1}}%
     \setXMLattribute{background-color}{\XCOLOR@SVG@color{#2}}%
         #3%
-    \XCOLOR@end@styled%
+    \XCOLOR@end@styled
 }
 
-\DeclareMathJaxMacro\color
-\DeclareMathJaxMacro\textcolor
-\DeclareMathJaxMacro\colorbox
-\DeclareMathJaxMacro\fcolorbox
-\DeclareMathJaxMacro\definecolor
+\def\math@fcolorbox#1#2#3{%
+    \string\fcolorbox\XCOLOR@math@color{#1}\XCOLOR@math@color{#2}\string{\hbox{#3}\string}%
+}
+
+% \DeclareMathJaxMacro\color
+% \DeclareMathJaxMacro\textcolor
+% \DeclareMathJaxMacro\colorbox
+% \DeclareMathJaxMacro\fcolorbox
+% \DeclareMathJaxMacro\definecolor
 
 \TeXMLendPackage
 
