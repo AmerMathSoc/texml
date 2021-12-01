@@ -5,7 +5,7 @@ package TeX::Interpreter::LaTeX::Class::amscommon;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.3';
+use version; our $VERSION = qv '1.3.4';
 
 use TeX::Utils::Misc;
 
@@ -445,7 +445,7 @@ sub do_finish_toc {
         \\gdef\\\@currtoclevel{-1}%
         \\let\\\@authorlist\\\@empty
         \\makeatletter
-        \\\@input{\\\jobname.$type}%
+        \\\@input{\\jobname.$type}%
         \\\@clear\@tocstack
         \\makeatother
 EOF
