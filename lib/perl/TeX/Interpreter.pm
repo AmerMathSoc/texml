@@ -17,7 +17,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.1';
+use version; our $VERSION = qv '1.1.2';
 
 use base qw(Exporter);
 
@@ -9535,10 +9535,30 @@ sub __math_to_text {
         return (XML_OPEN_ROMAN, @nodes, XML_CLOSE_ROMAN);
     }
 
-    # Unwrap something like $\text{\ref{key}}$.
+    # We want to unwrap things like this:
+    #
+    #     $\text{\eqref{key}}$.
+    #     $\eqref{key}$.
+    #     $\text{\ref{key}}$.
+    #     $\ref{key}$.
+    #
+    # but not, e.g.,
+    #
+    #     $\ref{a}\rightarrow\ref{b}$
+    #
+    # This is still not perfect, but I think it handles all the cases
+    # we've encountered so far.  Anything more complicated than this
+    # should probably be recoded.
+    #
+    # Examples would bet monstrosities like the following.
+    #
+    #     $\text{\ref{a}}, \text{\ref{b}}$
+    #     $\text{\ref{a}, \ref{b}}$
 
-    if ($text =~ m{\A (<x>\(</x>)? <xref .* </xref> (<x>\)</x>)? \z}smx) {
-        return @nodes;
+    if ($text =~ m{\A (?:<text>)? (?:<x>\(</x>)? <xref> (.*?) </xref> (?:<x>\)</x>)? (?:</text>)?\z}smx) {
+        my $middle = $1;
+
+        return @nodes unless $middle =~ m{<xref>};
     }
 
     if ($text =~ m{\A \\mathsc\{ ([^{}]*) \} \z}smx) {
