@@ -95,7 +95,7 @@ __DATA__
         \ALC@pushtag{statement}%
             #1\par
         \ALC@endgroup
-%        \if###2##\else\ALC@com{#2}\par\fi
+        \if###2##\else\ALC@com{#2}\par\fi
     \ALC@close{line}%
 }
 
@@ -139,6 +139,11 @@ __DATA__
 }
 
 \def\algorithmiccomment#1{%
+    \if\ALC@endtoplevel\@empty\else
+        \ALC@popstack
+        \endgroup
+        \begingroup
+    \fi
     %\ALC@endtoplevel
     \ALC@open{comment}#1\ALC@close{comment}%
 }
@@ -327,22 +332,11 @@ __DATA__
 \def\ENDFOR{\ALC@end@structure{\algorithmicendfor}}
 
 \newcommand{\LOOP}[1][default]{% No condition
-    % \ALC@begin@structure{loop}{}{#2}{#1}
-    \ALC@endtoplevel
-    \ALC@begingroup
-        \ALC@pushtag{loop}%
-        \ALC@line{\algorithmicloop}{#1}%
-        \ALC@begingroup
-            \ALC@pushtag{block}%
+    \ALC@begin@structure{loop}{\algorithmicloop}{}{#1}{}%
 }
 
 \newcommand{\REPEAT}[1][default]{% No condition
-    \ALC@endtoplevel
-    \ALC@begingroup
-        \ALC@pushtag{repeat}%
-        \ALC@line{\algorithmicrepeat}{#1}%
-        \ALC@begingroup
-            \ALC@pushtag{block}%
+    \ALC@begin@structure{repeat}{\algorithmicrepeat}{}{#1}{}%
 }
 
 \newcommand{\UNTIL}[1]{%
