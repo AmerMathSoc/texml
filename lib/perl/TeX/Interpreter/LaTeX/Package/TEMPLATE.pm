@@ -13,7 +13,7 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
-    $tex->load_latex_package("TEMPLATE", @options);
+    # $tex->load_latex_package("TEMPLATE", @options);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::TEMPLATE::DATA{IO});
 
