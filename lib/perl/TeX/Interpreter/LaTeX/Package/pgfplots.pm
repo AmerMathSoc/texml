@@ -36,6 +36,7 @@ __DATA__
 %% There are undoubtably more of these we should add.
 
 \let\pgfplotsset\@gobble
+\let\usepgfplotslibrary\@gobble
 
 \def\pgfdeclarepatternformonly#1#2#3#4#5{}
 
