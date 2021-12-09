@@ -27,6 +27,7 @@ __DATA__
 \TeXMLprovidesPackage{listings}
 
 \let\lstset\@gobble
+\let\lstdefinestyle\@gobbletwo
 
 \DeclareSVGEnvironment*{listings}
 \DeclareSVGEnvironment*{lstlisting}
