@@ -93,8 +93,16 @@ __DATA__
 \DeclareSVGMathChar\supsetplus\mathrel      % OVERRIDES UNICODE-MATH (different shape)
 \DeclareSVGMathChar\subsetpluseq\mathrel
 \DeclareSVGMathChar\supsetpluseq\mathrel
-\DeclareSVGMathChar\trianglelefteqslant\mathrel
-\DeclareSVGMathChar\trianglerighteqslant\mathrel
+
+% Let's assume nobody is dumb enough (hah!) to use both
+% \trianglelefteq an d\trianglelefteqslant in the same paper to mean
+% different things.
+
+% \DeclareSVGMathChar\trianglelefteqslant\mathrel
+% \DeclareSVGMathChar\trianglerighteqslant\mathrel
+
+\def\trianglelefteqslant{\trianglelefteq}
+\def\trianglerighteqslant{\trianglerighteq}
 
 % "(var)" at the end of a line means the Unicode character given is
 % for the un-var version.  I.e., "22CE is \curlyvee; there is no
