@@ -3,8 +3,6 @@ package TeX::Interpreter::LaTeX::Package::siunitx;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -26,10 +24,10 @@ __DATA__
 
 \TeXMLprovidesPackage{siunitx}
 
-\def\num#1{\siunitx@num#1\@nil}
+\def\num#1{\siunitx@num#1ee\@nil}
 
-\def\siunitx@num#1e#2\@nil{
-    \ensuremath{#1 \times 10^{#2}}%
+\def\siunitx@num#1e#2e#3\@nil{
+    \ensuremath{#1 \if###2##\else \times 10^{#2}\fi}%
 }
 
 \let\sisetup\@gobble
