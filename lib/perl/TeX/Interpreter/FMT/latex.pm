@@ -3,7 +3,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.113.0';
+use version; our $VERSION = qv '1.114.0';
 
 use Image::PNG;
 use Image::JPEG::Size;
@@ -1140,17 +1140,22 @@ __DATA__
                 \texttt{?#3}%
             }{%
                 \begingroup
-                    \double@expand{%
-                        \edef\noexpand\@ref@label@attr{%
-                            \noexpand\auto@ref@label{\expandafter\@thirdoffour#1}%
+                    \edef\ref@rid{\expandafter\@thirdoffour#1}%
+                    \ifx\ref@rid\@empty
+                        \setXMLattribute{linked}{no}%
+                    \else
+                        \setXMLattribute{rid}{\ref@rid}%
+                        \double@expand{%
+                            \edef\noexpand\@ref@label@attr{%
+                                \noexpand\auto@ref@label{\ref@rid}%
+                            }%
                         }%
-                    }%
-                    \ifx\@ref@label@attr\@empty\else
-                        \setXMLattribute{ref-label}{\@ref@label@attr}%
+                        \ifx\@ref@label@attr\@empty\else
+                            \setXMLattribute{ref-label}{\@ref@label@attr}%
+                        \fi
                     \fi
                 \endgroup
                 \setXMLattribute{specific-use}{\expandafter\@gobble\string#4}%
-                \setXMLattribute{rid}{\expandafter\@thirdoffour#1}%
                 \setXMLattribute{ref-type}{\expandafter\@fourthoffour#1}%
                 \protect\printref{\expandafter#2#1}%
             }%
