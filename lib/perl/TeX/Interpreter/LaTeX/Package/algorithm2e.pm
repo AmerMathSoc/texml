@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::algorithm2e;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -55,11 +55,14 @@ __DATA__
 \let\TeXML@caption\@empty
 \let\TeXML@label\@empty
 
+\newdimen\AlgorithmPaperWidth
+\AlgorithmPaperWidth=8.5in
+
 \let\algorithm\relax
 \newcommand{\algorithm}[1][]{%
     \endgroup
     \begingroup
-        \TeXMLSVGpaperwidth=8.5in
+        \TeXMLSVGpaperwidth=\AlgorithmPaperWidth
         \edef\texml@body{%
             % \noexpand\SetAlgoRefName{\algocf@algocfref}%
             \noexpand\begin{algorithm}%
