@@ -44,23 +44,18 @@ sub do_resolve_constants {
         }
 
         for my $xref (@xrefs) {
-$tex->__DEBUG("texml_constant = '$xref'");
-
             (undef, my $ref_cmd) = split / /, $xref->getAttribute('specific-use');
             if ($ref_cmd eq 'Cr') {
                 my $key = $xref->getAttribute("rid");
 
                 my $tex_fragment = qq{\\Cr{$key}};
 
-$tex->__DEBUG("tex_fragment = '$tex_fragment'");
-
                 my $label = $tex->convert_fragment($tex_fragment);
 
-$tex->__DEBUG("label = '$label'");
-
                 if (nonempty($label) && $label->hasChildNodes()) {
-$tex->__DEBUG("Replacing '$xref' by '$label'");
-                    $xref->replaceChild($label, $xref);
+                    my $parent = $xref->parentNode();
+
+                    $parent->replaceChild($label, $xref);
                 }
             }
         }
@@ -240,6 +235,7 @@ __DATA__
 
 \def\pagerefconstant#1{%
     \PackageError{constants}{Use of pagrefconstant{#1} no supported}{}%
+    \texttt{[?pagerefconstant #1]}%
 }
 
 \def\refstepcounterconstant#1{%
