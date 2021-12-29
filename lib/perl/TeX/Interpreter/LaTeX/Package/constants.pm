@@ -230,7 +230,8 @@ __DATA__
 }
 
 \newcommand{\Cl}[2][normal]{%
-    \C[#1]\labelconstant{#2}{\string #1}%
+    \C[#1]%
+    \labelconstant{#2}{\string #1}%
 }
 
 \def\pagerefconstant#1{%
@@ -246,18 +247,15 @@ __DATA__
 }
 
 \def\@newl@belconstant#1#2#3{%
-    {%
-        \@ifundefined{#1@#2}{%
-        }{%
-            \gdef\@multiplelabelsconstant{%
-                \@latex@warning@no@line{%
-                    There were multiply-defined labels for constants%
-                }%
+    \@ifundefined{#1@#2}{}{%
+        \gdef\@multiplelabelsconstant{%
+            \@latex@warning@no@line{%
+                There were multiply-defined labels for constants%
             }%
-            \@latex@warning@no@line{Label for constant `#2' multiply defined}%
         }%
-        \global\@namedef{#1@#2}{#3}%
+        \@latex@warning@no@line{Label for constant `#2' multiply defined}%
     }%
+    \global\@namedef{#1@#2}{#3}%
 }
 
 \def\@currentlabelconstant{}
@@ -272,7 +270,7 @@ __DATA__
     \@bsphack
     \begingroup
         \protected@edef\@tempa{%
-            \noexpand\newlabelconstant{#1}{{\@currentlabelconstant}{\thepage}{#2}}%
+            \protect\newlabelconstant{#1}{{\@currentlabelconstant}{}{#2}}%
         }%
     \expandafter\endgroup
     \@tempa
