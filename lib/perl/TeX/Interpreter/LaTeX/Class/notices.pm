@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Class::notices;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.3';
+use version; our $VERSION = qv '1.3.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -202,29 +202,28 @@ __DATA__
     {\reviewedwork@main{#1}[]}%
 }
 
-% [# LINES][BORDER?]{GRAPHIC}{BYLINE}{TITLE}{SUBTITLE}{AUTHORS}
+% [NUMLINES][BORDER?]{GRAPHIC}{BYLINE}{TITLE}{SUBTITLE}{AUTHORS}
+%     #1      #2        #3      #4      #5      #6         #7
 
 \def\reviewedwork@main#1[#2]#3#4#5#6#7{%
-    \par
-    \startXMLelement{sec}%
-    \setXMLattribute{specific-use}{reviewedwork}%
-    \par
-    \if###3##\else
-        {\xmlpartag{title}#3\par}%
-    \fi
-    \if###4##\else
-        {\xmlpartag{subtitle}#4\par}%
-    \fi
-    \if###5##\else
-        {\xmlpartag{authors}#5\par}%
-    \fi
-    \if###1##\else
-        {\xmlpartag{graphic}#6\par}%
-    \fi
-    \if###2##\else
-        {\xmlpartag{byline}#2\par}%
-    \fi
-    \endXMLelement{sec}%
+    \begin{figure}[H]
+    \includegraphics{#3}\par
+    \xmlpartag{p}%
+    \startXMLelement{caption}
+        \if###5##\else
+            \textbf{\emph{#5}}\par
+        \fi
+        \if###6##\else
+            \emph{#6}\par
+        \fi
+        \if###7##\else
+            #7\par
+        \fi
+        \if###4##\else
+            #4\par
+        \fi
+    \endXMLelement{caption}
+    \end{figure}
 }
 
 \def\fullcolumnad{\end{document}}
