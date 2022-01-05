@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Class::notices;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.4.0';
+use version; our $VERSION = qv '1.4.1';
 
 sub install ( $ ) {
     my $class = shift;
@@ -252,11 +252,11 @@ __DATA__
     \endXMLelement{contrib}\par
     \endXMLelement{contrib-group}\par
     \endXMLelement{sec-meta}\par
-    \thisxmlpartag{title}#1\par
     \if@numbered
         \refstepcounter{section}
         \thisxmlpartag{label}\thesection\par
     \fi
+    \thisxmlpartag{title}#1\par
 }
 
 \TeXMLendClass
