@@ -28,6 +28,8 @@ __DATA__
 
 \TeXMLprovidesPackage{unicode-math}
 
+\let\mathscr\mathcal
+
 \TeXMLendPackage
 
 \endinput
