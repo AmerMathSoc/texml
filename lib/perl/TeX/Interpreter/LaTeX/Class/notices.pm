@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Class::notices;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.4.1';
+use version; our $VERSION = qv '1.5.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -43,9 +43,10 @@ __DATA__
 
 \RequirePackage{hyperref}
 
-\let\category\@gobble
+\def\category{\def\@noti@category}
 
 \newcommand{\titlepic}{\def\@titlepic}
+\newcommand{\titlegraphicnote}{\def\@titlegraphicnote}
 
 \let\@titlepic\@empty
 
@@ -55,7 +56,7 @@ __DATA__
 \def\@commbytext{Communicated by \emph{Notices} Associate Editor }
 
 % \newcommand{\notiemail}[1]{\texttt{\upshape\nolinkurl{#1}}}
-\newcommand{\notiemail}{\XMLelement{email}}
+\newcommand{\notiemail}[1]{\XMLelement{email}{\ignorespaces#1}}
 
 % Doesn't handle catcode changes
 
@@ -208,7 +209,9 @@ __DATA__
 \def\reviewedwork@main#1[#2]#3#4#5#6#7{%
     \begin{figure}[H]
     \setXMLattribute{specific-use}{reviewedwork}%
-    \includegraphics{#3}\par
+    \if###3##\else
+        \includegraphics{#3}\par
+    \fi
     \xmlpartag{p}%
     \startXMLelement{caption}
         \if###5##\else
@@ -232,6 +235,8 @@ __DATA__
 % \secmeta: a temporary solution
 
 \newif\if@numbered
+
+% \secmeta{section title}{author}{bio}
 
 \newcommand{\secmeta}{\maybe@st@rred\@secmeta}
 
