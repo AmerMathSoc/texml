@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Class::noti20_3A;
+package TeX::Interpreter::LaTeX::Class::noti20_2B;
 
 use strict;
 use warnings;
@@ -18,7 +18,7 @@ sub install ( $ ) {
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::noti20_3A::DATA{IO});
+    $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::noti20_2B::DATA{IO});
 
     return;
 }
@@ -27,10 +27,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{noti20_3A}
-
-\def\@noti@category{sampler}
-\def\category{\def\@noti@subject@group}
+\TeXMLprovidesClass{noti20_2B}
 
 \TeXMLendClass
 

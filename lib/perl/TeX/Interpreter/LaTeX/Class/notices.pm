@@ -43,7 +43,7 @@ __DATA__
 
 \RequirePackage{hyperref}
 
-\def\category{\def\@noti@category}
+\def\category{\gdef\@noti@category}
 
 \newcommand{\titlepic}{\def\@titlepic}
 \newcommand{\titlegraphicnote}{\def\@titlegraphicnote}

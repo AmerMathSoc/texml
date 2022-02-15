@@ -492,6 +492,9 @@ __DATA__
 \let\NoTOC\@gobble
 \def\for#1#2{}
 
+\def\copublisher{\gdef\AMS@copublisher}
+\let\AMS@copublisher\@empty
+
 % \let\qed\@empty
 
 \setcounter{secnumdepth}{3}
