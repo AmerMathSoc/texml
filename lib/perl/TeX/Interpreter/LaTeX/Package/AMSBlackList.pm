@@ -46,6 +46,8 @@ __DATA__
 \AMSBlackListPackage{textcomp}
 \AMSBlackListPackage{thm-listof}
 \AMSBlackListPackage{tikz-qtree-compat}
+\AMSBlackListPackage{tikz-fct}
+\AMSBlackListPackage{tikz-base}
 
 \TeXMLendPackage
 
