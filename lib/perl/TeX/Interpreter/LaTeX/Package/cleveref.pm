@@ -107,6 +107,31 @@ __DATA__
     \endXMLelement{xref}%
 }
 
+% AMSTHM
+
+\def\amsthm@refstepcounter#1#2{\refstepcounter[#1]{#2}}%
+
+\def\amsthm@cref@init#1#2{%
+    \edef\@tempa{\expandafter\noexpand\csname cref@#1@name@preamble\endcsname}%
+    \edef\@tempb{\expandafter\noexpand\csname Cref@#1@name@preamble\endcsname}%
+    \def\@tempc{#2}%
+    \ifx\@tempc\@empty\relax
+        \expandafter\gdef\@tempa{}%
+        \expandafter\gdef\@tempb{}%
+    \else
+        \if@cref@capitalise
+            \expandafter\expandafter\expandafter\gdef\expandafter
+                \@tempa\expandafter{\MakeUppercase #2}%
+      \else
+            \expandafter\expandafter\expandafter\gdef\expandafter
+                \@tempa\expandafter{\MakeLowercase #2}%
+      \fi
+      \expandafter\expandafter\expandafter\gdef\expandafter
+            \@tempb\expandafter{\MakeUppercase #2}%
+    \fi
+    \cref@stack@add{#1}{\cref@label@types}%
+}
+
 \TeXMLendPackage
 
 \endinput
