@@ -3,7 +3,7 @@ package TeX::Interpreter::LaTeX::Package::booktabs;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
+use version; our $VERSION = qv '1.2.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -65,6 +65,25 @@ __DATA__
 
 \def\@@BLTrule(#1){%
         \global\@cmidlb\LT@cols
+    \ifnum0=`{\fi}%
+}
+
+\def\@@@cmidrule[#1-#2]#3#4{%
+        \global\@thisrulewidth=#3\relax
+        \edef\current@border@width{\the\@thisrulewidth}%
+        \count@\alignrowno
+        \edef\@selector{%
+            \@thistable\space
+            tr:nth-child(\the\TeXMLtoprow \alignrowno \count@)\space
+            \@nx\nth@col{\@nx\the\count@}%
+        }%
+        \count@#1
+        \@tempcnta#2
+        \advance\@tempcnta\@ne
+        \@whilenum\count@<\@tempcnta\do{%
+            \addCSSclass{\@selector}{border-bottom: \current@border@properties;}%
+            \advance\count@\@ne
+        }%
     \ifnum0=`{\fi}%
 }
 
