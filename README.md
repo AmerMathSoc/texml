@@ -2,22 +2,6 @@
 
 texml, a tool for converting LaTeX files into JATS/BITS-like XML.
 
-This code is experimental and is provided completely without warranty
-or without any promise of support.  However, it is under active
-development and we welcome any comments you may have on it.
-
-American Mathematical Society
-Technical Support
-Publications Technical Group
-201 Charles Street
-Providence, RI 02904
-USA
-tel: (401) 455-4080
-     (800) 321-4267 (USA and Canada only)
-fax: (401) 331-3842
-email: tech-support@ams.org
-https://github.com/AmerMathSoc/texml
-
 Copyright (C) 2022 American Mathematical Society
 
 This program is free software: you can redistribute it and/or modify
@@ -32,6 +16,19 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+This code is experimental and is provided completely without warranty
+or without any promise of support.  However, it is under active
+development and we welcome any comments you may have on it.
+
+American Mathematical Society\
+Technical Support\
+Publications Technical Group\
+201 Charles Street\
+Providence, RI 02904\
+USA\
+email: tech-support@ams.org\
+https://github.com/AmerMathSoc/texml
 
 ## Installation
 
