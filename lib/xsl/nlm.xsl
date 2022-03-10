@@ -55,10 +55,10 @@
   tags everywhere and then eliminate the unwanted ones here.
 
   The exception for footnotes is for footnotes inside math.  Those are
-  moved outside of the <inline-formula> later in the toolchaing.
+  moved outside of the <inline-formula> later in the toolchain.
 -->
 
-<xsl:template match="tex-math//inline-formula">
+<!-- xsl:template match="tex-math//inline-formula">
     <xsl:choose>
         <xsl:when test="ancestor::fn">
             <xsl:copy>
@@ -72,7 +72,7 @@
             <xsl:text>$</xsl:text>
         </xsl:otherwise>
     </xsl:choose>
-</xsl:template>
+</xsl:template -->
 
 <!-- Delete empty p tags.  Ideally texml wouldn't generate these, but
   getting rid of all of them could be tricky.
