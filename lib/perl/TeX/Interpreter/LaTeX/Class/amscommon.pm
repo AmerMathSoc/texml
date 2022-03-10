@@ -5,8 +5,6 @@ package TeX::Interpreter::LaTeX::Class::amscommon;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.4';
-
 use TeX::Utils::Misc;
 
 use TeX::Constants qw(:named_args);
@@ -487,6 +485,8 @@ __DATA__
 
 \TeXMLprovidesClass{amscommon}
 
+\RequirePackage{xspace}
+
 \UCSchardef\textprime"2032
 
 \let\NoTOC\@gobble
@@ -502,11 +502,15 @@ __DATA__
 
 \def\nonbreakingspace{\unskip\nobreakspace\ignorespaces}
 
+% If there is a space left after \forcelinebreak, it belongs to the content.
+
 \DeclareRobustCommand{\forcelinebreak}{%
-    \@ifstar{\unskip\space\ignorespaces}{\unskip\space}%
+    \@ifstar{\unskip\xspace}{\unskip\xspace}%
 }
 
-\DeclareRobustCommand{\forcehyphenbreak}{\ignorespaces}%
+%% \forcehyphenbreak is a like \- : the hyphen is *not* part of the content.
+
+\DeclareRobustCommand{\forcehyphenbreak}{\@ifstar{\ignorespaces}{}}
 
 \let\datepreposted\@gobble
 \let\daterevised\@gobble
