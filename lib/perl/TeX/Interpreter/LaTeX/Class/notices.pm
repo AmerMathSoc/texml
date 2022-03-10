@@ -3,8 +3,6 @@ package TeX::Interpreter::LaTeX::Class::notices;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.0';
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -261,7 +259,9 @@ __DATA__
         \refstepcounter{section}
         \thisxmlpartag{label}\thesection\par
     \fi
-    \thisxmlpartag{title}#1\par
+    \if###1##\else
+        \thisxmlpartag{title}#1\par
+    \fi
 }
 
 \TeXMLendClass
