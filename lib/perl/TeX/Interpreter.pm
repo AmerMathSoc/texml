@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.2';
+use version; our $VERSION = qv '1.1.3';
 
 use base qw(Exporter);
 
@@ -138,42 +138,6 @@ use TeX::Output::FontMapper qw(decode_character);
 
 use Unicode::UCD qw(charinfo);
 
-sub DEBUG {
-    # my $tex = shift;
-
-    return unless $_[0]->TeXML_debug_output();
-
-    goto \&__DEBUG;
-}
-
-sub __DEBUG {
-    my $tex = shift;
-
-    my $subroutine = (caller(1))[3];
-
-    $subroutine =~ s{^TeX::Interpreter::}{};
-
-    my $file_name = $tex->get_file_name() || '<undef>';
-    my $line_no   = $tex->input_line_no() || '<undef>';
-
-    $subroutine .= " ($file_name, l. $line_no)";
-
-    for my $par (@_) {
-        for my $line (split /\n/, $par) {
-            if (nonempty($line)) {
-                $tex->print_nl("*** ${subroutine}: ");
-                $tex->print($line);
-            } else {
-                $tex->print_ln();
-            }
-        }
-    }
-
-    $tex->print_ln();
-
-    return;
-}
-
 ######################################################################
 ##                                                                  ##
 ##                            CONSTANTS                             ##
@@ -222,8 +186,6 @@ my %cur_lang_of :ATTR(:name<cur_lang> :set<*custom*> :default(0)); #*
 my %cur_enc_of  :ATTR;
 
 my %cur_page_of :ARRAY(:name<cur_page>);
-
-my %debugging_of :BOOLEAN(:name<debugging> :default<false>);
 
 my %profiling_of :BOOLEAN(:name<profiling> :default<false>);
 
@@ -295,15 +257,41 @@ sub INITIALIZE :CUMULATIVE(BASE FIRST) {
 ##                                                                  ##
 ######################################################################
 
-# sub debug {
-#     my $tex = shift;
-#
-#     return unless $tex->is_debugging();
-#
-#     print "debug: ", @_;
-#
-#     return;
-# }
+sub DEBUG {
+    # my $tex = shift;
+
+    return unless $_[0]->TeXML_debug_output();
+
+    goto \&__DEBUG;
+}
+
+sub __DEBUG {
+    my $tex = shift;
+
+    my $subroutine = (caller(1))[3];
+
+    $subroutine =~ s{^TeX::Interpreter::}{};
+
+    my $file_name = $tex->get_file_name() || '<undef>';
+    my $line_no   = $tex->input_line_no() || '<undef>';
+
+    $subroutine .= " ($file_name, l. $line_no)";
+
+    for my $par (@_) {
+        for my $line (split /\n/, $par) {
+            if (nonempty($line)) {
+                $tex->print_nl("*** ${subroutine}: ");
+                $tex->print($line);
+            } else {
+                $tex->print_ln();
+            }
+        }
+    }
+
+    $tex->print_ln();
+
+    return;
+}
 
 ######################################################################
 ##                                                                  ##
@@ -1041,7 +1029,7 @@ sub succumb {
         $tex->error();
     }
 
-    if ($tex->is_debugging()) {
+    if ($tex->TeXML_debug_output()) {
         if ($tex->get_interaction_mode() > batch_mode) {
             $tex->debug_help();
         }
@@ -6830,7 +6818,7 @@ sub start_input {
         if ($tex->do_svg() && ! defined $tex->get_svg_agent()) {
             my $svg_agent = TeX::Utils::SVG->new({ base_file => $path,
                                                    interpreter => $tex,
-                                                   debug => $tex->is_debugging(),
+                                                   debug => $tex->TeXML_debug_output(),
                                                    use_xetex => $tex->use_xetex(),
                                                  });
 
