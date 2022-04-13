@@ -549,7 +549,7 @@ sub install ( $ ) {
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::xcolor::DATA{IO});
 
-    $tex->define_csname(definecolor => \&do_definecolor);
+#    $tex->define_csname(definecolor => \&do_definecolor);
 
     for my $svg_name (keys %SVGNAMES) {
         $tex->define_simple_macro("XCOLOR\@svg\@$svg_name", lc($svg_name));
@@ -652,6 +652,25 @@ __DATA__
 \def\XCOLOR@SVG@color#1{\@nameuse{XCOLOR@svg@#1}}
 \def\XCOLOR@math@color#1{\@nameuse{XCOLOR@math@#1}}
 
+\DeclareRobustCommand\XC@raw@color
+ {\@ifnextchar[\@undeclaredcolor\@declaredcolor}
+
+\def\set@texml@color@attribute#1#2{%
+    \XC@raw@color{#2}%
+    \setXMLattribute{#1}{\current@color}%
+}
+
+\AtBeginDocument{%
+    \def\set@color{}%{\current@color}%
+}
+
+\def\c@lor@@rgb#1,#2,#3\@@#4{%
+  \c@lor@arg{#1}%
+  \c@lor@arg{#2}%
+  \c@lor@arg{#3}%
+  \edef#4{rgb(#1, #2, #3)}%
+  }
+
 % Just implement the simple cases for now.
 
 \def\XC@choose@mode#1{%
@@ -664,7 +683,7 @@ __DATA__
 
 \def\text@color#1{%
     \startXMLelement{styled-content}%
-    \setXMLattribute{text-color}{\XCOLOR@SVG@color{#1}}%
+    \set@texml@color@attribute{text-color}{#1}%
     \aftergroup\XCOLOR@end@styled
     \ignorespaces
 }
@@ -678,7 +697,7 @@ __DATA__
 \def\text@textcolor#1#2{%
     \leavevmode
     \startXMLelement{styled-content}%
-    \setXMLattribute{text-color}{\XCOLOR@SVG@color{#1}}%
+    \set@texml@color@attribute{text-color}{#1}%
     #2%
     \XCOLOR@end@styled
 }
@@ -692,7 +711,7 @@ __DATA__
 \def\text@colorbox#1#2{%
     \leavevmode
     \startXMLelement{styled-content}%
-    \setXMLattribute{background-color}{\XCOLOR@SVG@color{#1}}%
+    \set@texml@color@attribute{background-color}{#1}%
         #2%
     \XCOLOR@end@styled
 }
@@ -706,8 +725,8 @@ __DATA__
 \def\text@fcolorbox#1#2#3{%
     \leavevmode
     \startXMLelement{styled-content}%
-    \setXMLattribute{border-color}{\XCOLOR@SVG@color{#1}}%
-    \setXMLattribute{background-color}{\XCOLOR@SVG@color{#2}}%
+    \set@texml@color@attribute{border-color}{#1}%
+    \set@texml@color@attribute{background-color}{#2}%
         #3%
     \XCOLOR@end@styled
 }
