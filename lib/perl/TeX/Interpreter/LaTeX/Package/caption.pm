@@ -63,6 +63,26 @@ __DATA__
 
 \def\captionsetup{\@ifstar\@gobble@opt\@gobble@opt}
 
+% #1 \setcaptionsubtype
+% #2 ??? (caption optional argument?)
+% #3 SUBFIGURE CAPTION TEXT
+% #4 \wd \@tempboxa (parbox width)
+% #5 \captionbox@hj@default  (centering|raggedright|raggedleft)
+% #6 SUBFIGURE CONTENT
+
+\long\def\caption@iiibox#1#2#3#4[#5]#6{%
+    \startXMLelement{fig}%
+        \ifx###3##\else
+            \startXMLelement{caption}%
+                \startXMLelement{p}%
+                    #3%
+                \endXMLelement{p}%
+            \endXMLelement{caption}%
+        \fi
+        #6%
+    \endXMLelement{fig}%
+}
+
 \TeXMLendPackage
 
 \endinput
