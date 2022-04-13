@@ -73,7 +73,8 @@ __DATA__
 \DeclareMathPassThrough{circledS}    % U+24C8 [AMSsymbols.js]
 \DeclareSVGMathChar\diagdown\mathord
 \DeclareSVGMathChar\diagup\mathord
-\DeclareSVGMathChar\digamma\mathord
+% \DeclareSVGMathChar\digamma\mathord
+\def\digamma{\updigamma}
 \def\doteqdot{\Doteq}
 \def\doublecap{\Cap}
 \def\doublecup{\Cup}
