@@ -32,7 +32,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.114.0';
+use version; our $VERSION = qv '1.115.0';
 
 use Image::PNG;
 use Image::JPEG::Size;
@@ -66,6 +66,7 @@ sub install ( $ ) {
     $tex->read_package_data(*TeX::Interpreter::FMT::latex::DATA{IO});
 
     $tex->load_package("AMSBlackList");
+    $tex->load_package("HTMLtable");
 
     $tex->load_package("Diacritics");
 
