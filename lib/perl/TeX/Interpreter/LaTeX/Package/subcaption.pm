@@ -139,6 +139,8 @@ __DATA__
 
 \def\subcaption@reffmt#1#2{\bothIfFirst {#1}{\nobreakspace }#2}
 
+\def\subcaptionbox#1#2{\caption@iiibox{}{}{#1}{}[]{#2}}
+
 \endinput
 
 __END__
