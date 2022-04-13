@@ -191,7 +191,7 @@ __DATA__
 \newcommand{\rowcolor}[2][]{%
     \begingroup
         \edef\@selector{\@thistable\space \nth@row}%
-        \addCSSclass{\@selector}{background-color: #2;}%
+        \addCSSclass{\@selector}{background-color: \XCOLOR@SVG@color{#2};}%
     \endgroup
     \ignorespaces
 }
@@ -199,7 +199,7 @@ __DATA__
 \newcommand{\cellcolor}[2][]{%
     \begingroup
         \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
-        \addCSSclass{\@selector}{background-color: #2;}%
+        \addCSSclass{\@selector}{background-color: \XCOLOR@SVG@color{#2};}%
     \endgroup
     \ignorespaces
 }
@@ -207,7 +207,7 @@ __DATA__
 \newcommand{\set@cell@fg@color}[2][]{%
     \begingroup
         \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
-        \addCSSclass{\@selector}{color: #2;}%
+        \addCSSclass{\@selector}{color: \XCOLOR@SVG@color{#2};}%
     \endgroup
     \ignorespaces
 }
