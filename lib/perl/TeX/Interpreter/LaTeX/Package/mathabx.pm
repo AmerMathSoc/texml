@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::mathabx;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.0.1';
 
 sub install ( $ ) {
     my $class = shift;
@@ -59,6 +59,8 @@ __DATA__
 
 \def\wideparen{\overparen}
 \def\vvvert{\Vvert}
+
+\DeclareSVGMathChar\bigboxtimes\mathop
 
 \TeXMLendPackage
 
