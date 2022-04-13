@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::AMSBlackList;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.3';
+use version; our $VERSION = qv '1.0.4';
 
 sub install ( $ ) {
     my $class = shift;
@@ -59,6 +59,7 @@ __DATA__
 %\AMSBlackListPackage{mathabx}
 \AMSBlackListPackage{amstix2}
 \AMSBlackListPackage{backrefs}
+\AMSBlackListPackage{breakurl}
 \AMSBlackListPackage{ctable}
 \AMSBlackListPackage{etoolbox}
 \AMSBlackListPackage{footmisc}
