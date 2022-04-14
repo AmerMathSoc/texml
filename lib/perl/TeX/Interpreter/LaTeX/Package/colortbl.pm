@@ -42,6 +42,8 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
+    $tex->load_latex_package("colortbl", @options);
+
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::colortbl::DATA{IO});
 
     return;
@@ -54,6 +56,49 @@ __DATA__
 \TeXMLprovidesPackage{colortbl}
 
 \RequirePackage{array}
+\RequirePackage{xcolor}
+
+%% Support for colortbl
+
+%% TODO: handle third and fourth (optional) arguments for \rowcolor
+%% and \cellcolor.  Do something about \columncolor.
+
+% \columncolor[<color model>]{<color>}[<left overhang>][<right overhang>]
+
+% \rowcolor[<color model>]{<color>}[<left overhang>][<right overhang>]
+
+\def\rowcolor#1#{\TML@rowcolor{#1}}
+
+\def\TML@rowcolor#1#2{%
+    \begingroup
+        \edef\@selector{\@thistable\space \nth@row}%
+        \XC@raw@color#1{#2}%
+        \addCSSclass{\@selector}{background-color: \TML@current@color;}%
+    \endgroup
+    \ignorespaces
+}
+
+% \cellcolor[<color model>]{<color>}[<left overhang>][<right overhang>]
+
+\renewcommand{\cellcolor}[2][]{%
+    \begingroup
+        \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
+        \addCSSclass{\@selector}{background-color: \XCOLOR@SVG@color{#2};}%
+    \endgroup
+    \ignorespaces
+}
+
+% \color{<color>}
+% \color[<model-list>]{<spec-list>}
+
+\let\set@cell@fg@color\relax
+\newcommand{\set@cell@fg@color}[2][]{%
+    \begingroup
+        \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
+        \addCSSclass{\@selector}{color: \XCOLOR@SVG@color{#2};}%
+    \endgroup
+    \ignorespaces
+}
 
 \TeXMLendPackage
 
