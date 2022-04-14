@@ -643,17 +643,12 @@ __DATA__
         \let\hline\HTMLtable@hline
         \let\\\@tabularcr
         \let\tabularnewline\\%
-        \let\color\set@cell@fg@color
         \let\par\@empty
         \let\@sharp##%
         \set@typeset@protect
         \@arrayleft
         \@preamble
 }
-
-%% See colortbl.pm for the real implementation.
-
-\providecommand{\set@cell@fg@color}[2][]{}
 
 \def\endtabular{%
             \crcr
