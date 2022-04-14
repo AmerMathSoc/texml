@@ -33,6 +33,7 @@ use strict;
 use warnings;
 
 use TeX::Utils::Misc;
+use TeX::Token qw(:catcodes);
 
 sub install ( $ ) {
     my $class = shift;
@@ -46,7 +47,46 @@ sub install ( $ ) {
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::xcolor::DATA{IO});
 
+    $tex->define_pseudo_macro('TML@current@color' => \&do_TML_current_color);
+
     return;
+}
+
+sub do_TML_current_color {
+    my $self = shift;
+
+    my $tex   = shift;
+    my $token = shift;
+
+    my $current_color = $tex->get_macro_expansion_text('current@color');
+
+    my ($model, @spec) = split / /, $current_color;
+
+    my $color_spec;
+
+    if ($model eq 'rgb') {
+        my @rgb = map { int(255 * $_) } @spec;
+
+        if ($tex->is_mmode()) {
+            $color_spec = sprintf '[RGB](%d, %d, %d)', @rgb;
+        } else {
+            $color_spec = sprintf '#%02x%02x%02x', @rgb;
+        }
+    } else {
+        $tex->print_err("Unsupported color model '$model'");
+
+        $tex->error();
+    }
+
+    $tex->begingroup();
+
+    $tex->set_catcode(ord('#'), CATCODE_OTHER);
+
+    my $toks = $tex->tokenize($color_spec);
+
+    $tex->endgroup();
+
+    return $toks;
 }
 
 ######################################################################
@@ -63,21 +103,6 @@ __DATA__
 
 \AtBeginDocument{%
     \let\set@color\@gobble
-}
-
-\def\TML@current@color{%
-    \expandafter\csname
-        TML@\ifmmode math\else text\fi @color@%
-    \expandafter\endcsname
-    \current@color\@nil
-}
-
-\def\TML@text@color@ rgb #1 #2 #3\@nil{%
-    rgb(#1,#2,#3)%
-}
-
-\def\TML@math@color@ rgb #1 #2 #3\@nil{%
-    [RGB](#1,#2,#3)%
 }
 
 \DeclareRobustCommand\XC@raw@color{%
