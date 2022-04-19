@@ -169,6 +169,8 @@ __DATA__
     \@ifstar{\@DefineAMSTaggedEnvironment@}
             {\@DefineAMSTaggedEnvironment}}
 
+% AUTO-NUMBERED ENVIRONMENTS
+
 \newcommand{\@DefineAMSTaggedEnvironment}[3][\let\math@cr@@@\math@cr@@@tagged]{%
     \@ifundefined{#2}\newenvironment\renewenvironment{#2}{%
         \DeclareMathJaxMacro\hline
@@ -199,6 +201,8 @@ __DATA__
         $$%
     }%
 }
+
+% *-ED (NON-AUTO-NUMBERED ENVIRONMENTS)
 
 \newcommand{\@DefineAMSTaggedEnvironment@}[3][\let\math@cr@@@\math@cr@@@tagged]{%
     \@ifundefined{#2}\newenvironment\renewenvironment{#2}[1]{%
@@ -239,9 +243,9 @@ __DATA__
 }
 
 \def\math@cr@@@multline{%
-    \process@amsmath@tag
+%    \process@amsmath@tag
     \math@cr@@@simple
-    \global\@eqnswfalse
+%    \global\@eqnswfalse
 %    \global\restore@math@cr
 }
 
