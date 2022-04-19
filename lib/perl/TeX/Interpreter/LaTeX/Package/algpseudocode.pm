@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::algpseudocode;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.0.1';
 
 sub install ( $ ) {
     my $class = shift;
@@ -64,7 +64,8 @@ __DATA__
 %% This should be reviewed.  I don't think any of these are actually
 %% part of algpseudocode per se.
 
-\DeclareSVGEnvironment{algorithmic}
+\RequirePackage{algorithmic}
+
 \DeclareSVGEnvironment{algo}
 
 \def\floatc@ruled[2]{{\@fs@cfont #1.} #2\par}
