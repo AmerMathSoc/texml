@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.1';
+use version; our $VERSION = qv '1.2.2';
 
 sub install ( $ ) {
     my $class = shift;
@@ -383,6 +383,17 @@ __DATA__
 }
 
 \def\ENDLOOP{\ALC@end@structure{\algorithmicendloop}}
+
+% algpseudocode
+
+\let\State\STATE
+\let\For\FOR
+\let\EndFor\ENDFOR
+\let\Else\ELSE
+\let\Comment\COMMENT
+\let\If\IF
+\let\EndIf\ENDIF
+\let\ForAll\FORALL
 
 \TeXMLendPackage
 
