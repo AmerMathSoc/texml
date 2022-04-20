@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.3';
+use version; our $VERSION = qv '1.2.0';
 
 use base qw(Exporter);
 
@@ -4502,7 +4502,10 @@ sub scan_delimited_parameter {
             ## begin_group token (e.g., \def\X#1#{}), it cannot
             ## contain any other tokens, so we stop now.
 
-            last if $token == $delim[0];
+            if ($token == $delim[0]) {
+                $tex->decr_align_state();
+                last;
+            }
 
             ## If there are any deferred tokens, push them out now,
             ## keeping the braces.
