@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.4';
+use version; our $VERSION = qv '1.2.0';
 
 use base qw(Exporter);
 
@@ -186,8 +186,6 @@ my %cur_lang_of :ATTR(:name<cur_lang> :set<*custom*> :default(0)); #*
 my %cur_enc_of  :ATTR;
 
 my %cur_page_of :ARRAY(:name<cur_page>);
-
-my %debugging_of :BOOLEAN(:name<debugging> :default<false>);
 
 my %profiling_of :BOOLEAN(:name<profiling> :default<false>);
 
@@ -1031,7 +1029,7 @@ sub succumb {
         $tex->error();
     }
 
-    if ($tex->is_debugging()) {
+    if ($tex->TeXML_debug_output()) {
         if ($tex->get_interaction_mode() > batch_mode) {
             $tex->debug_help();
         }
@@ -4504,7 +4502,10 @@ sub scan_delimited_parameter {
             ## begin_group token (e.g., \def\X#1#{}), it cannot
             ## contain any other tokens, so we stop now.
 
-            last if $token == $delim[0];
+            if ($token == $delim[0]) {
+                $tex->decr_align_state();
+                last;
+            }
 
             ## If there are any deferred tokens, push them out now,
             ## keeping the braces.
@@ -6820,7 +6821,7 @@ sub start_input {
         if ($tex->do_svg() && ! defined $tex->get_svg_agent()) {
             my $svg_agent = TeX::Utils::SVG->new({ base_file => $path,
                                                    interpreter => $tex,
-                                                   debug => $tex->is_debugging(),
+                                                   debug => $tex->TeXML_debug_output(),
                                                    use_xetex => $tex->use_xetex(),
                                                  });
 
