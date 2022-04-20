@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.2';
+use version; our $VERSION = qv '1.2.3';
 
 sub install ( $ ) {
     my $class = shift;
@@ -394,6 +394,11 @@ __DATA__
 \let\If\IF
 \let\EndIf\ENDIF
 \let\ForAll\FORALL
+\let\Return\RETURN
+\let\Require\REQUIRE
+\let\While\WHILE
+\let\EndWhile\ENDWHILE
+\let\ElsIf\ELSIF
 
 \TeXMLendPackage
 
