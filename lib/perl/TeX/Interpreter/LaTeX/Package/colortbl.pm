@@ -42,6 +42,8 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
+    # $tex->load_latex_package("colortbl", @options);
+
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::colortbl::DATA{IO});
 
     return;
@@ -54,6 +56,66 @@ __DATA__
 \TeXMLprovidesPackage{colortbl}
 
 \RequirePackage{array}
+\RequirePackage{xcolor}
+
+\def\@gobbleopts{%
+    \@ifnextchar[{\@gobble@opts@}{}%
+}
+
+\def\@gobble@opts@[#1]{\@gobble@opts@@}
+
+\def\@gobble@opts@@{%
+    \@ifnextchar[{\@gobble@opts@@i}{\ignorespaces}%
+}
+
+\def\@gobble@opts@@i[#1]{\ignorespaces}
+
+% TBD: Colored rules
+
+% TBD: \arrayrulecolor
+
+% TBD: \doublerulesepcolor
+
+% See comments in colortbl.tex
+
+% \columncolor[<color model>]{<color>}[<left overhang>][<right overhang>]
+
+\def\columncolor#1#{\TML@columncolor{#1}}
+
+\def\TML@columncolor#1#2{%
+    \begingroup
+        \edef\@selector{\@thistable\space \nth@col{\the\@preamblecolno}}%
+        \XC@raw@color#1{#2}%
+        \addCSSclass{\@selector}{background-color: \TML@current@color;}%
+    \endgroup
+    \@gobbleopts
+}
+
+% \rowcolor[<color model>]{<color>}[<left overhang>][<right overhang>]
+
+\def\rowcolor#1#{\TML@rowcolor{#1}}
+
+\def\TML@rowcolor#1#2{%
+    \begingroup
+        \edef\@selector{\@thistable\space \nth@row}%
+        \XC@raw@color#1{#2}%
+        \addCSSclass{\@selector}{background-color: \TML@current@color;}%
+    \endgroup
+    \@gobbleopts
+}
+
+% \cellcolor[<color model>]{<color>}[<left overhang>][<right overhang>]
+
+\def\cellcolor#1#{\TML@cellcolor{#1}}
+
+\def\TML@cellcolor#1#2{%
+    \begingroup
+        \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
+        \XC@raw@color#1{#2}%
+        \addCSSclass{\@selector}{background-color: \TML@current@color;}%
+    \endgroup
+    \@gobbleopts
+}
 
 \TeXMLendPackage
 
