@@ -97,9 +97,15 @@ __DATA__
 \providecommand*\theoremautorefname{Theorem}
 \providecommand*\pageautorefname{page}
 
-\let\nolinkurl\@firstofone
-
 \let\href\relax
+
+% \href[options]{URL}{text} (You probably want \hyperref instead.)
+
+% The "text" is made a hyperlink to the URL; this must be a full URL
+% (relative to the base URL, if that is defined). The special
+% characters # and ~ do not need to be escaped in any way.
+
+% options = pdfremotestartview or pdfnewwindow
 
 \newcommand{\href}[3][]{%
     \begingroup
@@ -113,6 +119,30 @@ __DATA__
         \endXMLelement{ext-link}%
     \endgroup
 }
+
+% \url : see url.pm
+
+% \nolinkurl{URL}: Write URL in the same way as \url, without creating
+% a hyperlink.
+
+% TBD: Implement this for real
+
+\let\nolinkurl\@firstofone
+
+% TBD: \hyperbaseurl{URL}: A base URL is established, which is
+% prepended to other specified URLs, to make it easier to write
+% portable documents.
+
+% TBD: \hyperimage{imageURL}{text}
+
+% TBD: \hyperdef{category}{name}{text}: A target area of the document
+% (the "text") is marked, and given the name "category.name"
+
+% TBD: \hyperref{URL}{category}{text}: text is made into a link to
+% URL#category.name
+
+% \hyperref[label]{text}: text is made into a link to the same place
+% as \ref{label} would be linked.
 
 \newcommand{\hyperref}[2][]{%
     \if###1##
@@ -151,7 +181,8 @@ __DATA__
             \endgroup
             \setXMLattribute{specific-use}{\expandafter\@gobble\string#4}%
             \setXMLattribute{rid}{\expandafter\@thirdoffour#1}%
-            \setXMLattribute{ref-type}{\expandafter\@fourthoffour#1}%
+\edef\@ref@type{\expandafter\@fourthoffour#1}%
+            \setXMLattribute{ref-type}{\@ref@type}%
             % \protect\printref{\expandafter#2#1}%
         }%
     \else
@@ -162,14 +193,17 @@ __DATA__
     \endXMLelement{xref}%
 }
 
-\def\hyperlink#1#2{%
-    \leavevmode
-    \startXMLelement{xref}%
-    \setXMLattribute{rid}{#1}%
-    \setXMLattribute{ref-type}{text}%
-    #2%
-    \endXMLelement{xref}%
-}
+% \hypertarget{name}{text}
+% \hyperlink{name}{text}
+
+% A simple internal link is created with \hypertarget, with two
+% parameters of an anchor "name", and anchor "text".  \hyperlink has
+% two arguments, the name of a hypertext object defined somewhere by
+% \hypertarget, and the "text" which be used as the link on the page.
+
+% Note that in HTML parlance, the \hyperlink command inserts a
+% notional # in front of each link, making it relative to the current
+% testdocument; \href expects a full URL.
 
 \def\hypertarget#1#2{%
     \leavevmode
@@ -178,6 +212,15 @@ __DATA__
     \setXMLattribute{target-type}{text}%
     #2%
     \endXMLelement{target}%
+}
+
+\def\hyperlink#1#2{%
+    \leavevmode
+    \startXMLelement{xref}%
+    \setXMLattribute{rid}{#1}%
+    \setXMLattribute{ref-type}{text}%
+    #2%
+    \endXMLelement{xref}%
 }
 
 \TeXMLendPackage
