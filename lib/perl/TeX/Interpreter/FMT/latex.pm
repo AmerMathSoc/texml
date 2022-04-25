@@ -32,7 +32,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.115.0';
+use version; our $VERSION = qv '1.115.1';
 
 use Image::PNG;
 use Image::JPEG::Size;
@@ -223,8 +223,10 @@ sub do_clear_toc_stack {
 sub __parse_ref_record( $ ) {
     my $ref_record = shift;
 
+    # {@currentlabel}{thepage}{@currentXMLid}{@currentreftype}
+
     if ($ref_record =~ m{\A \{(.*)\} \{(.*)\} \{(.*)\} \{(.*)\} \z}smx) {
-        return ($3, $1, $2, $4);
+        return ($3, $4, $1, $2);
     }
 
     return;
@@ -305,12 +307,12 @@ sub do_resolve_xrefs {
                     $xref->setAttribute('specific-use' => 'undefined');
 
                     if (defined $r) {
-                        my ($xml_id) = __parse_ref_record($r);
+                        my ($xml_id, $ref_type) = __parse_ref_record($r);
 
                         if (nonempty($xml_id)) {
                             $xref->setAttribute(rid => $xml_id);
                             $xref->setAttribute('specific-use' => $ref_cmd);
-                            $xref->setAttribute('ref-type' => 'text');
+                            $xref->setAttribute('ref-type' => $ref_type);
                             $xref->removeAttribute('ref-key');
                         }
 
