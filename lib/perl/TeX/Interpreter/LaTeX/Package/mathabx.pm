@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::mathabx;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.2';
+use version; our $VERSION = qv '1.0.1';
 
 sub install ( $ ) {
     my $class = shift;
@@ -61,9 +61,6 @@ __DATA__
 \def\vvvert{\Vvert}
 
 \DeclareSVGMathChar\bigboxtimes\mathop
-
-\def\rdbrack{\rBrack}
-\def\ldbrack{\lBrack}
 
 \TeXMLendPackage
 

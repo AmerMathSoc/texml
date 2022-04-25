@@ -65,8 +65,6 @@ __DATA__
 
 \let\pgfdeclareshape\@gobbletwo
 
-\let\pgfmathdeclarefunction\@gobblethree
-
 \let\usepgflibrary\@gobble
 
 \TeXMLendPackage

@@ -183,35 +183,6 @@ __DATA__
     \fi
 }
 
-%% Support for colortbl
-
-%% TODO: handle third and fourth (optional) arguments for \rowcolor
-%% and \cellcolor.  Do something about \columncolor.
-
-\newcommand{\rowcolor}[2][]{%
-    \begingroup
-        \edef\@selector{\@thistable\space \nth@row}%
-        \addCSSclass{\@selector}{background-color: \XCOLOR@SVG@color{#2};}%
-    \endgroup
-    \ignorespaces
-}
-
-\newcommand{\cellcolor}[2][]{%
-    \begingroup
-        \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
-        \addCSSclass{\@selector}{background-color: \XCOLOR@SVG@color{#2};}%
-    \endgroup
-    \ignorespaces
-}
-
-\newcommand{\set@cell@fg@color}[2][]{%
-    \begingroup
-        \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
-        \addCSSclass{\@selector}{color: \XCOLOR@SVG@color{#2};}%
-    \endgroup
-    \ignorespaces
-}
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
 %%                      BUILDING THE PREAMBLE                       %%
@@ -672,7 +643,6 @@ __DATA__
         \let\hline\HTMLtable@hline
         \let\\\@tabularcr
         \let\tabularnewline\\%
-        \let\color\set@cell@fg@color
         \let\par\@empty
         \let\@sharp##%
         \set@typeset@protect

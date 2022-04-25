@@ -58,46 +58,6 @@ __DATA__
 
 \let\caption@settype\@gobble
 
-% \def\subref{%
-%   \@ifstar
-%     \sf@@subref
-%     \sf@subref}
-% 
-% \def\sf@subref#1{\ref{sub@#1}}
-% 
-% \def\sf@@subref#1{\pageref{sub@#1}}
-
-\def\caption@lstfmt#1#2{#1(#2)}
-\def\caption@subreffmt #1#2#3#4{#1(#2)}
-
-\def\sf@@sub@label#1{%
-    \@bsphack
-    \sf@oldlabel{#1}%
-    \begingroup
-        \let\ref\relax
-        \protected@edef\@tempa{%
-            \noexpand\newlabel{sub@#1}{%
-                {%1
-                    \caption@lstfmt
-                        {\@nameuse{p@sub\@captype}}%
-                        {\@nameuse{thesub\@captype}}%
-                }%
-                {%2
-                    \caption@subreffmt
-                        {\@nameuse{p@sub\@captype}}%
-                        {\@nameuse{thesub\@captype}}%
-                        {\the\value{\@captype}}%
-                        {\the\value{sub\@captype}}%
-                }%
-                {\@currentXMLid}%
-                {\ifmmode disp-formula\else\@currentreftype\fi}%
-            }%
-        }%
-    \expandafter\endgroup
-    \@tempa
-    \@esphack
-}
-
 % #1 = sub\@captype
 % #2 = list-entry (ignored)
 % #3 = caption
@@ -113,8 +73,6 @@ __DATA__
         \ifmaincaptiontop\else
             \advance\@nameuse{c@\@captype}\@ne
         \fi
-    \let\sf@oldlabel=\label
-    \let\label=\subfloat@label
         \refstepcounter{sub\@captype}%
         \setcounter{sub\@captype @save}{\value{sub\@captype}}%
         \@ifnextchar [%  %] match left bracket
