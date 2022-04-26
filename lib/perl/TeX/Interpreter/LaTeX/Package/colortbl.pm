@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::colortbl;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -93,15 +93,28 @@ __DATA__
 
 % \rowcolor[<color model>]{<color>}[<left overhang>][<right overhang>]
 
-\def\rowcolor#1#{\TML@rowcolor{#1}}
+\def\rowcolor#1#{%
+    \noalign{\ifnum0=`}\fi
+        \TML@rowcolor{#1}%
+}
 
 \def\TML@rowcolor#1#2{%
-    \begingroup
         \edef\@selector{\@thistable\space \nth@row}%
         \XC@raw@color#1{#2}%
         \addCSSclass{\@selector}{background-color: \TML@current@color;}%
-    \endgroup
-    \@gobbleopts
+        \kernel@ifnextchar[\TML@gobbleopt@a\TML@rowcolor@end
+}
+
+\def\TML@gobbleopt@a[#1]{%
+    \kernel@ifnextchar[\TML@gobbleopt@b\TML@rowcolor@end
+}
+
+\def\TML@gobbleopt@b[#1]{%
+    \TML@rowcolor@end
+}
+
+\def\TML@rowcolor@end{%
+    \ifnum0=`{\fi}%
 }
 
 % \cellcolor[<color model>]{<color>}[<left overhang>][<right overhang>]
