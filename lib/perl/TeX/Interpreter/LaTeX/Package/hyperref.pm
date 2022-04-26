@@ -144,13 +144,21 @@ __DATA__
 % \hyperref[label]{text}: text is made into a link to the same place
 % as \ref{label} would be linked.
 
-\newcommand{\hyperref}[2][]{%
+\newcommand{\hyperref}{%
+    \kernel@ifnextchar[\texml@hyperref\texml@hyperref@warning
+}
+
+\newcommand{\texml@hyperref}[2][]{%
     \if###1##
         #2%
     \else
         \expandafter\@sethyperref
             \csname r@#1\endcsname\@firstofone{#1}\hyperref{#2}%
     \fi
+}
+
+\newcommand{\texml@hyperref@warning}{%
+    \PackageWarning{hyperref}{Three-argument form of \string\hyperref is not implemented yet}%
 }
 
 % #1 = \r@LABEL
