@@ -55,6 +55,8 @@ __DATA__
 
 \TeXMLprovidesPackage{makecell}
 
+\RequirePackage{array}
+
 \newcommand\Xhline[1]{%
     \noalign{\ifnum0=`}\fi
     \arrayrulewidth#1%
