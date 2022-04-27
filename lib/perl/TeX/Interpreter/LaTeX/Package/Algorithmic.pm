@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.3';
+use version; our $VERSION = qv '1.2.4';
 
 sub install ( $ ) {
     my $class = shift;
@@ -143,7 +143,7 @@ __DATA__
                 \let\@nx\ALC@endtoplevel\@nx\ALC@endtoplevel@
                 \@nx\ALC@pushtag{#3}%
                 \if###1##\else
-                    #1
+                    \@nx#1
                 \fi
     }%
 }
