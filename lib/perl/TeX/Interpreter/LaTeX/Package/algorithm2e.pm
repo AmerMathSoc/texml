@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Package::algorithm2e;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -56,6 +54,10 @@ __DATA__
 \newcounter{algocf}
 
 \let\SetKw\@gobbletwo
+\def\SetKwProg#1#2#3#4{}
+\let\SetAlFnt\@gobble
+\let\SetAlCapFnt\@gobble
+
 \let\IncMargin\@gobble
 
 \def\fnum@algocf{\algorithmcfname \thealgocf}
