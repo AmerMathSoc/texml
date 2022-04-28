@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.1';
+use version; our $VERSION = qv '1.2.2';
 
 use base qw(Exporter);
 
@@ -3526,7 +3526,45 @@ sub back_list {
 
     my $token_list = shift;
 
+    for my $token ($token_list->get_tokens()) {
+        if ($token == CATCODE_BEGIN_GROUP) {
+            $tex->decr_align_state();
+        } elsif ($token == CATCODE_END_GROUP) {
+            $tex->incr_align_state();
+        }
+    }
+
     return $tex->begin_token_list($token_list, backed_up);
+}
+
+sub back_input {
+    my $tex = shift;
+
+    my $token = shift;
+
+    while ( ($tex->lexer_state() == token_list) &&
+            ($tex->get_token_list()->length() == 0) &&
+            ($tex->token_type() != v_template) ) {
+        $tex->end_token_list; # {conserve stack space}???
+    }
+
+    my $catcode = $token->get_catcode();
+
+    if ($catcode == CATCODE_BEGIN_GROUP) {
+        $tex->decr_align_state();
+    } elsif ($catcode == CATCODE_END_GROUP) {
+        $tex->incr_align_state();
+    }
+
+    $tex->push_input();
+
+    my $token_list = TeX::TokenList->new({ tokens => [ $token ] });
+
+    $tex->set_lexer_state(token_list);
+    $tex->set_token_list($token_list);
+    $tex->set_token_type(backed_up);
+
+    return;
 }
 
 sub ins_list {
@@ -3596,36 +3634,6 @@ sub end_token_list { # {leave a token-list input level}
     $tex->pop_input();
 
     $tex->check_interrupt();
-
-    return;
-}
-
-sub back_input {
-    my $tex = shift;
-
-    my $token = shift;
-
-    while ( ($tex->lexer_state() == token_list) &&
-            ($tex->get_token_list()->length() == 0) &&
-            ($tex->token_type() != v_template) ) {
-        $tex->end_token_list; # {conserve stack space}???
-    }
-
-    my $catcode = $token->get_catcode();
-
-    if ($catcode == CATCODE_BEGIN_GROUP) {
-        $tex->decr_align_state();
-    } elsif ($catcode == CATCODE_END_GROUP) {
-        $tex->incr_align_state();
-    }
-
-    $tex->push_input();
-
-    my $token_list = TeX::TokenList->new({ tokens => [ $token ] });
-
-    $tex->set_lexer_state(token_list);
-    $tex->set_token_list($token_list);
-    $tex->set_token_type(backed_up);
 
     return;
 }
