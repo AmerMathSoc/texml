@@ -246,18 +246,18 @@ __DATA__
 %% c           0          0
 %% l           0          1
 %% r           0          2
-%% |           1         
+%% |           1
 %% @           2          0
 %% !           2          1    (array)
 %% p           3          0
 %% m           3          1    (array)
 %% b           3          2    (array)
-%% @-arg       4          
+%% @-arg       4
 %% !-arg       4               (array)
-%% p-arg       5         
+%% p-arg       5
 %% m-arg       5               (array)
 %% b-arg       5               (array)
-%% <start>     6         
+%% <start>     6
 %% V           7               (boldline)
 %% V-arg       8               (boldline)
 %% >           9          0    (array)
@@ -426,7 +426,7 @@ __DATA__
 
 % \@addamp is called each time an ampersand is encountered.  It adds a
 % CSS rule to describe the current column and prepares for the next
-% column. 
+% column.
 
 \def\@addamp{%
     \if@firstamp
@@ -735,7 +735,7 @@ __DATA__
             \def\current@border@width{}%
         \fi
         \ifnum\alignrowno=\z@
-            \advance\count@\@ne
+    \advance\count@\@ne %% TBD: Pretty sure this is superfluous
             \addCSSclass{\@selector}{border-top: \current@border@properties;}%
         \else
             \addCSSclass{\@selector}{border-bottom: \current@border@properties;}%
@@ -752,7 +752,7 @@ __DATA__
 \def\vline{\@latex@warning{Ignoring \string\vline}}
 
 \def\cline#1{%
-    \noalign{\ifnum0=`}\fi % I'm frankly astonished that this works.
+    \noalign{\ifnum0=`}\fi % See above.
         \@cline#1\@nil
 }
 
@@ -776,6 +776,9 @@ __DATA__
 % And why doesn't resetting xmlpartag work?  Cf. \@footnotetext in
 % latex.pm.  If not for the possibility of multiple paragraphs in a
 % footnote, this definition would probably be ok.
+
+% TBD: Should revisit the \vbox now that the align_state bug in
+% TeX::Interpreter::back_list() has been fixed.
 
 \long\def\tab@footnotetext#1{%
     \begingroup
