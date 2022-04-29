@@ -44,25 +44,21 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
-    # $tex->load_latex_package("hhline", @options);
+    $tex->load_latex_package("hhline", @options);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::hhline::DATA{IO});
 
-    $tex->define_csname('texml@hhline' => \&do_hhline);
+    $tex->define_csname('HH@loop' => \&do_HH_loop);
 
     return;
 }
 
-sub do_hhline {
+sub do_HH_loop {
     my $tex = shift;
-
-    my $spec = $tex->read_undelimited_parameter();
 
     my $this_table = $tex->get_macro_expansion_text('@thistable');
 
     my $row_number = $tex->alignrowno();
-
-    $tex->__DEBUG("spec = '$spec', row_number = $row_number");
 
     my $css_prop = 'border-bottom';
 
@@ -79,25 +75,37 @@ sub do_hhline {
 
     my $col = 0;
 
-    for my $char (split '', $spec) {
-        # $tex->__DEBUG("char = '$char', col = $col");
+    # | : - ~ work pretty well
+    # = t b   kind of work
+    # #       doesn't work    
+
+    while (my $token = $tex->get_next()) {
+        my $char = $token->get_char();
+
+        last if $char eq '`';
 
         next if $char eq '|' || $char eq ':' || $char eq ' ';
 
+        # I don't know how to implement # in CSS, so just ignore it.
+
+        next if $char eq '#';
+
         $col++;
 
-        # $tex->__DEBUG("char = '$char', incremented col to $col");
+        next if $char eq '~';
 
-        if ($char eq '~') {
-            # NO-OP
-        } elsif ($char eq '-') {
+        ## For our purposes, t and b are equivalent to =.  I think.
+
+        if ($char eq '-') {
             $tex->add_css_class( [ qq{$css_selector TD:nth-child($col)},
                                    qq{${css_prop}: $width solid $color;} ]);
-        } elsif ($char eq '=') {
+        }
+        elsif ($char eq '=' || $char eq 't' || $char eq 'b') {
             $tex->add_css_class( [ qq{$css_selector TD:nth-child($col)},
                                    qq{${css_prop}: $width double $color;} ]);
-        } else {
-            $tex->print_err("Unexpected token '$char' in hhline");
+        }
+        else {
+            $tex->print_err("Unexpected token '$token' in hhline");
 
             $tex->set_help("Don't do that");
 
@@ -114,10 +122,16 @@ __DATA__
 
 \TeXMLprovidesPackage{hhline}
 
-\def\hhline#1{%
-    \noalign{\texml@hhline{#1}}%
+\def\hhline@hhline#1{%
+    \HH@xexpast\relax#1*0x\@@%
+    \toks@{}%
+    \expandafter\HH@let\@tempa`%
 }
 
+
+\def\hhline#1{%
+    \noalign{\hhline@hhline{#1}}%
+}
 
 \TeXMLendPackage
 
