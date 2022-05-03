@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::makecell;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.0.0';
+use TeX::Constants qw(:named_args);
 
 sub install ( $ ) {
     my $class = shift;
@@ -45,6 +45,22 @@ sub install ( $ ) {
     # $tex->load_latex_package("makecell", @options);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::makecell::DATA{IO});
+
+    $tex->define_csname(multirowcell => \&do_multirowcell);
+
+    return;
+}
+
+sub do_multirowcell {
+    my $tex = shift;
+
+    my $num_rows = $tex->read_undelimited_parameter(EXPANDED);
+
+    my $cur_align = $tex->get_cur_alignment();
+
+    my $cur_span  = $cur_align->cur_span_record();
+
+    $cur_span->set_num_rows($num_rows);
 
     return;
 }
