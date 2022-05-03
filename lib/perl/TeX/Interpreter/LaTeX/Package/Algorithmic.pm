@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.4';
+use version; our $VERSION = qv '1.2.5';
 
 sub install ( $ ) {
     my $class = shift;
@@ -375,7 +375,7 @@ __DATA__
             \ALC@pushtag{until}%
             \ALC@start@condition
                 \ALC@pushtag{statement}%
-                    #1\par
+                    \algorithmicuntil\ #1\par
                 \ALC@popstack
             \ALC@end@condition
         \ALC@endgroup
