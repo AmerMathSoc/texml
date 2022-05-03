@@ -36,18 +36,6 @@ use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
-use TeX::Constants qw(:named_args);
-
-use TeX::Utils::Misc;
-
-use Digest::MD5 qw(md5_hex);
-
-use File::Spec::Functions qw(catdir);
-
-use File::Copy;
-
-use XML::LibXML;
-
 sub execute {
     my $self = shift;
 
