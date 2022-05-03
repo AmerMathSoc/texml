@@ -38,7 +38,7 @@ package TeX::Class;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
+use version; our $VERSION = qv '1.1.1';
 
 ## This is a modified version of Class::Std, v0.011, with the
 ## following modifications:
@@ -567,13 +567,18 @@ sub __declare_COUNTER( $$$ ) {
         $spec->{incr} = *{ "${package}::${incr}" } = sub {
             my $self = shift;
 
-            my $new_val = ++$referent->{ID($self)};
+            # Similar code in $decr sometimes fails horribly, so let's
+            # replace it here too for superstitious reasons.
+
+            # my $new_val = ++$referent->{ID($self)};
+
+            my $new_val = $referent->{ID($self)} + 1;
 
             if ($trace & TRACE_SET) {
                 carp "*** INCR: ${package}::${setter}() = '$new_val'";
             }
 
-            return $new_val;
+            return $referent->{ID($self)} = $new_val;
         };
     }
 
@@ -583,13 +588,16 @@ sub __declare_COUNTER( $$$ ) {
         $spec->{decr} = *{ "${package}::${decr}" } = sub {
             my $self = shift;
 
-            my $new_val = --$referent->{ID($self)};
+            ## WTF?  Why does this sometimes fail horribly?
+            # my $new_val = --$referent->{ID($self)};
+
+            my $new_val = $referent->{ID($self)} - 1;
 
             if ($trace & TRACE_SET) {
                 carp "*** DECR: ${package}::${setter}() = '$new_val'";
             }
 
-            return $new_val;
+            return $referent->{ID($self)} = $new_val;
         };
     }
 
@@ -698,7 +706,7 @@ sub __declare_ARRAY( $$$ ) {
             return $value;
         };
     }
-    
+
     if ($setter ne CUSTOM_ACCESSOR) {
         no strict 'refs';
 
@@ -848,7 +856,6 @@ sub __declare_ARRAY( $$$ ) {
             };
         }
     }
-
 
     return $spec;
 }
