@@ -31,7 +31,7 @@ package TeX::Interpreter::LaTeX;
 
 use strict;
 
-use version; our $VERSION = qv '1.66.1';
+use version; our $VERSION = qv '1.67.0';
 
 use base qw(TeX::Interpreter Exporter);
 
@@ -199,9 +199,11 @@ sub do_load_package {
     my $tex   = shift;
     my $token = shift;
 
+    my $opts = $tex->scan_optional_argument();
+
     my $file_name = $tex->read_undelimited_parameter(EXPANDED);
 
-    return $tex->load_package($file_name);
+    return $tex->load_package($file_name, __parse_option_list($opts));
 }
 
 sub __parse_option_list( $ ) {
