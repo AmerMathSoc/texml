@@ -32,10 +32,6 @@ package TeX::Interpreter::LaTeX::Package::hhline;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.0.0';
-
-use TeX::Constants qw(:named_args);
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -67,7 +63,7 @@ sub do_HH_loop {
         $row_number++;
     }
 
-    my $css_selector = qq{$this_table TR:nth-child($row_number)};
+    my $cur_align = $tex->get_cur_alignment();
 
     my $width = $tex->get_macro_expansion_text('current@border@width');
     my $style = $tex->get_macro_expansion_text('current@border@style');
@@ -77,7 +73,7 @@ sub do_HH_loop {
 
     # | : - ~ work pretty well
     # = t b   kind of work
-    # #       doesn't work    
+    # #       doesn't work
 
     while (my $token = $tex->get_next()) {
         my $char = $token->get_char();
@@ -93,6 +89,10 @@ sub do_HH_loop {
         $col++;
 
         next if $char eq '~';
+
+        my $top_row = $cur_align->top_row($row_number, $col);
+
+        my $css_selector = qq{$this_table TR:nth-child($top_row)};
 
         ## For our purposes, t and b are equivalent to =.  I think.
 
@@ -127,7 +127,6 @@ __DATA__
     \toks@{}%
     \expandafter\HH@let\@tempa`%
 }
-
 
 \def\hhline#1{%
     \noalign{\hhline@hhline{#1}}%
