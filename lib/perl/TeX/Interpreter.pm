@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.0';
+use version; our $VERSION = qv '1.3.1';
 
 use base qw(Exporter);
 
@@ -12110,6 +12110,10 @@ sub load_package( $$@ ) {
 
     (my $class = __PACKAGE__ . "::LaTeX::Package::$package") =~ s{-}{_}g;
 
+    $tex->define_simple_macro('@currname' => $package);
+    $tex->define_simple_macro('@currext' => 'sty');
+    $tex->define_simple_macro("opt\@${package}.sty" => join(",", @options));
+
     eval { $tex->load_macro_file($class, @options) };
 
     if ($@) {
@@ -12398,15 +12402,15 @@ sub package_load_notification {
     my $package_name = shift;
     my @options      = @_;
 
-    # $package_name =~ s{^.*::}{};
-    #
-    # $tex->print_nl("Loading package '$package_name'");
-    #
-    # if (@options) {
-    #     $tex->print(" with options @options");
-    # }
-    #
-    # $tex->print_ln();
+    $package_name =~ s{^.*::}{};
+    
+    $tex->print_nl("Loading package '$package_name'");
+    
+    if (@options) {
+        $tex->print(" with options @options");
+    }
+    
+    $tex->print_ln();
 
     return;
 }
