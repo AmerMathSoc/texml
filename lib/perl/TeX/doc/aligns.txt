@@ -1,0 +1,100 @@
+Alignment object:
+    col_ptr:  current column begin processed
+    loop_ptr: start of repeatable part of an align specification
+
+align_row_no:  number of current align row being read
+align_col_no:  number of current column of current align row being read
+align_span_no: number of current span   of current align row being read
+
+===========================================================================
+
+init_align:
+    push_alignment
+
+    align_state := ALIGN_PREAMBLE
+
+    push_nest
+
+    scan_spec => new_save_level(align_group)    GROUP 1
+
+    cur_alignment := scan_align_premable();     { align_state := ALIGN_PREAMBLE }
+
+    new_save_level(align_group)                 GROUP 2
+
+    align_row_no := 0
+
+    align_peek
+
+===========================================================================
+
+align_peek:
+    align_state := ALIGN_NO_COLUMN
+
+    cur_tok := next_non_blank_non_call_token
+
+    cur_cmd := meaning(cur_tok)
+
+    CASE cur_tok of
+        \noalign  => new_save_level(no_align_group); enter paragraph mode
+        END_GROUP => fin_align
+        \crcr     => align_peek
+        ELSE      => init_row; init_col(cur_align, cur_tok, cur_cmd)
+
+===========================================================================
+
+init_row:
+    push_nest
+
+    col_ptr := 0
+
+    align_row_no++
+
+    align_span_no := 1
+    align_col_no  := 1
+
+    init_span;
+}
+
+===========================================================================
+
+init_span:
+    push_nest
+
+===========================================================================
+
+init_col(cur_align, cur_tok, cur_cmd):
+    cur_col->set_extra_info($cur_cmd)
+
+    scan_u_template unless cur_cmd == \omit
+
+    align_state := ALIGN_COLUMN_BOUNDARY { This activates end_align_entry in get_next }
+
+    main_control => get_next
+
+===========================================================================
+
+get_next
+    & | \cr | \span => insert_v_template
+
+===========================================================================
+
+insert_v_template:
+    align_state := ALIGN_NO_COLUMN
+
+    <scan v template>
+
+    \endv
+
+===========================================================================
+
+endv:
+    end_of_row := fin_col;
+
+    if (end_of_row)
+        fin_row;
+
+===========================================================================
+
+fin_col:
+    
+UGH
