@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.5';
+use version; our $VERSION = qv '1.3.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -124,7 +124,7 @@ __DATA__
         \ALC@pushtag{statement}%
             #1\par
         \ALC@endgroup
-        \if###2##\else\ALC@com{#2}\par\fi
+        \ALC@com{#2}\par
     \ALC@close{line}%
 }
 
@@ -168,19 +168,20 @@ __DATA__
 }
 
 \def\algorithmiccomment#1{%
-    \if\ALC@endtoplevel\@empty\else
-        \ALC@popstack
-        \endgroup
-        \begingroup
-    \fi
-    %\ALC@endtoplevel
-    \ALC@open{comment}#1\ALC@close{comment}%
+    \ALC@endgroup
+    \ALC@begingroup
+        \let\ALC@endtoplevel\ALC@endtoplevel@
+        \ALC@pushtag{comment}#1%
 }
 
 \let\COMMENT\algorithmiccomment
 
 \newcommand{\ALC@com}[1]{%
-    \ifthenelse{\equal{#1}{default}}{}{\ \COMMENT{#1}}%
+    \ifthenelse{\equal{#1}{default}}{}{%
+        \if###1##\else
+            \ \ALC@open{comment}#1\ALC@close{comment}%
+        \fi
+    }%
 }
 
 % These are defined inside the definition of \algorithmic in
