@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.2';
+use version; our $VERSION = qv '1.3.0';
 
 use base qw(Exporter);
 
@@ -1505,7 +1505,6 @@ sub get_nest_ptr {
                                   clang           => $self->get_clang(),
                                   incompleat_noad => undef,
                                 });
-
 
         return $clone;
     }
@@ -3374,7 +3373,16 @@ sub print_cmd_chr {
 
 my %input_stack_of :ARRAY(:name<input_stack> :type<InStateRecord>);
 
-my %align_state_of :COUNTER(:name<align_state> :default<1000000>);
+## TBD: Are these the best names for these constants?
+
+use constant {
+    ALIGN_COLUMN_BOUNDARY  => 0,
+    ALIGN_NO_COLUMN =>  1000000,
+    ALIGN_PREAMBLE  => -1000000,
+    ALIGN_FLAG      =>   500000,
+};
+
+my %align_state_of :COUNTER(:name<align_state> :default<ALIGN_NO_COLUMN>);
 
 my %open_parens_of :COUNTER(:name<open_parens>);
 
@@ -3624,8 +3632,8 @@ sub end_token_list { # {leave a token-list input level}
     my $tex = shift;
 
     if ($tex->token_type() == u_template) {
-        if ($tex->align_state() > 500000) {
-            $tex->set_align_state(0);
+        if ($tex->align_state() > ALIGN_FLAG) {
+            $tex->set_align_state(ALIGN_COLUMN_BOUNDARY);
         } else {
             $tex->fatal_error("(interwoven alignment preambles are not allowed)");
         }
@@ -3820,14 +3828,15 @@ sub ends_align_entry {
 
     my $cur_tok = shift;
 
+    return unless $tex->align_state() == ALIGN_COLUMN_BOUNDARY;
+
     my $cur_cmd = $tex->get_meaning($cur_tok);
 
     return unless defined $cur_cmd;
 
     return ($cur_tok == CATCODE_ALIGNMENT
             || eval { $cur_cmd->isa("TeX::Primitive::cr") }
-            || eval { $cur_cmd->isa("TeX::Primitive::span") })
-        && $tex->align_state() == 0;
+            || eval { $cur_cmd->isa("TeX::Primitive::span") });
 }
 
 sub get_next {
@@ -5700,7 +5709,6 @@ sub read_parameter_text {
                 $tex->set_help("I've inserted the digit you should have used after the #.",
                                "Type `1' to delete what you did use.");
 
-
                 $tex->back_error($next_token);
             }
 
@@ -6060,7 +6068,7 @@ sub read_toks {
 
     my $saved_align = $tex->align_state();
 
-    $tex->set_align_state(1000000); # {disable tab marks, etc.}
+    $tex->set_align_state(ALIGN_NO_COLUMN); # {disable tab marks, etc.}
 
     my $token_list = new_token_list();
 
@@ -6110,7 +6118,7 @@ sub read_toks {
                     $tex->closein($m);
                     $tex->set_read_open($m, closed);
 
-                    if ($tex->align_state() != 1000000) {
+                    if ($tex->align_state() != ALIGN_NO_COLUMN) {
                         $tex->runaway();
 
                         $tex->print_err("File ended within ");
@@ -6118,7 +6126,7 @@ sub read_toks {
 
                         $tex->set_help("This \\read has unbalanced braces.");
 
-                        $tex->set_align_state(1000000);
+                        $tex->set_align_state(ALIGN_NO_COLUMN);
 
                         $tex->error();
                     }
@@ -6135,19 +6143,19 @@ sub read_toks {
         while (my $token = $tex->get_next()) {
             $token_list->push($token);
 
-            if ($tex->align_state() < 1000000) {
+            if ($tex->align_state() < ALIGN_NO_COLUMN) {
                 # {unmatched `\.\}' aborts the line}
 
                 $tex->delete_chars();
 
-                $tex->set_align_state(1000000);
+                $tex->set_align_state(ALIGN_NO_COLUMN);
 
                 last;
             }
         }
 
         $tex->end_file_reading();
-    } until $tex->align_state() == 1000000;
+    } until $tex->align_state() == ALIGN_NO_COLUMN;
 
     $tex->set_scanner_status(normal);
     $tex->set_align_state($saved_align);
@@ -7350,6 +7358,8 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
     sub update_span_records {
         my $self = shift;
 
+        my $tex = shift;
+
         my @span_records = @{ $span_records_of{ident $self} };
 
         my @already_updated;
@@ -7365,6 +7375,7 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
                 $span_record->set_state(2);
             } else {
                 $span_record->set_state(1);
+
                 $span_record->decr_num_rows();
             }
 
@@ -7432,6 +7443,11 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
     my %u_part_of :ATTR(:name<u_part> :type<TeX::TokenList>);
     my %v_part_of :ATTR(:name<v_part> :type<TeX::TokenList>);
 
+    # extra_info will hold either the first token of the column (as
+    # set by init_col and checked by insert_v_template) or the token
+    # that ends the column (set by insert_v_template and checked by
+    # fin_col).
+
     my %extra_info_of :ATTR(:name<extra_info>);
 }
 
@@ -7486,7 +7502,7 @@ sub init_align {
 
     $tex->push_alignment();
 
-    $tex->set_align_state(-1000000);
+    $tex->set_align_state(ALIGN_PREAMBLE);
 
     $tex->check_for_improper_math_align();
 
@@ -7609,7 +7625,7 @@ sub scan_align_preamble {
 
     $tex->set_scanner_status(aligning);
 
-    $tex->set_align_state(-1000000);
+    $tex->set_align_state(ALIGN_PREAMBLE);
 
     # {at this point, |cur_cmd = left_brace|}
 
@@ -7641,10 +7657,11 @@ sub ends_align_template {
 
     my $cur_cmd = shift;
 
+    return unless $tex->align_state() == ALIGN_PREAMBLE;
+
     return ($cur_cmd == CATCODE_ALIGNMENT
             || eval { $cur_cmd->isa("TeX::Primitive::cr") }
-            || eval { $cur_cmd->isa("TeX::Primitive::span") })
-        && $tex->align_state() == -1000000;
+            || eval { $cur_cmd->isa("TeX::Primitive::span") });
 }
 
 sub scan_u_template {
@@ -7731,7 +7748,7 @@ sub align_peek {
     my $align = shift;
 
   restart:
-    $tex->set_align_state(1000000);
+    $tex->set_align_state(ALIGN_NO_COLUMN);
 
     my $cur_tok = $tex->get_next_non_blank_non_call_token();
 
@@ -7819,12 +7836,14 @@ sub init_col {
     $cur_col->set_extra_info($cur_cmd);
 
     if (eval { $cur_cmd->isa("TeX::Primitive::omit") }) {
-        $tex->set_align_state(0);
+        $tex->set_align_state(ALIGN_COLUMN_BOUNDARY);
     } else {
         $tex->back_input($cur_tok);
 
         $tex->begin_token_list($cur_col->get_u_part(), u_template);
-    } # {now |align_state = 1000000|}
+
+        # {now |align_state = ALIGN_NO_COLUMN|}
+    }
 
     return;
 }
@@ -7854,7 +7873,7 @@ sub insert_v_template {
         $tex->begin_token_list($cur_col->get_v_part(), v_template);
     }
 
-    $tex->set_align_state(1000000);
+    $tex->set_align_state(ALIGN_NO_COLUMN);
 
     return;
 }
@@ -7889,7 +7908,7 @@ sub fin_col {
 
     $tex->confusion("endv") unless defined $cur_col;
 
-    if ($tex->align_state() < 500000) {
+    if ($tex->align_state() < ALIGN_FLAG) {
         $tex->fatal_error("(interwoven alignment preambles are not allowed)");
     }
 
@@ -7998,7 +8017,7 @@ sub fin_col {
         $tex->incr_alignspanno();
     }
 
-    $tex->set_align_state(1000000);
+    $tex->set_align_state(ALIGN_NO_COLUMN);
 
     my $cur_tok = $tex->get_next_non_blank_non_call_token();
     my $cur_cmd = $tex->get_meaning($cur_tok);
@@ -8038,7 +8057,7 @@ sub fin_row {
 
     my $align = $tex->get_cur_alignment();
 
-    $align->update_span_records();
+    $align->update_span_records($tex);
 
     $tex->align_peek($align);
 
@@ -9225,7 +9244,7 @@ sub align_error {
     } else {
         $tex->back_input($cur_tok);
 
-        if ($tex->align_state() < 0) {
+        if ($tex->align_state() < ALIGN_COLUMN_BOUNDARY) {
             $tex->print_err("Missing { inserted (align_state = ", $tex->align_state(), ")");
 
             $tex->incr_align_state();
@@ -11945,7 +11964,7 @@ sub end_par {
             $tex->build_page();
         }
     } elsif ($tex->is_hmode()) {
-        # if align_state < 0 then off_save;
+        # if align_state < ALIGN_COLUMN_BOUNDARY then off_save;
         # {this tries to recover from an alignment that didn't end properly}
 
         $tex->end_graf();
@@ -12605,4 +12624,3 @@ __END__
 #         def(new XmlPIPrim("XMLpi"));
 #         def(new XmlReferencePrim("XMLreference"));
 #     }
-
