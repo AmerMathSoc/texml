@@ -31,7 +31,7 @@ package TeX::Interpreter::LaTeX;
 
 use strict;
 
-use version; our $VERSION = qv '1.67.0';
+use version; our $VERSION = qv '1.67.1';
 
 use base qw(TeX::Interpreter Exporter);
 
@@ -208,6 +208,8 @@ sub do_load_package {
 
 sub __parse_option_list( $ ) {
     my $option_list = shift;
+
+    return if empty($option_list);
 
     $option_list =~ s{\s}{}g;
 
