@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.0.0';
+use version; our $VERSION = qv '2.0.1';
 
 use TeX::Constants qw(:named_args);
 
@@ -204,6 +204,8 @@ __DATA__
 }
 
 \def\ENDWHILE{\ALC@end@structure{\algorithmicendwhile}}
+
+\let\ALC@end@else\@empty
 
 \newcommand{\IF}[2][default]{%
     \ALC@begin@structure{if}{\algorithmicif}{#2}{#1}{\algorithmicthen}
