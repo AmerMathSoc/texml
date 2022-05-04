@@ -66,8 +66,8 @@ __DATA__
 
 \LoadPackage{Algorithmic}
 
-\DeclareOption{noend}{\setboolean{ALC@noend}{true}}
-\DeclareOption{end}{\setboolean{ALC@noend}{false}}
+\DeclareOption{noend}{\setboolean{ALG@noend}{true}}
+\DeclareOption{end}{\setboolean{ALG@noend}{false}}
 
 % TBD: Decide what if anything to do about compatibility mode.
 
@@ -123,46 +123,46 @@ __DATA__
 \let\Else\ELSE
 
 \newcommand{\Procedure}[2]{% #1 = procedure name; #2 = args
-    \ALC@endtoplevel
-\let\Comment\ALC@com
-    \ALC@begingroup % LEVEL 1
-        \ALC@pushtag{procedure}%
-        \ALC@line{%
+    \ALG@endtoplevel
+\patch@ALC@comments
+    \ALG@begingroup % LEVEL 1
+        \ALG@pushtag{procedure}%
+        \ALG@line{%
             \algorithmicprocedure\ \textproc{#1}
             \if###2##\else(#2)\fi
         }{}%
-        \ALC@begingroup % LEVEL 2
-            \ALC@pushtag{block}%
+        \ALG@begingroup % LEVEL 2
+            \ALG@pushtag{block}%
 }
 
 \newcommand{\EndProcedure}{%
-            \ALC@endtoplevel
-        \ALC@endgroup  % LEVEL 2
-        \ifALC@noend\else
-            \ALC@line{\algorithmicend\ \algorithmicprocedure}{}%
+            \ALG@endtoplevel
+        \ALG@endgroup  % LEVEL 2
+        \ifALG@noend\else
+            \ALG@line{\algorithmicend\ \algorithmicprocedure}{}%
         \fi
-    \ALC@endgroup % LEVEL 1
+    \ALG@endgroup % LEVEL 1
 }
 
 \newcommand{\Function}[2]{% #1 = function name; #2 = args
-    \ALC@endtoplevel
-    \ALC@begingroup % LEVEL 1
-        \ALC@pushtag{function}%
-        \ALC@line{%
+    \ALG@endtoplevel
+    \ALG@begingroup % LEVEL 1
+        \ALG@pushtag{function}%
+        \ALG@line{%
             \algorithmicfunction\ \textproc{#1}
             \if###2##\else(#2)\fi
         }{}%
-        \ALC@begingroup % LEVEL 2
-            \ALC@pushtag{block}%
+        \ALG@begingroup % LEVEL 2
+            \ALG@pushtag{block}%
 }
 
 \newcommand{\EndFunction}{%
-            \ALC@endtoplevel
-        \ALC@endgroup  % LEVEL 2
-        \ifALC@noend\else
-            \ALC@line{\algorithmicend\ \algorithmicfunction}{}%
+            \ALG@endtoplevel
+        \ALG@endgroup  % LEVEL 2
+        \ifALG@noend\else
+            \ALG@line{\algorithmicend\ \algorithmicfunction}{}%
         \fi
-    \ALC@endgroup % LEVEL
+    \ALG@endgroup % LEVEL
 }
 
 % *** OTHER DECLARATIONS

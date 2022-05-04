@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::ALGutils;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -53,112 +53,118 @@ __DATA__
 
 \TeXMLprovidesPackage{ALGutils}
 
-\newcounter{ALC@line}      % counter for current line
-\newcounter{ALC@rem}       % counter for lines not printed
+\RequirePackage{ifthen}
 
-\def\ALC@NS{alg}
+\newboolean{ALG@noend}
+\setboolean{ALG@noend}{false}
 
-\newcommand{\ALC@open}[1]{%
+\newif\if@ALG@numbered
+\@ALG@numberedfalse
+
+\newcounter{ALG@frequency}
+
+\newcounter{ALG@line}      % counter for current line
+\newcounter{ALG@rem}       % counter for lines not printed
+
+\def\ALG@NS{alg}
+
+\newcommand{\ALG@open}[1]{%
     % \typeout{*** OPEN #1}%
     \par
-    \startXMLelement{\ALC@NS:#1}%
+    \startXMLelement{\ALG@NS:#1}%
 }
 
-\newcommand{\ALC@close}[1]{%
+\newcommand{\ALG@close}[1]{%
     % \typeout{*** CLOSE #1}%
     \par
-    \endXMLelement{\ALC@NS:#1}%
+    \endXMLelement{\ALG@NS:#1}%
 }
 
-\let\ALC@tagstack\@empty
+\let\ALG@tagstack\@empty
 
 \long\def\g@push@stack#1#2{%
     \protected@edef#1{\protect#2#1}%
 }
 
-\def\ALC@clearstack{\let\ALC@tagstack\@empty}
+\def\ALG@clearstack{\let\ALG@tagstack\@empty}
 
-\def\ALC@pushtag#1{%
-    \ALC@open{#1}%
-    \g@push@stack\ALC@tagstack{\ALC@close{#1}}%
+\def\ALG@pushtag#1{%
+    \ALG@open{#1}%
+    \g@push@stack\ALG@tagstack{\ALG@close{#1}}%
 }
 
-\def\ALC@popstack{%
+\def\ALG@popstack{%
     \par
-    \ALC@tagstack
-    \ALC@clearstack
+    \ALG@tagstack
+    \ALG@clearstack
 }
 
-\def\ALC@begingroup{%
+\def\ALG@begingroup{%
     \begingroup
-        \ALC@clearstack
-        \let\ALC@endtoplevel\@empty
+        \ALG@clearstack
+        \let\ALG@endtoplevel\@empty
 }
 
-\def\ALC@endgroup{%
-        \ALC@popstack
+\def\ALG@endgroup{%
+        \ALG@popstack
     \endgroup
 }
 
 %% Top-level (sort of)
 
-\newif\if@ALCnumbered
-\@ALCnumberedfalse
-
-\newcount\ALC@frequency
-
-\def\ALC@addlineno{%
-    \if@ALCnumbered
-        \refstepcounter{ALC@line}%
-        \stepcounter{ALC@rem}%
-        \ifnum\c@ALC@rem=\ALC@frequency
-            \setXMLattribute{lineno}{\the\c@ALC@line}%
-            \setcounter{ALC@rem}{0}%
+\def\ALG@addlineno{%
+    \if@ALG@numbered
+        \refstepcounter{ALG@line}%
+        \stepcounter{ALG@rem}%
+        \ifnum\c@ALG@rem=\c@ALG@frequency
+            \setXMLattribute{lineno}{\the\c@ALG@line}%
+            \setcounter{ALG@rem}{0}%
         \fi
     \fi
 }
 
-\def\ALC@line#1#2{%
-    \ALC@open{line}%
-        \ALC@addlineno
-        \ALC@begingroup
-        \ALC@pushtag{statement}%
-            #1\par
-        \ALC@endgroup
-        \ALC@com{#2}\par
-    \ALC@close{line}%
+\def\ALG@line#1#2{%
+    \ALG@open{line}%
+        \ALG@addlineno
+        \ALG@begingroup
+            \ALG@pushtag{statement}%
+                #1\par
+        \ALG@endgroup
+        \ALG@com{#2}%
+    \ALG@close{line}%
 }
 
-\newcommand{\ALC@com}[1]{%
-    \ifthenelse{\equal{#1}{default}}{}{%
-        \if###1##\else
-            \ \ALC@open{comment}#1\ALC@close{comment}%
-        \fi
-    }%
+\newcommand{\ALG@com}[1]{%
+    \if###1##\else
+        \par\ALG@open{comment}#1\ALG@close{comment}\par
+    \fi
 }
 
-\def\defALC@toplevel{\maybe@st@rred{\defALC@toplevel@}}
+\def\def@ALG@statement{\maybe@st@rred{\def@ALG@statement@}}
 
-\newcommand{\defALC@toplevel@}[3][]{%
+\def\patch@ALG@comments{\let\Comment\ALG@com}
+
+\newcommand{\def@ALG@statement@}[3][]{%
     \edef#2{%
-        \@nx\ALC@endtoplevel
-        \@nx\ALC@begingroup
-            \let\@nx\ALC@endtoplevel\@nx\ALC@endtoplevel@
-            \@nx\ALC@pushtag{line}%
+        \@nx\ALG@endtoplevel
+\@nx\patch@ALG@comments
+        \@nx\ALG@begingroup
+            \let\@nx\ALG@endtoplevel\@nx\ALG@endtoplevel@
+            \@nx\ALG@pushtag{line}%
             \ifst@rred\else
-                \@nx\ALC@addlineno
+                \@nx\ALG@addlineno
             \fi
-            \@nx\ALC@begingroup
-                \let\@nx\ALC@endtoplevel\@nx\ALC@endtoplevel@
-                \@nx\ALC@pushtag{#3}%
+            \@nx\ALG@begingroup
+                \let\@nx\ALG@endtoplevel\@nx\ALG@endtoplevel@
+                \@nx\ALG@pushtag{#3}%
                 \if###1##\else
                     \@nx#1
                 \fi
     }%
 }
 
-\let\ALC@endtoplevel\@empty
-\def\ALC@endtoplevel@{\ALC@endgroup\ALC@endgroup}
+\let\ALG@endtoplevel\@empty
+\def\ALG@endtoplevel@{\ALG@endgroup\ALG@endgroup}
 
 % #1 XML tag (while, if, elsif, for, forall)
 % #2 pre-condition keyword text
@@ -166,42 +172,43 @@ __DATA__
 % #4 comment (optional)
 % #5 post-condition keyword
 
-\newcommand{\ALC@begin@structure}[5]{%
-    \ALC@endtoplevel
-    \ALC@begingroup % LEVEL 1
-        \ALC@pushtag{#1}%
-        \ALC@start@condition
-            \ALC@pushtag{statement}%
+\newcommand{\ALG@begin@structure}[5]{%
+    \ALG@endtoplevel
+    \ALG@begingroup % LEVEL 1
+\patch@ALG@comments
+        \ALG@pushtag{#1}%
+        \ALG@start@condition
+            \ALG@pushtag{statement}%
                 #2 #3 #5\par
-            \ALC@popstack
-            \ALC@com{#4}\par
-        \ALC@end@condition
-        \ALC@begingroup % LEVEL 2
-            \ALC@pushtag{block}%
+            \ALG@popstack
+            \ALG@com{#4}%
+        \ALG@end@condition
+        \ALG@begingroup % LEVEL 2
+            \ALG@pushtag{block}%
 }
 
 % #1 keyword text
 
-\newcommand{\ALC@end@structure}[1]{%
-            \ALC@endtoplevel
-        \ALC@endgroup  % LEVEL 2
-        \ifALC@noend\else
-            \ALC@line{#1}{}%
+\newcommand{\ALG@end@structure}[1]{%
+            \ALG@endtoplevel
+        \ALG@endgroup  % LEVEL 2
+        \ifALG@noend\else
+            \ALG@line{#1}{}%
         \fi
-    \ALC@endgroup % LEVEL
+    \ALG@endgroup % LEVEL
 }
 
-\newcommand{\ALC@start@condition}{%
-    \ALC@open{condition}%
-    \ALC@open{line}%
-    \ALC@addlineno
-    \ALC@begingroup
+\newcommand{\ALG@start@condition}{%
+    \ALG@open{condition}%
+    \ALG@open{line}%
+    \ALG@addlineno
+    \ALG@begingroup
 }
 
-\newcommand{\ALC@end@condition}{%
-    \ALC@endgroup
-    \ALC@close{line}%
-    \ALC@close{condition}%
+\newcommand{\ALG@end@condition}{%
+    \ALG@endgroup
+    \ALG@close{line}%
+    \ALG@close{condition}%
 }
 
 \TeXMLendPackage
@@ -228,6 +235,33 @@ algpseudocode: algorithmic layout style built on top of algorithmicx
 
 ===========================================================================
 
-algorithm2e: very different markup
+algorithm2e: very different markup; defines algorithm environment
 
 clrscode: ick
+
+===========================================================================
+===========================================================================
+
+  Structures: Structures nest inside each other
+
+        INPUTS...ENDINPUTS
+        OUTPUTS...ENDOUTPUTS
+        BODY...ENDBODY
+        IF...ENDIF
+        FOR...ENDFOR,
+        FORALL...ENDFORALL
+        WHILE...ENDWHILE
+        LOOP...ENDLOOP
+        REPEAT...UNTIL
+
+    Statements (implicit end tag): Standalone or nested within a
+        structure; each ends a previous statement/line.
+
+        STATE
+        REQUIRE
+        ENSURE
+        GLOBALS
+        RETURN
+        PRINT
+
+    Argument: \COMMENT    [Ends a statement, but not a line.]

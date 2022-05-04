@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.0.1';
+use version; our $VERSION = qv '2.1.0';
 
 use TeX::Constants qw(:named_args);
 
@@ -64,7 +64,7 @@ sub do_algsetup {
         my ($key, $value) = split /\s*=\s*/, $pair, 2;
 
         if ($key eq 'linenodelimiter') {
-            $tex->define_simple_macro('ALC@linenodelimiter' => $value);
+            $tex->define_simple_macro('ALG@linenodelimiter' => $value);
         }
     }
 
@@ -81,12 +81,7 @@ __DATA__
 
 \LoadPackage{ALGutils}
 
-\RequirePackage{ifthen}
-
-\newboolean{ALC@noend}
-\setboolean{ALC@noend}{false}
-
-\DeclareOption{noend}{\setboolean{ALC@noend}{true}}
+\DeclareOption{noend}{\setboolean{ALG@noend}{true}}
 
 \ProcessOptions
 
@@ -94,7 +89,7 @@ __DATA__
 
 \let\algorithmicindent\dimen@
 
-\newcommand{\ALC@linenodelimiter}{:}
+\newcommand{\ALG@linenodelimiter}{:}
 
 \newcommand{\algorithmicrequire}{\textbf{Require:}}
 \newcommand{\algorithmicensure}{\textbf{Ensure:}}
@@ -128,10 +123,9 @@ __DATA__
 \newcommand{\algorithmictrue}{\textbf{true}}
 \newcommand{\algorithmicfalse}{\textbf{false}}
 
-\defALC@toplevel*[\algorithmicrequire]{\REQUIRE}{require}
-\defALC@toplevel*[\algorithmicensure]{\ENSURE} {ensure}
-\newcommand{\PRINT}{\STATE \algorithmicprint{} }
-\newcommand{\RETURN}{\STATE \algorithmicreturn{} }
+\def@ALG@statement*[\algorithmicrequire]{\REQUIRE}{require}
+\def@ALG@statement*[\algorithmicensure]{\ENSURE} {ensure}
+
 \newcommand{\TRUE}{\algorithmictrue{}}
 \newcommand{\FALSE}{\algorithmicfalse{}}
 \newcommand{\AND}{\algorithmicand{} }
@@ -140,161 +134,164 @@ __DATA__
 \newcommand{\NOT}{\algorithmicnot{} }
 \newcommand{\TO}{\algorithmicto{} }
 
-\defALC@toplevel{\STATE}{statement}
+\def@ALG@statement{\STATE}{statement}
 \let\STMT\STATE
 
+\newcommand{\PRINT}{\STATE \algorithmicprint{} }
+\newcommand{\RETURN}{\STATE \algorithmicreturn{} }
+
 \def\algorithmiccomment#1{%
-    \ALC@endgroup
-    \ALC@begingroup
-        \let\ALC@endtoplevel\ALC@endtoplevel@
-        \ALC@pushtag{comment}#1%
+    \ALG@endgroup
+    \ALG@begingroup
+        \let\ALG@endtoplevel\ALG@endtoplevel@
+        \ALG@pushtag{comment}#1%
 }
 
 \let\COMMENT\algorithmiccomment
 
-\newcommand{\INPUTS}[1][default]{%
-    \ALC@endtoplevel
-    \ALC@begingroup
-        \ALC@pushtag{inputs}%
-        \ALC@line{\algorithmicinputs}{#1}%
-        \ALC@begingroup % LEVEL 2
-            \ALC@pushtag{block}%
+\newcommand{\INPUTS}[1][]{%
+    \ALG@endtoplevel
+    \ALG@begingroup
+        \ALG@pushtag{inputs}%
+        \ALG@line{\algorithmicinputs}{#1}%
+        \ALG@begingroup % LEVEL 2
+            \ALG@pushtag{block}%
 }
 
 \newcommand{\ENDINPUTS}{%
-            \ALC@endtoplevel
-        \ALC@endgroup
-    \ALC@endgroup
+            \ALG@endtoplevel
+        \ALG@endgroup
+    \ALG@endgroup
 }
 
-\newcommand{\OUTPUTS}[1][default]{%
-    \ALC@endtoplevel
-    \ALC@begingroup
-        \ALC@pushtag{outputs}%
-        \ALC@line{\algorithmicoutputs}{#1}%
-        \ALC@begingroup % LEVEL 2
-            \ALC@pushtag{block}%
+\newcommand{\OUTPUTS}[1][]{%
+    \ALG@endtoplevel
+    \ALG@begingroup
+        \ALG@pushtag{outputs}%
+        \ALG@line{\algorithmicoutputs}{#1}%
+        \ALG@begingroup % LEVEL 2
+            \ALG@pushtag{block}%
 }
 
 \newcommand{\ENDOUTPUTS}{%
-            \ALC@endtoplevel
-        \ALC@endgroup
-    \ALC@endgroup
+            \ALG@endtoplevel
+        \ALG@endgroup
+    \ALG@endgroup
 }
 
-\defALC@toplevel[\algorithmicglobals]{\GLOBALS} {globals}
+\def@ALG@statement[\algorithmicglobals]{\GLOBALS} {globals}
 
-\newcommand{\BODY}[1][default]{%
-    \ALC@endtoplevel
-    \ALC@begingroup
-        \ALC@pushtag{body}%
-        \ALC@line{\algorithmicbody}{#1}%
-        \ALC@begingroup % LEVEL 2
-            \ALC@pushtag{block}%
+\newcommand{\BODY}[1][]{%
+    \ALG@endtoplevel
+    \ALG@begingroup
+        \ALG@pushtag{body}%
+        \ALG@line{\algorithmicbody}{#1}%
+        \ALG@begingroup % LEVEL 2
+            \ALG@pushtag{block}%
 }
 
 \newcommand{\ENDBODY}{%
-            \ALC@endtoplevel
-        \ALC@endgroup
-    \ALC@endgroup
+            \ALG@endtoplevel
+        \ALG@endgroup
+    \ALG@endgroup
 }
 
-\newcommand{\WHILE}[2][default]{%
-    \ALC@begin@structure{while}{\algorithmicwhile}{#2}{#1}{\algorithmicdo}
+\newcommand{\WHILE}[2][]{%
+    \ALG@begin@structure{while}{\algorithmicwhile}{#2}{#1}{\algorithmicdo}
 }
 
-\def\ENDWHILE{\ALC@end@structure{\algorithmicendwhile}}
+\def\ENDWHILE{\ALG@end@structure{\algorithmicendwhile}}
 
 \let\ALC@end@else\@empty
 
-\newcommand{\IF}[2][default]{%
-    \ALC@begin@structure{if}{\algorithmicif}{#2}{#1}{\algorithmicthen}
+\newcommand{\IF}[2][]{%
+    \ALG@begin@structure{if}{\algorithmicif}{#2}{#1}{\algorithmicthen}
     \let\ALC@end@else\@empty
 }
 
-\newcommand{\ELSIF}[2][default]{%
-                \ALC@endtoplevel
+\newcommand{\ELSIF}[2][]{%
+                \ALG@endtoplevel
             \ALC@end@else
-        \ALC@endgroup % end the block (LEVEL 2)
-        \let\ALC@end@else\ALC@endgroup % (LEVEL 1)
-        \ALC@begin@structure{elsif}{\algorithmicelsif}{#2}{#1}{\algorithmicthen}% LEVEL 3
+        \ALG@endgroup % end the block (LEVEL 2)
+        \let\ALC@end@else\ALG@endgroup % (LEVEL 1)
+        \ALG@begin@structure{elsif}{\algorithmicelsif}{#2}{#1}{\algorithmicthen}% LEVEL 3
 }
 
-\newcommand{\ELSE}[1][default]{% No condition
-                \ALC@endtoplevel
+\newcommand{\ELSE}[1][]{% No condition
+                \ALG@endtoplevel
             \ALC@end@else
-        \ALC@endgroup % end if block
-        \let\ALC@end@else\ALC@endgroup
-        \ALC@begingroup
-            \ALC@pushtag{else}
-            \ALC@line{\algorithmicelse}{#1}%
-            \ALC@begingroup
-                \ALC@pushtag{block}%
+        \ALG@endgroup % end if block
+        \let\ALC@end@else\ALG@endgroup
+        \ALG@begingroup
+            \ALG@pushtag{else}
+            \ALG@line{\algorithmicelse}{#1}%
+            \ALG@begingroup
+                \ALG@pushtag{block}%
 }
 
 \def\ENDIF{%
-                \ALC@endtoplevel
+                \ALG@endtoplevel
             \ALC@end@else
-        \ALC@endgroup % END BLOCK (LEVEL 2)
-        \ifALC@noend\else
-            \ALC@line{\algorithmicendif}{}
+        \ALG@endgroup % END BLOCK (LEVEL 2)
+        \ifALG@noend\else
+            \ALG@line{\algorithmicendif}{}
         \fi
-    \ALC@endgroup
+    \ALG@endgroup
 }
 
-\newcommand{\FOR}[2][default]{%
-    \ALC@begin@structure{for}{\algorithmicfor}{#2}{#1}{\algorithmicdo}
+\newcommand{\FOR}[2][]{%
+    \ALG@begin@structure{for}{\algorithmicfor}{#2}{#1}{\algorithmicdo}
 }
 
-\newcommand{\FORALL}[2][default]{%
-    \ALC@begin@structure{forall}{\algorithmicforall}{#2}{#1}{\algorithmicdo}
+\newcommand{\FORALL}[2][]{%
+    \ALG@begin@structure{forall}{\algorithmicforall}{#2}{#1}{\algorithmicdo}
 }
 
-\def\ENDFOR{\ALC@end@structure{\algorithmicendfor}}
+\def\ENDFOR{\ALG@end@structure{\algorithmicendfor}}
 
-\newcommand{\LOOP}[1][default]{% No condition
-    \ALC@begin@structure{loop}{\algorithmicloop}{}{#1}{}%
+\newcommand{\LOOP}[1][]{% No condition
+    \ALG@begin@structure{loop}{\algorithmicloop}{}{#1}{}%
 }
 
-\newcommand{\REPEAT}[1][default]{% No condition
-    \ALC@begin@structure{repeat}{\algorithmicrepeat}{}{#1}{}%
+\newcommand{\REPEAT}[1][]{% No condition
+    \ALG@begin@structure{repeat}{\algorithmicrepeat}{}{#1}{}%
 }
 
 \newcommand{\UNTIL}[1]{%
-            \ALC@endtoplevel
-        \ALC@endgroup
-        \ALC@begingroup
-            \ALC@pushtag{until}%
-            \ALC@start@condition
-                \ALC@pushtag{statement}%
+            \ALG@endtoplevel
+        \ALG@endgroup
+        \ALG@begingroup
+            \ALG@pushtag{until}%
+            \ALG@start@condition
+                \ALG@pushtag{statement}%
                     \algorithmicuntil\ #1\par
-                \ALC@popstack
-            \ALC@end@condition
-        \ALC@endgroup
-    \ALC@endgroup
+                \ALG@popstack
+            \ALG@end@condition
+        \ALG@endgroup
+    \ALG@endgroup
 }
 
-\def\ENDLOOP{\ALC@end@structure{\algorithmicendloop}}
+\def\ENDLOOP{\ALG@end@structure{\algorithmicendloop}}
 
-\renewenvironment{algorithmic}[1][0]{
+\newenvironment{algorithmic}[1][0]{
     \par
     \xmlpartag{}%
     \def\\{\emptyXMLelement{br}}%
-    \ALC@frequency=#1\relax
-    \ifnum\ALC@frequency=\z@
-        \@ALCnumberedfalse
+    \c@ALG@frequency=#1\relax
+    \ifnum\c@ALG@frequency=\z@
+        \@ALG@numberedfalse
     \else
-        \@ALCnumberedtrue
-        \c@ALC@line\z@
-        \c@ALC@rem\z@
+        \@ALG@numberedtrue
+        \c@ALG@line\z@
+        \c@ALG@rem\z@
     \fi
     % TBD: Do we need ALC@unique?
-    \ALC@begingroup
-        \ALC@pushtag{algorithm}%
-        \setXMLattribute{linenodelimiter}{\ALC@linenodelimiter}%
+    \ALG@begingroup
+        \ALG@pushtag{algorithm}%
+        \setXMLattribute{linenodelimiter}{\ALG@linenodelimiter}%
 }{%
-        \ALC@endtoplevel
-    \ALC@endgroup
+        \ALG@endtoplevel
+    \ALG@endgroup
     \par
 }
 
