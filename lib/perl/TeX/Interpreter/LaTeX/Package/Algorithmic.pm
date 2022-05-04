@@ -32,7 +32,9 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.0';
+use version; our $VERSION = qv '2.0.0';
+
+use TeX::Constants qw(:named_args);
 
 sub install ( $ ) {
     my $class = shift;
@@ -42,9 +44,29 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
-    $tex->load_latex_package("algorithmic", @options);
-
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::Algorithmic::DATA{IO});
+
+    $tex->define_csname(algsetup => \&do_algsetup);
+
+    return;
+}
+
+sub do_algsetup {
+    my $tex = shift;
+
+    my $opts = $tex->read_undelimited_parameter(EXPANDED);
+
+    # \algsetup{linenodelimiter=X}
+
+    # Ignore linenosize and indent
+
+    for my $pair (split /\s*,\s*/, $opts) {
+        my ($key, $value) = split /\s*=\s*/, $pair, 2;
+
+        if ($key eq 'linenodelimiter') {
+            $tex->define_simple_macro('ALC@linenodelimiter' => $value);
+        }
+    }
 
     return;
 }
@@ -57,115 +79,69 @@ __DATA__
 
 \@namedef{ver@algorithmic.sty}{XXX}
 
-\def\ALC@NS{alg}
+\LoadPackage{ALGutils}
 
-\newcommand{\ALC@open}[1]{%
-    % \typeout{*** OPEN #1}%
-    \par
-    \startXMLelement{\ALC@NS:#1}%
-}
+\RequirePackage{ifthen}
 
-\newcommand{\ALC@close}[1]{%
-    % \typeout{*** CLOSE #1}%
-    \par
-    \endXMLelement{\ALC@NS:#1}%
-}
+\newboolean{ALC@noend}
+\setboolean{ALC@noend}{false}
 
-\let\ALC@tagstack\@empty
+\DeclareOption{noend}{\setboolean{ALC@noend}{true}}
 
-\long\def\g@push@stack#1#2{%
-    \protected@edef#1{\protect#2#1}%
-}
+\ProcessOptions
 
-\def\ALC@clearstack{\let\ALC@tagstack\@empty}
+%% Define \algorithmicindent in case someone tries to customize it.
 
-\def\ALC@pushtag#1{%
-    \ALC@open{#1}%
-    \g@push@stack\ALC@tagstack{\ALC@close{#1}}%
-}
+\let\algorithmicindent\dimen@
 
-\def\ALC@popstack{%
-    \par
-    \ALC@tagstack
-    \ALC@clearstack
-}
+\newcommand{\ALC@linenodelimiter}{:}
 
-\def\ALC@begingroup{%
-    \begingroup
-        \ALC@clearstack
-        \let\ALC@endtoplevel\@empty
-}
+\newcommand{\algorithmicrequire}{\textbf{Require:}}
+\newcommand{\algorithmicensure}{\textbf{Ensure:}}
+\newcommand{\algorithmicend}{\textbf{end}}
+\newcommand{\algorithmicif}{\textbf{if}}
+\newcommand{\algorithmicthen}{\textbf{then}}
+\newcommand{\algorithmicelse}{\textbf{else}}
+\newcommand{\algorithmicelsif}{\algorithmicelse\ \algorithmicif}
+\newcommand{\algorithmicendif}{\algorithmicend\ \algorithmicif}
+\newcommand{\algorithmicfor}{\textbf{for}}
+\newcommand{\algorithmicforall}{\textbf{for all}}
+\newcommand{\algorithmicdo}{\textbf{do}}
+\newcommand{\algorithmicendfor}{\algorithmicend\ \algorithmicfor}
+\newcommand{\algorithmicwhile}{\textbf{while}}
+\newcommand{\algorithmicendwhile}{\algorithmicend\ \algorithmicwhile}
+\newcommand{\algorithmicloop}{\textbf{loop}}
+\newcommand{\algorithmicendloop}{\algorithmicend\ \algorithmicloop}
+\newcommand{\algorithmicrepeat}{\textbf{repeat}}
+\newcommand{\algorithmicuntil}{\textbf{until}}
+\newcommand{\algorithmicprint}{\textbf{print}}
+\newcommand{\algorithmicreturn}{\textbf{return}}
+\newcommand{\algorithmicand}{\textbf{and}}
+\newcommand{\algorithmicor}{\textbf{or}}
+\newcommand{\algorithmicxor}{\textbf{xor}}
+\newcommand{\algorithmicnot}{\textbf{not}}
+\newcommand{\algorithmicto}{\textbf{to}}
+\newcommand{\algorithmicinputs}{\textbf{inputs}}
+\newcommand{\algorithmicoutputs}{\textbf{outputs}}
+\newcommand{\algorithmicglobals}{\textbf{globals}}
+\newcommand{\algorithmicbody}{\textbf{do}}
+\newcommand{\algorithmictrue}{\textbf{true}}
+\newcommand{\algorithmicfalse}{\textbf{false}}
 
-\def\ALC@endgroup{%
-        \ALC@popstack
-    \endgroup
-}
-
-%% Top-level (sort of)
-
-\newif\if@ALCnumbered
-\@ALCnumberedfalse
-
-\def\ALC@addlineno{%
-    \if@ALCnumbered
-        \refstepcounter{ALC@line}%
-        \stepcounter{ALC@rem}%
-        \ifnum\c@ALC@rem=\ALC@frequency
-            \setXMLattribute{lineno}{\the\c@ALC@line}%
-            \setcounter{ALC@rem}{0}%
-        \fi
-    \fi
-}
-
-\def\ALC@line#1#2{%
-    \ALC@open{line}%
-        \ALC@addlineno
-        \ALC@begingroup
-        \ALC@pushtag{statement}%
-            #1\par
-        \ALC@endgroup
-        \ALC@com{#2}\par
-    \ALC@close{line}%
-}
-
-\def\defALC@toplevel{\maybe@st@rred{\defALC@toplevel@}}
-
-\newcommand{\defALC@toplevel@}[3][]{%
-    \edef#2{%
-        \@nx\ALC@endtoplevel
-        \@nx\ALC@begingroup
-            \let\@nx\ALC@endtoplevel\@nx\ALC@endtoplevel@
-            \@nx\ALC@pushtag{line}%
-            \ifst@rred\else
-                \@nx\ALC@addlineno
-            \fi
-            \@nx\ALC@begingroup
-                \let\@nx\ALC@endtoplevel\@nx\ALC@endtoplevel@
-                \@nx\ALC@pushtag{#3}%
-                \if###1##\else
-                    \@nx#1
-                \fi
-    }%
-}
-
-\let\ALC@endtoplevel\@empty
-\def\ALC@endtoplevel@{\ALC@endgroup\ALC@endgroup}
-
-\defALC@toplevel{\STATE}{statement}
-
-\defALC@toplevel[\algorithmicglobals]{\GLOBALS} {globals}
 \defALC@toplevel*[\algorithmicrequire]{\REQUIRE}{require}
 \defALC@toplevel*[\algorithmicensure]{\ENSURE} {ensure}
+\newcommand{\PRINT}{\STATE \algorithmicprint{} }
+\newcommand{\RETURN}{\STATE \algorithmicreturn{} }
+\newcommand{\TRUE}{\algorithmictrue{}}
+\newcommand{\FALSE}{\algorithmicfalse{}}
+\newcommand{\AND}{\algorithmicand{} }
+\newcommand{\OR}{\algorithmicor{} }
+\newcommand{\XOR}{\algorithmicxor{} }
+\newcommand{\NOT}{\algorithmicnot{} }
+\newcommand{\TO}{\algorithmicto{} }
 
+\defALC@toplevel{\STATE}{statement}
 \let\STMT\STATE
-
-\newcommand{\PRINT}{%
-    \STATE \algorithmicprint{} % keep this space
-}
-
-\newcommand{\RETURN}{%
-    \STATE \algorithmicreturn{} % keep this space
-}
 
 \def\algorithmiccomment#1{%
     \ALC@endgroup
@@ -175,51 +151,6 @@ __DATA__
 }
 
 \let\COMMENT\algorithmiccomment
-
-\newcommand{\ALC@com}[1]{%
-    \ifthenelse{\equal{#1}{default}}{}{%
-        \if###1##\else
-            \ \ALC@open{comment}#1\ALC@close{comment}%
-        \fi
-    }%
-}
-
-% These are defined inside the definition of \algorithmic in
-%  algorithmic.sty, so we need to repeat them here.
-
-\newcommand{\TRUE}{\algorithmictrue{}}
-\newcommand{\FALSE}{\algorithmicfalse{}}
-\newcommand{\AND}{\algorithmicand{} }
-\newcommand{\OR}{\algorithmicor{} }
-\newcommand{\XOR}{\algorithmicxor{} }
-\newcommand{\NOT}{\algorithmicnot{} }
-\newcommand{\TO}{\algorithmicto{} }
-
-\newcount\ALC@frequency
-
-% TODO: linenodelimiter
-
-\renewenvironment{algorithmic}[1][0]{
-    \par
-    \xmlpartag{}%
-    \def\\{\emptyXMLelement{br}}%
-    \ALC@frequency=#1\relax
-    \ifnum\ALC@frequency=\z@
-        \@ALCnumberedfalse
-    \else
-        \@ALCnumberedtrue
-        \c@ALC@line\z@
-        \c@ALC@rem\z@
-    \fi
-    % TBD: Do we need ALC@unique?
-    \ALC@begingroup
-        \ALC@pushtag{algorithm}%
-        \setXMLattribute{linenodelimiter}{\ALC@linenodelimiter}%
-}{%
-        \ALC@endtoplevel
-    \ALC@endgroup
-    \par
-}
 
 \newcommand{\INPUTS}[1][default]{%
     \ALC@endtoplevel
@@ -251,6 +182,8 @@ __DATA__
     \ALC@endgroup
 }
 
+\defALC@toplevel[\algorithmicglobals]{\GLOBALS} {globals}
+
 \newcommand{\BODY}[1][default]{%
     \ALC@endtoplevel
     \ALC@begingroup
@@ -264,50 +197,6 @@ __DATA__
             \ALC@endtoplevel
         \ALC@endgroup
     \ALC@endgroup
-}
-
-% #1 XML tag (while, if, elsif, for, forall)
-% #2 pre-condition keyword text
-% #3 condition
-% #4 comment (optional)
-% #5 post-condition keyword
-
-\newcommand{\ALC@begin@structure}[5]{%
-    \ALC@endtoplevel
-    \ALC@begingroup % LEVEL 1
-        \ALC@pushtag{#1}%
-        \ALC@start@condition
-            \ALC@pushtag{statement}%
-                #2 #3 #5\par
-            \ALC@popstack
-            \ALC@com{#4}\par
-        \ALC@end@condition
-        \ALC@begingroup % LEVEL 2
-            \ALC@pushtag{block}%
-}
-
-% #1 keyword text
-
-\newcommand{\ALC@end@structure}[1]{%
-            \ALC@endtoplevel
-        \ALC@endgroup  % LEVEL 2
-        \ifALC@noend\else
-            \ALC@line{#1}{}%
-        \fi
-    \ALC@endgroup % LEVEL
-}
-
-\newcommand{\ALC@start@condition}{%
-    \ALC@open{condition}%
-    \ALC@open{line}%
-    \ALC@addlineno
-    \ALC@begingroup
-}
-
-\newcommand{\ALC@end@condition}{%
-    \ALC@endgroup
-    \ALC@close{line}%
-    \ALC@close{condition}%
 }
 
 \newcommand{\WHILE}[2][default]{%
@@ -385,38 +274,30 @@ __DATA__
 
 \def\ENDLOOP{\ALC@end@structure{\algorithmicendloop}}
 
-% algpseudocode
-
-\let\State\STATE
-\let\For\FOR
-\let\EndFor\ENDFOR
-\let\Else\ELSE
-\let\Comment\COMMENT
-\let\If\IF
-\let\EndIf\ENDIF
-\let\ForAll\FORALL
-\let\Return\RETURN
-\let\Require\REQUIRE
-\let\While\WHILE
-\let\EndWhile\ENDWHILE
-\let\ElsIf\ELSIF
+\renewenvironment{algorithmic}[1][0]{
+    \par
+    \xmlpartag{}%
+    \def\\{\emptyXMLelement{br}}%
+    \ALC@frequency=#1\relax
+    \ifnum\ALC@frequency=\z@
+        \@ALCnumberedfalse
+    \else
+        \@ALCnumberedtrue
+        \c@ALC@line\z@
+        \c@ALC@rem\z@
+    \fi
+    % TBD: Do we need ALC@unique?
+    \ALC@begingroup
+        \ALC@pushtag{algorithm}%
+        \setXMLattribute{linenodelimiter}{\ALC@linenodelimiter}%
+}{%
+        \ALC@endtoplevel
+    \ALC@endgroup
+    \par
+}
 
 \TeXMLendPackage
 
 \endinput
 
 __END__
-
-https://codepen.io/pkra/pen/339d4c791a24ab6f57d157e0ac69d537
-
-Packages:
-
-algorithm.sty: Just defined algorithm float wrapper.
-algorithmic.sty: Defined algorithmic environment (this package)
-
-algorithmicx: extended algorithmic with more layout options
-algpseudocode: algorithmic layout style in algorithmicx
-
-algorithm2e: very different markup
-
-clrscode: ick

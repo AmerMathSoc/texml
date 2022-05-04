@@ -49,12 +49,15 @@ sub install ( $ ) {
     return;
 }
 
-
 1;
 
 __DATA__
 
+\TeXMLprovidesPackage{algorithmic}
+
 \DeclareSVGEnvironment{algorithmic}
+
+\TeXMLendPackage
 
 \endinput
 
