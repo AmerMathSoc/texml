@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Package::algorithm;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -81,6 +79,7 @@ __DATA__
     \def\@captype{algorithm}%
     \def\jats@graphics@element{graphic}
     \startXMLelement{\jats@figure@element}%
+    \set@float@fps@attribute{#1}%
     \addXMLid
 }{%
     \endXMLelement{\jats@figure@element}%
