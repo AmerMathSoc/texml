@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::ALGutils;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.0';
+use version; our $VERSION = qv '1.3.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -147,12 +147,15 @@ __DATA__
 \newif\ifALG@instructure
 \newif\ifALG@inblock
 
-\def\ALG@begin@statement{\maybe@st@rred\ALG@begin@statement@}
+%* = unnumbered line
+\def\ALG@begin@statement{\maybe@st@rred\ALG@begin@statement@}%SAFE
 
 \def\ALG@begin@statement@#1{%
-    \ALG@end@line
-    \ALG@end@condition
-    \ALG@begin@line@
+    \double@expand{%
+        \protect\ALG@end@line
+        \protect\ALG@end@condition
+        \protect\ALG@begin@line\ifst@rred*\fi
+    }%
     \ALG@begingroup
         \ALG@pushtag{#1}%
         \ALG@instatementtrue
@@ -164,12 +167,12 @@ __DATA__
     \fi
 }
 
-\def\ALG@begin@line{\maybe@st@rred\ALG@begin@line@}
-
 \newif\ifALG@startblock
 \def\ALG@startblocktrue{\global\let\ifALG@startblock\iftrue}
 \def\ALG@startblockfalse{\global\let\ifALG@startblock\iffalse}
 \ALG@startblockfalse
+
+\def\ALG@begin@line{\@ifstar\ALG@begin@line@\ALG@begin@line@@}
 
 \def\ALG@begin@line@{%
     \ALG@end@statement
@@ -181,7 +184,11 @@ __DATA__
     \ALG@begingroup
         \ALG@inlinetrue
         \ALG@pushtag{line}%
-        \ifst@rred \else \ALG@addlineno \fi
+}
+
+\def\ALG@begin@line@@{%
+    \ALG@begin@line@
+    \ALG@addlineno
 }
 
 \def\ALG@end@line{%
@@ -200,20 +207,35 @@ __DATA__
 
 \def\ALG@end@block{%
     \ALG@end@line
+    \ALG@end@condition % paranoia
     \ifALG@inblock
         \ALG@endgroup
     \fi
 }
 
-\def\ALG@begin@structure{\maybe@st@rred\ALG@begin@structure@}
+\def\ALG@begin@structure{\@ifstar\ALG@begin@structure@\ALG@begin@structure@@}
 
 \def\ALG@begin@structure@#1{%
     \ALG@end@condition
     \ALG@end@line%?
+    \ifALG@startblock
+        \ALG@begin@block
+        \ALG@startblockfalse
+    \fi
     \ALG@begingroup
+        % First, erase the memory of enclosing structures.
+        \ALG@inlinefalse
+        \ALG@instatementfalse
+        \ALG@inconditionfalse
+        \ALG@inblockfalse
+        % Then start the new one.
         \ALG@pushtag{#1}%
         \ALG@instructuretrue
-        \ifst@rred\else\ALG@begin@condition\fi
+}
+
+\def\ALG@begin@structure@@#1{%
+    \ALG@begin@structure@{#1}%
+    \ALG@begin@condition
 }
 
 \def\ALG@end@structure{%
@@ -267,7 +289,7 @@ __DATA__
     \fi
 }
 
-\def\def@ALG@statement{\maybe@st@rred\def@ALG@statement@}
+\def\def@ALG@statement{\maybe@st@rred\def@ALG@statement@}% SAFE
 
 \newcommand{\def@ALG@statement@}[3][]{%
     \edef#2{%
@@ -285,10 +307,12 @@ __DATA__
 % #4 comment (optional)
 % #5 post-condition keyword
 
-\newcommand{\ALG@open@structure}{\maybe@st@rred\ALG@open@structure@}
+\newcommand{\ALG@open@structure}{\maybe@st@rred\ALG@open@structure@}%SAFE?
 
 \newcommand{\ALG@open@structure@}[5]{%
-    \ALG@begin@structure@{#1}% \ifst@rred already set
+    \double@expand{%
+        \protect\ALG@begin@structure\ifst@rred*\fi{#1}%
+    }
     \ALG@begin@line
     \ALG@begingroup
         % Begin statement manually so we don't prematurely close the condition.
@@ -303,7 +327,6 @@ __DATA__
 % #1 keyword text
 
 \newcommand{\ALG@close@structure}[1]{%
-    \ALG@end@condition % paranoia
     \ALG@end@block
     \ifALG@noend\else
         \if###1##\else
