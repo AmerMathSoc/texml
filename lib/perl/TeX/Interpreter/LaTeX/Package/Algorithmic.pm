@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.2.2';
+use version; our $VERSION = qv '2.2.3';
 
 use TeX::Constants qw(:named_args);
 
@@ -212,11 +212,11 @@ __DATA__
 
 \def\ENDLOOP{\ALG@close@structure{\algorithmicendloop}}
 
-######################################################################
-##                                                                  ##
-##                      IF-THEN-ELSIF-ELSE-FI                       ##
-##                                                                  ##
-######################################################################
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                      IF-THEN-ELSIF-ELSE-FI                       %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \def\ALC@close@IF{\protect \ALG@close {if}}
 
