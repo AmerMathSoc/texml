@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::ALGutils;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
+use version; our $VERSION = qv '1.2.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -58,13 +58,41 @@ __DATA__
 \newboolean{ALG@noend}
 \setboolean{ALG@noend}{false}
 
-\newif\if@ALG@numbered
-\@ALG@numberedfalse
+\newif\ifALG@numbered
+\ALG@numberedfalse
 
 \newcounter{ALG@frequency}
 
 \newcounter{ALG@line}      % counter for current line
 \newcounter{ALG@rem}       % counter for lines not printed
+
+\newcommand{\ALG@linenodelimiter}{:}
+
+\newenvironment{algorithmic}[1][0]{
+    \par
+    \xmlpartag{}%
+    \def\\{\emptyXMLelement{br}}%
+    \c@ALG@frequency=#1\relax
+    \ifnum\c@ALG@frequency=\z@
+        \ALG@numberedfalse
+    \else
+        \ALG@numberedtrue
+        \c@ALG@line\z@
+        \c@ALG@rem\z@
+    \fi
+    % TBD: Do we need ALC@unique?
+    \ALG@begingroup
+        \ALG@pushtag{algorithm}%
+        \setXMLattribute{linenodelimiter}{\ALG@linenodelimiter}%
+        \ALG@inlinefalse
+        \ALG@instatementfalse
+        \ALG@inconditionfalse
+        \ALG@instructurefalse
+}{%
+        \ALG@end@structure
+    \ALG@endgroup
+    \par
+}
 
 \def\ALG@NS{alg}
 
@@ -102,7 +130,6 @@ __DATA__
 \def\ALG@begingroup{%
     \begingroup
         \ALG@clearstack
-        \let\ALG@endtoplevel\@empty
 }
 
 \def\ALG@endgroup{%
@@ -112,8 +139,107 @@ __DATA__
 
 %% Top-level (sort of)
 
+% May not need all of these
+
+\newif\ifALG@inline
+\newif\ifALG@instatement
+\newif\ifALG@incondition
+\newif\ifALG@instructure
+\newif\ifALG@inblock
+
+\def\ALG@begin@statement{\maybe@st@rred\ALG@begin@statement@}
+
+\def\ALG@begin@statement@#1{%
+    \ALG@end@line
+    \ALG@end@condition
+    \ALG@begin@line@
+    \ALG@begingroup
+        \ALG@pushtag{#1}%
+        \ALG@instatementtrue
+}
+
+\def\ALG@end@statement{%
+    \ifALG@instatement
+        \ALG@endgroup
+    \fi
+}
+
+\def\ALG@begin@line{\maybe@st@rred\ALG@begin@line@}
+
+\newif\ifALG@startblock
+\def\ALG@startblocktrue{\global\let\ifALG@startblock\iftrue}
+\def\ALG@startblockfalse{\global\let\ifALG@startblock\iffalse}
+\ALG@startblockfalse
+
+\def\ALG@begin@line@{%
+    \ALG@end@statement
+    \ALG@end@line
+    \ifALG@startblock
+        \ALG@begin@block
+        \ALG@startblockfalse
+    \fi
+    \ALG@begingroup
+        \ALG@inlinetrue
+        \ALG@pushtag{line}%
+        \ifst@rred \else \ALG@addlineno \fi
+}
+
+\def\ALG@end@line{%
+    \ALG@end@statement
+    \ifALG@inline
+        \ALG@endgroup
+    \fi
+}
+
+\def\ALG@begin@block{%
+    \ALG@end@block
+    \ALG@begingroup
+        \ALG@inblocktrue
+        \ALG@pushtag{block}%
+}
+
+\def\ALG@end@block{%
+    \ALG@end@line
+    \ifALG@inblock
+        \ALG@endgroup
+    \fi
+}
+
+\def\ALG@begin@structure{\maybe@st@rred\ALG@begin@structure@}
+
+\def\ALG@begin@structure@#1{%
+    \ALG@end@condition
+    \ALG@end@line%?
+    \ALG@begingroup
+        \ALG@pushtag{#1}%
+        \ALG@instructuretrue
+        \ifst@rred\else\ALG@begin@condition\fi
+}
+
+\def\ALG@end@structure{%
+    \ALG@end@condition
+    \ALG@end@line
+    \ifALG@instructure
+        \ALG@endgroup
+    \fi
+}
+
+\def\ALG@begin@condition{%
+    \ALG@end@line
+    \ALG@begingroup
+        \ALG@pushtag{condition}%
+        \ALG@inconditiontrue
+}
+
+\def\ALG@end@condition{%
+    \ALG@end@line
+    \ifALG@incondition
+        \ALG@endgroup
+    \fi
+}
+
 \def\ALG@addlineno{%
-    \if@ALG@numbered
+    \ifALG@numbered
         \refstepcounter{ALG@line}%
         \stepcounter{ALG@rem}%
         \ifnum\c@ALG@rem=\c@ALG@frequency
@@ -136,79 +262,55 @@ __DATA__
 
 \newcommand{\ALG@com}[1]{%
     \if###1##\else
+        \ALG@end@statement
         \par\ALG@open{comment}#1\ALG@close{comment}\par
     \fi
 }
 
-\def\def@ALG@statement{\maybe@st@rred{\def@ALG@statement@}}
-
-\def\patch@ALG@comments{\let\Comment\ALG@com}
+\def\def@ALG@statement{\maybe@st@rred\def@ALG@statement@}
 
 \newcommand{\def@ALG@statement@}[3][]{%
     \edef#2{%
-        \@nx\ALG@endtoplevel
-\@nx\patch@ALG@comments
-        \@nx\ALG@begingroup
-            \let\@nx\ALG@endtoplevel\@nx\ALG@endtoplevel@
-            \@nx\ALG@pushtag{line}%
-            \ifst@rred\else
-                \@nx\ALG@addlineno
-            \fi
-            \@nx\ALG@begingroup
-                \let\@nx\ALG@endtoplevel\@nx\ALG@endtoplevel@
-                \@nx\ALG@pushtag{#3}%
-                \if###1##\else
-                    \@nx#1
-                \fi
+        \@nx\ALG@begin@statement\ifst@rred*\fi{#3}%
+        \if###1##\else
+            \@nx#1
+        \fi
     }%
 }
 
-\let\ALG@endtoplevel\@empty
-\def\ALG@endtoplevel@{\ALG@endgroup\ALG@endgroup}
-
+% *  no <condition>
 % #1 XML tag (while, if, elsif, for, forall)
 % #2 pre-condition keyword text
 % #3 condition
 % #4 comment (optional)
 % #5 post-condition keyword
 
-\newcommand{\ALG@begin@structure}[5]{%
-    \ALG@endtoplevel
-    \ALG@begingroup % LEVEL 1
-\patch@ALG@comments
-        \ALG@pushtag{#1}%
-        \ALG@start@condition
-            \ALG@pushtag{statement}%
-                #2 #3 #5\par
-            \ALG@popstack
+\newcommand{\ALG@open@structure}{\maybe@st@rred\ALG@open@structure@}
+
+\newcommand{\ALG@open@structure@}[5]{%
+    \ALG@begin@structure@{#1}% \ifst@rred already set
+    \ALG@begin@line
+    \ALG@begingroup
+        % Begin statement manually so we don't prematurely close the condition.
+        \ALG@pushtag{statement}% maybe just a line here?
+            \ALG@instatementtrue
+            #2 #3 #5\par
             \ALG@com{#4}%
-        \ALG@end@condition
-        \ALG@begingroup % LEVEL 2
-            \ALG@pushtag{block}%
+        % Can't end the condition here because there might be a \Comment
+        \ALG@startblocktrue
 }
 
 % #1 keyword text
 
-\newcommand{\ALG@end@structure}[1]{%
-            \ALG@endtoplevel
-        \ALG@endgroup  % LEVEL 2
-        \ifALG@noend\else
+\newcommand{\ALG@close@structure}[1]{%
+    \ALG@end@condition % paranoia
+    \ALG@end@block
+    \ifALG@noend\else
+        \if###1##\else
             \ALG@line{#1}{}%
         \fi
-    \ALG@endgroup % LEVEL
-}
-
-\newcommand{\ALG@start@condition}{%
-    \ALG@open{condition}%
-    \ALG@open{line}%
-    \ALG@addlineno
-    \ALG@begingroup
-}
-
-\newcommand{\ALG@end@condition}{%
-    \ALG@endgroup
-    \ALG@close{line}%
-    \ALG@close{condition}%
+    \fi
+    \ALG@end@structure
 }
 
 \TeXMLendPackage
@@ -242,10 +344,12 @@ clrscode: ick
 ===========================================================================
 ===========================================================================
 
-  Structures: Structures nest inside each other
+  Structures: Structures nest inside each other, but a structure ends
+      a statement
 
         INPUTS...ENDINPUTS
         OUTPUTS...ENDOUTPUTS
+
         BODY...ENDBODY
         IF...ENDIF
         FOR...ENDFOR,
@@ -265,3 +369,13 @@ clrscode: ick
         PRINT
 
     Argument: \COMMENT    [Ends a statement, but not a line.]
+
+<algorithm>
+    (<inputs> | <outputs>)*
+    (<structure> | <line>)*
+</algorithm>
+
+<line>
+    <statement>
+    <comment>
+</line>

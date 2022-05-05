@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.1.0';
+use version; our $VERSION = qv '2.2.0';
 
 use TeX::Constants qw(:named_args);
 
@@ -89,8 +89,6 @@ __DATA__
 
 \let\algorithmicindent\dimen@
 
-\newcommand{\ALG@linenodelimiter}{:}
-
 \newcommand{\algorithmicrequire}{\textbf{Require:}}
 \newcommand{\algorithmicensure}{\textbf{Ensure:}}
 \newcommand{\algorithmicend}{\textbf{end}}
@@ -140,85 +138,62 @@ __DATA__
 \newcommand{\PRINT}{\STATE \algorithmicprint{} }
 \newcommand{\RETURN}{\STATE \algorithmicreturn{} }
 
-\def\algorithmiccomment#1{%
-    \ALG@endgroup
-    \ALG@begingroup
-        \let\ALG@endtoplevel\ALG@endtoplevel@
-        \ALG@pushtag{comment}#1%
-}
+% \def\algorithmiccomment#1{%
+%     \ALG@endgroup
+%     \ALG@begingroup
+%         \let\ALG@end@statement\ALG@end@statement@
+%         \ALG@pushtag{comment}#1%
+% }
+
+\newcommand{\algorithmiccomment}[1]{\ALG@com{#1}}
 
 \let\COMMENT\algorithmiccomment
 
 \newcommand{\INPUTS}[1][]{%
-    \ALG@endtoplevel
-    \ALG@begingroup
-        \ALG@pushtag{inputs}%
-        \ALG@line{\algorithmicinputs}{#1}%
-        \ALG@begingroup % LEVEL 2
-            \ALG@pushtag{block}%
+    \ALG@open@structure*{inputs}{\algorithmicinputs}{}{#1}{}%
 }
 
 \newcommand{\ENDINPUTS}{%
-            \ALG@endtoplevel
-        \ALG@endgroup
-    \ALG@endgroup
+    \ALG@close@structure{}%
 }
 
 \newcommand{\OUTPUTS}[1][]{%
-    \ALG@endtoplevel
-    \ALG@begingroup
-        \ALG@pushtag{outputs}%
-        \ALG@line{\algorithmicoutputs}{#1}%
-        \ALG@begingroup % LEVEL 2
-            \ALG@pushtag{block}%
+    \ALG@open@structure*{outputs}{\algorithmicoutputs}{}{#1}{}%
 }
 
-\newcommand{\ENDOUTPUTS}{%
-            \ALG@endtoplevel
-        \ALG@endgroup
-    \ALG@endgroup
-}
+\let\ENDOUTPUTS\ENDINPUTS
 
 \def@ALG@statement[\algorithmicglobals]{\GLOBALS} {globals}
 
 \newcommand{\BODY}[1][]{%
-    \ALG@endtoplevel
-    \ALG@begingroup
-        \ALG@pushtag{body}%
-        \ALG@line{\algorithmicbody}{#1}%
-        \ALG@begingroup % LEVEL 2
-            \ALG@pushtag{block}%
+    \ALG@open@structure*{body}{\algorithmicbody}{}{#1}{}%
 }
 
-\newcommand{\ENDBODY}{%
-            \ALG@endtoplevel
-        \ALG@endgroup
-    \ALG@endgroup
-}
+\let\ENDBODY\ENDINPUTS
 
 \newcommand{\WHILE}[2][]{%
-    \ALG@begin@structure{while}{\algorithmicwhile}{#2}{#1}{\algorithmicdo}
+    \ALG@open@structure{while}{\algorithmicwhile}{#2}{#1}{\algorithmicdo}
 }
 
-\def\ENDWHILE{\ALG@end@structure{\algorithmicendwhile}}
+\def\ENDWHILE{\ALG@close@structure{\algorithmicendwhile}}
 
 \let\ALC@end@else\@empty
 
 \newcommand{\IF}[2][]{%
-    \ALG@begin@structure{if}{\algorithmicif}{#2}{#1}{\algorithmicthen}
-    \let\ALC@end@else\@empty
+    \ALG@open@structure{if}{\algorithmicif}{#2}{#1}{\algorithmicthen}
 }
 
 \newcommand{\ELSIF}[2][]{%
-                \ALG@endtoplevel
+    \ALG@end@@block
+                \ALG@end@statement
             \ALC@end@else
         \ALG@endgroup % end the block (LEVEL 2)
         \let\ALC@end@else\ALG@endgroup % (LEVEL 1)
-        \ALG@begin@structure{elsif}{\algorithmicelsif}{#2}{#1}{\algorithmicthen}% LEVEL 3
+        \ALG@open@structure{elsif}{\algorithmicelsif}{#2}{#1}{\algorithmicthen}% LEVEL 3
 }
 
 \newcommand{\ELSE}[1][]{% No condition
-                \ALG@endtoplevel
+                \ALG@end@statement
             \ALC@end@else
         \ALG@endgroup % end if block
         \let\ALC@end@else\ALG@endgroup
@@ -230,7 +205,7 @@ __DATA__
 }
 
 \def\ENDIF{%
-                \ALG@endtoplevel
+                \ALG@end@statement
             \ALC@end@else
         \ALG@endgroup % END BLOCK (LEVEL 2)
         \ifALG@noend\else
@@ -240,60 +215,40 @@ __DATA__
 }
 
 \newcommand{\FOR}[2][]{%
-    \ALG@begin@structure{for}{\algorithmicfor}{#2}{#1}{\algorithmicdo}
+    \ALG@open@structure{for}{\algorithmicfor}{#2}{#1}{\algorithmicdo}
 }
 
 \newcommand{\FORALL}[2][]{%
-    \ALG@begin@structure{forall}{\algorithmicforall}{#2}{#1}{\algorithmicdo}
+    \ALG@open@structure{forall}{\algorithmicforall}{#2}{#1}{\algorithmicdo}
 }
 
-\def\ENDFOR{\ALG@end@structure{\algorithmicendfor}}
+\def\ENDFOR{\ALG@close@structure{\algorithmicendfor}}
 
 \newcommand{\LOOP}[1][]{% No condition
-    \ALG@begin@structure{loop}{\algorithmicloop}{}{#1}{}%
+    \ALG@open@structure{loop}{\algorithmicloop}{}{#1}{}%
 }
 
 \newcommand{\REPEAT}[1][]{% No condition
-    \ALG@begin@structure{repeat}{\algorithmicrepeat}{}{#1}{}%
+    \ALG@open@structure{repeat}{\algorithmicrepeat}{}{#1}{}%
 }
 
 \newcommand{\UNTIL}[1]{%
-            \ALG@endtoplevel
-        \ALG@endgroup
+        \ALG@end@condition % paranoia
+        \ALG@end@block
         \ALG@begingroup
             \ALG@pushtag{until}%
-            \ALG@start@condition
-                \ALG@pushtag{statement}%
-                    \algorithmicuntil\ #1\par
-                \ALG@popstack
+            \ALG@begin@condition
+                \ALG@begin@line
+                \ALG@begingroup
+                    \ALG@pushtag{statement}%
+                    \ALG@instatementtrue
+                        \algorithmicuntil\ #1\par
             \ALG@end@condition
         \ALG@endgroup
     \ALG@endgroup
 }
 
-\def\ENDLOOP{\ALG@end@structure{\algorithmicendloop}}
-
-\newenvironment{algorithmic}[1][0]{
-    \par
-    \xmlpartag{}%
-    \def\\{\emptyXMLelement{br}}%
-    \c@ALG@frequency=#1\relax
-    \ifnum\c@ALG@frequency=\z@
-        \@ALG@numberedfalse
-    \else
-        \@ALG@numberedtrue
-        \c@ALG@line\z@
-        \c@ALG@rem\z@
-    \fi
-    % TBD: Do we need ALC@unique?
-    \ALG@begingroup
-        \ALG@pushtag{algorithm}%
-        \setXMLattribute{linenodelimiter}{\ALG@linenodelimiter}%
-}{%
-        \ALG@endtoplevel
-    \ALG@endgroup
-    \par
-}
+\def\ENDLOOP{\ALG@close@structure{\algorithmicendloop}}
 
 \TeXMLendPackage
 
