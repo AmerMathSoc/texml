@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.2.3';
+use version; our $VERSION = qv '2.2.4';
 
 use TeX::Constants qw(:named_args);
 
@@ -138,13 +138,7 @@ __DATA__
 \newcommand{\PRINT}{\STATE \algorithmicprint{} }
 \newcommand{\RETURN}{\STATE \algorithmicreturn{} }
 
-% \def\algorithmiccomment#1{%
-%     \ALG@endgroup
-%     \ALG@begingroup
-%         \let\ALG@end@statement\ALG@end@statement@
-%         \ALG@pushtag{comment}#1%
-% }
-
+\let\algorithmiccomment\relax
 \newcommand{\algorithmiccomment}[1]{\ALG@com{#1}}
 
 \let\COMMENT\algorithmiccomment
