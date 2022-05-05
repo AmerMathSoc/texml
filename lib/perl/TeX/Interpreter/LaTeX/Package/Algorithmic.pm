@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.2.1';
+use version; our $VERSION = qv '2.2.2';
 
 use TeX::Constants qw(:named_args);
 
@@ -177,30 +177,6 @@ __DATA__
 
 \def\ENDWHILE{\ALG@close@structure{\algorithmicendwhile}}
 
-\let\ALC@end@else\@empty
-
-\newcommand{\IF}[2][]{%
-    \ALG@begingroup
-        \ALG@open@structure{if}{\algorithmicif}{#2}{#1}{\algorithmicthen}
-}
-
-\newcommand{\ELSIF}[2][]{%
-    \ALG@end@block
-    \ALG@endgroup
-    \ALG@open@structure{elsif}{\algorithmicelsif}{#2}{#1}{}%
-}
-
-\newcommand{\ELSE}[1][]{% No condition
-    \ALG@end@block
-    \ALG@endgroup
-    \ALG@open@structure{else}{\algorithmicelse}{}{#1}{}%
-}
-
-\def\ENDIF{%
-    \ALG@close@structure{\algorithmicendif}
-    \ALG@endgroup
-}
-
 \newcommand{\FOR}[2][]{%
     \ALG@open@structure{for}{\algorithmicfor}{#2}{#1}{\algorithmicdo}
 }
@@ -235,6 +211,42 @@ __DATA__
 }
 
 \def\ENDLOOP{\ALG@close@structure{\algorithmicendloop}}
+
+######################################################################
+##                                                                  ##
+##                      IF-THEN-ELSIF-ELSE-FI                       ##
+##                                                                  ##
+######################################################################
+
+\def\ALC@close@IF{\protect \ALG@close {if}}
+
+\newcommand{\IF}[2][]{%
+    \ALG@open@structure{if}{\algorithmicif}{#2}{#1}{\algorithmicthen}
+}
+
+\newcommand{\ELSIF}[2][]{%
+    \ALG@end@block
+    \ifx\ALG@tagstack\ALC@close@IF\else
+        \ALG@endgroup
+    \fi
+    \ALG@open@structure{elsif}{\algorithmicelsif}{#2}{#1}{\algorithmicthen}%
+}
+
+\newcommand{\ELSE}[1][]{% No condition
+    \ALG@end@block
+    \ifx\ALG@tagstack\ALC@close@IF\else
+        \ALG@endgroup
+    \fi
+    \ALG@open@structure*{else}{\algorithmicelse}{}{#1}{}%
+}
+
+\def\ENDIF{%
+    \ALG@end@block
+    \ifx\ALG@tagstack\ALC@close@IF\else
+        \ALG@endgroup
+    \fi
+    \ALG@close@structure{\algorithmicendif}
+}
 
 \TeXMLendPackage
 
