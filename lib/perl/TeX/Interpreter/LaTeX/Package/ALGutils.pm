@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::ALGutils;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.1';
+use version; our $VERSION = qv '1.3.2';
 
 sub install ( $ ) {
     my $class = shift;
@@ -214,6 +214,7 @@ __DATA__
 \def\ALG@end@block{%
     \ALG@end@line
     \ALG@end@condition % paranoia
+    \ALG@startblockfalse
     \ifALG@inblock
         \ALG@endgroup
     \fi
