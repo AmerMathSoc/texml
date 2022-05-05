@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::ALGutils;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.0';
+use version; our $VERSION = qv '1.3.1';
 
 sub install ( $ ) {
     my $class = shift;
@@ -63,10 +63,15 @@ __DATA__
 
 \newcounter{ALG@frequency}
 
-\newcounter{ALG@line}      % counter for current line
-\newcounter{ALG@rem}       % counter for lines not printed
+\ifx\c@ALG@line\undefined
+    \newcounter{ALG@line}      % counter for current line
+    \newcounter{ALG@rem}       % counter for lines not printed
+\fi
 
 \newcommand{\ALG@linenodelimiter}{:}
+
+\let\algorithmic\relax
+\let\endalgorithmic\relax
 
 \newenvironment{algorithmic}[1][0]{
     \par
@@ -163,6 +168,7 @@ __DATA__
 
 \def\ALG@end@statement{%
     \ifALG@instatement
+        \par
         \ALG@endgroup
     \fi
 }
