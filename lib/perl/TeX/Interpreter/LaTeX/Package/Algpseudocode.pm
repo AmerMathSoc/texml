@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algpseudocode;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
+use version; our $VERSION = qv '1.2.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -99,7 +99,7 @@ __DATA__
 \let\Comment\COMMENT
 \let\State\STATE
 
-\defALC@toplevel*{\Statex}{statement}
+\def@ALG@statement*{\Statex}{statement}
 
 \let\While\WHILE
 \let\EndWhile\ENDWHILE
@@ -123,46 +123,23 @@ __DATA__
 \let\Else\ELSE
 
 \newcommand{\Procedure}[2]{% #1 = procedure name; #2 = args
-    \ALG@endtoplevel
-\patch@ALC@comments
-    \ALG@begingroup % LEVEL 1
-        \ALG@pushtag{procedure}%
-        \ALG@line{%
-            \algorithmicprocedure\ \textproc{#1}
-            \if###2##\else(#2)\fi
-        }{}%
-        \ALG@begingroup % LEVEL 2
-            \ALG@pushtag{block}%
+    \ALG@open@structure*{procedure}{\algorithmicprocedure}{%
+        \textproc{#1}\if###2##\else\space (#2)\fi
+    }{}{}%
 }
 
 \newcommand{\EndProcedure}{%
-            \ALG@endtoplevel
-        \ALG@endgroup  % LEVEL 2
-        \ifALG@noend\else
-            \ALG@line{\algorithmicend\ \algorithmicprocedure}{}%
-        \fi
-    \ALG@endgroup % LEVEL 1
+    \ALG@close@structure{\algorithmicend\ \algorithmicprocedure}
 }
 
-\newcommand{\Function}[2]{% #1 = function name; #2 = args
-    \ALG@endtoplevel
-    \ALG@begingroup % LEVEL 1
-        \ALG@pushtag{function}%
-        \ALG@line{%
-            \algorithmicfunction\ \textproc{#1}
-            \if###2##\else(#2)\fi
-        }{}%
-        \ALG@begingroup % LEVEL 2
-            \ALG@pushtag{block}%
+\newcommand{\Function}[2]{% #1 = procedure name; #2 = args
+    \ALG@open@structure*{function}{\algorithmicfunction}{%
+        \textproc{#1}\if###2##\else\space (#2)\fi
+    }{}{}%
 }
 
 \newcommand{\EndFunction}{%
-            \ALG@endtoplevel
-        \ALG@endgroup  % LEVEL 2
-        \ifALG@noend\else
-            \ALG@line{\algorithmicend\ \algorithmicfunction}{}%
-        \fi
-    \ALG@endgroup % LEVEL
+    \ALG@close@structure{\algorithmicend\ \algorithmicfunction}%
 }
 
 % *** OTHER DECLARATIONS
