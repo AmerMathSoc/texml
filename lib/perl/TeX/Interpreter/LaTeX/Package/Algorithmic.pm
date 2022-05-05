@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::Algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.2.0';
+use version; our $VERSION = qv '2.2.1';
 
 use TeX::Constants qw(:named_args);
 
@@ -180,37 +180,24 @@ __DATA__
 \let\ALC@end@else\@empty
 
 \newcommand{\IF}[2][]{%
-    \ALG@open@structure{if}{\algorithmicif}{#2}{#1}{\algorithmicthen}
+    \ALG@begingroup
+        \ALG@open@structure{if}{\algorithmicif}{#2}{#1}{\algorithmicthen}
 }
 
 \newcommand{\ELSIF}[2][]{%
-    \ALG@end@@block
-                \ALG@end@statement
-            \ALC@end@else
-        \ALG@endgroup % end the block (LEVEL 2)
-        \let\ALC@end@else\ALG@endgroup % (LEVEL 1)
-        \ALG@open@structure{elsif}{\algorithmicelsif}{#2}{#1}{\algorithmicthen}% LEVEL 3
+    \ALG@end@block
+    \ALG@endgroup
+    \ALG@open@structure{elsif}{\algorithmicelsif}{#2}{#1}{}%
 }
 
 \newcommand{\ELSE}[1][]{% No condition
-                \ALG@end@statement
-            \ALC@end@else
-        \ALG@endgroup % end if block
-        \let\ALC@end@else\ALG@endgroup
-        \ALG@begingroup
-            \ALG@pushtag{else}
-            \ALG@line{\algorithmicelse}{#1}%
-            \ALG@begingroup
-                \ALG@pushtag{block}%
+    \ALG@end@block
+    \ALG@endgroup
+    \ALG@open@structure{else}{\algorithmicelse}{}{#1}{}%
 }
 
 \def\ENDIF{%
-                \ALG@end@statement
-            \ALC@end@else
-        \ALG@endgroup % END BLOCK (LEVEL 2)
-        \ifALG@noend\else
-            \ALG@line{\algorithmicendif}{}
-        \fi
+    \ALG@close@structure{\algorithmicendif}
     \ALG@endgroup
 }
 
@@ -233,7 +220,6 @@ __DATA__
 }
 
 \newcommand{\UNTIL}[1]{%
-        \ALG@end@condition % paranoia
         \ALG@end@block
         \ALG@begingroup
             \ALG@pushtag{until}%
