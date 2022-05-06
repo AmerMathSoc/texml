@@ -97,12 +97,12 @@ sub do_HH_loop {
         ## For our purposes, t and b are equivalent to =.  I think.
 
         if ($char eq '-') {
-            $tex->add_css_class( [ qq{$css_selector TD:nth-child($col)},
-                                   qq{${css_prop}: $width solid $color;} ]);
+            $tex->add_css_rule( [ qq{$css_selector TD:nth-child($col)},
+                                  qq{${css_prop}: $width solid $color;} ]);
         }
         elsif ($char eq '=' || $char eq 't' || $char eq 'b') {
-            $tex->add_css_class( [ qq{$css_selector TD:nth-child($col)},
-                                   qq{${css_prop}: $width double $color;} ]);
+            $tex->add_css_rule( [ qq{$css_selector TD:nth-child($col)},
+                                  qq{${css_prop}: $width double $color;} ]);
         }
         else {
             $tex->print_err("Unexpected token '$token' in hhline");

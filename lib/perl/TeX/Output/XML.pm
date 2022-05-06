@@ -32,7 +32,7 @@ package TeX::Output::XML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.0';
+use version; our $VERSION = qv '1.3.0';
 
 use FindBin;
 
@@ -618,7 +618,7 @@ sub close_document {
 
     my $dom = $self->get_dom();
 
-    if (my @css_classes = $tex->get_css_classes()) {
+    if (my @css_rules = $tex->get_css_rules()) {
         my $job_name = $tex->get_job_name();
     
         my $css_file = "$job_name.css";
@@ -629,7 +629,7 @@ sub close_document {
             $tex->fatal_error("Can't open $css_file: $!");
         };
     
-        for my $item (@css_classes) {
+        for my $item (@css_rules) {
             my ($selector, $body) = @{ $item };
     
             if ($selector eq '@import') {
@@ -1154,7 +1154,7 @@ sub output_xml_node {
         my $ns    = $node->get_namespace();
         my $atts  = $node->get_attributes();
 
-        # if (my $classes = $node->list_css_classes()) {
+        # if (my $rules = $node->list_css_rules()) {
         #     $atts->{class} = $classes;
         # }
 

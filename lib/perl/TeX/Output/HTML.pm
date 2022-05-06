@@ -32,7 +32,7 @@ package TeX::Output::HTML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 use base qw(TeX::Output::XHTML);
 
@@ -89,16 +89,16 @@ sub close_document {
 
     my $tex = $self->get_tex_engine();
 
-    my %css_classes = %{ $tex->get_css_classes };
+    my %css_rules = %{ $tex->get_css_rules };
 
-    if (%css_classes) {
+    if (%css_rules) {
         my $dom = $self->get_dom();
 
         my $style = $dom->createElement("style");
 
         $style->setAttribute(type => "text/css");
 
-        while (my ($selector, $body) = each %css_classes) {
+        while (my ($selector, $body) = each %css_rules) {
             $style->appendText(qq{\n$selector { $body }});
         }
 

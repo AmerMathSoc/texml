@@ -200,7 +200,7 @@ my %newlines_per_par_of :COUNTER(:name<newlines_per_par> :default<2>);
 my %unicode_input_of :BOOLEAN(:name<unicode_input> :default<false>);
 my %unicode_output_of :BOOLEAN(:name<unicode_output> :default<true>);
 
-my %css_classes_of :ARRAY(:name<css_class> :getarray<get_css_classes>);
+my %css_rules_of :ARRAY(:name<css_rule>);
 
 ## The bindle attribute provides a place for clients to stash
 ## arbitrary bits of information.
@@ -11161,7 +11161,7 @@ my %xml_stack_of :ARRAY(:name<xml_stack>);
 sub __list_xml_extensions {
     my $tex = shift;
 
-    return qw(addCSSclass
+    return qw(addCSSrule
               addXMLclass
               addXMLcomment
               deleteXMLclass

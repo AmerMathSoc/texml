@@ -85,9 +85,9 @@ __DATA__
         \def\current@border@width{\the\arrayrulewidth}%
         \ifnum\alignrowno=\z@
             \advance\count@\@ne
-            \addCSSclass{\@selector}{border-top: \current@border@properties;}%
+            \addCSSrule{\@selector}{border-top: \current@border@properties;}%
         \else
-            \addCSSclass{\@selector}{border-bottom: \current@border@properties;}%
+            \addCSSrule{\@selector}{border-bottom: \current@border@properties;}%
         \fi
     \ifnum0=`{\fi}%
 }

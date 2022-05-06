@@ -153,32 +153,32 @@ __DATA__
         \nth@col{\the\@preamblecolno}%
     }%
     \ifx\@leftborderstyle\@empty\else
-        \addCSSclass{\@selector}{border-left: \@leftborderstyle;}%
+        \addCSSrule{\@selector}{border-left: \@leftborderstyle;}%
         \let\@leftborderstyle\@empty
     \fi
     \advance\@paddingleft\html@tabskip
     \html@tabskip\html@next@tabskip
-    \addCSSclass{\@selector}{padding-left: \the\@paddingleft;}%
+    \addCSSrule{\@selector}{padding-left: \the\@paddingleft;}%
     \@paddingleft\z@
     \ifx\@horizontalalign\@empty\else
-        \addCSSclass{\@selector}{text-align: \@horizontalalign;}%
+        \addCSSrule{\@selector}{text-align: \@horizontalalign;}%
         \let\@horizontalalign\@empty
     \fi
     \ifx\@verticalalign\@empty\else
-        \addCSSclass{\@selector}{vertical-align: \@verticalalign;}%
+        \addCSSrule{\@selector}{vertical-align: \@verticalalign;}%
         \let\@verticalalign\@empty
     \fi
     \ifx\@colwidth\@empty\else
-        \addCSSclass{\@selector}{width: \@colwidth;}%
+        \addCSSrule{\@selector}{width: \@colwidth;}%
         \let\@colwidth\@empty
     \fi
     %%
     \advance\@paddingright\extra@paddingright
-    \addCSSclass{\@selector}{padding-right: \the\@paddingright;}%
+    \addCSSrule{\@selector}{padding-right: \the\@paddingright;}%
     \@paddingright\z@
     \extra@paddingright\z@
     \ifx\@rightborderstyle\@empty\else
-        \addCSSclass{\@selector}{border-right: \@rightborderstyle;}%
+        \addCSSrule{\@selector}{border-right: \@rightborderstyle;}%
         \let\@rightborderstyle\@empty
     \fi
 }
@@ -191,7 +191,7 @@ __DATA__
 \newcommand{\rowcolor}[2][]{%
     \begingroup
         \edef\@selector{\@thistable\space \nth@row}%
-        \addCSSclass{\@selector}{background-color: \XCOLOR@SVG@color{#2};}%
+        \addCSSrule{\@selector}{background-color: \XCOLOR@SVG@color{#2};}%
     \endgroup
     \ignorespaces
 }
@@ -199,7 +199,7 @@ __DATA__
 \newcommand{\cellcolor}[2][]{%
     \begingroup
         \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
-        \addCSSclass{\@selector}{background-color: \XCOLOR@SVG@color{#2};}%
+        \addCSSrule{\@selector}{background-color: \XCOLOR@SVG@color{#2};}%
     \endgroup
     \ignorespaces
 }
@@ -207,7 +207,7 @@ __DATA__
 \newcommand{\set@cell@fg@color}[2][]{%
     \begingroup
         \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
-        \addCSSclass{\@selector}{color: \XCOLOR@SVG@color{#2};}%
+        \addCSSrule{\@selector}{color: \XCOLOR@SVG@color{#2};}%
     \endgroup
     \ignorespaces
 }
@@ -647,7 +647,7 @@ __DATA__
     \startXMLelement{table}%
     \addTBLRid
     \edef\@thistable{table\string##\@currentTBLRid}%
-    \addCSSclass{\@thistable}{border-collapse: collapse;}%
+    \addCSSrule{\@thistable}{border-collapse: collapse;}%
     \reset@border@style
     \leavevmode
     \let\\\@tabularcr
@@ -699,7 +699,7 @@ __DATA__
     \ifnum0=`{\fi}%
     \skip@#1%
     \dimen@\skip@
-    \addCSSclass{\@thistable\space \nth@row\space td}{padding-bottom: \the\dimen@;}%
+    \addCSSrule{\@thistable\space \nth@row\space td}{padding-bottom: \the\dimen@;}%
     \cr
 }
 
@@ -736,9 +736,9 @@ __DATA__
         \fi
         \ifnum\alignrowno=\z@
     \advance\count@\@ne %% TBD: Pretty sure this is superfluous
-            \addCSSclass{\@selector}{border-top: \current@border@properties;}%
+            \addCSSrule{\@selector}{border-top: \current@border@properties;}%
         \else
-            \addCSSclass{\@selector}{border-bottom: \current@border@properties;}%
+            \addCSSrule{\@selector}{border-bottom: \current@border@properties;}%
         \fi
         \ifx\@let@token\hline
             \aftergroup\@gobble
@@ -766,7 +766,7 @@ __DATA__
         \@tempcnta#2
         \advance\@tempcnta\@ne
         \@whilenum\count@<\@tempcnta\do{%
-            \addCSSclass{\@selector}{border-bottom: \current@border@properties;}%
+            \addCSSrule{\@selector}{border-bottom: \current@border@properties;}%
             \advance\count@\@ne
         }%
     \ifnum0=`{\fi}%

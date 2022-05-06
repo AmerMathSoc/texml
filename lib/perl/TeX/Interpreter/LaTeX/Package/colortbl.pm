@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Package::colortbl;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -86,7 +84,7 @@ __DATA__
     \begingroup
         \edef\@selector{\@thistable\space \nth@col{\the\@preamblecolno}}%
         \XC@raw@color#1{#2}%
-        \addCSSclass{\@selector}{background-color: \TML@current@color;}%
+        \addCSSrule{\@selector}{background-color: \TML@current@color;}%
     \endgroup
     \@gobbleopts
 }
@@ -101,7 +99,7 @@ __DATA__
 \def\TML@rowcolor#1#2{%
         \edef\@selector{\@thistable\space \nth@row}%
         \XC@raw@color#1{#2}%
-        \addCSSclass{\@selector}{background-color: \TML@current@color;}%
+        \addCSSrule{\@selector}{background-color: \TML@current@color;}%
         \kernel@ifnextchar[\TML@gobbleopt@a\TML@rowcolor@end
 }
 
@@ -125,7 +123,7 @@ __DATA__
     \begingroup
         \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
         \XC@raw@color#1{#2}%
-        \addCSSclass{\@selector}{background-color: \TML@current@color;}%
+        \addCSSrule{\@selector}{background-color: \TML@current@color;}%
     \endgroup
     \@gobbleopts
 }

@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Package::booktabs;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -78,9 +76,9 @@ __DATA__
     \edef\current@border@width{\the\@thisrulewidth}%
     \ifnum\alignrowno=\z@
         \advance\count@\@ne
-        \addCSSclass{\@selector}{border-top: \current@border@properties;}%
+        \addCSSrule{\@selector}{border-top: \current@border@properties;}%
     \else
-        \addCSSclass{\@selector}{border-bottom: \current@border@properties;}%
+        \addCSSrule{\@selector}{border-bottom: \current@border@properties;}%
     \fi
     \@BTswitch
 }

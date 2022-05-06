@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::addCSSclass;
+package TeX::Primitive::Extension::addCSSrule;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -38,8 +38,6 @@ use TeX::Class;
 
 use TeX::Constants qw(:named_args);
 
-use TeX::Node::XmlClassNode qw(:constants);
-
 sub execute {
     my $self = shift;
 
@@ -49,23 +47,7 @@ sub execute {
     my $selector = $tex->read_undelimited_parameter(EXPANDED);
     my $body     = $tex->read_undelimited_parameter(EXPANDED);
 
-#     $tex->DEBUG("selector = '$selector'");
-#     $tex->DEBUG("body     = '$body'");
-
-    $tex->add_css_class([ $selector, $body ]);
-
-# my @css_classes = $tex->get_css_classes();
-# 
-#         for my $item (@css_classes) {
-#             my ($selector, $body) = @{ $item };
-#     
-#             if ($selector eq '@import') {
-#                 print STDERR qq{$selector "$body"\n};
-#             } else {
-#                 print STDERR qq{$selector { $body }\n};
-#             }
-#         }
-#     
+    $tex->add_css_rule([ $selector, $body ]);
 
     return;
 }

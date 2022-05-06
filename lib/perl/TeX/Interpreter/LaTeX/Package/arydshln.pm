@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Package::arydshln;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -80,9 +78,9 @@ __DATA__
         \fi
         \ifnum\alignrowno=\z@
             \advance\count@\@ne
-            \addCSSclass{\@selector}{border-top: \current@border@properties;}%
+            \addCSSrule{\@selector}{border-top: \current@border@properties;}%
         \else
-            \addCSSclass{\@selector}{border-bottom: \current@border@properties;}%
+            \addCSSrule{\@selector}{border-bottom: \current@border@properties;}%
         \fi
         \ifx\@let@token\hline
             \aftergroup\@gobble
@@ -111,7 +109,7 @@ __DATA__
         \@tempcnta#2
         \advance\@tempcnta\@ne
         \@whilenum\count@<\@tempcnta\do{%
-            \addCSSclass{\@selector}{border-bottom: \current@border@properties;}%
+            \addCSSrule{\@selector}{border-bottom: \current@border@properties;}%
             \advance\count@\@ne
         }%
     \ifnum0=`{\fi}
