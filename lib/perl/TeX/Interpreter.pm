@@ -3373,15 +3373,6 @@ sub print_cmd_chr {
 
 my %input_stack_of :ARRAY(:name<input_stack> :type<InStateRecord>);
 
-## TBD: Are these the best names for these constants?
-
-use constant {
-    ALIGN_COLUMN_BOUNDARY  => 0,
-    ALIGN_NO_COLUMN =>  1000000,
-    ALIGN_PREAMBLE  => -1000000,
-    ALIGN_FLAG      =>   500000,
-};
-
 my %align_state_of :COUNTER(:name<align_state> :default<ALIGN_NO_COLUMN>);
 
 my %open_parens_of :COUNTER(:name<open_parens>);

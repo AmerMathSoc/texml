@@ -35,7 +35,7 @@ package TeX::Constants;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.1.0';
 
 use base qw(Exporter);
 
@@ -97,6 +97,17 @@ my %NAMED_ARGS = (
     );
 
 install named_args => %NAMED_ARGS;
+
+## TBD: Are these the best names for these constants?
+
+my %ALIGN_STATES =  (
+    ALIGN_COLUMN_BOUNDARY  => 0,
+    ALIGN_NO_COLUMN =>  1000000,
+    ALIGN_PREAMBLE  => -1000000,
+    ALIGN_FLAG      =>   500000,
+    );
+
+install align_states => %ALIGN_STATES;
 
 $EXPORT_TAGS{all} = [ map { @{ $_ } } values %EXPORT_TAGS ];
 
