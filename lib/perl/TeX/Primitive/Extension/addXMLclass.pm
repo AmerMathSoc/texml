@@ -47,8 +47,9 @@ sub execute {
     my $cur_tok = shift;
 
     my $value = $tex->read_undelimited_parameter(EXPANDED);
+    my $target; # TBD = $tex->read_undelimited_parameter(EXPANDED);
 
-    $tex->modify_xml_class($value, XML_ADD_CLASS);
+    $tex->modify_xml_class(XML_ADD_CLASS, $value, $target);
 
     return;
 }

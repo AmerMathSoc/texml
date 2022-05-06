@@ -32,11 +32,11 @@ package TeX::Output::XML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.0';
+use version; our $VERSION = qv '1.4.0';
 
 use FindBin;
 
-use List::Util qw(min);
+use List::Util qw(min uniq);
 
 use TeX::Utils::XML;
 
@@ -484,10 +484,15 @@ sub normalize_tables {
     my $row_tag = $tex->xml_table_row_tag();
     my $col_tag = $tex->xml_table_col_tag();
 
-    my $table_no = 0;
+    # my $table_no = 0; # For debugging only
 
     for my $table ($dom->findnodes("/descendant::${table_tag}")) {
-        $table_no++;
+        # $table_no++;
+
+        ## Note: Because of extensible preambles, we don't know what
+        ## the maximum number of columns in a row of a table is until
+        ## the entire table has been constructed.  That means we can't
+        ## add the filler cells in TeX::Interpreter::fin_col().
 
         my $max_cols = 0;
 
@@ -508,12 +513,23 @@ sub normalize_tables {
             }
         }
 
-        for (my $row_no = 0; $row_no < @rows; $row_no++) {
-            for ($num_cols[$row_no] + 1 .. $max_cols) {
-                # printf STDERR "Adding empty cell to table %d, row %d\n",
-                #     $table_no, $row_no;
+        for my $row (@rows) {
+            my $num_cols = shift;
 
-                $rows[$row_no]->appendChild($self->new_empty_cell($col_tag));
+            for my $col ($row->findnodes($col_tag)) {
+                my $col_span = $col->getAttribute('colspan');
+
+                $col_span = 1 unless defined $col_span;
+
+                $num_cols += $col_span;
+
+                if ($col->hasAttribute('hidden')) {
+                    $row->removeChild($col);
+                }
+            }
+
+            for ($num_cols + 1 .. $max_cols) {
+                $row->appendChild($self->new_empty_cell($col_tag));
             }
         }
     }
@@ -814,12 +830,23 @@ sub add_attribute {
 sub modify_class {
     my $self = shift;
 
-    my $value  = shift;
     my $opcode = shift;
+    my $value  = shift;
+    my $target = shift;
 
     my $qName = "class";
 
     my $current_element = $self->get_current_element();
+
+    if (nonempty($target)) {
+        my $node = $current_element;
+
+        while (defined $node && $target ne $node->nodeName()) {
+            $node = $node->parentNode();
+        }
+
+        $current_element = $node if defined $node;
+    }
 
     my $old_class = $current_element->getAttribute($qName);
 
@@ -848,10 +875,10 @@ sub modify_class {
         $self->err();
     }
 
-    my $new_class = join " ", @classes;
-
     if (@classes) {
-        $current_element->setAttribute($qName, join ' ', @classes);
+        my $new_class = join " ", uniq @classes;
+
+        $current_element->setAttribute($qName, join ' ', $new_class);
     } else {
         $current_element->removeAttribute($qName);
     }
@@ -1174,8 +1201,9 @@ sub output_xml_node {
     if ($node->isa("TeX::Node::XmlClassNode")) {
         my $value  = $node->get_value();
         my $opcode = $node->get_opcode();
+        my $target = $node->get_target();
 
-        $self->modify_class($value, $opcode);
+        $self->modify_class($opcode, $value, $target);
 
         return;
     }

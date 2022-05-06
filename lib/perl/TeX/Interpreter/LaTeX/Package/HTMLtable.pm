@@ -142,6 +142,13 @@ __DATA__
 
 %% Create a CSS rule for the current column:
 
+\def\set@CSS@prop#1#2{%
+    \xdef\@preamble{%
+        \@preamble
+        \addAtomicCSSclass{#1}{#2}{}%
+    }%
+}
+
 \def\add@column@css{%
     \edef\@selector{%
         \@thistable\space
@@ -153,32 +160,32 @@ __DATA__
         \nth@col{\the\@preamblecolno}%
     }%
     \ifx\@leftborderstyle\@empty\else
-        \addCSSrule{\@selector}{border-left: \@leftborderstyle;}%
+        \set@CSS@prop{border-left}{\@leftborderstyle}%
         \let\@leftborderstyle\@empty
     \fi
     \advance\@paddingleft\html@tabskip
     \html@tabskip\html@next@tabskip
-    \addCSSrule{\@selector}{padding-left: \the\@paddingleft;}%
+    \set@CSS@prop{padding-left}{\the\@paddingleft}%
     \@paddingleft\z@
     \ifx\@horizontalalign\@empty\else
-        \addCSSrule{\@selector}{text-align: \@horizontalalign;}%
+        \set@CSS@prop{text-align}{\@horizontalalign}%
         \let\@horizontalalign\@empty
     \fi
     \ifx\@verticalalign\@empty\else
-        \addCSSrule{\@selector}{vertical-align: \@verticalalign;}%
+        \set@CSS@prop{vertical-align}{\@verticalalign}%
         \let\@verticalalign\@empty
     \fi
     \ifx\@colwidth\@empty\else
-        \addCSSrule{\@selector}{width: \@colwidth;}%
+        \set@CSS@prop{width}{\@colwidth}%
         \let\@colwidth\@empty
     \fi
     %%
     \advance\@paddingright\extra@paddingright
-    \addCSSrule{\@selector}{padding-right: \the\@paddingright;}%
+    \set@CSS@prop{padding-right}{\the\@paddingright}%
     \@paddingright\z@
     \extra@paddingright\z@
     \ifx\@rightborderstyle\@empty\else
-        \addCSSrule{\@selector}{border-right: \@rightborderstyle;}%
+        \set@CSS@prop{border-right}{\@rightborderstyle}%
         \let\@rightborderstyle\@empty
     \fi
 }
@@ -191,7 +198,7 @@ __DATA__
 \newcommand{\rowcolor}[2][]{%
     \begingroup
         \edef\@selector{\@thistable\space \nth@row}%
-        \addCSSrule{\@selector}{background-color: \XCOLOR@SVG@color{#2};}%
+        \addAtomicCSSclass{background-color}{\XCOLOR@SVG@color{#2}}{}%
     \endgroup
     \ignorespaces
 }
@@ -199,7 +206,7 @@ __DATA__
 \newcommand{\cellcolor}[2][]{%
     \begingroup
         \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
-        \addCSSrule{\@selector}{background-color: \XCOLOR@SVG@color{#2};}%
+        \addAtomicCSSclass{background-color}{\XCOLOR@SVG@color{#2}}{}%
     \endgroup
     \ignorespaces
 }
@@ -207,7 +214,7 @@ __DATA__
 \newcommand{\set@cell@fg@color}[2][]{%
     \begingroup
         \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
-        \addCSSrule{\@selector}{color: \XCOLOR@SVG@color{#2};}%
+        \addAtomicCSSclass{color}{\XCOLOR@SVG@color{#2}}{}%
     \endgroup
     \ignorespaces
 }
@@ -645,14 +652,14 @@ __DATA__
     \xmlpartag{}%
     \let\@footnotetext\tab@footnotetext
     \startXMLelement{table}%
-    \addTBLRid
-    \edef\@thistable{table\string##\@currentTBLRid}%
-    \addCSSrule{\@thistable}{border-collapse: collapse;}%
-    \reset@border@style
-    \leavevmode
-    \let\\\@tabularcr
-    \m@th
-    \@ifnextchar[\@array{\@array[c]}%
+        \addTBLRid
+        \edef\@thistable{table\string##\@currentTBLRid}%
+            \addAtomicCSSclass{border-collapse}{collapse}{}%
+        \reset@border@style
+        \leavevmode
+        \let\\\@tabularcr
+        \m@th
+        \@ifnextchar[\@array{\@array[c]}%
 }
 
 %% Hooks for delarray.sty
@@ -681,11 +688,11 @@ __DATA__
 }
 
 \def\endtabular{%
-            \crcr
-        \egroup     % \ialign   (in \@preamble in \@array)
-    \endgroup       % \@array
-    \@arrayright
-    \par
+                \crcr
+            \egroup     % \ialign   (in \@preamble in \@array)
+        \endgroup       % \@array
+        \@arrayright
+        \par
     \endXMLelement{table}%
 }
 
@@ -699,7 +706,7 @@ __DATA__
     \ifnum0=`{\fi}%
     \skip@#1%
     \dimen@\skip@
-    \addCSSrule{\@thistable\space \nth@row\space td}{padding-bottom: \the\dimen@;}%
+    \addAtomicCSSclass{padding-bottom}{\the\dimen@}{}%
     \cr
 }
 
@@ -716,6 +723,7 @@ __DATA__
         \def\@rightborderstyle{none}%
         \@preamblecolno\aligncolno
         \tab@makepreamble{#2}%
+        \@preamble
         \let\protect\@typeset@protect
         #3%
     \endgroup
@@ -735,10 +743,9 @@ __DATA__
             \def\current@border@width{}%
         \fi
         \ifnum\alignrowno=\z@
-    \advance\count@\@ne %% TBD: Pretty sure this is superfluous
-            \addCSSrule{\@selector}{border-top: \current@border@properties;}%
+            \addAtomicCSSclass{border-top}{\current@border@properties}{}%
         \else
-            \addCSSrule{\@selector}{border-bottom: \current@border@properties;}%
+            \addAtomicCSSclass{border-bottom}{\current@border@properties}{}%
         \fi
         \ifx\@let@token\hline
             \aftergroup\@gobble
@@ -766,7 +773,7 @@ __DATA__
         \@tempcnta#2
         \advance\@tempcnta\@ne
         \@whilenum\count@<\@tempcnta\do{%
-            \addCSSrule{\@selector}{border-bottom: \current@border@properties;}%
+            \addAtomicCSSclass{border-bottom}{\current@border@properties}{}%
             \advance\count@\@ne
         }%
     \ifnum0=`{\fi}%

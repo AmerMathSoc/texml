@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.4.0';
+use version; our $VERSION = qv '1.5.0';
 
 use base qw(Exporter);
 
@@ -82,6 +82,8 @@ use Fcntl qw(:seek);
 use File::Basename;
 use File::Spec::Functions;
 
+use List::Util qw(all);
+
 use TeX::Utils::Unicode::Diacritics qw(apply_accent);
 
 use TeX::Utils::Misc;
@@ -116,7 +118,7 @@ use TeX::Node::XmlComment;
 use TeX::Node::XmlOpenNode;
 use TeX::Node::XmlCloseNode;
 use TeX::Node::XmlAttributeNode;
-use TeX::Node::XmlClassNode qw(:constants);
+use TeX::Node::XmlClassNode qw(:constants :factories);
 use TeX::Node::XmlImportNode;
 
 use TeX::Node::MathOpenNode;
@@ -1966,7 +1968,7 @@ sub __list_token_parameters {
     my $tex = shift;
 
     my @toks = qw(output every_par every_math every_display every_hbox
-                  every_vbox every_job every_cr err_help);
+                  every_vbox every_job every_cr every_align_row err_help);
 
     push @toks, qw(every_eof); # eTeX
 
@@ -7789,6 +7791,9 @@ sub init_row {
     $tex->set_alignspanno(1);
     $tex->set_aligncolno(1);
 
+    $tex->begin_token_list($tex->get_toks_list('every_align_row'),
+                           every_align_row_text);
+
     $tex->init_span($align);
 
     return;
@@ -7947,6 +7952,9 @@ sub fin_col {
             if (nonempty($col_tag)) {
                 $tex->start_xml_element($col_tag);
 
+                ## TBD: colspan=0 and rowspan=0 have special meanings
+                ## in HTML (but might not be widely supported?)
+
                 if ($num_rows > 0) {
                     if ($num_rows > 1) {
                         $tex->set_xml_attribute(rowspan => $num_rows);
@@ -7956,6 +7964,12 @@ sub fin_col {
                         $tex->set_xml_attribute(colspan => $num_cols);
                     }
                 }
+
+                # my $col_no = $tex->aligncolno();
+                # 
+                # for my $class ($align->get_column_classes($col_no)) {
+                #     $tex->modify_xml_class(XML_ADD_CLASS, $class);
+                # }
             }
 
             ## I don't think the mode actually matters for us.
@@ -7983,7 +7997,7 @@ sub fin_col {
                 $tex->__add_hidden_cell($span_record->top_row());
             }
 
-            if (@{ $head } ) {
+            if (! all { $_->isa("TeX::Node::XmlAttributeNode") } @{ $head } ) {
                 my $row_no = $tex->alignrowno();
                 my $col_no = $tex->aligncolno();
 
@@ -8246,7 +8260,7 @@ sub line_break {
 
         if (nonempty($qName)) {
             if (nonempty(my $class = $tex->this_xml_par_class())) {
-                $hbox->unshift_node(TeX::Node::XmlClassNode->new({ value => $class, opcode => XML_SET_CLASSES }));
+                $hbox->unshift_node(make_xml_class_node(XML_SET_CLASSES, $class));
             }
 
             $hbox->unshift_node(TeX::Node::XmlOpenNode->new({ qName => $qName }));
@@ -11296,11 +11310,11 @@ sub add_xml_comment {
 sub modify_xml_class {
     my $tex = shift;
 
-    my $value  = shift;
     my $opcode = shift;
+    my $value  = shift;
+    my $target = shift;
 
-    $tex->tail_append(TeX::Node::XmlClassNode->new({ value  => $value,
-                                                     opcode => $opcode }));
+    $tex->tail_append(make_xml_class_node($opcode, $value, $target));
 
     return;
 }
@@ -11350,6 +11364,22 @@ sub find_css_class {
     $tex->set_css_class($key, $css_class);
 
     return $css_class;
+}
+
+sub add_atomic_css_class {
+    my $tex = shift;
+
+    my $css_property   = shift;
+    my $property_value = shift;
+    my $target         = shift;
+
+    return unless nonempty($css_property) && nonempty($property_value);
+
+    my $css_class = $tex->find_css_class($css_property, $property_value);
+
+    $tex->modify_xml_class(XML_ADD_CLASS, $css_class, $target);
+
+    return;
 }
 
 ######################################################################
@@ -12427,13 +12457,13 @@ sub package_load_notification {
     my @options      = @_;
 
     $package_name =~ s{^.*::}{};
-    
+
     $tex->print_nl("Loading package '$package_name'");
-    
+
     if (@options) {
         $tex->print(" with options @options");
     }
-    
+
     $tex->print_ln();
 
     return;

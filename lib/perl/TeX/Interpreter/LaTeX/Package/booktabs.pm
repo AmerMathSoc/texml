@@ -76,9 +76,9 @@ __DATA__
     \edef\current@border@width{\the\@thisrulewidth}%
     \ifnum\alignrowno=\z@
         \advance\count@\@ne
-        \addCSSrule{\@selector}{border-top: \current@border@properties;}%
+        \addAtomicCSSclass{border-top}{\current@border@properties}{}%
     \else
-        \addCSSrule{\@selector}{border-bottom: \current@border@properties;}%
+        \addAtomicCSSclass{border-bottom}{\current@border@properties}{}%
     \fi
     \@BTswitch
 }

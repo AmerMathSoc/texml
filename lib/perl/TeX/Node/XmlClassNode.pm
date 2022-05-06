@@ -38,11 +38,15 @@ use TeX::Class;
 
 my %opcode_of :ATTR(:name<opcode>);
 
+my %target_of :ATTR(:name<target>);
+
 our %EXPORT_TAGS = (constants => [ qw(XML_SET_CLASSES
                                       XML_ADD_CLASS
-                                      XML_DELETE_CLASS) ]);
+                                      XML_DELETE_CLASS) ],
+                    factories => [ qw(make_xml_class_node) ],
+    );
 
-our @EXPORT_OK = @{ $EXPORT_TAGS{constants} };
+our @EXPORT_OK = (@{ $EXPORT_TAGS{constants} }, @{ $EXPORT_TAGS{factories} });
 
 our @EXPORT;
 
@@ -56,6 +60,17 @@ sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
     $self->set_qName("class");
+}
+
+sub make_xml_class_node {
+    my $opcode = shift;
+    my $value  = shift;
+    my $target = shift;
+
+    return __PACKAGE__->new({ opcode => $opcode,
+                              value  => $value,
+                              target => $target,
+                            });
 }
 
 1;

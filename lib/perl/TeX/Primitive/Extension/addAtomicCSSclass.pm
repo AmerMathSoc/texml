@@ -48,10 +48,11 @@ sub execute {
 
     my $css_property   = $tex->read_undelimited_parameter(EXPANDED);
     my $property_value = $tex->read_undelimited_parameter(EXPANDED);
+    my $target         = $tex->read_undelimited_parameter(EXPANDED);
 
     my $css_class = $tex->find_css_class($css_property, $property_value);
 
-    $tex->modify_xml_class($css_class, XML_ADD_CLASS);
+    $tex->modify_xml_class(XML_ADD_CLASS, $css_class, $target);
 
     return;
 }

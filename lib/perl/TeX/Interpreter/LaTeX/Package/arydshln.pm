@@ -78,9 +78,9 @@ __DATA__
         \fi
         \ifnum\alignrowno=\z@
             \advance\count@\@ne
-            \addCSSrule{\@selector}{border-top: \current@border@properties;}%
+            \addAtomicCSSclass{border-top}{\current@border@properties}{}%
         \else
-            \addCSSrule{\@selector}{border-bottom: \current@border@properties;}%
+            \addAtomicCSSclass{border-bottom}{\current@border@properties}{}%
         \fi
         \ifx\@let@token\hline
             \aftergroup\@gobble
@@ -109,7 +109,7 @@ __DATA__
         \@tempcnta#2
         \advance\@tempcnta\@ne
         \@whilenum\count@<\@tempcnta\do{%
-            \addCSSrule{\@selector}{border-bottom: \current@border@properties;}%
+            \addAtomicCSSclass{border-bottom}{\current@border@properties}{}%
             \advance\count@\@ne
         }%
     \ifnum0=`{\fi}

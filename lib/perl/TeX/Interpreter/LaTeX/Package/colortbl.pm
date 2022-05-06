@@ -84,7 +84,7 @@ __DATA__
     \begingroup
         \edef\@selector{\@thistable\space \nth@col{\the\@preamblecolno}}%
         \XC@raw@color#1{#2}%
-        \addCSSrule{\@selector}{background-color: \TML@current@color;}%
+        \addAtomicCSSclass{background-color}{\TML@current@color}{}%
     \endgroup
     \@gobbleopts
 }
@@ -99,7 +99,12 @@ __DATA__
 \def\TML@rowcolor#1#2{%
         \edef\@selector{\@thistable\space \nth@row}%
         \XC@raw@color#1{#2}%
-        \addCSSrule{\@selector}{background-color: \TML@current@color;}%
+        \double@expand{%
+            \global\everyalignrow{%
+                \addAtomicCSSclass{background-color}{\TML@current@color}{\the\xmltablerowtag}%
+            \global\everyalignrow{}%
+            }%
+        }%
         \kernel@ifnextchar[\TML@gobbleopt@a\TML@rowcolor@end
 }
 
@@ -123,7 +128,7 @@ __DATA__
     \begingroup
         \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
         \XC@raw@color#1{#2}%
-        \addCSSrule{\@selector}{background-color: \TML@current@color;}%
+        \addAtomicCSSclass{background-color}{\TML@current@color}{}%
     \endgroup
     \@gobbleopts
 }
