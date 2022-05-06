@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.1';
+use version; our $VERSION = qv '1.4.0';
 
 use base qw(Exporter);
 
@@ -199,8 +199,6 @@ my %newlines_per_par_of :COUNTER(:name<newlines_per_par> :default<2>);
 
 my %unicode_input_of :BOOLEAN(:name<unicode_input> :default<false>);
 my %unicode_output_of :BOOLEAN(:name<unicode_output> :default<true>);
-
-my %css_rules_of :ARRAY(:name<css_rule>);
 
 ## The bindle attribute provides a place for clients to stash
 ## arbitrary bits of information.
@@ -11162,6 +11160,7 @@ sub __list_xml_extensions {
     my $tex = shift;
 
     return qw(addCSSrule
+              addAtomicCSSclass
               addXMLclass
               addXMLcomment
               deleteXMLclass
@@ -11301,7 +11300,7 @@ sub modify_xml_class {
     my $opcode = shift;
 
     $tex->tail_append(TeX::Node::XmlClassNode->new({ value  => $value,
-                                                      opcode => $opcode }));
+                                                     opcode => $opcode }));
 
     return;
 }
@@ -11317,6 +11316,40 @@ sub import_xml_fragment {
                                                    }));
 
     return;
+}
+
+######################################################################
+##                                                                  ##
+##                          CSS EXTENSIONS                          ##
+##                                                                  ##
+######################################################################
+
+my %css_rules_of :ARRAY(:name<css_rule>);
+
+my %css_classes_of   :HASH(:name<css_class> :gethash<get_css_classes> :sethash<set_css_classes>);
+my %css_class_ctr_of :COUNTER(:name<css_class_ctr>);
+
+sub find_css_class {
+    my $tex = shift;
+
+    my $css_property   = shift;
+    my $property_value = shift;
+
+    my $key = qq{${css_property}: $property_value};
+
+    my $css_class = $tex->get_css_class($key);
+
+    return $css_class if nonempty($css_class);
+
+    my $id = $tex->incr_css_class_ctr();
+
+    $css_class = "texml_css_$id";
+
+    $tex->add_css_rule([ ".$css_class", $key ]);
+
+    $tex->set_css_class($key, $css_class);
+
+    return $css_class;
 }
 
 ######################################################################
