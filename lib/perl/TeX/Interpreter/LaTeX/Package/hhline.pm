@@ -57,6 +57,7 @@ sub do_HH_loop {
     my $row_number = $tex->alignrowno();
 
     my $css_prop = 'border-bottom';
+    $css_prop = 'border-top';
 
     if ($row_number == 0) {
         $css_prop = 'border-top';
@@ -92,17 +93,29 @@ sub do_HH_loop {
 
         my $top_row = $cur_align->top_row($row_number, $col);
 
-        my $css_selector = qq{$this_table TR:nth-child($top_row)};
+        # my $css_selector = qq{$this_table TR:nth-child($top_row)};
 
         ## For our purposes, t and b are equivalent to =.  I think.
 
         if ($char eq '-') {
-            $tex->add_css_rule( [ qq{$css_selector TD:nth-child($col)},
-                                  qq{${css_prop}: $width solid $color;} ]);
+            my $css_class = $tex->find_css_class(${css_prop},
+                                                 qq{$width solid $color});
+
+            my $align = $tex->get_cur_alignment();
+
+            $tex->__DEBUG("Adding $css_class to row $top_row, column $col");
+
+            $align->add_column_class($col, $css_class);
         }
         elsif ($char eq '=' || $char eq 't' || $char eq 'b') {
-            $tex->add_css_rule( [ qq{$css_selector TD:nth-child($col)},
-                                  qq{${css_prop}: $width double $color;} ]);
+            my $css_class = $tex->find_css_class(${css_prop},
+                                                 qq{$width double $color});
+
+            my $align = $tex->get_cur_alignment();
+
+            $tex->__DEBUG("Adding $css_class to row $top_row, column $col");
+
+            $align->add_column_class($col, $css_class);
         }
         else {
             $tex->print_err("Unexpected token '$token' in hhline");

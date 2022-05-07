@@ -32,7 +32,7 @@ package TeX::WEB2C;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.14.0';
+use version; our $VERSION = qv '1.13.0';
 
 use base qw(Exporter);
 
@@ -678,7 +678,6 @@ my %TOKEN_TYPES = (
     every_cr_text      => 14,
     mark_text          => 15,
     write_text         => 16,
-    every_align_row_text => 17,
     );
 
 install token_types => %TOKEN_TYPES;

@@ -876,7 +876,7 @@ sub modify_class {
     }
 
     if (@classes) {
-        my $new_class = join " ", uniq @classes;
+        my $new_class = join " ", sort { $a cmp $b } (uniq @classes);
 
         $current_element->setAttribute($qName, join ' ', $new_class);
     } else {

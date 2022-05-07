@@ -674,9 +674,11 @@ sub __declare_ARRAY( $$$ ) {
                 carp "*** DELETE: ${package}::${deleter}()";
             }
 
+            my @values = @{ $referent->{ID($_[0])} };
+
             $referent->{ID($_[0])} = [];
 
-            return;
+            return @values;
         };
     }
 

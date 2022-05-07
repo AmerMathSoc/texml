@@ -99,12 +99,13 @@ __DATA__
 \def\TML@rowcolor#1#2{%
         \edef\@selector{\@thistable\space \nth@row}%
         \XC@raw@color#1{#2}%
-        \double@expand{%
-            \global\everyalignrow{%
-                \addAtomicCSSclass{background-color}{\TML@current@color}{\the\xmltablerowtag}%
-            \global\everyalignrow{}%
-            }%
-        }%
+        \addRowCSSclass{background-color}{\TML@current@color}%
+        % \double@expand{%
+        %     \global\everyalignrow{%
+        %         \addAtomicCSSclass{background-color}{\TML@current@color}{\the\xmltablerowtag}%
+        %     \global\everyalignrow{}%
+        %     }%
+        % }%
         \kernel@ifnextchar[\TML@gobbleopt@a\TML@rowcolor@end
 }
 

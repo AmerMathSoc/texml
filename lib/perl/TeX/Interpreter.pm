@@ -82,7 +82,7 @@ use Fcntl qw(:seek);
 use File::Basename;
 use File::Spec::Functions;
 
-use List::Util qw(all);
+use List::Util qw(all uniq);
 
 use TeX::Utils::Unicode::Diacritics qw(apply_accent);
 
@@ -115,10 +115,8 @@ use TeX::Nodes qw(:factories);
 
 use TeX::Node::HListNode qw(new_null_box);
 use TeX::Node::XmlComment;
-use TeX::Node::XmlOpenNode;
-use TeX::Node::XmlCloseNode;
 use TeX::Node::XmlAttributeNode;
-use TeX::Node::XmlClassNode qw(:constants :factories);
+use TeX::Node::XmlClassNode qw(:constants);
 use TeX::Node::XmlImportNode;
 
 use TeX::Node::MathOpenNode;
@@ -1968,7 +1966,7 @@ sub __list_token_parameters {
     my $tex = shift;
 
     my @toks = qw(output every_par every_math every_display every_hbox
-                  every_vbox every_job every_cr every_align_row err_help);
+                  every_vbox every_job every_cr err_help);
 
     push @toks, qw(every_eof); # eTeX
 
@@ -7424,6 +7422,42 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
 
         return;
     }
+
+    my %row_classes_of :ARRAY(:name<row_class> :getarray<get_row_classes> :deletearray<delete_row_classes>);
+    my %col_classes_of :ARRAY(:name<col_class> :getarray<get_col_classes> :deletearray<delete_col_classes>);
+
+    sub add_column_class {
+        my $self = shift;
+
+        my $col_no = shift;
+        my $class  = shift;
+
+        my @classes;
+
+        if (defined(my $old_classes = $self->get_col_class($col_no))) {
+            @classes = @{ $old_classes };
+        }
+
+        push @classes, $class;
+
+        $self->set_col_class($col_no, \@classes);
+
+        return;
+    };
+
+    # sub get_column_classes {
+    #     my $self = shift;
+    # 
+    #     my $col_no = shift;
+    # 
+    #     my @classes;
+    # 
+    #     if (defined(my $classes = $self->get_col_class($col_no))) {
+    #         @classes = @{ $classes };
+    #     }
+    # 
+    #     return @classes;
+    # }
 }
 
 {
@@ -7455,11 +7489,13 @@ sub push_alignment {
 sub pop_alignment {
     my $tex = shift;
 
+    my $prev_align = $tex->get_cur_alignment();
+
     if (defined(my $align = $tex->pop_align_stack())) {
         $tex->set_cur_alignment($align);
     }
 
-    return;
+    return $prev_align;
 }
 
 sub incr_alignspanno {
@@ -7791,9 +7827,6 @@ sub init_row {
     $tex->set_alignspanno(1);
     $tex->set_aligncolno(1);
 
-    $tex->begin_token_list($tex->get_toks_list('every_align_row'),
-                           every_align_row_text);
-
     $tex->init_span($align);
 
     return;
@@ -7906,6 +7939,14 @@ sub fin_col {
         $tex->fatal_error("(interwoven alignment preambles are not allowed)");
     }
 
+    my $col_no = $tex->aligncolno();
+                
+    my $column_classes = $align->get_col_class($col_no);
+    $align->set_col_class($col_no, []);
+
+    my @x = @{ $column_classes || [] };
+    $tex->__DEBUG("column_classes = @x");
+
     my $next_col = $align->next_col();
 
     my $next_cmd = $cur_col->get_extra_info();
@@ -7949,29 +7990,6 @@ sub fin_col {
         if ($span_record->is_new()) {
             $span_record->set_top_row($tex->alignrowno());
 
-            if (nonempty($col_tag)) {
-                $tex->start_xml_element($col_tag);
-
-                ## TBD: colspan=0 and rowspan=0 have special meanings
-                ## in HTML (but might not be widely supported?)
-
-                if ($num_rows > 0) {
-                    if ($num_rows > 1) {
-                        $tex->set_xml_attribute(rowspan => $num_rows);
-                    }
-
-                    if ($num_cols > 1) {
-                        $tex->set_xml_attribute(colspan => $num_cols);
-                    }
-                }
-
-                # my $col_no = $tex->aligncolno();
-                # 
-                # for my $class ($align->get_column_classes($col_no)) {
-                #     $tex->modify_xml_class(XML_ADD_CLASS, $class);
-                # }
-            }
-
             ## I don't think the mode actually matters for us.
 
             my $cur_box = $tex->is_hmode() ? $tex->hpack($head, natural)
@@ -7980,7 +7998,30 @@ sub fin_col {
             $tex->tail_append($cur_box);
 
             if (nonempty($col_tag)) {
-                $tex->end_xml_element($col_tag);
+                my %atts;
+
+                ## TBD: colspan=0 and rowspan=0 have special meanings
+                ## in HTML (but might not be widely supported?)
+
+                if ($num_rows > 0) {
+                    if ($num_rows > 1) {
+                        $atts{rowspan} = $num_rows;
+                    }
+
+                    if ($num_cols > 1) {
+                        $atts{colspan} = $num_cols;
+                    }
+                }
+
+                if (defined($column_classes)) {
+                    my @classes = sort { $a cmp $b } uniq @{ $column_classes };
+
+                    $atts{class} = join " ", @classes;
+                }
+
+                $cur_box->unshift_node(new_xml_open_node($col_tag, \%atts));
+
+                $cur_box->push_node(new_xml_close_node($col_tag));
             }
 
             $tex->incr_aligncolno();
@@ -8040,16 +8081,19 @@ sub fin_row {
     my $cur_box = $tex->is_hmode() ? $tex->hpack($head, natural)
                                    : $tex->vpack($head, natural);
 
-    my $row_tag = $tex->xml_table_row_tag();
-
-    if (nonempty($row_tag)) {
-        $tex->start_xml_element($row_tag);
-    }
-
     $tex->tail_append($cur_box);
 
-    if (nonempty($row_tag)) {
-        $tex->end_xml_element($row_tag);
+    if (nonempty(my $row_tag = $tex->xml_table_row_tag())) {
+        my %atts;
+
+        my $align = $tex->get_cur_alignment();
+
+        if (my @classes = $align->delete_row_classes()) {
+            $atts{class} = join " ", sort { $a cmp $b } uniq @classes;
+        }
+
+        $cur_box->unshift_node(new_xml_open_node($row_tag, \%atts));
+        $cur_box->push_node(new_xml_close_node($row_tag));
     }
 
     if (! $tex->is_hmode()) {
@@ -8087,7 +8131,7 @@ sub fin_align {
     $tex->pop_save_stack();
     $tex->pop_save_stack();
 
-    $tex->pop_alignment();
+    my $align = $tex->pop_alignment();
 
     # @<Insert the current list into its environment@>;
 
@@ -8096,15 +8140,33 @@ sub fin_align {
     if ($tex->is_mmode()) {
         $tex->finish_align_in_display();
     } else {
-        my $head = $tex->pop_nest();
+        my @head = $tex->pop_nest();
 
-        my $table_tag = $tex->xml_table_tag();
+        my $final_row = $head[-1];
 
-        $tex->start_xml_element($table_tag) if nonempty $table_tag;
+        for (my $i = 0; $i < $final_row->num_nodes; $i++) {
+            my $node = $final_row->get_node($i);
+            $tex->__DEBUG("final_row[$i] = " . ref($node) . " '$node'");
+        }
 
-        $tex->tail_append(@{ $head });
+        for (my $i = 1; $i < $final_row->num_nodes() - 1; $i++) {
+            my $col     = $final_row->get_node($i);
+            $tex->__DEBUG(" +++ col[$i] = " . ref($col) . " '$col'");
 
-        $tex->end_xml_element($table_tag) if nonempty $table_tag;
+            my $classes = $align->get_col_class($i);
+
+            if (defined $classes) {
+                $col->get_node(0)->add_class(@{ $classes });
+                $tex->__DEBUG("Changing final row, column $i to '$col'");
+            }
+        }
+
+        if (nonempty(my $table_tag = $tex->xml_table_tag())) {
+            unshift @head, new_xml_open_node($table_tag);
+            push    @head, new_xml_close_node($table_tag);
+        }
+
+        $tex->tail_append(@head);
 
         if ($tex->is_vmode()) {
             $tex->build_page();
@@ -8263,9 +8325,9 @@ sub line_break {
                 $hbox->unshift_node(make_xml_class_node(XML_SET_CLASSES, $class));
             }
 
-            $hbox->unshift_node(TeX::Node::XmlOpenNode->new({ qName => $qName }));
+            $hbox->unshift_node(new_xml_open_node($qName));
 
-            $hbox->push_node(TeX::Node::XmlCloseNode->new({ qName => $qName }));
+            $hbox->push_node(new_xml_close_node($qName));
         }
     }
 
@@ -9539,11 +9601,11 @@ sub close_math_mode {
     return;
 }
 
-use constant XML_OPEN_ROMAN => TeX::Node::XmlOpenNode->new({ qName => 'roman' });
-use constant XML_CLOSE_ROMAN => TeX::Node::XmlCloseNode->new({ qName => 'roman' });
+use constant XML_OPEN_ROMAN  => new_xml_open_node('roman');
+use constant XML_CLOSE_ROMAN => new_xml_close_node('roman');
 
-use constant XML_OPEN_SMALLCAPS => TeX::Node::XmlOpenNode->new({ qName => 'sc' });
-use constant XML_CLOSE_SMALLCAPS => TeX::Node::XmlCloseNode->new({ qName => 'sc' });
+use constant XML_OPEN_SMALLCAPS  => new_xml_open_node('sc');
+use constant XML_CLOSE_SMALLCAPS => new_xml_close_node('sc');
 
 use constant EMPTY_MATH_NODE => new_unicode_string("");
 
@@ -11174,6 +11236,8 @@ sub __list_xml_extensions {
     my $tex = shift;
 
     return qw(addCSSrule
+              addColumnCSSclass
+              addRowCSSclass
               addAtomicCSSclass
               addXMLclass
               addXMLcomment
@@ -11253,13 +11317,11 @@ sub start_xml_element {
     my $tex = shift;
 
     my $qName = shift;
-    my $atts  = shift || {};
+    my $atts  = shift;
 
     $tex->push_xml_stack($qName);
 
-    $tex->tail_append(TeX::Node::XmlOpenNode->new({ qName => $qName,
-                                                     attribute => $atts,
-                                                   }));
+    $tex->tail_append(new_xml_open_node($qName, $atts));
 
     return;
 }
@@ -11269,7 +11331,7 @@ sub end_xml_element {
 
     my $qName = shift;
 
-    $tex->tail_append(TeX::Node::XmlCloseNode->new({ qName => $qName }));
+    $tex->tail_append(new_xml_close_node($qName));
 
     my $popped_qName = $tex->pop_xml_stack();
 
@@ -11290,9 +11352,7 @@ sub set_xml_attribute {
     my $qName  = shift;
     my $value = shift;
 
-    $tex->tail_append(TeX::Node::XmlAttributeNode->new({ qName => $qName,
-                                                          value => $value,
-                                                        }));
+    $tex->tail_append(new_xml_attribute_node($qName, $value));
 
     return;
 }

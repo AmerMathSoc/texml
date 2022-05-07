@@ -38,10 +38,28 @@ use TeX::Class;
 
 use TeX::Utils::Misc;
 
+use List::Util qw(uniq);
+
 my %namespace_of  :ATTR(:name<namespace>);
 my %attributes_of :HASH(:name<attribute>);
 
 use overload q{""}  => \&to_string;
+
+sub add_class {
+    my $self = shift;
+
+    my @new = @_;;
+
+    my $old = $self->get_attribute('class');
+
+    $old = "" unless defined $old;
+
+    my @classes = uniq (@new, split " ", $old);
+
+    $self->set_attribute(class => join " ", sort { $a cmp $b } @classes);
+
+    return;
+}
 
 sub to_string {
     my $self = shift;

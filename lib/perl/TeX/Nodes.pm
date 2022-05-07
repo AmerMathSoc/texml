@@ -54,6 +54,10 @@ our %EXPORT_TAGS = (factories => [ qw(new_character
                                       new_write_whatsit
                                       new_special
                                       new_language_mode
+                                      new_xml_open_node
+                                      new_xml_close_node
+                                      new_xml_attribute_node
+                                      make_xml_class_node
                                    ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{factories} } );
@@ -80,6 +84,9 @@ use TeX::Node::CloseNode;
 use TeX::Node::WriteNode;
 use TeX::Node::SpecialNode;
 use TeX::Node::LanguageNode;
+use TeX::Node::XmlOpenNode;
+use TeX::Node::XmlCloseNode;
+use TeX::Node::XmlClassNode;
 
 sub new_character {
     my $font = shift;
@@ -224,6 +231,41 @@ sub new_language {
     my $arg_hash = shift;
 
     return TeX::Node::LanguageNode->new($arg_hash);
+}
+
+sub new_xml_open_node {
+    my $qName = shift;
+    my $atts  = shift || {};
+
+    return TeX::Node::XmlOpenNode->new({ qName => $qName,
+                                         attribute => $atts,
+                                       });
+}
+
+sub new_xml_close_node {
+    my $qName = shift;
+
+    return TeX::Node::XmlCloseNode->new({ qName => $qName });
+}
+
+sub new_xml_attribute_node {
+    my $qName = shift;
+    my $value = shift;
+
+    return TeX::Node::XmlAttributeNode->new({ qName => $qName,
+                                              value => $value,
+                                            });
+}
+
+sub make_xml_class_node {
+    my $opcode = shift;
+    my $value  = shift;
+    my $target = shift;
+
+    return TeX::Node::XmlClassNode->new({ opcode => $opcode,
+                                          value  => $value,
+                                          target => $target,
+                                        });
 }
 
 1;
