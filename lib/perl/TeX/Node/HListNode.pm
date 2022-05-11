@@ -86,6 +86,15 @@ sub START {
     return;
 }
 
+sub get_head {
+    my $self = shift;
+
+    return $self->get_node(0);
+}
+
+## TBD: The rest of these (and the correpsonding attributes) should
+## probably be dropped.
+
 sub clear_dimensions {
     my $self = shift;
 
