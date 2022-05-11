@@ -658,7 +658,7 @@ __DATA__
     \ifnum0=`{\fi}%
     \skip@#1%
     \dimen@\skip@
-    %% TBD: This has to go on the td elements?
+    %% This will be moved to the <td>s by TeX::Interpreter::fin_row().
     \setRowCSSproperty{padding-bottom}{\the\dimen@}%
     \cr
 }
