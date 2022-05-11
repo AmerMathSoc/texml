@@ -71,6 +71,12 @@ sub install ( $ ) {
 
 __DATA__
 
+%% Restore value of \jot that is zeroed out when \@adjustvertspacing
+%% is invoked via \normalsize by \ExecuteOptions{10pt}.  There needs
+%% to be a better solution for this, but it is likely tricky.
+
+\jot=3pt
+
 \setXMLdoctype{-//NLM//DTD JATS (Z39.96) Journal Archiving and Interchange DTD with MathML3 v1.1d1 20130915//EN}
               {JATS-archivearticle1-mathml3.dtd}
 
