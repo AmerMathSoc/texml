@@ -32,7 +32,7 @@ package TeX::Output::XML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.4.0';
+use version; our $VERSION = qv '1.5.0';
 
 use FindBin;
 
@@ -492,20 +492,6 @@ sub normalize_disp_level {
     return
 }
 
-## Cf. the hidden cells in TeX::Interpreter::fin_col
-
-sub new_empty_cell {
-    my $self = shift;
-
-    my $col_tag = shift;
-
-    my $empty_cell = $self->createElement($col_tag);
-
-    $empty_cell->setAttribute('content-type' => 'filler');
-
-    return $empty_cell;
-}
-
 ## TODO: Should probably have a way to skip normalize_tables();
 
 sub normalize_tables {
@@ -519,55 +505,17 @@ sub normalize_tables {
     ## throughout the document!
 
     my $table_tag = $tex->xml_table_tag();
-    my $row_tag = $tex->xml_table_row_tag();
-    my $col_tag = $tex->xml_table_col_tag();
-
-    # my $table_no = 0; # For debugging only
+    my $row_tag   = $tex->xml_table_row_tag();
+    my $col_tag   = $tex->xml_table_col_tag();
 
     for my $table ($dom->findnodes("/descendant::${table_tag}")) {
-        # $table_no++;
-
-        ## Note: Because of extensible preambles, we don't know what
-        ## the maximum number of columns in a row of a table is until
-        ## the entire table has been constructed.  That means we can't
-        ## add the filler cells in TeX::Interpreter::fin_col().
-
-        my $max_cols = 0;
-
-        my @num_cols;
-
         my @rows = $table->findnodes($row_tag);
 
-        for (my $row_no = 0; $row_no < @rows; $row_no++) {
-            my @cols = $rows[$row_no]->findnodes($col_tag);
-
-            $num_cols[$row_no] = scalar @cols;
-
-            # printf STDERR "Table %d, row %d: %d cols\n",
-            #     $table_no, $row_no, $num_cols[$row_no];
-
-            if (@cols > $max_cols) {
-                $max_cols = @cols;
-            }
-        }
-
         for my $row (@rows) {
-            my $num_cols = shift;
-
             for my $col ($row->findnodes($col_tag)) {
-                my $col_span = $col->getAttribute('colspan');
-
-                $col_span = 1 unless defined $col_span;
-
-                $num_cols += $col_span;
-
                 if ($col->hasAttribute('hidden')) {
                     $row->removeChild($col);
                 }
-            }
-
-            for ($num_cols + 1 .. $max_cols) {
-                $row->appendChild($self->new_empty_cell($col_tag));
             }
         }
     }
