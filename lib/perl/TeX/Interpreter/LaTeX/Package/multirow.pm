@@ -40,6 +40,8 @@ sub install ( $ ) {
     my $tex     = shift;
     my @options = @_;
 
+    $tex->load_latex_package("multirow", @options);
+
     $tex->package_load_notification(__PACKAGE__, @options);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::multirow::DATA{IO});
@@ -53,7 +55,22 @@ __DATA__
 
 \TeXMLprovidesPackage{multirow}
 
-\def\multirow#1#2#3{\TeXMLrowspan #1 1 #3}
+%% TBD: Implement num_rows < 0
+
+% #1 = num_rows
+% %2 = bigstruts adjustment (ignored)
+% #3 = width
+% #4 = fixup (ignored)
+% #5 = text
+
+\def\@xmultirow#1[#2]#3[#4]#5{%
+    \TeXMLrowspan #1 1
+    \if*#3\else
+        \dimen@#3\relax
+        \setCSSproperty{width}{\the\dimen@}%
+    \fi
+    #5%
+}
 
 \TeXMLendPackage
 
