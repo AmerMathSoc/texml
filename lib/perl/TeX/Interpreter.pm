@@ -7227,6 +7227,8 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
 
     use TeX::Class;
 
+    use TeX::Utils::Misc;
+
     my %cols_of :ARRAY(:name<col> :type<AlignRecord>);
 
     my %col_ptr_of  :COUNTER(:name<col_ptr>  :default<0>);
@@ -7423,24 +7425,30 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
         return;
     }
 
-    my %row_classes_of :ARRAY(:name<row_class> :getarray<get_row_classes> :deletearray<delete_row_classes>);
-    my %col_classes_of :ARRAY(:name<col_class> :getarray<get_col_classes> :deletearray<delete_col_classes>);
+    my %row_css_properties_of :HASH(:name<row_property> :gethash<get_row_properties> :deletehash<delete_row_properties> :sethash<set_row_properties>);
 
-    sub add_column_class {
+    my %col_css_properties_of :ARRAY(:name<col_property> :getarray<get_col_properties> :deletearray<delete_col_properties>);
+
+    sub set_column_property {
         my $self = shift;
 
-        my $col_no = shift;
-        my $class  = shift;
+        my $col_no   = shift;
+        my $property = shift;
+        my $value    = shift;
 
-        my @classes;
+        next if empty($property);
 
-        if (defined(my $old_classes = $self->get_col_class($col_no))) {
-            @classes = @{ $old_classes };
+        my $properties = $self->get_col_property($col_no);
+
+        $properties ||= {};
+
+        if (empty($value)) {
+            delete $properties->{$property};
+        } else {
+            $properties->{$property} = $value;
         }
 
-        push @classes, $class;
-
-        $self->set_col_class($col_no, \@classes);
+        $self->set_col_property($col_no, $properties);
 
         return;
     };
@@ -7929,9 +7937,9 @@ sub __add_hidden_cell {
 sub fin_col {
     my $tex = shift;
 
-    my $align = $tex->get_cur_alignment();
+    my $align = $tex->get_cur_alignment(); # Alignment
 
-    my $cur_col = defined $align ? $align->cur_col() : undef;
+    my $cur_col = defined $align ? $align->cur_col() : undef; # AlignRecord
 
     $tex->confusion("endv") unless defined $cur_col;
 
@@ -7939,17 +7947,9 @@ sub fin_col {
         $tex->fatal_error("(interwoven alignment preambles are not allowed)");
     }
 
-    my $col_no = $tex->aligncolno();
-                
-    my $column_classes = $align->get_col_class($col_no);
-    $align->set_col_class($col_no, []);
-
-    my @x = @{ $column_classes || [] };
-    $tex->__DEBUG("column_classes = @x");
+    my $next_cmd = $cur_col->get_extra_info();
 
     my $next_col = $align->next_col();
-
-    my $next_cmd = $cur_col->get_extra_info();
 
     if (! (defined($next_col) || $next_cmd->("TeX::Primitive::cr")) ) {
         $tex->print_err("Extra alignment tab has been changed to ");
@@ -8001,7 +8001,8 @@ sub fin_col {
                 my %atts;
 
                 ## TBD: colspan=0 and rowspan=0 have special meanings
-                ## in HTML (but might not be widely supported?)
+                ## in HTML (but might not be widely supported?) so
+                ## maybe we need to support them.
 
                 if ($num_rows > 0) {
                     if ($num_rows > 1) {
@@ -8013,13 +8014,16 @@ sub fin_col {
                     }
                 }
 
-                if (defined($column_classes)) {
-                    my @classes = sort { $a cmp $b } uniq @{ $column_classes };
+                my $col_no = $tex->aligncolno();
+                
+                my $props = $align->get_col_property($col_no);
 
-                    $atts{class} = join " ", @classes;
-                }
+                $align->set_col_property($col_no, {});
 
-                $cur_box->unshift_node(new_xml_open_node($col_tag, \%atts));
+                $cur_box->unshift_node(new_xml_open_node($col_tag,
+                                                         \%atts,
+                                                         $props,
+                                       ));
 
                 $cur_box->push_node(new_xml_close_node($col_tag));
             }
@@ -8084,15 +8088,11 @@ sub fin_row {
     $tex->tail_append($cur_box);
 
     if (nonempty(my $row_tag = $tex->xml_table_row_tag())) {
-        my %atts;
-
         my $align = $tex->get_cur_alignment();
 
-        if (my @classes = $align->delete_row_classes()) {
-            $atts{class} = join " ", sort { $a cmp $b } uniq @classes;
-        }
+        my $props = $align->delete_row_properties();
 
-        $cur_box->unshift_node(new_xml_open_node($row_tag, \%atts));
+        $cur_box->unshift_node(new_xml_open_node($row_tag, undef, $props));
         $cur_box->push_node(new_xml_close_node($row_tag));
     }
 
@@ -8110,6 +8110,10 @@ sub fin_row {
 
     return;
 }
+
+my %prop_swap = ('border-top'  => 'border-bottom',
+                 'padding-top' => 'padding-bottom',
+    );
 
 sub fin_align {
     my $tex = shift;
@@ -8144,20 +8148,32 @@ sub fin_align {
 
         my $final_row = $head[-1];
 
-        for (my $i = 0; $i < $final_row->num_nodes; $i++) {
-            my $node = $final_row->get_node($i);
-            $tex->__DEBUG("final_row[$i] = " . ref($node) . " '$node'");
+        # $tex->__DEBUG("final_row = " . ref($final_row) . " '$final_row'");
+
+        my $final_row_open = $final_row->get_node(0);
+
+        if (defined(my $props = $align->delete_row_properties())) {
+            while (my ($k, $v) = each %{ $props }) {
+                $k = $prop_swap{$k} if exists $prop_swap{$k};
+                $final_row_open->set_property($k, $v);
+            }
         }
 
+        my @col_properties = $align->get_col_properties();
+
         for (my $i = 1; $i < $final_row->num_nodes() - 1; $i++) {
-            my $col     = $final_row->get_node($i);
-            $tex->__DEBUG(" +++ col[$i] = " . ref($col) . " '$col'");
+            my $col_tag = $final_row->get_node($i)->get_node(0);
 
-            my $classes = $align->get_col_class($i);
+            # $tex->__DEBUG("col_tag = $col_tag");
 
-            if (defined $classes) {
-                $col->get_node(0)->add_class(@{ $classes });
-                $tex->__DEBUG("Changing final row, column $i to '$col'");
+            if (defined(my $p = $col_properties[$i])) {
+                while (my ($k, $v) = each %{ $p }) {
+                    $k = $prop_swap{$k} if exists $prop_swap{$k};
+
+                    # $tex->__DEBUG("Setting $k = $v on column $i");
+
+                    $col_tag->set_property($k, $v);
+                }
             }
         }
 
@@ -11236,9 +11252,9 @@ sub __list_xml_extensions {
     my $tex = shift;
 
     return qw(addCSSrule
-              addColumnCSSclass
-              addRowCSSclass
-              addAtomicCSSclass
+              setColumnCSSproperty
+              setRowCSSproperty
+              setCSSproperty
               addXMLclass
               addXMLcomment
               deleteXMLclass
@@ -11357,6 +11373,52 @@ sub set_xml_attribute {
     return;
 }
 
+sub set_css_property {
+    my $tex = shift;
+
+    my $property = shift;
+    my $value    = shift;
+
+    $tex->tail_append(new_css_property_node($property, $value));
+
+    return;
+}
+
+sub set_row_css_property {
+    my $tex = shift;
+
+    my $property = shift;
+    my $value    = shift;
+
+    return if empty($property);
+
+    my $align = $tex->get_cur_alignment();
+
+    if (empty($value)) {
+        $align->delete_row_property($property);
+    } else {
+        $align->set_row_property($property, $value);
+    }
+
+    return;
+}
+
+sub set_column_css_property {
+    my $tex = shift;
+
+    my $col_no   = shift;
+    my $property = shift;
+    my $value    = shift;
+
+    return if empty($property);
+
+    my $align = $tex->get_cur_alignment();
+
+    $align->set_column_property($col_no, $property, $value);
+
+    return;
+}
+
 sub add_xml_comment {
     my $tex = shift;
 
@@ -11372,9 +11434,8 @@ sub modify_xml_class {
 
     my $opcode = shift;
     my $value  = shift;
-    my $target = shift;
 
-    $tex->tail_append(make_xml_class_node($opcode, $value, $target));
+    $tex->tail_append(make_xml_class_node($opcode, $value));
 
     return;
 }
@@ -11401,23 +11462,46 @@ sub import_xml_fragment {
 my %css_rules_of :ARRAY(:name<css_rule>);
 
 my %css_classes_of   :HASH(:name<css_class> :gethash<get_css_classes> :sethash<set_css_classes>);
-my %css_class_ctr_of :COUNTER(:name<css_class_ctr>);
+my %css_class_ctr_of :HASH(:name<css_class_ctr>);
+
+sub __make_class_name {
+    my $tex = shift;
+
+    my $ident = ident $tex;
+
+    my $property = shift;
+    my $value    = shift;
+
+    my $prefix = join "", map { substr($_, 0, 1) } split /-/, $property;
+
+    if ($value =~ m{^[a-z]}i) {
+        $prefix .= join "", map { substr($_, 0, 1) } split / /, $value;
+    }
+
+    $css_class_ctr_of{$ident}->{$prefix} ||= 0;
+
+    my $id = $css_class_ctr_of{$ident}->{$prefix}++;
+
+    $id = "" if $id == 0;
+
+    my $css_class = "${prefix}${id}";
+
+    return $css_class;
+}
 
 sub find_css_class {
     my $tex = shift;
 
-    my $css_property   = shift;
-    my $property_value = shift;
+    my $property = shift;
+    my $value    = shift;
 
-    my $key = qq{${css_property}: $property_value};
+    my $key = qq{${property}: $value};
 
     my $css_class = $tex->get_css_class($key);
 
     return $css_class if nonempty($css_class);
 
-    my $id = $tex->incr_css_class_ctr();
-
-    $css_class = "texml_css_$id";
+    $css_class = $tex->__make_class_name($property, $value);
 
     $tex->add_css_rule([ ".$css_class", $key ]);
 
@@ -11431,13 +11515,12 @@ sub add_atomic_css_class {
 
     my $css_property   = shift;
     my $property_value = shift;
-    my $target         = shift;
 
     return unless nonempty($css_property) && nonempty($property_value);
 
     my $css_class = $tex->find_css_class($css_property, $property_value);
 
-    $tex->modify_xml_class(XML_ADD_CLASS, $css_class, $target);
+    $tex->modify_xml_class(XML_ADD_CLASS, $css_class);
 
     return;
 }

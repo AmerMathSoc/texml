@@ -82,9 +82,8 @@ __DATA__
 
 \def\TML@columncolor#1#2{%
     \begingroup
-        \edef\@selector{\@thistable\space \nth@col{\the\@preamblecolno}}%
         \XC@raw@color#1{#2}%
-        \addAtomicCSSclass{background-color}{\TML@current@color}{}%
+        \setCSSproperty{background-color}{\TML@current@color}%
     \endgroup
     \@gobbleopts
 }
@@ -97,15 +96,8 @@ __DATA__
 }
 
 \def\TML@rowcolor#1#2{%
-        \edef\@selector{\@thistable\space \nth@row}%
         \XC@raw@color#1{#2}%
-        \addRowCSSclass{background-color}{\TML@current@color}%
-        % \double@expand{%
-        %     \global\everyalignrow{%
-        %         \addAtomicCSSclass{background-color}{\TML@current@color}{\the\xmltablerowtag}%
-        %     \global\everyalignrow{}%
-        %     }%
-        % }%
+        \setRowCSSproperty{background-color}{\TML@current@color}%
         \kernel@ifnextchar[\TML@gobbleopt@a\TML@rowcolor@end
 }
 
@@ -127,9 +119,8 @@ __DATA__
 
 \def\TML@cellcolor#1#2{%
     \begingroup
-        \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
         \XC@raw@color#1{#2}%
-        \addAtomicCSSclass{background-color}{\TML@current@color}{}%
+        \setCSSproperty{background-color}{\TML@current@color}%
     \endgroup
     \@gobbleopts
 }

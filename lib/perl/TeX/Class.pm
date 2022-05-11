@@ -249,6 +249,7 @@ BEGIN {
     *_extract_getarray = _extractor_for_pair_named('getarray');
     *_extract_numarray = _extractor_for_pair_named('numarray');
     *_extract_deleter  = _extractor_for_pair_named('deletearray');
+    *_extract_deletehash  = _extractor_for_pair_named('deletehash');
     *_extract_gethash  = _extractor_for_pair_named('gethash');
     *_extract_sethash  = _extractor_for_pair_named('sethash');
     *_extract_set      = _extractor_for_pair_named('set');
@@ -318,13 +319,13 @@ sub __declare_ATTR( $$$ ) {
         no strict 'refs';
 
         $spec->{delete} = *{ "${package}::${deleter}" } = sub {
-            delete $referent->{ID($_[0])};
+            my $value = delete $referent->{ID($_[0])};
 
             if ($trace & TRACE_DELETE) {
                 carp "*** DELETE: ${package}::${deleter}()";
             }
 
-            return;
+            return $value;
         };
     }
 
@@ -879,6 +880,7 @@ sub __declare_HASH( $$$ ) {
     my $setter   = _extract_set($config)      || "set_$name";
     my $gethash  = _extract_gethash($config)  || "get_${name}s";
     my $sethash  = _extract_sethash($config)  || "set_${name}s";
+    my $deleter  = _extract_deletehash($config) || "delete_{$name}s";
 
     my $type = _extract_type($config) || '';
 
@@ -906,9 +908,27 @@ sub __declare_HASH( $$$ ) {
                 carp "*** DELETE: ${package}::${deleter}()";
             }
 
+            my $values = $referent->{ID($_[0])};
+
             $referent->{ID($_[0])} = {};
 
-            return;
+            return $values;
+        };
+    }
+
+    if ($deleter ne CUSTOM_ACCESSOR) {
+        no strict 'refs';
+
+        $spec->{deletehash} = *{ "${package}::$deleter" } = sub {
+            if ($trace & TRACE_DELETE) {
+                carp "*** DELETE: ${package}::${deleter}()";
+            }
+
+            my $hash = $referent->{ID($_[0])};
+
+            $referent->{ID($_[0])} = {};
+
+            return $hash;
         };
     }
 
@@ -1115,7 +1135,7 @@ sub protect_array_attribute {
 sub protect_hash_attribute {
     my $href = shift;
 
-    my %hash = %{ $href };
+    my %hash = %{ $href || {} };
 
     # caller(0) = protect_hash_attribute()
     # caller(1) = accessor, e.g. get_authors()

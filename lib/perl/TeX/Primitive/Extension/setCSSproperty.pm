@@ -1,4 +1,4 @@
-package TeX::Node::XmlClassNode;
+package TeX::Primitive::Extension::setCSSproperty;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,31 +32,24 @@ package TeX::Node::XmlClassNode;
 use strict;
 use warnings;
 
-use base qw(TeX::Node::XmlAttributeNode Exporter);
+use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
-my %opcode_of :ATTR(:name<opcode>);
+use TeX::Constants qw(:named_args);
 
-our %EXPORT_TAGS = (constants => [ qw(XML_SET_CLASSES
-                                      XML_ADD_CLASS
-                                      XML_DELETE_CLASS) ],
-    );
+sub execute {
+    my $self = shift;
 
-our @EXPORT_OK = @{ $EXPORT_TAGS{constants} };
+    my $tex     = shift;
+    my $cur_tok = shift;
 
-our @EXPORT;
+    my $property = $tex->read_undelimited_parameter(EXPANDED);
+    my $value    = $tex->read_undelimited_parameter(EXPANDED);
 
-use constant {
-    XML_SET_CLASSES  => 1,
-    XML_ADD_CLASS    => 2,
-    XML_DELETE_CLASS => 3,
-};
+    $tex->set_css_property($property, $value);
 
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_qName("class");
+    return;
 }
 
 1;

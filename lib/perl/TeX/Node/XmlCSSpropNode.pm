@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::addRowCSSclass;
+package TeX::Node::XmlCSSpropNode;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,30 +32,17 @@ package TeX::Primitive::Extension::addRowCSSclass;
 use strict;
 use warnings;
 
-use base qw(TeX::Command::Executable);
+use base qw(TeX::Node::XmlAttributeNode);
 
 use TeX::Class;
 
-use TeX::Constants qw(:named_args);
+my %property_of :ATTR(:name<property>);
+my %value_of    :ATTR(:name<value>);
 
-use TeX::Node::XmlClassNode qw(:constants);
+sub BUILD {
+    my ($self, $ident, $arg_ref) = @_;
 
-sub execute {
-    my $self = shift;
-
-    my $tex     = shift;
-    my $cur_tok = shift;
-
-    my $css_property   = $tex->read_undelimited_parameter(EXPANDED);
-    my $property_value = $tex->read_undelimited_parameter(EXPANDED);
-
-    my $css_class = $tex->find_css_class($css_property, $property_value);
-
-    my $align = $tex->get_cur_alignment();
-
-    $align->push_row_class($css_class);
-
-    return;
+    $self->set_qName("style");
 }
 
 1;

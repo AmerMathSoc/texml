@@ -125,40 +125,16 @@ __DATA__
 
 \let\@verticalalign\@empty
 
-%% CSS selector for the current tabular:
-
-\let\@thistable\@empty
-
-%% 1-based index for the left and right columns of the current span in
-%% the preamble (\aligncolno is not initialized during
-%% \tab@makepreamble):
-
-\newcount\@preamblecolno
-
-%% Construct CSS selectors for the current row or column:
-
-\newcommand{\nth@row}{tr:nth-child(\the\alignrowno)}
-\newcommand{\nth@col}[1]{td:nth-child(#1)}
-
 %% Create a CSS rule for the current column:
 
 \def\set@CSS@prop#1#2{%
     \xdef\@preamble{%
         \@preamble
-        \addAtomicCSSclass{#1}{#2}{}%
+        \setCSSproperty{#1}{#2}%
     }%
 }
 
 \def\add@column@css{%
-    \edef\@selector{%
-        \@thistable\space
-        \if@multicolumn
-            \nth@row\space
-        \else
-            *
-        \fi
-        \nth@col{\the\@preamblecolno}%
-    }%
     \ifx\@leftborderstyle\@empty\else
         \set@CSS@prop{border-left}{\@leftborderstyle}%
         \let\@leftborderstyle\@empty
@@ -190,32 +166,11 @@ __DATA__
     \fi
 }
 
-%% Support for colortbl
-
-%% TODO: handle third and fourth (optional) arguments for \rowcolor
-%% and \cellcolor.  Do something about \columncolor.
-
-\newcommand{\rowcolor}[2][]{%
-    \begingroup
-        \edef\@selector{\@thistable\space \nth@row}%
-        \addAtomicCSSclass{background-color}{\XCOLOR@SVG@color{#2}}{}%
-    \endgroup
-    \ignorespaces
-}
-
-\newcommand{\cellcolor}[2][]{%
-    \begingroup
-        \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
-        \addAtomicCSSclass{background-color}{\XCOLOR@SVG@color{#2}}{}%
-    \endgroup
-    \ignorespaces
-}
+%% TBD: This isn't quite right because of things like "1{\color{blue}2}"
 
 \newcommand{\set@cell@fg@color}[2][]{%
-    \begingroup
-        \edef\@selector{\@thistable\space \nth@row\space\nth@col{\the\aligncolno}}%
-        \addAtomicCSSclass{color}{\XCOLOR@SVG@color{#2}}{}%
-    \endgroup
+    \XC@raw@color#1{#2}%
+    \setCSSproperty{color}{\TML@current@color}%
     \ignorespaces
 }
 
@@ -441,7 +396,6 @@ __DATA__
     \else
         \add@column@css
         \xdef\@preamble{\@preamble &}%
-        \advance\@preamblecolno\@ne
     \fi
 }
 
@@ -653,8 +607,7 @@ __DATA__
     \let\@footnotetext\tab@footnotetext
     \startXMLelement{table}%
         \addTBLRid
-        \edef\@thistable{table\string##\@currentTBLRid}%
-            \addAtomicCSSclass{border-collapse}{collapse}{}%
+        \setCSSproperty{border-collapse}{collapse}%
         \reset@border@style
         \leavevmode
         \let\\\@tabularcr
@@ -670,7 +623,6 @@ __DATA__
     \begingroup
         \html@tabskip\z@
         \html@next@tabskip\z@
-        \@preamblecolno\@ne
         \tab@makepreamble{#2}%
         \xdef\@preamble{%
             \noexpand\ialign\bgroup
@@ -706,7 +658,8 @@ __DATA__
     \ifnum0=`{\fi}%
     \skip@#1%
     \dimen@\skip@
-    \addAtomicCSSclass{padding-bottom}{\the\dimen@}{}%
+    %% TBD: This has to go on the td elements?
+    \setRowCSSproperty{padding-bottom}{\the\dimen@}%
     \cr
 }
 
@@ -721,7 +674,6 @@ __DATA__
             \def\@leftborderstyle{none}%
         \fi
         \def\@rightborderstyle{none}%
-        \@preamblecolno\aligncolno
         \tab@makepreamble{#2}%
         \@preamble
         \let\protect\@typeset@protect
@@ -737,16 +689,11 @@ __DATA__
 
 \def\do@hline{%
         \count@\alignrowno
-        \def\@selector{table####\@currentTBLRid\space tr:nth-child(\the\count@)}%
         \ifx\@let@token\hline
             \def\current@border@style{double}% 1 ||
             \def\current@border@width{}%
         \fi
-        \ifnum\alignrowno=\z@
-            \addAtomicCSSclass{border-top}{\current@border@properties}{}%
-        \else
-            \addAtomicCSSclass{border-bottom}{\current@border@properties}{}%
-        \fi
+        \setRowCSSproperty{border-top}{\current@border@properties}%
         \ifx\@let@token\hline
             \aftergroup\@gobble
         \fi
@@ -764,16 +711,11 @@ __DATA__
 }
 
 \def\@cline#1-#2\@nil{%
-        \def\@selector{%
-            \@thistable\space
-            tr:nth-child(\the\TeXMLtoprow \alignrowno \count@)\space
-            \nth@col{\the\count@}%
-        }%
         \count@#1
         \@tempcnta#2
         \advance\@tempcnta\@ne
         \@whilenum\count@<\@tempcnta\do{%
-            \addAtomicCSSclass{border-bottom}{\current@border@properties}{}%
+            \setColumnCSSproperty{\the\count@}{border-top}{\current@border@properties}%
             \advance\count@\@ne
         }%
     \ifnum0=`{\fi}%
@@ -887,3 +829,28 @@ __DATA__
 \endinput
 
 __END__
+
+setCSSproperty
+    - adds XmlCSSpropNode to current list
+
+setRowCSSproperty
+    - sets Alignment::row_css_properties on current align
+
+setColumnCSSproperty
+    - sets Alignment::col_css_properties on current align
+
+fin_col
+    - copies Alignment::col_css_propeties to col_tag XmlOpenNode
+
+fin_row
+    - copies Alignment::row_css_properties to row_tag XmlOpenNode
+
+fin_align
+    - adds (modified) Alignment::row_css_properties to final table_row
+    - adds (modified) Alignment::col_css_properites to final table_row
+
+Output::XML::set_css_property
+    - copy properties to nearest enclosing TeX::Output::XML::Element
+
+Output::XML::pop_element
+    - copy properties from TeX::Output::XML::Element to XML::LibXML::node

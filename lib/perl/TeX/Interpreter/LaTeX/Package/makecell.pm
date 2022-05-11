@@ -81,14 +81,8 @@ __DATA__
 
 \def\texml@xhline{%
         \count@\alignrowno
-        \def\@selector{table####\@currentTBLRid\space tr:nth-child(\the\count@)}%
         \def\current@border@width{\the\arrayrulewidth}%
-        \ifnum\alignrowno=\z@
-            \advance\count@\@ne
-            \addAtomicCSSclass{border-top}{\current@border@properties}{}%
-        \else
-            \addAtomicCSSclass{border-bottom}{\current@border@properties}{}%
-        \fi
+        \setCSSproperty{border-top}{\current@border@properties}%
     \ifnum0=`{\fi}%
 }
 

@@ -67,7 +67,6 @@ __DATA__
 
 \def\do@hdashline{%
         \count@\alignrowno
-        \def\@selector{table####\@currentTBLRid\space tr:nth-child(\the\count@)}%
         \ifx\@let@token\hdashline
             %% Doubled dashlines don't work this way.  If we ever need
             %% them, we will have to work harder.
@@ -76,12 +75,7 @@ __DATA__
         \else
             \def\current@border@style{dashed}%
         \fi
-        \ifnum\alignrowno=\z@
-            \advance\count@\@ne
-            \addAtomicCSSclass{border-top}{\current@border@properties}{}%
-        \else
-            \addAtomicCSSclass{border-bottom}{\current@border@properties}{}%
-        \fi
+        \setRowCSSproperty{border-top}{\current@border@properties}%
         \ifx\@let@token\hline
             \aftergroup\@gobble
         \fi
@@ -99,17 +93,12 @@ __DATA__
 }
 
 \def\adl@cdline[#1-#2][#3]{%
-        \def\@selector{%
-            \@thistable\space
-            \nth@row\space
-            \nth@col{\the\count@}%
-        }%
         \def\current@border@style{dashed}%
         \count@#1
         \@tempcnta#2
         \advance\@tempcnta\@ne
         \@whilenum\count@<\@tempcnta\do{%
-            \addAtomicCSSclass{border-bottom}{\current@border@properties}{}%
+            \setColumnCSSproperty{\the\count@}{border-bottom}{\current@border@properties}%
             \advance\count@\@ne
         }%
     \ifnum0=`{\fi}

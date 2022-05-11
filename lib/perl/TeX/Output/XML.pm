@@ -85,11 +85,51 @@ my %tex_engine_of :ATTR(:name<tex_engine> :type<TeX::Interpreter>);
 
 my %dom_of :ATTR(:name<dom> :type<XML::LibXML::Document>);
 
-my %current_element_of :ATTR(:name<current_element> :type<XML::LibXML::Node>);
-my %element_stack_of   :ARRAY(:name<element_stack>  :type<XML::LibXML::Node>);
+# my %current_element_of :ATTR(:name<current_element> :type<XML::LibXML::Node>);
+# my %element_stack_of   :ARRAY(:name<element_stack>  :type<XML::LibXML::Node>);
+
+my %current_element_of :ATTR(:name<current_element> :type<TeX::Output::XML::Element>);
+my %element_stack_of   :ARRAY(:name<element_stack>  :type<TeX::Output::XML::Element>);
 
 my %xml_id_of :HASH(:name<xml_id>);
 my %xml_id_counter_of :COUNTER(:name<xml_id_counter>);
+
+######################################################################
+##                                                                  ##
+##                           INNER CLASS                            ##
+##                                                                  ##
+######################################################################
+
+{   package TeX::Output::XML::Element;
+
+    use TeX::Class;
+
+    my %node_of :ATTR(:name<node> :type<XML::LibXML::Node>);
+
+    my %property_of :HASH(:name<property> :gethash<get_properties>);
+    my %classes_of  :ARRAY(:name<class>);
+
+    sub AUTOMETHOD {
+        my ($self, $ident, @args) = @_;
+
+        my $subname = $_;   # Requested subroutine name is passed via $_
+
+        return sub {
+            return $node_of{$ident}->$subname(@args);
+        };
+    }
+}
+
+sub new_xml_element {
+    my $node    = shift;
+    my $props   = shift || {};
+    # my $classes = shift;
+
+    return TeX::Output::XML::Element->new({ node     => $node,
+                                            property => $props,
+                                            # class    => $classes,
+                                          });
+}
 
 ######################################################################
 ##                                                                  ##
@@ -182,7 +222,7 @@ sub open_document {
 
     $dom->setDocumentElement($root_node);
 
-    $self->set_current_element($root_node);
+    $self->set_current_element(new_xml_element($root_node));
 
     return;
 }
@@ -288,8 +328,6 @@ sub normalize_figures {
         __move_caption($fig_group);
 
         my $name = $fig_group->nodeName();
-
-        # print STDERR "*** finalize_document: Found node '$name'\n";
 
         my @figs = $fig_group->findnodes("fig");
 
@@ -715,7 +753,7 @@ sub createElement {
 sub push_element {
     my $self = shift;
 
-    my XML::LibXML::Element $element = shift;
+    my TeX::Output::XML::Element $element = shift;
 
     my $current_element = $self->get_current_element();
 
@@ -727,7 +765,7 @@ sub push_element {
 
     $self->push_element_stack($current_element);
 
-    $current_element->appendChild($element);
+    $current_element->appendChild($element->get_node());
 
     $self->set_current_element($element);
 
@@ -759,6 +797,26 @@ sub pop_element {
         return;
     }
 
+    ## TBD: Copy classes and styles from $current_element to $current_element->get_node;
+
+    my $tex = $self->get_tex_engine();
+
+    my $properties = $current_element->get_properties();
+
+    my @classes;
+
+    while (my ($k, $v) = each %{ $properties }) {
+        if (nonempty($k) && nonempty($v)) {
+            my $class = $tex->find_css_class($k, $v);
+
+            push @classes, $class;
+        }
+    }
+
+    if (@classes) {
+        $current_element->setAttribute(class => join " ", uniq @classes);
+    }        
+
     my $top = $self->pop_element_stack();
 
     if (! defined $top) {
@@ -778,6 +836,7 @@ sub open_element {
     my $qName = shift;
     my $ns    = shift;
     my $atts  = shift;
+    my $props = shift;
 
     my $dom = $self->get_dom();
 
@@ -797,7 +856,7 @@ sub open_element {
         }
     }
 
-    $self->push_element($element);
+    $self->push_element(new_xml_element($element, $props));
 
     return;
 }
@@ -832,21 +891,10 @@ sub modify_class {
 
     my $opcode = shift;
     my $value  = shift;
-    my $target = shift;
 
     my $qName = "class";
 
     my $current_element = $self->get_current_element();
-
-    if (nonempty($target)) {
-        my $node = $current_element;
-
-        while (defined $node && $target ne $node->nodeName()) {
-            $node = $node->parentNode();
-        }
-
-        $current_element = $node if defined $node;
-    }
 
     my $old_class = $current_element->getAttribute($qName);
 
@@ -881,6 +929,25 @@ sub modify_class {
         $current_element->setAttribute($qName, join ' ', $new_class);
     } else {
         $current_element->removeAttribute($qName);
+    }
+
+    return;
+}
+
+sub set_css_property {
+    my $self = shift;
+
+    my $property = shift;
+    my $value    = shift;
+
+    return if empty($property);
+
+    my $current_element = $self->get_current_element();
+
+    if (empty($value)) {
+        $current_element->delete_property($property);
+    } else {
+        $current_element->set_property($property, $value);
     }
 
     return;
@@ -1180,12 +1247,13 @@ sub output_xml_node {
         my $qName = $node->get_qName();
         my $ns    = $node->get_namespace();
         my $atts  = $node->get_attributes();
+        my $props = $node->get_properties();
 
         # if (my $rules = $node->list_css_rules()) {
         #     $atts->{class} = $classes;
         # }
 
-        $self->open_element($qName, $ns, $atts);
+        $self->open_element($qName, $ns, $atts, $props);
 
         return;
     }
@@ -1201,9 +1269,17 @@ sub output_xml_node {
     if ($node->isa("TeX::Node::XmlClassNode")) {
         my $value  = $node->get_value();
         my $opcode = $node->get_opcode();
-        my $target = $node->get_target();
 
-        $self->modify_class($opcode, $value, $target);
+        $self->modify_class($opcode, $value);
+
+        return;
+    }
+
+    if ($node->isa("TeX::Node::XmlCSSpropNode")) {
+        my $property = $node->get_property();
+        my $value    = $node->get_value();
+
+        $self->set_css_property($property, $value);
 
         return;
     }

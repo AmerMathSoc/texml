@@ -53,6 +53,10 @@ __DATA__
 
 \TeXMLprovidesPackage{booktabs}
 
+%% This takes care of \toprule, \midrule, and \bottomrule and maybe
+%% (at least partially) \specialrule (needs to be tested).
+%% TODO: \cmidrule
+
 \def\@BTrule[#1]{%
     \ifx\longtable\undefined
         \let\@BTswitch\@BTnormal
@@ -71,15 +75,8 @@ __DATA__
     %         \ifnum\@lastruleclass=\@ne\vskip\doublerulesep\fi
     %     \fi
     % \fi
-    \count@\alignrowno
-    \def\@selector{table####\@currentTBLRid\space tr:nth-child(\the\count@)}%
     \edef\current@border@width{\the\@thisrulewidth}%
-    \ifnum\alignrowno=\z@
-        \advance\count@\@ne
-        \addAtomicCSSclass{border-top}{\current@border@properties}{}%
-    \else
-        \addAtomicCSSclass{border-bottom}{\current@border@properties}{}%
-    \fi
+    \setCSSproperty{border-top}{\current@border@properties}%
     \@BTswitch
 }
 

@@ -98,24 +98,16 @@ sub do_HH_loop {
         ## For our purposes, t and b are equivalent to =.  I think.
 
         if ($char eq '-') {
-            my $css_class = $tex->find_css_class(${css_prop},
-                                                 qq{$width solid $color});
+            # $tex->__DEBUG("Setting $css_prop on $top_row, column $col");
 
-            my $align = $tex->get_cur_alignment();
-
-            $tex->__DEBUG("Adding $css_class to row $top_row, column $col");
-
-            $align->add_column_class($col, $css_class);
+            $tex->set_column_css_property($col, $css_prop,
+                                          qq{$width solid $color});
         }
         elsif ($char eq '=' || $char eq 't' || $char eq 'b') {
-            my $css_class = $tex->find_css_class(${css_prop},
-                                                 qq{$width double $color});
+            # $tex->__DEBUG("Adding $css_prop on $top_row, column $col");
 
-            my $align = $tex->get_cur_alignment();
-
-            $tex->__DEBUG("Adding $css_class to row $top_row, column $col");
-
-            $align->add_column_class($col, $css_class);
+            $tex->set_column_css_property($col, $css_prop,
+                                          qq{$width double $color});
         }
         else {
             $tex->print_err("Unexpected token '$token' in hhline");

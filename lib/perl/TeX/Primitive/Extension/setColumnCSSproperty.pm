@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::addAtomicCSSclass;
+package TeX::Primitive::Extension::setColumnCSSproperty;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -46,13 +46,11 @@ sub execute {
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $css_property   = $tex->read_undelimited_parameter(EXPANDED);
-    my $property_value = $tex->read_undelimited_parameter(EXPANDED);
-    my $target         = $tex->read_undelimited_parameter(EXPANDED);
+    my $col_no   = $tex->read_undelimited_parameter(EXPANDED);
+    my $property = $tex->read_undelimited_parameter(EXPANDED);
+    my $value    = $tex->read_undelimited_parameter(EXPANDED);
 
-    my $css_class = $tex->find_css_class($css_property, $property_value);
-
-    $tex->modify_xml_class(XML_ADD_CLASS, $css_class, $target);
+    $tex->set_column_css_property($col_no, $property, $value);
 
     return;
 }

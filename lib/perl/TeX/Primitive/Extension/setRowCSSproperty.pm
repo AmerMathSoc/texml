@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::addColumnCSSclass;
+package TeX::Primitive::Extension::setRowCSSproperty;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -46,15 +46,10 @@ sub execute {
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $col_number     = $tex->read_undelimited_parameter(EXPANDED);
-    my $css_property   = $tex->read_undelimited_parameter(EXPANDED);
-    my $property_value = $tex->read_undelimited_parameter(EXPANDED);
+    my $property = $tex->read_undelimited_parameter(EXPANDED);
+    my $value    = $tex->read_undelimited_parameter(EXPANDED);
 
-    my $css_class = $tex->find_css_class($css_property, $property_value);
-
-    my $align = $tex->get_cur_alignment();
-
-    $align->add_column_class($col_number, $css_class);
+    $tex->set_row_css_property($property, $value);
 
     return;
 }

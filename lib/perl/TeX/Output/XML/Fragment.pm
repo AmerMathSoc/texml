@@ -53,7 +53,7 @@ sub open_document {
 
     $self->set_fragment($root_node);
 
-    $self->set_current_element($root_node);
+    $self->set_current_element(TeX::Output::XML::new_xml_element($root_node));
 
     return;
 }
