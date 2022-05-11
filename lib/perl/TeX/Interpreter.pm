@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.1';
+use version; our $VERSION = qv '1.5.2';
 
 use base qw(Exporter);
 
@@ -7913,7 +7913,7 @@ sub insert_v_template {
     return;
 }
 
-## Cf. the filler cells in TeX::Output::XML::normalize_tables().
+## These are needed (for now) to simplify colspan and rowspan calculations.  These cells will be removee by TeX::Output::XML::normalize_tables
 
 sub __add_hidden_cell {
     my $tex = shift;
@@ -8093,12 +8093,13 @@ sub fin_row {
         # padding-bottom can't be applied to <tr>, so copy it into all
         # enclosed <td>s
 
-        if (defined(my $padding_bottom = delete $props->{'padding-bottom'})) {
-            for (my $i = 0; $i < $cur_row->num_nodes(); $i++) {
-                my $cur_col = $cur_row->get_node($i);
-                $tex->__DEBUG("cur_row->node($i) = $cur_col");
+        for my $prop (qw(color background-color padding-bottom)) {
+            if (defined(my $value = delete $props->{$prop})) {
+                for (my $i = 0; $i < $cur_row->num_nodes(); $i++) {
+                    my $cur_col = $cur_row->get_node($i);
 
-                $cur_col->get_node(0)->set_property('padding-bottom' => $padding_bottom);
+                    $cur_col->get_head()->set_property($prop, $value);
+                }
             }
         }
 
