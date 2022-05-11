@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.0';
+use version; our $VERSION = qv '1.5.1';
 
 use base qw(Exporter);
 
@@ -8082,19 +8082,31 @@ sub fin_row {
 
     my $head = $tex->pop_nest();
 
-    my $cur_box = $tex->is_hmode() ? $tex->hpack($head, natural)
+    my $cur_row = $tex->is_hmode() ? $tex->hpack($head, natural)
                                    : $tex->vpack($head, natural);
-
-    $tex->tail_append($cur_box);
 
     if (nonempty(my $row_tag = $tex->xml_table_row_tag())) {
         my $align = $tex->get_cur_alignment();
 
         my $props = $align->delete_row_properties();
 
-        $cur_box->unshift_node(new_xml_open_node($row_tag, undef, $props));
-        $cur_box->push_node(new_xml_close_node($row_tag));
+        # padding-bottom can't be applied to <tr>, so copy it into all
+        # enclosed <td>s
+
+        if (defined(my $padding_bottom = delete $props->{'padding-bottom'})) {
+            for (my $i = 0; $i < $cur_row->num_nodes(); $i++) {
+                my $cur_col = $cur_row->get_node($i);
+                $tex->__DEBUG("cur_row->node($i) = $cur_col");
+
+                $cur_col->get_node(0)->set_property('padding-bottom' => $padding_bottom);
+            }
+        }
+
+        $cur_row->unshift_node(new_xml_open_node($row_tag, undef, $props));
+        $cur_row->push_node(new_xml_close_node($row_tag));
     }
+
+    $tex->tail_append($cur_row);
 
     if (! $tex->is_hmode()) {
         $tex->set_spacefactor(1000);
