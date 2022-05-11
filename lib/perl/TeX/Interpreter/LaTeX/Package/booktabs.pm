@@ -76,7 +76,7 @@ __DATA__
     %     \fi
     % \fi
     \edef\current@border@width{\the\@thisrulewidth}%
-    \setCSSproperty{border-top}{\current@border@properties}%
+    \setRowCSSproperty{border-top}{\current@border@properties}%
     \@BTswitch
 }
 
