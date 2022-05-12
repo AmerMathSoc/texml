@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.3';
+use version; our $VERSION = qv '1.5.4';
 
 use base qw(Exporter);
 
@@ -11475,9 +11475,10 @@ sub import_xml_fragment {
 my %css_rules_of :ARRAY(:name<css_rule>);
 
 my %css_classes_of   :HASH(:name<css_class> :gethash<get_css_classes> :sethash<set_css_classes>);
+
 my %css_class_ctr_of :HASH(:name<css_class_ctr>);
 
-sub __make_class_name {
+sub __make_class_name :PRIVATE {
     my $tex = shift;
 
     my $ident = ident $tex;
@@ -11493,11 +11494,11 @@ sub __make_class_name {
 
     $css_class_ctr_of{$ident}->{$prefix} ||= 0;
 
-    my $id = $css_class_ctr_of{$ident}->{$prefix}++;
+    my $gen = $css_class_ctr_of{$ident}->{$prefix}++;
 
-    $id = "" if $id == 0;
+    $gen = "" if $gen == 0;
 
-    my $css_class = "${prefix}${id}";
+    my $css_class = "${prefix}${gen}";
 
     return "texml-$css_class";
 }
