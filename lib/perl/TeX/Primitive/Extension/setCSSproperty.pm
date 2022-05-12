@@ -32,7 +32,7 @@ package TeX::Primitive::Extension::setCSSproperty;
 use strict;
 use warnings;
 
-use base qw(TeX::Command::Executable);
+use base qw(TeX::Primitive::Extension::CSSproperty);
 
 use TeX::Class;
 

@@ -753,7 +753,9 @@ sub pop_element {
 
     my @classes;
 
-    while (my ($k, $v) = each %{ $properties }) {
+    for my $k (sort keys %{ $properties }) {
+        my $v = $properties->{$k};
+
         if (nonempty($k) && nonempty($v)) {
             my $class = $tex->find_css_class($k, $v);
 

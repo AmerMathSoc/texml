@@ -366,7 +366,7 @@ __DATA__
     \fi
     \add@column@css
     \def\the@toks{\the\toks}%
-% \typeout{*** preamble = `\@preamble'}%
+%\typeout{*** preamble = `\@preamble'}%
 }
 
 \gdef\@preamerr#1{%
@@ -854,3 +854,10 @@ Output::XML::set_css_property
 
 Output::XML::pop_element
     - copy properties from TeX::Output::XML::Element to XML::LibXML::node
+
+===========================================================================
+Precedence (lowest to highest):
+    default_col_properties
+    future_col_properties
+    row_properties
+    cell properties

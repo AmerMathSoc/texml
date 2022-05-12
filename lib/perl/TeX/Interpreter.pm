@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.2';
+use version; our $VERSION = qv '1.5.3';
 
 use base qw(Exporter);
 
@@ -11499,7 +11499,7 @@ sub __make_class_name {
 
     my $css_class = "${prefix}${id}";
 
-    return $css_class;
+    return "texml-$css_class";
 }
 
 sub find_css_class {
