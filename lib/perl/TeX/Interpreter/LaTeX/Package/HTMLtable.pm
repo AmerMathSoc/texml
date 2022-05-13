@@ -872,7 +872,7 @@ Output::XML::pop_element
 \setColumnCSSproperty:  These go on <td>
 
   border-top            \cline
-  border-bottom         \cdashline (arydshln)
+  border-bottom (?)     \cdashline (arydshln)
 
 \setRowCSSproperty:     *-ed properties are moved to <td>; otherwise <tr>
 
@@ -882,3 +882,5 @@ Output::XML::pop_element
                         \(top|mid|bottom)rule (booktabs)
 
 * background-color      \rowcolor (colortbl)
+
+NOTE: border-top is converted to border-bottom for final row
