@@ -82,7 +82,7 @@ use Fcntl qw(:seek);
 use File::Basename;
 use File::Spec::Functions;
 
-use List::Util qw(all uniq);
+use List::Util qw(all);
 
 use TeX::Utils::Unicode::Diacritics qw(apply_accent);
 
@@ -288,7 +288,6 @@ sub __DEBUG {
         }
     }
 
-    $tex->print_ln();
     $tex->print_ln();
 
     return;
@@ -1872,8 +1871,6 @@ FROZEN_CSNAMES: {
     my $OMIT_TEMPLATE;
 
     sub OMIT_TEMPLATE() { return $OMIT_TEMPLATE };
-
-    my $FROZEN_END_U_TEMPLATE;
 
     sub __init_eqtb_region_1_2 {
         my $tex = shift;
@@ -7464,20 +7461,6 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
 
         return;
     };
-
-    # sub get_column_classes {
-    #     my $self = shift;
-    # 
-    #     my $col_no = shift;
-    # 
-    #     my @classes;
-    # 
-    #     if (defined(my $classes = $self->get_col_class($col_no))) {
-    #         @classes = @{ $classes };
-    #     }
-    # 
-    #     return @classes;
-    # }
 }
 
 {
@@ -7927,7 +7910,9 @@ sub insert_v_template {
     return;
 }
 
-## These are needed (for now) to simplify colspan and rowspan calculations.  These cells will be removee by TeX::Output::XML::normalize_tables
+## These are needed (for now) to simplify colspan and rowspan
+## calculations.  These cells will be removed by
+## TeX::Output::XML::normalize_tables
 
 sub __add_hidden_cell {
     my $tex = shift;
@@ -11559,21 +11544,6 @@ sub find_css_class {
     $tex->set_css_class($key, $css_class);
 
     return $css_class;
-}
-
-sub add_atomic_css_class {
-    my $tex = shift;
-
-    my $css_property   = shift;
-    my $property_value = shift;
-
-    return unless nonempty($css_property) && nonempty($property_value);
-
-    my $css_class = $tex->find_css_class($css_property, $property_value);
-
-    $tex->modify_xml_class(XML_ADD_CLASS, $css_class);
-
-    return;
 }
 
 ######################################################################
