@@ -856,7 +856,7 @@ Output::XML::pop_element
     - copy properties from TeX::Output::XML::Element to XML::LibXML::node
 
 ===========================================================================
-\setCSSproperty:
+\setCSSproperty:        These go on <td>
                                    
   background-color      preamble [\columncolor], \cellcolor (colortbl)
   border-left           preamble
@@ -869,12 +869,12 @@ Output::XML::pop_element
 
   color                 \color (HTMLtable) *** but not really! ***
 
-\setColumnCSSproperty:
+\setColumnCSSproperty:  These go on <td>
 
   border-top            \cline
   border-bottom         \cdashline (arydshln)
 
-\setRowCSSproperty:
+\setRowCSSproperty:     *-ed properties are moved to <td>; otherwise <tr>
 
 * padding-bottom:       \\[]
 
