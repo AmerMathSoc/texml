@@ -128,10 +128,7 @@ __DATA__
 %% Create a CSS rule for the current column:
 
 \def\set@CSS@prop#1#2{%
-    \xdef\@preamble{%
-        \@preamble
-        \setCSSproperty{#1}{#2}%
-    }%
+    \@addtopreamble{\setCSSproperty{#1}{#2}}%
 }
 
 \def\add@column@css{%
@@ -366,7 +363,7 @@ __DATA__
     \fi
     \add@column@css
     \def\the@toks{\the\toks}%
-%\typeout{*** preamble = `\@preamble'}%
+% \typeout{*** preamble = `\@preamble'}%
 }
 
 \gdef\@preamerr#1{%
@@ -395,7 +392,7 @@ __DATA__
         \@firstampfalse
     \else
         \add@column@css
-        \xdef\@preamble{\@preamble &}%
+        \@addtopreamble{&}%
     \fi
 }
 
@@ -433,7 +430,7 @@ __DATA__
     \@addtopreamble{{%
         \the@toks\the\@tempcnta
         \ignorespaces \@sharp \unskip
-        \the@toks\the\count@\relax
+        \the@toks\the\count@
     }}%
 }
 
@@ -831,7 +828,7 @@ __DATA__
 __END__
 
 setCSSproperty
-    - adds XmlCSSpropNode to current list
+    - appends XmlCSSpropNode to current list
 
 setRowCSSproperty
     - sets Alignment::row_css_properties on current align
@@ -839,15 +836,18 @@ setRowCSSproperty
 setColumnCSSproperty
     - sets Alignment::col_css_properties on current align
 
+\insertRowProperties (automatically added at end of u_template)
+    - copies movable Alignment::row_css_properties properties to current list
+
 fin_col
     - copies Alignment::col_css_propeties to col_tag XmlOpenNode
 
 fin_row
-    - copies Alignment::row_css_properties to row_tag XmlOpenNode
+    - copies non-movable Alignment::row_css_properties to row_tag XmlOpenNode
 
 fin_align
-    - adds (modified) Alignment::row_css_properties to final table_row
-    - adds (modified) Alignment::col_css_properites to final table_row
+    - copies (modified) non-movable Alignment::row_css_properties to final table row
+    - copies (modified) Alignment::col_css_properites to final table row
 
 Output::XML::set_css_property
     - copy properties to nearest enclosing TeX::Output::XML::Element
@@ -856,8 +856,29 @@ Output::XML::pop_element
     - copy properties from TeX::Output::XML::Element to XML::LibXML::node
 
 ===========================================================================
-Precedence (lowest to highest):
-    default_col_properties
-    future_col_properties
-    row_properties
-    cell properties
+\setCSSproperty:
+                                   
+  background-color      preamble [\columncolor], \cellcolor (colortbl)
+  border-left           preamble
+  border-right          preamble
+  padding-left          preamble
+  padding-right         preamble
+  text-align            preamble
+  vertical-align        preamble
+  width                 preamble, \multirow (multirow)
+
+  color                 \color (HTMLtable) *** but not really! ***
+
+\setColumnCSSproperty:
+
+  border-top            \cline
+  border-bottom         \cdashline (arydshln)
+
+\setRowCSSproperty:
+
+* padding-bottom:       \\[]
+
+  border-top            \hline, \hdashline (arydshln), \Xhline (makecell)
+                        \(top|mid|bottom)rule (booktabs)
+
+* background-color      \rowcolor (colortbl)

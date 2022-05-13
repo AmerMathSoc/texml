@@ -53,6 +53,7 @@ use base qw(Exporter);
 our %EXPORT_TAGS = (all            => [ qw(make_eqvt) ],
                     frozen_csnames => [ qw(END_TEX_TOKEN
                                            FROZEN_CR
+                                           FROZEN_INSERT_ROW_PROPERTIES
                                            FROZEN_DONT_EXPAND_TOKEN
                                            FROZEN_END_GROUP
                                            FROZEN_FI
@@ -1867,6 +1868,10 @@ FROZEN_CSNAMES: {
 
     sub OMIT_TEMPLATE() { return $OMIT_TEMPLATE };
 
+    my $FROZEN_INSERT_ROW_PROPERTIES;
+
+    sub FROZEN_INSERT_ROW_PROPERTIES { return $FROZEN_INSERT_ROW_PROPERTIES };
+
     sub __init_eqtb_region_1_2 {
         my $tex = shift;
 
@@ -1899,6 +1904,8 @@ FROZEN_CSNAMES: {
         $FROZEN_ENDV_TOKEN = make_frozen_token(endtemplate => $FROZEN_ENDV);
 
         $OMIT_TEMPLATE = TeX::TokenList->new({ tokens => [ $FROZEN_END_TEMPLATE_TOKEN ] });
+
+        $FROZEN_INSERT_ROW_PROPERTIES = make_frozen_token(insertRowProperties => $tex->load_primitive('insertRowProperties'));
 
         return;
     }
@@ -7733,6 +7740,8 @@ sub scan_u_template {
         }
     }
 
+    $u->push(FROZEN_INSERT_ROW_PROPERTIES);
+
     $cur_col->set_u_part($u);
 
     return;
@@ -8077,6 +8086,29 @@ sub fin_col {
     return;
 }
 
+# padding-bottom can't be applied to <tr>, so it must be moved to
+# enclosed <td>s
+
+# background-color (set by colortbl's \rowcolor command)
+
+my @MOVABLE_CSS_PROPERTIES = qw(color background-color padding-bottom);
+
+sub insert_row_properties {
+    my $tex = shift;
+
+    my $align = $tex->get_cur_alignment();
+
+    my %props = $align->get_row_properties();
+
+    for my $prop (@MOVABLE_CSS_PROPERTIES) {
+        if (defined(my $value = delete $props{$prop})) {
+            $tex->set_css_property($prop, $value);
+        }
+    }
+
+    return;
+}
+
 sub fin_row {
     my $tex = shift;
 
@@ -8090,18 +8122,7 @@ sub fin_row {
 
         my $props = $align->delete_row_properties();
 
-        # padding-bottom can't be applied to <tr>, so copy it into all
-        # enclosed <td>s
-
-        for my $prop (qw(color background-color padding-bottom)) {
-            if (defined(my $value = delete $props->{$prop})) {
-                for (my $i = 0; $i < $cur_row->num_nodes(); $i++) {
-                    my $cur_col = $cur_row->get_node($i);
-
-                    $cur_col->get_head()->set_property($prop, $value);
-                }
-            }
-        }
+        delete $props->{$_} for @MOVABLE_CSS_PROPERTIES;
 
         $cur_row->unshift_node(new_xml_open_node($row_tag, undef, $props));
         $cur_row->push_node(new_xml_close_node($row_tag));
@@ -8124,8 +8145,8 @@ sub fin_row {
     return;
 }
 
-my %prop_swap = ('border-top'  => 'border-bottom',
-                 'padding-top' => 'padding-bottom',
+my %FINAL_ROW_PROPERTY_SWAP = ('border-top'  => 'border-bottom',
+                               'padding-top' => 'padding-bottom',
     );
 
 sub fin_align {
@@ -8161,13 +8182,12 @@ sub fin_align {
 
         my $final_row = $head[-1];
 
-        # $tex->__DEBUG("final_row = " . ref($final_row) . " '$final_row'");
-
         my $final_row_open = $final_row->get_node(0);
 
         if (defined(my $props = $align->delete_row_properties())) {
             while (my ($k, $v) = each %{ $props }) {
-                $k = $prop_swap{$k} if exists $prop_swap{$k};
+                $k = $FINAL_ROW_PROPERTY_SWAP{$k} || $k;
+
                 $final_row_open->set_property($k, $v);
             }
         }
@@ -8177,13 +8197,9 @@ sub fin_align {
         for (my $i = 1; $i < $final_row->num_nodes() - 1; $i++) {
             my $col_tag = $final_row->get_node($i)->get_node(0);
 
-            # $tex->__DEBUG("col_tag = $col_tag");
-
             if (defined(my $p = $col_properties[$i])) {
                 while (my ($k, $v) = each %{ $p }) {
-                    $k = $prop_swap{$k} if exists $prop_swap{$k};
-
-                    # $tex->__DEBUG("Setting $k = $v on column $i");
+                    $k = $FINAL_ROW_PROPERTY_SWAP{$k} || $k;
 
                     $col_tag->set_property($k, $v);
                 }

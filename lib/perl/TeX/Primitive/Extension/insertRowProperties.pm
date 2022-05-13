@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Package::makecell;
+package TeX::Primitive::Extension::insertRowProperties;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,62 +32,22 @@ package TeX::Interpreter::LaTeX::Package::makecell;
 use strict;
 use warnings;
 
+use base qw(TeX::Command::Executable);
+
+use TeX::Class;
+
 use TeX::Constants qw(:named_args);
 
-sub install ( $ ) {
-    my $class = shift;
+sub execute {
+    my $self = shift;
 
-    my $tex     = shift;
-    my @options = @_;
-
-    $tex->package_load_notification(__PACKAGE__, @options);
-
-    # $tex->load_latex_package("makecell", @options);
-
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::makecell::DATA{IO});
-
-    $tex->define_csname(multirowcell => \&do_multirowcell);
-
-    return;
-}
-
-sub do_multirowcell {
     my $tex = shift;
 
-    my $num_rows = $tex->read_undelimited_parameter(EXPANDED);
-
-    my $cur_align = $tex->get_cur_alignment();
-
-    my $cur_span  = $cur_align->cur_span_record();
-
-    $cur_span->set_num_rows($num_rows);
+    $tex->insert_row_properties();
 
     return;
 }
 
 1;
-
-__DATA__
-
-\TeXMLprovidesPackage{makecell}
-
-\RequirePackage{array}
-
-\newcommand\Xhline[1]{%
-    \noalign{\ifnum0=`}\fi
-    \arrayrulewidth#1%
-    \futurelet\reserved@a \texml@xhline
-}
-
-\def\texml@xhline{%
-        \count@\alignrowno
-        \def\current@border@width{\the\arrayrulewidth}%
-        \setRowCSSproperty{border-top}{\current@border@properties}%
-    \ifnum0=`{\fi}%
-}
-
-\TeXMLendPackage
-
-\endinput
 
 __END__

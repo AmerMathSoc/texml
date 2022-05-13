@@ -76,6 +76,8 @@ __DATA__
 
 % See comments in colortbl.tex
 
+% \columncolor is only used in a >-specifier in a preamble
+
 % \columncolor[<color model>]{<color>}[<left overhang>][<right overhang>]
 
 \def\columncolor#1#{\TML@columncolor{#1}}
@@ -87,6 +89,8 @@ __DATA__
     \endgroup
     \@gobbleopts
 }
+
+% \rowcolor must be used at the start of a row
 
 % \rowcolor[<color model>]{<color>}[<left overhang>][<right overhang>]
 
@@ -113,6 +117,8 @@ __DATA__
     \ifnum0=`{\fi}%
 }
 
+% \cellcolor can appear anywhere in a cell, not just at the beginning.
+
 % \cellcolor[<color model>]{<color>}[<left overhang>][<right overhang>]
 
 \def\cellcolor#1#{\TML@cellcolor{#1}}
@@ -130,3 +136,8 @@ __DATA__
 \endinput
 
 __END__
+
+Precedence for cell color (lowest to highest):
+    tabular specifications: >{\columncolor{...}} -> u template (yay!)
+    row_properties:         \insertRowProperties
+    cell properties:        \cellcolor
