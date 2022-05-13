@@ -59,6 +59,7 @@ our %EXPORT_TAGS = (factories => [ qw(new_character
                                       new_xml_attribute_node
                                       new_xml_class_node
                                       new_css_property_node
+                                      new_end_u_template_node
                                    ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{factories} } );
@@ -89,6 +90,7 @@ use TeX::Node::XmlOpenNode;
 use TeX::Node::XmlCloseNode;
 use TeX::Node::XmlClassNode;
 use TeX::Node::XmlCSSpropNode;
+use TeX::Node::UTemplateMarker;
 
 sub new_character {
     my $font = shift;
@@ -277,6 +279,13 @@ sub new_css_property_node {
     return TeX::Node::XmlCSSpropNode->new({ property => $property,
                                             value  => $value,
                                           });
+}
+
+sub new_end_u_template_node {
+    my $property = shift;
+    my $value    = shift;
+
+    return TeX::Node::UTemplateMarker->new();
 }
 
 1;

@@ -1,4 +1,4 @@
-package TeX::Node::XmlCSSpropNode;
+package TeX::Node::UTemplateMarker;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -29,28 +29,25 @@ package TeX::Node::XmlCSSpropNode;
 # USA
 # email: tech-support@ams.org
 
+## It's not clear that having a separate subclass of WhatsitNodes is
+## really useful.  In fact, it's almost certain that it's not.  But
+## for now I'll keep them.
+
 use strict;
 use warnings;
 
-use base qw(TeX::Node::XmlAttributeNode);
+use TeX::WEB2C qw(:node_params);
+
+use base qw(TeX::Node::AbstractNode);
 
 use TeX::Class;
-
-my %property_of :ATTR(:name<property>);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
-    $self->set_qName("style");
-}
+    $self->set_type(whatsit_node);
 
-sub to_string :STRINGIFY {
-    my $self = shift;
-
-    my $prop  = $self->get_property();
-    my $value = $self->get_value();
-
-    return qq{#CSS<$prop: "$value">};
+    return;
 }
 
 1;

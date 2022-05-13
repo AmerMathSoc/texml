@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::insertRowProperties;
+package TeX::Primitive::Extension::endu;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -36,14 +36,12 @@ use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
-use TeX::Constants qw(:named_args);
-
 sub execute {
     my $self = shift;
 
     my $tex = shift;
 
-    $tex->insert_row_properties();
+    $tex->end_u_template();
 
     return;
 }

@@ -54,27 +54,18 @@ use TeX::Class;
 ## node is used by TeX::Interpreter
 
 my %list_ptr_of   :ATTR(:name<list_ptr>);
-
-my %node_of      :ARRAY(:name<node>);
-
-my %height_of     :ATTR(:name<height> :default<0>);
-my %width_of      :ATTR(:name<width>  :default<0>);
-my %depth_of      :ATTR(:name<depth>  :default<0>);
-my %shift_of      :ATTR(:name<shift>  :default<0>);
-
-my %glue_set_of   :ATTR(:name<glue_set>   :default<0.0>);
-my %glue_sign_of  :ATTR(:name<glue_sign>  :default<normal>);
-my %glue_order_of :ATTR(:name<glue_order> :default<normal>);
-
-my %total_stretch_of :ATTR;
-my %total_shrink_of  :ATTR;
-
-my %natural_width_of :ATTR(:get<natural_width> :set<natural_width>);
+my %node_of       :ARRAY(:name<node>);
 
 sub new_null_box {
-    my $arg_hash = shift || {};
+    my @nodes = @_;
 
-    return TeX::Node::HListNode->new($arg_hash);
+    my $box = __PACKAGE__->new();
+
+    for my $node (@nodes) {
+        $box->push_node($node);
+    }
+
+    return $box;
 }
 
 sub START {
@@ -92,8 +83,36 @@ sub get_head {
     return $self->get_node(0);
 }
 
-## TBD: The rest of these (and the correpsonding attributes) should
+sub to_string :STRINGIFY {
+    my $self = shift;
+
+    my @nodes = $self->get_nodes();
+
+    local $" = '';
+
+    return "@nodes";
+}
+
+1;
+
+__END__
+
+## TBD: The rest of these (and the corresponding attributes) should
 ## probably be dropped.
+
+my %height_of     :ATTR(:name<height> :default<0>);
+my %width_of      :ATTR(:name<width>  :default<0>);
+my %depth_of      :ATTR(:name<depth>  :default<0>);
+my %shift_of      :ATTR(:name<shift>  :default<0>);
+
+my %glue_set_of   :ATTR(:name<glue_set>   :default<0.0>);
+my %glue_sign_of  :ATTR(:name<glue_sign>  :default<normal>);
+my %glue_order_of :ATTR(:name<glue_order> :default<normal>);
+
+my %total_stretch_of :ATTR;
+my %total_shrink_of  :ATTR;
+
+my %natural_width_of :ATTR(:get<natural_width> :set<natural_width>);
 
 sub clear_dimensions {
     my $self = shift;
@@ -363,16 +382,6 @@ sub show_node {
     }
 
     return $node;
-}
-
-sub to_string :STRINGIFY {
-    my $self = shift;
-
-    my @nodes = $self->get_nodes();
-
-    local $" = '';
-
-    return "@nodes";
 }
 
 1;

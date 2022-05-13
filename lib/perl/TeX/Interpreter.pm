@@ -46,14 +46,13 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.4';
+use version; our $VERSION = qv '1.5.5';
 
 use base qw(Exporter);
 
 our %EXPORT_TAGS = (all            => [ qw(make_eqvt) ],
                     frozen_csnames => [ qw(END_TEX_TOKEN
                                            FROZEN_CR
-                                           FROZEN_INSERT_ROW_PROPERTIES
                                            FROZEN_DONT_EXPAND_TOKEN
                                            FROZEN_END_GROUP
                                            FROZEN_FI
@@ -289,6 +288,7 @@ sub __DEBUG {
         }
     }
 
+    $tex->print_ln();
     $tex->print_ln();
 
     return;
@@ -1864,13 +1864,16 @@ FROZEN_CSNAMES: {
 
     sub FROZEN_ENDV_TOKEN() { return $FROZEN_ENDV_TOKEN };
 
+    my $FROZEN_ENDU;
+    my $FROZEN_ENDU_TOKEN;
+
+    sub FROZEN_ENDU_TOKEN() { return $FROZEN_ENDU_TOKEN };
+
     my $OMIT_TEMPLATE;
 
     sub OMIT_TEMPLATE() { return $OMIT_TEMPLATE };
 
-    my $FROZEN_INSERT_ROW_PROPERTIES;
-
-    sub FROZEN_INSERT_ROW_PROPERTIES { return $FROZEN_INSERT_ROW_PROPERTIES };
+    my $FROZEN_END_U_TEMPLATE;
 
     sub __init_eqtb_region_1_2 {
         my $tex = shift;
@@ -1903,9 +1906,10 @@ FROZEN_CSNAMES: {
         $FROZEN_ENDV = $tex->load_primitive("endv");
         $FROZEN_ENDV_TOKEN = make_frozen_token(endtemplate => $FROZEN_ENDV);
 
-        $OMIT_TEMPLATE = TeX::TokenList->new({ tokens => [ $FROZEN_END_TEMPLATE_TOKEN ] });
+        $FROZEN_ENDU = $tex->load_primitive("endu");
+        $FROZEN_ENDU_TOKEN = make_frozen_token(endutemplate => $FROZEN_ENDU);
 
-        $FROZEN_INSERT_ROW_PROPERTIES = make_frozen_token(insertRowProperties => $tex->load_primitive('insertRowProperties'));
+        $OMIT_TEMPLATE = TeX::TokenList->new({ tokens => [ $FROZEN_END_TEMPLATE_TOKEN ] });
 
         return;
     }
@@ -7110,8 +7114,9 @@ sub hpack {
     my $tex = shift;
 
     my $node_list = shift;
-    my $width     = shift;
-    my $spec_code = shift;
+
+    # my $width     = shift;
+    # my $spec_code = shift;
 
     my $hbox = new_null_box();
 
@@ -7740,7 +7745,7 @@ sub scan_u_template {
         }
     }
 
-    $u->push(FROZEN_INSERT_ROW_PROPERTIES);
+    $u->push(FROZEN_ENDU_TOKEN);
 
     $cur_col->set_u_part($u);
 
@@ -7931,8 +7936,8 @@ sub __add_hidden_cell {
 
     my $col_tag = $tex->xml_table_col_tag();
 
-    $tex->start_xml_element($col_tag, { hidden => "hidden" });
-    $tex->end_xml_element($col_tag);
+    my $hidden = new_null_box(new_xml_open_node($col_tag, { hidden => "hidden" }),
+                              new_xml_close_node($col_tag));
 
     my $cur_align = $tex->get_cur_alignment();
 
@@ -7999,12 +8004,9 @@ sub fin_col {
         if ($span_record->is_new()) {
             $span_record->set_top_row($tex->alignrowno());
 
-            ## I don't think the mode actually matters for us.
+            ## Don't care about mode, so just use a HListNode.
 
-            my $cur_box = $tex->is_hmode() ? $tex->hpack($head, natural)
-                                           : $tex->vpack($head, natural);
-
-            $tex->tail_append($cur_box);
+            my $cur_cell = $tex->hpack($head, natural);
 
             if (nonempty($col_tag)) {
                 my %atts;
@@ -8029,13 +8031,15 @@ sub fin_col {
 
                 $align->set_col_property($col_no, {});
 
-                $cur_box->unshift_node(new_xml_open_node($col_tag,
-                                                         \%atts,
-                                                         $props,
+                $cur_cell->unshift_node(new_xml_open_node($col_tag,
+                                                          \%atts,
+                                                          $props,
                                        ));
 
-                $cur_box->push_node(new_xml_close_node($col_tag));
+                $cur_cell->push_node(new_xml_close_node($col_tag));
             }
+
+            $tex->tail_append($cur_cell);
 
             $tex->incr_aligncolno();
 
@@ -8086,47 +8090,65 @@ sub fin_col {
     return;
 }
 
-# padding-bottom can't be applied to <tr>, so it must be moved to
-# enclosed <td>s
-
-# background-color (set by colortbl's \rowcolor command)
-
-my @MOVABLE_CSS_PROPERTIES = qw(color background-color padding-bottom);
-
-sub insert_row_properties {
+sub end_u_template {
     my $tex = shift;
 
-    my $align = $tex->get_cur_alignment();
-
-    my %props = $align->get_row_properties();
-
-    for my $prop (@MOVABLE_CSS_PROPERTIES) {
-        if (defined(my $value = delete $props{$prop})) {
-            $tex->set_css_property($prop, $value);
-        }
-    }
+    $tex->tail_append(new_end_u_template_node());
 
     return;
 }
 
+# padding-bottom can't be applied to <tr>, so it must be moved to
+# enclosed <td>s
+
+# background-color (set by colortbl's \rowcolor command) needs to move
+# from the row to the end of the u template so that it overrides
+# \columncolor but can be overriden by \cellcolor.
+
+my @MOVABLE_CSS_PROPERTIES = qw(color background-color padding-bottom);
+
 sub fin_row {
     my $tex = shift;
 
-    my $head = $tex->pop_nest();
+    my $align = $tex->get_cur_alignment();
 
-    my $cur_row = $tex->is_hmode() ? $tex->hpack($head, natural)
-                                   : $tex->vpack($head, natural);
+    my %props = %{ $align->delete_row_properties() };
 
-    if (nonempty(my $row_tag = $tex->xml_table_row_tag())) {
-        my $align = $tex->get_cur_alignment();
+    my %movable;
 
-        my $props = $align->delete_row_properties();
+    # cackle
+    @movable{@MOVABLE_CSS_PROPERTIES} = delete @props{@MOVABLE_CSS_PROPERTIES};
 
-        delete $props->{$_} for @MOVABLE_CSS_PROPERTIES;
+    my @row;
 
-        $cur_row->unshift_node(new_xml_open_node($row_tag, undef, $props));
-        $cur_row->push_node(new_xml_close_node($row_tag));
+    for my $cell ($tex->pop_nest()) {
+        my @old = $cell->get_nodes();
+
+        my @new;
+
+        for my $node (@old) {
+            if ($node->isa('TeX::Node::UTemplateMarker')) {
+                while (my ($k, $v) = each %movable) {
+                    if (nonempty($k) && nonempty($v)) {
+                        push @new, new_css_property_node($k, $v);
+                    }
+                }
+
+                next;
+            }
+
+            push @new, $node;
+        }
+
+        push @row, new_null_box(@new);
     }
+
+    my $row_tag = $tex->xml_table_row_tag();
+
+    unshift @row, new_xml_open_node($row_tag, undef, \%props);
+    push    @row, new_xml_close_node($row_tag);
+
+    my $cur_row = new_null_box(@row);
 
     $tex->tail_append($cur_row);
 
@@ -8134,9 +8156,8 @@ sub fin_row {
         $tex->set_spacefactor(1000);
     }
 
+    # Hmm
     $tex->begin_token_list($tex->get_toks_list('every_cr'), every_cr_text);
-
-    my $align = $tex->get_cur_alignment();
 
     $align->update_span_records($tex);
 
@@ -8178,9 +8199,9 @@ sub fin_align {
     if ($tex->is_mmode()) {
         $tex->finish_align_in_display();
     } else {
-        my @head = $tex->pop_nest();
+        my @rows = $tex->pop_nest();
 
-        my $final_row = $head[-1];
+        my $final_row = $rows[-1];
 
         my $final_row_open = $final_row->get_node(0);
 
@@ -8207,11 +8228,11 @@ sub fin_align {
         }
 
         if (nonempty(my $table_tag = $tex->xml_table_tag())) {
-            unshift @head, new_xml_open_node($table_tag);
-            push    @head, new_xml_close_node($table_tag);
+            unshift @rows, new_xml_open_node($table_tag);
+            push    @rows, new_xml_close_node($table_tag);
         }
 
-        $tex->tail_append(@head);
+        $tex->tail_append(@rows);
 
         if ($tex->is_vmode()) {
             $tex->build_page();
