@@ -672,9 +672,9 @@ __DATA__
         \fi
         \def\@rightborderstyle{none}%
         \tab@makepreamble{#2}%
+        \def\@sharp{\endutemplate#3}%
+        \set@typeset@protect
         \@preamble
-        \let\protect\@typeset@protect
-        #3%
     \endgroup
     \ignorespaces
 }
