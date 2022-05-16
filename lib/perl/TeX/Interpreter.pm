@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.5';
+use version; our $VERSION = qv '1.5.6';
 
 use base qw(Exporter);
 
@@ -82,7 +82,7 @@ use Fcntl qw(:seek);
 use File::Basename;
 use File::Spec::Functions;
 
-use List::Util qw(all);
+use List::Util qw(none);
 
 use TeX::Utils::Unicode::Diacritics qw(apply_accent);
 
@@ -1903,7 +1903,7 @@ FROZEN_CSNAMES: {
         $FROZEN_ENDV = $tex->load_primitive("endv");
         $FROZEN_ENDV_TOKEN = make_frozen_token(endtemplate => $FROZEN_ENDV);
 
-        $FROZEN_ENDU = $tex->load_primitive("endu");
+        $FROZEN_ENDU = $tex->load_primitive("endutemplate");
         $FROZEN_ENDU_TOKEN = make_frozen_token(endutemplate => $FROZEN_ENDU);
 
         $OMIT_TEMPLATE = TeX::TokenList->new({ tokens => [ $FROZEN_END_TEMPLATE_TOKEN ] });
@@ -7981,6 +7981,10 @@ sub fin_col {
 
         my $head = $tex->pop_nest();
 
+        ## Don't care about mode, so just use a HListNode.
+
+        my $cur_cell = $tex->hpack($head, natural);
+
         my $col_tag = $tex->xml_table_col_tag();
 
         my $num_rows = $span_record->num_rows();
@@ -7988,10 +7992,6 @@ sub fin_col {
 
         if ($span_record->is_new()) {
             $span_record->set_top_row($tex->alignrowno());
-
-            ## Don't care about mode, so just use a HListNode.
-
-            my $cur_cell = $tex->hpack($head, natural);
 
             if (nonempty($col_tag)) {
                 my %atts;
@@ -8040,11 +8040,11 @@ sub fin_col {
                 $tex->__add_hidden_cell($span_record->top_row());
             }
 
-            if (! all { $_->isa("TeX::Node::XmlAttributeNode") } @{ $head } ) {
+            if ($cur_cell->is_visible()) {
                 my $row_no = $tex->alignrowno();
                 my $col_no = $tex->aligncolno();
 
-                $tex->print_err("Possible lost material in row $row_no, col $col_no: '@{ $head }'");
+                $tex->print_err("Possible lost material in row $row_no, col $col_no: '$cur_cell'");
 
                 $tex->set_help("We're in the middle of a row span here.");
 
@@ -8287,6 +8287,11 @@ sub __is_empty_par {
     return 1 if @nodes == 0;
 
     return @nodes == 1 && $nodes[0]->isa("TeX::Node::XmlAttributeNode");
+
+    # This is too strict since it weeds out "paragraphs" consisting
+    # solely of XML tag nodes.  See note in TeX::Node::HListNode::is_visible.
+
+    # return none { $_->is_visible() } @nodes;
 }
 
 sub line_break {
@@ -10667,7 +10672,7 @@ sub __list_primitives {
                         vsplit vss vss vtop wd write xleaders);
 
     ## \titlecase is much less useful than it seems.
-    push @primitives, qw(tccode titlecase boxtostring);
+    push @primitives, qw(tccode titlecase boxtostring endutemplate);
 
     push @primitives, qw(XeTeXmathcode);
 
