@@ -53,6 +53,8 @@ sub BUILD {
     $pre_break_of    {$ident} = $arg_ref->{pre_break};
     $post_break_of   {$ident} = $arg_ref->{post_break};
 
+    $self->set_visible(1);
+
     return;
 }
 

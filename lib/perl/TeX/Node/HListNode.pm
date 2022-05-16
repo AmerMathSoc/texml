@@ -42,6 +42,8 @@ our @EXPORT_OK = @{ $EXPORT_TAGS{factories} };
 
 our @EXPORT;
 
+use List::Util qw(any);
+
 use TeX::Arithmetic qw(:string unity);
 
 use TeX::WEB2C qw(:box_params :node_params :type_bounds);
@@ -81,6 +83,19 @@ sub get_head {
     my $self = shift;
 
     return $self->get_node(0);
+}
+
+sub is_visible {
+    my $self = shift;
+
+    ## TODO: Note that this will consider a list consisting solely of
+    ## an XML open tag to be empty.  This is ok for the one place we
+    ## currently use this (TeX::Interpreter::fin_col()), but might not
+    ## be adequate in general.  It probably makes more sense to mark
+    ## XmlOpenNodes and XmlCloseNodes as visible; then we can use this
+    ## is_visible in TeX::Interpreter::__is_empty_par().
+
+    return any { $_->is_visible() } $self->get_nodes();
 }
 
 sub to_string :STRINGIFY {

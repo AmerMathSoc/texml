@@ -53,6 +53,8 @@ sub BUILD {
     $height_of{$ident} = $arg_ref->{height};
     $depth_of{$ident}  = $arg_ref->{depth};
 
+    $self->set_visible(1);
+
     return;
 }
 

@@ -55,6 +55,8 @@ sub BUILD {
     $font_of{$ident}      = $arg_ref->{font};
     $char_code_of{$ident} = $arg_ref->{char_code};
 
+    $self->set_visible(1);
+
     return;
 }
 

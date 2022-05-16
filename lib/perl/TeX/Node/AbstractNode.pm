@@ -40,6 +40,8 @@ my %link_of    :ATTR(:get<link>    :set<link>);
 my %type_of    :ATTR(:get<type>    :set<type> :default<-1>);
 my %subtype_of :ATTR(:get<subtype> :set<subtype> :default(0));
 
+my %visible_of :BOOLEAN(:name<visible> :default<0>);
+
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
