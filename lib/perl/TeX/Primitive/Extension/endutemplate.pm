@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::endu;
+package TeX::Primitive::Extension::endutemplate;
 
 # Copyright (C) 2022 American Mathematical Society
 #
