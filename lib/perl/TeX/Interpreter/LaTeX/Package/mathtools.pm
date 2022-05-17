@@ -61,6 +61,10 @@ __DATA__
 
 \let\smashoperator\@gobbleopt
 
+% I don't think there's a good way to emulate this.
+
+\def\vdotswithin#1{\ensuremath{\vdots}}
+
 \DeclareMathPassThrough{coloneq}
 \DeclareMathPassThrough{underbrace}[1]
 
