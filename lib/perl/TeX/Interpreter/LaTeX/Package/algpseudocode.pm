@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::algpseudocode;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.1';
+use version; our $VERSION = qv '1.2.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -41,8 +41,6 @@ sub install ( $ ) {
     my @options = @_;
 
     $tex->package_load_notification(__PACKAGE__, @options);
-
-    $tex->load_latex_package("algpseudocode", @options);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::algpseudocode::DATA{IO});
 
@@ -61,18 +59,96 @@ __DATA__
 
 \TeXMLprovidesPackage{algpseudocode}
 
-%% This should be reviewed.  I don't think any of these are actually
-%% part of algpseudocode per se.
+%% Theoretically we could re-implement algorithmicx's primitives, but
+%% that seems too much like work.
 
-\RequirePackage{algorithmic}
+\RequirePackage{algorithmicx}
 
-\DeclareSVGEnvironment{algo}
+\LoadPackage{algorithmic}
 
-\def\floatc@ruled[2]{{\@fs@cfont #1.} #2\par}
+\DeclareOption{noend}{\setboolean{ALG@noend}{true}}
+\DeclareOption{end}{\setboolean{ALG@noend}{false}}
 
-\newcommand{\SetKwProg}[4]{}
-\newcommand{\SetAlFnt}[1]{}
-\newcommand{\SetAlCapFnt}[1]{}
+% TBD: Decide what if anything to do about compatibility mode.
+
+\newboolean{ALG@compatible}%
+\setboolean{ALG@compatible}{false}
+
+\DeclareOption{compatible}{%
+    \typeout{For compatibility mode use algcompatible.sty!!!}%
+    \setboolean{ALG@compatible}{true}%
+}
+
+\DeclareOption{noncompatible}{\setboolean{ALG@noncompatible}{false}}%
+
+\ProcessOptions
+
+% *** DECLARATIONS ***
+
+% Probably don't need this
+\algnewlanguage{pseudocode}
+\alglanguage{pseudocode}
+
+% *** KEYWORDS ***
+
+\newcommand\algorithmicfunction{\textbf{function}}
+\newcommand\algorithmicprocedure{\textbf{procedure}}
+
+\newcommand\textproc{\textsc}
+
+\let\Comment\COMMENT % TBD: This isn't right since braces around arg not not required
+\let\State\STATE
+
+\def@ALG@statement*{\Statex}{statement}
+
+\let\While\WHILE
+\let\EndWhile\ENDWHILE
+
+\let\For\FOR
+\let\EndFor\ENDFOR
+
+\let\ForAll\FORALL
+
+\let\Loop\LOOP
+\let\EndLoop\ENDLOOP
+
+\let\Until\UNTIL
+
+\let\Repeat\REPEAT
+
+\let\If\IF
+\let\EndIf\ENDIF
+
+\let\ElsIf\ELSIF
+\let\Else\ELSE
+
+\newcommand{\Procedure}[2]{% #1 = procedure name; #2 = args
+    \ALG@open@structure*{procedure}{\algorithmicprocedure}{%
+        \textproc{#1}\if###2##\else\space (#2)\fi
+    }{}{}%
+}
+
+\newcommand{\EndProcedure}{%
+    \ALG@close@structure{\algorithmicend\ \algorithmicprocedure}
+}
+
+\newcommand{\Function}[2]{% #1 = procedure name; #2 = args
+    \ALG@open@structure*{function}{\algorithmicfunction}{%
+        \textproc{#1}\if###2##\else\space (#2)\fi
+    }{}{}%
+}
+
+\newcommand{\EndFunction}{%
+    \ALG@close@structure{\algorithmicend\ \algorithmicfunction}%
+}
+
+% *** OTHER DECLARATIONS
+
+\let\Require\REQUIRE
+\let\Ensure\ENSURE
+\let\Return\RETURN
+
+\algnewcommand\Call[2]{\textproc{#1}\ifthenelse{\equal{#2}{}}{}{(#2)}}%
 
 \TeXMLendPackage
 

@@ -32,7 +32,9 @@ package TeX::Interpreter::LaTeX::Package::algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '2.2.4';
+
+use TeX::Constants qw(:named_args);
 
 sub install ( $ ) {
     my $class = shift;
@@ -42,9 +44,29 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
-    $tex->load_latex_package("algorithmic", @options);
-
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::algorithmic::DATA{IO});
+
+    $tex->define_csname(algsetup => \&do_algsetup);
+
+    return;
+}
+
+sub do_algsetup {
+    my $tex = shift;
+
+    my $opts = $tex->read_undelimited_parameter(EXPANDED);
+
+    # \algsetup{linenodelimiter=X}
+
+    # Ignore linenosize and indent
+
+    for my $pair (split /\s*,\s*/, $opts) {
+        my ($key, $value) = split /\s*=\s*/, $pair, 2;
+
+        if ($key eq 'linenodelimiter') {
+            $tex->define_simple_macro('ALG@linenodelimiter' => $value);
+        }
+    }
 
     return;
 }
@@ -55,7 +77,170 @@ __DATA__
 
 \TeXMLprovidesPackage{algorithmic}
 
-\DeclareSVGEnvironment{algorithmic}
+\@namedef{ver@algorithmic.sty}{XXX}
+
+\LoadPackage{ALGutils}
+
+\DeclareOption{noend}{\setboolean{ALG@noend}{true}}
+
+\ProcessOptions
+
+%% Define \algorithmicindent in case someone tries to customize it.
+
+\let\algorithmicindent\dimen@
+
+\newcommand{\algorithmicrequire}{\textbf{Require:}}
+\newcommand{\algorithmicensure}{\textbf{Ensure:}}
+\newcommand{\algorithmicend}{\textbf{end}}
+\newcommand{\algorithmicif}{\textbf{if}}
+\newcommand{\algorithmicthen}{\textbf{then}}
+\newcommand{\algorithmicelse}{\textbf{else}}
+\newcommand{\algorithmicelsif}{\algorithmicelse\ \algorithmicif}
+\newcommand{\algorithmicendif}{\algorithmicend\ \algorithmicif}
+\newcommand{\algorithmicfor}{\textbf{for}}
+\newcommand{\algorithmicforall}{\textbf{for all}}
+\newcommand{\algorithmicdo}{\textbf{do}}
+\newcommand{\algorithmicendfor}{\algorithmicend\ \algorithmicfor}
+\newcommand{\algorithmicwhile}{\textbf{while}}
+\newcommand{\algorithmicendwhile}{\algorithmicend\ \algorithmicwhile}
+\newcommand{\algorithmicloop}{\textbf{loop}}
+\newcommand{\algorithmicendloop}{\algorithmicend\ \algorithmicloop}
+\newcommand{\algorithmicrepeat}{\textbf{repeat}}
+\newcommand{\algorithmicuntil}{\textbf{until}}
+\newcommand{\algorithmicprint}{\textbf{print}}
+\newcommand{\algorithmicreturn}{\textbf{return}}
+\newcommand{\algorithmicand}{\textbf{and}}
+\newcommand{\algorithmicor}{\textbf{or}}
+\newcommand{\algorithmicxor}{\textbf{xor}}
+\newcommand{\algorithmicnot}{\textbf{not}}
+\newcommand{\algorithmicto}{\textbf{to}}
+\newcommand{\algorithmicinputs}{\textbf{inputs}}
+\newcommand{\algorithmicoutputs}{\textbf{outputs}}
+\newcommand{\algorithmicglobals}{\textbf{globals}}
+\newcommand{\algorithmicbody}{\textbf{do}}
+\newcommand{\algorithmictrue}{\textbf{true}}
+\newcommand{\algorithmicfalse}{\textbf{false}}
+
+\def@ALG@statement*[\algorithmicrequire]{\REQUIRE}{require}
+\def@ALG@statement*[\algorithmicensure]{\ENSURE} {ensure}
+
+\newcommand{\TRUE}{\algorithmictrue{}}
+\newcommand{\FALSE}{\algorithmicfalse{}}
+\newcommand{\AND}{\algorithmicand{} }
+\newcommand{\OR}{\algorithmicor{} }
+\newcommand{\XOR}{\algorithmicxor{} }
+\newcommand{\NOT}{\algorithmicnot{} }
+\newcommand{\TO}{\algorithmicto{} }
+
+\def@ALG@statement{\STATE}{statement}
+\let\STMT\STATE
+
+\newcommand{\PRINT}{\STATE \algorithmicprint{} }
+\newcommand{\RETURN}{\STATE \algorithmicreturn{} }
+
+\let\algorithmiccomment\relax
+\newcommand{\algorithmiccomment}[1]{\ALG@com{#1}}
+
+\let\COMMENT\algorithmiccomment
+
+\newcommand{\INPUTS}[1][]{%
+    \ALG@open@structure*{inputs}{\algorithmicinputs}{}{#1}{}%
+}
+
+\newcommand{\ENDINPUTS}{%
+    \ALG@close@structure{}%
+}
+
+\newcommand{\OUTPUTS}[1][]{%
+    \ALG@open@structure*{outputs}{\algorithmicoutputs}{}{#1}{}%
+}
+
+\let\ENDOUTPUTS\ENDINPUTS
+
+\def@ALG@statement[\algorithmicglobals]{\GLOBALS} {globals}
+
+\newcommand{\BODY}[1][]{%
+    \ALG@open@structure*{body}{\algorithmicbody}{}{#1}{}%
+}
+
+\let\ENDBODY\ENDINPUTS
+
+\newcommand{\WHILE}[2][]{%
+    \ALG@open@structure{while}{\algorithmicwhile}{#2}{#1}{\algorithmicdo}
+}
+
+\def\ENDWHILE{\ALG@close@structure{\algorithmicendwhile}}
+
+\newcommand{\FOR}[2][]{%
+    \ALG@open@structure{for}{\algorithmicfor}{#2}{#1}{\algorithmicdo}
+}
+
+\newcommand{\FORALL}[2][]{%
+    \ALG@open@structure{forall}{\algorithmicforall}{#2}{#1}{\algorithmicdo}
+}
+
+\def\ENDFOR{\ALG@close@structure{\algorithmicendfor}}
+
+\newcommand{\LOOP}[1][]{% No condition
+    \ALG@open@structure{loop}{\algorithmicloop}{}{#1}{}%
+}
+
+\newcommand{\REPEAT}[1][]{% No condition
+    \ALG@open@structure{repeat}{\algorithmicrepeat}{}{#1}{}%
+}
+
+\newcommand{\UNTIL}[1]{%
+        \ALG@end@block
+        \ALG@begingroup
+            \ALG@pushtag{until}%
+            \ALG@begin@condition
+                \ALG@begin@line
+                \ALG@begingroup
+                    \ALG@pushtag{statement}%
+                    \ALG@instatementtrue
+                        \algorithmicuntil\ #1\par
+            \ALG@end@condition
+        \ALG@endgroup
+    \ALG@endgroup
+}
+
+\def\ENDLOOP{\ALG@close@structure{\algorithmicendloop}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                      IF-THEN-ELSIF-ELSE-FI                       %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\ALC@close@IF{\protect \ALG@close {if}}
+
+\newcommand{\IF}[2][]{%
+    \ALG@open@structure{if}{\algorithmicif}{#2}{#1}{\algorithmicthen}
+}
+
+\newcommand{\ELSIF}[2][]{%
+    \ALG@end@block
+    \ifx\ALG@tagstack\ALC@close@IF\else
+        \ALG@endgroup
+    \fi
+    \ALG@open@structure{elsif}{\algorithmicelsif}{#2}{#1}{\algorithmicthen}%
+}
+
+\newcommand{\ELSE}[1][]{% No condition
+    \ALG@end@block
+    \ifx\ALG@tagstack\ALC@close@IF\else
+        \ALG@endgroup
+    \fi
+    \ALG@open@structure*{else}{\algorithmicelse}{}{#1}{}%
+}
+
+\def\ENDIF{%
+    \ALG@end@block
+    \ifx\ALG@tagstack\ALC@close@IF\else
+        \ALG@endgroup
+    \fi
+    \ALG@close@structure{\algorithmicendif}
+}
 
 \TeXMLendPackage
 
