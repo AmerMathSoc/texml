@@ -53,9 +53,10 @@ __DATA__
 
 \TeXMLprovidesPackage{booktabs}
 
+\def\tablestrut{}
+
 %% This takes care of \toprule, \midrule, and \bottomrule and maybe
 %% (at least partially) \specialrule (needs to be tested).
-%% TODO: \cmidrule
 
 \def\@BTrule[#1]{%
     \ifx\longtable\undefined
@@ -92,7 +93,29 @@ __DATA__
     \ifnum0=`{\fi}%
 }
 
-\def\tablestrut{}
+%% TODO: \cmidrule
+
+% #3 = rule width
+% $4 = trim (ignored)
+
+\def\@@@cmidrule[#1-#2]#3#4{%
+        \@thisrulewidth=#3
+        \edef\current@border@width{\the\@thisrulewidth}%
+        \count@#1
+        \@tempcnta#2
+        % I'm not sure this behaviour of an initial starting column of
+        % zero is an intentional feature, but let's preserve it.
+        \ifnum\count@=\z@
+            \advance\count@\@ne
+            \advance\@tempcnta\@ne
+        \fi
+        \advance\@tempcnta\@ne
+        \@whilenum\count@<\@tempcnta\do{%
+            \setColumnCSSproperty{\the\count@}{border-top}{\current@border@properties}%
+            \advance\count@\@ne
+        }%
+    \ifnum0=`{\fi}%
+}
 
 \TeXMLendPackage
 
