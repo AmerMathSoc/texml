@@ -72,7 +72,17 @@ sub do_TML_current_color {
         } else {
             $color_spec = sprintf '#%02x%02x%02x', @rgb;
         }
-    } else {
+    }
+    elsif ($model eq 'HTML') {
+        my @rgb = map { hex } ($spec[0] =~ m{..}g);
+
+        if ($tex->is_mmode()) {
+            $color_spec = sprintf '[RGB](%d, %d, %d)', @rgb;
+        } else {
+            $color_spec = sprintf '#%02x%02x%02x', @rgb;
+        }
+    }
+    else {
         $tex->print_err("Unsupported color model '$model'");
 
         $tex->error();
