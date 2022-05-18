@@ -42,8 +42,6 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
-    # $tex->load_latex_package("makecell", @options);
-
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::makecell::DATA{IO});
 
     $tex->define_csname(multirowcell => \&do_multirowcell);
@@ -72,6 +70,11 @@ __DATA__
 \TeXMLprovidesPackage{makecell}
 
 \RequirePackage{array}
+
+%% TBD: Implement cellgapes?
+
+\let\setcellgapes\@gobbleopt
+\let\makegapedcells\@empty
 
 \newcommand\Xhline[1]{%
     \noalign{\ifnum0=`}\fi
