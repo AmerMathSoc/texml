@@ -32,7 +32,7 @@ package TeX::Output::XML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.0';
+use version; our $VERSION = qv '1.5.1';
 
 use FindBin;
 
@@ -1022,6 +1022,10 @@ sub hlist_out {
         }
 
         if ($node->isa('TeX::Node::PenaltyNode')) {
+            next;
+        }
+
+        if ($node->isa('TeX::Node::UTemplateMarker')) {
             next;
         }
 
