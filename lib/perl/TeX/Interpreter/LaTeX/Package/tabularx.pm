@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Package::tabularx;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -41,8 +39,6 @@ sub install ( $ ) {
     my @options = @_;
 
     $tex->package_load_notification(__PACKAGE__, @options);
-
-    # $tex->load_latex_package("tabularx", @options);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::tabularx::DATA{IO});
 

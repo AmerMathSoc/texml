@@ -72,7 +72,7 @@ __DATA__
 \AMSBlackListPackage{pspicture}
 \AMSBlackListPackage{shaderef}
 \AMSBlackListPackage{stix2}
-\AMSBlackListPackage{tabularx}
+%\AMSBlackListPackage{tabularx}
 \AMSBlackListPackage{textcomp}
 \AMSBlackListPackage{thm-listof}
 \AMSBlackListPackage{tikz-qtree-compat}
