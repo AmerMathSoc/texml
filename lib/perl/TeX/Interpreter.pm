@@ -8188,6 +8188,8 @@ sub fin_align {
 
         my $final_row = $rows[-1];
 
+        ## TBD: This might not be an hlist: Check for things like \noalign{\smallskip}, etc.
+
         my $final_row_open = $final_row->get_node(0);
 
         if (defined(my $props = $align->delete_row_properties())) {
