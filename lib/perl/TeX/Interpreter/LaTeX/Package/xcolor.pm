@@ -68,7 +68,7 @@ sub do_TML_current_color {
         my @rgb = map { int(255 * $_) } @spec;
 
         if ($tex->is_mmode()) {
-            $color_spec = sprintf '[RGB](%d, %d, %d)', @rgb;
+            $color_spec = sprintf '[RGB]{%d, %d, %d}', @rgb;
         } else {
             $color_spec = sprintf '#%02x%02x%02x', @rgb;
         }
@@ -77,7 +77,7 @@ sub do_TML_current_color {
         my @rgb = map { hex } ($spec[0] =~ m{..}g);
 
         if ($tex->is_mmode()) {
-            $color_spec = sprintf '[RGB](%d, %d, %d)', @rgb;
+            $color_spec = sprintf '[RGB]{%d, %d, %d}', @rgb;
         } else {
             $color_spec = sprintf '#%02x%02x%02x', @rgb;
         }
