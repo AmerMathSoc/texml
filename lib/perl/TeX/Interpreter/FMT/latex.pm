@@ -32,7 +32,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.115.1';
+use version; our $VERSION = qv '1.116.0';
 
 use Image::PNG;
 use Image::JPEG::Size;
@@ -1972,24 +1972,36 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\def\TeXMLprovidesFile#1#2{%
+% #1 = options
+% #2 = package name
+
+\newcommand{\LoadPackage}[2][]{%
     \@pushfilename
-    \xdef\@currname{#1}%
-    \global\let\@currext#2%
-    \begingroup
-        \ifx\@currext\@clsextension
-            \def\@tempa{\ProvidesClass{#1}}%
-        \else
-            \def\@tempa{\ProvidesPackage{#1}}%
-        \fi
-    \expandafter\endgroup
-    \@tempa
+    \xdef\@currname{#2}%
+    \global\let\@currext\@pkgextension
+    \expandafter\let\csname\@currname.\@currext-h@@k\endcsname\@empty
+    \let\CurrentOption\@empty
+    \@reset@ptions
+    \makeatletter
+    \def\reserved@a{%
+        \@pass@ptions\@currext{#1}{#2}%
+        \global\expandafter\let\csname ver@\@currname.\@currext\endcsname\@empty
+        \@load@package[#1]{#2}%
+        \let\@unprocessedoptions\@@unprocessedoptions
+        \csname\@currname.\@currext-h@@k\endcsname
+        \expandafter\let\csname\@currname.\@currext-h@@k\endcsname\@undefined
+        \@unprocessedoptions
+        \ifx\@currext\@clsextension\let\LoadClass\@twoloadclasserror\fi
+        \@popfilename
+        \@reset@ptions
+    }%
+    \reserved@a
 }
 
-\def\TeXMLprovidesPackage#1{\TeXMLprovidesFile{#1}\@pkgextension}
-\def\TeXMLprovidesClass#1{\TeXMLprovidesFile{#1}\@clsextension}
+\let\TeXMLprovidesPackage\ProvidesPackage
+\let\TeXMLprovidesClass\TeXMLprovidesPackage
 
-\def\TeXMLendPackage{\@popfilename\endinput}
+\let\TeXMLendPackage\endinput
 \let\TeXMLendClass\TeXMLendPackage
 
 \let\@classoptionslist\@empty
