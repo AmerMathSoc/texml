@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.6';
+use version; our $VERSION = qv '1.5.7';
 
 use base qw(Exporter);
 
@@ -82,7 +82,7 @@ use Fcntl qw(:seek);
 use File::Basename;
 use File::Spec::Functions;
 
-use List::Util qw(none);
+use List::Util qw(none uniq);
 
 use TeX::Utils::Unicode::Diacritics qw(apply_accent);
 
@@ -12337,7 +12337,17 @@ sub load_package( $$@ ) {
 
     $tex->define_simple_macro('@currname' => $package);
     $tex->define_simple_macro('@currext' => 'sty');
-    $tex->define_simple_macro("opt\@${package}.sty" => join(",", @options));
+
+    my $options = qq{opt\@${package}.sty};
+
+    if (defined(my $prev_options = $tex->get_macro_expansion_text($options))) {
+        push @options, split /,/, $prev_options;
+    }
+
+    # TBD: If we're going to add options here, we need to append them,
+    # not overwrite.
+
+    $tex->define_simple_macro($options => join(",", uniq @options));
 
     eval { $tex->load_macro_file($class, @options) };
 
