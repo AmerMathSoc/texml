@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{blkarray}
+\ProvidesPackage{blkarray}
 
 \DeclareSVGEnvironment*{blockarray}
-
-\TeXMLendPackage
 
 \endinput
 

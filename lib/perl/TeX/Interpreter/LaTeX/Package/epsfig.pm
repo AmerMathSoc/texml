@@ -48,7 +48,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{epsfig}
+\ProvidesPackage{epsfig}
 
 \RequirePackage{graphicx}
 
@@ -57,8 +57,6 @@ __DATA__
 \def\reflectbox#1{%
     \TeXMLCreateSVG{\reflectbox{#1}}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

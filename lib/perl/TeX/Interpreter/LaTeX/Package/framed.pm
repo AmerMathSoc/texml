@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{framed}
+\ProvidesPackage{framed}
 
 \newenvironment{framed}{%
     \par
@@ -64,8 +64,6 @@ __DATA__
     \par
     \endXMLelement{boxed-text}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

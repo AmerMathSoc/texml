@@ -64,7 +64,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{mathscinet}
+\ProvidesPackage{mathscinet}
 
 \RequirePackage{textcmds}
 
@@ -95,8 +95,6 @@ __DATA__
 \def\cftil{\cirti}
 
 \def\cydot{$\cdot$}
-
-\TeXMLendPackage
 
 \endinput
 

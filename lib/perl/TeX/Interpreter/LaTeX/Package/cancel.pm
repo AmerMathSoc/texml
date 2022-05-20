@@ -53,14 +53,12 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{cancel}
+\ProvidesPackage{cancel}
 
 \DeclareMathPassThrough{cancel}[1]
 \DeclareMathPassThrough{bcancel}[1]
 \DeclareMathPassThrough{xancel}[1]
 \DeclareMathPassThrough{cancelto}[2]
-
-\TeXMLendPackage
 
 \endinput
 

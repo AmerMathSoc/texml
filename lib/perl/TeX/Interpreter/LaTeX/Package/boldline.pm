@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{boldline}
+\ProvidesPackage{boldline}
 
 \def\hlineB#1{%
     \noalign{\ifnum0=`}\fi % I'm frankly astonished that this works.
@@ -66,8 +66,6 @@ __DATA__
         \def\current@border@width{medium}%
         \@cline#1\@nil
 }
-
-\TeXMLendPackage
 
 \endinput
 

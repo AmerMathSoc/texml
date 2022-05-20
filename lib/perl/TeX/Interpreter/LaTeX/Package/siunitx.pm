@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{siunitx}
+\ProvidesPackage{siunitx}
 
 \def\num#1{\siunitx@num#1ee\@nil}
 
@@ -60,8 +60,6 @@ __DATA__
 }
 
 \let\sisetup\@gobble
-
-\TeXMLendPackage
 
 \endinput
 

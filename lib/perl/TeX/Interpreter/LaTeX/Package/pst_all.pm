@@ -51,11 +51,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{pst_all}
+\ProvidesPackage{pst_all}
 
 \DeclareSVGEnvironment{pspicture}
-
-\TeXMLendPackage
 
 \endinput
 

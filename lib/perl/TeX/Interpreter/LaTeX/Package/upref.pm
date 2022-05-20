@@ -55,15 +55,13 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{upref}[2010/10/01 v2.05]
+\ProvidesPackage{upref}[2010/10/01 v2.05]
 
 \AtBeginDocument{%
     \providecommand\printref{\textup}%
 }
 
 \providecommand\@upn{\textup}
-
-\TeXMLendPackage
 
 \endinput
 

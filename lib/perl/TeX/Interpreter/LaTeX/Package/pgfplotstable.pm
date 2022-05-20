@@ -55,14 +55,12 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{pgfplotstable}
+\ProvidesPackage{pgfplotstable}
 
 \RequirePackage{pgfplots}
 
 \let\pgfplotstableset\@gobble
 \let\pgfplotscreateplotcyclelist\@gobble
-
-\TeXMLendPackage
 
 \endinput
 

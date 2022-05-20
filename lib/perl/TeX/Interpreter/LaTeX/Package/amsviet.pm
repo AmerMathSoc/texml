@@ -53,12 +53,10 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{amsviet}
+\ProvidesPackage{amsviet}
 
 \let\textviet\@firstofone
 \let\vietenc\@empty
-
-\TeXMLendPackage
 
 \endinput
 

@@ -48,7 +48,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{stmaryrd}
+\ProvidesPackage{stmaryrd}
 
 \RequirePackage{unicode-math}
 
@@ -189,8 +189,6 @@ __DATA__
 %    \@swap\varbigcirc\bigcirc
 %    \@swap\varcopyright\copyright
 % \fi
-
-\TeXMLendPackage
 
 \endinput
 

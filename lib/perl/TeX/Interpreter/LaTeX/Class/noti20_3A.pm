@@ -56,12 +56,10 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{noti20_3A}
+\ProvidesClass{noti20_3A}
 
 \def\@noti@category{sampler}
 \def\category{\def\@noti@subject@group}
-
-\TeXMLendClass
 
 \endinput
 

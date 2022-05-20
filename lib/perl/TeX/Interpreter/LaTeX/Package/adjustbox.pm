@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{adjustbox}
+\ProvidesPackage{adjustbox}
 
 \newenvironment{adjustbox}[1]{}{}
-
-\TeXMLendPackage
 
 \endinput
 

@@ -48,7 +48,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{esint}
+\ProvidesPackage{esint}
 
 \RequirePackage{unicode-math}
 
@@ -69,8 +69,6 @@ __DATA__
 
 \def\varoiint{\oiint}
 \def\varointctrclockwise{\ointctrclockwise}
-
-\TeXMLendPackage
 
 \endinput
 

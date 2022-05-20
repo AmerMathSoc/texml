@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{multirow}
+\ProvidesPackage{multirow}
 
 %% TBD: Implement num_rows < 0
 
@@ -71,8 +71,6 @@ __DATA__
     \fi
     #5%
 }
-
-\TeXMLendPackage
 
 \endinput
 

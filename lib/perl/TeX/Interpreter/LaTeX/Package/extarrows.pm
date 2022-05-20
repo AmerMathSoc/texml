@@ -53,14 +53,12 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{extarrows}
+\ProvidesPackage{extarrows}
 
 \RequirePackage{amsmath}
 
 \def\xlongrightarrow{\xrightarrow}
 \def\xlongleftarrow{\xleftarrow}
-
-\TeXMLendPackage
 
 \endinput
 

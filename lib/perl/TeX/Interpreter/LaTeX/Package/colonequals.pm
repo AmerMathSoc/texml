@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{colonequals}
+\ProvidesPackage{colonequals}
 
 \RequirePackage{unicode-math}
 
@@ -77,8 +77,6 @@ __DATA__
 % \coloncolonsim
 % \simcolon
 % \simcoloncolon
-
-\TeXMLendPackage
 
 \endinput
 

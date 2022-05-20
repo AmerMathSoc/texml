@@ -53,9 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{gen-m-l}
-
-\TeXMLendClass
+\ProvidesClass{gen-m-l}
 
 \endinput
 

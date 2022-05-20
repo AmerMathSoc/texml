@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{placeins}
+\ProvidesPackage{placeins}
 
 \let\FloatBarrier\relax
-
-\TeXMLendPackage
 
 \endinput
 

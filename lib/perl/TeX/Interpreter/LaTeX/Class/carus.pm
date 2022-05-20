@@ -56,9 +56,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{carus}
-
-\TeXMLendClass
+\ProvidesClass{carus}
 
 \endinput
 

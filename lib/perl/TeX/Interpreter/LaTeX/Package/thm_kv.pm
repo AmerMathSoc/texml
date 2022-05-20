@@ -74,7 +74,7 @@ sub do_declaretheorem {
 
 __DATA__
 
-\TeXMLprovidesPackage{thm_kv}
+\ProvidesPackage{thm_kv}
 
 \RequirePackage{amsthm}
 
@@ -82,8 +82,6 @@ __DATA__
 
 \let\thmt@mkignoringkeyhandler\@gobble
 \let\kv@set@family@handler\@gobbletwo
-
-\TeXMLendPackage
 
 \endinput
 

@@ -53,13 +53,11 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{diagbox}
+\ProvidesPackage{diagbox}
 
 \newcommand{\diagbox}[3][]{%
     \TeXMLCreateSVG{\diagbox[#1]{#2}{#3}}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

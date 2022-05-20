@@ -57,7 +57,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{NLM}
+\ProvidesPackage{NLM}
 
 \newenvironment{NLMnote}[2][publishers-note]{%
     \par
@@ -71,8 +71,6 @@ __DATA__
     \endXMLelement{notes}%
     \par
 }
-
-\TeXMLendPackage
 
 \endinput
 

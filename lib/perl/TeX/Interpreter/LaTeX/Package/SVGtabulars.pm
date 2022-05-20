@@ -49,12 +49,10 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{SVGtabulars}
+\ProvidesPackage{SVGtabulars}
 
 \DeclareSVGEnvironment{tabular}
 \DeclareSVGEnvironment{tabular*}
-
-\TeXMLendPackage
 
 \endinput
 

@@ -55,7 +55,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{caption3}
+\ProvidesPackage{caption3}
 
 \newcommand\DeclareCaptionOption{\@gobbletwo}
 
@@ -78,8 +78,6 @@ __DATA__
 \def\caption@@@@withoptargs#1{%
   \def\caption@tempb{#1}%
   \expandafter\caption@tempb\expandafter{\caption@tempa}}
-
-\TeXMLendPackage
 
 \endinput
 

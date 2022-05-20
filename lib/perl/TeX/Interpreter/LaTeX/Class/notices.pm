@@ -56,7 +56,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{notices}
+\ProvidesClass{notices}
 
 \setcounter{secnumdepth}{3}
 
@@ -292,8 +292,6 @@ __DATA__
     \fi
     \thisxmlpartag{title}#1\par
 }
-
-\TeXMLendClass
 
 \endinput
 

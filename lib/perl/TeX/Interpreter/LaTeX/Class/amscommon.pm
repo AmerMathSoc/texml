@@ -514,7 +514,7 @@ EOF
 
 __DATA__
 
-\TeXMLprovidesClass{amscommon}
+\ProvidesClass{amscommon}
 
 \UCSchardef\textprime"2032
 
@@ -1047,6 +1047,6 @@ __DATA__
 \UCSchardef\textservicemark"2120
 \UCSchardef\texttrademark"2122
 
-\TeXMLendClass
+\endinput
 
 __END__

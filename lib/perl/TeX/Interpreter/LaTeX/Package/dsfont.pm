@@ -55,11 +55,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{dsfont}[1995/08/01 v0.1 Double stroke roman fonts (texml)]
+\ProvidesPackage{dsfont}[1995/08/01 v0.1 Double stroke roman fonts (texml)]
 
 \DeclareTeXMLMathAlphabet\mathds
-
-\TeXMLendPackage
 
 \endinput
 

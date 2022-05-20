@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{ytableau}
+\ProvidesPackage{ytableau}
 
 \let\ytableausetup\@gobble
 
@@ -62,8 +62,6 @@ __DATA__
 \def\ydiagram#1{%
     \TeXMLCreateSVG{\ydiagram{#1}}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

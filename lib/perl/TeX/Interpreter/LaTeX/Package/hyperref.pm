@@ -48,7 +48,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{hyperref}
+\ProvidesPackage{hyperref}
 
 \RequirePackage{url}
 
@@ -230,8 +230,6 @@ __DATA__
     #2%
     \endXMLelement{xref}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

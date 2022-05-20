@@ -58,7 +58,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{enumitem}
+\ProvidesPackage{enumitem}
 
 \def\enit@enumerate@i#1#2#3#4{%
     \if@newitem\leavevmode\fi
@@ -138,8 +138,6 @@ __DATA__
   \let\@itemlabel\@empty
   % \def\makelabel##1{##1}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

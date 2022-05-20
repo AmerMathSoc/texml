@@ -57,7 +57,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{tikz}
+\ProvidesPackage{tikz}
 
 \RequirePackage{pgf}
 
@@ -93,8 +93,6 @@ __DATA__
 \newcommand{\rotatebox}[3][]{%
     \TeXMLCreateSVG{\rotatebox[#1]{#2}{#3}}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

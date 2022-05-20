@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{TEMPLATE}
+\ProvidesPackage{TEMPLATE}
 
 
-
-\TeXMLendPackage
 
 \endinput
 

@@ -53,13 +53,11 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{mspm}
+\ProvidesPackage{mspm}
 
 \RequirePackage{moresymb}
 
 \def\bbone{\Bbbone}
-
-\TeXMLendPackage
 
 \endinput
 

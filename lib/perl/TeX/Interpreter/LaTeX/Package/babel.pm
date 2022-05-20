@@ -48,7 +48,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{babel}
+\ProvidesPackage{babel}
 
 \let\selectlanguage\@gobble
 
@@ -58,8 +58,6 @@ __DATA__
 \def\og{\leavevmode\guillemotleft~\ignorespaces}
 
 \def\fg{\unskip~\guillemotright}
-
-\TeXMLendPackage
 
 \endinput
 

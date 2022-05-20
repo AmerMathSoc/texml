@@ -49,15 +49,13 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{amsbsy}
+\ProvidesPackage{amsbsy}
 
 \DeclareTeXMLMathAlphabet\boldsymbol
 
 %% TODO: Can \pmb be replaced by \boldsymbol?
 
 \DeclareTeXMLMathAlphabet\pmb
-
-\TeXMLendPackage
 
 \endinput
 

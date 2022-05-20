@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{epigraph}
+\ProvidesPackage{epigraph}
 
 \providecommand{\epigraphsize}{}
 
@@ -64,8 +64,6 @@ __DATA__
     \thisxmlpartag{attrib}#2\par
     \endXMLelement{disp-quote}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

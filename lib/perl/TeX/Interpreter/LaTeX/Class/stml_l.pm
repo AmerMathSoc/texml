@@ -56,9 +56,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{stml-l}
-
-\TeXMLendClass
+\ProvidesClass{stml-l}
 
 \endinput
 

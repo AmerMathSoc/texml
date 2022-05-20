@@ -49,7 +49,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{AMSfloat}
+\ProvidesPackage{AMSfloat}
 
 % <fig id="raptor" position="float">
 %   <label>Figure 1</label>
@@ -121,8 +121,6 @@ __DATA__
     \endXMLelement{\jats@figure@element}%
     \par
 }
-
-\TeXMLendPackage
 
 \endinput
 

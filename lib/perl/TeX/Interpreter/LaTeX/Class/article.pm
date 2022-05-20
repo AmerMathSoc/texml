@@ -63,14 +63,12 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{article}
+\ProvidesClass{article}
 
 \setXMLdoctype{-//NLM//DTD JATS (Z39.96) Journal Archiving and Interchange DTD with MathML3 v1.1d1 20130915//EN}
               {JATS-archivearticle1-mathml3.dtd}
 
 \setcounter{tocdepth}{2}
-
-\TeXMLendClass
 
 \endinput
 

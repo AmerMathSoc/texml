@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{colortbl}
+\ProvidesPackage{colortbl}
 
 \RequirePackage{array}
 \RequirePackage{xcolor}
@@ -130,8 +130,6 @@ __DATA__
     \endgroup
     \@gobbleopts
 }
-
-\TeXMLendPackage
 
 \endinput
 

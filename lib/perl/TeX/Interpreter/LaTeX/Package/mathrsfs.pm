@@ -48,13 +48,11 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{mathrsfs}
+\ProvidesPackage{mathrsfs}
 
 \def\mathscr{\mathcal}
 
 \DeclareTeXMLMathAlphabet\mathscr
-
-\TeXMLendPackage
 
 \endinput
 

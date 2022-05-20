@@ -56,9 +56,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{gsm-l}
-
-\TeXMLendClass
+\ProvidesClass{gsm-l}
 
 \endinput
 

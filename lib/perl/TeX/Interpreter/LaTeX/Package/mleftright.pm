@@ -53,15 +53,13 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{mleftright}
+\ProvidesPackage{mleftright}
 
 \let\mleftright\@empty
 \let\mleftrightrestore\@empty
 
 \def\mleft{\left}
 \def\mright{\right}
-
-\TeXMLendPackage
 
 \endinput
 

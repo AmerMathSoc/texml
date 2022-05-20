@@ -55,11 +55,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{unicode-math}
+\ProvidesPackage{unicode-math}
 
 \let\mathscr\mathcal
-
-\TeXMLendPackage
 
 \endinput
 

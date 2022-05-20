@@ -53,12 +53,10 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{moresymb}
+\ProvidesPackage{moresymb}
 
 \def\ltrivert{\Vvert}
 \def\rtrivert{\Vvert}
-
-\TeXMLendPackage
 
 \endinput
 

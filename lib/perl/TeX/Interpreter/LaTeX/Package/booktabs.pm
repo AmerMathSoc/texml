@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{booktabs}
+\ProvidesPackage{booktabs}
 
 \def\tablestrut{}
 
@@ -116,8 +116,6 @@ __DATA__
         }%
     \ifnum0=`{\fi}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

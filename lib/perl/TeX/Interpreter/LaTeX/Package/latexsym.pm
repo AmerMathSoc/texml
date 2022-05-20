@@ -55,7 +55,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{latexsym}
+\ProvidesPackage{latexsym}
 
 \RequirePackage{unicode-math}
 
@@ -67,8 +67,6 @@ __DATA__
 \def\rhd{\vartriangleright}
 \def\unlhd{\trianglelefteq}
 \def\unrhd{\trianglerighteq}
-
-\TeXMLendPackage
 
 \endinput
 

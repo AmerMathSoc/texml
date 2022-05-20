@@ -62,7 +62,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{cleveref}
+\ProvidesPackage{cleveref}
 
 \AtBeginDocument{%
     \def\label@noarg#1{%
@@ -160,8 +160,6 @@ __DATA__
     \fi
     \cref@stack@add{#1}{\cref@label@types}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

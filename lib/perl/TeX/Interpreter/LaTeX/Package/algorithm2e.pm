@@ -49,7 +49,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{algorithm2e}
+\ProvidesPackage{algorithm2e}
 
 \newcounter{algocf}
 
@@ -160,8 +160,6 @@ __DATA__
         \def\texml@body{#1#3}%
     \fi
 }
-
-\TeXMLendPackage
 
 \endinput
 

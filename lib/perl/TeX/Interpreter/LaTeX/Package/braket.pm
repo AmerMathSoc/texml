@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{braket}
+\ProvidesPackage{braket}
 
 \DeclareMathPassThrough{bra}[1]
 \DeclareMathPassThrough{ket}[1]
@@ -63,8 +63,6 @@ __DATA__
 \DeclareMathPassThrough{Set}[1]
 \DeclareMathPassThrough{ketbra}[1]
 \DeclareMathPassThrough{Ketbra}[1]
-
-\TeXMLendPackage
 
 \endinput
 

@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{pstricks}
+\ProvidesPackage{pstricks}
 
 \DeclareSVGEnvironment{pspicture}
-
-\TeXMLendPackage
 
 \endinput
 

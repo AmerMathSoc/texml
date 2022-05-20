@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{mathtools}
+\ProvidesPackage{mathtools}
 
 \AtBeginDocument{%
     \def\coloneqq{\coloneq}
@@ -96,6 +96,6 @@ __DATA__
 
 \DefineAMSMathSimpleEnvironment{gathered}
 
-\TeXMLendPackage
+\endinput
 
 __END__

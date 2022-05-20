@@ -56,7 +56,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{jams-l}[2007/06/18 v2.01 JAMS article documentclass]
+\ProvidesClass{jams-l}[2007/06/18 v2.01 JAMS article documentclass]
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 \ProcessOptions\relax
@@ -67,8 +67,6 @@ __DATA__
   AMERICAN MATHEMATICAL SOCIETY}
 
 \def\ISSN{0894-0347}
-
-\TeXMLendClass
 
 \endinput
 

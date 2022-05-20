@@ -57,7 +57,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{array}
+\ProvidesPackage{array}
 
 \@ifundefined{extrarowheight}{%
     \newlength\extrarowheight
@@ -66,7 +66,6 @@ __DATA__
 
 \def\arraybackslash{\let\\\tabularnewline}
 
-\TeXMLendPackage
-
 \endinput
+
 __END__

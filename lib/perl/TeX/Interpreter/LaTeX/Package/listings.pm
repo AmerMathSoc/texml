@@ -53,15 +53,13 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{listings}
+\ProvidesPackage{listings}
 
 \let\lstset\@gobble
 \let\lstdefinestyle\@gobbletwo
 
 \DeclareSVGEnvironment*{listings}
 \DeclareSVGEnvironment*{lstlisting}
-
-\TeXMLendPackage
 
 \endinput
 

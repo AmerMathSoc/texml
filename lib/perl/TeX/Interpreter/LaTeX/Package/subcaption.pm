@@ -48,7 +48,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{subcaption}
+\ProvidesPackage{subcaption}
 
 \RequirePackage{caption}[2012/03/25] % needs v3.3 or newer
 

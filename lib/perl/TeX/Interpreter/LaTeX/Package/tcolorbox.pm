@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{tcolorbox}
+\ProvidesPackage{tcolorbox}
 
 \providecommand{\tcbuselibrary}[1]{}
 
@@ -70,8 +70,6 @@ __DATA__
     \endXMLelement{boxed-text}
     \par
 }
-
-\TeXMLendPackage
 
 \endinput
 

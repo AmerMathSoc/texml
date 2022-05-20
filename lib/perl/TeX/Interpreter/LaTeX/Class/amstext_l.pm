@@ -56,7 +56,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{amstext-l}
+\ProvidesClass{amstext-l}
 
 \newenvironment{inclusion}[1]{%
     \quotation
@@ -72,8 +72,6 @@ __DATA__
 }{
     \csname end\@current@framed\endcsname
 }
-
-\TeXMLendClass
 
 \endinput
 

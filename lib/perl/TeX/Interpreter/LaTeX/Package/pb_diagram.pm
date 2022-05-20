@@ -53,13 +53,11 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{pb_diagram}
+\ProvidesPackage{pb_diagram}
 
 \newskip\dgARROWLENGTH
 
 \DeclareSVGEnvironment{diagram}
-
-\TeXMLendPackage
 
 \endinput
 

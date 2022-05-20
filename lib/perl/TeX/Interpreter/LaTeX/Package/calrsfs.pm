@@ -48,11 +48,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{calrsfs}
+\ProvidesPackage{calrsfs}
 
 \def\mathrsfs{\mathcal}
-
-\TeXMLendPackage
 
 \endinput
 

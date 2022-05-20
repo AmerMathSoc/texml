@@ -49,9 +49,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{dcolumn}
-
-\TeXMLendPackage
+\ProvidesPackage{dcolumn}
 
 \endinput
 

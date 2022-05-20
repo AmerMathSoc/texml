@@ -55,7 +55,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{pgfplots}
+\ProvidesPackage{pgfplots}
 
 \RequirePackage{graphicx}
 \RequirePackage{tikz}
@@ -71,8 +71,6 @@ __DATA__
 \def\pgfdeclarepatternformonly#1#2#3#4#5{}
 
 \def\pgfplotstableread#1#2{}
-
-\TeXMLendPackage
 
 \endinput
 

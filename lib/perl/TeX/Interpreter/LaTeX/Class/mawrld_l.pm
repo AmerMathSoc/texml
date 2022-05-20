@@ -56,9 +56,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{mawrld-l}
-
-\TeXMLendClass
+\ProvidesClass{mawrld-l}
 
 \endinput
 

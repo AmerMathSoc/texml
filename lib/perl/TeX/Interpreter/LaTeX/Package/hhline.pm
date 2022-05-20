@@ -125,7 +125,7 @@ sub do_HH_loop {
 
 __DATA__
 
-\TeXMLprovidesPackage{hhline}
+\ProvidesPackage{hhline}
 
 \def\hhline@hhline#1{%
     \HH@xexpast\relax#1*0x\@@%
@@ -136,8 +136,6 @@ __DATA__
 \def\hhline#1{%
     \noalign{\hhline@hhline{#1}}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

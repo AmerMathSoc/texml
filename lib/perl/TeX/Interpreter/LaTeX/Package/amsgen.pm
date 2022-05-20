@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{amsgen}
+\ProvidesPackage{amsgen}
 
 %% Keep \@saveprimitive from generating unneeded noise.
 
@@ -64,8 +64,6 @@ __DATA__
 \let\glb@settings\@empty
 \def\set@fontsize#1#2#3{}
 \let\compute@ex@\@empty
-
-\TeXMLendPackage
 
 \endinput
 

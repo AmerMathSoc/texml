@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{Enclose}
+\ProvidesPackage{Enclose}
 
 \let\MathJax@enclose@end\@empty
 
@@ -77,8 +77,6 @@ __DATA__
         \MathJax@enclose@end
     \endgroup
 }
-
-\TeXMLendPackage
 
 \endinput
 

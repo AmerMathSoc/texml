@@ -55,11 +55,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{color}
+\ProvidesPackage{color}
 
 \RequirePackage{xcolor}
-
-\TeXMLendPackage
 
 \endinput
 

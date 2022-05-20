@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{cases}%[2002/05/02 ver 2.5 ]
+\ProvidesPackage{cases}%[2002/05/02 ver 2.5 ]
 
 \RequirePackage{amsmath}
 
@@ -136,8 +136,6 @@ __DATA__
 }
 
 \ProcessOptions
-
-\TeXMLendPackage
 
 \endinput
 

@@ -48,7 +48,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{arcs}
+\ProvidesPackage{arcs}
 
 \def\overarc#1{%
     \string\overarc\string{\hbox{#1}\string}%

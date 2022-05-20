@@ -51,13 +51,11 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{thm_patch}
+\ProvidesPackage{thm_patch}
 
 \RequirePackage{amsthm}
 
 \newcommand\addtotheorempostheadhook[1][generic]{}
-
-\TeXMLendPackage
 
 \endinput
 

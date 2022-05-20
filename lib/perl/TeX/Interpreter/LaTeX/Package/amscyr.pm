@@ -49,13 +49,11 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{amscyr}
+\ProvidesPackage{amscyr}
 
 \def\Sha{\mathrm{\char"0428}}
 \def\Shcha{\mathrm{\char"0429}}
 \def\De{\mathrm{\char"0434}}
-
-\TeXMLendPackage
 
 \endinput
 

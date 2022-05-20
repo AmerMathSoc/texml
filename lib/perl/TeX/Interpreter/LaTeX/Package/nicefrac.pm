@@ -55,11 +55,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{nicefrac}
+\ProvidesPackage{nicefrac}
 
 \DeclareRobustCommand*{\nicefrac}[3][]{#2/#3}
-
-\TeXMLendPackage
 
 \endinput
 

@@ -55,7 +55,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{MnSymbol}
+\ProvidesPackage{MnSymbol}
 
 \RequirePackage{unicode-math}
 
@@ -64,8 +64,6 @@ __DATA__
 
 \def\llangle{\lAngle}
 \def\rrangle{\rAngle}
-
-\TeXMLendPackage
 
 \endinput
 

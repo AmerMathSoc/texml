@@ -51,11 +51,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{accents}
+\ProvidesPackage{accents}
 
 \DeclareMathPassThrough{accentset}[2]
-
-\TeXMLendPackage
 
 \endinput
 

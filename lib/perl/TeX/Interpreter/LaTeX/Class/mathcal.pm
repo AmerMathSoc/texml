@@ -52,7 +52,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{mathcal}
+\ProvidesClass{mathcal}
 
 \def\mchead#1{%
     \par
@@ -75,8 +75,6 @@ __DATA__
     #1%
     \endXMLelement{italic}%
 }
-
-\TeXMLendClass
 
 \endinput
 

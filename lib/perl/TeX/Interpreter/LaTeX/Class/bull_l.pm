@@ -56,7 +56,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{bull-l}[2009/05/07 v2.05 BULL Author Class]
+\ProvidesClass{bull-l}[2009/05/07 v2.05 BULL Author Class]
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 \ProcessOptions\relax
@@ -77,8 +77,6 @@ __DATA__
     \@SuperTitletrue
     \def\@SuperTitle
 }
-
-\TeXMLendClass
 
 \endinput
 

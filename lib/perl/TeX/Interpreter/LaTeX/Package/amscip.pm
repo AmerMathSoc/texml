@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{amscip}
+\ProvidesPackage{amscip}
 
 \newenvironment{copyrightpage}{}{}
-
-\TeXMLendPackage
 
 \endinput
 

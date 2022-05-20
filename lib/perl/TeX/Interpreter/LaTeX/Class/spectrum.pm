@@ -56,11 +56,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{spectrum}
+\ProvidesClass{spectrum}
 
 \let\chaptername\@empty
-
-\TeXMLendClass
 
 \endinput
 

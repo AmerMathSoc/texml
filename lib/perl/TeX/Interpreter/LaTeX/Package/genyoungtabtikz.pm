@@ -53,13 +53,11 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{genyoungtabtikz}
+\ProvidesPackage{genyoungtabtikz}
 
 \def\gyoung(#1){%
     \TeXMLCreateSVG{\gyoung(#1)}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

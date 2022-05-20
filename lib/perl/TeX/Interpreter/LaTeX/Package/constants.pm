@@ -105,7 +105,7 @@ __DATA__
 % to just inline the entire package.  As long as we're doing that,
 % we'll also clean up the code a bit.
 
-\TeXMLprovidesPackage{constants}
+\ProvidesPackage{constants}
 
 \AtTeXMLend{\TeXML@resolveconstants}
 
@@ -314,8 +314,6 @@ __DATA__
             Check the name or use \protect\newconstantfamily}}%
     }%
 }
-
-\TeXMLendPackage
 
 \endinput
 

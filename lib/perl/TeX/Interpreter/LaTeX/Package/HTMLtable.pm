@@ -61,7 +61,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{HTMLtable}
+\ProvidesPackage{HTMLtable}
 
 %% Assign a unique id to each tabular for use in CSS selectors.
 
@@ -820,8 +820,6 @@ __DATA__
     \repeat
     \NC@find
 }
-
-\TeXMLendPackage
 
 \endinput
 

@@ -55,15 +55,13 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{wasysym}
+\ProvidesPackage{wasysym}
 
 \RequirePackage{unicode-math}
 
 \DeclareSVGMathChar\currency\mathord
 
 \def\smiley{\ensuremath{\char"263A}}
-
-\TeXMLendPackage
 
 \endinput
 

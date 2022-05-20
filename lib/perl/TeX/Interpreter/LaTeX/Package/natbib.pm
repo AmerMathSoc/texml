@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{natbib}
+\ProvidesPackage{natbib}
 
 %% NB: This is just enough to compile spec/plambeck.
 
@@ -186,8 +186,6 @@ __DATA__
     \def\@noitemerr{\@latex@warning{Empty `thebibliography' environment}}%
     \endlist
 }
-
-\TeXMLendPackage
 
 \endinput
 

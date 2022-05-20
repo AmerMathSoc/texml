@@ -67,7 +67,7 @@ sub do_multirowcell {
 
 __DATA__
 
-\TeXMLprovidesPackage{makecell}
+\ProvidesPackage{makecell}
 
 \RequirePackage{array}
 
@@ -88,8 +88,6 @@ __DATA__
         \setRowCSSproperty{border-top}{\current@border@properties}%
     \ifnum0=`{\fi}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

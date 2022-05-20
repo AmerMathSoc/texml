@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{fdsymbol}
+\ProvidesPackage{fdsymbol}
 
 \RequirePackage{unicode-math}
-
-\TeXMLendPackage
 
 \endinput
 

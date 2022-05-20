@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{etoolbox}
+\ProvidesPackage{etoolbox}
 
 \def\patchcmd#1#2#3#4#5{}
-
-\TeXMLendPackage
 
 \endinput
 

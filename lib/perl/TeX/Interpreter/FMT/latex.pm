@@ -32,7 +32,7 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.116.0';
+use version; our $VERSION = qv '1.117.0';
 
 use Image::PNG;
 use Image::JPEG::Size;
@@ -1997,12 +1997,6 @@ __DATA__
     }%
     \reserved@a
 }
-
-\let\TeXMLprovidesPackage\ProvidesPackage
-\let\TeXMLprovidesClass\TeXMLprovidesPackage
-
-\let\TeXMLendPackage\endinput
-\let\TeXMLendClass\TeXMLendPackage
 
 \let\@classoptionslist\@empty
 

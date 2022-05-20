@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{arydshln}
+\ProvidesPackage{arydshln}
 
 %% Not yet implemented:
 %% -- \hdashline\hdashline
@@ -103,8 +103,6 @@ __DATA__
         }%
     \ifnum0=`{\fi}
 }
-
-\TeXMLendPackage
 
 \endinput
 

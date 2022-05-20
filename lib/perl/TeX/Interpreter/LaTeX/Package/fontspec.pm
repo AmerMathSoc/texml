@@ -77,7 +77,7 @@ sub do_newfontface( $$ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{fontspec}
+\ProvidesPackage{fontspec}
 
 \fontencoding{UTF-32}
 
@@ -88,8 +88,6 @@ __DATA__
 \newcommand{\setmathfont}[2][]{}
 
 \let\addfontfeatures\@gobble
-
-\TeXMLendPackage
 
 \endinput
 

@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{upgreek}
+\ProvidesPackage{upgreek}
 
 \def\Updelta{\mupDelta}
 \def\Upgamma{\mupGamma}
@@ -95,8 +95,6 @@ __DATA__
 \def\upvartheta{\mupvartheta}
 \def\upxi{\mupxi}
 \def\upzeta{\mupzeta}
-
-\TeXMLendPackage
 
 \endinput
 

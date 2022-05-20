@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{AMSBlackList}
+\ProvidesPackage{AMSBlackList}
 
 \def\AMSBlackListPackage#1{\@namedef{ver@#1.sty}{Skip}}
 
@@ -78,8 +78,6 @@ __DATA__
 \AMSBlackListPackage{tikz-qtree-compat}
 \AMSBlackListPackage{tikz-fct}
 \AMSBlackListPackage{tikz-base}
-
-\TeXMLendPackage
 
 \endinput
 

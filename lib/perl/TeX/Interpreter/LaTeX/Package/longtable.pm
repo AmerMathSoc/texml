@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{longtable}
+\ProvidesPackage{longtable}
 
 \DeclareSVGEnvironment{longtable}
-
-\TeXMLendPackage
 
 \endinput
 

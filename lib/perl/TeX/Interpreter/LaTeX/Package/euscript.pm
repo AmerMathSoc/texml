@@ -57,15 +57,13 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{euscript}
+\ProvidesPackage{euscript}
 
 %% Need to handle options.
 
 \DeclareTeXMLMathAlphabet\mathscr
 
 \def\EuScript{\mathscr}
-
-\TeXMLendPackage
 
 \endinput
 

@@ -55,7 +55,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{pgf}
+\ProvidesPackage{pgf}
 
 \RequirePackage{color}
 
@@ -68,8 +68,6 @@ __DATA__
 \let\pgfmathdeclarefunction\@gobblethree
 
 \let\usepgflibrary\@gobble
-
-\TeXMLendPackage
 
 \endinput
 

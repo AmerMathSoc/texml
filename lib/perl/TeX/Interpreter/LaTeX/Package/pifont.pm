@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{pifont}
+\ProvidesPackage{pifont}
 
 \@namedef{pifont@ding@51}{\checkmark}
 
@@ -64,8 +64,6 @@ __DATA__
         \@nameuse{pifont@ding@#1}%
     }%
 }
-
-\TeXMLendPackage
 
 \endinput
 

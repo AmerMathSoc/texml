@@ -49,11 +49,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{tabularx}
+\ProvidesPackage{tabularx}
 
 \DeclareSVGEnvironment{tabularx}
-
-\TeXMLendPackage
 
 \endinput
 

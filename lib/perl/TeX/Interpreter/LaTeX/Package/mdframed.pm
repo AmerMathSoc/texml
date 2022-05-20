@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{mdframed}
+\ProvidesPackage{mdframed}
 
 \DeclareSVGEnvironment{mdframed}
-
-\TeXMLendPackage
 
 \endinput
 

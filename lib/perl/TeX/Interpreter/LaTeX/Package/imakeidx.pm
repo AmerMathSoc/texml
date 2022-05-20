@@ -51,11 +51,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{imakeidx}
+\ProvidesPackage{imakeidx}
 
 \let\makeindex\@gobbleopt
-
-\TeXMLendPackage
 
 \endinput
 

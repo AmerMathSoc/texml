@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{textgreek}
+\ProvidesPackage{textgreek}
 
 \UCSchardef\textAlpha   "0391
 \UCSchardef\textBeta    "0392
@@ -111,8 +111,6 @@ __DATA__
 % \UCSchardef\scripttheta
 % \UCSchardef\straighttheta
 % \UCSchardef\straightepsilon
-
-\TeXMLendPackage
 
 \endinput
 

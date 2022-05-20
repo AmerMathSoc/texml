@@ -48,13 +48,11 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{graphicx}
+\ProvidesPackage{graphicx}
 
 \RequirePackage{graphics}
 
 \long\def\setkeys#1#2{}
-
-\TeXMLendPackage
 
 \endinput
 

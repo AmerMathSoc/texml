@@ -53,12 +53,10 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{slashbox}
+\ProvidesPackage{slashbox}
 
 \def\backslashbox#1#2{\TeXMLCreateSVG{\backslashbox{#1}{#2}}}
 \def\slashbox#1#2{\TeXMLCreateSVG{\slashbox{#1}{#2}}}
-
-\TeXMLendPackage
 
 \endinput
 

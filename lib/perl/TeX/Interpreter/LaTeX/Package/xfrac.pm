@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{xfrac}
+\ProvidesPackage{xfrac}
 
 \DeclareMathPassThrough{sfrac}[2]
-
-\TeXMLendPackage
 
 \endinput
 

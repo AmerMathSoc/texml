@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{arXiv}
+\ProvidesPackage{arXiv}
 
 % \newcommand{\arXiv}[1]{\href{https://arxiv.org/abs/#1}{\texttt{arXiv:#1}}}
 
@@ -83,8 +83,6 @@ __DATA__
 }
 %    \end{macrocode}
 %    \end{macro}
-
-\TeXMLendPackage
 
 \endinput
 

@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{mathabx}
+\ProvidesPackage{mathabx}
 
 \RequirePackage{unicode-math}
 
@@ -64,8 +64,6 @@ __DATA__
 
 \def\rdbrack{\rBrack}
 \def\ldbrack{\lBrack}
-
-\TeXMLendPackage
 
 \endinput
 

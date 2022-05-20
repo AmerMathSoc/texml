@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{algorithm}
+\ProvidesPackage{algorithm}
 
 %% The following declarations might be misplaced.
 
@@ -85,8 +85,6 @@ __DATA__
     \endXMLelement{\jats@figure@element}%
     \par
 }
-
-\TeXMLendPackage
 
 \endinput
 

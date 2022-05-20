@@ -48,15 +48,13 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{pinlabel}
+\ProvidesPackage{pinlabel}
 
 \let\thelabellist\@empty
 
 \long\def\labellist#1\endlabellist{%
     \def\thelabellist{\labellist#1\endlabellist}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

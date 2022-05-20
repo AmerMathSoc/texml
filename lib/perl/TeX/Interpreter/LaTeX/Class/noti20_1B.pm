@@ -56,9 +56,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{noti20_1B}
-
-\TeXMLendClass
+\ProvidesClass{noti20_1B}
 
 \endinput
 

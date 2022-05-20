@@ -57,7 +57,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesClass{maabook}
+\ProvidesClass{maabook}
 
 \RequirePackage{ifxetex}
 \RequirePackage{amsgen}
@@ -147,8 +147,6 @@ __DATA__
     \fi
     \reset@titlepage
 }
-
-\TeXMLendClass
 
 \endinput
 

@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{appendix}
+\ProvidesPackage{appendix}
 
 \let\@pphypertrue\@pphyperfalse
-
-\TeXMLendPackage
 
 \endinput
 

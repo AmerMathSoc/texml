@@ -109,7 +109,7 @@ sub do_TML_current_color {
 
 __DATA__
 
-\TeXMLprovidesPackage{xcolor}
+\ProvidesPackage{xcolor}
 
 \AtBeginDocument{%
     \let\set@color\@gobble
@@ -224,8 +224,6 @@ __DATA__
     \protected@edef\@tempb{\@tempb\TML@current@color}%
     \@tempb\string{\hbox{#3}\string}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

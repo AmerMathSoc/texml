@@ -53,15 +53,13 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{ulem}
+\ProvidesPackage{ulem}
 
 \RequirePackage{cancel}
 
 \let\normalem\@empty
 
 \def\xout{\cancel}
-
-\TeXMLendPackage
 
 \endinput
 

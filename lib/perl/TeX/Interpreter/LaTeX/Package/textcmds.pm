@@ -55,7 +55,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{textcmds}
+\ProvidesPackage{textcmds}
 
 \UCSchardef\textprimechar"2032
 \UCSchardef\textlangle"2329
@@ -67,6 +67,6 @@ __DATA__
 \let\tsup\relax
 \DeclareRobustCommand{\tsup}{\XMLelement{sup}}
 
-\TeXMLendPackage
+\endinput
 
 __END__

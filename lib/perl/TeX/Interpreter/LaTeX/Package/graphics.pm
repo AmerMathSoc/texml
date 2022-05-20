@@ -98,7 +98,7 @@ sub do_include_graphics {
 
 __DATA__
 
-\TeXMLprovidesPackage{graphics}
+\ProvidesPackage{graphics}
 
 \def\resizebox#1#2#3{#3}
 
@@ -124,8 +124,6 @@ __DATA__
 }
 
 \def\reflectbox#1{\TeXMLCreateSVG{\reflectbox{#1}}}
-
-\TeXMLendPackage
 
 \endinput
 

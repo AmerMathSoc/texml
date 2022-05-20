@@ -48,11 +48,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{hyperams}
+\ProvidesPackage{hyperams}
 
 \RequirePackage{hyperref}
-
-\TeXMLendPackage
 
 \endinput
 

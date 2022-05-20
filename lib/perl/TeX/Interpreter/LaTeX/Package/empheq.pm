@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{empheq}
+\ProvidesPackage{empheq}
 
 \RequirePackage{mathtools}
 
@@ -95,8 +95,6 @@ __DATA__
 \DeclareMathPassThrough{empheqrparen}
 \DeclareMathPassThrough{empheqrvert}
 \DeclareMathPassThrough{empheqr}
-
-\TeXMLendPackage
 
 \endinput
 

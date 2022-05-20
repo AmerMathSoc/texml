@@ -49,13 +49,11 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{mathdots}
+\ProvidesPackage{mathdots}
 
 \RequirePackage{unicode-math}
 
 \def\iddots{\adots}
-
-\TeXMLendPackage
 
 \endinput
 

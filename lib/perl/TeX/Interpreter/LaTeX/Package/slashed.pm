@@ -53,11 +53,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{slashed}
+\ProvidesPackage{slashed}
 
 \def\slashed#1{\TeXMLSVGmathchoice{\slashed{#1}}}
-
-\TeXMLendPackage
 
 \endinput
 

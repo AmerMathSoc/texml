@@ -55,11 +55,9 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{stix}
+\ProvidesPackage{stix}
 
 \RequirePackage{unicode-math}
-
-\TeXMLendPackage
 
 \endinput
 

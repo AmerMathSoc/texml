@@ -55,7 +55,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{caption}
+\ProvidesPackage{caption}
 
 \RequirePackage{caption3}
 
@@ -82,8 +82,6 @@ __DATA__
         #6%
     \endXMLelement{fig}%
 }
-
-\TeXMLendPackage
 
 \endinput
 

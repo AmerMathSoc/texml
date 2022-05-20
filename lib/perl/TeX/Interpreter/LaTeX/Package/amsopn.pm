@@ -49,7 +49,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{amsopn}[1999/12/14 v2.01 operator names]
+\ProvidesPackage{amsopn}[1999/12/14 v2.01 operator names]
 
 \def\operatornamewithlimits{\operatorname*}
 
@@ -79,8 +79,6 @@ __DATA__
 \DeclareMathPassThrough{varprojlim}
 
 \RequirePackage{amsgen}
-
-\TeXMLendPackage
 
 \endinput
 

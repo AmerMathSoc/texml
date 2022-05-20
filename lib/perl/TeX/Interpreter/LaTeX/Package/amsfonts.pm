@@ -55,7 +55,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{amsfonts}[2013/01/14 v3.01 Basic AMSFonts support (texml)]
+\ProvidesPackage{amsfonts}[2013/01/14 v3.01 Basic AMSFonts support (texml)]
 
 \new@mathgroup\symAMSa
 \new@mathgroup\symAMSb
@@ -95,8 +95,6 @@ __DATA__
 \DeclareMathPassThrough{square}                 % U+25FB [AMSsymbols.js]
 
 \RequirePackage{latexsym}
-
-\TeXMLendPackage
 
 \endinput
 

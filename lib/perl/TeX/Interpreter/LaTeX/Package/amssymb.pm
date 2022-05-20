@@ -48,7 +48,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{amssymb}
+\ProvidesPackage{amssymb}
 
 \RequirePackage{amsfonts}
 
@@ -112,8 +112,6 @@ __DATA__
 \def\varsupsetneqq{\supsetneqq}
 \def\varsubsetneq{\subsetneq}
 \def\varsupsetneq{\supsetneq}
-
-\TeXMLendPackage
 
 \endinput
 
