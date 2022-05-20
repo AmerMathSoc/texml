@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Package::algpseudocode;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.0';
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -57,17 +55,15 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{algpseudocode}
+\ProvidesPackage{algpseudocode}
 
 %% Theoretically we could re-implement algorithmicx's primitives, but
 %% that seems too much like work.
 
 \RequirePackage{algorithmicx}
 
-\LoadPackage{algorithmic}
-
-\DeclareOption{noend}{\setboolean{ALG@noend}{true}}
-\DeclareOption{end}{\setboolean{ALG@noend}{false}}
+\DeclareOption{noend}{\PassOptionsToPackage{noend}{algorithmic}}
+\DeclareOption{end}{\PassOptionsToPackage{end}{algorithmic}}
 
 % TBD: Decide what if anything to do about compatibility mode.
 
@@ -82,6 +78,8 @@ __DATA__
 \DeclareOption{noncompatible}{\setboolean{ALG@noncompatible}{false}}%
 
 \ProcessOptions
+
+\RequirePackage{algorithmic}
 
 % *** DECLARATIONS ***
 
@@ -149,8 +147,6 @@ __DATA__
 \let\Return\RETURN
 
 \algnewcommand\Call[2]{\textproc{#1}\ifthenelse{\equal{#2}{}}{}{(#2)}}%
-
-\TeXMLendPackage
 
 \endinput
 
