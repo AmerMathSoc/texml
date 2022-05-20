@@ -38,17 +38,45 @@ use TeX::Class;
 
 use TeX::Node::HListNode qw(new_null_box);
 
+use TeX::WEB2C qw(:command_codes);
+
 sub scan_box {
     my $self = shift;
 
     my $tex         = shift;
     my $box_context = shift;
 
-    # @<If the current list ends with a box node, delete it from
-    #   the list and make |cur_box| point to it; otherwise set
-    #   |cur_box := null|@>;
+    my $cur_box = new_null_box();
 
-    $tex->set_cur_box(new_null_box);
+    my $mode = $tex->get_cur_mode();
+
+    if (abs($mode) == mmode) {
+        $tex->you_cant($self);
+
+        $tex->set_help("Sorry; this \lastbox will be void.");
+
+        $tex->error();
+    }
+    elsif ($mode == vmode) { #  and (head = tail
+        $tex->you_cant($self);
+
+        $tex->set_help("Sorry...I usually can't take things from the current page.",
+                       "This \lastbox will therefore be void.");
+
+        $tex->error();
+    } else {
+        my $cur_list = $tex->get_cur_list();
+
+        my $node = $cur_list->get_node(-1);
+
+        if ($node->is_box()) {
+            $cur_list->pop_node();
+
+            $cur_box = $node;
+        }
+    }
+
+    $tex->set_cur_box($cur_box);
 
     $tex->box_end($box_context);
 
