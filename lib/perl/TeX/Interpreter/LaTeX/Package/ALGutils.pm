@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::ALGutils;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.2';
+use version; our $VERSION = qv '1.4.0';
 
 sub install ( $ ) {
     my $class = shift;
@@ -51,12 +51,17 @@ sub install ( $ ) {
 
 __DATA__
 
-\TeXMLprovidesPackage{ALGutils}
+\ProvidesPackage{ALGutils}
 
 \RequirePackage{ifthen}
 
 \newboolean{ALG@noend}
 \setboolean{ALG@noend}{false}
+
+\DeclareOption{noend}{\setboolean{ALG@noend}{true}}
+\DeclareOption{end}{\setboolean{ALG@noend}{false}}
+
+\ProcessOptions
 
 \newif\ifALG@numbered
 \ALG@numberedfalse
@@ -342,8 +347,6 @@ __DATA__
     \fi
     \ALG@end@structure
 }
-
-\TeXMLendPackage
 
 \endinput
 
