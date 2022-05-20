@@ -31,7 +31,7 @@ package TeX::Interpreter::LaTeX;
 
 use strict;
 
-use version; our $VERSION = qv '1.67.1';
+use version; our $VERSION = qv '1.68.0';
 
 use base qw(TeX::Interpreter Exporter);
 
@@ -126,7 +126,7 @@ sub INITIALIZE :CUMULATIVE(BASE FIRST) {
 
     $tex->define_csname('@filtered@input' => \&do_filtered_input);
 
-    $tex->define_csname(LoadPackage => \&do_load_package);
+    $tex->define_csname('@load@package' => \&do_load_package);
 
     $tex->define_pseudo_macro('@opt@gobble' => \&do_opt_gobble);
 
