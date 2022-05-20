@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Package::algorithmic;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.2.4';
-
 use TeX::Constants qw(:named_args);
 
 sub install ( $ ) {
@@ -75,15 +73,14 @@ sub do_algsetup {
 
 __DATA__
 
-\TeXMLprovidesPackage{algorithmic}
+\ProvidesPackage{algorithmic}
 
-\@namedef{ver@algorithmic.sty}{XXX}
-
-\LoadPackage{ALGutils}
-
-\DeclareOption{noend}{\setboolean{ALG@noend}{true}}
+\DeclareOption{noend}{\PassOptionsToPackage{noend}{ALGutils}}
+\DeclareOption{end}{\PassOptionsToPackage{end}{ALGutils}}
 
 \ProcessOptions
+
+\LoadPackage{ALGutils}
 
 %% Define \algorithmicindent in case someone tries to customize it.
 
@@ -241,8 +238,6 @@ __DATA__
     \fi
     \ALG@close@structure{\algorithmicendif}
 }
-
-\TeXMLendPackage
 
 \endinput
 
