@@ -139,7 +139,7 @@ __DATA__
 
 \setXSLfile{bits}
 
-\LoadPackage{NLM}
+\RequirePackage{NLM}
 
 \RequirePackage{hyperref}
 

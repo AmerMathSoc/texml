@@ -80,7 +80,7 @@ __DATA__
 
 \ProcessOptions
 
-\LoadPackage{ALGutils}
+\RequirePackage{ALGutils}
 
 %% Define \algorithmicindent in case someone tries to customize it.
 

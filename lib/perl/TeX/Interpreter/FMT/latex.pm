@@ -32,8 +32,6 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.117.0';
-
 use Image::PNG;
 use Image::JPEG::Size;
 
@@ -93,6 +91,8 @@ sub install ( $ ) {
 
     $tex->define_pseudo_macro('auto@ref@label' => \&do_auto_ref_label);
 
+    $tex->define_pseudo_macro(LoadIfModuleExists => \&do_load_if_module_exists);
+
     return;
 }
 
@@ -101,6 +101,46 @@ sub install ( $ ) {
 ##                             COMMANDS                             ##
 ##                                                                  ##
 ######################################################################
+
+## There's some redundancy between this and
+## TeX::Interpreter::load_module() and related methods that should be
+## cleaned up someday.
+
+sub do_load_if_module_exists {
+    my $self = shift;
+
+    my $tex   = shift;
+    my $token = shift;
+
+    my $name = $tex->read_undelimited_parameter(EXPANDED);
+    my $ext  = $tex->read_undelimited_parameter(EXPANDED);
+
+    my $type = $ext eq 'cls' ? 'Class' : 'Package';
+
+    my $class = "TeX::Interpreter::LaTeX::${type}::$name";
+
+    my $expansion = q{@secondoftwo};
+
+    if ($tex->get_module_list($class)) {
+        my $expansion = q{@firstoftwo};
+    } else {
+        my $loaded = $tex->load_module($class);
+
+        if ($loaded) {
+            $expansion = q{@firstoftwo};
+
+            eval { $class->install($tex) };
+
+            if ($@) {
+                $tex->fatal_error("Can't install macro class $class: $@");
+            }
+
+            $tex->set_module_list($class, 1);
+        }
+    }
+
+    return new_token_list(make_csname_token($expansion));
+}
 
 sub do_push_section_stack {
     my $tex   = shift;
@@ -1972,31 +2012,9 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% #1 = options
-% #2 = package name
+%% \LoadPackage is deprecated
 
-\newcommand{\LoadPackage}[2][]{%
-    \@pushfilename
-    \xdef\@currname{#2}%
-    \global\let\@currext\@pkgextension
-    \expandafter\let\csname\@currname.\@currext-h@@k\endcsname\@empty
-    \let\CurrentOption\@empty
-    \@reset@ptions
-    \makeatletter
-    \def\reserved@a{%
-        \@pass@ptions\@currext{#1}{#2}%
-        \global\expandafter\let\csname ver@\@currname.\@currext\endcsname\@empty
-        \@load@package[#1]{#2}%
-        \let\@unprocessedoptions\@@unprocessedoptions
-        \csname\@currname.\@currext-h@@k\endcsname
-        \expandafter\let\csname\@currname.\@currext-h@@k\endcsname\@undefined
-        \@unprocessedoptions
-        \ifx\@currext\@clsextension\let\LoadClass\@twoloadclasserror\fi
-        \@popfilename
-        \@reset@ptions
-    }%
-    \reserved@a
-}
+\let\LoadPackage\RequirePackage
 
 \let\@classoptionslist\@empty
 

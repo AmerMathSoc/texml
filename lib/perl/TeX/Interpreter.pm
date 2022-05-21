@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.7';
+use version; our $VERSION = qv '1.5.8';
 
 use base qw(Exporter);
 
@@ -12464,7 +12464,7 @@ sub install_svg_extensions {
 
 my %module_list_of :HASH(:name<module_list>);
 
-sub load_module :RESTRICTED {
+sub load_module {
     my $tex = shift;
 
     my $module = shift;
