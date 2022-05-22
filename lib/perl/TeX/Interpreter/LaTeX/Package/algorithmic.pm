@@ -132,6 +132,9 @@ __DATA__
 \def@ALG@statement{\STATE}{statement}
 \let\STMT\STATE
 
+% Useful borrowing from algpseudocode: \STATE without line number
+\def@ALG@statement*{\Statex}{statement}
+
 \newcommand{\PRINT}{\STATE \algorithmicprint{} }
 \newcommand{\RETURN}{\STATE \algorithmicreturn{} }
 

@@ -31,7 +31,7 @@ package TeX::Interpreter::LaTeX;
 
 use strict;
 
-use version; our $VERSION = qv '1.68.0';
+use version; our $VERSION = qv '1.68.1';
 
 use base qw(TeX::Interpreter Exporter);
 
@@ -227,6 +227,10 @@ sub do_filtered_input {
     my $token = shift;
 
     my $file_name = $tex->scan_file_name();
+
+    ## TBD: Now that \@onefilewithoptions handles .sty and .cls files,
+    ## the first two branches of this conditional is probably obsolete,
+    ## as is process_documentclass().
 
     if ($file_name =~ m{\A (.*?)\.sty \z}smx) {
         my $options = $tex->get_macro_expansion_text(qq{opt\@$file_name});
@@ -570,6 +574,8 @@ sub process_undelimited_parameter {
 
     return wantarray ? @nodes : nodes_to_string(@nodes);
 }
+
+## TBD: See comment in do_filtered_input().
 
 sub process_documentclass {
     my $tex         = shift;

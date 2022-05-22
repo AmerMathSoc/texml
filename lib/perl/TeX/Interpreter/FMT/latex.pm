@@ -2012,10 +2012,6 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% \LoadPackage is deprecated
-
-\let\LoadPackage\RequirePackage
-
 \let\@classoptionslist\@empty
 
 %% Suppress "Unknown option" warnings when loading perl-only
