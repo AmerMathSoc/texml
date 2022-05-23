@@ -144,7 +144,8 @@ __DATA__
 
 \let\Require\REQUIRE
 \let\Ensure\ENSURE
-\let\Return\RETURN
+
+\def\Return{\algorithmicreturn{} }%
 
 \algnewcommand\Call[2]{\textproc{#1}\ifthenelse{\equal{#2}{}}{}{(#2)}}%
 
