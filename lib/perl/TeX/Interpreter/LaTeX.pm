@@ -126,8 +126,6 @@ sub INITIALIZE :CUMULATIVE(BASE FIRST) {
 
     $tex->define_csname('@filtered@input' => \&do_filtered_input);
 
-    $tex->define_csname('@load@package' => \&do_load_package);
-
     $tex->define_pseudo_macro('@opt@gobble' => \&do_opt_gobble);
 
     $tex->define_counter('@ckpt');
@@ -195,32 +193,11 @@ sub write_out {
 ##                                                                  ##
 ######################################################################
 
-sub do_load_package {
-    my $tex   = shift;
-    my $token = shift;
-
-    my $opts = $tex->scan_optional_argument();
-
-    my $file_name = $tex->read_undelimited_parameter(EXPANDED);
-
-    return $tex->load_package($file_name, __parse_option_list($opts));
-}
-
-sub __parse_option_list( $ ) {
-    my $option_list = shift;
-
-    return if empty($option_list);
-
-    $option_list =~ s{\s}{}g;
-
-    return split /,/, $option_list;
-}
-
 ## do_filtered_input() intercepts files that might need special handling:
 ##
-##     LaTeX packages (.sty): Redirect to load_package()
-##     LaTeX classes  (.cls): Redirect to process_documentclass()
 ##     Misc. graphics       : Convert to SVG
+
+## TODO: Move this into TeX::Interpreter::start_input()
 
 sub do_filtered_input {
     my $tex   = shift;
@@ -228,19 +205,7 @@ sub do_filtered_input {
 
     my $file_name = $tex->scan_file_name();
 
-    ## TBD: Now that \@onefilewithoptions handles .sty and .cls files,
-    ## the first two branches of this conditional is probably obsolete,
-    ## as is process_documentclass().
-
-    if ($file_name =~ m{\A (.*?)\.sty \z}smx) {
-        my $options = $tex->get_macro_expansion_text(qq{opt\@$file_name});
-
-        return $tex->load_package($1, __parse_option_list($options));
-    } elsif ($file_name =~ m{\A (.*?)\.cls \z}smx) {
-        my $options = $tex->get_macro_expansion_text(qq{opt\@$file_name});
-
-        return $tex->process_documentclass($1, __parse_option_list($options));
-    } elsif ($file_name =~ m{\.(eps_tex|pstex_t) \z}smx) {
+    if ($file_name =~ m{\.(eps_tex|pstex_t) \z}smx) {
         # Inkscape (and others?) graphics wrappers
 
         my $replacement = $tex->tokenize(qq{\\TeXMLCreateSVG{\\input{$file_name}}});
@@ -253,14 +218,6 @@ sub do_filtered_input {
     $tex->process_file($file_name);
 
     return;
-}
-
-sub __split_comma_list( $ ) {
-    my $list = shift;
-
-    return unless defined $list;
-
-    return split /\s*,\s*/, "$list";
 }
 
 ######################################################################
@@ -573,36 +530,6 @@ sub process_undelimited_parameter {
     my @nodes = $tex->pop_nest();
 
     return wantarray ? @nodes : nodes_to_string(@nodes);
-}
-
-## TBD: See comment in do_filtered_input().
-
-sub process_documentclass {
-    my $tex         = shift;
-    my $doc_class   = shift;
-
-    my @options = @_;
-
-    if (empty($tex->get_document_class())) {
-        $tex->set_document_class($doc_class);
-    }
-
-    if ($tex->load_document_class($doc_class, @options)) {
-        return;
-    }
-
-    $tex->print_nl("No implementation found for document class '$doc_class'");
-    $tex->print_ln();
-    $tex->pring_nl("Using document class 'article' instead.");
-    $tex->print_ln();
-
-    if ($tex->load_document_class("article", @options)) {
-        return;
-    }
-
-    $tex->fatal_error("Can't find implementation for 'article' class");
-
-    return;
 }
 
 ## Move to PRD/Document/Builder/LaTeX2.pm?

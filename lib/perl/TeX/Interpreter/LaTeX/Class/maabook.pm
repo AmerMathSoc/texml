@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Class::maabook;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -46,8 +44,6 @@ sub install ( $ ) {
 
     $tex->set_module_list('TeX::Interpreter::LaTeX::Package::amsthm', undef);
 
-    $tex->load_document_class('TeXMLbook', @options);
-
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::maabook::DATA{IO});
 
     return;
@@ -58,6 +54,8 @@ sub install ( $ ) {
 __DATA__
 
 \ProvidesClass{maabook}
+
+\LoadClass{TeXMLbook}
 
 \RequirePackage{ifxetex}
 \RequirePackage{amsgen}

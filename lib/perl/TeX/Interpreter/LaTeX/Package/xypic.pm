@@ -40,8 +40,6 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
-    $tex->load_package("xy");
-
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::xypic::DATA{IO});
 
     return;
@@ -56,6 +54,10 @@ sub install ( $ ) {
 1;
 
 __DATA__
+
+\ProvidesPackage{xypic}
+
+\RequirePackage{xy}
 
 \def\diagram#1\enddiagram{%
     \TeXMLCreateSVG{$\diagram#1\enddiagram$}%

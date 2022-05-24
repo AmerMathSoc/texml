@@ -12650,47 +12650,6 @@ sub package_load_notification {
     return;
 }
 
-sub load_document_class( $$@ ) {
-    my $tex = shift;
-
-    my $document_class = shift;
-
-    my @options = @_;
-
-    (my $document_pkg = $document_class) =~ s{-}{_}g;
-
-    my $class = __PACKAGE__ . "::LaTeX::Class::$document_pkg";
-
-    eval { $tex->load_macro_file($class, @options) };
-
-    if ($@) {
-        # $tex->fatal_error("Can't load document class '$document_class': $@");
-
-        $tex->load_latex_class($document_class, @options);
-    }
-
-    return 1;
-}
-
-# sub load_package( $$@ ) {
-#     my $tex = shift;
-#
-#     my $package = shift;
-#     my @options = @_;
-#
-#     $package =~ s{-}{_}g;
-#
-#     my $class = __PACKAGE__ . "::Package::$package";
-#
-#     eval { $tex->load_macro_file($class, @options) };
-#
-#     if ($@) {
-#         $tex->load_latex_package($package, @options);
-#     }
-#
-#     return 1;
-# }
-
 ######################################################################
 ##                                                                  ##
 ##                         AUTOMETHOD MAGIC                         ##

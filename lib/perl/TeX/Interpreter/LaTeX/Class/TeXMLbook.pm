@@ -45,8 +45,6 @@ sub install ( $ ) {
 
     $tex->class_load_notification(__PACKAGE__, @options);
 
-    $tex->load_document_class('amscommon', @options);
-
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::TeXMLbook::DATA{IO});
 
     $tex->define_csname('init@bits@meta' => \&do_init_bits_meta);
@@ -131,6 +129,12 @@ sub do_init_bits_meta {
 1;
 
 __DATA__
+
+\ProvidesClass{TeXMLbook}
+
+\ProcessOptions
+
+\LoadClass{amscommon}
 
 \setXMLdoctype{-//NLM//DTD BITS Book Interchange DTD v1.0 20131225//EN}
               {BITS-book1.dtd}

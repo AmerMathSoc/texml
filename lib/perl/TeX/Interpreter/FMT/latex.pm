@@ -61,12 +61,9 @@ sub install ( $ ) {
 
     $tex->load_fmt_file($fmt_file);
 
+    $tex->define_pseudo_macro(LoadIfModuleExists => \&do_load_if_module_exists);
+
     $tex->read_package_data(*TeX::Interpreter::FMT::latex::DATA{IO});
-
-    $tex->load_package("AMSBlackList");
-    $tex->load_package("HTMLtable");
-
-    $tex->load_package("Diacritics");
 
     ## Override definition of \leavevmode from latex.fmt
     $tex->define_csname(leavevmode => $tex->load_primitive('leavevmode'));
@@ -90,8 +87,6 @@ sub install ( $ ) {
     $tex->define_csname('TeXML@add@graphic@attributes' => \&do_graphic_attibutes);
 
     $tex->define_pseudo_macro('auto@ref@label' => \&do_auto_ref_label);
-
-    $tex->define_pseudo_macro(LoadIfModuleExists => \&do_load_if_module_exists);
 
     return;
 }
@@ -2416,6 +2411,16 @@ __DATA__
 \DeclareMathPassThrough{uparrow}
 \DeclareMathPassThrough{Updownarrow}
 \DeclareMathPassThrough{updownarrow}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                            EXTENSIONS                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\RequirePackage{AMSBlackList}
+\RequirePackage{HTMLtable}
+\RequirePackage{Diacritics}
 
 \endinput
 

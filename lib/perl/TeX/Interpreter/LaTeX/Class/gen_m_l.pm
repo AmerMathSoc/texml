@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Class::gen_m_l;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -41,8 +39,6 @@ sub install ( $ ) {
     my @options = @_;
 
     $tex->class_load_notification(__PACKAGE__, @options);
-
-    $tex->load_document_class('amsbook', @options);
 
     # $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::gen_m_l::DATA{IO});
 
@@ -54,6 +50,8 @@ sub install ( $ ) {
 __DATA__
 
 \ProvidesClass{gen-m-l}
+
+\LoadClass{amsbook}
 
 \endinput
 

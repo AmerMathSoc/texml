@@ -63,6 +63,8 @@ sub install ( $ ) {
 
 __DATA__
 
+\ProvidesClass{alg}
+
 \let\textnormal\@firstofone
 
 \def\textsc#1{\leavevmode\startXMLelement{sc}#1\endXMLelement{sc}}

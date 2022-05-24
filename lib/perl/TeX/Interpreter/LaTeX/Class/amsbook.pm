@@ -45,11 +45,11 @@ sub install ( $ ) {
 
     $tex->class_load_notification(__PACKAGE__, @options);
 
+    ## Preload amsfonts to keep amsart.cls from freaking out
+
     $tex->load_package("amsfonts");
 
     $tex->load_latex_class("amsbook", 'noamsfonts', @options);
-
-    $tex->load_document_class('TeXMLbook', @options);
 
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.
@@ -64,6 +64,12 @@ sub install ( $ ) {
 1;
 
 __DATA__
+
+\ProvidesClass{amsbook}
+
+\ProcessOptions
+
+\LoadClass{TeXMLbook}
 
 \let\maketitle\@empty
 \let\chap@maketitle\@empty

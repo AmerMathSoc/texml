@@ -44,8 +44,6 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
-    $tex->load_package("fontspec");
-
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::unicode_math::DATA{IO});
 
     return;
@@ -56,6 +54,8 @@ sub install ( $ ) {
 __DATA__
 
 \ProvidesPackage{unicode-math}
+
+\RequirePackage{fontspec}
 
 \let\mathscr\mathcal
 
