@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.8';
+use version; our $VERSION = qv '1.5.9';
 
 use base qw(Exporter);
 
@@ -12292,6 +12292,8 @@ sub expand_token_list {
 ##                                                                  ##
 ######################################################################
 
+## Why isn't this in TeX::Interpreter::LaTeX?
+
 my $STAR_TOKEN  = make_character_token('*', CATCODE_OTHER);
 
 my $OPT_ARG = TeX::TokenList->new({ tokens => [ make_character_token('[', CATCODE_OTHER),
@@ -12335,6 +12337,8 @@ sub load_package( $$@ ) {
 
     (my $class = __PACKAGE__ . "::LaTeX::Package::$package") =~ s{-}{_}g;
 
+    # TBD: Need equivalent of \@pushfilename here
+
     $tex->define_simple_macro('@currname' => $package);
     $tex->define_simple_macro('@currext' => 'sty');
 
@@ -12356,6 +12360,8 @@ sub load_package( $$@ ) {
 
         $tex->load_latex_package($package, @options);
     }
+
+    # TBD: Need equivalent of \@popfilename and \@reset@ptions here
 
     return 1;
 }
