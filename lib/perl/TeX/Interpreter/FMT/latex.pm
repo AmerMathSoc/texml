@@ -117,6 +117,8 @@ sub do_load_if_module_exists {
 
     my $type = $ext eq 'cls' ? 'Class' : 'Package';
 
+    $name =~ s{-}{_}g;
+
     my $class = "TeX::Interpreter::LaTeX::${type}::$name";
 
     my $expansion = q{@secondoftwo};
