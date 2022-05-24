@@ -41,7 +41,7 @@ use TeX::Utils::Misc qw(empty file_mimetype empty nonempty pluralize trim);
 
 use TeX::Constants qw(:named_args);
 
-use TeX::Token qw(:factories);
+use TeX::Token qw(:factories :catcodes);
 use TeX::TokenList qw(:factories);
 
 use TeX::WEB2C qw(:token_types);
@@ -88,8 +88,18 @@ sub install ( $ ) {
 
     $tex->define_pseudo_macro('auto@ref@label' => \&do_auto_ref_label);
 
+    $tex->define_pseudo_macro(documentclass => \&do_documentclass);
+
     return;
 }
+
+use constant BEGIN_OPT => make_character_token('[', CATCODE_OTHER);
+
+use constant END_OPT   => make_character_token(']', CATCODE_OTHER);
+
+use constant BEGIN_GROUP_TOKEN => make_character_token('{', CATCODE_BEGIN_GROUP);
+
+use constant END_GROUP_TOKEN   => make_character_token('}', CATCODE_END_GROUP);
 
 ######################################################################
 ##                                                                  ##
@@ -137,6 +147,28 @@ sub do_load_if_module_exists {
     }
 
     return new_token_list(make_csname_token($expansion));
+}
+
+sub do_documentclass {
+    my $self = shift;
+
+    my $tex   = shift;
+    my $token = shift;
+
+    my $opt   = $tex->scan_optional_argument();
+    my $class = $tex->read_undelimited_parameter(EXPANDED);
+
+    $tex->set_document_class(trim($class));
+
+    my $expansion = new_token_list(make_csname_token('ltx@documentclass'));
+
+    if ($opt) {
+        $expansion->push(BEGIN_OPT, $opt, END_OPT);
+    }
+
+    $expansion->push(BEGIN_GROUP_TOKEN, $class, END_GROUP_TOKEN);
+
+    return $expansion;
 }
 
 sub do_push_section_stack {
@@ -2008,6 +2040,8 @@ __DATA__
 %%                           LTCLASS.DTX                            %%
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\let\ltx@documentclass\documentclass
 
 \let\@classoptionslist\@empty
 
