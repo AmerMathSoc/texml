@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.10';
+use version; our $VERSION = qv '1.5.11';
 
 use base qw(Exporter);
 
@@ -107,6 +107,8 @@ use TeX::Interpreter::Constants;
 
 use TeX::Token qw(:catcodes :constants :factories);
 
+use TeX::Token::Constants;
+
 use TeX::TokenList qw(:factories);
 
 use TeX::Type::GlueSpec qw(:factories);
@@ -144,8 +146,6 @@ use Unicode::UCD qw(charinfo);
 ##                                                                  ##
 ######################################################################
 
-use constant LEFT_BRACE_TOKEN => make_character_token('{', CATCODE_BEGIN_GROUP);
-use constant RIGHT_BRACE_TOKEN => make_character_token('}', CATCODE_END_GROUP);
 use constant MATH_SHIFT_TOKEN => make_character_token('\$', CATCODE_MATH_SHIFT);
 use constant TAB_TOKEN        => make_character_token('&', CATCODE_ALIGNMENT);
 use constant SPACE_TOKEN      => make_character_token(' ', CATCODE_SPACE);
@@ -2813,7 +2813,7 @@ sub off_save {
             $tex->print_esc("right.");
         }
         else {
-            $insert->push(RIGHT_BRACE_TOKEN);
+            $insert->push(END_GROUP);
 
             $tex->print_char("}");
         }
@@ -9372,13 +9372,13 @@ sub align_error {
 
             $tex->incr_align_state();
 
-            $cur_tok = LEFT_BRACE_TOKEN;
+            $cur_tok = BEGIN_GROUP
         } else {
             $tex->print_err("Missing } inserted (align_state = ", $tex->align_state(), ")");
 
             $tex->decr_align_state();
 
-            $cur_tok = RIGHT_BRACE_TOKEN;
+            $cur_tok = END_GROUP;
         }
 
         $tex->set_help("I've put in what seems to be necessary to fix",
@@ -12239,7 +12239,7 @@ sub expand_token_list {
 
     my $end = new_token_list();
 
-    $end->push(RIGHT_BRACE_TOKEN);
+    $end->push(END_GROUP);
     $end->push(END_WRITE_TOKEN);
 
     $tex->ins_list($end);
@@ -12248,7 +12248,7 @@ sub expand_token_list {
 
     my $start = new_token_list();
 
-    $start->push(LEFT_BRACE_TOKEN);
+    $start->push(BEGIN_GROUP);
 
     $tex->ins_list($start);
 
@@ -12294,18 +12294,12 @@ sub expand_token_list {
 
 ## Why isn't this in TeX::Interpreter::LaTeX?
 
-my $STAR_TOKEN  = make_character_token('*', CATCODE_OTHER);
-
-my $OPT_ARG = TeX::TokenList->new({ tokens => [ make_character_token('[', CATCODE_OTHER),
-                                                make_param_ref_token(1),
-                                                make_character_token(']', CATCODE_OTHER) ] });
-
 sub is_starred {
     my $tex = shift;
 
     my $next_token = $tex->peek_next_token();
 
-    if (defined $next_token && $next_token == $STAR_TOKEN) {
+    if (defined $next_token && $next_token == STAR) {
         $tex->get_next();
 
         return 1;
@@ -12317,7 +12311,7 @@ sub is_starred {
 sub scan_optional_argument {
     my $tex = shift;
 
-    if (my @args = $tex->scan_macro_parameters(undef, $OPT_ARG, true)) {
+    if (my @args = $tex->scan_macro_parameters(undef, OPT_ARG, true)) {
         ##* TODO???
         # my @tokens = $tex->expand_tokens(@{ $args[1] });
 

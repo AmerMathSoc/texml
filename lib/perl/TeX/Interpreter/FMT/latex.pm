@@ -42,6 +42,9 @@ use TeX::Utils::Misc qw(empty file_mimetype empty nonempty pluralize trim);
 use TeX::Constants qw(:named_args);
 
 use TeX::Token qw(:factories :catcodes);
+
+use TeX::Token::Constants;
+
 use TeX::TokenList qw(:factories);
 
 use TeX::WEB2C qw(:token_types);
@@ -92,14 +95,6 @@ sub install ( $ ) {
 
     return;
 }
-
-use constant BEGIN_OPT => make_character_token('[', CATCODE_OTHER);
-
-use constant END_OPT   => make_character_token(']', CATCODE_OTHER);
-
-use constant BEGIN_GROUP_TOKEN => make_character_token('{', CATCODE_BEGIN_GROUP);
-
-use constant END_GROUP_TOKEN   => make_character_token('}', CATCODE_END_GROUP);
 
 ######################################################################
 ##                                                                  ##
@@ -166,7 +161,7 @@ sub do_documentclass {
         $expansion->push(BEGIN_OPT, $opt, END_OPT);
     }
 
-    $expansion->push(BEGIN_GROUP_TOKEN, $class, END_GROUP_TOKEN);
+    $expansion->push(BEGIN_GROUP, $class, END_GROUP);
 
     return $expansion;
 }

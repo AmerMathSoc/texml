@@ -39,10 +39,9 @@ use TeX::Node::Extension::UnicodeStringNode qw(:factories);
 use TeX::Utils::DOI qw(doi_to_url);
 use TeX::Utils::Misc qw(nonempty);
 
-use TeX::Token qw(:catcodes make_character_token);
+use TeX::Token qw(:catcodes);
 
-use constant LEFT_BRACE_TOKEN => make_character_token('{', CATCODE_BEGIN_GROUP);
-use constant RIGHT_BRACE_TOKEN => make_character_token('}', CATCODE_END_GROUP);
+use TeX::Token::Constants;
 
 use TeX::Constants qw(:named_args);
 
@@ -100,7 +99,7 @@ sub do_url_formatstring {
                                 \startXMLelement{ext-link}
                                 \setXMLattribute{xlink:href}});
 
-    $formatted->push(LEFT_BRACE_TOKEN, $url_for_link, RIGHT_BRACE_TOKEN);
+    $formatted->push(BEGIN_GROUP, $url_for_link, END_GROUP);
 
     $formatted->push($url_for_display);
 

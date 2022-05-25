@@ -31,8 +31,6 @@ package TeX::Interpreter::LaTeX;
 
 use strict;
 
-use version; our $VERSION = qv '1.68.1';
-
 use base qw(TeX::Interpreter Exporter);
 
 our %EXPORT_TAGS = ( handlers => [ qw(do_gobble_opt
@@ -68,6 +66,9 @@ use TeX::Node::Utils qw(nodes_to_string);
 use TeX::Constants qw(:booleans :named_args :module_codes);
 
 use TeX::Token qw(:catcodes :factories);
+
+use TeX::Token::Constants;
+
 use TeX::TokenList;
 
 use TeX::WEB2C qw(:command_codes :scan_types :selector_codes :token_types);
@@ -97,10 +98,6 @@ my %document_class_of :ATTR(:name<document_class>);
 
 ##***???? Why did something bad happen when these were scalars?
 ##***Somehow the datum became empty in make_newenvironment_handler().
-
-use constant BEGIN_GROUP_TOKEN => make_character_token('{', CATCODE_BEGIN_GROUP);
-
-use constant END_GROUP_TOKEN   => make_character_token('}', CATCODE_END_GROUP);
 
 my $END_TOKEN = make_csname_token("end");
 
@@ -489,7 +486,7 @@ sub scan_environment_body {
                 last;
             }
 
-            $body->push($token, BEGIN_GROUP_TOKEN, $endname, END_GROUP_TOKEN);
+            $body->push($token, BEGIN_GROUP, $endname, END_GROUP);
 
             next;
         }
