@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.9';
+use version; our $VERSION = qv '1.5.10';
 
 use base qw(Exporter);
 
@@ -308,7 +308,7 @@ sub __DEBUG {
 ##                                                                  ##
 ######################################################################
 
-use constant BANNER => 'This is *not* TeX -- not even close';
+use constant BANNER => 'This is AMS TeXML <https://github.com/AmerMathSoc/texml>';
 
 ######################################################################
 ##                                                                  ##
@@ -5536,7 +5536,7 @@ sub scan_glue {
     my $cur_val_level;
 
     if (eval { $next_cmd->isa("TeX::Command::Executable::Readable") }) {
-        ($cur_val, $cur_val_level) = $tex->scan_something_internal($level, $sign);
+        ($cur_val, $cur_val_level) = $tex->scan_something_internal($level, $sign == -1);
 
         if ($cur_val_level >= glue_val) {
             if ($cur_val_level != $level) {
