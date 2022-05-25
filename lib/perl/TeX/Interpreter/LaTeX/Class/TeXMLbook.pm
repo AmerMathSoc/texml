@@ -82,7 +82,9 @@ sub do_init_bits_meta {
 
     if (empty($publ_key)) {
         if (nonempty(my $doc_class = $tex->get_document_class())) {
-            ($publ_key = $doc_class) =~ s{-l\z}{};
+            if ($doc_class =~ s{-l\z}{}) {
+                $publ_key = $doc_class;
+            }
         }
     }
 
