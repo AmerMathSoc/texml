@@ -226,11 +226,11 @@ __DATA__
 
 \RequirePackage{amsgen}
 
-\LoadIfModuleExists{AMSMeta}{sty}{%
+\LoadIfModuleExists{AMSmetadata}{sty}{%
 }{%
-    \typeout{No AMSMeta support}%
+    \typeout{No AMSmetadata support}%
     \let\noAMSmetadata\@empty
-    \let\AddAMSMetadata\@empty
+    \let\AddAMSmetadata\@empty
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -533,7 +533,7 @@ __DATA__
 %% In the normal course of things, the entire <front> element will be
 %% rewritten and replaced with much more complete information based on
 %% the gentag file by do_add_ams_metadata() (defined in
-%% TeX::Interpreter::LaTeX::Package::AMSMeta).  Here we do the best we
+%% TeX::Interpreter::LaTeX::Package::AMSmetadata).  Here we do the best we
 %% can with the information available in the LaTeX file.
 
 \def\maketitle{%
@@ -671,11 +671,13 @@ __DATA__
 }
 
 \def\output@author@meta{%
-    \begingroup
-        \let\start@author\start@author@
-        \let\end@author\end@author@
-        \AMS@authors\end@author\par
-    \endgroup
+    \ifx\AMS@authors\@empty\else
+        \begingroup
+            \let\start@author\start@author@
+            \let\end@author\end@author@
+            \AMS@authors\end@author\par
+        \endgroup
+    \fi
 }
 
 \def\start@author@{%
