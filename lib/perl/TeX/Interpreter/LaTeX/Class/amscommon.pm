@@ -132,6 +132,8 @@ sub do_texml_datestamp {
 ##                                                                  ##
 ######################################################################
 
+# We could do this at the macro level using boxes.
+
 sub do_abstract( $$ ) {
     my $tex   = shift;
     my $token = shift;
@@ -284,17 +286,34 @@ __DATA__
 \let\AMS@pissn\@empty
 \let\AMS@eissn\@empty
 
-\def\issueinfo#1#2#3#4{%
-    \gdef\AMS@volume{#1}%
-    \gdef\AMS@issue{#2}%
-    \gdef\AMS@month{#3}%
-    \gdef\AMS@year{#4}%
-}
-
 \let\AMS@volume\@empty
 \let\AMS@issue\@empty
-\let\AMS@month\@empty
-\let\AMS@year\@empty
+\let\AMS@issue@year\@empty
+\let\AMS@issue@month\@empty
+\def\AMS@issue@day{1}
+
+\def\issueinfo#1#2#3#4{%
+    \gdef\AMS@volume{#1}%
+    \xdef\AMS@issue{\number0#2}%
+    \gdef\AMS@issue@month{}%
+    \@ifnotempty{#3}{\xdef\AMS@month{\TEXML@month@int{#3}}}%
+    \gdef\AMS@issue@year{#4}%
+}
+
+\def\TEXML@month@int#1{\@nameuse{TeXML@month@#1}}
+
+\@namedef{TEXML@month@January}{1}
+\@namedef{TEXML@month@February}{2}
+\@namedef{TEXML@month@March}{3}
+\@namedef{TEXML@month@April}{4}
+\@namedef{TEXML@month@May}{5}
+\@namedef{TEXML@month@June}{6}
+\@namedef{TEXML@month@July}{7}
+\@namedef{TEXML@month@August}{8}
+\@namedef{TEXML@month@September}{9}
+\@namedef{TEXML@month@October}{10}
+\@namedef{TEXML@month@November}{11}
+\@namedef{TEXML@month@December}{12}
 
 \def\publinfo#1#2#3{%
     \gdef\AMS@publkey{#1}%
@@ -392,6 +411,7 @@ __DATA__
 \let\AMS@copyrightholder\@empty
 
 \let\subjclass\relax
+
 \newcommand*\subjclass[2][2020]{%
     \def\@subjclass{#2}%
     \@ifundefined{subjclassname@#1}{%
@@ -441,6 +461,12 @@ __DATA__
 }
 
 \let\AMS@authors\@empty
+
+\let\AMS@author@thankses\@empty
+
+\def\thanks#1{%
+    \@ifnotempty{#1}{\g@addto@macro\AMS@author@thankses{\thanks{#1}}}%
+}
 
 \newcommand{\address}[2][] {\g@addto@macro\AMS@authors{\address{#1}{#2}}}
 \newcommand{\curraddr}[2][]{\g@addto@macro\AMS@authors{\curraddr{#1}{#2}}}
@@ -502,6 +528,7 @@ __DATA__
 
 \def\abstractname{Abstract}
 \def\keywordsname{Key words and phrases}
+\def\datename{Received by the editors}
 
 %% In the normal course of things, the entire <front> element will be
 %% rewritten and replaced with much more complete information based on
@@ -696,15 +723,19 @@ __DATA__
 
 \def\output@article@history{%
     \startXMLelement{history}
-        \ifx\AMS@year\@empty\else
+        \ifx\AMS@issue@year\@empty\else
             \startXMLelement{date}
                 \setXMLattribute{date-type}{issue-date}
-                \ifx\AMS@month\@empty\else
+                \ifx\AMS@issue@month\@empty\else
+                    \ifx\AMS@issue@day\@empty\else
+                        \thisxmlpartag{day}
+                        \AMS@issue@day\par
+                    \fi
                     \thisxmlpartag{month}
-                    \AMS@month\par
+                    \AMS@issue@month\par
                 \fi
                 \thisxmlpartag{year}%
-                \AMS@year\par
+                \AMS@issue@year\par
             \endXMLelement{date}
         \fi
         %% TBD: Add received, posted, etc.
@@ -1242,12 +1273,11 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Various ``special'' characters that should probably be defined
-% somewhere else.
+% Various ``special'' characters that are defined in latex.pm and then
+% redefined by ams{art,book,proc}.cls.  Once we stop loading ams*.cls,
+% we can delete most of these.
 
 \UCSchardef\textprime"2032
-
-\UCSchardef\bysame"2014
 
 \UCSchardef\DH"00D0
 \UCSchardef\dh"00F0
@@ -1257,6 +1287,8 @@ __DATA__
 \UCSchardef\textregistered"00AE
 \UCSchardef\textservicemark"2120
 \UCSchardef\texttrademark"2122
+
+\UCSchardef\bysame"2014
 
 \endinput
 

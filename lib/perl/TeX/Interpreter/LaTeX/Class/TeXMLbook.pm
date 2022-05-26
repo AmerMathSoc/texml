@@ -270,6 +270,9 @@ __DATA__
 
 \def\@chapdef#1#2{\@ifstar{\@dblarg{#2}}{\@dblarg{#1}}}
 
+\def\chaptername{Chapter}
+\def\appendixname{Appendix}
+
 \def\chapter{%
     \@chapdef\@chapter\@schapter
 }
