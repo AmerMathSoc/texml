@@ -593,7 +593,7 @@ __DATA__
             \thisxmlpartag{volume}
             \AMS@volume\par
         \fi
-        \if\AMS@issue\@empty\else
+        \ifx\AMS@issue\@empty\else
             \thisxmlpartag{issue}
             \AMS@issue\par
         \fi
