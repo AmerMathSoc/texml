@@ -56,6 +56,8 @@ __DATA__
 
 \LoadClass{maabook}
 
+\seriesinfo{spectrum}{}{}
+
 \let\chaptername\@empty
 
 \endinput

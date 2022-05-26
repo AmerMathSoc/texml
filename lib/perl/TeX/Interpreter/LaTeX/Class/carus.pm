@@ -56,6 +56,8 @@ __DATA__
 
 \LoadClass{maabook}
 
+\seriesinfo{carus}{}{}
+
 \endinput
 
 __END__

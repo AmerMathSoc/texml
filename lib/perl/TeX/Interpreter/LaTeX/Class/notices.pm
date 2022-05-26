@@ -56,6 +56,13 @@ __DATA__
 
 \LoadClass{amsart}
 
+\publinfo{noti}{}{}
+
+\def\AMS@publname{Notices of the American Mathematical Society}
+
+\def\AMS@pissn{0002-9920}
+\def\AMS@eissn{1088-9477}
+
 \setcounter{secnumdepth}{3}
 
 \RequirePackage{amssymb}

@@ -56,6 +56,8 @@ __DATA__
 
 \LoadClass{amsbook}
 
+\seriesinfo{mawrld}{}{}
+
 \endinput
 
 __END__

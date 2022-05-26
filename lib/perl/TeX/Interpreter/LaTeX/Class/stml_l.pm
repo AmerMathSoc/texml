@@ -56,6 +56,8 @@ __DATA__
 
 \LoadClass{amsbook}
 
+\seriesinfo{stml}{}{}
+
 \endinput
 
 __END__

@@ -56,6 +56,8 @@ __DATA__
 
 \LoadClass{amsbook}
 
+\seriesinfo{gsm}{}{}
+
 \endinput
 
 __END__

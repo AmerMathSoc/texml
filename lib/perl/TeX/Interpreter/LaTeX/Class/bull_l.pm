@@ -60,10 +60,12 @@ __DATA__
 
 \LoadClass{amsart}[1996/10/24]
 
-\def\publname{BULLETIN (New Series) OF THE\newline
-  AMERICAN MATHEMATICAL SOCIETY}
+\publinfo{bull}{}{}
 
-\def\ISSN{0273-0979}
+\def\AMS@publname{Bulletin (New Series) of the American Mathematical Society}
+
+\def\AMS@pissn{0273-0979}
+\def\AMS@eissn{1088-9485}
 
 \def\bullPerspective{}
 

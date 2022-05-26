@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Class::jams_l;
+package TeX::Interpreter::LaTeX::Class::mcom_l;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -43,7 +43,7 @@ sub install ( $ ) {
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::jams_l::DATA{IO});
+    $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::mcom_l::DATA{IO});
 
     return;
 }
@@ -52,7 +52,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{jams-l}[2007/06/18 v2.01 JAMS article documentclass]
+\ProvidesClass{mcom-l}
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 
@@ -60,12 +60,12 @@ __DATA__
 
 \LoadClass{amsart}[1996/10/24]
 
-\publinfo{jams}{}{}
+\publinfo{mcom}{}{}
 
-\def\AMS@publname{Journal of the American Mathematical Society}
+\def\AMS@publname{Mathematics of Computation}
 
-\def\AMS@pissn{0894-0347}
-\def\AMS@eissn{1088-6834}
+\def\AMS@pissn{0025-5718}
+\def\AMS@eissn{1088-6842}
 
 \endinput
 

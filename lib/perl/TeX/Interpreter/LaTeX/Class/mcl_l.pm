@@ -58,6 +58,8 @@ __DATA__
 
 \LoadClass{amsbook}
 
+\seriesinfo{mcl}{}{}
+
 \let\dedication\relax
 \let\enddedication\relax
 

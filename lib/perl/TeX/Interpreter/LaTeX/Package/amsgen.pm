@@ -55,6 +55,16 @@ __DATA__
 
 \ProvidesPackage{amsgen}
 
+\def\@addpunct#1{% This should be fixed in amsgen.sty
+    \relax\ifhmode
+        \ifnum\spacefactor>\@m \else#1\fi
+    \fi
+}
+
+% \nopunct should be added to amsgen.sty
+
+\def\nopunct{\spacefactor 1007 }
+
 %% Keep \@saveprimitive from generating unneeded noise.
 
 \let\@saveprimitive\@gobbletwo

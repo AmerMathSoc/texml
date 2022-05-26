@@ -11737,6 +11737,14 @@ sub get_macro_expansion_text {
     return $meaning->get_replacement_text();
 }
 
+sub expansion_of {
+    my $tex = shift;
+
+    my $csname = shift;
+
+    return $tex->get_macro_expansion_text($csname);
+}
+
 sub is_defined {
     my $tex = shift;
 
