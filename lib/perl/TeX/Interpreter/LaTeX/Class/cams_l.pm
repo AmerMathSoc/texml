@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Class::amsproc;
+package TeX::Interpreter::LaTeX::Class::cams_l;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -40,47 +40,31 @@ sub install ( $ ) {
 
     $tex->class_load_notification(__PACKAGE__, @options);
 
-    # ## Preload amsfonts to keep amsart.cls from freaking out
-    # 
-    # $tex->load_package("amsfonts");
-    # 
-    # $tex->load_latex_class("amsproc", 'noamsfonts', @options);
-
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::amsproc::DATA{IO});
+    $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::cams_l::DATA{IO});
 
     return;
 }
 
 1;
 
-######################################################################
-##                                                                  ##
-##                              MACROS                              ##
-##                                                                  ##
-######################################################################
-
-######################################################################
-##                                                                  ##
-##                           ENVIRONMENTS                           ##
-##                                                                  ##
-######################################################################
-
 __DATA__
 
-\ProvidesClass{amsproc}
+\ProvidesClass{cams-l}
 
-\ProcessOptions
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 
-\newcounter{section}
-\newcounter{figure}
-\newcounter{table}
+\ProcessOptions\relax
 
-\LoadClass{amscommon}
+\LoadClass{amsart}[1996/10/24]
 
-\def\refname{References}
+\publinfo{cams}{}{}
+
+\def\AMS@publname{Communications of the American Mathematical Society}
+
+\def\AMS@eissn{2692-3688}
 
 \endinput
 

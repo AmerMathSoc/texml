@@ -195,6 +195,8 @@ __DATA__
 
 \newtoks\thm@style
 
+\let\swapnumbers\@empty
+
 \def\theoremstyle#1{\thm@style{#1}}
 
 \theoremstyle{plain}
@@ -286,6 +288,10 @@ __DATA__
 }
 
 \let\qed\relax
+
+% \square isn't exactly right, but we don't actually care; all that
+% matters is that \qedsymbol isn't empty.
+\providecommand{\qedsymbol}{\square}
 
 \def\noqed{\let\qedsymbol\relax}
 

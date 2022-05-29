@@ -58,9 +58,6 @@ sub install ( $ ) {
 
     $tex->class_load_notification(__PACKAGE__, @options);
 
-    $tex->load_package("amsthm");
-    $tex->load_package("amsfonts");
-
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.
 
@@ -74,8 +71,6 @@ sub install ( $ ) {
     $tex->define_pseudo_macro(MR => \&do_MR);
 
     $tex->define_pseudo_macro(TeXMLdatestamp => \&do_texml_datestamp);
-
-    $tex->define_csname('output@custom@meta@group' => sub {});
 
     return;
 }
@@ -218,7 +213,63 @@ __DATA__
 
 \ProvidesClass{amscommon}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                             OPTIONS                              %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\DeclareOption{10pt}{}
+\DeclareOption{11pt}{}
+\DeclareOption{12pt}{}
+\DeclareOption{7x10}{}
+\DeclareOption{8pt}{}
+\DeclareOption{9pt}{}
+\DeclareOption{a4paper}{}
+\DeclareOption{draft}{}
+\DeclareOption{e-only}{}
+\DeclareOption{final}{}
+\DeclareOption{fleqn}{}
+\DeclareOption{landscape}{}
+\DeclareOption{letterpaper}{}
+\DeclareOption{makeidx}{}
+\DeclareOption{noamsfonts}{}
+\DeclareOption{nologo}{}
+\DeclareOption{nomath}{}
+\DeclareOption{notitlepage}{}
+\DeclareOption{onecolumn}{}
+\DeclareOption{oneside}{}
+\DeclareOption{openany}{}
+\DeclareOption{openright}{}
+\DeclareOption{portrait}{}
+\DeclareOption{psamsfonts}{}
+\DeclareOption{titlepage}{}
+\DeclareOption{tocpagenos}{}
+\DeclareOption{twocolumn}{}
+\DeclareOption{twoside}{}
+
+% These amsmath options aren't really important to us, but the
+% following 5 lines suppress some option class options that we might
+% otherwise get if, for example, the author puts
+%     \usepackage[leqno]{amsmath}
+% in the document preamble.
+%
+% Alternatively, we could modify amsmath.pm to suppress all options.
+
+\DeclareOption{centertags}{\PassOptionsToPackage{centertags}{amsmath}}
+\DeclareOption{leqno}{\PassOptionsToPackage{leqno}{amsmath}}
+\DeclareOption{reqno}{\PassOptionsToPackage{reqno}{amsmath}}
+\DeclareOption{tbtags}{\PassOptionsToPackage{tbtags}{amsmath}}
+
+\ExecuteOptions{leqno,centertags}
+
+\ProcessOptions
+
 \RequirePackage{OLDfont}
+
+\RequirePackage{amsmath}
+
+\RequirePackage{upref}
 
 \RequirePackage{amsthm}
 
@@ -226,8 +277,9 @@ __DATA__
 
 \RequirePackage{amsgen}
 
-\LoadIfModuleExists{AMSmetadata}{sty}{%
-}{%
+\RequirePackage{xspace}
+
+\LoadIfModuleExists{AMSmetadata}{sty}{}{%
     \typeout{No AMSmetadata support}%
     \let\noAMSmetadata\@empty
     \let\AddAMSmetadata\@empty
@@ -235,44 +287,128 @@ __DATA__
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
-%%                             OPTIONS                              %%
+%%                        FONT SIZE COMMANDS                        %%
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\DeclareOption{a4paper}{}
-\DeclareOption{letterpaper}{}
-\DeclareOption{7x10}{}
-\DeclareOption{landscape}{}
-\DeclareOption{portrait}{}
-\DeclareOption{oneside}{}
-\DeclareOption{twoside}{}
-\DeclareOption{draft}{}
-\DeclareOption{final}{}
-\DeclareOption{nologo}{}
-\DeclareOption{e-only}{}
-\DeclareOption{tocpagenos}{}
-\DeclareOption{titlepage}{}
-\DeclareOption{notitlepage}{}
-\DeclareOption{openright}{}
-\DeclareOption{openany}{}
-\DeclareOption{onecolumn}{}
-\DeclareOption{twocolumn}{}
-\DeclareOption{nomath}{}
-\DeclareOption{noamsfonts}{}
-\DeclareOption{psamsfonts}{}
-\DeclareOption{leqno}{}
-\DeclareOption{reqno}{}
-\DeclareOption{centertags}{}
-\DeclareOption{tbtags}{}
-\DeclareOption{fleqn}{}
-\DeclareOption{10pt}{}
-\DeclareOption{11pt}{}
-\DeclareOption{12pt}{}
-\DeclareOption{8pt}{}
-\DeclareOption{9pt}{}
-\DeclareOption{makeidx}{}
+% Do we want to do anything with these?
 
-\ProcessOptions
+\newcommand{\larger}[1][1]{}
+\newcommand{\smaller}[1][1]{}
+
+\renewcommand\normalsize{}
+
+\DeclareRobustCommand{\Tiny}{}
+\DeclareRobustCommand{\tiny}{}
+\DeclareRobustCommand{\SMALL}{}
+\DeclareRobustCommand{\Small}{}
+\DeclareRobustCommand{\small}{}
+
+\def\footnotesize{}
+\def\scriptsize{}
+
+\DeclareRobustCommand{\large}{}
+\DeclareRobustCommand{\Large}{}
+\DeclareRobustCommand{\LARGE}{}
+\DeclareRobustCommand{\huge}{}
+\DeclareRobustCommand{\Huge}{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                         CONDITIONAL TEXT                         %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Don't really like this, but can't get rid of it yet.
+
+\def\@True{00}
+\def\@False{01}
+
+\newcommand\newswitch[2][False]{%
+  \expandafter\@ifdefinable\csname ?@#2\endcsname{%
+    \global\expandafter\let\csname ?@#2\expandafter\endcsname
+      \csname @#1\endcsname
+  }%
+}
+
+\newcommand{\setFalse}[1]{%
+  \expandafter\let\csname ?@#1\endcsname\@False
+}
+
+\newcommand{\setTrue}[1]{%
+  \expandafter\let\csname ?@#1\endcsname\@True
+}
+
+\newswitch{}
+
+\DeclareRobustCommand{\except}[1]{%
+  \if\csname ?@#1\endcsname \expandafter\@gobble
+  \else \expandafter\@firstofone
+  \fi
+}
+
+\DeclareRobustCommand{\for}[1]{%
+  \if\csname ?@#1\endcsname \expandafter\@firstofone
+  \else \expandafter\@gobble
+  \fi
+}
+
+\DeclareRobustCommand{\forany}[1]{%
+  \csname for@any@01\endcsname#1,?,\@nil
+}
+
+\@namedef{for@any@\@False}#1,{%
+  \csname for@any@%
+    \csname ?@\zap@space#1 \@empty\endcsname
+  \endcsname
+}
+
+\@namedef{?@?}{x}
+
+\@namedef{for@any@\@True}#1\@nil#2{#2}
+
+\def\for@any@x{\@car\@gobble}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                            SECTIONING                            %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcounter{part}
+\newcounter{subsection}[section]
+\newcounter{subsubsection}[subsection]
+\newcounter{paragraph}[subsubsection]
+\newcounter{subparagraph}[paragraph]
+
+\renewcommand\thepart          {\arabic{part}}
+\renewcommand\thesection       {\arabic{section}}
+\renewcommand\thesubsection    {\thesection.\arabic{subsection}}
+\renewcommand\thesubsubsection {\thesubsection .\arabic{subsubsection}}
+\renewcommand\theparagraph     {\thesubsubsection.\arabic{paragraph}}
+\renewcommand\thesubparagraph  {\theparagraph.\arabic{subparagraph}}
+
+\let\sectionname\@empty
+\let\subsectionname\@empty
+\let\subsubsectionname\@empty
+\let\paragraphname\@empty
+\let\subparagraphname\@empty
+
+\def\partname{Part}
+
+%    Specialsection correlates to our inhouse Z-head.
+%    \begin{macrocode}
+% \def\specialsection{\@startsection{section}{1}{}{}{}{}}
+
+\def\@seccntformat#1{%
+    \csname the#1\endcsname
+}
+
+\def\section      {\@startsection{section}{1}{}{}{}{}}
+\def\subsection   {\@startsection{subsection}{2}{}{}{}{}}
+\def\subsubsection{\@startsection{subsubsection}{3}{}{}{}{}}
+\def\paragraph    {\@startsection{paragraph}{4}{}{}{}{}}
+\def\subparagraph {\@startsection{subparagraph}{5}{}{}{}{}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
@@ -379,9 +515,26 @@ __DATA__
 \def\pagespan#1#2{%
     \gdef\AMS@start@page{#1}%
     \gdef\AMS@end@page{#2}%
+    \setcounter{page}{#1}%
+    \ifnum\c@page<\z@
+        \pagenumbering{roman}%
+        \setcounter{page}{-#1}%
+    \fi
 }
 
-\pagespan{}{}
+\pagespan{0}{0}
+
+\def\curraddrname{{\itshape Current address}}
+\def\emailaddrname{{\itshape Email address}}
+\def\urladdrname{{\itshape URL}}
+
+\let\@date\@empty
+
+\def\dedicatory#1{\def\@dedicatory{#1}}
+\let\@dedicatory=\@empty
+
+\def\keywords#1{\def\@keywords{#1}}
+\let\@keywords=\@empty
 
 \def\keywords{\gdef\AMS@keywords}
 \let\AMS@keywords\@empty
@@ -546,7 +699,7 @@ __DATA__
         \output@article@notes
     \endgroup
     \mainmatter
-    \let\maketitle\@empty    
+    \let\maketitle\@empty
 }
 
 \def\output@journal@meta{%
@@ -638,38 +791,6 @@ __DATA__
         \endXMLelement{article-meta}
 }
 
-\def\output@article@notes{% Notices stuff
-% 
-%         if (my @dedications = $document->get_dedications()) {
-%             \startXMLelement{notes", {  "notes-type" => "dedication" })
-% 
-%             for my $dedication (@dedications) {
-%                 $tex->process_string{$dedication\\par}
-%             }
-% 
-%             \endXMLelement{notes}
-%         }
-% 
-%         if (my @notes = $document->get_notes()) {
-%             \startXMLelement{notes", {  "notes-type" => "article" })
-% 
-%             for my $note (@notes) {
-%                 $tex->process_string{$note\\par}
-%             }
-% 
-%             \endXMLelement{notes}
-%         }
-% 
-%         if (my $note = $tex->get_macro_expansion_text('@titlegraphicnote')) {
-%             \startXMLelement{notes", {  "notes-type" => "titlepicnote" })
-% 
-%             $tex->process_string{$note\\par}
-% 
-%             \endXMLelement{notes}
-%         }
-%     }
-}
-
 \def\output@author@meta{%
     \ifx\AMS@authors\@empty\else
         \begingroup
@@ -712,7 +833,7 @@ __DATA__
     \fi
     \ifx\this@address\@empty\else
         \startXMLelement{aff}
-            \this@address    
+            \this@address
         \endXMLelement{aff}\par
     \fi
     \ifx\this@email\@empty\else
@@ -721,6 +842,38 @@ __DATA__
         \endXMLelement{email}\par
     \fi
     \endXMLelement{contrib-group}
+}
+
+\def\output@article@notes{% Notices stuff
+%
+%         if (my @dedications = $document->get_dedications()) {
+%             \startXMLelement{notes", {  "notes-type" => "dedication" })
+%
+%             for my $dedication (@dedications) {
+%                 $tex->process_string{$dedication\\par}
+%             }
+%
+%             \endXMLelement{notes}
+%         }
+%
+%         if (my @notes = $document->get_notes()) {
+%             \startXMLelement{notes", {  "notes-type" => "article" })
+%
+%             for my $note (@notes) {
+%                 $tex->process_string{$note\\par}
+%             }
+%
+%             \endXMLelement{notes}
+%         }
+%
+%         if (my $note = $tex->get_macro_expansion_text('@titlegraphicnote')) {
+%             \startXMLelement{notes", {  "notes-type" => "titlepicnote" })
+%
+%             $tex->process_string{$note\\par}
+%
+%             \endXMLelement{notes}
+%         }
+%     }
 }
 
 \def\output@article@history{%
@@ -753,6 +906,80 @@ __DATA__
     \endXMLelement{history}
 }
 
+\def\output@custom@meta@group{%
+%    my $commby = $document->get_commby();
+%    my $titlepic = $tex->get_macro_expansion_text('@titlepic');
+%    my $category = $tex->get_macro_expansion_text('@noti@category');
+%
+%    return unless nonempty($commby) || nonempty($titlepic) || nonempty($category);
+%
+%    $tex->new_graf();
+%    $tex->begingroup();
+%
+%    $tex->set_xml_par_tag();
+%
+%    $tex->start_xml_element("custom-meta-group");
+%
+%    if (nonempty($commby)) {
+%        $tex->start_xml_element("custom-meta");
+%        $tex->set_xml_attribute("specific-use", "communicated-by");
+%
+%        my $commby_text = $tex->get_macro_expansion_text('@commbytext');
+%
+%        if (empty($commby_text)) {
+%            $commby_text = "Communicated by";
+%        }
+%
+%        $tex->start_xml_element("meta-name");
+%        $tex->process_string($commby_text);
+%        $tex->end_xml_element("meta-name");
+%
+%        $tex->start_xml_element("meta-value");
+%        $tex->process_string($commby);
+%        $tex->end_xml_element("meta-value");
+%
+%        $tex->end_xml_element("custom-meta");
+%    }
+%
+%    if (nonempty($titlepic)) {
+%        $tex->start_xml_element("custom-meta");
+%        $tex->set_xml_attribute("specific-use", "titlepic");
+%
+%        $tex->start_xml_element("meta-name");
+%        $tex->process_string("titlepic");
+%        $tex->end_xml_element("meta-name");
+%
+%        $tex->start_xml_element("meta-value");
+%        $tex->process_string($titlepic);
+%        $tex->end_xml_element("meta-value");
+%
+%        $tex->end_xml_element("custom-meta");
+%    }
+%
+%    if (nonempty($category)) {
+%        $tex->start_xml_element("custom-meta");
+%        $tex->set_xml_attribute("specific-use", "notices-category");
+%
+%        $tex->start_xml_element("meta-name");
+%        $tex->process_string("category");
+%        $tex->end_xml_element("meta-name");
+%
+%        $tex->start_xml_element("meta-value");
+%        $tex->process_string($category);
+%        $tex->end_xml_element("meta-value");
+%
+%        $tex->end_xml_element("custom-meta");
+%    }
+%
+%    $tex->end_xml_element("custom-meta-group");
+%
+%    $tex->end_par();
+%
+%    $tex->endgroup();
+%
+%    return;
+}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
 %%                               MISC                               %%
@@ -762,20 +989,37 @@ __DATA__
 \let\NoTOC\@gobble
 \def\for#1#2{}
 
-% \let\qed\@empty
+\let\upn=\textup
+
+\providecommand{\Mc}{Mc}
+
+\newcommand{\today}{%
+    \relax\ifcase\month\or
+    January\or February\or March\or April\or May\or June\or
+    July\or August\or September\or October\or November\or December\fi
+    \space\number\day, \number\year
+}
+
+\def\@adminfootnotes{}%</amsart|amsproc>
+
+\def\titlepage{}
 
 \setcounter{secnumdepth}{3}
 \setcounter{tocdepth}{1}
 
 \def\nonbreakingspace{\unskip\nobreakspace\ignorespaces}
 
+\def~{\protect\nonbreakingspace}
+
+% If there is a space left after \forcelinebreak, it belongs to the content.
+
 \DeclareRobustCommand{\forcelinebreak}{%
-    \@ifstar{\unskip\space\ignorespaces}{\unskip\space}%
+    \@ifstar{\unskip\xspace}{\unskip\xspace}%
 }
 
-\DeclareRobustCommand{\forcehyphenbreak}{\ignorespaces}%
+%% \forcehyphenbreak is a like \- : the hyphen is *not* part of the content.
 
-%% Begin extract from new version of amsbook
+\DeclareRobustCommand{\forcehyphenbreak}{\@ifstar{\ignorespaces}{}}
 
 \def\disable@footnotes{%
     \let\footnote\@gobble@opt
@@ -783,9 +1027,11 @@ __DATA__
     \let\footnotetext\@gobble@opt
 }
 
-%% End extract from new version of amsbook
-
-% \disable@footnotes
+% Probably don't need this any more
+\def\disable@stepcounter{%
+    \let\stepcounter\@gobble
+    \let\refstepcounter\@gobble
+}
 
 \def\newGif#1{%
   \count@\escapechar \escapechar\m@ne
@@ -793,6 +1039,7 @@ __DATA__
     \@Gif#1\iftrue
     \@Gif#1\iffalse
   \escapechar\count@}
+
 \def\@Gif#1#2{%
   \expandafter\def\csname\expandafter\@gobbletwo\string#1%
                     \expandafter\@gobbletwo\string#2\endcsname
@@ -859,6 +1106,8 @@ __DATA__
     \fi
 }
 
+\def\appendixname{Appendix}
+
 \def\appendix{%
     \par
     \backmatter
@@ -871,29 +1120,26 @@ __DATA__
     \def\thesection{\@Alph\c@section}%
 }
 
-\newenvironment{dedication}{%
-    \frontmatter
-    \let\\\@centercr
-    \startXMLelement{dedication}
-    \addXMLid
-        \startXMLelement{book-part-meta}
-            \startXMLelement{title-group}
-                \thisxmlpartag{title}%
-                Dedication\par
-            \endXMLelement{title-group}
-        \endXMLelement{book-part-meta}
-        \startXMLelement{named-book-part-body}
-        \par
-}{%
-        \par
-        \endXMLelement{named-book-part-body}
-    \endXMLelement{dedication}
-}
-
-\let\@writetocindents\@empty
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                              LISTS                               %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \RestoreEnvironmentDefinition{enumerate}
 \RestoreEnvironmentDefinition{itemize}
+
+\def\labelenumi{(\theenumi)}
+\def\theenumi{\@arabic\c@enumi}
+\def\labelenumii{(\theenumii)}
+\def\theenumii{\@alph\c@enumii}
+\def\p@enumii{\theenumi}
+\def\labelenumiii{(\theenumiii)}
+\def\theenumiii{\@roman\c@enumiii}
+\def\p@enumiii{\theenumi(\theenumii)}
+\def\labelenumiv{(\theenumiv)}
+\def\theenumiv{\@Alph\c@enumiv}
+\def\p@enumiv{\p@enumiii\theenumiii}
 
 %% TODO: Use \descriptionlabel, but first rewrite it to add a wrapping
 %% element around #1.
@@ -913,10 +1159,22 @@ __DATA__
 %     </ref>
 % </ref-list>
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                           BIBLIOGRAPHY                           %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \let\bibintro\@empty
 \let\bibliographystyle\@gobble
 
-\renewenvironment{thebibliography}[1]{%
+\UCSchardef\bysame"2014
+
+\let\newblock\@empty
+
+\newcommand\CMP[1]{CMP #1}
+
+\newenvironment{thebibliography}[1]{%
     \if@backmatter
         \@clear@sectionstack
     \else
@@ -949,6 +1207,16 @@ __DATA__
     \endlist
 }
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                              FLOATS                              %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\let\abovecaptionskip\skip@
+\let\belowcaptionskip\skip@
+\let\captionindent\dimen@
+
 % <fig id="raptor" position="float">
 %   <label>Figure 1</label>
 %   <caption>
@@ -957,8 +1225,6 @@ __DATA__
 %   </caption>
 %   <graphic xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="data/samples/raptor.jpg"/>
 % </fig>
-
-\def\jats@figure@element{fig}
 
 \def\caption{%
     \ifx\@captype\@undefined
@@ -1009,7 +1275,14 @@ __DATA__
 
 \SaveMacroDefinition\@caption
 
-\renewenvironment{figure}[1][]{%
+\def\jats@figure@element{fig}
+
+\def\ftype@figure{1}
+\def\ext@figure{lof}
+\def\fnum@figure{\figurename\ \thefigure}
+\def\figurename{Figure}
+
+\newenvironment{figure}[1][]{%
     \let\center\@empty
     \let\endcenter\@empty
     \ifnum\@listdepth > 0
@@ -1040,7 +1313,13 @@ __DATA__
 \SaveEnvironmentDefinition{figure}
 \SaveEnvironmentDefinition{figure*}
 
-\renewenvironment{table}[1][]{%
+\def\ftype@table{2}
+\def\ext@table{lot}
+\def\fnum@table{\tablename\ \thetable}
+
+\def\tablename{Table}
+
+\newenvironment{table}[1][]{%
     \let\center\@empty
     \let\endcenter\@empty
     \par
@@ -1063,6 +1342,14 @@ __DATA__
 
 \SaveEnvironmentDefinition{table}
 \SaveEnvironmentDefinition{table*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                        TABLE OF CONTENTS                         %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\@tocwrite#1{\@xp\@tocwriteb\csname toc#1\endcsname{#1}}
 
 \def\@tocwriteb#1#2#3{%
     \addcontentsline{toc}{#2}%
@@ -1157,6 +1444,10 @@ __DATA__
 
 \providecommand{\setTrue}[1]{}
 
+\def\contentsname{Contents}
+\def\listfigurename{List of Figures}
+\def\listtablename{List of Tables}
+
 \def\@starttoc#1#2{%
     \@clear@sectionstack
     \begingroup
@@ -1193,7 +1484,7 @@ __DATA__
     \newpage
 }
 
-\renewcommand{\tocsection}[4]{%
+\newcommand{\tocsection}[4]{%
     \ifnum\@toclevel=\@currtoclevel
         \endXMLelement{toc-entry}%
         \startXMLelement{toc-entry}%
@@ -1220,11 +1511,13 @@ __DATA__
 \let\tocsubparagraph\tocsection
 \let\tocappendix\tocsection
 
-\def\@seccntformat#1{%
-    \csname the#1\endcsname
-}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                        MISC ENVIRONMENTS                         %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\renewenvironment{quotation}{%
+\newenvironment{quotation}{%
     \par
     \everypar{}%
     \startXMLelement{disp-quote}%
@@ -1237,7 +1530,7 @@ __DATA__
 \let\quote\quotation
 \let\endquote\endquotation
 
-\renewenvironment{verse}{%
+\newenvironment{verse}{%
     \par
     \everypar{}%
     \def\\{\emptyXMLelement{break}}%
@@ -1256,41 +1549,6 @@ __DATA__
     \endgroup
 }
 \let\aufm\attrib
-
-%% ??? The \ifvmode version can't have worked if there were multiple
-%% paragraphs in the scope of the font command.
-
-\def\startinlineXMLelement#1{%
-    % \ifvmode
-    %     \everypar{\startXMLelement{#1}}%
-    % \else
-        \leavevmode
-        \startXMLelement{#1}%
-    % \fi
-}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%                                                                  %%
-%%                        UNICODE CHARACTERS                        %%
-%%                                                                  %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% Various ``special'' characters that are defined in latex.pm and then
-% redefined by ams{art,book,proc}.cls.  Once we stop loading ams*.cls,
-% we can delete most of these.
-
-\UCSchardef\textprime"2032
-
-\UCSchardef\DH"00D0
-\UCSchardef\dh"00F0
-\UCSchardef\DJ"0110
-\UCSchardef\dj"0111
-
-\UCSchardef\textregistered"00AE
-\UCSchardef\textservicemark"2120
-\UCSchardef\texttrademark"2122
-
-\UCSchardef\bysame"2014
 
 \endinput
 

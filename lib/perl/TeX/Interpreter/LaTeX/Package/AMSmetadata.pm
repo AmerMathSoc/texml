@@ -230,37 +230,6 @@ sub do_add_ams_metadata {
     ## In case the MR number isn't in the gentag file yet.
     $gentag->add_mr_number();
 
-    if (defined(my $document = $tex->get_parcel('document'))) {
-        if (nonempty(my $issue_date = $document->get_issuedate())) {
-            my $month = $issue_date->get_month();
-
-            if (nonempty($month) && $month > -1) {
-                $gentag->set_issuedate($issue_date);
-            }
-        }
-
-        ## If volume, issue, etc., are present in both the gentag and
-        ## the document, just assume they are the same.
-
-        if (nonempty(my $volume = $document->get_volume())) {
-            $volume =~ s{^0+(\d+)$}{$1};
-
-            $gentag->set_volume($volume);
-        }
-
-        if (nonempty(my $number = $document->get_number())) {
-            $number =~ s{^0+(\d+)$}{$1};
-
-            $gentag->set_number($number);
-        }
-
-        $gentag->delete_page_ranges();
-
-        for my $page_range ($document->get_page_ranges()) {
-            $gentag->add_page_range($page_range);
-        }
-    }
-
     my $doctype = $gentag->get_doctype();
 
     add_xml_lang($tex, $dom, $gentag);

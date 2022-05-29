@@ -1413,6 +1413,8 @@ __DATA__
 \newif\if@texml@inlist@
 \@texml@inlist@false
 
+% Move to laTeXML.ltx?
+
 \renewenvironment{list}[2]{%
     \@@par
     \ifnum \@listdepth >5\relax
@@ -1422,7 +1424,6 @@ __DATA__
     \fi
     \@texml@inlist@true
     \global\@newitemfalse
-    \csname @list\romannumeral\the\@listdepth\endcsname
     \def\@itemlabel{#1}%
     \let\makelabel\@mklab
     \@nmbrlistfalse

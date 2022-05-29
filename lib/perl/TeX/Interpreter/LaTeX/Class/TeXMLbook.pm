@@ -136,7 +136,18 @@ __DATA__
 
 \ProcessOptions
 
+\newcounter{chapter}
+\renewcommand\thechapter{\arabic{chapter}}
+
+\newcounter{section}[chapter]
+\def\thesection{\arabic{section}}
+
+\newcounter{figure}[chapter]
+\newcounter{table}[chapter]
+
 \LoadClass{amscommon}
+
+\def\bibname{Bibliography}
 
 \setXMLdoctype{-//NLM//DTD BITS Book Interchange DTD v1.0 20131225//EN}
               {BITS-book1.dtd}
@@ -338,6 +349,8 @@ __DATA__
     \@afterheading
 }
 
+\def\part{\secdef\@part\@spart}
+
 \def\@part[#1]#2{%
     \def\@toclevel{-1}%
     \ifnum\c@secnumdepth<\@toclevel\relax
@@ -359,6 +372,25 @@ __DATA__
     \start@XML@section{part}{-1}{}{#1}%
     \@tocwriteb\tocpart{part}{#1}%
     \@afterheading
+}
+
+\newenvironment{dedication}{%
+    \frontmatter
+    \let\\\@centercr
+    \startXMLelement{dedication}
+    \addXMLid
+        \startXMLelement{book-part-meta}
+            \startXMLelement{title-group}
+                \thisxmlpartag{title}%
+                Dedication\par
+            \endXMLelement{title-group}
+        \endXMLelement{book-part-meta}
+        \startXMLelement{named-book-part-body}
+        \par
+}{%
+        \par
+        \endXMLelement{named-book-part-body}
+    \endXMLelement{dedication}
 }
 
 \def\refname{Bibliography}

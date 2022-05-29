@@ -134,6 +134,18 @@ __DATA__
 
 \ProvidesPackage{OLDfont}
 
+%% ??? The \ifvmode version can't have worked if there were multiple
+%% paragraphs in the scope of the font command.
+
+\def\startinlineXMLelement#1{%
+    % \ifvmode
+    %     \everypar{\startXMLelement{#1}}%
+    % \else
+        \leavevmode
+        \startXMLelement{#1}%
+    % \fi
+}
+
 \endinput
 
 __END__

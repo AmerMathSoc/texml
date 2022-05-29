@@ -466,6 +466,19 @@ my %toc_stack_of :ARRAY(:name<toc_stack>);
 ##                                                                  ##
 ######################################################################
 
+sub get_module_options {
+    my $tex = shift;
+
+    my $name = shift;
+    my $ext  = shift;
+
+    if (defined (my $options = $tex->expansion_of("opt\@${name}.${ext}"))) {
+        return split /\s*,\s*/, $options;
+    }
+
+    return;
+}
+
 ## Requires an explicit \end{ENVNAME}.  Doesn't handle nested
 ## occurrences of the same environment.
 

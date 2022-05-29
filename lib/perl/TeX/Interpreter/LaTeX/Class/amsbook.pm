@@ -47,9 +47,9 @@ sub install ( $ ) {
 
     ## Preload amsfonts to keep amsart.cls from freaking out
 
-    $tex->load_package("amsfonts");
-
-    $tex->load_latex_class("amsbook", 'noamsfonts', @options);
+    # $tex->load_package("amsfonts");
+    # 
+    # $tex->load_latex_class("amsbook", 'noamsfonts', @options);
 
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.

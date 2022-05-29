@@ -42,9 +42,9 @@ sub install ( $ ) {
 
     ## Preload amsfonts to keep amsart.cls from freaking out
 
-    $tex->load_package("amsfonts");
+    # $tex->load_package("amsfonts");
 
-    $tex->load_latex_class("amsart", @options);
+    # $tex->load_latex_class("amsart", @options);
 
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.
@@ -72,15 +72,19 @@ __DATA__
 
 \ProvidesPackage{amsart}
 
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{amscommon}}
+
 \ProcessOptions
+
+\newcounter{section}
+\newcounter{figure}
+\newcounter{table}
 
 \LoadClass{amscommon}
 
-%% Restore value of \jot that is zeroed out when \@adjustvertspacing
-%% is invoked via \normalsize by \ExecuteOptions{10pt}.  There needs
-%% to be a better solution for this, but it is likely tricky.
+\def\part{\@startsection{part}{0}{}{}{}{}}
 
-\jot=3pt
+\def\refname{References}
 
 \setXMLdoctype{-//NLM//DTD JATS (Z39.96) Journal Archiving and Interchange DTD with MathML3 v1.1d1 20130915//EN}
               {JATS-archivearticle1-mathml3.dtd}
