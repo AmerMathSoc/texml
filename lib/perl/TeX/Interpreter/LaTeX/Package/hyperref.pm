@@ -57,6 +57,8 @@ __DATA__
 \newcommand{\pdfbookmark}[3][]{}
 \let\@currentHref\@empty
 
+\let\texorpdfstring\@firstoftwo
+
 \def\autoref{%
     \begingroup
         \maybe@st@rred\@autoref
