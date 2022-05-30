@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::AMSmetadata;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.0.1';
 
 use base qw(Exporter);
 
@@ -584,8 +584,10 @@ sub add_history {
     if (nonempty(my $issue_date = $gentag->get_issuedate())) {
         if (nonempty(my $year = $issue_date->get_year())) {
             if ($year > 0) {
-                if (empty($issue_date->get_day())) {
-                    $issue_date->set_day(1);
+                if (nonempty($issue_date->get_month())) {
+                    if (empty($issue_date->get_day())) {
+                        $issue_date->set_day(1);
+                    }
                 }
 
                 append_date($tex, $history, $issue_date, "issue-date");
