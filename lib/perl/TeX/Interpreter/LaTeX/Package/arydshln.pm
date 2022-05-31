@@ -98,7 +98,7 @@ __DATA__
         \@tempcnta#2
         \advance\@tempcnta\@ne
         \@whilenum\count@<\@tempcnta\do{%
-            \setColumnCSSproperty{\the\count@}{border-bottom}{\current@border@properties}%
+            \setColumnCSSproperty{\the\count@}{border-top}{\current@border@properties}%
             \advance\count@\@ne
         }%
     \ifnum0=`{\fi}
