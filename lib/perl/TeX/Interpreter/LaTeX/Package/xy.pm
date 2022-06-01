@@ -64,6 +64,8 @@ __DATA__
 \def\SelectTips#1#2{}
 \def\CompileMatrices{}
 
+\let\newdir\@gobbletwo
+
 \let\xymatrixcolsep\@gobble
 \let\xymatrixrowsep\@gobble
 
