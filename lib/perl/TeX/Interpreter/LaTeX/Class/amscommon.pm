@@ -1366,6 +1366,22 @@ __DATA__
         {\protect#1{\csname#2name\endcsname}{\@secnumber}{#3}{\@currentXMLid}}%
 }
 
+\def\l@section{\@tocline{1}{0pt}{1pc}{}{}}
+\def\l@subsection{\@tocline{2}{0pt}{1pc}{5pc}{}}
+\let\tocsubsection\tocsection
+\def\l@subsubsection{\@tocline{3}{0pt}{1pc}{7pc}{}}
+\let\tocsubsubsection\tocsection
+\def\l@paragraph{\@tocline{4}{0pt}{1pc}{7pc}{}}
+\let\tocparagraph\tocsection
+\def\l@subparagraph{\@tocline{5}{0pt}{1pc}{7pc}{}}
+\let\tocsubparagraph\tocsection
+\let\tocpart\tocsection
+\def\l@chapter{\@tocline{0}{8pt plus1pt}{0pt}{}{}}
+\let\tocchapter\tocsection
+\let\tocappendix\tocsection
+\def\l@figure{\@tocline{0}{3pt plus2pt}{0pt}{1.5pc}{}}
+\let\l@table=\l@figure
+
 %% The typical .toc file line is something like
 %%
 %%   \contentsline {chapter}{\tocchapter {Chapter}{I}{Elementary...}{ltxid3}}{1}
@@ -1377,6 +1393,7 @@ __DATA__
 \gdef\@currtoclevel{-1}
 
 \def\@tocline#1#2#3#4#5#6#7{%
+\typeout{*** @tocline: 6 = `#6`; 7 = `#7`}%
     \relax
     \ifnum #1>\c@tocdepth
         % OMIT
@@ -1458,6 +1475,8 @@ __DATA__
 \def\listfigurename{List of Figures}
 \def\listtablename{List of Tables}
 
+\def\tableofcontents{\@starttoc{toc}\contentsname}
+
 \def\@starttoc#1#2{%
     \@clear@sectionstack
     \begingroup
@@ -1476,13 +1495,11 @@ __DATA__
         {\xmlpartag{}#2\par}%
         \endXMLelement{title}%
         \endXMLelement{title-group}%
-
         % \gdef\@currtoclevel{-1}%
         % \let\@authorlist\@empty
         % \makeatletter
         % \@input{\jobname.#1}%
         % \@clear@tocstack
-
         \endXMLelement{toc}%
         \if@filesw
             \@xp\newwrite\csname tf@#1\endcsname
