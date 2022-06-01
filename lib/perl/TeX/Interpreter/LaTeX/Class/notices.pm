@@ -88,6 +88,7 @@ __DATA__
 
 \def\commbytext{\def\@commbytext}
 \def\@commbytext{Communicated by \emph{Notices} Associate Editor }
+\def\commby{\gdef\AMS@commby}
 
 % \newcommand{\notiemail}[1]{\texttt{\upshape\nolinkurl{#1}}}
 \newcommand{\notiemail}[1]{\XMLelement{email}{\ignorespaces#1}}
