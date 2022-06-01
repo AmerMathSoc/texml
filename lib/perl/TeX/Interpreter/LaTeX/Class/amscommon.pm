@@ -432,24 +432,24 @@ __DATA__
     \gdef\AMS@volume{#1}%
     \xdef\AMS@issue{\number0#2}%
     \gdef\AMS@issue@month{}%
-    \@ifnotempty{#3}{\xdef\AMS@month{\TEXML@month@int{#3}}}%
+    \@ifnotempty{#3}{\xdef\AMS@issue@month{\TEXML@month@int{#3}}}%
     \gdef\AMS@issue@year{#4}%
 }
 
 \def\TEXML@month@int#1{\@nameuse{TeXML@month@#1}}
 
-\@namedef{TEXML@month@January}{1}
-\@namedef{TEXML@month@February}{2}
-\@namedef{TEXML@month@March}{3}
-\@namedef{TEXML@month@April}{4}
-\@namedef{TEXML@month@May}{5}
-\@namedef{TEXML@month@June}{6}
-\@namedef{TEXML@month@July}{7}
-\@namedef{TEXML@month@August}{8}
-\@namedef{TEXML@month@September}{9}
-\@namedef{TEXML@month@October}{10}
-\@namedef{TEXML@month@November}{11}
-\@namedef{TEXML@month@December}{12}
+\@namedef{TeXML@month@January}{1}
+\@namedef{TeXML@month@February}{2}
+\@namedef{TeXML@month@March}{3}
+\@namedef{TeXML@month@April}{4}
+\@namedef{TeXML@month@May}{5}
+\@namedef{TeXML@month@June}{6}
+\@namedef{TeXML@month@July}{7}
+\@namedef{TeXML@month@August}{8}
+\@namedef{TeXML@month@September}{9}
+\@namedef{TeXML@month@October}{10}
+\@namedef{TeXML@month@November}{11}
+\@namedef{TeXML@month@December}{12}
 
 \def\publinfo#1#2#3{%
     \gdef\AMS@publkey{#1}%
@@ -625,6 +625,7 @@ __DATA__
 \newcommand{\curraddr}[2][]{\g@addto@macro\AMS@authors{\curraddr{#1}{#2}}}
 \newcommand{\email}[2][]   {\g@addto@macro\AMS@authors{\email{#1}{#2}}}
 \newcommand{\urladdr}[2][] {\g@addto@macro\AMS@authors{\urladdr{#1}{#2}}}
+\newcommand{\authorbio}[1] {\g@addto@macro\AMS@authors{\authorbio{#1}}}
 
 \def\editor#1{%
     \ifx\AMS@editorlist\@empty
@@ -669,9 +670,11 @@ __DATA__
 
 \def\@wraptoccontribs#1#2{}
 
-% Notices stuff
+% custom metadata for Notices
 
 \let\@noti@subject@group\@empty
+\let\@noti@category\@empty
+\let\@titlepic\@empty
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
@@ -727,9 +730,20 @@ __DATA__
                     \endXMLelement{issn}\par
                 \fi
             \endXMLelement{journal-title-group}
+            \output@article@publisher
         \fi
         \endXMLelement{journal-meta}\par
     \fi
+}
+
+\def\output@article@publisher{%
+    \startXMLelement{publisher}
+        \par
+        \thisxmlpartag{publisher-name}
+        American Mathematical Society\par
+        \thisxmlpartag{publisher-loc}
+        Providence, Rhode Island\par
+    \endXMLelement{publisher}
 }
 
 \def\output@article@meta{%
@@ -808,11 +822,13 @@ __DATA__
     \let\this@curraddress\@empty
     \let\this@email\@empty
     \let\this@urladdr\@empty
+    \let\this@bio\@empty
     \def\author@name{\def\this@name}%
     \def\address##1##2{\def\this@address{##2}}%
     \def\curaddress##1##2{\def\this@curaddress{##2}}%
     \def\email##1##2{\def\this@email{##2}}%
     \def\urladdr##1##2{\def\this@urladdr{##2}}%
+    \def\authorbio##1{\def\this@bio{##1}}%
 }
 
 \def\end@author@{%
@@ -907,77 +923,63 @@ __DATA__
 }
 
 \def\output@custom@meta@group{%
-%    my $commby = $document->get_commby();
-%    my $titlepic = $tex->get_macro_expansion_text('@titlepic');
-%    my $category = $tex->get_macro_expansion_text('@noti@category');
-%
-%    return unless nonempty($commby) || nonempty($titlepic) || nonempty($category);
-%
-%    $tex->new_graf();
-%    $tex->begingroup();
-%
-%    $tex->set_xml_par_tag();
-%
-%    $tex->start_xml_element("custom-meta-group");
-%
-%    if (nonempty($commby)) {
-%        $tex->start_xml_element("custom-meta");
-%        $tex->set_xml_attribute("specific-use", "communicated-by");
-%
-%        my $commby_text = $tex->get_macro_expansion_text('@commbytext');
-%
-%        if (empty($commby_text)) {
-%            $commby_text = "Communicated by";
-%        }
-%
-%        $tex->start_xml_element("meta-name");
-%        $tex->process_string($commby_text);
-%        $tex->end_xml_element("meta-name");
-%
-%        $tex->start_xml_element("meta-value");
-%        $tex->process_string($commby);
-%        $tex->end_xml_element("meta-value");
-%
-%        $tex->end_xml_element("custom-meta");
-%    }
-%
-%    if (nonempty($titlepic)) {
-%        $tex->start_xml_element("custom-meta");
-%        $tex->set_xml_attribute("specific-use", "titlepic");
-%
-%        $tex->start_xml_element("meta-name");
-%        $tex->process_string("titlepic");
-%        $tex->end_xml_element("meta-name");
-%
-%        $tex->start_xml_element("meta-value");
-%        $tex->process_string($titlepic);
-%        $tex->end_xml_element("meta-value");
-%
-%        $tex->end_xml_element("custom-meta");
-%    }
-%
-%    if (nonempty($category)) {
-%        $tex->start_xml_element("custom-meta");
-%        $tex->set_xml_attribute("specific-use", "notices-category");
-%
-%        $tex->start_xml_element("meta-name");
-%        $tex->process_string("category");
-%        $tex->end_xml_element("meta-name");
-%
-%        $tex->start_xml_element("meta-value");
-%        $tex->process_string($category);
-%        $tex->end_xml_element("meta-value");
-%
-%        $tex->end_xml_element("custom-meta");
-%    }
-%
-%    $tex->end_xml_element("custom-meta-group");
-%
-%    $tex->end_par();
-%
-%    $tex->endgroup();
-%
-%    return;
+    \begingroup
+        \@tempswafalse
+        \ifx\AMS@commby\@empty
+            \ifx\@titlepic\@empty
+                \ifx\@noti@category\@empty
+                \else
+                    \@tempswatrue
+                \fi
+            \else
+                \@tempswatrue
+            \fi
+        \else
+            \@tempswatrue
+        \fi
+        \if@tempswa
+            \par
+            \xmlpartag{}%
+            \startXMLelement{custom-meta-group}%
+            \ifx\AMS@commby\@empty\else
+                \startXMLelement{custom-meta}
+                    \setXMLattribute{specific-use}{communicated-by}
+                    \par
+                    \thisxmlpartag{meta-name}
+                    \ifx\@commbytext\@empty
+                        Communicated by
+                    \else
+                        \@commbytext\space
+                    \fi\par
+                    \thisxmlpartag{meta-value}
+                    \AMS@commby\par
+                \endXMLelement{custom-meta}
+            \fi
+            \ifx\@titlepic\@empty\else
+                \startXMLelement{custom-meta}
+                    \setXMLattribute{specific-use}{titlepic}
+                    \par
+                    \thisxmlpartag{meta-name}
+                    titlepic\par
+                    \startXMLelement{meta-value}
+                    \@titlepic\par
+                    \endXMLelement{meta-value}
+                \endXMLelement{custom-meta}
+            \fi
+            \ifx\@noti@category\@empty\else
+                \startXMLelement{custom-meta}
+                \setXMLattribute{specific-use}{notices-category}
+                \par
+                \thisxmlpartag{meta-name}
+                category\par
+                \thisxmlpartag{meta-value}
+                \@noti@category
+                \endXMLelement{custom-meta}
+            \fi
+            \endXMLelement{custom-meta-group}
+            \par
+        \fi
+    \endgroup
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
