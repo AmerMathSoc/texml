@@ -1393,7 +1393,6 @@ __DATA__
 \gdef\@currtoclevel{-1}
 
 \def\@tocline#1#2#3#4#5#6#7{%
-\typeout{*** @tocline: 6 = `#6`; 7 = `#7`}%
     \relax
     \ifnum #1>\c@tocdepth
         % OMIT
