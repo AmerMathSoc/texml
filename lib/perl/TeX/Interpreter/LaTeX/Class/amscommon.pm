@@ -70,7 +70,7 @@ sub install ( $ ) {
 
     $tex->define_pseudo_macro(MR => \&do_MR);
 
-    $tex->define_pseudo_macro(TeXMLdatestamp => \&do_texml_datestamp);
+    $tex->define_pseudo_macro(TeXMLisoBgoltimestamp => \&do_iso_Bgol_timestamp);
 
     return;
 }
@@ -110,7 +110,7 @@ EOF
     return $tex->tokenize($tex_text);
 }
 
-sub do_texml_datestamp {
+sub do_iso_Bgol_timestamp {
     my $macro = shift;
 
     my $tex   = shift;
@@ -892,6 +892,20 @@ __DATA__
 %     }
 }
 
+\def\TeXMLlastmodified{%
+    \startXMLelement{date}
+        \setXMLattribute{date-type}{xml-last-modified}
+        \begingroup
+            \edef\@tempa{\TeXMLisoBgoltimestamp}%
+            \setXMLattribute{iso-8601-date}{\@tempa}%
+            \thisxmlpartag{string-date}
+                \@tempa\par
+        \endgroup
+    \endXMLelement{date}
+}
+
+\def\noTeXMLlastmodified{\global\let\TeXMLlastmodified\@empty}
+
 \def\output@article@history{%
     \startXMLelement{history}
         \ifx\AMS@issue@year\@empty\else
@@ -910,17 +924,11 @@ __DATA__
             \endXMLelement{date}
         \fi
         %% TBD: Add received, posted, etc.
-        \startXMLelement{date}
-            \setXMLattribute{date-type}{xml-last-modified}
-            \begingroup
-                \edef\@tempa{\TeXMLdatestamp}%
-                \setXMLattribute{iso-8601-date}{\@tempa}%
-                \thisxmlpartag{string-date}
-                    \@tempa\par
-            \endgroup
-        \endXMLelement{date}
+        \TeXMLlastmodified
     \endXMLelement{history}
 }
+
+\def\noTeXMLarticlehistory{\global\let\output@article@history\@empty}
 
 \def\output@custom@meta@group{%
     \begingroup
