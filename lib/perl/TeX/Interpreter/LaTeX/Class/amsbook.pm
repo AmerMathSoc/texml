@@ -81,7 +81,7 @@ __DATA__
 \def\thexcb{\thesection}
 \let\tocxcb\tocsection
 
-\renewenvironment{xcb}{%
+\newenvironment{xcb}{%
   \setcounter{enumi}{0}%
   \settowidth{\leftmargini}{\labelenumi\hskip\labelsep}%
   \setcounter{enumii}{4}% letter d
