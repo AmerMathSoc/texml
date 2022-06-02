@@ -181,17 +181,6 @@ sub load_latex_package {
     return;
 }
 
-sub load_latex_class {
-    my $tex = shift;
-
-    my $cls_name = shift;
-    my @options  = @_;
-
-    $tex->load_file_with_options($cls_name, "cls", @options);
-
-    return;
-}
-
 sub load_file_with_options {
     my $tex = shift;
 
@@ -227,9 +216,6 @@ sub load_file_with_options {
     $tex->process_file($path);
 
     $tex->set_catcode(ord('@'), $at_cat);
-
-    # my $elapsed = time() - $start_time;
-    # $tex->DEBUG("load_file_with_options($path): $elapsed seconds");
 
     return;
 }

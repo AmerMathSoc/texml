@@ -40,8 +40,6 @@ sub install ( $ ) {
 
     $tex->class_load_notification(__PACKAGE__, @options);
 
-    # $tex->load_latex_class("article", @options);
-
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::article::DATA{IO});
 
     return;

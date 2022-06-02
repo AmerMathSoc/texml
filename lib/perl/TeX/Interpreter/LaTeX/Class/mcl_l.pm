@@ -40,8 +40,6 @@ sub install ( $ ) {
 
     $tex->class_load_notification(__PACKAGE__, @options);
 
-    # $tex->load_latex_class('mcl-l', @options);
-
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.
 

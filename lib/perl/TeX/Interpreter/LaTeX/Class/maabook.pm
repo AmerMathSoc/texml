@@ -40,8 +40,6 @@ sub install ( $ ) {
 
     $tex->class_load_notification(__PACKAGE__, @options);
 
-    $tex->load_latex_class("maabook", @options);
-
     $tex->set_module_list('TeX::Interpreter::LaTeX::Package::amsthm', undef);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::maabook::DATA{IO});
@@ -54,6 +52,8 @@ sub install ( $ ) {
 __DATA__
 
 \ProvidesClass{maabook}
+
+% \@@input maabook.cls
 
 \LoadClass{TeXMLbook}
 
@@ -69,7 +69,7 @@ __DATA__
 
 \renewcommand\thesection{\thechapter.\arabic{section}}
 
-\renewcommand{\makehalftitle}{}
+\def\makehalftitle{}
 
 %% maabook.cls rewrites \caption if it notices that float has been
 %% loaded, but since we've suppressed the float package, the maabook
