@@ -41,6 +41,8 @@ use TeX::Utils::Misc qw(empty file_mimetype empty nonempty pluralize trim);
 
 use TeX::Constants qw(:named_args);
 
+use TeX::Command::Executable::Assignment qw(:modifiers);
+
 use TeX::Token qw(:factories :catcodes);
 
 use TeX::Token::Constants;
@@ -126,6 +128,19 @@ sub do_load_if_module_exists {
     if ($tex->get_module_list($class)) {
         my $expansion = q{@firstoftwo};
     } else {
+        $tex->process_string("
+    \\makeatletter
+    \\\@pushfilename
+    \\xdef\\\@currname{$name}%
+    \\xdef\\\@currext{$ext}%
+    \\expandafter\\let\\csname\\\@currname.\\\@currext-h\@\@k\\endcsname\\\@empty
+    \\let\\CurrentOption\\\@empty
+    \\\@reset\@ptions
+");
+
+        $tex->define_simple_macro('@currname' => $name, MODIFIER_GLOBAL);
+        $tex->define_simple_macro('@currext'  => $ext,  MODIFIER_GLOBAL);
+
         my $loaded = $tex->load_module($class);
 
         if ($loaded) {
@@ -139,6 +154,8 @@ sub do_load_if_module_exists {
 
             $tex->set_module_list($class, 1);
         }
+
+        $tex->process_string('\@popfilename \@reset@ptions');
     }
 
     return new_token_list(make_csname_token($expansion));

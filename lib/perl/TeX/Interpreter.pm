@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.11';
+use version; our $VERSION = qv '1.6.0';
 
 use base qw(Exporter);
 
@@ -12331,43 +12331,6 @@ sub scan_optional_argument {
     return;
 }
 
-sub load_package( $$@ ) {
-    my $tex = shift;
-
-    my $package = shift;
-    my @options = @_;
-
-    (my $class = __PACKAGE__ . "::LaTeX::Package::$package") =~ s{-}{_}g;
-
-    # TBD: Need equivalent of \@pushfilename here
-
-    $tex->define_simple_macro('@currname' => $package);
-    $tex->define_simple_macro('@currext' => 'sty');
-
-    my $options = qq{opt\@${package}.sty};
-
-    if (defined(my $prev_options = $tex->get_macro_expansion_text($options))) {
-        push @options, split /,/, $prev_options;
-    }
-
-    # TBD: If we're going to add options here, we need to append them,
-    # not overwrite.
-
-    $tex->define_simple_macro($options => join(",", uniq @options));
-
-    eval { $tex->load_macro_file($class, @options) };
-
-    if ($@) {
-        # croak $@;
-
-        $tex->load_latex_package($package, @options);
-    }
-
-    # TBD: Need equivalent of \@popfilename and \@reset@ptions here
-
-    return 1;
-}
-
 sub load_latex_package {
     my $tex = shift;
 
@@ -12472,7 +12435,7 @@ sub install_svg_extensions {
 
 my %module_list_of :HASH(:name<module_list>);
 
-sub load_module {
+sub load_module { # Used by load_macro_file()/load_fmt() and do_load_if_module_exists()
     my $tex = shift;
 
     my $module = shift;
@@ -12498,7 +12461,7 @@ sub load_module {
     return LOAD_SUCCESS;
 }
 
-sub load_macro_file( $$@ ) {
+sub load_macro_file( $$@ ) { # Currently only used by load_fmt and 
     my $tex = shift;
 
     my $macro_class = shift;

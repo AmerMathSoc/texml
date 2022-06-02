@@ -55,7 +55,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\RequirePackage{tikz}
+\RequirePackage{tikz_cd}
 
 \let\usetikzlibrary\@gobble
 

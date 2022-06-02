@@ -53,7 +53,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesPackage{unicode-math}
+\ProvidesPackage{unicode_math}
 
 \RequirePackage{fontspec}
 

@@ -40,12 +40,6 @@ sub install ( $ ) {
 
     $tex->class_load_notification(__PACKAGE__, @options);
 
-    ## Preload amsfonts to keep amsart.cls from freaking out
-
-    # $tex->load_package("amsfonts");
-
-    # $tex->load_latex_class("amsart", @options);
-
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.
 
@@ -70,7 +64,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesPackage{amsart}
+\ProvidesClass{amsart}
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amscommon}}
 
@@ -79,6 +73,9 @@ __DATA__
 \newcounter{section}
 \newcounter{figure}
 \newcounter{table}
+
+\typeout{*** amsart: @currname = \@currname}
+\typeout{*** amsart: @currext  = \@currext}
 
 \LoadClass{amscommon}
 
