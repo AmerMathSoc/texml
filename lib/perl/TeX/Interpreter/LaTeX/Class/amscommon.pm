@@ -509,6 +509,7 @@ __DATA__
 \def\PII{\gdef\AMS@PII}
 \let\AMS@PII\@empty
 
+\let\@commbytext\@empty
 \def\commby#1{\gdef\AMS@commby{(Communicated by #1)}}
 \let\AMS@commby=\@empty
 
