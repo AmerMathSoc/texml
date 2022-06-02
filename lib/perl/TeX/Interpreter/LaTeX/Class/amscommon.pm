@@ -509,6 +509,10 @@ __DATA__
 \def\PII{\gdef\AMS@PII}
 \let\AMS@PII\@empty
 
+%% TODO: \def\@commbytext{Communicated by}
+%%       \def\commby{\gdef\AMS@commby}
+%% Will require modification downstream.
+
 \let\@commbytext\@empty
 \def\commby#1{\gdef\AMS@commby{(Communicated by #1)}}
 \let\AMS@commby=\@empty
@@ -956,7 +960,6 @@ __DATA__
                     \par
                     \thisxmlpartag{meta-name}
                     \ifx\@commbytext\@empty
-                        Communicated by
                     \else
                         \@commbytext\space
                     \fi\par
