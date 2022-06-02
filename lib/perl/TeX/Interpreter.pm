@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.6.0';
+use version; our $VERSION = qv '1.6.1';
 
 use base qw(Exporter);
 
@@ -12301,99 +12301,6 @@ sub expand_token_list {
 ######################################################################
 
 ## Why isn't this in TeX::Interpreter::LaTeX?
-
-sub is_starred {
-    my $tex = shift;
-
-    my $next_token = $tex->peek_next_token();
-
-    if (defined $next_token && $next_token == STAR) {
-        $tex->get_next();
-
-        return 1;
-    }
-
-    return;
-}
-
-sub scan_optional_argument {
-    my $tex = shift;
-
-    if (my @args = $tex->scan_macro_parameters(undef, OPT_ARG, true)) {
-        ##* TODO???
-        # my @tokens = $tex->expand_tokens(@{ $args[1] });
-
-        # TRACE "\$args[1] = '$args[1]'\n";
-
-        return $args[1];
-    }
-
-    return;
-}
-
-sub load_latex_package {
-    my $tex = shift;
-
-    my $pkg_name = shift;
-    my @options  = @_;
-
-    $tex->load_file_with_options($pkg_name, "sty", @options);
-
-    return;
-}
-
-sub load_latex_class {
-    my $tex = shift;
-
-    my $cls_name = shift;
-    my @options  = @_;
-
-    $tex->load_file_with_options($cls_name, "cls", @options);
-
-    return;
-}
-
-sub load_file_with_options {
-    my $tex = shift;
-
-    my $basename = shift;
-    my $file_ext = shift;
-    my @options  = @_;
-
-    my $file_name = "$basename.$file_ext";
-
-    my $start_time = time();
-
-    my $path = kpse_lookup($file_name);
-
-    if (empty($path)) {
-        $tex->print_err("I can't find file `$file_name'.");
-
-        return;
-    }
-
-    my $at_cat = $tex->get_catcode(ord('@'));
-
-    $tex->set_catcode(ord('@'), CATCODE_LETTER);
-
-    $tex->process_string(sprintf '\gdef\@currname{%s}', $basename);
-    $tex->process_string(sprintf '\gdef\@currext{%s}',  $file_ext);
-
-    $tex->process_string(sprintf('\@pass@ptions\@currext{%s}{%s}',
-                                 join(",", @options),
-                                 $basename));
-
-    $tex->process_string(q{\expandafter\let\csname\@currname.\@currext-h@@k\endcsname\@empty});
-
-    $tex->process_file($path);
-
-    $tex->set_catcode(ord('@'), $at_cat);
-
-    # my $elapsed = time() - $start_time;
-    # $tex->DEBUG("load_file_with_options($path): $elapsed seconds");
-
-    return;
-}
 
 ######################################################################
 ##                                                                  ##
