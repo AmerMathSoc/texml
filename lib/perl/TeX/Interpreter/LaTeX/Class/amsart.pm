@@ -74,9 +74,6 @@ __DATA__
 \newcounter{figure}
 \newcounter{table}
 
-\typeout{*** amsart: @currname = \@currname}
-\typeout{*** amsart: @currext  = \@currext}
-
 \LoadClass{amscommon}
 
 \def\part{\@startsection{part}{0}{}{}{}{}}
