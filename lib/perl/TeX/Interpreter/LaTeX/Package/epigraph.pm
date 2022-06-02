@@ -42,8 +42,6 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
-    # $tex->load_latex_package("epigraph", @options);
-
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::epigraph::DATA{IO});
 
     return;

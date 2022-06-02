@@ -42,8 +42,6 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
-    # $tex->load_latex_package("constants", @options);
-
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::constants::DATA{IO});
 
     $tex->define_csname('TeXML@resolveconstants' => \&do_resolve_constants);

@@ -40,8 +40,6 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
-    # $tex->load_latex_package("siunitx", @options);
-
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::siunitx::DATA{IO});
 
     return;

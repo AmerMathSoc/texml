@@ -40,8 +40,6 @@ sub install ( $ ) {
 
     $tex->package_load_notification(__PACKAGE__, @options);
 
-    # $tex->load_latex_package("colortbl", @options);
-
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::colortbl::DATA{IO});
 
     return;
