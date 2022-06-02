@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.6.1';
+use version; our $VERSION = qv '1.6.2';
 
 use base qw(Exporter);
 
@@ -308,7 +308,7 @@ sub __DEBUG {
 ##                                                                  ##
 ######################################################################
 
-use constant BANNER => 'This is AMS TeXML <https://github.com/AmerMathSoc/texml>';
+use constant BANNER => 'This is AMS texml <https://github.com/AmerMathSoc/texml>';
 
 ######################################################################
 ##                                                                  ##
@@ -12342,7 +12342,7 @@ sub install_svg_extensions {
 
 my %module_list_of :HASH(:name<module_list>);
 
-sub load_module { # Used by load_macro_file()/load_fmt() and do_load_if_module_exists()
+sub load_module { # Used by load_fmt() and do_load_if_module_exists()
     my $tex = shift;
 
     my $module = shift;
@@ -12368,75 +12368,30 @@ sub load_module { # Used by load_macro_file()/load_fmt() and do_load_if_module_e
     return LOAD_SUCCESS;
 }
 
-sub load_macro_file( $$@ ) { # Currently only used by load_fmt and 
-    my $tex = shift;
-
-    my $macro_class = shift;
-    my @options = @_;
-
-    return if $tex->get_module_list($macro_class);
-
-    my $start_time = time();
-
-    my $status = $tex->load_module($macro_class);
-
-    if ($tex->is_profiling()) {
-        my $elapsed = time() - $start_time;
-
-        $tex->__DEBUG("load_module($macro_class): $elapsed seconds\n");
-    }
-
-    if ($status) {
-        my $start_time = time();
-
-        eval { $macro_class->install($tex, @options) };
-
-        if ($@) {
-            $tex->fatal_error("Can't install macro class $macro_class: $@");
-        }
-
-        if ($tex->is_profiling()) {
-            my $elapsed = time() - $start_time;
-            $tex->__DEBUG("$macro_class->install(): $elapsed seconds\n");
-        }
-    } else { # if ($status == LOAD_FAILED) {
-        ## TEMPORARY
-
-        die "Can't find macro class $macro_class";
-
-        # $tex->fatal_error("Can't find macro class");
-    }
-
-    $tex->set_module_list($macro_class, 1);
-
-    return 1;
-}
-
 sub load_format {
     my $tex = shift;
 
-    my $fmt     = shift;
-    my @options = @_; # unused at present
+    my $fmt = shift;
 
     my $class = __PACKAGE__ . "::FMT::$fmt";
 
-    eval { $tex->load_macro_file($class, @options) };
+    my $start_time = time();
 
-    if ($@) {
-        $@ =~ s{\n}{};
+    my $status = $tex->load_module($class);
 
-        $tex->fatal_error("Can't load format '$fmt': $@");
-
-        # $tex->print_err("Can't load format '$fmt': $@");
-        # $tex->print_err("Will try '$fmt.fmt'");
-        # $tex->print_nl();
-        #
-        # return $tex->load_fmt_file($fmt);
-
-        # $@ =~ s{\n}{};
-        #
-        # $tex->print_err("Can't load format '$fmt': $@");
-        # $tex->error();
+    if ($status) {
+        eval { $class->install($tex) };
+ 
+        if ($@) {
+            $tex->fatal_error("Can't install macro class $class: $@");
+        }
+ 
+        if ($tex->is_profiling()) {
+            my $elapsed = time() - $start_time;
+            $tex->__DEBUG("$class->install(): $elapsed seconds\n");
+        }
+     } else {
+        $tex->fatal_error("Can't load format '$fmt'");
     }
 
     return;
