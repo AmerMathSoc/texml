@@ -57,6 +57,7 @@ __DATA__
 \ProvidesPackage{tikz_cd}
 
 \let\usetikzlibrary\@gobble
+\let\tikzset\@gobble
 
 % \def\tikzcd#1\end{%
 %     \TeXMLCreateSVG{$\begin{tikzcd}#1\end{tikzcd}$}%
