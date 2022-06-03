@@ -43,6 +43,8 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{handlers} } );
 
 our @EXPORT;
 
+use List::Util qw(uniq);
+
 use Digest::MD5 qw(md5_hex);
 
 use File::Spec::Functions qw(catdir);
@@ -132,6 +134,8 @@ sub INITIALIZE :CUMULATIVE(BASE FIRST) {
     $tex->define_pseudo_macro('TeXMLCreateSVG' => \&do_texml_create_svg);
     $tex->define_pseudo_macro('TeXMLImportSVG' => \&do_texml_import_svg);
 
+    $tex->define_csname(LoadRawMacros => \&do_load_raw_macros);
+
     return;
 }
 
@@ -170,27 +174,13 @@ sub scan_optional_argument {
     return;
 }
 
-sub load_latex_package {
+sub do_load_raw_macros {
     my $tex = shift;
 
-    my $pkg_name = shift;
-    my @options  = @_;
+    my $basename = $tex->expansion_of('@currname');
+    my $file_ext = $tex->expansion_of('@currext');
 
-    $tex->load_file_with_options($pkg_name, "sty", @options);
-
-    return;
-}
-
-sub load_file_with_options {
-    my $tex = shift;
-
-    my $basename = shift;
-    my $file_ext = shift;
-    my @options  = @_;
-
-    my $file_name = "$basename.$file_ext";
-
-    my $start_time = time();
+    my $file_name = qq{$basename.$file_ext};
 
     my $path = kpse_lookup($file_name);
 
@@ -200,22 +190,7 @@ sub load_file_with_options {
         return;
     }
 
-    my $at_cat = $tex->get_catcode(ord('@'));
-
-    $tex->set_catcode(ord('@'), CATCODE_LETTER);
-
-    $tex->process_string(sprintf '\gdef\@currname{%s}', $basename);
-    $tex->process_string(sprintf '\gdef\@currext{%s}',  $file_ext);
-
-    $tex->process_string(sprintf('\@pass@ptions\@currext{%s}{%s}',
-                                 join(",", @options),
-                                 $basename));
-
-    $tex->process_string(q{\expandafter\let\csname\@currname.\@currext-h@@k\endcsname\@empty});
-
     $tex->process_file($path);
-
-    $tex->set_catcode(ord('@'), $at_cat);
 
     return;
 }
@@ -281,7 +256,7 @@ sub write_out {
 ##
 ##     Misc. graphics       : Convert to SVG
 
-## TODO: Move this into TeX::Interpreter::start_input()
+## TODO: Move this into TeX::Interpreter::start_input().  Or just get rid of it?
 
 sub do_filtered_input {
     my $tex   = shift;
@@ -565,6 +540,53 @@ sub get_module_options {
 
     return;
 }
+
+sub set_module_options {
+    my $tex = shift;
+
+    my $name = shift;
+    my $ext  = shift;
+
+    my @options = @_;
+
+    my $opt_string = join ",", uniq @options;
+
+    if (nonempty($opt_string)) {
+        $tex->define_csname(qq{opt\@$name.$ext}, $opt_string, MODIFIER_GLOBAL);
+    }
+
+    return;
+}
+
+# sub add_module_option {
+#     my $tex = shift;
+# 
+#     my $name = shift;
+#     my $ext  = shift;
+# 
+#     my @options = @_;
+# 
+#     $self->set_module_options($name, $ext,
+#                               $tex->get_module_options($name, $ext),
+#                               @options);
+# 
+#     return;
+# }
+# 
+# sub delete_module_option {
+#     my $tex = shift;
+# 
+#     my $name = shift;
+#     my $ext  = shift;
+# 
+#     my $option = shift;
+# 
+#     my @options = grep { $_ ne $option } $tex->get_module_options($name, $ext);
+# 
+#     $tex->set_module_option($name, $ext, @options);
+# 
+#     return;
+# }
 
 ## Requires an explicit \end{ENVNAME}.  Doesn't handle nested
 ## occurrences of the same environment.

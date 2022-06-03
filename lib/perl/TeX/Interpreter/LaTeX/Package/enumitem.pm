@@ -42,12 +42,9 @@ use TeX::Constants qw(:named_args);
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
-
-    $tex->load_latex_package("enumitem", @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::enumitem::DATA{IO});
 
@@ -59,6 +56,8 @@ sub install ( $ ) {
 __DATA__
 
 \ProvidesPackage{enumitem}
+
+\LoadRawMacros
 
 \def\enit@enumerate@i#1#2#3#4{%
     \if@newitem\leavevmode\fi

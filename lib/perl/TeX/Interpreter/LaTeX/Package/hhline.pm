@@ -35,12 +35,9 @@ use warnings;
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
-
-    $tex->load_latex_package("hhline", @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::hhline::DATA{IO});
 
@@ -126,6 +123,8 @@ sub do_HH_loop {
 __DATA__
 
 \ProvidesPackage{hhline}
+
+\LoadRawMacros
 
 \def\hhline@hhline#1{%
     \HH@xexpast\relax#1*0x\@@%

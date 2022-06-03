@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Package::Diacritics;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
-
 use TeX::Utils::Unicode::Diacritics qw(:names);
 
 use TeX::Utils::Unicode qw(make_accenter);
@@ -41,10 +39,9 @@ use TeX::Utils::Unicode qw(make_accenter);
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $class->install_diacritics($tex);
 

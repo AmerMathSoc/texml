@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Package::amsrefs;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.1';
-
 use TeX::Utils::Misc qw(nonempty trim);
 
 use TeX::Constants qw(EXPANDED);
@@ -46,11 +44,8 @@ sub install ( $ ) {
     my $class = shift;
 
     my $tex = shift;
-    my @options = @_;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
-
-    $tex->load_latex_package("amsrefs", 'msc-links', @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::amsrefs::DATA{IO});
 
@@ -160,6 +155,12 @@ sub do_modify_bib_label {
 1;
 
 __DATA__
+
+\ProvidesPackage{amsrefs}
+
+\PassOptionsToPackage{msc-links}{amsrefs}
+
+\LoadRawMacros
 
 \@ifpackagewith{amsrefs}{non-sorted-cites}{%
     \typeout{*** Turning off cite-group sorting}%

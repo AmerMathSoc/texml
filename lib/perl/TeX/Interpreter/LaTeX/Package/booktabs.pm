@@ -35,12 +35,9 @@ use warnings;
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
-
-    $tex->load_latex_package("booktabs", @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::booktabs::DATA{IO});
 
@@ -52,6 +49,8 @@ sub install ( $ ) {
 __DATA__
 
 \ProvidesPackage{booktabs}
+
+\LoadRawMacros
 
 \def\tablestrut{}
 

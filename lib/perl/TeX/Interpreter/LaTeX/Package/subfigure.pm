@@ -34,14 +34,13 @@ use strict;
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
+    my @options = $tex->get_module_options('subfigure', 'sty');
 
-    @options = grep { ! m{^normal$} } @options;
+    my @new_options = grep { ! m{^normal$} } @options;
 
-    $tex->load_latex_package("subfigure", @options);
+    $tex->set_module_options('subfigure', 'sty', @new_options);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::subfigure::DATA{IO});
 
@@ -51,6 +50,10 @@ sub install ( $ ) {
 1;
 
 __DATA__
+
+\ProvidesPackage{subfigure}
+
+\LoadRawMacros
 
 % All figures will be enclosed by <fig-group> elements, which will be
 % demoted back to <fig> by XML::Output::normalize_figures() if

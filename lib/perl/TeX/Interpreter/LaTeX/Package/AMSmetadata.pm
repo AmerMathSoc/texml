@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Package::AMSmetadata;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.1';
-
 use base qw(Exporter);
 
 our %EXPORT_TAGS = (all => [ qw(find_gentag_file) ]);
@@ -154,11 +152,11 @@ sub find_gentag_file( $ ) {
 ######################################################################
 
 sub install {
-    my $class   = shift;
-    my $tex     = shift;
-    my @options = @_;
+    my $class = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
+    my $tex = shift;
+
+    $tex->package_load_notification(__PACKAGE__);
 
     if (eval "require PRD::Document::Builder") {
         $tex->print_nl("Found private AMS modules: Enabling full metadata support");

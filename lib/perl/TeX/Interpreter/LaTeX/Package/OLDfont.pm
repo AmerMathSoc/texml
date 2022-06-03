@@ -43,10 +43,9 @@ use TeX::WEB2C qw(:save_stack_codes :token_types);
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::OLDfont::DATA{IO});
 

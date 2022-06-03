@@ -35,10 +35,9 @@ use warnings;
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->class_load_notification(__PACKAGE__, @options);
+    $tex->class_load_notification(__PACKAGE__);
 
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.

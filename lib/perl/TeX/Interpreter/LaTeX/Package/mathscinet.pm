@@ -39,10 +39,9 @@ use TeX::Utils::Unicode qw(make_accenter);
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $tex->define_pseudo_macro(utilde => make_accenter(COMBINING_TILDE_BELOW));
     $tex->define_pseudo_macro(uarc   => make_accenter(COMBINING_BREVE_BELOW));

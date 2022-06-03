@@ -48,12 +48,9 @@ use TeX::Constants qw(:named_args);
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
-
-    $tex->load_latex_package("url", @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::url::DATA{IO});
 
@@ -152,6 +149,10 @@ sub do_normalize_url {
 1;
 
 __DATA__
+
+\ProvidesPackage{url}
+
+\LoadRawMacros
 
 \begingroup
 % \Url@acthash:    convert `other' (doubled) ## to active #

@@ -35,10 +35,9 @@ use warnings;
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::amscd::DATA{IO});
 
@@ -54,6 +53,8 @@ sub install ( $ ) {
 1;
 
 __DATA__
+
+\ProvidesPackage{amscd}
 
 %% It turns out that MathJax doesn't understand \setlength, so let's
 %% forget about it.

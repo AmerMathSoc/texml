@@ -32,6 +32,9 @@ package TeX::Interpreter::FMT::latex;
 use strict;
 use warnings;
 
+# The distinction between TeX::Interpreter::FMT::latex and
+# TeX::Interpreter::LaTeX is obscure bordering on obtuse.
+
 use Image::PNG;
 use Image::JPEG::Size;
 
@@ -57,8 +60,7 @@ use File::Spec::Functions qw(catfile);
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
     (my $module = __PACKAGE__ . ".pm") =~ s{::}{\/}g;
 

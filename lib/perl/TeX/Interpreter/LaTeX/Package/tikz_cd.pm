@@ -35,10 +35,9 @@ use warnings;
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::tikz_cd::DATA{IO});
 
@@ -55,7 +54,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\RequirePackage{tikz_cd}
+\ProvidesPackage{tikz_cd}
 
 \let\usetikzlibrary\@gobble
 

@@ -34,12 +34,9 @@ use strict;
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
-
-    $tex->load_latex_package("subfig", @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::subfig::DATA{IO});
 
@@ -49,6 +46,10 @@ sub install ( $ ) {
 1;
 
 __DATA__
+
+\ProvidesPackage{subfig}
+
+\LoadRawMacros
 
 % All figures will be enclosed by <fig-group> elements, which will be
 % demoted back to <fig> by XML::Output::normalize_figures() if

@@ -32,15 +32,12 @@ package TeX::Interpreter::LaTeX::Package::cleveref;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.0.0';
-
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     # Hide hyperref from cleveref so it doesn't try to implement it's
     # own linking.
@@ -49,11 +46,9 @@ sub install ( $ ) {
 
     $tex->let_csname('ver@hyperref.sty' => '@undefined');
 
-    $tex->load_latex_package("cleveref", @options);
+    $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::cleveref::DATA{IO});
 
     $tex->define_macro('ver@hyperref.sty', undef, $ver_hyperref);
-
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::cleveref::DATA{IO});
 
     return;
 }
@@ -63,6 +58,8 @@ sub install ( $ ) {
 __DATA__
 
 \ProvidesPackage{cleveref}
+
+\LoadRawMacros
 
 \AtBeginDocument{%
     \def\label@noarg#1{%

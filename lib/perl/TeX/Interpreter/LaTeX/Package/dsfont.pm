@@ -36,9 +36,8 @@ sub install ( $ ) {
     my $class = shift;
 
     my $tex = shift;
-    my @options = @_;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::dsfont::DATA{IO});
 

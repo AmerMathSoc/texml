@@ -35,10 +35,9 @@ use warnings;
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__, @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     ## This keeps amsmath from issuing "Unable to redefine math
     ## accent" warnings for each of these.
@@ -46,8 +45,6 @@ sub install ( $ ) {
     for my $accent (qw(acute bar breve check ddot dot grave hat tilde vec)) {
         $tex->process_string(qq{\\def\\${accent}{\\mathaccent}});
     }
-
-    $tex->load_latex_package("amsmath", @options);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::amsmath::DATA{IO});
 
@@ -57,6 +54,10 @@ sub install ( $ ) {
 1;
 
 __DATA__
+
+\ProvidesPackage{amsmath}
+
+\LoadRawMacros
 
 %% TODO: Would it be worth having this insert a ZERO WIDTH SPACE or
 %% something similar?

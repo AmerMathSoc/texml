@@ -12426,24 +12426,24 @@ sub read_package_data( $ ) {
 ##                                                                  ##
 ######################################################################
 
-sub core_load_notification {
-    my $tex = shift;
-
-    my $name    = shift;
-    my @options = @_;
-
-    # $name =~ s{^.*::}{};
-
-    # $tex->print_nl("Loading core macros '$name'");
-
-    # if (@options) {
-    #     $tex->print(" with options @options");
-    # }
-
-    # $tex->print_ln();
-
-    return;
-}
+# sub core_load_notification {
+#     my $tex = shift;
+# 
+#     my $name    = shift;
+#     my @options = @_;
+# 
+#     # $name =~ s{^.*::}{};
+# 
+#     # $tex->print_nl("Loading core macros '$name'");
+# 
+#     # if (@options) {
+#     #     $tex->print(" with options @options");
+#     # }
+# 
+#     # $tex->print_ln();
+# 
+#     return;
+# }
 
 sub class_load_notification {
     my $tex = shift;
@@ -12468,15 +12468,10 @@ sub package_load_notification {
     my $tex = shift;
 
     my $package_name = shift;
-    my @options      = @_;
 
     $package_name =~ s{^.*::}{};
 
     $tex->print_nl("Loading package '$package_name'");
-
-    if (@options) {
-        $tex->print(" with options @options");
-    }
 
     $tex->print_ln();
 

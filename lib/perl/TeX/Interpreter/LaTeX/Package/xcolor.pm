@@ -38,12 +38,9 @@ use TeX::Token qw(:catcodes);
 sub install ( $ ) {
     my $class = shift;
 
-    my $tex     = shift;
-    my @options = @_;
+    my $tex = shift;
 
-    $tex->load_latex_package("xcolor", @options, 'rgb');
-
-    $tex->package_load_notification(__PACKAGE__, @options);
+    $tex->package_load_notification(__PACKAGE__);
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::xcolor::DATA{IO});
 
@@ -110,6 +107,10 @@ sub do_TML_current_color {
 __DATA__
 
 \ProvidesPackage{xcolor}
+
+\PassOptionsToPackage{rgb}{xcolor}
+
+\LoadRawMacros
 
 \AtBeginDocument{%
     \let\set@color\@gobble
