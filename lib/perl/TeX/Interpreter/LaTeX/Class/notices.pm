@@ -246,6 +246,7 @@ __DATA__
     \if###3##\else
         \includegraphics{#3}\par
     \fi
+    \par
     \xmlpartag{p}%
     \startXMLelement{caption}
         \if###5##\else
