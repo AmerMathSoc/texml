@@ -32,7 +32,7 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.2';
+use version; our $VERSION = qv '1.3.3';
 
 use Cwd;
 
@@ -63,6 +63,7 @@ sub DVIPS  () { $CFG->val(__PACKAGE__, 'dvips',         'dvips') }
 sub PDFCROP() { $CFG->val(__PACKAGE__, 'pdfcrop',       'pdfcrop') }
 sub PDF2SVG() { $CFG->val(__PACKAGE__, 'pdf2svg',       'pdf2svg') }
 sub PS2PDF () { $CFG->val(__PACKAGE__, 'ps2pdf',        'ps2pdf') }
+sub MATH_SF_FONT () { $CFG->val(__PACKAGE__, 'math_sf_font', 'UniversLTStd') }
 
 ######################################################################
 ##                                                                  ##
@@ -340,7 +341,7 @@ sub convert_tex {
         print { $fh } qq{\\setmathfont{STIX Two Math}\n};
         print { $fh } qq{\\setmathfontface\\mathbf{STIX Two Text Bold}\n};
         print { $fh } qq{\\setmathfontface\\mathit{STIX Two Text Italic}\n};
-        print { $fh } qq{\\setmathfontface\\mathsf{UniversLTStd}\n};
+        printf { $fh } qq{\\setmathfontface\\mathsf{%s}\n}, MATH_SF_FONT;
         print { $fh } qq{\\let\\bm\\mathbfit\n};
     } else {
         # print { $fh } qq{\\usepackage{stix2}\n};
