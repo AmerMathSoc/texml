@@ -508,12 +508,8 @@ __DATA__
 \def\PII{\gdef\AMS@PII}
 \let\AMS@PII\@empty
 
-%% TODO: \def\@commbytext{Communicated by}
-%%       \def\commby{\gdef\AMS@commby}
-%% Will require modification downstream.
-
-\let\@commbytext\@empty
-\def\commby#1{\gdef\AMS@commby{(Communicated by #1)}}
+\def\@commbytext{Communicated by}
+\def\commby{\gdef\AMS@commby}
 \let\AMS@commby=\@empty
 
 \def\pagespan#1#2{%
@@ -984,7 +980,7 @@ __DATA__
                 \thisxmlpartag{meta-name}
                 category\par
                 \thisxmlpartag{meta-value}
-                \@noti@category
+                \@noti@category\par
                 \endXMLelement{custom-meta}
             \fi
             \endXMLelement{custom-meta-group}
