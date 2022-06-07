@@ -56,6 +56,8 @@ __DATA__
 
 \ProvidesPackage{tikz}
 
+\RequirePackage{graphicx}
+
 \RequirePackage{pgf}
 
 \let\tikzcdset\@gobble
