@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{bproc-l}
+\ProvidesClass{bproc_l}
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 
