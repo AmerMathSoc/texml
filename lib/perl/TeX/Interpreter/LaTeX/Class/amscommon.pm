@@ -530,9 +530,6 @@ __DATA__
 
 \let\@date\@empty
 
-\def\dedicatory#1{\def\@dedicatory{#1}}
-\let\@dedicatory=\@empty
-
 \def\keywords#1{\def\@keywords{#1}}
 \let\@keywords=\@empty
 
@@ -675,6 +672,8 @@ __DATA__
 \let\@noti@subject@group\@empty
 \let\@noti@category\@empty
 \let\@titlepic\@empty
+\let\@disclaimertext\@empty
+\let\@titlegraphicnote\@empty
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
@@ -699,8 +698,8 @@ __DATA__
         \xmlpartag{}%
         \output@journal@meta
         \output@article@meta
-        \output@article@notes
     \endgroup
+    \output@article@notes
     \mainmatter
     \let\maketitle\@empty
 }
@@ -861,35 +860,30 @@ __DATA__
 }
 
 \def\output@article@notes{% Notices stuff
-%
-%         if (my @dedications = $document->get_dedications()) {
-%             \startXMLelement{notes", {  "notes-type" => "dedication" })
-%
-%             for my $dedication (@dedications) {
-%                 $tex->process_string{$dedication\\par}
-%             }
-%
-%             \endXMLelement{notes}
-%         }
-%
-%         if (my @notes = $document->get_notes()) {
-%             \startXMLelement{notes", {  "notes-type" => "article" })
-%
-%             for my $note (@notes) {
-%                 $tex->process_string{$note\\par}
-%             }
-%
-%             \endXMLelement{notes}
-%         }
-%
-%         if (my $note = $tex->get_macro_expansion_text('@titlegraphicnote')) {
-%             \startXMLelement{notes", {  "notes-type" => "titlepicnote" })
-%
-%             $tex->process_string{$note\\par}
-%
-%             \endXMLelement{notes}
-%         }
-%     }
+    \ifx\@disclaimertext\@empty\else
+        \startXMLelement{notes}
+        \setXMLattribute{notes-type}{disclaimer}
+            \@disclaimertext\par
+        \endXMLelement{notes}
+    \fi
+    \ifx\AMS@dedication\@empty\else
+        \startXMLelement{notes}
+        \setXMLattribute{notes-type}{dedication}
+            \AMS@dedication\par
+        \endXMLelement{notes}
+    \fi
+    \ifx\AMS@articlenote\@empty\else
+        \startXMLelement{notes}
+        \setXMLattribute{notes-type}{article}
+            \AMS@articlenote\par
+        \endXMLelement{notes}
+    \fi
+    \ifx\@titlegraphicnote\@empty\else
+        \startXMLelement{notes}
+        \setXMLattribute{notes-type}{titlepicnote}
+            \@titlegraphicnote\par
+        \endXMLelement{notes}
+    \fi
 }
 
 \def\TeXMLlastmodified{%
