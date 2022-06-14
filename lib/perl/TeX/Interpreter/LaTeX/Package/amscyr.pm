@@ -50,6 +50,7 @@ __DATA__
 
 \ProvidesPackage{amscyr}
 
+\def\cyrCh{\mathrm{\char"0427}}
 \def\Sha{\mathrm{\char"0428}}
 \def\Shcha{\mathrm{\char"0429}}
 \def\De{\mathrm{\char"0434}}
