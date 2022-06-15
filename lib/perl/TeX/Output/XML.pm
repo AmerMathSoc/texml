@@ -941,13 +941,13 @@ sub hlist_out {
             next;
         }
 
-        if ($node->isa("TeX::Node::VListNode")) {
+        if ($node->is_vbox()) { # isa("TeX::Node::VListNode")) {
             $self->vlist_out($node);
 
             next;
         }
 
-        if ($node->isa("TeX::Node::HListNode")) {
+        if ($node->is_hbox()) { # isa("TeX::Node::HListNode")) {
             $self->hlist_out($node);
 
             next;
