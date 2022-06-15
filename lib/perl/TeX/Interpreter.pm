@@ -9110,7 +9110,7 @@ sub box_end {
 
         $tex->delete_cur_box();
     }
-    elsif ($cur_box != null_ptr) {
+    elsif (defined $cur_box) {
         if ($box_context > ship_out_flag) {
             # @<Append a new leader node that uses |cur_box|@>
         }

@@ -36,8 +36,6 @@ use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(null_ptr);
-
 sub execute {
     my $self = shift;
 
@@ -57,7 +55,7 @@ sub scan_box {
     my $tex         = shift;
     my $box_context = shift;
 
-    return null_ptr;
+    return;
 }
 
 1;
