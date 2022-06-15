@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.7.0';
+use version; our $VERSION = qv '1.7.1';
 
 use base qw(Exporter);
 
@@ -1378,9 +1378,9 @@ sub display_box {
 
     my $box = shift;
 
-    if ($box->get_type() == hlist_node) {
+    if ($box->is_hbox()) {
         $tex->print_esc("h");
-    } elsif ($box->get_type() == vlist_node) {
+    } elsif ($box->is_vbox()) {
         $tex->print_esc("v");
     } else {
         $tex->print_esc("unset");
@@ -7041,7 +7041,7 @@ sub ship_out {
 
     my $fh = $tex->get_output_handle();
 
-    if ($box->get_type() == vlist_node) {
+    if ($box->is_vbox()) {
         $fh->vlist_out($box);
     } else {
         $fh->hlist_out($box);
@@ -9326,11 +9326,10 @@ sub unpackage {
     return unless defined $box;
 
     my $mode = abs($tex->get_cur_mode());
-    my $type = $box->get_type();
 
     if (    $mode == mmode
-         || ( $mode == vmode && $type != vlist_node)
-         || ( $mode == hmode && $type != hlist_node) ) {
+         || ( $mode == vmode && ! $box->is_vbox())
+         || ( $mode == hmode && ! $box->is_hbox()) ) {
         $tex->print_err("Incompatible list can't be unboxed");
 
         $tex->set_help("Sorry, Pandora. (You sneaky devil.)",
