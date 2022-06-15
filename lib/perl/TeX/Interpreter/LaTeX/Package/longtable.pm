@@ -50,7 +50,137 @@ __DATA__
 
 \ProvidesPackage{longtable}
 
-\DeclareSVGEnvironment{longtable}
+\RequirePackage{HTMLtable}
+\RequirePackage{array}
+
+\DeclareOption{errorshow}{}
+
+\DeclareOption{pausing}{}
+
+\DeclareOption{set}{}
+
+\DeclareOption{final}{}
+
+\ProcessOptions
+
+\newbox\LT@head
+\newbox\LT@firsthead
+\newbox\LT@foot
+\newbox\LT@lastfoot
+
+\def\longtable{%
+    \par
+    \figure[H]%
+    \xmltabletag{}%
+    \xmlpartag{}%
+    \let\@footnotetext\tab@footnotetext
+    \reset@border@style
+    \leavevmode
+    \begingroup
+        \@ifnextchar[\LT@array{\LT@array[x]}%
+}
+
+\def\LT@array[#1]#2{%
+    \refstepcounter{table}%
+    \let\kill\LT@kill
+    \let\caption\LT@caption
+    \html@tabskip\z@
+    \html@next@tabskip\z@
+    \begingroup
+        \tab@makepreamble{#2}%
+        \xdef\LT@bchunk{%
+            \setbox\z@\vbox\bgroup
+                \noexpand\ialign\bgroup
+                    \@preamble \cr
+        }%
+    \endgroup
+    \let\hline\HTMLtable@hline
+    \let\\\@tabularcr
+    \let\tabularnewline\\%
+    \let\color\set@cell@fg@color
+    \let\par\@empty
+    \let\@sharp##%
+    \set@typeset@protect
+    \@arrayleft
+    \LT@bchunk
+}
+
+\def\LT@echunk{%
+        \crcr
+    \egroup
+    \unskip
+  \egroup
+}
+
+\def\endlongtable{%
+        \crcr
+        \LT@echunk
+        \LT@caption@box
+        \startXMLelement{table}%
+            \addTBLRid
+            \setCSSproperty{border-collapse}{collapse}%
+            \unhbox\ifvoid\LT@firsthead\LT@head\else\LT@firsthead\fi
+            \unhbox\z@
+            \unhbox\ifvoid\LT@lastfoot\LT@foot\else\LT@lastfoot\fi
+            \par
+        \endXMLelement{table}%
+    \endgroup
+    \endfigure
+}
+
+\def\LT@kill{%
+    \crcr
+    \noalign{\global\setbox\z@\lastbox}%
+}
+
+\def\LT@end@hd@ft#1{%
+    \LT@echunk
+    % \ifx\LT@start\endgraf
+    %     \LT@err
+    %         {Longtable head or foot not at start of table}%
+    %         {Increase LTchunksize}%
+    % \fi
+    \setbox#1\box\z@
+    \LT@bchunk
+}
+
+\def\endfirsthead{\LT@end@hd@ft\LT@firsthead}
+
+\def\endhead{\LT@end@hd@ft\LT@head}
+
+\def\endfoot{\LT@end@hd@ft\LT@foot}
+
+\def\endlastfoot{\LT@end@hd@ft\LT@lastfoot}
+
+\let\LT@caption@box\@empty
+
+\def\LT@caption{%
+    \noalign\bgroup
+        \@ifnextchar[{\egroup\LT@c@ption\@firstofone}\LT@capti@n}
+
+\def\LT@capti@n{%
+  \@ifstar
+    {\egroup\LT@c@ption\@gobble[]}%
+    {\egroup\@xdblarg{\LT@c@ption\@firstofone}}}
+
+\def\LT@c@ption#1[#2]#3{%
+    \LT@makecaption#1\fnum@table{#3}%
+}
+
+\def\LT@makecaption#1#2#3{%
+    \protected@xdef\LT@caption@box{%
+        \ifx#1\@gobble\else
+            \par\startXMLelement{label}%
+                #2\par
+            \endXMLelement{label}\par
+        \fi
+        \if###3##\else
+            \par\startXMLelement{caption}%
+                #3\par
+            \endXMLelement{caption}\par
+        \fi
+    }%
+}
 
 \endinput
 
