@@ -50,9 +50,9 @@ sub execute {
 
     ## TODO: Check for TeX::Node::XmlAttributeNode, etc.?
 
-    if ($tail->isa("TeX::Node::GlueNode")) {
+    if ($tail->is_glue()) {
         $cur_list->pop_node();
-    } elsif ($tail->isa("TeX::Node::CharNode")) {
+    } elsif ($tail->is_char_node()) {
         my $char_code = $tail->get_char_code();
 
         if ($tex->is_whitespace($char_code)) {

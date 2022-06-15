@@ -58,7 +58,7 @@ sub read_value {
 
     my $tail = $tex->tail_node();
 
-    if (defined $tail && $tail->isa("TeX::Node::GlueNode")) {
+    if (defined $tail && $tail->is_glue()) {
         return make_glue_spec($tail->get_width(),
                               [ $tail->get_stretch(), $tail->get_stretch_order() ],
                               [ $tail->get_shrink(), $tail->get_shrink_order() ]);

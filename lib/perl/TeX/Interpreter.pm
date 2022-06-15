@@ -1342,14 +1342,14 @@ sub show_node_list {
             next;
         }
 
-        if (eval { $node->isa('TeX::Node::CharNode') }) {
+        if (eval { $node->is_char_node() }) {
             $tex->print("<character> ");
             $tex->print_char(chr($node->get_char_code()));
 
             next;
         }
 
-        if (eval { $node->isa('TeX::Node::GlueNode') }) {
+        if (eval { $node->is_glue() }) {
             $tex->print_esc("glue");
 
             next;

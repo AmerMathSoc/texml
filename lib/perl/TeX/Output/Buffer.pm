@@ -130,7 +130,7 @@ sub hlist_out {
             next;
         }
 
-        if ($node->isa('TeX::Node::CharNode')) {
+        if ($node->is_char_node()) {
             $self->output(chr($node->get_char_code()));
 
             next;
@@ -142,19 +142,19 @@ sub hlist_out {
             next;
         }
 
-        if ($node->isa("TeX::Node::VListNode")) {
+        if ($node->is_vbox()) {
             $self->vlist_out($node);
 
             next;
         }
 
-        if ($node->isa("TeX::Node::HListNode")) {
+        if ($node->is_hbox()) {
             $self->hlist_out($node);
 
             next;
         }
 
-        if ($node->isa("TeX::Node::RuleNode")) {
+        if ($node->is_rule()) {
             ## rule_ht := height(p);
             ## rule_dp := depth(p);
             ## rule_wd := width(p);
@@ -175,13 +175,13 @@ sub hlist_out {
             next;
         }
 
-        if ($node->isa('TeX::Node::GlueNode')) {
+        if ($node->is_glue()) {
             $self->output(" ");
 
             next;
         }
 
-        if ($node->isa('TeX::Node::KernNode')) {
+        if ($node->is_kern()) {
             $self->output(" ");
 
             next;
@@ -238,23 +238,23 @@ sub vlist_out {
             next;
         }
 
-        if ($node->isa('TeX::Node::CharNode')) {
+        if ($node->is_char_node()) {
             $tex->confusion("vlistout");
         }
 
-        if ($node->isa("TeX::Node::VListNode")) {
+        if ($node->is_vbox()) {
             $self->vlist_out($node);
 
             next;
         }
 
-        if ($node->isa("TeX::Node::HListNode")) {
+        if ($node->is_hbox()) {
             $self->hlist_out($node);
 
             next;
         }
 
-        if ($node->isa("TeX::Node::RuleNode")) {
+        if ($node->is_rule()) {
             ## rule_ht := height(p);
             ## rule_dp := depth(p);
             ## rule_wd := width(p);
@@ -275,13 +275,13 @@ sub vlist_out {
             next;
         }
 
-        if ($node->isa('TeX::Node::GlueNode')) {
+        if ($node->is_glue()) {
             $self->newline($tex->newlines_per_par());
 
             next;
         }
 
-        if ($node->isa('TeX::Node::KernNode')) {
+        if ($node->is_kern()) {
             $self->newline($tex->newlines_per_par());
 
             next;
