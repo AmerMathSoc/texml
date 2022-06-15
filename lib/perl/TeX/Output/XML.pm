@@ -32,8 +32,6 @@ package TeX::Output::XML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.5.1';
-
 use FindBin;
 
 use List::Util qw(min uniq);
@@ -923,7 +921,7 @@ sub hlist_out {
             next;
         }
 
-        if ($node->is_char_node()) {
+        if ($node->isa('TeX::Node::CharNode')) {
             my $char = __new_utf8_string(chr($node->get_char_code()));
 
             $self->append_text($char);
@@ -943,19 +941,19 @@ sub hlist_out {
             next;
         }
 
-        if ($node->is_vbox()) {
+        if ($node->isa("TeX::Node::VListNode")) {
             $self->vlist_out($node);
 
             next;
         }
 
-        if ($node->is_hbox()) {
+        if ($node->isa("TeX::Node::HListNode")) {
             $self->hlist_out($node);
 
             next;
         }
 
-        if ($node->is_rule()) {
+        if ($node->isa("TeX::Node::RuleNode")) {
             ## rule_ht := height(p);
             ## rule_dp := depth(p);
             ## rule_wd := width(p);
@@ -990,13 +988,13 @@ sub hlist_out {
             next;
         }
 
-        if ($node->is_glue()) {
+        if ($node->isa('TeX::Node::GlueNode')) {
             $self->append_text(" ");
 
             next;
         }
 
-        if ($node->is_kern()) {
+        if ($node->isa('TeX::Node::KernNode')) {
             $self->append_text(" ");
 
             next;
@@ -1055,7 +1053,7 @@ sub vlist_out {
             next;
         }
 
-        if ($node->is_char_node()) {
+        if ($node->isa('TeX::Node::CharNode')) {
             $tex->confusion("vlistout");
         }
 
@@ -1065,19 +1063,19 @@ sub vlist_out {
             next;
         }
 
-        if ($node->is_vbox()) {
+        if ($node->isa("TeX::Node::VListNode")) {
             $self->vlist_out($node);
 
             next;
         }
 
-        if ($node->is_hbox()) {
+        if ($node->isa("TeX::Node::HListNode")) {
             $self->hlist_out($node);
 
             next;
         }
 
-        if ($node->is_rule()) {
+        if ($node->isa("TeX::Node::RuleNode")) {
             ## rule_ht := height(p);
             ## rule_dp := depth(p);
             ## rule_wd := width(p);
@@ -1112,13 +1110,13 @@ sub vlist_out {
             next;
         }
 
-        if ($node->is_glue()) {
+        if ($node->isa('TeX::Node::GlueNode')) {
             ## IGNORE
 
             next;
         }
 
-        if ($node->is_kern()) {
+        if ($node->isa('TeX::Node::KernNode')) {
             ## IGNORE
         
             next;
