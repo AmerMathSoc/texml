@@ -36,6 +36,8 @@ use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
+use TeX::WEB2C qw(:box_params);
+
 sub execute {
     my $self = shift;
 
@@ -49,6 +51,8 @@ sub execute {
 
         return;
     }
+
+    $tex->unpackage(box_code);
 
     return;
 }

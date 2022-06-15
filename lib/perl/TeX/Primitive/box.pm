@@ -46,11 +46,11 @@ sub scan_box {
 
     my $index = $tex->scan_eight_bit_int();
 
-    my $box_ref = $tex->find_box_register($index);
+    my $box = $tex->box($index);
 
-    $tex->set_cur_box(${ $box_ref }->get_equiv());
+    $tex->set_cur_box($box);
 
-    # box(cur_val) := null; {the box becomes void, at the same level}
+    $tex->box_set($index, undef);
 
     $tex->box_end($box_context);
 

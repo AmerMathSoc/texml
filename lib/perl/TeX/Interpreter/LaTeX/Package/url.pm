@@ -113,9 +113,7 @@ sub do_normalize_url {
 
     my $index = $tex->scan_eight_bit_int();
 
-    my $box_ref = $tex->find_box_register($index);
-
-    my $box = ${ $box_ref }->get_equiv();
+    my $box = $tex->box($index);
 
     my $url = $box->to_string();
 

@@ -36,14 +36,26 @@ use base qw(TeX::Primitive::copy);
 
 use TeX::Class;
 
-# sub execute {
-#     my $self = shift;
-# 
-#     my $tex     = shift;
-#     my $cur_tok = shift;
-# 
-#     return;
-# }
+use TeX::WEB2C qw(:box_params);
+
+sub execute {
+    my $self = shift;
+
+    my $tex     = shift;
+    my $cur_tok = shift;
+
+    if ($tex->is_vmode()) {
+        $tex->back_input($cur_tok);
+
+        $tex->new_graf();
+
+        return;
+    }
+
+    $tex->unpackage(copy_code);
+
+    return;
+}
 
 1;
 

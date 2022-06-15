@@ -50,11 +50,9 @@ sub expand {
 
     my $box_no = $tex->scan_eight_bit_int();
 
-    my $box_ref = $tex->find_box_register($box_no);
+    my $box = $tex->box($box_no);
 
-    my $equiv = ${ $box_ref }->get_equiv();
-
-    my $bool = ! defined $equiv;
+    my $bool = ! defined $box;
 
     if ($tex->tracing_macros() & TRACING_MACRO_COND) {
         $tex->begin_diagnostic();

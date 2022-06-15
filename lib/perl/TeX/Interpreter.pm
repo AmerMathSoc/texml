@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.6.2';
+use version; our $VERSION = qv '1.7.0';
 
 use base qw(Exporter);
 
@@ -1426,6 +1426,30 @@ sub show_box {
     $tex->show_node_list($box);
 
     $tex->print_ln();
+
+    return;
+}
+
+sub box {
+    my $tex = shift;
+
+    my $index = shift;
+
+    my $box_ref = $tex->find_box_register($index);
+
+    return ${ $box_ref }->get_equiv();
+}
+
+sub box_set {
+    my $tex = shift;
+
+    my $index    = shift;
+    my $box      = shift;
+    my $modifier = shift;
+
+    my $box_ref = $tex->find_box_register($index);
+
+    $tex->eq_define($box_ref, $box, $modifier);
 
     return;
 }
@@ -8011,7 +8035,7 @@ sub fin_col {
                 }
 
                 my $col_no = $tex->aligncolno();
-                
+
                 my $props = $align->get_col_property($col_no);
 
                 $align->set_col_property($col_no, {});
@@ -8255,6 +8279,11 @@ sub __unskip {
     my @prefix;
 
     while (@nodes) {
+#        if (! defined $nodes[0]) {
+#            shift @nodes;
+#            next;
+#        }
+
         if ($nodes[0]->isa("TeX::Node::XmlAttributeNode")) {
             push @prefix, shift @nodes;
         } elsif ($IS_WHITESPACE{$nodes[0]}) {
@@ -9077,11 +9106,7 @@ sub box_end {
 
         $n -= 256 if $n > 255;
 
-        my $box_ref = $tex->find_box_register($n);
-
-        # $tex->DEBUG("n = $n; box_ref = $box_ref");
-
-        $tex->eq_define($box_ref, $cur_box, $modifier);
+        $tex->box_set($n, $cur_box, $modifier);
 
         $tex->delete_cur_box();
     }
@@ -9105,8 +9130,6 @@ sub begin_box {
     my $box_context = shift;
     my $cur_cmd     = shift;
 
-    # $tex->DEBUG("box_context = $box_context; cur_cmd = $cur_cmd");
-
     $cur_cmd->scan_box($tex, $box_context);
 
     return;
@@ -9121,10 +9144,7 @@ sub scan_box {
 
     my $cur_cmd = $tex->get_meaning($cur_tok);
 
-    # $tex->DEBUG("box_context = $box_context (n = " . ($box_context - box_flag) . "); cur_cmd = $cur_cmd");
-
     if (eval { $cur_cmd->isa("TeX::Primitive::MakeBox") }) {
-        # $tex->DEBUG("calling begin_box($box_context, $cur_cmd)");
         $tex->begin_box($box_context, $cur_cmd);
     } elsif ($box_context >= leader_flag
              && eval { $cur_cmd->isa("TeX::Primitive::Rule") }) {
@@ -9182,8 +9202,6 @@ sub package {
     }
 
     $tex->set_cur_box($cur_box);
-
-    # $tex->DEBUG("cur_box = $cur_box");
 
     $tex->box_end($box_context);
 
@@ -9291,6 +9309,43 @@ sub end_graf {
         $tex->normal_paragraph();
 
         $tex->set_error_count(0);
+    }
+
+    return;
+}
+
+sub unpackage {
+    my $tex = shift;
+
+    my $box_code = shift;
+
+    my $index = $tex->scan_eight_bit_int();
+
+    my $box = $tex->box($index);
+
+    return unless defined $box;
+
+    my $mode = abs($tex->get_cur_mode());
+    my $type = $box->get_type();
+
+    if (    $mode == mmode
+         || ( $mode == vmode && $type != vlist_node)
+         || ( $mode == hmode && $type != hlist_node) ) {
+        $tex->print_err("Incompatible list can't be unboxed");
+
+        $tex->set_help("Sorry, Pandora. (You sneaky devil.)",
+                       "I refuse to unbox an \\hbox in vertical mode or vice versa.",
+                       "And I can't open any boxes in math mode.");
+
+        $tex->error();
+
+        return;
+    }
+
+    $tex->tail_append($box->get_nodes());
+
+    if ($box_code == box_code) {
+        $tex->box_set($index, undef);
     }
 
     return;
@@ -12381,11 +12436,11 @@ sub load_format {
 
     if ($status) {
         eval { $class->install($tex) };
- 
+
         if ($@) {
             $tex->fatal_error("Can't install macro class $class: $@");
         }
- 
+
         if ($tex->is_profiling()) {
             my $elapsed = time() - $start_time;
             $tex->__DEBUG("$class->install(): $elapsed seconds\n");
@@ -12428,20 +12483,20 @@ sub read_package_data( $ ) {
 
 # sub core_load_notification {
 #     my $tex = shift;
-# 
+#
 #     my $name    = shift;
 #     my @options = @_;
-# 
+#
 #     # $name =~ s{^.*::}{};
-# 
+#
 #     # $tex->print_nl("Loading core macros '$name'");
-# 
+#
 #     # if (@options) {
 #     #     $tex->print(" with options @options");
 #     # }
-# 
+#
 #     # $tex->print_ln();
-# 
+#
 #     return;
 # }
 

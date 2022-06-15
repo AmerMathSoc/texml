@@ -44,9 +44,7 @@ sub expand {
 
     my $index = $tex->scan_eight_bit_int();
 
-    my $box_ref = $tex->find_box_register($index);
-
-    my $box = ${ $box_ref }->get_equiv();
+    my $box = $tex->box($index);
 
     $tex->conv_toks($box);
 

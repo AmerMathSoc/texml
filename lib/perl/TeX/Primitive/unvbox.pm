@@ -36,14 +36,30 @@ use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
-# sub execute {
-#     my $self = shift;
-# 
-#     my $tex     = shift;
-#     my $cur_tok = shift;
-# 
-#     return;
-# }
+use TeX::WEB2C qw(:box_params);
+
+sub execute {
+    my $self = shift;
+
+    my $tex     = shift;
+    my $cur_tok = shift;
+
+    if ($tex->is_mmode()) {
+        $tex->insert_dollar_sign($cur_tok);
+
+        return;
+    }
+
+    if ($tex->is_hmode()) {
+        $tex->head_for_vmode($cur_tok);
+
+        return;
+    }
+
+    $tex->unpackage(box_code);
+
+    return;
+}
 
 1;
 
