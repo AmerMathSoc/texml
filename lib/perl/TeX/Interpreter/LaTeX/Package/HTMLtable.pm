@@ -606,8 +606,8 @@ __DATA__
         \setCSSproperty{border-collapse}{collapse}%
         \reset@border@style
         \leavevmode
-        \let\\\@tabularcr
-        \m@th
+%        \let\\\@tabularcr
+%        \m@th
         \@ifnextchar[\@array{\@array[c]}%
 }
 
