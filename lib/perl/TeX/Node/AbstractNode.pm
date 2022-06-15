@@ -86,23 +86,23 @@ sub is_vbox {
     return $self->get_type() == vlist_node;
 }
 
-sub precedes_break {
-    my $self = shift;
+# sub precedes_break {
+#     my $self = shift;
+# 
+#     return $self->get_type() < math_node;
+# }
 
-    return $self->get_type() < math_node;
-}
-
-sub non_discardable {
-    my $self = shift;
-
-    return $self->get_type() < math_node;
-}
-
-sub is_atom {
-    my $self = shift;
-
-    return;
-}
+# sub non_discardable {
+#     my $self = shift;
+# 
+#     return $self->get_type() < math_node;
+# }
+# 
+# sub is_atom {
+#     my $self = shift;
+# 
+#     return;
+# }
 
 sub first_pass {
     my $self = shift;
