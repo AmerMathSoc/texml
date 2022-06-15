@@ -52,8 +52,6 @@ my %class_of     :ATTR(:get<class>     :get<class>     :init_arg => 'class');
 my %family_of    :ATTR(:get<family>    :set<family>    :init_arg => 'family');
 my %char_code_of :ATTR(:get<char_code> :set<char_code> :init_arg => 'char_code');
 
-# use TeX::Noad::Fields qw(:factories);
-
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 

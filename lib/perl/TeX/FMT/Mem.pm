@@ -32,13 +32,12 @@ package TeX::FMT::Mem;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.0.1';
 
 use TeX::Arithmetic qw(scaled_to_string);
 
 use TeX::WEB2C qw(:command_codes :eqtb_codes :math_params :node_params :token_codes :type_bounds);
 
-use TeX::Noads qw(:factories);
 use TeX::Nodes qw(:factories);
 use TeX::Node::HListNode qw(:factories);
 

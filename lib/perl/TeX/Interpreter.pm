@@ -1507,7 +1507,6 @@ sub get_nest_ptr {
     my %prev_depth_of   :ATTR(:name<prev_depth>);
     my %space_factor_of :ATTR(:name<space_factor>);
     my %clang_of        :ATTR(:name<clang>);
-    my %incompleat_noad :ATTR(:name<incompleat_noad>);
 
     no warnings qw(redefine);
 
@@ -1525,7 +1524,6 @@ sub get_nest_ptr {
                                   prev_depth      => $self->get_prev_depth(),
                                   space_factor    => $self->get_space_factor(),
                                   clang           => $self->get_clang(),
-                                  incompleat_noad => undef,
                                 });
 
         return $clone;
@@ -1558,7 +1556,6 @@ sub init_semantic_nest {
                                       prev_depth   => 0,
                                       space_factor => 0,
                                       clang        => 0,
-                                      incompleat_noad => undef,
                                     });
 
     $tex->set_cur_list($list);
@@ -7615,21 +7612,6 @@ sub init_span_record {
 sub check_for_improper_math_align {
     my $tex = shift;
 
-    # if (mode = mmode) and ((tail <> head) or (incompleat_noad <> null)) then
-    # begin
-    #     print_err("Improper ");
-    #     print_esc("halign");
-    #     print(" inside $$'s");
-    #
-    #     help3("Displays can use special alignments (like \eqalignno)")
-    #          ("only if nothing but the alignment itself is between $$'s.")
-    #          ("So I've deleted the formulas that preceded this alignment.");
-    #
-    #     error;
-    #
-    #     flush_math;
-    # end
-
     return;
 }
 
@@ -9663,14 +9645,6 @@ sub sub_sup {
 
 sub fin_mlist {
     my $tex = shift;
-
-    #* if incompleat_noad <> null then
-    #*     @<Compleat the incompleat noad@>
-    #* else
-    #* begin
-    #*     link(tail) := p;
-    #*     q := link(head);
-    #* end;
 
     my $mlist = $tex->get_cur_list();
 
