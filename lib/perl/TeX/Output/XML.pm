@@ -921,7 +921,7 @@ sub hlist_out {
             next;
         }
 
-        if ($node->isa('TeX::Node::CharNode')) {
+        if ($node->is_char_node()) {
             my $char = __new_utf8_string(chr($node->get_char_code()));
 
             $self->append_text($char);
@@ -953,7 +953,7 @@ sub hlist_out {
             next;
         }
 
-        if ($node->isa("TeX::Node::RuleNode")) {
+        if ($node->is_rule()) {
             ## rule_ht := height(p);
             ## rule_dp := depth(p);
             ## rule_wd := width(p);
@@ -988,13 +988,13 @@ sub hlist_out {
             next;
         }
 
-        if ($node->isa('TeX::Node::GlueNode')) {
+        if ($node->is_glue()) {
             $self->append_text(" ");
 
             next;
         }
 
-        if ($node->isa('TeX::Node::KernNode')) {
+        if ($node->is_kern()) {
             $self->append_text(" ");
 
             next;
@@ -1053,7 +1053,7 @@ sub vlist_out {
             next;
         }
 
-        if ($node->isa('TeX::Node::CharNode')) {
+        if ($node->is_char_node()) {
             $tex->confusion("vlistout");
         }
 
@@ -1075,7 +1075,7 @@ sub vlist_out {
             next;
         }
 
-        if ($node->isa("TeX::Node::RuleNode")) {
+        if ($node->is_rule()) {
             ## rule_ht := height(p);
             ## rule_dp := depth(p);
             ## rule_wd := width(p);
@@ -1110,13 +1110,13 @@ sub vlist_out {
             next;
         }
 
-        if ($node->isa('TeX::Node::GlueNode')) {
+        if ($node->is_glue()) {
             ## IGNORE
 
             next;
         }
 
-        if ($node->isa('TeX::Node::KernNode')) {
+        if ($node->is_kern()) {
             ## IGNORE
         
             next;
