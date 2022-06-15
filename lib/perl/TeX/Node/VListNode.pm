@@ -46,6 +46,10 @@ sub START {
     return;
 }
 
+1;
+
+__END__
+
 sub is_overline_box {
     my $self = shift;
 
