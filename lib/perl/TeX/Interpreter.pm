@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.7.1';
+use version; our $VERSION = qv '1.7.2';
 
 use base qw(Exporter);
 
@@ -7158,7 +7158,7 @@ sub vpackage {
 
     ## TBD: Shouldn't this be a VlistNode?
 
-    my $vbox = new_null_box();
+    my $vbox = new_null_vbox();
 
     $vbox->push_node(@{ $node_list });
 
@@ -8486,9 +8486,7 @@ sub fire_up {
 
     return unless @page;
 
-    my $vbox = new_null_box();
-
-    $vbox->set_type(vlist_node);
+    my $vbox = new_null_vbox();
 
     $vbox->push_node(@page);
 
@@ -9829,10 +9827,6 @@ sub after_math {
     }
 
     my $box = new_null_box();
-
-    if ($tex->is_vmode()) {
-        $box->set_type(vlist_node);
-    }
 
     $box->push_node(@mlist);
 
