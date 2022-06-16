@@ -552,7 +552,7 @@ sub set_module_options {
     my $opt_string = join ",", uniq @options;
 
     if (nonempty($opt_string)) {
-        $tex->define_csname(qq{opt\@$name.$ext}, $opt_string, MODIFIER_GLOBAL);
+        $tex->define_simple_macro(qq{opt\@$name.$ext}, $opt_string, MODIFIER_GLOBAL);
     }
 
     return;
