@@ -106,9 +106,15 @@ sub new_character {
 ######################################################################
 
 sub new_null_vbox {
-    my $arg_hash = shift;
+    my @nodes = @_;
 
-    return TeX::Node::VListNode->new($arg_hash);
+    my $box = TeX::Node::VListNode->new();
+
+    for my $node (@nodes) {
+        $box->push_node($node);
+    }
+
+    return $box;
 }
 
 sub new_rule {
