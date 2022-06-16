@@ -56,6 +56,8 @@ __DATA__
 
 \ProvidesPackage{tikz_cd}
 
+\RequirePackage{tikz}
+
 \let\usetikzlibrary\@gobble
 \let\tikzset\@gobble
 
