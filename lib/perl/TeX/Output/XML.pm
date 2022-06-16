@@ -941,13 +941,13 @@ sub hlist_out {
             next;
         }
 
-        if ($node->is_vbox()) { # isa("TeX::Node::VListNode")) {
+        if ($node->is_vbox()) {
             $self->vlist_out($node);
 
             next;
         }
 
-        if ($node->is_hbox()) { # isa("TeX::Node::HListNode")) {
+        if ($node->is_hbox()) {
             $self->hlist_out($node);
 
             next;
@@ -1054,7 +1054,16 @@ sub vlist_out {
         }
 
         if ($node->is_char_node()) {
-            $tex->confusion("vlistout");
+            # Strictly speaking, this shouldn't happen...
+            # $tex->confusion("vlistout");
+
+            # ...but it does.
+
+            my $char = __new_utf8_string(chr($node->get_char_code()));
+
+            $self->append_text($char);
+
+            next;
         }
 
         if ($node->isa('TeX::Node::XmlNode')) {
@@ -1063,13 +1072,13 @@ sub vlist_out {
             next;
         }
 
-        if ($node->isa("TeX::Node::VListNode")) {
+        if ($node->is_vbox()) {
             $self->vlist_out($node);
 
             next;
         }
 
-        if ($node->isa("TeX::Node::HListNode")) {
+        if ($node->is_hbox()) {
             $self->hlist_out($node);
 
             next;
