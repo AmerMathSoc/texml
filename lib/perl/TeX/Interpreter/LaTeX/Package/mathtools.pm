@@ -75,9 +75,11 @@ __DATA__
 % TBD: optional argument
 
 \def\mathtools@PD@#1#2#3{%
-    \ifst@rred\left\fi#1%
-    #3%
-    \ifst@rred\right\fi#2%
+    \ifst@rred
+        \left#1#3\right#2%
+    \else
+        \mathopen{#1}#3\mathclose{#2}%
+    \fi
 }
 
 \DeclareMathPassThrough{coloneq}
