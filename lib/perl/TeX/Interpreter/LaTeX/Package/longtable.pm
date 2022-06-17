@@ -51,7 +51,6 @@ __DATA__
 \ProvidesPackage{longtable}
 
 \RequirePackage{HTMLtable}
-\RequirePackage{array}
 
 \DeclareOption{errorshow}{}
 
