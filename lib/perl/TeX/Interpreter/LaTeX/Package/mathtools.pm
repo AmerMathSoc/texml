@@ -69,17 +69,19 @@ __DATA__
 }
 
 \def\mathtools@PD#1#2{%
-    \maybe@st@rred{\mathtools@PD@{#1}{#2}}%
+    \begingroup
+        \maybe@st@rred{\mathtools@PD@{#1}{#2}}%
 }
 
 % TBD: optional argument
 
 \def\mathtools@PD@#1#2#3{%
-    \ifst@rred
-        \left#1#3\right#2%
-    \else
-        \mathopen{#1}#3\mathclose{#2}%
-    \fi
+        \ifst@rred
+            \left#1#3\right#2%
+        \else
+            \mathopen{#1}#3\mathclose{#2}%
+        \fi
+    \endgroup
 }
 
 \DeclareMathPassThrough{coloneq}
