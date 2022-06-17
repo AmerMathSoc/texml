@@ -52,16 +52,6 @@ sub BUILD {
     return;
 }
 
-sub incorporate_size {
-    my $self = shift;
-
-    my $hlist = shift;
-
-    $hlist->update_natural_width($self->get_width());
-
-    return;
-}
-
 sub show_node {
     my $self = shift;
 

@@ -50,24 +50,6 @@ sub BUILD {
     return;
 }
 
-sub incorporate_size {
-    my $self = shift;
-
-    my $hlist = shift;
-
-    ## TBA
-
-    ##  my $font = $self->get_font();
-    ##  my $char = $self->get_char_code();
-    ##  
-    ##  $hlist->update_natural_width($font->get_char_width($char));
-    ##  
-    ##  $hlist->update_height($font->get_char_height($char));
-    ##  $hlist->update_depth($font->get_char_depth($char));
-
-    return;
-}
-
 1;
 
 __END__

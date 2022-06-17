@@ -34,7 +34,7 @@ use warnings;
 
 use base qw(TeX::Primitive::FileOp);
 
-use TeX::Node::OpenNode;
+use TeX::Nodes qw(new_open_node);
 
 use TeX::Class;
 
@@ -50,8 +50,8 @@ sub execute {
 
     my $filename = $tex->scan_file_name();
 
-    my $node = TeX::Node::OpenNode->new({ filename => $filename,
-                                          fileno   => $fileno });
+    my $node = new_open_node({ filename => $filename,
+                               fileno   => $fileno });
 
     $tex->tail_append($node);
 

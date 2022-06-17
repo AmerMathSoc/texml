@@ -29,6 +29,8 @@ package TeX::Node::Extension::UnicodeStringNode;
 # USA
 # email: tech-support@ams.org
 
+## This should be unified with UnicodeCharNode and CharNode.
+
 use strict;
 use warnings;
 

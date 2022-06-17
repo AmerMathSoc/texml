@@ -36,14 +36,26 @@ use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
-# sub execute {
-#     my $self = shift;
-# 
-#     my $tex     = shift;
-#     my $cur_tok = shift;
-# 
-#     return;
-# }
+use TeX::Nodes qw(new_language_node);
+
+# See note in TeX::Node::LanguageNode.
+
+sub execute {
+    my $self = shift;
+
+    my $tex     = shift;
+    my $cur_tok = shift;
+
+    my $val = $tex->scan_int();
+
+    if ($val < 0 || $val > 255) {
+        $val = 0;
+    }
+
+    $tex->tail_append(new_language_node($val));
+
+    return;
+}
 
 1;
 

@@ -62,19 +62,6 @@ sub is_rule {
     return 1;
 }
 
-sub incorporate_size {
-    my $self = shift;
-
-    my $hlist = shift;
-
-    $hlist->update_natural_width($self->get_width());
-
-    $hlist->update_height($self->get_height());
-    $hlist->update_depth ($self->get_depth());
-
-    return;
-}
-
 sub show_node {
     my $self = shift;
 

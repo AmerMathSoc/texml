@@ -40,6 +40,10 @@ use TeX::Class;
 
 use TeX::WEB2C qw(:node_params);
 
+my %language_of :COUNTER(:name<language> :default<0>);
+
+# We don't use this yet, but here's the skeleton of it.
+
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 

@@ -36,7 +36,7 @@ use base qw(TeX::Primitive::FileOp);
 
 use TeX::Constants qw(:booleans);
 
-use TeX::Node::WriteNode;
+use TeX::Nodes qw(new_write_node);
 
 use TeX::Class;
 
@@ -50,8 +50,8 @@ sub execute {
 
     my $token_list = $tex->scan_toks(false, false);
 
-    my $node = TeX::Node::WriteNode->new({ token_list => $token_list,
-                                           fileno => $fileno });
+    my $node = new_write_node({ token_list => $token_list,
+                                fileno     => $fileno });
 
     $tex->tail_append($node);                                           
 

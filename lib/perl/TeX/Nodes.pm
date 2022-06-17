@@ -49,11 +49,11 @@ our %EXPORT_TAGS = (factories => [ qw(new_character
                                       new_penalty
                                       new_unset
                                       new_whatsit
-                                      new_open
-                                      new_close
-                                      new_write_whatsit
-                                      new_special
-                                      new_language_mode
+                                      new_open_node
+                                      new_close_node
+                                      new_write_node
+                                      new_special_node
+                                      new_language_node
                                       new_xml_open_node
                                       new_xml_close_node
                                       new_xml_attribute_node
@@ -70,7 +70,6 @@ use TeX::WEB2C qw(:node_params);
 
 use TeX::Node::AdjustNode;
 use TeX::Node::CharNode;
-use TeX::Node::DiscretionaryNode;
 use TeX::Node::GlueNode;
 use TeX::Node::InsertNode;
 use TeX::Node::KernNode;
@@ -127,24 +126,6 @@ sub new_rule {
                                       depth  => $depth });
 }
 
-sub new_ligature {
-    my $arg_hash = shift;
-
-    return TeX::Node::LigatureNode->new($arg_hash);
-}
-
-sub new_lig_item {
-    my $char_code = shift;
-
-    return TeX::Node::LigatureNode->new({ char_code => $char_code });
-}
-
-sub new_disc {
-    my $arg_hash = shift;
-
-    return TeX::Node::DiscNode->new($arg_hash);
-}
-
 sub new_math {
     my $subtype = shift;
     my $width = shift;
@@ -183,7 +164,7 @@ sub new_whatsit {
     return TeX::Node::WhatsitNode->new($arg_hash);
 }
 
-sub new_write_whatsit {
+sub new_write_node {
     my $arg_hash = shift;
 
     return TeX::Node::WriteNode->new($arg_hash);
@@ -195,52 +176,28 @@ sub new_write_whatsit {
 ##                                                                  ##
 ######################################################################
 
-sub new_ins {
-    my $arg_hash = shift;
-
-    return TeX::Node::InsertNode->new($arg_hash);
-}
-
-sub new_mark {
-    my $arg_hash = shift;
-
-    return TeX::Node::MarkNode->new($arg_hash);
-}
-
-sub new_adjust {
-    my $arg_hash = shift;
-
-    return TeX::Node::AdjustNode->new($arg_hash);
-}
-
-sub new_unset {
-    my $arg_hash = shift;
-
-    return TeX::Node::UnsetNode->new($arg_hash);
-}
-
-sub new_open {
+sub new_open_node {
     my $arg_hash = shift;
 
     return TeX::Node::OpenNode->new($arg_hash);
 }
 
-sub new_close {
+sub new_close_node {
     my $arg_hash = shift;
 
     return TeX::Node::CloseNode->new($arg_hash);
 }
 
-sub new_special {
+sub new_special_node {
     my $arg_hash = shift;
 
     return TeX::Node::SpecialNode->new($arg_hash);
 }
 
-sub new_language {
-    my $arg_hash = shift;
+sub new_language_node {
+    my $lang_no = shift;
 
-    return TeX::Node::LanguageNode->new($arg_hash);
+    return TeX::Node::LanguageNode->new({ language => $lang_no} );
 }
 
 sub new_xml_open_node {
@@ -292,6 +249,51 @@ sub new_end_u_template_node {
     my $value    = shift;
 
     return TeX::Node::UTemplateMarker->new();
+}
+
+######################################################################
+##                                                                  ##
+##                        PROBABLY UNNEEDED                         ##
+##                                                                  ##
+######################################################################
+
+# These are referenced in TeX::FMT::Mem, but are probably not really
+# needed.
+
+sub new_unset {
+    my $arg_hash = shift;
+
+    return TeX::Node::UnsetNode->new($arg_hash);
+}
+
+sub new_ins {
+    my $arg_hash = shift;
+
+    return TeX::Node::InsertNode->new($arg_hash);
+}
+
+sub new_mark {
+    my $arg_hash = shift;
+
+    return TeX::Node::MarkNode->new($arg_hash);
+}
+
+sub new_adjust {
+    my $arg_hash = shift;
+
+    return TeX::Node::AdjustNode->new($arg_hash);
+}
+
+sub new_disc {
+    my $arg_hash = shift;
+
+    return TeX::Node::DiscNode->new($arg_hash);
+}
+
+sub new_ligature {
+    my $arg_hash = shift;
+
+    return TeX::Node::LigatureNode->new($arg_hash);
 }
 
 1;

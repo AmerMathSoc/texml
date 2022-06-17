@@ -50,6 +50,10 @@ sub BUILD {
     return;
 }
 
+sub is_write_node {
+    return 1;
+}
+
 1;
 
 __END__

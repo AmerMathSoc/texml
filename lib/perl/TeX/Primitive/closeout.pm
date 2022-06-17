@@ -34,7 +34,7 @@ use warnings;
 
 use base qw(TeX::Primitive::FileOp);
 
-use TeX::Node::CloseNode;
+use TeX::Nodes qw(new_close_node);
 
 use TeX::Class;
 
@@ -46,7 +46,7 @@ sub execute {
 
     my $fileno = $tex->scan_int();
 
-    my $node = TeX::Node::CloseNode->new({ fileno => $fileno });
+    my $node = new_close_node({ fileno => $fileno });
 
     $tex->tail_append($node);
 

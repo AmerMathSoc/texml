@@ -68,6 +68,10 @@ sub is_rule {
     return 0;
 }
 
+sub is_write_node {
+    return 0;
+}
+
 sub is_box {
     my $self = shift;
 

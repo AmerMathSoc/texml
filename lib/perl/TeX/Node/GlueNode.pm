@@ -86,20 +86,6 @@ sub is_glue {
     return 1;
 }
 
-sub incorporate_size {
-    my $self = shift;
-
-    my $hlist = shift;
-
-    $hlist->update_natural_width($self->get_width());
-
-    $hlist->update_stretch($self->get_stretch_order(), $self->get_stretch());
-
-    $hlist->update_shrink($self->get_shrink_order(), $self->get_shrink());
-
-    return;
-}
-
 sub show_node {
     my $self = shift;
 
