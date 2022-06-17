@@ -56,6 +56,10 @@ sub is_char_node {
     return 0;
 }
 
+sub is_close_node {
+    return 0;
+}
+
 sub is_glue {
     return 0;
 }
@@ -88,6 +92,18 @@ sub is_vbox {
     my $self = shift;
 
     return $self->get_type() == vlist_node;
+}
+
+sub is_u_template_marker {
+    return 0;
+}
+
+sub is_xml_node {
+    return 0;
+}
+
+sub is_xml_attribute_node {
+    return 0;
 }
 
 # sub precedes_break {

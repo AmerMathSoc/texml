@@ -50,6 +50,10 @@ sub BUILD {
     return;
 }
 
+sub is_u_template_marker {
+    return 1;
+}
+
 1;
 
 __END__

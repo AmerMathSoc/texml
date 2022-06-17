@@ -1334,7 +1334,7 @@ sub show_node_list {
 
         $tex->print("." x $tex->show_depth());
 
-        if (eval { $node->isa("TeX::Node::HListNode") }) {
+        if (eval { $node->is_box() }) {
             $tex->display_box($node);
 
             next;
@@ -1353,7 +1353,7 @@ sub show_node_list {
             next;
         }
 
-        if (eval { $node->isa('TeX::Node::XmlNode') }) {
+        if (eval { $node->is_xml_node() }) {
             $tex->print($node);
 
             next;
@@ -8113,7 +8113,7 @@ sub fin_row {
         my @new;
 
         for my $node (@old) {
-            if ($node->isa('TeX::Node::UTemplateMarker')) {
+            if ($node->is_u_template_marker()) {
                 while (my ($k, $v) = each %movable) {
                     if (nonempty($k) && nonempty($v)) {
                         push @new, new_css_property_node($k, $v);
@@ -8261,7 +8261,7 @@ sub __unskip {
 #            next;
 #        }
 
-        if ($nodes[0]->isa("TeX::Node::XmlAttributeNode")) {
+        if ($nodes[0]->is_xml_attribute_node()) {
             push @prefix, shift @nodes;
         } elsif ($IS_WHITESPACE{$nodes[0]}) {
             shift @nodes;
@@ -8273,7 +8273,7 @@ sub __unskip {
     my @suffix;
 
     while (@nodes) {
-        if ($nodes[-1]->isa("TeX::Node::XmlAttributeNode")) {
+        if ($nodes[-1]->is_xml_attribute_node()) {
             unshift @suffix, pop @nodes;
         } elsif ($IS_WHITESPACE{$nodes[-1]}) {
             pop @nodes;
@@ -8294,7 +8294,7 @@ sub __is_empty_par {
 
     return 1 if @nodes == 0;
 
-    return @nodes == 1 && $nodes[0]->isa("TeX::Node::XmlAttributeNode");
+    return @nodes == 1 && $nodes[0]->is_xml_attribute_node();
 
     # This is too strict since it weeds out "paragraphs" consisting
     # solely of XML tag nodes.  See note in TeX::Node::HListNode::is_visible.
@@ -11136,7 +11136,7 @@ sub do_file_output {
         close($tex->get_write_file($fileno));
     }
 
-    if (eval { $node->isa("TeX::Node::CloseNode") }) {
+    if (eval { $node->is_close_node() }) {
         $tex->set_write_open($fileno, false);
         $tex->set_write_file($fileno, undef);
         $tex->set_write_path($fileno, undef);

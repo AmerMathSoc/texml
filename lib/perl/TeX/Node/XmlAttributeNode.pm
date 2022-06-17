@@ -40,6 +40,10 @@ my %value_of :ATTR(:name<value>);
 
 use overload q{""}  => \&to_string;
 
+sub is_xml_attribute_node {
+    return 1;
+}
+
 sub to_string {
     my $self = shift;
 

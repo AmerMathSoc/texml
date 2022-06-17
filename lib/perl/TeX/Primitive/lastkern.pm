@@ -56,7 +56,7 @@ sub read_value {
 
     my $tail = $tex->tail_node();
 
-    if (defined $tail && $tail->isa("TeX::Node::KernNode")) {
+    if (defined $tail && $tail->is_kern()) {
         return $tail->get_width();
     }
 

@@ -46,6 +46,10 @@ sub BUILD {
     return;
 }
 
+sub is_close_node {
+    return 1;
+}
+
 1;
 
 __END__

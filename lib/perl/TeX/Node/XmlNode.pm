@@ -40,6 +40,10 @@ my %qName_of :ATTR(:name<qName>);
 
 use overload q{eq}  => \&xml_node_eq;
 
+sub is_xml_node {
+    return 1;
+}
+
 sub xml_node_eq {
     my $self = shift;
 
