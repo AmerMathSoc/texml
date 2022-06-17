@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.7.2';
+use version; our $VERSION = qv '1.8.0';
 
 use base qw(Exporter);
 
@@ -190,8 +190,6 @@ my %cur_page_of :ARRAY(:name<cur_page>);
 my %debugging_of :BOOLEAN(:name<debugging> :default<false>);
 
 my %profiling_of :BOOLEAN(:name<profiling> :default<false>);
-
-my %xml_output_of :BOOLEAN(:name<xml_output> :default<true>);
 
 my %nofiles_of :BOOLEAN(:name<nofiles> :get<nofiles> :default<false>);
 
@@ -6555,10 +6553,7 @@ sub get_output_module {
 
     my $class = $output_module_of{ident $tex};
 
-    if (empty($class)) {
-        $class = $tex->is_xml_output() ? "TeX::Output::XML"
-                                       : "TeX::Output::Text";
-    }
+    $class = "TeX::Output::XML" if empty($class);
 
     $tex->load_output_module($class);
 
@@ -8318,7 +8313,7 @@ sub line_break {
 
     my $hbox = new_null_box();
 
-    my $max_length = $tex->is_xml_output() ? -1: $tex->output_line_length();
+    my $max_length = -1;
 
     if ($max_length < 1) {
         $hbox->push_node(@cur_list);
@@ -8380,24 +8375,22 @@ sub line_break {
         #$hbox->push_node(new_unicode_string("\n"));
     }
 
-    if ($tex->is_xml_output()) {
-        # $hbox->get_node(-1)->pop_node(); # Drop the trailing newline.
+    # $hbox->get_node(-1)->pop_node(); # Drop the trailing newline.
 
-        my $qName = $tex->this_xml_par_tag();
+    my $qName = $tex->this_xml_par_tag();
 
-        if (empty($qName)) {
-            $qName = $tex->xml_par_tag();
+    if (empty($qName)) {
+        $qName = $tex->xml_par_tag();
+    }
+
+    if (nonempty($qName)) {
+        if (nonempty(my $class = $tex->this_xml_par_class())) {
+            $hbox->unshift_node(make_xml_class_node(XML_SET_CLASSES, $class));
         }
 
-        if (nonempty($qName)) {
-            if (nonempty(my $class = $tex->this_xml_par_class())) {
-                $hbox->unshift_node(make_xml_class_node(XML_SET_CLASSES, $class));
-            }
+        $hbox->unshift_node(new_xml_open_node($qName));
 
-            $hbox->unshift_node(new_xml_open_node($qName));
-
-            $hbox->push_node(new_xml_close_node($qName));
-        }
+        $hbox->push_node(new_xml_close_node($qName));
     }
 
     $tex->tail_append($hbox);
@@ -11133,7 +11126,7 @@ sub do_file_output {
 
     my $fileno = $node->fileno();
 
-    if (eval { $node->isa("TeX::Node::WriteNode") }) {
+    if (eval { $node->is_write_node() }) {
         $tex->write_out($node);
 
         return;
