@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.8.0';
+use version; our $VERSION = qv '1.8.1';
 
 use base qw(Exporter);
 
@@ -6495,7 +6495,7 @@ my %output_stack_of :ARRAY(:name<output_stack>);
 
 my %output_handle_of :ATTR(:name<output_handle>); # replaces dvi_file
 
-my %output_module_of :ATTR(:name<output_module> :get<*custom*>);
+my %output_module_of :ATTR(:name<output_module> :get<*custom*> :default<"TeX::Output::XML">);
 
 my %output_file_name_of :ATTR(:name<output_file_name>);
 my %output_ext_of  :ATTR(:name<output_ext> :default<"xml">);
