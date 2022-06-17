@@ -915,6 +915,40 @@ sub hlist_out {
     my $tex = $self->get_tex_engine();
 
     for my $node ($box->get_nodes()) {
+        if ($node->isa('TeX::Token')) { ## Extension
+            $self->append_text($node);
+
+            next;
+        }
+
+        ## HLIST ONLY
+
+        if ($node->isa('TeX::Node::MathNode')) {
+            $self->append_text(" "); # ???
+
+            next;
+        }
+
+        if ($node->isa('TeX::Node::UTemplateMarker')) {
+            next;
+        }
+
+        ## HLIST SPECIFIC HANDLING
+
+        if ($node->is_glue()) {
+            $self->append_text(" ");
+
+            next;
+        }
+
+        if ($node->is_kern()) {
+            $self->append_text(" ");
+
+            next;
+        }
+
+        ## COMMON
+
         if ($node->isa('TeX::Node::Extension::UnicodeStringNode')) {
             $self->append_text($node->get_contents());
 
@@ -925,12 +959,6 @@ sub hlist_out {
             my $char = __new_utf8_string(chr($node->get_char_code()));
 
             $self->append_text($char);
-
-            next;
-        }
-
-        if ($node->isa('TeX::Token')) { ## Extension
-            $self->append_text($node);
 
             next;
         }
@@ -988,33 +1016,6 @@ sub hlist_out {
             next;
         }
 
-        if ($node->is_glue()) {
-            $self->append_text(" ");
-
-            next;
-        }
-
-        if ($node->is_kern()) {
-            $self->append_text(" ");
-
-            next;
-        }
-
-        if ($node->isa('TeX::Node::MathNode')) {
-            $self->append_text(" "); # ???
-
-            next;
-        }
-
-        if ($node->isa('TeX::Node::LigatureNode')) {
-            # @<Make node |p| look like a |char_node| and |goto reswitch|@>;
-
-            $tex->print_err("LigatureNode not implemented yet");
-            $tex->error();
-
-            next;
-        }
-
         if ($node->isa('TeX::Node::MarkNode')) {
             next;
         }
@@ -1023,13 +1024,9 @@ sub hlist_out {
             next;
         }
 
-        if ($node->isa('TeX::Node::UTemplateMarker')) {
-            next;
-        }
-
-        $tex->print_err("I didn't expect to find '$node' ",
-                         ref($node),
-                         " in the middle of an hlist!");
+        $tex->print_err("I didn't expect to find '$node' (",
+                        ref($node),
+                        ") in the middle of an hlist!");
 
         $tex->error();
     }
@@ -1044,9 +1041,29 @@ sub vlist_out {
 
     my $tex = $self->get_tex_engine();
 
-    my @nodes = $box->get_nodes();
+    for my $node ($box->get_nodes()) {
+        if ($node->isa('TeX::Token')) { ## Extension
+            $self->append_text($node);
 
-    for my $node (@nodes) {
+            next;
+        }
+
+        ## VLIST SPECIFIC HANDLING
+
+        if ($node->is_glue()) {
+            ## IGNORE
+
+            next;
+        }
+
+        if ($node->is_kern()) {
+            ## IGNORE
+
+            next;
+        }
+
+        ## COMMON
+
         if ($node->isa('TeX::Node::Extension::UnicodeStringNode')) {
             $self->append_text($node->get_contents());
 
@@ -1055,6 +1072,7 @@ sub vlist_out {
 
         if ($node->is_char_node()) {
             # Strictly speaking, this shouldn't happen...
+
             # $tex->confusion("vlistout");
 
             # ...but it does.
@@ -1119,24 +1137,6 @@ sub vlist_out {
             next;
         }
 
-        if ($node->is_glue()) {
-            ## IGNORE
-
-            next;
-        }
-
-        if ($node->is_kern()) {
-            ## IGNORE
-        
-            next;
-        }
-
-        if ($node->isa('TeX::Token')) {
-            $self->append_text($node->to_string());
-
-            next;
-        }
-
         if ($node->isa('TeX::Node::MarkNode')) {
             next;
         }
@@ -1145,9 +1145,10 @@ sub vlist_out {
             next;
         }
 
-        $tex->print_err("I didn't expect to find a ",
-                         ref($node),
-                         " ('$node') in the middle of a vlist!");
+        $tex->print_err("I didn't expect to find '$node' (",
+                        ref($node),
+                        ") in the middle of an hlist!");
+
         $tex->error();
     }
 
