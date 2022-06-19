@@ -32,7 +32,7 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.3';
+use version; our $VERSION = qv '1.3.4';
 
 use Cwd;
 
@@ -274,11 +274,19 @@ sub convert_tex {
 
     my $use_xetex = $self->use_xetex();
 
-    if (! $use_xetex) {
-        my $is_external_graphic = $tex_fragment =~ m{\\includegraphics};
+    # if ($use_xetex) {
+        my $is_external_graphic = $tex_fragment =~ m{\\input};
 
-        $use_xetex = (! $is_external_graphic) && $tex_fragment !~ m{\.pstex_t};
-    }
+        if ($is_external_graphic && $tex_fragment =~ m{\.pstex_t}) {
+            $use_xetex = 0;
+        }
+    # }
+
+    # if (! $use_xetex) {
+    #     my $is_external_graphic = $tex_fragment =~ m{\\includegraphics};
+    # 
+    #     $use_xetex = (! $is_external_graphic) && $tex_fragment !~ m{\.pstex_t};
+    # }
 
     my $tmp_dir = tempdir("texml-svg-XXXXXX",
                           DIR => $ENV{TMPDIR} || "/tmp",
