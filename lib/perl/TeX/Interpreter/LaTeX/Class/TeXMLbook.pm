@@ -37,6 +37,8 @@ use TeX::Command::Executable::Assignment qw(:modifiers);
 use TeX::Utils::LibXML;
 use TeX::Utils::Misc;
 
+# TeXMLbook is the common base for amsbook and maabook.
+
 sub install ( $ ) {
     my $class = shift;
 
@@ -46,86 +48,8 @@ sub install ( $ ) {
 
     $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::TeXMLbook::DATA{IO});
 
-    $tex->define_csname('init@bits@meta' => \&do_init_bits_meta);
-
     return;
 }
-
-######################################################################
-##                                                                  ##
-##                              MACROS                              ##
-##                                                                  ##
-######################################################################
-
-sub do_init_bits_meta {
-    my $tex   = shift;
-    my $token = shift;
-    
-    $tex->end_par();
-
-    my $document = $tex->get_parcel('document');
-
-    return unless defined $document;
-
-    $tex->ensure_output_open();
-
-    my $xml = $tex->get_output_handle();
-
-    $tex->new_graf();
-
-    $tex->start_xml_element("book-meta");
-
-    ## Add just enough to allow texml to find the gentag file.
-
-    my $publ_key = $document->get_publ_key();
-
-    if (empty($publ_key)) {
-        if (nonempty(my $doc_class = $tex->get_document_class())) {
-            if ($doc_class =~ s{-l\z}{}) {
-                $publ_key = $doc_class;
-            }
-        }
-    }
-
-    my $par_tag = $tex->xml_par_tag();
-    $tex->set_xml_par_tag("");
-
-    if (nonempty($publ_key)) {
-        $tex->start_xml_element("book-id");
-        $tex->set_xml_attribute("book-id-type", "publ_key");
-        $tex->process_string($publ_key);
-        $tex->end_xml_element("book-id");
-
-        if (nonempty(my $volume_id = $document->get_volume_id())) {
-            $tex->start_xml_element("book-id");
-            $tex->set_xml_attribute("book-id-type", "volume_id");
-            $tex->process_string($volume_id);
-            $tex->end_xml_element("book-id");
-        }
-    }
-
-    if (nonempty(my $volume_no = $document->get_volume())) {
-        $tex->start_xml_element("book-volume-number");
-        $tex->process_string($volume_no);
-        $tex->end_xml_element("book-volume-number");
-    }
-
-    $tex->end_xml_element("book-meta");
-
-    $tex->end_par();
-
-    $tex->set_xml_par_tag($par_tag);
-
-    $tex->let_csname('init@bits@meta', '@empty', MODIFIER_GLOBAL);
-
-    return;
-}
-
-######################################################################
-##                                                                  ##
-##                           ENVIRONMENTS                           ##
-##                                                                  ##
-######################################################################
 
 1;
 
@@ -137,6 +61,8 @@ __DATA__
 
 \newcounter{chapter}
 \renewcommand\thechapter{\arabic{chapter}}
+
+\@addtoreset{footnote}{chapter}
 
 \newcounter{section}[chapter]
 \def\thesection{\arabic{section}}
@@ -177,6 +103,35 @@ __DATA__
 
 \AtEndDocument{%
     \@end@BITS@section
+}
+
+\def\init@bits@meta{%
+    \par
+    \ifx\AMS@publkey\@empty\else
+        \begingroup
+            \xmlpartag{}%
+            % Add just enough to allow texml to find the gentag file.
+            \startXMLelement{book-meta}%
+                \startXMLelement{book-id}%
+                    \setXMLattribute{book-id-type}{publisher}%
+                    \AMS@publkey\par
+                \endXMLelement{book-id}%
+                \ifx\AMS@volumeid\@empty\else
+                    \startXMLelement{book-id}%
+                        \setXMLattribute{book-id-type}{volume_id}%
+                        \AMS@volumeid\par
+                    \endXMLelement{book-id}%
+                \fi
+                \ifx\AMS@manid\@empty\else
+                    \startXMLelement{book-volume-number}%
+                        \AMS@manid\par
+                    \endXMLelement{book-volume-number}%
+                \fi
+            \endXMLelement{book-meta}%
+            \par        
+        \endgroup
+    \fi
+    \global\let\init@bits@meta\@empty
 }
 
 \def\@end@BITS@section{%
