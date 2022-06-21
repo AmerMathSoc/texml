@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{cams-l}
+\ProvidesClass{cams_l}
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 

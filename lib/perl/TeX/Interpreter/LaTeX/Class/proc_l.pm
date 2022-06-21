@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{proc-l}
+\ProvidesClass{proc_l}
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 

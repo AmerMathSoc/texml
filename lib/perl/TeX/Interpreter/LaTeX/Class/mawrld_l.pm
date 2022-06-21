@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{mawrld-l}
+\ProvidesClass{mawrld_l}
 
 \LoadClass{amsbook}
 

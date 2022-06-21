@@ -48,7 +48,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{gen-m-l}
+\ProvidesClass{gen_m_l}
 
 \LoadClass{amsbook}
 

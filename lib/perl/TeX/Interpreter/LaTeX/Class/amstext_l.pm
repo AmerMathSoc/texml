@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{amstext-l}
+\ProvidesClass{amstext_l}
 
 \LoadClass{amsbook}
 

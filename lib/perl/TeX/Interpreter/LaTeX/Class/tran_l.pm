@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{tran-l}
+\ProvidesClass{tran_l}
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 

@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{bull-l}[2009/05/07 v2.05 BULL Author Class]
+\ProvidesClass{bull_l}[2009/05/07 v2.05 BULL Author Class]
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 

@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{jams-l}[2007/06/18 v2.01 JAMS article documentclass]
+\ProvidesClass{jams_l}[2007/06/18 v2.01 JAMS article documentclass]
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 

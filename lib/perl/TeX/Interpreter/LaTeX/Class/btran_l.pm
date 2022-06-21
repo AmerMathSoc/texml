@@ -51,7 +51,7 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{btran-l}
+\ProvidesClass{btran_l}
 
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 
