@@ -42,7 +42,7 @@ sub install ( $ ) {
     ## If I understood perl symbol tables better, I could probably do
     ## this in a less verbose way.
 
-    # $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::stml_l::DATA{IO});
+    $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::stml_l::DATA{IO});
 
     return;
 }
