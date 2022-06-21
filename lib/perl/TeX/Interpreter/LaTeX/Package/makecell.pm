@@ -72,7 +72,7 @@ __DATA__
 
 %% TBD: Implement cellgapes?
 
-\let\setcellgapes\@gobbleopt
+\let\setcellgapes\@gobble@opt
 \let\makegapedcells\@empty
 
 \newcommand\Xhline[1]{%
