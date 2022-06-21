@@ -130,7 +130,7 @@ sub find_gentag_file( $ ) {
 
         my $book_meta = find_unique_node($dom, q{/book/book-meta});
 
-        my $publ_key = $book_meta->findvalue(q{book-id[@book-id-type="publ_key"]});
+        my $publ_key = $book_meta->findvalue(q{book-id[@book-id-type="publisher"]});
         my $volume   = $book_meta->findvalue(q{book-volume-number});
 
         if (empty($publ_key) || empty($volume)) {
@@ -1264,7 +1264,7 @@ sub create_book_meta( $$ ) {
     my $volume_id = $gentag->get_volume_id();
 
     append_xml_element($meta, 'book-id', $publ_key,
-                       { 'book-id-type' => 'publ_key',
+                       { 'book-id-type' => 'publisher',
                          'assigning-authority' => 'AMS' });
 
     append_xml_element($meta, 'book-id', $volume_id,
