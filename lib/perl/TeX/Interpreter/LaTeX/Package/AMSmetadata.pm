@@ -156,7 +156,7 @@ sub install {
 
     my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__);
+    $tex->package_load_notification();
 
     if (eval "require PRD::Document::Builder") {
         $tex->print_nl("Found private AMS modules: Enabling full metadata support");
@@ -180,7 +180,7 @@ sub install {
 
     $tex->print_ln();
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::AMSmetadata::DATA{IO});
+    $tex->read_package_data();
 
     return;
 }

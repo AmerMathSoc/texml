@@ -37,11 +37,11 @@ sub install ( $ ) {
 
     my $tex = shift;
 
-    $tex->class_load_notification(__PACKAGE__);
+    $tex->class_load_notification();
 
     $tex->set_module_list('TeX::Interpreter::LaTeX::Package::amsthm', undef);
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::maabook::DATA{IO});
+    $tex->read_package_data();
 
     return;
 }

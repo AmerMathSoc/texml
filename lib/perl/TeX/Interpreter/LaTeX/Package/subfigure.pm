@@ -42,7 +42,9 @@ sub install ( $ ) {
 
     $tex->set_module_options('subfigure', 'sty', @new_options);
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::subfigure::DATA{IO});
+    $tex->package_load_notification();
+
+    $tex->read_package_data();
 
     return;
 }

@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.8.1';
+use version; our $VERSION = qv '1.9.0';
 
 use base qw(Exporter);
 
@@ -12415,10 +12415,11 @@ sub load_format {
 sub read_package_data( $ ) {
     my $tex = shift;
 
-    my $data_handle = shift;
-    my $package     = shift;
+    my $package = caller;
 
-    ($package) = caller unless defined $package;
+    my $stash = eval { no strict 'refs'; *{ "${package}::" } };
+
+    my $data_handle = *{ $stash->{DATA} }{IO};
 
     my $position = tell($data_handle);
 
@@ -12463,7 +12464,7 @@ sub read_package_data( $ ) {
 sub class_load_notification {
     my $tex = shift;
 
-    my $class_name = shift;
+    my $class_name = caller;
     my @options    = @_;
 
     # $class_name =~ s{^.*::}{};
@@ -12482,7 +12483,7 @@ sub class_load_notification {
 sub package_load_notification {
     my $tex = shift;
 
-    my $package_name = shift;
+    my $package_name = caller;
 
     $package_name =~ s{^.*::}{};
 

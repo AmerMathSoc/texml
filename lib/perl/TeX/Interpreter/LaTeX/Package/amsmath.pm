@@ -37,7 +37,7 @@ sub install ( $ ) {
 
     my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__);
+    $tex->package_load_notification();
 
     ## This keeps amsmath from issuing "Unable to redefine math
     ## accent" warnings for each of these.
@@ -46,7 +46,7 @@ sub install ( $ ) {
         $tex->process_string(qq{\\def\\${accent}{\\mathaccent}});
     }
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::amsmath::DATA{IO});
+    $tex->read_package_data();
 
     return;
 }

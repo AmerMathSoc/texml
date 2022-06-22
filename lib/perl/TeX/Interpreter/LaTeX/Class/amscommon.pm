@@ -55,12 +55,9 @@ sub install ( $ ) {
 
     my $tex = shift;
 
-    $tex->class_load_notification(__PACKAGE__);
+    $tex->class_load_notification();
 
-    ## If I understood perl symbol tables better, I could probably do
-    ## this in a less verbose way.
-
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::amscommon::DATA{IO});
+    $tex->read_package_data();
 
     $tex->define_csname('@finishtoc' => \&do_finish_toc);
 

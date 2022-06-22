@@ -40,9 +40,9 @@ sub install ( $ ) {
 
     my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__);
+    $tex->package_load_notification();
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::xcolor::DATA{IO});
+    $tex->read_package_data();
 
     $tex->define_pseudo_macro('TML@current@color' => \&do_TML_current_color);
 

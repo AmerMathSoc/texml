@@ -37,7 +37,7 @@ sub install ( $ ) {
 
     my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__);
+    $tex->package_load_notification();
 
     # Restore some primitives that are modified for MathJax.
 
@@ -45,7 +45,7 @@ sub install ( $ ) {
         $tex->primitive($primitive);
     }
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::HTMLtable::DATA{IO});
+    $tex->read_package_data();
 
     return;
 }

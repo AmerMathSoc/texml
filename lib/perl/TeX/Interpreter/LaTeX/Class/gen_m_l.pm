@@ -37,9 +37,9 @@ sub install ( $ ) {
 
     my $tex = shift;
 
-    $tex->class_load_notification(__PACKAGE__);
+    $tex->class_load_notification();
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Class::gen_m_l::DATA{IO});
+    $tex->read_package_data();
 
     return;
 }

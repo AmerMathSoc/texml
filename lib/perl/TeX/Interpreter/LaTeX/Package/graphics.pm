@@ -44,9 +44,9 @@ sub install ( $ ) {
 
     my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__);
+    $tex->package_load_notification();
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::graphics::DATA{IO});
+    $tex->read_package_data();
 
     $tex->define_pseudo_macro('includegraphics' => \&do_include_graphics);
 

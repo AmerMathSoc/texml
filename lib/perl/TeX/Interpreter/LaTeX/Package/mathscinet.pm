@@ -41,14 +41,14 @@ sub install ( $ ) {
 
     my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__);
+    $tex->package_load_notification();
 
     $tex->define_pseudo_macro(utilde => make_accenter(COMBINING_TILDE_BELOW));
     $tex->define_pseudo_macro(uarc   => make_accenter(COMBINING_BREVE_BELOW));
     $tex->define_pseudo_macro(lfhook => make_accenter(COMBINING_COMMA_BELOW));
     $tex->define_pseudo_macro(dudot  => make_accenter(COMBINING_DIAERESIS_BELOW));
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::mathscinet::DATA{IO});
+    $tex->read_package_data();
 
     return;
 }

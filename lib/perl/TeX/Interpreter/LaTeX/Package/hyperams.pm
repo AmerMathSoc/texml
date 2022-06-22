@@ -36,9 +36,9 @@ sub install ( $ ) {
 
     my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__);
+    $tex->package_load_notification();
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::hyperams::DATA{IO});
+    $tex->read_package_data();
 
     return;
 }

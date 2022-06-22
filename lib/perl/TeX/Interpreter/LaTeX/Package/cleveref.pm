@@ -37,7 +37,7 @@ sub install ( $ ) {
 
     my $tex = shift;
 
-    $tex->package_load_notification(__PACKAGE__);
+    $tex->package_load_notification();
 
     # Hide hyperref from cleveref so it doesn't try to implement it's
     # own linking.
@@ -46,7 +46,7 @@ sub install ( $ ) {
 
     $tex->let_csname('ver@hyperref.sty' => '@undefined');
 
-    $tex->read_package_data(*TeX::Interpreter::LaTeX::Package::cleveref::DATA{IO});
+    $tex->read_package_data();
 
     $tex->define_macro('ver@hyperref.sty', undef, $ver_hyperref);
 
