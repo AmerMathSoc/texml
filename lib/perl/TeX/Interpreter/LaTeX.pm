@@ -777,30 +777,11 @@ sub do_texml_create_svg {
 
     return unless nonempty($out_file) && -e $out_file;
 
-    if ($is_mmode) {
         if (nonempty($opt)) {
             $expansion = qq{\\TeXMLImportGraphic[$opt]{$out_file}};
         } else {
             $expansion = qq{\\TeXMLImportGraphic{$out_file}};
         }
-    } else {
-        my $doc = XML::LibXML->load_xml(location => $out_file);
-
-        my $root = $doc->documentElement();
-
-        my $width  = $root->getAttribute("width");
-        my $height = $root->getAttribute("height");
-
-        my $size = qq{width=$width,height=$height};
-
-        if (empty($opt)) {
-            $opt = $size;
-        } else {
-            $opt .= "," . $size;
-        }
-
-        $expansion = qq{\\MathJaxImg[$opt]{$out_file}};
-    }
 
     return $tex->tokenize($expansion);
 }
@@ -829,18 +810,7 @@ sub do_texml_import_svg {
 
     my $expansion;
 
-    if ($tex->is_mmode()) {
-        my $doc = XML::LibXML->load_xml(location => $svg_path);
-
-        my $root = $doc->documentElement();
-
-        my $width  = $root->getAttribute("width");
-        my $height = $root->getAttribute("height");
-
-        $expansion = qq{\\MathJaxImg[width=$width,height=$height]{$svg_path}};
-    } else {
-        $expansion = qq{\\TeXMLImportGraphic{$svg_path}};
-    }
+    $expansion = qq{\\TeXMLImportGraphic{$svg_path}};
 
     return $tex->tokenize($expansion);
 }

@@ -868,16 +868,10 @@ __DATA__
 %% Note that the optional argument is currently ignored.
 
 \newcommand{\TeXMLImportGraphic}[2][]{%
-    \ifmmode
-        \string\vcenter\string{%
-            \string\img\string{#2\string}%
-        \string}%
-    \else
         \startXMLelement{\jats@graphics@element}%
         \setXMLattribute{xlink:href}{#2}%
         \TeXML@add@graphic@attributes{#2}%
         \endXMLelement{\jats@graphics@element}%
-    \fi
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2227,11 +2221,6 @@ __DATA__
 
 \def\hspace{\ifmmode\expandafter\math@hspace\else\expandafter\txt@hspace\fi}
 
-\edef\MathJaxImg[#1]#2{%
-    \string\vcenter\string{%
-        \string\img[#1]\string{#2\string}%
-    \string}%
-}
 
 \def\DeclareMathJaxMacro{%
   \@ifstar{\@DeclareMathJaxMacro{}}{\@DeclareMathJaxMacro{ }}%
