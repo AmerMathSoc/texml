@@ -672,6 +672,8 @@ __DATA__
 \let\@disclaimertext\@empty
 \let\@titlegraphicnote\@empty
 
+\let\markleft\@gobble
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
 %%                      MAKETITLE/FRONTMATTER                       %%
@@ -1021,6 +1023,9 @@ __DATA__
 
 \DeclareRobustCommand{\forcehyphenbreak}{\@ifstar{\ignorespaces}{}}
 
+\DeclareRobustCommand{\toclinebreak}{\@ifstar{\unskip\xspace}{\unskip\xspace}}
+\DeclareRobustCommand{\tochyphenbreak}{\@ifstar{\ignorespaces}{}}
+
 \def\disable@footnotes{%
     \let\footnote\@gobble@opt
     \let\footnotemark\@gobbleopt
@@ -1119,6 +1124,9 @@ __DATA__
     \let\sectionname\appendixname
     \def\thesection{\@Alph\c@section}%
 }
+
+\let\printindex\@empty
+\let\indexfont\@empty
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
@@ -1356,19 +1364,14 @@ __DATA__
         {\protect#1{\csname#2name\endcsname}{\@secnumber}{#3}{\@currentXMLid}}%
 }
 
-\def\l@section{\@tocline{1}{0pt}{1pc}{}{}}
-\def\l@subsection{\@tocline{2}{0pt}{1pc}{5pc}{}}
-\let\tocsubsection\tocsection
+\def\l@part         {\@tocline{-1}{0pt}{0pt}{}{}}
+\def\l@chapter      {\@tocline{0}{0pt}{0pt}{}{}}
+\def\l@section      {\@tocline{1}{0pt}{1pc}{}{}}
+\def\l@subsection   {\@tocline{2}{0pt}{1pc}{5pc}{}}
 \def\l@subsubsection{\@tocline{3}{0pt}{1pc}{7pc}{}}
-\let\tocsubsubsection\tocsection
-\def\l@paragraph{\@tocline{4}{0pt}{1pc}{7pc}{}}
-\let\tocparagraph\tocsection
-\def\l@subparagraph{\@tocline{5}{0pt}{1pc}{7pc}{}}
-\let\tocsubparagraph\tocsection
-\let\tocpart\tocsection
-\def\l@chapter{\@tocline{0}{8pt plus1pt}{0pt}{}{}}
-\let\tocchapter\tocsection
-\let\tocappendix\tocsection
+\def\l@paragraph    {\@tocline{4}{0pt}{1pc}{7pc}{}}
+\def\l@subparagraph {\@tocline{5}{0pt}{1pc}{7pc}{}}
+
 \def\l@figure{\@tocline{0}{3pt plus2pt}{0pt}{1.5pc}{}}
 \let\l@table=\l@figure
 
@@ -1519,13 +1522,13 @@ __DATA__
     \set@toc@entry{#1}{#2}{#3}{#4}%
 }
 
-\let\tocpart\tocsection
+\let\tocappendix\tocsection
 \let\tocchapter\tocsection
+\let\tocparagraph\tocsection
+\let\tocpart\tocsection
+\let\tocsubparagraph\tocsection
 \let\tocsubsection\tocsection
 \let\tocsubsubsection\tocsection
-\let\tocparagraph\tocsection
-\let\tocsubparagraph\tocsection
-\let\tocappendix\tocsection
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
