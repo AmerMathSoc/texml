@@ -51,6 +51,13 @@ __DATA__
 \ProvidesPackage{imakeidx}
 
 \let\makeindex\@gobbleopt
+\let\printindex\@gobbleopt
+
+\let\indexsetup\@gobble
+\let\splitindexoptions\@gobble
+
+\let\index\@gobble@opt
+\let\indexprologue\@gobble@opt
 
 \endinput
 
