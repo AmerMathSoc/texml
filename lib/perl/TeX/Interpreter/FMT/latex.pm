@@ -739,11 +739,6 @@ __DATA__
 \UCSchardef\;"2005 % FOUR-PER-EM SPACE
 \UCSchardef\:"2004 % THREE-PER-EM SPACE
 
-\def\@gobbleopt{\@ifnextchar[{\@gobbleopt@}{}}
-\def\@gobbleopt@[#1]{}
-\def\@gobble@opt{\@ifnextchar[{\@gobble@opt@}{\@gobble}}
-\def\@gobble@opt@[#1]#2{}
-
 \def\!{}
 
 \def\HyperFirstAtBeginDocument#1{}
