@@ -60,6 +60,9 @@ __DATA__
 \def\rdbrack{\rBrack}
 \def\ldbrack{\lBrack}
 
+\def\Asterisk{\dingasterisk}
+\def\dotdiv{\dotminus}
+
 \endinput
 
 __END__
