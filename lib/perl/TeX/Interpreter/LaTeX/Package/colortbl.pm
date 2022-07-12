@@ -128,6 +128,10 @@ __DATA__
     \@gobbleopts
 }
 
+\DeclareMathPassThrough{rowcolor}
+\DeclareMathPassThrough{columncolor}
+\DeclareMathPassThrough{cellcolor}
+
 \endinput
 
 __END__
