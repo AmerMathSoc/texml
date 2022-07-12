@@ -1128,6 +1128,13 @@ __DATA__
 \let\printindex\@empty
 \let\indexfont\@empty
 
+\newcommand*\seeonlyname{see}
+\newcommand*\seename{see also}
+\newcommand*\alsoname{see also}
+\newcommand*\seeonly[2]{\emph{\seeonlyname} #1}
+\newcommand*\see[2]{\emph{\seename} #1}
+\newcommand*\seealso[2]{\emph{\alsoname} #1}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
 %%                              LISTS                               %%
