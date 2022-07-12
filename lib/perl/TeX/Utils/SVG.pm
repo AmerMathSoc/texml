@@ -32,7 +32,7 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.5';
+use version; our $VERSION = qv '1.3.6';
 
 use Cwd;
 
@@ -379,6 +379,8 @@ sub convert_tex {
     print { $fh } qq{\\usepackage{fullpage}\n\n};
 
     print { $fh } qq{\\begin{document}\n\n};
+
+    printf { $fh } qq{%%%% SOURCE: %s, l. %s\n\n}, $tex->get_file_name(), $tex->input_line_no();
 
     print { $fh } qq{\\begin{equation*}\n} if $starred;
 
