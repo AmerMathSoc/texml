@@ -50,6 +50,8 @@ __DATA__
 
 \ProvidesPackage{moresymb}
 
+\RequirePackage{amssymb}
+
 \def\ltrivert{\Vvert}
 \def\rtrivert{\Vvert}
 
