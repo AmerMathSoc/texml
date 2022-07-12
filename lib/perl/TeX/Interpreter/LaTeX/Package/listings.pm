@@ -52,6 +52,7 @@ __DATA__
 
 \let\lstset\@gobble
 \let\lstdefinestyle\@gobbletwo
+\let\lstdefinelanguage\@gobbletwo
 
 \DeclareSVGEnvironment*{listings}
 \DeclareSVGEnvironment*{lstlisting}
