@@ -50,11 +50,9 @@ __DATA__
 
 \ProvidesPackage{mspm}
 
-\LoadRawMacros
-
 \RequirePackage{moresymb}
 
-\def\bbone{\Bbbone}
+\def\bbone{\Bbbone}% U+1D7D9
 
 \endinput
 
