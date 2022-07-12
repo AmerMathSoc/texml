@@ -53,6 +53,12 @@ __DATA__
 \newcounter{algocf}
 
 \let\SetKw\@gobbletwo
+\let\SetKwInput\@gobbletwo
+
+\let\SetArgSty\@gobble
+\let\SetFuncSty\@gobble
+\let\setalcapskip\@gobble
+
 \def\SetKwProg#1#2#3#4{}
 \let\SetAlFnt\@gobble
 \let\SetAlCapFnt\@gobble
