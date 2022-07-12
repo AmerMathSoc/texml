@@ -50,6 +50,8 @@ __DATA__
 
 \ProvidesPackage{blkarray}
 
+\newif\ifBAtablenotes
+
 \DeclareSVGEnvironment*{blockarray}
 
 \endinput
