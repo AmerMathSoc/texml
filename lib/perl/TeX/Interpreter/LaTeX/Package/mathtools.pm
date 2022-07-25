@@ -64,6 +64,10 @@ __DATA__
 
 \def\vdotswithin#1{\ensuremath{\vdots}}
 
+% Meh.
+
+\renewcommand{\prescript}[3]{{}^{#1}_{#2}#3}
+
 \renewcommand*\DeclarePairedDelimiter[3]{%
     \newcommand{#1}{\mathtools@PD{#2}{#3}}%
 }
