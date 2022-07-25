@@ -59,6 +59,7 @@ __DATA__
 \DeclareSVGEnvironment{xy}
 
 \let\UseAllTwocells\@empty
+\let\UseTwocells\@empty
 
 \let\xyoption\@gobble
 
