@@ -52,10 +52,37 @@ __DATA__
 
 \let\lstset\@gobble
 \let\lstdefinestyle\@gobbletwo
-\let\lstdefinelanguage\@gobbletwo
+\def\lstdefinelanguage#1#2{\@gobbleopt}
 
 \DeclareSVGEnvironment*{listings}
-\DeclareSVGEnvironment*{lstlisting}
+
+% \DeclareSVGEnvironment*{lstlisting}
+
+\begingroup \catcode `|=0 \catcode `[= 1
+\catcode`]=2 \catcode `\{=12 \catcode `\}=12
+\catcode`\\=12 |gdef|@xlstlisting#1\end{lstlisting}[#1|end[lstlisting]]
+|endgroup
+
+\def\@lstlisting#1{
+    \par
+    \xmlpartag{}%
+    \everypar{}%
+    \startXMLelement{pre}%
+%    \setXMLattribute{specific-use}{#1}%
+    \let\do\@makeother \dospecials
+    \suppressligatures=1
+    \obeylines
+}
+
+\newcommand{\lstlisting}[1][]{%
+    \@lstlisting{#1}
+    \frenchspacing
+    \@vobeyspaces
+    \@xlstlisting
+}
+
+\let\endlstlisting\endverbatim
+
 
 \endinput
 
