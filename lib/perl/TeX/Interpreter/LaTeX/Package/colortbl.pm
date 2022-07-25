@@ -82,7 +82,11 @@ __DATA__
 \def\TML@columncolor#1#2{%
     \begingroup
         \XC@raw@color#1{#2}%
-        \setCSSproperty{background-color}{\TML@current@color}%
+        \ifmmode
+            \string\columncolor\TML@current@color
+        \else
+            \setCSSproperty{background-color}{\TML@current@color}%
+        \fi
     \endgroup
     \@gobbleopts
 }
@@ -98,7 +102,11 @@ __DATA__
 
 \def\TML@rowcolor#1#2{%
         \XC@raw@color#1{#2}%
-        \setRowCSSproperty{background-color}{\TML@current@color}%
+        \ifmmode
+            \string\rowcolor\TML@current@color
+        \else
+            \setRowCSSproperty{background-color}{\TML@current@color}%
+        \fi
         \kernel@ifnextchar[\TML@gobbleopt@a\TML@rowcolor@end
 }
 
@@ -123,14 +131,14 @@ __DATA__
 \def\TML@cellcolor#1#2{%
     \begingroup
         \XC@raw@color#1{#2}%
-        \setCSSproperty{background-color}{\TML@current@color}%
+        \ifmmode
+            \string\cellcolor\TML@current@color
+        \else
+            \setCSSproperty{background-color}{\TML@current@color}%
+        \fi
     \endgroup
     \@gobbleopts
 }
-
-\DeclareMathPassThrough{rowcolor}
-\DeclareMathPassThrough{columncolor}
-\DeclareMathPassThrough{cellcolor}
 
 \endinput
 
