@@ -65,6 +65,7 @@ __DATA__
 \AMSBlackListPackage{layout}
 \AMSBlackListPackage{lmodern}
 \AMSBlackListPackage{makeidx}
+\AMSBlackListPackage{mathalfa}
 \AMSBlackListPackage{pictexwd}
 \AMSBlackListPackage{pspicture}
 \AMSBlackListPackage{shaderef}
