@@ -1232,64 +1232,6 @@ __DATA__
 \let\belowcaptionskip\skip@
 \let\captionindent\dimen@
 
-% <fig id="raptor" position="float">
-%   <label>Figure 1</label>
-%   <caption>
-%     <title>Le Raptor.</title>
-%     <p>Rapidirap.</p>
-%   </caption>
-%   <graphic xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="data/samples/raptor.jpg"/>
-% </fig>
-
-\def\caption{%
-    \ifx\@captype\@undefined
-        \@latex@error{\noexpand\caption outside float}\@ehd
-        \expandafter\@gobble
-    \else
-        \expandafter\@firstofone
-    \fi
-    \@ifstar{\st@rredtrue\caption@}{\st@rredfalse\caption@}%
-}
-
-\SaveMacroDefinition\caption
-
-\def\caption@{\@dblarg{\@caption\@captype}}
-
-\SaveMacroDefinition\caption@
-
-\def\@caption#1[#2]#3{%
-    \ifst@rred\else
-        %%
-        %% Try very very hard not to output an empty <label/>
-        %%
-        %% Use a dedicated \@temp macro here because cleveref steals
-        %% \@tempa in its redefinition of \refstepcounter
-        %%
-        \protected@edef\@templabel{\csname #1name\endcsname}%
-        \ifx\@templabel\@empty\else
-            \protected@edef\@templabel{\@templabel\space}%
-        \fi
-        \expandafter\ifx\csname the#1\endcsname \@empty \else
-            \refstepcounter{#1}%
-            \protected@edef\@templabel{\@templabel\csname the#1\endcsname}%
-        \fi
-        \ifx\@templabel\@empty\else
-            \startXMLelement{label}%
-            \ignorespaces\@templabel
-            \endXMLelement{label}%
-        \fi
-    \fi
-    \if###3##\else
-        \startXMLelement{caption}%
-            \startXMLelement{p}%
-            #3%
-            \endXMLelement{p}%
-        \endXMLelement{caption}%
-    \fi
-}
-
-\SaveMacroDefinition\@caption
-
 \def\jats@figure@element{fig}
 
 \def\ftype@figure{1}
@@ -1297,29 +1239,11 @@ __DATA__
 \def\fnum@figure{\figurename\ \thefigure}
 \def\figurename{Figure}
 
-\newenvironment{figure}[1][]{%
-    \let\center\@empty
-    \let\endcenter\@empty
-    \ifnum\@listdepth > 0
-        \list@endpar
-    \else
-        \par
-    \fi
-    \everypar{}%
-    \xmlpartag{}%
-    \leavevmode
-    \def\@currentreftype{fig}%
-    \def\@captype{figure}%
-    \def\jats@graphics@element{graphic}
-    \startXMLelement{\jats@figure@element}%
-    \set@float@fps@attribute{#1}%
-    \addXMLid
+\newenvironment{figure}{%
+    \@float{figure}%
+    \def\@currentreftype{fig}% GRRRR
 }{%
-    \endXMLelement{\jats@figure@element}%
-    \par
-    \ifnum\@listdepth > 0
-        \global\afterfigureinlist@true
-    \fi
+    \end@float
 }
 
 \expandafter\let\csname figure*\endcsname\figure
@@ -1334,23 +1258,7 @@ __DATA__
 
 \def\tablename{Table}
 
-\newenvironment{table}[1][]{%
-    \let\center\@empty
-    \let\endcenter\@empty
-    \par
-    \everypar{}%
-    \xmlpartag{}%
-    \leavevmode
-    \def\@currentreftype{table}%
-    \def\@captype{table}%
-    \def\jats@graphics@element{graphic}
-    \startXMLelement{\jats@figure@element}%
-    \set@float@fps@attribute{#1}%
-    \addXMLid
-}{%
-    \endXMLelement{\jats@figure@element}%
-    \par
-}
+\newenvironment{table}{\@float{table}}{\end@float}
 
 \expandafter\let\csname table*\endcsname\table
 \expandafter\let\csname endtable*\endcsname\endtable

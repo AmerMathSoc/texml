@@ -1828,6 +1828,105 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% <fig id="raptor" position="float">
+%   <label>Figure 1</label>
+%   <caption>
+%     <title>Le Raptor.</title>
+%     <p>Rapidirap.</p>
+%   </caption>
+%   <graphic xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="data/samples/raptor.jpg"/>
+% </fig>
+
+\def\caption{%
+    \ifx\@captype\@undefined
+        \@latex@error{\noexpand\caption outside float}\@ehd
+        \expandafter\@gobble
+    \else
+        \expandafter\@firstofone
+    \fi
+    \@ifstar{\st@rredtrue\caption@}{\st@rredfalse\caption@}%
+}
+
+\SaveMacroDefinition\caption
+
+\def\caption@{\@dblarg{\@caption\@captype}}
+
+\SaveMacroDefinition\caption@
+
+\def\@caption#1[#2]#3{%
+    \ifst@rred\else
+        %%
+        %% Try very very hard not to output an empty <label/>
+        %%
+        %% Use a dedicated \@temp macro here because cleveref steals
+        %% \@tempa in its redefinition of \refstepcounter
+        %%
+        \protected@edef\@templabel{\csname #1name\endcsname}%
+        \ifx\@templabel\@empty\else
+            \protected@edef\@templabel{\@templabel\space}%
+        \fi
+        \expandafter\ifx\csname the#1\endcsname \@empty \else
+            \refstepcounter{#1}%
+            \protected@edef\@templabel{\@templabel\csname the#1\endcsname}%
+        \fi
+        \ifx\@templabel\@empty\else
+            \startXMLelement{label}%
+            \ignorespaces\@templabel
+            \endXMLelement{label}%
+        \fi
+    \fi
+    \if###3##\else
+        \par
+        \startXMLelement{caption}%
+            \startXMLelement{p}%
+            #3%
+            \endXMLelement{p}%
+        \endXMLelement{caption}%
+        \par
+    \fi
+}
+
+\SaveMacroDefinition\@caption
+
+\def\@float#1{%
+    \@ifnextchar[%
+        {\@xfloat{#1}}%
+        {\edef\reserved@a{\noexpand\@xfloat{#1}[\csname fps@#1\endcsname]}%
+         \reserved@a}%
+}
+
+\def\@xfloat #1[#2]{%
+    \@nodocument
+    \let\center\@empty
+    \let\endcenter\@empty
+    \ifnum\@listdepth > 0
+        \list@endpar
+    \else
+        \par
+    \fi
+    \everypar{}%
+    \xmlpartag{}%
+    \leavevmode
+    \def\@currentreftype{#1}%
+    \def\@captype{#1}%
+    \def\jats@graphics@element{graphic}
+    \@nameuse{startXMLelement}{\jats@figure@element}%
+    \set@float@fps@attribute{#2}%
+    \addXMLid
+}%
+
+\def\end@float{%
+    \@nameuse{endXMLelement}{\jats@figure@element}%
+    \par
+    \ifnum\@listdepth > 0
+        \global\afterfigureinlist@true
+    \fi
+}
+
+
+\let\@dblfloat\@float
+\let\end@dblfloat\end@float
+
 \def\set@float@fps@attribute#1{%
     \def\@fps{#1}%
     \@onelevel@sanitize \@fps
