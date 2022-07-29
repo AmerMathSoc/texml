@@ -66,6 +66,8 @@ __DATA__
 \let\pgfplotsset\@gobble
 \let\usepgfplotslibrary\@gobble
 \let\pgfset\@gobble
+\let\pgfdeclarelayer\@gobble
+\let\pgfsetlayers\@gobble
 
 \def\pgfdeclarepatternformonly#1#2#3#4#5{}
 
