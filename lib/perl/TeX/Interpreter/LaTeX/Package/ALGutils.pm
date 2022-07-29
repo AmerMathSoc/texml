@@ -63,6 +63,9 @@ __DATA__
 \newif\ifALG@numbered
 \ALG@numberedfalse
 
+\def\ALGlinenumbersoff{\global\ALG@numberedfalse}
+\def\ALGlinenumberson{\global\ALG@numberedtrue}
+
 \newcounter{ALG@frequency}
 
 \ifx\c@ALG@line\undefined
