@@ -1861,14 +1861,22 @@ __DATA__
         %% Use a dedicated \@temp macro here because cleveref steals
         %% \@tempa in its redefinition of \refstepcounter
         %%
-        \protected@edef\@templabel{\csname #1name\endcsname}%
-        \ifx\@templabel\@empty\else
-            \protected@edef\@templabel{\@templabel\space}%
-        \fi
         \expandafter\ifx\csname the#1\endcsname \@empty \else
             \refstepcounter{#1}%
-            \protected@edef\@templabel{\@templabel\csname the#1\endcsname}%
         \fi
+        \@ifundefined{fnum@#1}{%
+            % old-style
+            \protected@edef\@templabel{\csname #1name\endcsname}%
+            \ifx\@templabel\@empty\else
+                \protected@edef\@templabel{\@templabel\space}%
+            \fi
+            \expandafter\ifx\csname the#1\endcsname \@empty \else
+                \protected@edef\@templabel{\@templabel\csname the#1\endcsname}%
+            \fi
+        }{%
+            % \newfloat
+            \protected@edef\@templabel{\@nameuse{fnum@#1}}%
+        }%
         \ifx\@templabel\@empty\else
             \startXMLelement{label}%
             \ignorespaces\@templabel
