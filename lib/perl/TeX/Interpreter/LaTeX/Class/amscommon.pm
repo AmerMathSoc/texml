@@ -1234,34 +1234,23 @@ __DATA__
 
 \def\jats@figure@element{fig}
 
-\def\ftype@figure{1}
-\def\ext@figure{lof}
-\def\fnum@figure{\figurename\ \thefigure}
+\RequirePackage{float}
+
+\newfloat{figure}{}{lof}
 \def\figurename{Figure}
 
-\newenvironment{figure}{%
+\def\figure{% Reset currentreftype until we can change it downstream
+    \fst@figure% probably not needed
+    \@float@setevery{figure}% probably not needed
     \@float{figure}%
     \def\@currentreftype{fig}% GRRRR
-}{%
-    \end@float
 }
-
-\expandafter\let\csname figure*\endcsname\figure
-\expandafter\let\csname endfigure*\endcsname\endfigure
 
 \SaveEnvironmentDefinition{figure}
 \SaveEnvironmentDefinition{figure*}
 
-\def\ftype@table{2}
-\def\ext@table{lot}
-\def\fnum@table{\tablename\ \thetable}
-
+\newfloat{table}{}{lot}
 \def\tablename{Table}
-
-\newenvironment{table}{\@float{table}}{\end@float}
-
-\expandafter\let\csname table*\endcsname\table
-\expandafter\let\csname endtable*\endcsname\endtable
 
 \SaveEnvironmentDefinition{table}
 \SaveEnvironmentDefinition{table*}

@@ -56,14 +56,15 @@ __DATA__
 
 \ProvidesPackage{float}
 
-\let\floatstyle\@gobble
-\def\newfloat#1#2#3{\@gobbleopt}
-\let\floatname\@gobbletwo
+\LoadRawMacros
 
-% Provide a fake definition of this in case someone wants to
-%  \renewcommand it (mcom3342).
+\RestoreMacroDefinition\@xfloat
+\RestoreMacroDefinition\caption
 
-\providecommand\floatc@ruled[2]{{\@fs@cfont #1} #2\par}
+\let\float@end\end@float
+\let\float@dblend\end@float
+
+\let\float@caption\@caption
 
 \endinput
 

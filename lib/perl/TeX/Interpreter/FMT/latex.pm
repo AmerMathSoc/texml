@@ -1844,7 +1844,7 @@ __DATA__
     \else
         \expandafter\@firstofone
     \fi
-    \@ifstar{\st@rredtrue\caption@}{\st@rredfalse\caption@}%
+    {\@ifstar{\st@rredtrue\caption@}{\st@rredfalse\caption@}}%
 }
 
 \SaveMacroDefinition\caption
@@ -1910,19 +1910,21 @@ __DATA__
     \def\@currentreftype{#1}%
     \def\@captype{#1}%
     \def\jats@graphics@element{graphic}
-    \@nameuse{startXMLelement}{\jats@figure@element}%
+    \startXMLelement{\jats@figure@element}%
+    \setXMLattribute{specific-use}{#1}%
     \set@float@fps@attribute{#2}%
     \addXMLid
 }%
 
+\SaveMacroDefinition\@xfloat
+
 \def\end@float{%
-    \@nameuse{endXMLelement}{\jats@figure@element}%
+    \endXMLelement{\jats@figure@element}%
     \par
     \ifnum\@listdepth > 0
         \global\afterfigureinlist@true
     \fi
 }
-
 
 \let\@dblfloat\@float
 \let\end@dblfloat\end@float
