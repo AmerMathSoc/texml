@@ -65,7 +65,7 @@ __DATA__
 
 \let\IncMargin\@gobble
 
-\def\fnum@algocf{\algorithmcfname \thealgocf}
+\def\fnum@algocf{\algorithmcfname\nobreakspace \thealgocf}
 
 \def\algocfname{\algorithmcfname}
 
