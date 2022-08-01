@@ -1238,12 +1238,13 @@ __DATA__
 
 \newfloat{figure}{}{lof}
 \def\figurename{Figure}
+\floatname{figure}{\figurename}
 
 \def\figure{% Reset currentreftype until we can change it downstream
     \fst@figure% probably not needed
     \@float@setevery{figure}% probably not needed
-    \@float{figure}%
     \def\@currentreftype{fig}% GRRRR
+    \@float{figure}%
 }
 
 \SaveEnvironmentDefinition{figure}
@@ -1251,6 +1252,7 @@ __DATA__
 
 \newfloat{table}{}{lot}
 \def\tablename{Table}
+\floatname{table}{\tablename}
 
 \SaveEnvironmentDefinition{table}
 \SaveEnvironmentDefinition{table*}
