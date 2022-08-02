@@ -121,7 +121,7 @@ sub do_normalize_url {
     # (https://unspecified.wordpress.com/2012/02/12/how-do-you-escape-a-complete-uri/),
     # hopefully this is useful heuristic:
 
-    if ($url !~ m{%} && $url =~ m{\A(?: (ftp|https?)://)? (.*?) / (.*?) (?: \? (.*))? \z}smx) {
+    if ($url !~ m{%} && $url =~ m{\A(?: (ftp|https?)://)? (.*?) (?:/ (.*?))? (?: \? (.*))? \z}smx) {
         my $proto = $1 || 'http';
         my $host  = $2;
         my $path  = $3;
@@ -130,9 +130,13 @@ sub do_normalize_url {
         ## This is kind of like URI::Escape::escape_uri, but it
         ## doesn't replace /
 
-        $path =~ s{([^A-Za-z0-9/\-\._~])}{ sprintf("%%%02X", ord($1)) }eg;
+        $url = qq{$proto://$host};
 
-        $url = qq{$proto://$host/$path};
+        if (nonempty($path)) {
+            $path =~ s{([^A-Za-z0-9/\-\._~])}{ sprintf("%%%02X", ord($1)) }eg;
+
+            $url .= qq{/$path};
+        }
 
         $url .= qq{?$query} if nonempty $query;
     }
