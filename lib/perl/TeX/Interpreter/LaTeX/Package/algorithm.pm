@@ -54,11 +54,13 @@ __DATA__
 
 %% The following declarations might be misplaced.
 
-\@ifpackagewith{algorithm}{section}{%
-    \newcounter{algorithm}[section]%
-    \def\thealgorithm{\thesection.\arabic{algorithm}}%
-}{%
-    \newcounter{algorithm}%
+\@ifundefined{c@algorithm}{
+    \@ifpackagewith{algorithm}{section}{%
+        \newcounter{algorithm}[section]%
+        \def\thealgorithm{\thesection.\arabic{algorithm}}%
+    }{%
+        \newcounter{algorithm}%
+    }
 }
 
 \def\algorithmname{Algorithm}
