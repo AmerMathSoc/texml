@@ -1240,11 +1240,12 @@ __DATA__
 \def\figurename{Figure}
 \floatname{figure}{\figurename}
 
-\def\figure{% Reset currentreftype until we can change it downstream
+\let\figure\relax
+\newcommand{\figure}[1][]{% Reset currentreftype until we can change it downstream
     \fst@figure% probably not needed
     \@float@setevery{figure}% probably not needed
+    \@float{figure}[#1]
     \def\@currentreftype{fig}% GRRRR
-    \@float{figure}%
 }
 
 \SaveEnvironmentDefinition{figure}
