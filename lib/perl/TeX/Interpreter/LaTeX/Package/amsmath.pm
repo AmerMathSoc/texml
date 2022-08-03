@@ -284,6 +284,9 @@ __DATA__
 \def\tagform@#1{\string\tag{\hbox{#1}}}
 \def\maketag@@@#1{\string\tag*{\hbox{#1}}}
 
+\DefineAMSTaggedEnvironment[\let\math@cr@@@\@empty]{equation}\st@rredfalse
+\DefineAMSTaggedEnvironment[\let\math@cr@@@\@empty]{equation*}\st@rredtrue
+
 \DefineAMSTaggedEnvironment{align}\st@rredfalse
 \DefineAMSTaggedEnvironment{align*}\st@rredtrue
 \DefineAMSTaggedEnvironment{flalign}\st@rredfalse
@@ -291,8 +294,6 @@ __DATA__
 
 \DefineAMSTaggedEnvironment{eqnarray}\st@rredfalse
 \DefineAMSTaggedEnvironment{eqnarray*}\st@rredtrue
-\DefineAMSTaggedEnvironment[\let\math@cr@@@\@empty]{equation}\st@rredfalse
-\DefineAMSTaggedEnvironment{equation*}\st@rredtrue
 \DefineAMSTaggedEnvironment{gather}\st@rredfalse
 \DefineAMSTaggedEnvironment{gather*}\st@rredtrue
 
