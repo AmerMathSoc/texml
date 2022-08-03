@@ -58,6 +58,7 @@ __DATA__
 \let\SetArgSty\@gobble
 \let\SetFuncSty\@gobble
 \let\setalcapskip\@gobble
+\let\SetCommentSty\@gobble
 
 \def\SetKwProg#1#2#3#4{}
 \let\SetAlFnt\@gobble
