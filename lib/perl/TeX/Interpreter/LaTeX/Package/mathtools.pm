@@ -117,6 +117,8 @@ __DATA__
 
 \DeclareMathPassThrough{xmapsto}%[2][]
 
+\DeclareMathPassThrough{overbrace}
+
 \DefineAMSMathSimpleEnvironment{gathered}
 
 \endinput
