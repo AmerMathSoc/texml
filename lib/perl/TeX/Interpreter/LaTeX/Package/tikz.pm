@@ -61,6 +61,7 @@ __DATA__
 \RequirePackage{pgf}
 
 \let\tikzcdset\@gobble
+\let\usetkzobj\@gobble
 
 \newcommand{\tikz}[1][]{%
     \@ifnextchar\bgroup{\@tikz[#1]}{\@@tikz[#1]}%
