@@ -76,6 +76,7 @@ __DATA__
 \AMSBlackListPackage{tikz-qtree-compat}
 \AMSBlackListPackage{tikz-fct}
 \AMSBlackListPackage{tikz-base}
+\AMSBlackListPackage{tkz-euclide}
 
 \endinput
 
