@@ -53,6 +53,10 @@ __DATA__
 
 \long\def\setkeys#1#2{}
 
+\newcommand{\rotatebox}[3][]{%
+    \TeXMLCreateSVG{\rotatebox[#1]{#2}{#3}}%
+}
+
 \endinput
 
 __END__
