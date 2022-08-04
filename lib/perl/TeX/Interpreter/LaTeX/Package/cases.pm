@@ -67,6 +67,7 @@ __DATA__
 }
 
 \newenvironment{numcases}[1]{%
+    \st@rredfalse
     \def\@currentreftype{disp-formula}%
     $$
     \begingroup
