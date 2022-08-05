@@ -56,31 +56,9 @@ __DATA__
 \newcounter{subfigure}
 \def\thesubfigure{\alph{subfigure}}
 
-\renewenvironment{figure}[1][]{%
-    \let\center\@empty
-    \let\endcenter\@empty
-    \par
-    \xmlpartag{}%
-    \leavevmode
-    \def\@currentreftype{fig}%
-    \def\@captype{figure}%
-    \def\jats@graphics@element{graphic}
-    \startXMLelement{\jats@figure@element}%
-    \addXMLid
-    \setcounter{subfigure}{0}%
-}{%
-    \endXMLelement{\jats@figure@element}%
-    \par
-}
-
 \newenvironment{subfigure}[2][]{%
-    \let\center\@empty
-    \let\endcenter\@empty
     \par
-    \xmlpartag{}%
     \leavevmode
-    \def\@currentreftype{fig}%
-    \def\@captype{figure}%
     \ifx\label\subcaption@label \else
         \let\subcaption@ORI@label\label
         \let\label\subcaption@label
@@ -96,7 +74,30 @@ __DATA__
 }
 
 \let\subfigurename\@empty
+
 \newcommand*\subcaption@label{\caption@withoptargs\subcaption@@label}
+
+\newcounter{subtable}
+\def\thesubtable{\alph{subtable}}
+
+\newenvironment{subtable}[2][]{%
+    \par
+    \leavevmode
+    \ifx\label\subcaption@label \else
+        \let\subcaption@ORI@label\label
+        \let\label\subcaption@label
+    \fi
+    \def\caption@{\@dblarg{\@caption{subtable}}}
+    \def\subcaption{\caption}%
+    \def\jats@graphics@element{graphic}
+    \startXMLelement{fig}%
+    \addXMLid
+}{%
+    \endXMLelement{fig}%
+    \par
+}
+
+\let\subtablename\@empty
 
 \newcommand*\subcaption@@label[2]{%
     \@bsphack
@@ -105,7 +106,7 @@ __DATA__
         \subcaption@ORI@label#1{sub@#2}%
         %% CHEAT
         %% This isn't right if the caption is at the top, but is it ok
-        %% otherwise? 
+        %% otherwise?
         \expandafter\advance \csname c@\@captype\endcsname \@ne
         \protected@edef\@currentlabel{\csname the\@captype\endcsname\@currentlabel}%
         \subcaption@ORI@label#1{#2}%

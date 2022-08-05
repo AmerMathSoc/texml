@@ -1916,6 +1916,7 @@ __DATA__
     \setXMLattribute{specific-use}{#1}%
     \set@float@fps@attribute{#2}%
     \addXMLid
+    \@ifundefined{c@sub#1}{}{\setcounter{sub#1}{0}}%
 }%
 
 \SaveMacroDefinition\@xfloat
