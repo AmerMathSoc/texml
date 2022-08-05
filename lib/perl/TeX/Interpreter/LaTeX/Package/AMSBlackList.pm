@@ -55,6 +55,7 @@ __DATA__
 % \AMSBlackListPackage{listings}
 %\AMSBlackListPackage{mathabx}
 \AMSBlackListPackage{amstix2}
+\AMSBlackListPackage{amstixbb}
 \AMSBlackListPackage{backrefs}
 \AMSBlackListPackage{breakurl}
 \AMSBlackListPackage{ctable}
