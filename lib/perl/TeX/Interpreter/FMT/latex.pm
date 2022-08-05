@@ -863,16 +863,10 @@ __DATA__
 %% Note that the optional argument is currently ignored.
 
 \newcommand{\TeXMLImportGraphic}[2][]{%
-    \ifmmode
-        \string\vcenter\string{%
-            \string\img\string{#2\string}%
-        \string}%
-    \else
-        \startXMLelement{\jats@graphics@element}%
-        \setXMLattribute{xlink:href}{#2}%
-        \TeXML@add@graphic@attributes{#2}%
-        \endXMLelement{\jats@graphics@element}%
-    \fi
+    \startXMLelement{\jats@graphics@element}%
+    \setXMLattribute{xlink:href}{#2}%
+    \TeXML@add@graphic@attributes{#2}%
+    \endXMLelement{\jats@graphics@element}%
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
