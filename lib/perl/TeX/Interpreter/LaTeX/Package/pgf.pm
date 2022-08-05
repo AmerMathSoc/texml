@@ -68,6 +68,8 @@ __DATA__
 
 \let\usepgflibrary\@gobble
 
+\newcommand{\pgfarrowsdeclarecombine}[7][]{}
+
 \endinput
 
 __END__
