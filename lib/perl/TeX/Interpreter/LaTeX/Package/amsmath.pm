@@ -123,8 +123,9 @@ __DATA__
 %% Environments without tags:
 
 \def\DefineAMSMathSimpleEnvironment#1{%
-    \@ifundefined{#1}\newenvironment\renewenvironment{#1}{%
+    \@ifundefined{#1}\newenvironment\renewenvironment{#1}[1][]{%
         \string\begin{#1}%
+        \if######1####\else[##1]\fi
         \UnicodeLineFeed
 %        \global\let\df@label\@empty
         \Let@
