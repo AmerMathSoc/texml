@@ -63,7 +63,7 @@ sub DVIPS  () { $CFG->val(__PACKAGE__, 'dvips',         'dvips') }
 sub PDFCROP() { $CFG->val(__PACKAGE__, 'pdfcrop',       'pdfcrop') }
 sub PDF2SVG() { $CFG->val(__PACKAGE__, 'pdf2svg',       'pdf2svg') }
 sub PS2PDF () { $CFG->val(__PACKAGE__, 'ps2pdf',        'ps2pdf') }
-sub MATH_SF_FONT () { $CFG->val(__PACKAGE__, 'math_sf_font', 'SourceSansPro-Regular') }
+sub MATH_SF_FONT () { $CFG->val(__PACKAGE__, 'math_sf_font', 'SourceSansPro-Regular.otf') }
 
 ######################################################################
 ##                                                                  ##
