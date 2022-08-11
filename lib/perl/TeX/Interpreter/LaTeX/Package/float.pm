@@ -61,8 +61,8 @@ __DATA__
 \RestoreMacroDefinition\@xfloat
 \RestoreMacroDefinition\caption
 
-\let\float@end\end@float
-\let\float@dblend\end@float
+\def\float@end{\end@float}
+\def\float@dblend{\end@float}
 
 \let\float@caption\@caption
 
