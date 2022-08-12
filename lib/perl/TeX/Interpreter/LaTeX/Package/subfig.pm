@@ -104,25 +104,6 @@ __DATA__
 % #3 = caption
 % #4 = figure
 
-\def\sf@subfloat{%
-    \begingroup
-        \sf@ifpositiontop{%
-            \maincaptiontoptrue
-        }{%
-            \maincaptiontopfalse
-        }%
-        \ifmaincaptiontop\else
-            \advance\@nameuse{c@\@captype}\@ne
-        \fi
-    \let\sf@oldlabel=\label
-    \let\label=\subfloat@label
-        \refstepcounter{sub\@captype}%
-        \setcounter{sub\@captype @save}{\value{sub\@captype}}%
-        \@ifnextchar [%  %] match left bracket
-            {\sf@@subfloat}%
-            {\sf@@subfloat[\@empty]}%
-}
-
 \long\def\sf@@@subfloat#1[#2][#3]#4{%
         \leavevmode
         \startXMLelement{fig}%
@@ -134,16 +115,28 @@ __DATA__
     \ignorespaces
 }
 
+% #1 = sub\@captype
+% #2 = list-entry (ignored)
+% #3 = caption
+
 \long\def\sf@subcaption#1#2#3{%
-    \protected@edef\@tempa{\csname sub\@captype name\endcsname}%
+    \protected@edef\@tempa{%
+        \@ifundefined{sub\@captype name}{}{\@nameuse{sub\@captype name}}%
+    }%
     \ifx\@tempa\@empty\else
-        \protected@edef\@tempa{\@tempa\space}%
+        \@ifundefined{thesub\@captype}{}{%
+            \protected@edef\@tempa{\@tempa\space}%
+        }%
     \fi
-    \protected@edef\@tempa{\@tempa\@nameuse{thesub\@captype}}%
-    \ifx\@tempa\@empty\else
-        \startXMLelement{label}%
-            \@tempa
-        \endXMLelement{label}%
+    \@ifundefined{thesub\@captype}{}{%
+        \protected@edef\@tempa{\@tempa\@nameuse{thesub\@captype}}%
+    }%
+    \ifx#3\@empty\relax\else
+        \ifx\@tempa\@empty\else
+            \startXMLelement{label}%
+                \@tempa
+            \endXMLelement{label}%
+        \fi
     \fi
     \if###3##\else
         \startXMLelement{caption}%
