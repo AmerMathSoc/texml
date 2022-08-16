@@ -1468,6 +1468,77 @@ __DATA__
 }
 \let\aufm\attrib
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                      SECTIONS WITH METADATA                      %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newif\if@numbered
+
+\let\deferred@section@command\@empty
+
+\def\deferSectionCommand#1{%
+    \expandafter\let\csname orig_\string#1\endcsname#1%
+    \def#1{\maybe@st@rred{\@deferSectionCommand#1}}%
+}
+
+\def\@deferSectionCommand#1{%
+    \ifst@rred
+        \@numberedfalse
+    \else
+        \@numberedtrue
+    \fi
+    \def\deferred@section@command{\@nameuse{orig_\string#1}*{}}%
+    \edef\deferred@section@counter{\expandafter\@gobble\string#1}%
+    \@ifnextchar[{\@@deferSectionCommand}{\@@deferSectionCommand[]}%
+}
+
+\def\@@deferSectionCommand[#1]#2{%
+    \def\deferred@section@title{#2}%
+}
+
+\def\XXX@author@name#1{\thisxmlpartag{string-name}#1\par}
+\def\XXX@authorbio#1{\thisxmlpartag{bio}#1\par}
+
+\newenvironment{sectionWithMetadata}{%
+    \let\AMS@authors\@empty
+    \deferSectionCommand\part
+    \deferSectionCommand\chapter
+    \deferSectionCommand\section
+    \deferSectionCommand\subsection
+    \deferSectionCommand\subsubsection
+}{%
+    \deferred@section@command
+    \startXMLelement{sec-meta}\par
+    \ifx\AMS@authors\@empty\else
+        \startXMLelement{contrib-group}\par
+        \setXMLattribute{content-type}{authors}\par
+        \startXMLelement{contrib}
+        \setXMLattribute{contrib-type}{author}\par
+        \let\author@name\XXX@author@name
+        \let\authorbio\XXX@authorbio
+        \AMS@authors
+        \endXMLelement{contrib}\par
+        \endXMLelement{contrib-group}\par
+    \fi
+    \endXMLelement{sec-meta}\par
+    \if@numbered
+        \refstepcounter{\deferred@section@counter}%
+        \let\@templabel\@empty
+        \@ifundefined{\deferred@section@counter name}{}{%
+            \protected@edef\@templabel{\csname \deferred@section@counter name\endcsname}%
+            \ifx\@templabel\@empty\else
+                \protected@edef\@templabel{\@templabel\space}%
+            \fi
+        }%
+        \protected@edef\@templabel{\@templabel\@nameuse{the\deferred@section@counter}}
+        \thisxmlpartag{label}\@templabel\par
+    \fi
+    \thisxmlpartag{title}\deferred@section@title\par
+    \global\everypar{}%
+}
+
 \endinput
 
 __END__

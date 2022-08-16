@@ -270,9 +270,15 @@ __DATA__
 
 \def\fullcolumnad{\end{document}}
 
-% \secmeta: a temporary solution
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                      SECTIONS WITH METADATA                      %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newif\if@numbered
+% Deprecated.  See sectionWithMetadata in amscommon.pm
+
+% \secmeta: a (not-so-)temporary solution(, apparently)
 
 % \secmeta{section title}{author}{bio}
 
