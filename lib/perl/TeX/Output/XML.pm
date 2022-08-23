@@ -449,15 +449,27 @@ sub normalize_ids {
     }
 
     for my $node ($dom->findnodes("/descendant::tex-math")) {
-        for my $child ($node->childNodes()) {
-            next unless $child->nodeType() eq XML_TEXT_NODE;
+        $self->__replace_cssID($node);
+    }
 
+    return;
+}
+
+sub __replace_cssID {
+    my $self = shift;
+
+    my $node = shift;
+
+    for my $child ($node->childNodes()) {
+        if ($child->nodeType() == XML_TEXT_NODE) {
             my $text = $child->data();
 
             $text =~ s{\\cssId\{(.*?)\}\{\}}
                       { sprintf q{\cssId{%s}{}}, $self->__normalize_id($1) }smxeg;
 
             $child->setData($text);
+        } else {
+            $self->__replace_cssID($child);
         }
     }
 
