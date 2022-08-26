@@ -370,6 +370,7 @@ sub add_contributors {
                $gentag->get_contributors());
 
     my $prev_type;
+    my $prev_description = "";
     my $cur_contrib_group;
 
     for (my $seq = 0; $seq < @all; $seq++) {
@@ -386,7 +387,7 @@ sub add_contributors {
 
         if (! defined $cur_contrib_group
             || $this_type ne $prev_type
-            || nonempty $this_description) {
+            || (nonempty $this_description && $this_description ne $prev_description)) {
             $cur_contrib_group = append_xml_element($parent, "contrib-group");
 
             $cur_contrib_group->setAttribute("content-type", "${this_type}s");
@@ -397,7 +398,8 @@ sub add_contributors {
                                    $description);
             }
 
-            $prev_type = $this_type;
+            $prev_type        = $this_type;
+            $prev_description = $this_description;
         }
 
         my $contrib = append_xml_element($cur_contrib_group, "contrib");
