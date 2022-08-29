@@ -113,12 +113,16 @@ __DATA__
 
 \def\math@cr@{\new@ifnextchar[{\math@cr@@}{\math@cr@@[0pt]}}
 
-\def\math@cr@@[#1]{%
+\def\math@cr@@simple[#1]{%
     \math@cr@@@
     \@tempdima=#1\relax
     \ifdim\@tempdima=\z@\else[\the\@tempdima]\fi
     \UnicodeLineFeed
 }
+
+\def\math@cr@@gobble[#1]{}
+
+\let\math@cr@@\math@cr@@simple
 
 %% Environments without tags:
 
@@ -129,6 +133,7 @@ __DATA__
         \UnicodeLineFeed
 %        \global\let\df@label\@empty
         \Let@
+        \let\math@cr@@\math@cr@@simple
         \let\math@cr@@@\math@cr@@@simple
         \default@tag
         \begingroup
@@ -186,6 +191,8 @@ __DATA__
         \expandafter\global\ifst@rred\@eqnswfalse \else\@eqnswtrue \fi
         \global\let\df@label\@empty
         \Let@
+        \let\math@cr@@\math@cr@@simple
+        \let\math@cr@@@\math@cr@@@simple
         #1%
         \let\tag\tag@in@align
         \let\label\label@in@display
@@ -219,6 +226,8 @@ __DATA__
         \expandafter\global\ifst@rred\@eqnswfalse \else\@eqnswtrue \fi
         \global\let\df@label\@empty
         \Let@
+        \let\math@cr@@\math@cr@@simple
+        \let\math@cr@@@\math@cr@@@simple
         #1%
         \let\tag\tag@in@align
         \let\label\label@in@display
@@ -285,10 +294,11 @@ __DATA__
 \def\tagform@#1{\string\tag{\hbox{#1}}}
 \def\maketag@@@#1{\string\tag*{\hbox{#1}}}
 
-\def\math@cr@@gobble[#1]{}
-
 \DefineAMSTaggedEnvironment[\let\math@cr@@\math@cr@@gobble]{equation}\st@rredfalse
 \DefineAMSTaggedEnvironment[\let\math@cr@@\math@cr@@gobble]{equation*}\st@rredtrue
+
+% \DefineAMSTaggedEnvironment[\let\math@cr@@@\@empty]{equation}\st@rredfalse
+% \DefineAMSTaggedEnvironment[\let\math@cr@@@\@empty]{equation*}\st@rredtrue
 
 \DefineAMSTaggedEnvironment{align}\st@rredfalse
 \DefineAMSTaggedEnvironment{align*}\st@rredtrue
