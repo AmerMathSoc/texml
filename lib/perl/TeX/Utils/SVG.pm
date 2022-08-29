@@ -32,7 +32,7 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.8';
+use version; our $VERSION = qv '1.3.9';
 
 use Cwd;
 
@@ -278,6 +278,10 @@ sub convert_tex {
         my $is_external_graphic = $tex_fragment =~ m{\\input};
 
         if ($is_external_graphic && $tex_fragment =~ m{\.pstex_t}) {
+            $use_xetex = 0;
+        }
+
+        if ($tex_fragment =~ m{\\psfrag}) {
             $use_xetex = 0;
         }
     # }
