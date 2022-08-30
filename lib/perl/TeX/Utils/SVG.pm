@@ -32,7 +32,7 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.9';
+use version; our $VERSION = qv '1.3.10';
 
 use Cwd;
 
@@ -327,6 +327,8 @@ sub convert_tex {
     if (nonempty(my $docclass = $self->get_docclass())) {
         print { $fh } qq{\\PassOptionsToClass{noamsfonts}{$docclass}\n\n};
     }
+
+    print { $fh } qq{\\csname \@namedef\\endcsname{ver\@shaderef.sty}{1900/01/01}\n\n};
 
     ## If images are pushed too far to the right on extra-wide pages,
     ## it seems to confuse pdfcrop.  This has especially been a
