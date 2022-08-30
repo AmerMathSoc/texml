@@ -2299,15 +2299,29 @@ __DATA__
 
 \let\DeclareTeXMLMathAccent\DeclareTeXMLMathAlphabet
 
-\DeclareTeXMLMathAlphabet\mathbb
-\DeclareTeXMLMathAlphabet\mathbf
-\DeclareTeXMLMathAlphabet\mathbfit
-\DeclareTeXMLMathAlphabet\mathcal
-\DeclareTeXMLMathAlphabet\mathfrak
-\DeclareTeXMLMathAlphabet\mathit
+% Cf. Section 4 of "The STIX2 package" and Table 1 in "Experimental
+% Unicode mathematical typesetting: The unicode-math package."
+
 \DeclareTeXMLMathAlphabet\mathnormal
 \DeclareTeXMLMathAlphabet\mathrm
+\DeclareTeXMLMathAlphabet\mathbf
+% \DeclareTeXMLMathAlphabet\mathbfup
+\DeclareTeXMLMathAlphabet\mathit
+\DeclareTeXMLMathAlphabet\mathbfit
+% \DeclareTeXMLMathAlphabet\mathbfcal
+\DeclareTeXMLMathAlphabet\mathcal
+\DeclareTeXMLMathAlphabet\mathscr
+\DeclareTeXMLMathAlphabet\mathbfscr
 \DeclareTeXMLMathAlphabet\mathsf
+\DeclareTeXMLMathAlphabet\mathbfsf
+% \DeclareTeXMLMathAlphabet\mathbfsfup
+% \DeclareTeXMLMathAlphabet\mathbfit
+\DeclareTeXMLMathAlphabet\mathsfit
+% \DeclareTeXMLMathAlphabet\mathsfup
+\DeclareTeXMLMathAlphabet\mathbb
+% \DeclareTeXMLMathAlphabet\mathbbit
+\DeclareTeXMLMathAlphabet\mathfrak
+\DeclareTeXMLMathAlphabet\mathbffrak
 \DeclareTeXMLMathAlphabet\mathtt
 
 \DeclareTeXMLMathAccent\underbrace
