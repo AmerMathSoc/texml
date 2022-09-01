@@ -214,10 +214,6 @@ sub open_document {
 
     my $root_node = $dom->createElement($xml_root);
 
-    ##* TODO: Put this somewhere else
-    $root_node->setAttribute("xmlns:xlink" => "http://www.w3.org/1999/xlink");
-    $root_node->setAttribute("xmlns:html" => "http://www.w3.org/1999/xhtml");
-
     $dom->setDocumentElement($root_node);
 
     $self->set_current_element(new_xml_element($root_node));

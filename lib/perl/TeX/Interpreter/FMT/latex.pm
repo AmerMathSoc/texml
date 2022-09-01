@@ -529,7 +529,7 @@ sub do_set_list_style {
     if ($item_label =~ m{\A (.*?) (?:\\\@(arabic|roman|alph)) (.*) \z}ismx) {
         my ($prefix, $list_style, $suffix) = ($1, $2, $3);
 
-        $tex->set_xml_attribute('html:type', $LIST_STYLE_TYPE{$list_style});
+        # $tex->set_xml_attribute('html:type', $LIST_STYLE_TYPE{$list_style});
 
         if (nonempty($prefix) || nonempty($suffix)) {
             my $content = 'counter(counter)';
@@ -542,13 +542,13 @@ sub do_set_list_style {
             $content .= qq{ '$suffix'};
             }
 
-            $tex->set_xml_attribute('html:style' => qq{content: $content});
+            # $tex->set_xml_attribute('html:style' => qq{content: $content});
         }
     } else {
         if ($item_label eq "\x{2022}") {
-            $tex->set_xml_attribute('html:style', qq{list-style-type: disc});
+            # $tex->set_xml_attribute('html:style', qq{list-style-type: disc});
         } else {
-            $tex->set_xml_attribute('html:style', qq{list-style-type: '$item_label'});
+            # $tex->set_xml_attribute('html:style', qq{list-style-type: '$item_label'});
         }
     }
 
@@ -1562,7 +1562,7 @@ __DATA__
             \setXMLattribute{id}{\@currentXMLid}%
             \if@nmbrlist
                 \if@noitemarg
-                    \setXMLattribute{html:value}{\expandafter\the\csname c@\@listctr\endcsname}%
+                    % \setXMLattribute{html:value}{\expandafter\the\csname c@\@listctr\endcsname}%
                 \fi
             \fi
             \list@item@init

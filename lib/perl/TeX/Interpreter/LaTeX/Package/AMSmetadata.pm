@@ -781,9 +781,9 @@ sub add_custom_meta {
     my $parent = shift;
     my $gentag = shift;
 
-    my $custom = append_xml_element($parent, "custom-meta-group");
-
     if (nonempty(my $commby = $gentag->get_commby())) {
+        my $custom = append_xml_element($parent, "custom-meta-group");
+
         append_custom_meta($tex,
                            $custom,
                            "Communicated by",
