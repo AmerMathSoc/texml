@@ -41,8 +41,8 @@
 
 <xsl:output method="xml"
             encoding ="UTF-8"
-            doctype-public="-//NLM//DTD JATS (Z39.96) Journal Archiving and Interchange DTD with MathML3 v1.3d2 20201130//EN"
-            doctype-system="JATS-archivearticle1-3d2-mathml3.dtd"/>
+            doctype-public="-//AMS//DTD MODIFIED JATS (Z39.96) Journal Archiving and Interchange DTD with MathML3 v1.3d2 20201130//EN"
+            doctype-system="ams-jats-1-3d2.dtd"/>
 
 <!-- The first <sec> element in an <app-group> needs to be replaced by
   <app>.  It's easier to do that here than to further complicate \@sect. -->
