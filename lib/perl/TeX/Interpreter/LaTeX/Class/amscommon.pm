@@ -813,7 +813,7 @@ __DATA__
     \fi
 }
 
-\def\start@author@{%
+\def\clear@author{%
     \let\this@name\@empty
     \let\this@bio\@empty
     \let\this@address\@empty
@@ -821,6 +821,12 @@ __DATA__
     \let\this@email\@empty
     \let\this@urladdr\@empty
     \let\this@bio\@empty
+}
+
+\clear@author
+
+\def\start@author@{%
+    \clear@author
     \def\author@name{\def\this@name}%
     \def\address##1##2{\def\this@address{##2}}%
     \def\curaddress##1##2{\def\this@curaddress{##2}}%
