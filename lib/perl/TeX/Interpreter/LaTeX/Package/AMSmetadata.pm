@@ -563,10 +563,6 @@ sub add_history {
     my $parent = shift;
     my $gentag = shift;
 
-    if (nonempty(my $posted = $gentag->get_postdate())) {
-        append_date($tex, $parent, $posted, "pub", "electronic", "pub-date");
-    }
-
     my $history = append_xml_element($parent, "history");
 
     if (nonempty(my $received = $gentag->get_received())) {
@@ -909,7 +905,7 @@ sub append_journal_meta {
             $atts{"publication-format"} = $type;
         }
 
-        append_xml_element($title_group, "issn", $issn->get_value(), \%atts);
+        append_xml_element($meta, "issn", $issn->get_value(), \%atts);
     }
 
     my $publisher = append_xml_element($meta, "publisher");
@@ -1098,7 +1094,9 @@ sub append_article_meta {
 
     add_contributors($tex, $meta, $gentag);
 
-    add_history($tex, $meta, $gentag);
+    if (nonempty(my $posted = $gentag->get_postdate())) {
+        append_date($tex, $meta, $posted, "pub", "electronic", "pub-date");
+    }
 
     if (nonempty(my $volume = $gentag->get_volume())) {
         append_xml_element($meta, volume => $volume);
@@ -1119,6 +1117,8 @@ sub append_article_meta {
             append_xml_element($meta, 'page-range' => $ranges[0]);
         }
     }
+
+    add_history($tex, $meta, $gentag);
 
     add_permissions($tex, $meta, $gentag);
 
