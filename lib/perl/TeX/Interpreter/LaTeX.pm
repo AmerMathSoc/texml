@@ -254,7 +254,15 @@ sub write_out {
 
 ## do_filtered_input() intercepts files that might need special handling:
 ##
-##     Misc. graphics       : Convert to SVG
+##    Misc. graphics       : Convert to SVG
+##
+##    %FILTERED_OUT        : Alternatively, we could distribute our own
+##                           sanitized versions of these.
+
+my %FILTERED_OUT = (
+    'mathcolor.ltx' => 1,
+    'color.cfg'     => 1,
+);
 
 ## TODO: Move this into TeX::Interpreter::start_input().  Or just get rid of it?
 
@@ -263,6 +271,8 @@ sub do_filtered_input {
     my $token = shift;
 
     my $file_name = $tex->scan_file_name();
+
+    return if $FILTERED_OUT{$file_name};
 
     if ($file_name =~ m{\.(eps_tex|pstex_t) \z}smx) {
         # Inkscape (and others?) graphics wrappers

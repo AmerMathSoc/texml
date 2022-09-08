@@ -110,11 +110,9 @@ __DATA__
 
 \PassOptionsToPackage{rgb}{xcolor}
 
-\LoadRawMacros
+\def\Gin@driver{texml.def}
 
-\AtBeginDocument{%
-    \let\set@color\@gobble
-}
+\LoadRawMacros
 
 \DeclareRobustCommand\XC@raw@color{%
     \@ifnextchar[\@undeclaredcolor\@declaredcolor
