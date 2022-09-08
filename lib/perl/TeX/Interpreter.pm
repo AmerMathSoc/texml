@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.9.0';
+use version; our $VERSION = qv '1.9.1';
 
 use base qw(Exporter);
 
@@ -73,8 +73,6 @@ our @EXPORT;
 
 use Carp;
 
-use TeXML::CFG;
-
 use TeX::Class;
 
 use Fcntl qw(:seek);
@@ -94,7 +92,7 @@ use TeX::Constants qw(:all);
 
 use TeX::FMT::File;
 
-use TeX::KPSE qw(kpse_lookup kpse_reset_program_name);
+use TeX::KPSE qw(kpse_lookup);
 
 use TeX::Utils;
 use TeX::Node::Utils qw(nodes_to_string);
@@ -225,12 +223,6 @@ sub START {
     $tex->init_prim();
 
     $tex->set_encoding("T1");
-
-    my $CFG = TeXML::CFG->get_cfg();
-
-    if (nonempty(my $progname = $CFG->val(__PACKAGE__, 'engine'))) {
-        kpse_reset_program_name($progname);
-    }
 
     return;
 }
@@ -10694,7 +10686,7 @@ sub __list_primitives {
     push @primitives, qw(XeTeXmathcode);
 
     ## eTeX extensions
-    push @primitives, qw(ifcsname);
+    push @primitives, qw(ifcsname protected);
 
     return @primitives;
 }

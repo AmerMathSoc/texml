@@ -32,7 +32,7 @@ package TeX::KPSE;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.2.0';
+use version; our $VERSION = qv '1.3.0';
 
 use base qw(Exporter);
 
@@ -42,7 +42,12 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
 
 our @EXPORT = ( @{ $EXPORT_TAGS{all} } );
 
-my $KPSE_PROGRAM_NAME;
+use TeXML::CFG;
+
+my $CFG = TeXML::CFG->get_cfg();
+
+my $KPSEWHICH         = $CFG->val(__PACKAGE__, 'kpsewhich', 'kpsewhich');
+my $KPSE_PROGRAM_NAME = $CFG->val(__PACKAGE__, 'program_name', 'pdflatex');
 
 sub _nonempty( $ ) {
     my $string = shift;
@@ -54,17 +59,17 @@ sub kpse_lookup( $; $ ) {
     my $file_name   = shift;
     my $search_path = shift;
 
-    my $KPSEWHICH = qq{kpsewhich};
+    my $cmd = $KPSEWHICH;
 
     if (_nonempty($KPSE_PROGRAM_NAME)) {
-        $KPSEWHICH .= qq{ --progname='$KPSE_PROGRAM_NAME'};
+        $cmd .= qq{ --progname='$KPSE_PROGRAM_NAME'};
     }
 
     if (_nonempty($search_path)) {
-        $KPSEWHICH .= qq{ --path='$search_path'};
+        $cmd .= qq{ --path='$search_path'};
     }
 
-    chomp(my $path = qx{$KPSEWHICH '$file_name'});
+    chomp(my $path = qx{$cmd '$file_name'});
 
     return $path eq '' ? undef : $path;
 }
