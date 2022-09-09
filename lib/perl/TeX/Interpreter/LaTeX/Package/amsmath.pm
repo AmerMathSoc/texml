@@ -271,6 +271,9 @@ __DATA__
 
 \let\texml@tab@to@tag\@empty
 
+\newif\ifTeXMLeqntargets@
+\TeXMLeqntargets@false
+
 \def\make@display@tag{%
     \texml@tab@to@tag
     \if@eqnsw
@@ -283,16 +286,53 @@ __DATA__
         \fi
     \fi
     \global\tag@false
+\ifTeXMLeqntargets@\else
     \ifx\df@label\@empty\else
         \xdef\@currentXMLid{\df@label}%
         \string\cssId\string{\@currentXMLid\string}\string{\string}%
+    \fi
+\fi
+    \ifx\df@label\@empty\else
         \@xp\ltx@label\@xp{\df@label}%
         \global\let\df@label\@empty
     \fi
 }
 
-\def\tagform@#1{\string\tag{\hbox{#1}}}
-\def\maketag@@@#1{\string\tag*{\hbox{#1}}}
+\def\tagform@#1{%
+    \ifTeXMLeqntargets@
+        \ifx\df@label\@empty\else
+            \startXMLelement{target}%
+            \xdef\@currentXMLid{\df@label}%
+            \setXMLattribute{id}{\@currentXMLid}%
+            % \@xp\ltx@label\@xp{\df@label}%
+        \fi
+    \fi
+        \string\tag{\hbox{#1}}%
+    \ifTeXMLeqntargets@
+        \ifx\df@label\@empty\else
+            \endXMLelement{target}%
+        \fi
+        % \global\let\df@label\@empty
+    \fi
+}
+
+\def\maketag@@@#1{%
+    \ifTeXMLeqntargets@
+        \ifx\df@label\@empty\else
+            \startXMLelement{target}%
+            \xdef\@currentXMLid{\df@label}%
+            \setXMLattribute{id}{\@currentXMLid}%
+            % \@xp\ltx@label\@xp{\df@label}%
+        \fi
+    \fi
+        \string\tag*{\hbox{#1}}%
+    \ifTeXMLeqntargets@
+        \ifx\df@label\@empty\else
+            \endXMLelement{target}%
+        \fi
+        % \global\let\df@label\@empty
+    \fi
+}
 
 \DefineAMSTaggedEnvironment[\let\math@cr@@\math@cr@@gobble]{equation}\st@rredfalse
 \DefineAMSTaggedEnvironment[\let\math@cr@@\math@cr@@gobble]{equation*}\st@rredtrue
