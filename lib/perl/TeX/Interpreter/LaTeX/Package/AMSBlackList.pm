@@ -67,6 +67,7 @@ __DATA__
 \AMSBlackListPackage{lmodern}
 \AMSBlackListPackage{makeidx}
 \AMSBlackListPackage{mathalfa}
+\AMSBlackListPackage{morefloats}
 \AMSBlackListPackage{pict2e}
 \AMSBlackListPackage{pictexwd}
 \AMSBlackListPackage{pspicture}
