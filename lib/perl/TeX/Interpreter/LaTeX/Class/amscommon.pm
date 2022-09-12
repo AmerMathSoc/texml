@@ -1239,6 +1239,7 @@ __DATA__
 \let\captionindent\dimen@
 
 \def\jats@figure@element{fig}
+\def\jats@table@element{table-wrap}
 
 \RequirePackage{float}
 
