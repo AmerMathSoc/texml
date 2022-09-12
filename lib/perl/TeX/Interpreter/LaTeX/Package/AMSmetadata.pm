@@ -873,6 +873,91 @@ sub add_msc_categories {
     return;
 }
 
+sub add_msc_categories_2 {
+    my $tex = shift;
+
+    my $parent = shift;
+    my $gentag = shift;
+
+    my %mscs;
+
+    for my $msc ($gentag->get_mscs()) {
+        $mscs{ $msc->get_source() } = $msc;
+    }
+
+    if (%mscs) {
+        my $msc = $mscs{msn} || $mscs{author} || $mscs{unknown};
+
+        my $year = $msc->get_schema();
+
+        my $scheme = eval { PRD::MSC->new({ scheme => $year }) };
+
+        if (! defined $scheme) {
+            $tex->print_err("%% Unknown MSC scheme '$year'");
+
+            $tex->error();
+
+            return;
+        }
+
+        my $kwd_group = append_xml_element($parent, "kwd-group", "",
+                                           { vocab => "MSC $year",
+                                             'vocab-identifier' => "https://mathscinet.ams.org/msc/msc${year}.html" });
+
+        for my $key ($msc->get_primaries()) {
+            my $class = $scheme->get_class($key);
+
+            if (! defined $class) {
+                $tex->print_err("%% Unknown MSC class '$key'");
+
+                $tex->error();
+
+                next;
+            }
+
+            my $kwd = append_xml_element($kwd_group, "compound-kwd", "",
+                                         { 'content-type' => 'primary' });
+
+            append_xml_element($kwd, 'compound-kwd-part', $class->get_key(),
+                               { 'content-type' => 'code' });
+
+            if (nonempty(my $title = $class->get_title())) {
+                $title = $tex->convert_fragment($title);
+
+                append_xml_element($kwd, 'compound-kwd-part', $class->get_key(),
+                                   { 'content-type' => 'text' });
+            }
+        }
+
+        for my $key ($msc->get_secondaries()) {
+            my $class = $scheme->get_class($key);
+
+            if (! defined $class) {
+                $tex->print_err("%% Unknown MSC class '$key'");
+
+                $tex->error();
+
+                next;
+            }
+
+            my $kwd = append_xml_element($kwd_group, "compound-kwd", "",
+                                         { 'content-type' => 'secondary' });
+
+            append_xml_element($kwd, 'compound-kwd-part', $class->get_key(),
+                               { 'content-type' => 'code' });
+
+            if (nonempty(my $title = $class->get_title())) {
+                $title = $tex->convert_fragment($title);
+
+                append_xml_element($kwd, 'compound-kwd-part', $title,
+                                   { 'content-type' => 'text' });
+            }
+        }
+    }
+
+    return;
+}
+
 ######################################################################
 ##                                                                  ##
 ##                         JOURNAL METADATA                         ##
@@ -1131,6 +1216,8 @@ sub append_article_meta {
     copy_xml_node("article-meta/kwd-group", $old_front, $meta);
 
     add_keywords($tex, $meta, $gentag);
+
+    # add_msc_categories_2($tex, $meta, $gentag);
 
     add_funding_info($tex, $meta, $gentag);
 
