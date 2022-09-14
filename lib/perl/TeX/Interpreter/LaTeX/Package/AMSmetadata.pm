@@ -715,7 +715,8 @@ sub add_keywords {
     my $gentag = shift;
 
     if (my @keywords = $gentag->get_keywords()) {
-        my $kwd_group = append_xml_element($parent, "kwd-group");
+        my $kwd_group = append_xml_element($parent, "kwd-group", "",
+                                           { "group-type" => "author" });
 
         for my $keyword (@keywords) {
             append_xml_element($kwd_group,
