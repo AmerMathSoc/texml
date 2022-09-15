@@ -50,8 +50,18 @@ __DATA__
 
 \ProvidesPackage{diagbox}
 
-\newcommand{\diagbox}[3][]{%
+\newcommand\diagbox[3][]{%
+    \@ifnextchar\bgroup
+        {\diagbox@triple{#1}{#2}{#3}}%
+        {\diagbox@double{#1}{#2}{#3}}%
+}
+
+\newcommand{\diagbox@double}[3]{%
     \TeXMLCreateSVG{\diagbox[#1]{#2}{#3}}%
+}
+
+\newcommand{\diagbox@triple}[4]{%
+    \TeXMLCreateSVG{\diagbox[#1]{#2}{#3}{#4}}%
 }
 
 \endinput
