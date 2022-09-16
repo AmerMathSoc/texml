@@ -1238,13 +1238,12 @@ __DATA__
 \let\belowcaptionskip\skip@
 \let\captionindent\dimen@
 
-\def\jats@figure@element{fig}
-
 \RequirePackage{float}
 
 \newfloat{figure}{}{lof}
 \def\figurename{Figure}
 \floatname{figure}{\figurename}
+\def\jats@figure@element{fig}
 
 \SaveEnvironmentDefinition{figure}
 \SaveEnvironmentDefinition{figure*}
@@ -1252,6 +1251,7 @@ __DATA__
 \newfloat{table}{}{lot}
 \def\tablename{Table}
 \floatname{table}{\tablename}
+\def\jats@table@element{table-wrap}
 
 \SaveEnvironmentDefinition{table}
 \SaveEnvironmentDefinition{table*}

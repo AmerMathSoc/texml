@@ -1912,7 +1912,14 @@ __DATA__
     \def\@currentreftype{#1}%
     \def\@captype{#1}%
     \def\jats@graphics@element{graphic}
-    \startXMLelement{\jats@figure@element}%
+    \edef\JATS@float@wrapper{%
+        \@ifundefined{jats@#1@element}{%
+            \jats@figure@element
+        }{%
+            \@nameuse{jats@#1@element}%
+        }%
+    }%
+    \startXMLelement{\JATS@float@wrapper}%
     \setXMLattribute{specific-use}{#1}%
     \set@float@fps@attribute{#2}%
     \addXMLid
@@ -1922,7 +1929,7 @@ __DATA__
 \SaveMacroDefinition\@xfloat
 
 \def\end@float{%
-    \endXMLelement{\jats@figure@element}%
+    \endXMLelement{\JATS@float@wrapper}%
     \par
     \ifnum\@listdepth > 0
         \global\afterfigureinlist@true
