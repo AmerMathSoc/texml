@@ -797,85 +797,6 @@ sub add_msc_categories {
     my $parent = shift;
     my $gentag = shift;
 
-    my $custom = append_xml_element($parent, "ams-meta-group");
-
-    my %mscs;
-
-    for my $msc ($gentag->get_mscs()) {
-        $mscs{ $msc->get_source() } = $msc;
-    }
-
-    if (%mscs) {
-        my $msc = $mscs{msn} || $mscs{author} || $mscs{unknown};
-
-        my $year = $msc->get_schema();
-
-        my $scheme = eval { PRD::MSC->new({ scheme => $year }) };
-
-        if (! defined $scheme) {
-            $tex->print_err("%% Unknown MSC scheme '$year'");
-
-            $tex->error();
-
-            return;
-        }
-
-        my $msc_element = append_xml_element($custom, "msc", undef, { scheme => $year });
-
-        for my $key ($msc->get_primaries()) {
-            my $class = $scheme->get_class($key);
-
-            if (! defined $class) {
-                $tex->print_err("%% Unknown MSC class '$key'");
-
-                $tex->error();
-
-                next;
-            }
-
-            my $primary = append_xml_element($msc_element, "primary");
-
-            append_xml_element($primary, key => $class->get_key());
-
-            if (nonempty(my $title = $class->get_title())) {
-                $title = $tex->convert_fragment($title);
-
-                append_xml_element($primary, description => $title);
-            }
-        }
-
-        for my $key ($msc->get_secondaries()) {
-            my $class = $scheme->get_class($key);
-
-            if (! defined $class) {
-                $tex->print_err("%% Unknown MSC class '$key'");
-
-                $tex->error();
-
-                next;
-            }
-
-            my $secondary = append_xml_element($msc_element, "secondary");
-
-            append_xml_element($secondary, key => $class->get_key());
-
-            if (nonempty(my $title = $class->get_title())) {
-                $title = $tex->convert_fragment($title);
-
-                append_xml_element($secondary, description => $title);
-            }
-        }
-    }
-
-    return;
-}
-
-sub add_msc_categories_2 {
-    my $tex = shift;
-
-    my $parent = shift;
-    my $gentag = shift;
-
     my %mscs;
 
     for my $msc ($gentag->get_mscs()) {
@@ -921,7 +842,7 @@ sub add_msc_categories_2 {
             if (nonempty(my $title = $class->get_title())) {
                 $title = $tex->convert_fragment($title);
 
-                append_xml_element($kwd, 'compound-kwd-part', $class->get_key(),
+                append_xml_element($kwd, 'compound-kwd-part', $title,
                                    { 'content-type' => 'text' });
             }
         }
@@ -1218,13 +1139,11 @@ sub append_article_meta {
 
     add_keywords($tex, $meta, $gentag);
 
-    # add_msc_categories_2($tex, $meta, $gentag);
+    add_msc_categories($tex, $meta, $gentag);
 
     add_funding_info($tex, $meta, $gentag);
 
     add_custom_meta($tex, $meta, $gentag);
-
-    add_msc_categories($tex, $meta, $gentag);
 
     add_article_citation($tex, $meta, $gentag);
 
