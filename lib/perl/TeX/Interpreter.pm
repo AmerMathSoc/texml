@@ -10492,8 +10492,11 @@ sub extract_macro {
     my $flags       = shift;
     my $ref_cnt_ptr = shift;
 
-    my $macro = TeX::Primitive::Macro->new({ outer => $flags & MODIFIER_OUTER,
-                                             long  => $flags & MODIFIER_LONG });
+    my $macro = TeX::Primitive::Macro->new({
+        outer     => $flags & MODIFIER_OUTER,
+        long      => $flags & MODIFIER_LONG,
+        protected => $flags & MODIFIER_PROTECTED,
+                                           });
 
     my $params = $fmt->get_params();
     my $mem    = $fmt->get_mem();
@@ -10686,7 +10689,7 @@ sub __list_primitives {
     push @primitives, qw(XeTeXmathcode);
 
     ## eTeX extensions
-    push @primitives, qw(ifcsname protected);
+    push @primitives, qw(detokenize ifcsname unexpanded);
 
     return @primitives;
 }
@@ -10697,9 +10700,10 @@ my %DEFS = (def  => 0,
             xdef => MODIFIER_GLOBAL | MODIFIER_EXPAND,
     );
 
-my %PREFIXES = (long   => MODIFIER_LONG,
-                outer  => MODIFIER_OUTER,
-                global => MODIFIER_GLOBAL,
+my %PREFIXES = (long      => MODIFIER_LONG,
+                outer     => MODIFIER_OUTER,
+                global    => MODIFIER_GLOBAL,
+                protected => MODIFIER_PROTECTED,
     );
 
 sub init_prim {
@@ -11258,6 +11262,12 @@ sub group_trace {
     $tex->end_diagnostic(false);
 
     return;
+}
+
+sub scan_general_text {
+    my $tex = shift;
+
+    return $tex->scan_toks(false, false);
 }
 
 ######################################################################

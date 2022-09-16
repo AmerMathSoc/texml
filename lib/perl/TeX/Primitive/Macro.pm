@@ -55,8 +55,9 @@ use TeX::Class;
 my %parameter_text_of   :ATTR(:name<parameter_text>   :type<TeX::TokenList>);
 my %replacement_text_of :ATTR(:name<replacement_text> :type<TeX::TokenList>);
 
-my %is_long_of  :BOOLEAN(:name<long>  :default<0>);
-my %is_outer_of :BOOLEAN(:name<outer> :default<0>);
+my %is_long_of      :BOOLEAN(:name<long>      :default<0>);
+my %is_outer_of     :BOOLEAN(:name<outer>     :default<0>);
+my %is_protected_of :BOOLEAN(:name<protected> :default<0>);
 
 use overload q{==} => \&macro_equal;
 

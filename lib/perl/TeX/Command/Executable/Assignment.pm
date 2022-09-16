@@ -38,6 +38,7 @@ use base qw(TeX::Command::Prefixed Exporter);
 
 our %EXPORT_TAGS = ( modifiers => [ qw(MODIFIER_LONG   MODIFIER_OUTER
                                        MODIFIER_GLOBAL MODIFIER_EXPAND
+                                       MODIFIER_PROTECTED
                                     ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{modifiers} } );
@@ -49,7 +50,7 @@ use constant {
     MODIFIER_OUTER  => 2,
     MODIFIER_GLOBAL => 4,
     MODIFIER_EXPAND => 8,
-    # MODIFIER_PROTECTED => 16, # eTeX extension
+    MODIFIER_PROTECTED => 16, # eTeX extension
 };
 
 use TeX::Class;

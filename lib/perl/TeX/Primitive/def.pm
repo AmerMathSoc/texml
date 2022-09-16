@@ -32,8 +32,6 @@ package TeX::Primitive::def;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.7.2';
-
 use base qw(TeX::Command::Executable::Assignment);
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
@@ -87,10 +85,12 @@ sub execute {
     }
 
     my $macro = 
-        TeX::Primitive::Macro->new({ parameter_text   => $param_text,
-                                     replacement_text => $macro_text,
-                                     outer => $modifier & MODIFIER_OUTER,
-                                     long  => $modifier & MODIFIER_LONG,
+        TeX::Primitive::Macro->new({
+            parameter_text   => $param_text,
+            replacement_text => $macro_text,
+            outer     => $modifier & MODIFIER_OUTER,
+            long      => $modifier & MODIFIER_LONG,
+            protected => $modifier & MODIFIER_PROTECTED,
                                    });
 
     $tex->define($r_token, $macro, $modifier);

@@ -32,18 +32,34 @@ package TeX::Primitive::eTeX::detokenize;
 use strict;
 use warnings;
 
-use base qw(TeX::Command::Executable);
+use base qw(TeX::Command::Expandable);
 
 use TeX::Class;
 
-# sub execute {
-#     my $self = shift;
-# 
-#     my $tex     = shift;
-#     my $cur_tok = shift;
-# 
-#     return;
-# }
+use TeX::WEB2C qw(:selector_codes);
+
+sub expand {
+    my $self = shift;
+
+    my $tex     = shift;
+    my $cur_tok = shift;
+
+    my $token_list = $tex->scan_general_text();
+
+    my $selector = $tex->selector();
+
+    $tex->set_selector(new_string);
+
+    $tex->token_show($token_list);
+
+    $tex->set_selector($selector);
+
+    my $meaning = $tex->get_cur_str();
+
+    $tex->conv_toks($meaning);
+
+    return;
+}
 
 1;
 
