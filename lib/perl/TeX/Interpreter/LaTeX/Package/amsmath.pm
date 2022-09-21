@@ -272,7 +272,7 @@ __DATA__
 \let\texml@tab@to@tag\@empty
 
 \newif\ifTeXMLeqntargets@
-\TeXMLeqntargets@false
+\TeXMLeqntargets@true
 
 \def\make@display@tag{%
     \texml@tab@to@tag
