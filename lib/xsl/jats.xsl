@@ -44,6 +44,12 @@
             doctype-public="-//AMS TEXML//DTD MODIFIED JATS (Z39.96) Journal Archiving and Interchange DTD with MathML3 v1.3d2 20201130//EN"
             doctype-system="texml-jats-1-3d2.dtd"/>
 
+<xsl:template match="article">
+    <article xmlns:xlink="http://www.w3.org/1999/xlink">
+        <xsl:apply-templates select="@*|node()"/>
+    </article>
+</xsl:template>
+
 <!-- The first <sec> element in an <app-group> needs to be replaced by
   <app>.  It's easier to do that here than to further complicate \@sect. -->
 
