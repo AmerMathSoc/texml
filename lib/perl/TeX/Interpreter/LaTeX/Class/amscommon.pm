@@ -758,6 +758,12 @@ __DATA__
                 \AMS@PII
             \endXMLelement{article-id}\par
         \fi
+        \ifx\AMS@manid\@empty\else
+            \startXMLelement{article-id}
+            \setXMLattribute{pub-id-type}{manuscript}
+                \AMS@manid
+            \endXMLelement{article-id}\par
+        \fi
         \ifx\@noti@subject@group\@empty\else
             \startXMLelement{article-categories}
                 \startXMLelement{subj-group}
@@ -1482,8 +1488,6 @@ __DATA__
 
 \newif\if@numbered
 
-\let\deferred@section@command\@empty
-
 \def\deferSectionCommand#1{%
     \expandafter\let\csname orig_\string#1\endcsname#1%
     \def#1{\maybe@st@rred{\@deferSectionCommand#1}}%
@@ -1508,6 +1512,9 @@ __DATA__
 \def\XXX@authorbio#1{\thisxmlpartag{bio}#1\par}
 
 \newenvironment{sectionWithMetadata}{%
+    \let\deferred@section@command\@empty
+    \let\deferred@section@counter\@empty
+    \let\deferred@section@title\@empty
     \let\AMS@authors\@empty
     \deferSectionCommand\part
     \deferSectionCommand\chapter
@@ -1530,7 +1537,9 @@ __DATA__
     \fi
     \endXMLelement{sec-meta}\par
     \if@numbered
-        \refstepcounter{\deferred@section@counter}%
+        \ifx\deferred@section@counter\@empty\else
+            \refstepcounter{\deferred@section@counter}%
+        \fi
         \let\@templabel\@empty
         \@ifundefined{\deferred@section@counter name}{}{%
             \protected@edef\@templabel{\csname \deferred@section@counter name\endcsname}%
@@ -1541,7 +1550,9 @@ __DATA__
         \protected@edef\@templabel{\@templabel\@nameuse{the\deferred@section@counter}}
         \thisxmlpartag{label}\@templabel\par
     \fi
-    \thisxmlpartag{title}\deferred@section@title\par
+    \ifx\deferred@section@title\@empty\else
+        \thisxmlpartag{title}\deferred@section@title\par
+    \fi
     \global\everypar{}%
 }
 
