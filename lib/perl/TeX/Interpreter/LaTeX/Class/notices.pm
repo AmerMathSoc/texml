@@ -73,6 +73,20 @@ __DATA__
 
 \RequirePackage{hyperref}
 
+\def\DOI#1{\gdef\AMS@DOI{#1}\extract@manid@from@doi}
+
+\def\extract@manid@from@doi{%
+    \ifx\AMS@DOI\@empty\else
+        \@xp\parse@doi@for@manid \AMS@DOI 10.1090/noti0 \@nil
+    \fi
+}
+
+\def\parse@doi@for@manid 10.1090/noti#1 #2\@nil{%
+    \ifnum\number0#1 = 0\else
+        \gdef\AMS@manid{#1}%
+    \fi
+}
+
 \def\category{\gdef\@noti@category}
 
 \newcommand{\titlepic}{\def\@titlepic}
