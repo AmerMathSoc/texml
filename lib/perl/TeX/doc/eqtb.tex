@@ -1,94 +1,268 @@
 \documentclass{amsart}
 
+\setcounter{secnumdepth}{-1}
+
 \usepackage{web2c}
+
+\usepackage{fullpage}
 
 \usepackage{longtable}
 
+\renewcommand{\T}{\relax\ifmmode\expandafter\mathtt\else\expandafter\texttt\fi}
+
+\let\equivalent\equiv
+
+\newcommand{\eqtb}[1]{\ensuremath{\T{eqtb}[#1]}}
+\newcommand{\eqtype}[1]{\T{eq_type}[#1]}
+\newcommand{\eqlevel}[1]{\T{eq_level}[#1]}
+\renewcommand{\equiv}[1]{\T{equiv}[#1]}
+
+\newcommand{\id}[1]{\T{id_lookup}(\text{\texttt{"#1"}})}
+
+\def\<#1>{$\langle\text{#1}\rangle$}
+
+\newenvironment{region}[1][]{%
+%    \LTleft0pt
+    \longtable{|l|>{\ttfamily}l|l}
+\caption{#1}\\
+    \1
+    \endhead
+    \1
+    \endfoot
+Region 0 & frozen_control_sequence = frozen_protection \kill
+}{%
+    \endlongtable
+}
+
+\title{\T{eqtb}}
+
 \begin{document}
 
-Quoting \texttt{tex.web} (part 17, \S221)
+\maketitle
+
+Quoting \T{tex.web} (part 17, \S\S220--221)
 \begin{quotation}
 
-Each entry in \texttt{eqtb} is a \texttt{memory_word}. Most of these
-words are of type \texttt{two_halves}, and subdivided into three
-fields:
+The biggest and most important such table is called \T{eqtb}.  It
+holds the current ``equivalents'' of things; i.e., it explains what
+things mean or what their current values are, for all quantities that
+are subject to the nesting structure provided by TeX's grouping
+mechanism.  There are six parts to \T{eqtb}:
 \begin{enumerate}
-\item The \texttt{eq_level} (a quarterword) is the level of grouping
-  at which this equivalent was defined. If the level is
-  \texttt{level_zero}, the equivalent has never been defined;
-  \texttt{level_one} refers to the outer level (outside of all
-  groups), and this level is also used for global definitions that
-  never go away. Higher levels are for equivalents that will disappear
-  at the end of their group.
+\item \T{eqtb[active_base..($\T{hash_base} - 1$)]} holds the current
+equivalents of single-character control sequences.
 
-\item The \texttt{eq_type} (another quarterword) speci<fies what kind
-  of entry this is. There are many types, since each \TeX\ primitive
-  like \cs{hbox}, \cs{def}, etc., has its own special
-  code. The list of command codes above includes all possible settings
-  of the \texttt{eq_type} field.
+\item
+\T{eqtb[hash_base..($\T{glue_base} - 1$)]} holds the current equivalents of
+multiletter control sequences.
 
-\item The \texttt{equiv} (a halfword) is the current equivalent value.
-  This may be a font number, a pointer into \texttt{mem}, or a variety
-  of other things.
+\item
+\T{eqtb[glue_base..($\T{local_base} - 1$)]} holds the current equivalents of
+glue parameters like the current baselineskip.
+
+\item
+\T{eqtb[local_base..($\T{int_base} - 1$)]} holds the current equivalents of
+local halfword quantities like the current box registers, the current
+``catcodes,'' the current font, and a pointer to the current paragraph
+shape.
+
+\item
+\T{eqtb[int_base..($\T{dimen_base} - 1$)]} holds the current equivalents of
+fullword integer parameters like the current hyphenation penalty.
+
+\item
+\T{eqtb[dimen_base..eqtb_size]} holds the current equivalents of
+fullword dimension parameters like the current hsize or amount of
+hanging indentation.
+\end{enumerate}
+
+Note that, for example, the current amount of baselineskip glue is
+determined by the setting of a particular location in region~3 of
+eqtb, while the current meaning of the control sequence
+`\cs{baselineskip}' (which might have been changed by \cs{def} or
+\cs{let}) appears in region~2.
+
+Each entry in \T{eqtb} is a \T{memory_word}.  Most of these words are
+of type \T{two_halves}, and subdivided into three fields:
+\begin{enumerate}
+\item The \T{eq_level} (a quarterword) is the level of grouping at
+  which this equivalent was defined. If the level is \T{level_zero},
+  the equivalent has never been defined; \T{level_one} refers to the
+  outer level (outside of all groups), and this level is also used for
+  global definitions that never go away. Higher levels are for
+  equivalents that will disappear at the end of their group.
+
+\item The \T{eq_type} (another quarterword) specifies what kind of
+  entry this is. There are many types, since each \TeX\ primitive like
+  \cs{hbox}, \cs{def}, etc., has its own special code. The list of
+  command codes above includes all possible settings of the
+  \T{eq_type} field.
+
+\item The \T{equiv} (a halfword) is the current equivalent value.
+  This may be a font number, a pointer into \T{mem}, or a variety of
+  other things.
 
 \end{enumerate}
 \end{quotation}
 
-\newnode{two_halves}{}{}{}
+\begin{verbatim}
+        eqtb:      array[active_base..eqtb_size] of memory_word;
+\end{verbatim}
 
-\begin{tabular}{N|Q|Q|Q|Q|l}
-\CLINE
-    & \X{eq_type}
-    & \X{eq_level}
-    & \H{\X{equiv}}\\
-\CLINE
-\end{tabular}
+The meaning of the \T{equiv} fields depends on the value of the
+\T{eq_type} field and will be explained below.
+
+\clearpage
+
+\section{eqtb (XeTeX 3.14159265-2.6-0.999992)}
+
+\subsection{Regions 1 and 2}
+
+Equivalents for active characters and control sequences.
+
+Region~1 has two subregions:
+\begin{enumerate}
+    \item $\T{active_base}\dots\T{single_base} - 1$: Active
+      characters.  The meaning of the character with Unicode code
+      point~$c$ is stored in \eqtb{\T{active_base} + c}.  For
+      example, since the code point for \T{\textasciitilde}
+      is~126, the meaning of the active
+      character~\T{\textasciitilde} is stored in
+      $\eqtb{\T{active_base} + 126} = \eqtb{127}$.
+
+    \item $\T{single_base}\dots\T{null_cs} - 1$:
+      Single-character control sequences; The meaning of \cs{~} is
+      stored in $\eqtb{\T{single_base} + 126} = \eqtb{1\,114\,239}$.
+\end{enumerate}
+Region~1 ends with the special value \T{null_cs}, which holds the
+meaning of the empty control sequence
+\cs{csname}\cs{endcsname}.\footnote{Yes, you can define that.
+  Really.}
+
+Region 2 has 3 subregions:
+\begin{enumerate}
+
+\item $\T{hash_base}\dots\T{hash_base} + \T{hash_size} - 1$: the
+  \emph{hash table}, which contains equivalents of multi-character
+  control sequences.  If $s$ is a string with
+  $\operatorname{length}(s) > 1$, the meaning of~\T{\bslchar}$s$ will
+  be stored in \eqtb{\T{id_lookup}(s)}.\footnote{Note that since this
+    is a hash table, the exact location will depend on what other
+    control names have have been defined previously.}  This includes
+  primitives as well as definitions made via \cs{def}, \cs{chardef},
+  \cs{let}, etc.
+
+\item $\T{frozen_control_sequence} \dots \T{frozen_primitive}$:
+  Immutable pointers to primitives that the \TeX\ engine needs direct
+  access to.  For example, when \TeX\ starts up, we have
+  $\eqtb{\T{frozen_cr}} = \eqtb{\id{cr}}$, but if the user redefines
+  \cs{cr} (this is \emph{not} recommended), subsequent uses of \cs{cr}
+  will refer to the user's definition, but the \TeX\ engine can still
+  synthesize tokens denoting the primitive meaning of \cs{cr} by using
+  the value of \eqtb{\T{frozen_cr}}.  Also included are a couple of
+  special ``hidden'' primitives like \T{frozen_endv} and \T{end_write}
+  that can't be accessed from user code.
+
+\item $\T{font_id_base} \dots \T{font_id_base} + 256$:
+  Frozen equivalents of user-defined fonts.
+
+\end{enumerate}
+Region~2 ends with the \T{undefined_control_sequence}, which
+denotes a permanently undefined control sequence.  (That is,
+$\eqtype{\T{undefined_control_sequence}} =
+\T{undefined_cs}$.)
+
+When processing a token, \TeX's internal global variable \T{cur_cs}
+will be 0 for non--control-sequence tokens and a pointer to region 1
+or~2 for control sequences.
+
+Depending on the command type stored in \T{eq_type} (which will be the
+value of \T{cur_cmd} when \TeX\ is processing a token), \T{equiv} (aka
+\T{cur_chr}) will be either a ``command modifier'' or a pointer to
+related information.
 
 For example, after
 \begin{verbatim}
     primitive("hbox", make_box, vtop_code + hmode);
 \end{verbatim}
-\texttt{cur_val} will be the location of the string ``hbox'' in the
-hash table (i.e., between \texttt{hash_base} and \texttt{hash_base} +
-\texttt{hash_size}) and
+\T{cur_val} will be set equal to $\id{hbox}$ and
 \begin{verbatim}
     eq_level(cur_val) = level_one
     eq_type(cur_val)  = make_box
     equiv(cur_val)    = vtop_code + hmode
 \end{verbatim}
-And after
+so when \TeX\ is processing the token \cs{hbox}, we will have
+\begin{verbatim}
+    cur_cs  = id_lookup("hbox")
+    cur_cmd = make_box
+    cur_chr = vtop_code + hmode
+\end{verbatim}
+
+Macro definitions create entries in region~1 with \T{eq_type} equal to
+one of \T{call}, \T{long_call}, \T{outer_call} or
+\T{long_outher_call}.  Assuming $\cs{globaldefs} = 0$ and $\T{p} =
+\id{foo}$, after
 \begin{verbatim}
     \def\foo{...}
 \end{verbatim}
-assuming \cs{globaldefs} = 0, we have
+we will have
 \begin{verbatim}
-    p           = id_lookup("foo")
     eq_level(p) = cur_level
     eq_type(p)  = call
     equiv(p)    = def_ref
 \end{verbatim}
+where \T{def_ref} is a pointer to a token list, stored in \T{mem},
+that will include both the parameter text and the replacement text.
+
+A font definition
+\begin{verbatim}
+    \font\bar = ...
+\end{verbatim}
+results in (where $\T{u} = \id{bar}$)
+\begin{verbatim}
+    eq_level(u) = cur_level;
+    eq_type(u)  = set_font;
+    equiv(u)    = f;
+
+    eqtb[font_id_base + f] := eqtb[u].
+\end{verbatim}
+where \T{f} is an \T{internal_font_number}, i.e., an index into the
+various font-related arrays (\T{char_base}, etc.).
+
+Incidentally, a character token is represented by
+\begin{verbatim}
+    cur_cs  = 0;
+    cur_cmd = left_brace ... active_char;
+    chr_chr = Unicode code point.
+\end{verbatim}
+For example the letter 'A' would be represented internally as
+\begin{verbatim}
+    cur_cs  = 0;
+    cur_cmd = 11 (letter);
+    chr_chr = 65.
+\end{verbatim}
+The active character \verb~~~ would be represented internally as
+\begin{verbatim}
+    cur_cs  = 0;
+    cur_cmd = 13 (active);
+    chr_chr = 65.
+\end{verbatim}
 
 \clearpage
 
-\newnode{eqtb (XeTeX 3.14159265-2.6-0.999992)}{}{}{}
-
-\begin{longtable}{|l|>{\ttfamily}l|l}
-\1
-\endhead
-\1
-\endfoot
-& & 0\\ \1
-
+\begin{region}[Regions 1 and 2]
 Region 1
-& active_base & 1\\ \2
-& \VCa{$\mathtt{number_usvs} - 1$}\\ \2
-& single_base \\ \2
-& \VCa{$\mathtt{number_usvs} - 1$}\\ \2
+& "0000 & \T{active_base}\\ \2
+& \VC \\ \2
+& "10FFFF\\ \2
+& \cs{"0000} & \T{single_base} \\ \2
+& \VC \\ \2
+& \cs{"10FFFF}\\ \2
 & null_cs      \\ \1
 
 Region 2
-& hash_base \\ \2
-& \VCa{$\mathtt{hash_size} - 1$}\\ \2
+& hash_base & \T{hash_base} \\ \2
+& \VCa{$\T{hash_size} - 1$}\\ \2
 & frozen_control_sequence = frozen_protection \\ \2
 & frozen_cr             \\ \2
 & frozen_end_group      \\ \2
@@ -99,16 +273,40 @@ Region 2
 & frozen_relax          \\ \2
 & end_write             \\ \2
 & frozen_dont_expand    \\ \2
-& frozen_null_font = font_id_base \hfill (\cs{fnt}0)\\ \2
+& frozen_null_font     \hfill (\cs{fnt}0) & \T{font_id_base}\\ \2
 & frozen_primitive     \hfill (\cs{fnt}1) \\ \2
-& prim_eqtb_base        \hfill (\cs{fnt}2)\\ \2
+& prim_eqtb_base       \hfill (\cs{fnt}2) & \T{prim_eqtb_base}\\ \2
 & \cs{fnt}3 \\ \2
 & \VC \\ \2
 & \cs{fnt}256 \\ \2
 & undefined_control_sequence \\ \1
+\end{region}
 
+\clearpage
+
+\subsection{Region 3}
+
+Region~3 contains \<glue parameter>s, \<muglue parameters> and glue
+and muglue registers.  
+
+It consists of three subregions:
+\begin{enumerate}
+    \item $\T{glue_base} \dots \T{skip_base} - 1$: \<glue
+      parameter>s and \<muglue parameters>.
+
+    \item $\T{skip_base} \dots \T{skip_base} + 255$:
+      \cs{skip} registers.
+
+    \item $\T{mu_skip_base} \dots \T{mu_skip_base} + 255$:
+      \cs{muskip} registers.
+\end{enumerate}
+
+For these, the \T{equiv} field is a pointer to a glue
+specification in the \T{mem} array.
+
+\begin{region}[Region 3]
 Region 3
-& \cs{lineskip} & \texttt{glue_base}\\ \2
+& \cs{lineskip}     & \T{glue_base}\\ \2
 & \cs{baselineskip} \\ \2
 & \cs{parskip} \\ \2
 & \cs{abovedisplayskip} \\ \2
@@ -127,19 +325,46 @@ Region 3
 & \cs{thinmuskip} \\ \2
 & \cs{medmuskip} \\ \2
 & \cs{thickmuskip} \\ \2
-& \cs{skip}0 & $\mathtt{skip_base}$ \\ \2
+& \cs{skip}0        & $\T{skip_base}$ \\ \2
 & \cs{skip}1\\ \2
 & \VC\\ \2
 & \cs{skip}255\\ \2
-& \cs{muskip}0 & $\mathtt{mu_skip_base}$ \\ \2
+& \cs{muskip}0      & $\T{mu_skip_base}$ \\ \2
 & \cs{muskip}1 \\ \2
 & \VC \\ \2
 & \cs{muskip}255 \\ \2
 \1
+\end{region}
 
+\clearpage
+
+\subsection{Region 4}
+
+``Halfword'' quantities:
+\begin{enumerate}
+
+\item \cs{parshape}, \cs{interlinepenalties}, \cs{clubpenalties},
+  \cs{widowpenalties}, \cs{displaywidowpenalties}: \T{equiv} is a
+  pointer to \T{mem}, which is the start of an array of integers
+  (the first word of which is nonsense?).
+
+\item  \<token parameter>s and token registers: \T{equiv} is a
+  pointer to a token list in \T{mem}?
+
+\item box registers: \T{equiv} is a pointer to a box (node list)
+  in \T{mem}
+
+\item fonts: \T{equiv} is a pointer into \T{font_id_base}?
+
+\item \cs{catcode}s. \cs{lccode}s, \cs{uccode}s, \cs{sfcode}s, and
+  \cs{mathcode}s: \T{equiv} is the code (a halfword integer).
+
+\end{enumerate}
+
+\begin{region}[Region 4]
 Region 4
-& \cs{parshape}      & \texttt{local_base} \\ \2
-& \cs{output}   \\ \2
+& \cs{parshape}             & \T{local_base} \\ \2
+& \cs{output}          \\ \2
 & \cs{everypar}        \\ \2
 & \cs{everymath}       \\ \2
 & \cs{everydisplay}    \\ \2
@@ -148,37 +373,74 @@ Region 4
 & \cs{everyjob}        \\ \2
 & \cs{everycr}         \\ \2
 & \cs{errhelp}         \\ \2
-& \cs{everyeof}  & \texttt{etex_toks_base} \\ \2
+& \cs{everyeof}             & \T{etex_toks_base} \\ \2
 & \cs{XeTeXinterchartoks} \\ \2
-& \cs{toks}0 & \texttt{toks_base} \\ \2
+& \cs{toks}0                & \T{toks_base} \\ \2
 & \cs{toks1}\\ \2
 & \VC\\ \2
 & \cs{toks255}\\ \2
-& \cs{interlinepenalties} & \texttt{etex_pen_base} \\ \2
+& \cs{interlinepenalties}   & \T{etex_pen_base} \\ \2
 & \cs{clubpenalties}   \\ \2
 & \cs{widowpenalties}  \\ \2
 & \cs{displaywidowpenalties} \\ \2
-& \cs{box}0 & \texttt{box_base} \\ \2
+& \cs{box}0                 & \T{box_base} \\ \2
 & \cs{box}1 \\ \2
 & \VC \\ \2
 & \cs{box}255 \\ \2
 & cur_font  \\ \2
-& math_font_base \\ \2
-& \VCa{$3 * 256 - 1$} \\ \2
-& cat_code_base\\ \2
-& \VCa{$\mathtt{number_usvs} - 1$}\\ \2
-& lc_code_base \\ \2
-& \VCa{$\mathtt{number_usvs} - 1$}\\ \2
-& uc_code_base \\ \2
-& \VCa{$\mathtt{number_usvs} - 1$}\\ \2
-& sf_code_base \\ \2
-& \VCa{$\mathtt{number_usvs} - 1$}\\ \2
-& math_code_base \\ \2
-& \VCa{$\mathtt{number_usvs} - 1$}\\ \2
+& \cs{textfont}0            & \T{math_font_base} \\ \2
+& \VC \\ \2
+& \cs{texfont}255   \\ \2
+& \cs{scriptfont}0    \\ \2
+& \VC \\ \2
+& \cs{scriptfont}255 \\ \2
+& \cs{scriptscriptfont}0    \\ \2
+& \VC \\ \2
+& \cs{scriptscriptfont}255 \\ \2
+& \cs{catcode}0             & \T{cat_code_base} \\ \2
+& \VC                   \\ \2
+& \cs{catcode}"10FFFF   \\ \2
+& \cs{lccode}0              & \T{lc_code_base} \\ \2
+& \VC                   \\ \2
+& \cs{lccode}"10FFFF   \\ \2
+& \cs{uccode}0              & \T{uc_code_base} \\ \2
+& \VC   \\ \2
+& \cs{uccode}"10FFFF   \\ \2
+& \cs{sfcode}              & \T{sf_code_base} \\ \2
+& \VC                   \\ \2
+& \cs{sfcode}"10FFFF    \\ \2
+& \cs{mathcode}0            & \T{math_code_base} \\ \2
+& \VC                   \\ \2
+& \cs{mathcode}"10FFFF  \\ \2
 \1
+\end{region}
 
+\clearpage
+
+\subsection{Regions 5 and~6}
+
+Words in regions 5 and~6 contain a single integer (or scaled integer)
+field.
+\begin{table}[H]
+\begin{tabular}{N|Q|Q|Q|Q|l}
+\CLINE
+    & \W{\texttt{int} \rlap{($\equivalent\,\mathtt{sc}$)}}
+    & \texttt{integer}\\\CLINE
+\CLINE
+\end{tabular}
+\end{table}
+\unskip
+and the the \T{eq_level} is stored in an auxiliary array:
+\begin{verbatim}
+        xeq_level: array[int_base..eqtb_size] of quarterword;
+\end{verbatim}
+
+Region~5 contains \<integer parameter>s, \cs{count} registers, and
+\cs{delcode}s.
+
+\begin{region}[Region 5]
 Region 5
-& \cs{pretolerance} & \texttt{int_base} \\ \2
+& \cs{pretolerance}         & \T{int_base} \\ \2
 & \cs{tolerance} \\ \2
 & \cs{linepenalty} \\ \2
 & \cs{hyphenpenalty} \\ \2
@@ -233,7 +495,7 @@ Region 5
 & \cs{righthyphenmin} \\ \2
 & \cs{holdinginserts} \\ \2
 & \cs{errorcontextlines} \\ \2
-& \cs{tracingassigns} & \texttt{etex_int_base} \\ \2
+& \cs{tracingassigns}       & \T{etex_int_base} \\ \2
 & \cs{tracinggroups} \\ \2
 & \cs{tracingifs} \\ \2
 & \cs{tracingscantokens} \\ \2
@@ -247,16 +509,20 @@ Region 5
 & \cs{XeTeXlinebreakpenalty} \\ \2
 & \cs{XeTeXprotrudechars} \\ \2
 
-& \cs{count}0 & \texttt{count_base}\\ \2
+& \cs{count}0               & \T{count_base}\\ \2
 & \cs{count}1 \\ \2
 & \VC \\ \2
 & \cs{count}255 \\ \2
-& del_code_base \\ \2
-& \VCa{$\mathtt{number_usvs} - 1$}\\ \2
+& del_code_base             & \T{del_code_base} \\ \2
+& \VCa{$\T{number_usvs} - 1$}\\ \2
 \1
+\end{region}
 
+Region~6 contains \<dimen parameter>s and \cs{dimen} registers.
+
+\begin{region}[Region 6]
 Region 6
-& \cs{parident}    & \texttt{dimen_base} \\ \2
+& \cs{parident}             & \T{dimen_base} \\ \2
 & \cs{mathsurround} \\ \2
 & \cs{lineskiplimit} \\ \2
 & \cs{hsize} \\ \2
@@ -279,11 +545,11 @@ Region 6
 & \cs{emergencystretch} \\ \2
 & \cs{pdfpagewidth} \\ \2
 & \cs{pdfpageheight} \\ \2
-& \cs{dimen}0   & \texttt{scaled_base} \\ \2
+& \cs{dimen}0               & \T{scaled_base} \\ \2
 & \cs{dimen}1 \\ \2
 & \VC \\ \2
 & \cs{dimen}255 \\ \2
 & eqtb_size \\ \1
-\end{longtable}
+\end{region}
 
 \end{document}
