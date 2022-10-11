@@ -110,6 +110,8 @@ __DATA__
 
 \newcommand{\href}[3][]{%
     \begingroup
+        % Redefining ~ will have to do until we can implement catcode hacking.
+        \def~{\string~}%
         \setbox\@tempboxa\hbox{#2}%
         \TeXML@NormalizeURL\@tempboxa
         \leavevmode
