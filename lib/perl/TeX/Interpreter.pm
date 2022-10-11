@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.10.0';
+use version; our $VERSION = qv '1.10.1';
 
 use base qw(Exporter);
 
@@ -3454,23 +3454,29 @@ sub push_input {
 sub pop_input {
     my $tex = shift;
 
-    my $saved_state = $tex->pop_input_stack();
+    my $prev_state = $tex->pop_input_stack();
 
-    $tex->set_lexer_state($saved_state->lexer_state());
+    # Now restore the previous state:
 
-    $tex->delete_chars(); # should already be empty, but just in case
-    $tex->push_char($saved_state->get_chars());
+    my $prev_lexer_state = $prev_state->lexer_state();
 
-    $tex->set_input_line_no($saved_state->line_no());
-    $tex->set_input_char_no($saved_state->char_no());
-    $tex->set_file_name($saved_state->get_file_name());
-    $tex->set_cur_file($saved_state->get_file_handle());
-    $tex->set_file_type($saved_state->file_type());
-    $tex->set_eof_hook($saved_state->get_eof_hook());
+    $tex->set_lexer_state($prev_lexer_state);
 
-    $tex->set_token_list($saved_state->get_token_list());
+    # if ($prev_lexer_state == token_list) {
+        $tex->set_token_list($prev_state->get_token_list());
+        $tex->set_token_type($prev_state->token_type());
+    # } else {
+        $tex->delete_chars(); # should already be empty, but just in case
 
-    $tex->set_token_type($saved_state->token_type());
+        $tex->push_char($prev_state->get_chars());
+
+        $tex->set_input_line_no($prev_state->line_no());
+        $tex->set_input_char_no($prev_state->char_no());
+        $tex->set_file_name($prev_state->get_file_name());
+        $tex->set_cur_file($prev_state->get_file_handle());
+        $tex->set_file_type($prev_state->file_type());
+        $tex->set_eof_hook($prev_state->get_eof_hook());
+    # }
 
     return;
 }
@@ -3479,6 +3485,8 @@ sub back_list {
     my $tex = shift;
 
     my $token_list = shift;
+
+    ## TBD: This shouldn't be necessary!  Need to review align_state.
 
     for my $token ($token_list->get_tokens()) {
         if ($token == CATCODE_BEGIN_GROUP) {
@@ -3489,6 +3497,14 @@ sub back_list {
     }
 
     return $tex->begin_token_list($token_list, backed_up);
+}
+
+sub ins_list {
+    my $tex = shift;
+
+    my $token_list = shift;
+
+    return $tex->begin_token_list($token_list, inserted);
 }
 
 sub back_input {
@@ -3519,14 +3535,6 @@ sub back_input {
     $tex->set_token_type(backed_up);
 
     return;
-}
-
-sub ins_list {
-    my $tex = shift;
-
-    my $token_list = shift;
-
-    return $tex->begin_token_list($token_list, inserted);
 }
 
 ## See %TeX::WEB2C::TOKEN_TYPES
@@ -4333,7 +4341,7 @@ sub get_x_token {
 
         return unless defined $cur_tok;
 
-        ## TBD: this implementation of \noexpand is broken
+        ## TBD: this implementation of \noexpand is broken...or is it?
 
         if (ident($cur_tok) == ident(FROZEN_DONT_EXPAND_TOKEN)) {
             return $tex->get_next();
@@ -5941,7 +5949,7 @@ sub scan_toks {
             while (1) {
                 $cur_tok = $tex->get_next();
 
-                ## ????
+               ## ????
                 if (ident($cur_tok) == ident(FROZEN_DONT_EXPAND_TOKEN)) {
                     $cur_tok = $tex->get_next();
 
