@@ -77,11 +77,11 @@ __DATA__
 
 \def\extract@manid@from@doi{%
     \ifx\AMS@DOI\@empty\else
-        \@xp\parse@doi@for@manid \AMS@DOI 10.1090/noti0 \@nil
+        \@xp\parse@doi@for@manid \AMS@DOI\space 10.1090/noti0\space \@nil
     \fi
 }
 
-\def\parse@doi@for@manid 10.1090/noti#1 #2\@nil{%
+\def\parse@doi@for@manid 10.1090/noti#1\space #2\@nil{%
     \ifnum\number0#1 = 0\else
         \gdef\AMS@manid{#1}%
     \fi
