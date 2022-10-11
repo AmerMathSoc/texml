@@ -70,7 +70,7 @@ __DATA__
     \startXMLelement{pre}%
 %    \setXMLattribute{specific-use}{#1}%
     \let\do\@makeother \dospecials
-    \suppressligatures=1
+    \noligs=1
     \obeylines
 }
 

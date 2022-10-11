@@ -1356,7 +1356,7 @@ __DATA__
     \everypar{}%
     \startXMLelement{pre}%
     \let\do\@makeother \dospecials
-    \suppressligatures=1
+    \noligs=1
     \obeylines
 }
 

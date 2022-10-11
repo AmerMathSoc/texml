@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.9.2';
+use version; our $VERSION = qv '1.10.0';
 
 use base qw(Exporter);
 
@@ -2266,9 +2266,11 @@ sub __list_integer_parameters {
 
     push @params, qw(XeTeXversion);
 
+    push @params, qw(noligs); # LuaTeX
+
     # TeXML extensions
 
-    push @params, qw(tracing_input suppressligatures
+    push @params, qw(tracing_input
                      TeXML_debug_output TeXML_SVG_mag);
 
     return @params;
@@ -8627,7 +8629,7 @@ sub maybe_do_ligature( $ ) {
 
     my $char = $token->get_char();
 
-    return $char if $tex->suppressligatures();
+    return $char if $tex->noligs();
 
     return $char if $tex->is_mmode();
 

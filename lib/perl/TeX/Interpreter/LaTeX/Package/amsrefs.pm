@@ -370,7 +370,7 @@ __DATA__
     \startXMLelement{label}[\thebib]\endXMLelement{label}%
     \ifx\current@raw@bib\@empty\else
         \begingroup
-            \suppressligatures=1
+            \noligs=1
             \let\@bibdef\copy@bibdef
             \let\bbl@write\raw@bbl@write
             \startXMLelement{raw-citation}%
