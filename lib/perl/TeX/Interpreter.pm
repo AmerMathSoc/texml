@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.9.1';
+use version; our $VERSION = qv '1.9.2';
 
 use base qw(Exporter);
 
@@ -306,29 +306,18 @@ use constant BANNER => 'This is AMS texml <https://github.com/AmerMathSoc/texml>
 ##                                                                  ##
 ######################################################################
 
-## I can't imagine ever needing these.
-
-# sub xchr {
-#     my $tex = shift;
-#
-#     my $char_code = shift;
-#
-#     return chr($char_code);
-# }
-#
-# sub xord {
-#     my $tex = shift;
-#
-#     my $char = shift;
-#
-#     return $char;
-# }
+## We character-set handling to Perl's I/O layers (see a_open_in and
+## a_open_out), so we don't need xchr and xord.
 
 ######################################################################
 ##                                                                  ##
 ##                       [3] INPUT AND OUTPUT                       ##
 ##                                                                  ##
 ######################################################################
+
+# Copy of current input line for use by show_context().
+
+my %context_line_of :ATTR(:name<context_line>);
 
 use constant term_in  => \*STDIN;
 use constant term_out => \*STDOUT;
@@ -355,9 +344,6 @@ sub a_open_out {
     return $fh;
 }
 
-## Note the absence of the bypass_eoln parameter, which, as far as I
-## can tell, is a Pascal-specific thing.
-
 sub input_ln {
     my $tex = shift;
 
@@ -372,9 +358,6 @@ sub input_ln {
     $line =~ s/ +\z//;
 
     $tex->set_context_line($line);
-
-    ## If we were going to use xord, this would be
-    ##     my @chars = map { chr(xord(chr($_))) } split //, $line;
 
     my @chars = split //, $line;
 
@@ -405,45 +388,10 @@ sub wake_up_terminal {
     return;
 }
 
-## This doesn't appear necessary since we don't really care about
-## allowing input from the terminal -- we expect always to be given a
-## file.
-
-# sub init_terminal {
-#     my $tex = shift;
-#
-#     #     t_open_in;
-#     #
-#     #     loop begin
-#     #         wake_up_terminal;
-#     #         write(term_out, '**');
-#     #         update_terminal;
-#     #
-#     #         if not input_ln(term_in, true) then
-#     #         begin {this shouldn't happen}
-#     #             write_ln(term_out);
-#     #             write(term_out, '! End of file on the terminal... why?');
-#     #             init_terminal := false;
-#     #             return;
-#     #         end;
-#     #
-#     #         loc := first;
-#     #
-#     #         while (loc < last) and (buffer[loc] = " ") do incr(loc);
-#     #
-#     #         if loc < last then
-#     #         begin
-#     #             init_terminal := true;
-#     #             return; {return unless the line was all blank}
-#     #         end;
-#     #
-#     #         write_ln(term_out, 'Please type the name of your input file.');
-#     #     end;
-#     #
-#     #   exit:
-#
-#     return;
-# }
+## We don't need init_terminal because term_in (aka STDIN) is
+## automatically opened, and we aren't interested in supporting the
+## special input from the terminal that TeX performs when invoked with
+## out an input file.
 
 ######################################################################
 ##                                                                  ##
@@ -451,7 +399,11 @@ sub wake_up_terminal {
 ##                                                                  ##
 ######################################################################
 
-## Irrelevant
+## Unlike Pascal-H, Perl has a well-developed string mechanism, so we
+## don't need any of this.  We also assume the terminal can handle
+## UTF-8 output, so we don't worry about converting output to ^^
+## notation.  (TBD: Should we implement some xchr-like handling of
+## control characters for for terminal output in wlog and wterm?)
 
 ######################################################################
 ##                                                                  ##
@@ -459,19 +411,23 @@ sub wake_up_terminal {
 ##                                                                  ##
 ######################################################################
 
+my %log_file_of :ATTR(:name<log_file>);
+
 my %selector_of    :COUNTER(:name<selector> :default<term_only>);
 my %old_setting_of :COUNTER(:name<old_setting>);
 
-my %tally_of       :COUNTER(:name<tally>);
+# my %tally_of       :COUNTER(:name<tally>);
 my %term_offset_of :COUNTER(:name<term_offset> :get<term_offset> :incr<*custom*>);
 my %file_offset_of :COUNTER(:name<file_offset> :get<file_offset> :incr<*custom>);
 
 my %max_print_line_of :COUNTER(:name<max_print_line> :get<max_print_line> :default<1024>);
 
-## This is needed to implement the new_string selector, which is
+## cur_str is needed to implement the new_string selector, which is
 ## currently only used in the implementation of meaning.  It's ugly
-## and needs to be eliminated, but that will require an overhaul of
-## the print routines.
+## and it would be nice to eliminate it, but that would require an
+## overhaul of the print routines and would probably result in
+## incompatibilities with TeX's output conventions, so it might not be
+## worth doing.
 
 my %cur_str_of :ATTR(:name<cur_str> :get<*custom*> :set<*custom*> :default<"">);
 
@@ -485,28 +441,6 @@ sub get_cur_str {
     $cur_str_of{$ident} = "";
 
     return $str;
-}
-
-sub initialize_output_routines {
-    my $tex = shift;
-
-    if ($tex->is_unicode_output()) {
-        binmode(*STDOUT, ":utf8");
-        binmode(*STDERR, ":utf8");
-    }
-
-    $tex->wterm(BANNER);
-
-    if (empty(my $format_ident = $tex->get_format_ident())) {
-        $tex->wterm_ln(' (no format preloaded)');
-    } else {
-        $tex->slow_print($format_ident);
-        $tex->print_ln();
-    }
-
-    $tex->update_terminal();
-
-    return;
 }
 
 sub incr_term_offset {
@@ -532,6 +466,9 @@ sub incr_file_offset {
 
     return;
 }
+
+## TBD: Should the wterm* and wlog* parameters handle non-printable
+## characters and carriage returns specially?  Cf. print_raw_char.
 
 sub wterm {
     my $tex = shift;
@@ -655,6 +592,7 @@ sub print_char {
 
         if ( $file_offset == $max_print_line ) {
             $tex->wlog_cr();
+
             $tex->set_file_offset(0)
         }
     } elsif ( $selector == log_only ) {
@@ -684,7 +622,7 @@ sub print_char {
         ##      trick_buf[tally mod error_line] := s;
     }
 
-    $tex->incr_tally($char_length);
+    ## $tex->incr_tally($char_length);
 
     return;
 }
@@ -2687,8 +2625,8 @@ sub push_save_stack {
 
         $value = $value->to_string() if eval { $value->isa("SaveRecord") };
 
-        # $tex->DEBUG("push_save_stack:");
-        # $tex->DEBUG("  save_stack($save_ptr) = $value");
+        $tex->DEBUG("push_save_stack:");
+        $tex->DEBUG("  save_stack($save_ptr) = $value");
     }
 
     return;
@@ -2704,8 +2642,8 @@ sub pop_save_stack {
     if ($tex->tracing_groups() > 1) {
         my $string = eval { $value->isa("SaveRecord") } ? $value->to_string() : $value;
 
-        # $tex->DEBUG("pop_save_stack:");
-        # $tex->DEBUG("  save_stack($save_ptr) = $string");
+        $tex->DEBUG("pop_save_stack:");
+        $tex->DEBUG("  save_stack($save_ptr) = $string");
     }
 
     return $value;
@@ -3396,8 +3334,6 @@ my %open_parens_of :COUNTER(:name<open_parens>);
 
 my %scanner_status_of :COUNTER(:name<scanner_status> :default<normal>);
 
-my %context_line_of    :ATTR(:name<context_line>);
-
 ##  cur_input (the currently active InStateRecord):
 my %lexer_state_of :COUNTER(:name<lexer_state> :default(-1)); # state in tex.web
 
@@ -3448,7 +3384,7 @@ sub runaway {
 }
 
 ## This is a very barebones implementation that only displays the
-## current line from the current input file.
+## current line from the current input file.  It could use some work.
 
 sub show_context {
     my $tex = shift;
@@ -6493,7 +6429,6 @@ my %output_file_name_of :ATTR(:name<output_file_name>);
 my %output_ext_of  :ATTR(:name<output_ext> :default<"xml">);
 
 my %log_name_of :ATTR(:name<log_name>);
-my %log_file_of :ATTR(:name<log_file>);
 my %log_ext_of  :ATTR(:name<log_ext> :default<"log">);
 
 my %xml_public_id_of :ATTR(:name<xml_public_id> :default<"-//W3C//DTD XHTML 1.0 Strict//EN">);
@@ -8490,18 +8425,18 @@ sub fire_up {
 
 ##*FIXME: Hard-coded CMR ligatures.
 
-my %LIGATURE = ( "-"        => { "-" => "\x{2013}" },
-                 "\x{2013}" => { "-" => "\x{2014}" },
-                 "!"        => { "`" => "\x{00A1}" },
-                 "?"        => { "`" => "\x{00BF}" },
-                 '`'        => "\x{2018}",
-                 "'"        => "\x{2019}",
-                 "\x{2018}" => { "`" => "\x{201C}" },
-                 "\x{2019}" => { "'" => "\x{201D}" },
-                 # "`"        => { "`" => "\x{201C}" },
-                 # "'"        => { "'" => "\x{201D}" },
-                 '"'        => "\x{201D}",
-);
+my %CMR_LIGATURE = ( "-"        => { "-" => "\x{2013}" },
+                     "\x{2013}" => { "-" => "\x{2014}" },
+                     "!"        => { "`" => "\x{00A1}" },
+                     "?"        => { "`" => "\x{00BF}" },
+                     '`'        => "\x{2018}",
+                     "'"        => "\x{2019}",
+                     "\x{2018}" => { "`" => "\x{201C}" },
+                     "\x{2019}" => { "'" => "\x{201D}" },
+                     # "`"        => { "`" => "\x{201C}" },
+                     # "'"        => { "'" => "\x{201D}" },
+                     '"'        => "\x{201D}",
+    );
 
 sub main_control {
     my $tex = shift;
@@ -8697,7 +8632,7 @@ sub maybe_do_ligature( $ ) {
     return $char if $tex->is_mmode();
 
     while(1) {
-        my $lig_spec = $LIGATURE{$char};
+        my $lig_spec = $CMR_LIGATURE{$char};
 
         last unless defined $lig_spec;
 
@@ -10689,7 +10624,7 @@ sub __list_primitives {
     push @primitives, qw(XeTeXmathcode);
 
     ## eTeX extensions
-    push @primitives, qw(detokenize ifcsname unexpanded);
+    push @primitives, qw(detokenize ifcsname expanded unexpanded);
 
     return @primitives;
 }
@@ -10743,6 +10678,28 @@ sub init_prim {
     $tex->install_xml_extensions();
 
     $tex->install_svg_extensions();
+
+    return;
+}
+
+sub initialize_output_routines {
+    my $tex = shift;
+
+    if ($tex->is_unicode_output()) {
+        binmode(*STDOUT, ":utf8");
+        binmode(*STDERR, ":utf8");
+    }
+
+    $tex->wterm(BANNER);
+
+    if (empty(my $format_ident = $tex->get_format_ident())) {
+        $tex->wterm_ln(' (no format preloaded)');
+    } else {
+        $tex->slow_print($format_ident);
+        $tex->print_ln();
+    }
+
+    $tex->update_terminal();
 
     return;
 }
@@ -11268,6 +11225,12 @@ sub scan_general_text {
     my $tex = shift;
 
     return $tex->scan_toks(false, false);
+}
+
+sub scan_pdf_ext_toks {
+    my $tex = shift;
+
+    return $tex->scan_toks(false, true);
 }
 
 ######################################################################
