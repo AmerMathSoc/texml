@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::setColumnCSSproperty;
+package TeX::Primitive::texml::startXMLelement;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -38,19 +38,19 @@ use TeX::Class;
 
 use TeX::Constants qw(:named_args);
 
-use TeX::Node::XmlClassNode qw(:constants);
-
 sub execute {
     my $self = shift;
 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $col_no   = $tex->read_undelimited_parameter(EXPANDED);
-    my $property = $tex->read_undelimited_parameter(EXPANDED);
-    my $value    = $tex->read_undelimited_parameter(EXPANDED);
+    my $qName = $tex->read_undelimited_parameter(EXPANDED);
 
-    $tex->set_column_css_property($col_no, $property, $value);
+    # if ($tex->is_vmode()) {
+    #     $tex->new_graf();
+    # }
+
+    $tex->start_xml_element($qName);
 
     return;
 }

@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::setXSLfile;
+package TeX::Primitive::texml::setColumnCSSproperty;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,27 +32,25 @@ package TeX::Primitive::Extension::setXSLfile;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
-
 use base qw(TeX::Command::Executable);
 
-use TeX::Utils::Misc;
+use TeX::Class;
 
 use TeX::Constants qw(:named_args);
 
+use TeX::Node::XmlClassNode qw(:constants);
+
 sub execute {
     my $self = shift;
- 
+
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $name = $tex->read_undelimited_parameter(EXPANDED);
+    my $col_no   = $tex->read_undelimited_parameter(EXPANDED);
+    my $property = $tex->read_undelimited_parameter(EXPANDED);
+    my $value    = $tex->read_undelimited_parameter(EXPANDED);
 
-    if (empty($name)) {
-        $tex->delete_xsl_file();
-    } else {
-        $tex->set_xsl_file($name);
-    }
+    $tex->set_column_css_property($col_no, $property, $value);
 
     return;
 }

@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::fontencoding;
+package TeX::Primitive::texml::titlecase;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,9 +32,11 @@ package TeX::Primitive::Extension::fontencoding;
 use strict;
 use warnings;
 
-use base qw(TeX::Command::Executable::Readable);
+use base qw(TeX::Command::Executable);
 
 use TeX::Class;
+
+## \titlecase is much less useful than it seems.
 
 sub execute {
     my $self = shift;
@@ -42,19 +44,9 @@ sub execute {
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $new_encoding = $tex->read_undelimited_parameter();
-
-    $tex->set_encoding($new_encoding);
+    $tex->shift_case(2);
 
     return;
-}
-
-sub read_value {
-    my $self = shift;
-
-    my $tex = shift;
-
-    return $tex->get_encoding();
 }
 
 1;

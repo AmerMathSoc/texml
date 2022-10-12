@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::setXMLroot;
+package TeX::Primitive::texml::endutemplate;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -36,17 +36,12 @@ use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
-use TeX::Constants qw(:named_args);
-
 sub execute {
     my $self = shift;
- 
-    my $tex     = shift;
-    my $cur_tok = shift;
 
-    my $root = $tex->read_undelimited_parameter(EXPANDED);
+    my $tex = shift;
 
-    $tex->set_xml_doc_root($root);
+    $tex->end_u_template();
 
     return;
 }

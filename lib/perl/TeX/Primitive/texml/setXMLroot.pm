@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::addXMLcomment;
+package TeX::Primitive::texml::setXMLroot;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -40,13 +40,13 @@ use TeX::Constants qw(:named_args);
 
 sub execute {
     my $self = shift;
-
+ 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $comment = $tex->read_undelimited_parameter(EXPANDED);
+    my $root = $tex->read_undelimited_parameter(EXPANDED);
 
-    $tex->add_xml_comment($comment);
+    $tex->set_xml_doc_root($root);
 
     return;
 }

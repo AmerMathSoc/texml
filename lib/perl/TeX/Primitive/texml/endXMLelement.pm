@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::addXMLclass;
+package TeX::Primitive::texml::endXMLelement;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -38,18 +38,15 @@ use TeX::Class;
 
 use TeX::Constants qw(:named_args);
 
-use TeX::Node::XmlClassNode qw(:constants);
-
 sub execute {
     my $self = shift;
 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $value = $tex->read_undelimited_parameter(EXPANDED);
-    my $target; # TBD = $tex->read_undelimited_parameter(EXPANDED);
+    my $qName = $tex->read_undelimited_parameter(EXPANDED);
 
-    $tex->modify_xml_class(XML_ADD_CLASS, $value, $target);
+    $tex->end_xml_element($qName);
 
     return;
 }

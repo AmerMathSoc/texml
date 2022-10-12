@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.11.0';
+use version; our $VERSION = qv '1.12.0';
 
 use base qw(Exporter);
 
@@ -2532,7 +2532,7 @@ sub load_primitive( $;$ ) {
             } else {
                 @candidates = ("TeX::Primitive::$class_name");
 
-                for my $engine (qw(Extension eTeX pdfTeX XeTeX)) {
+                for my $engine (qw(texml eTeX pdfTeX XeTeX)) {
                     push @candidates, "TeX::Primitive::${engine}::$class_name"
                 }
             }

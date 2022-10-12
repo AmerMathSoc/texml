@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::TeXMLtoprow;
+package TeX::Primitive::texml::deleteXMLclass;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,36 +32,26 @@ package TeX::Primitive::Extension::TeXMLtoprow;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.0.0';
-
-use base qw(TeX::Primitive::LastItem);
+use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:command_codes);
+use TeX::Constants qw(:named_args);
 
-sub read_value {
+use TeX::Node::XmlClassNode qw(:constants);
+
+sub execute {
     my $self = shift;
 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $row = $tex->scan_int();
-    my $col = $tex->scan_int();
+    my $value = $tex->read_undelimited_parameter(EXPANDED);
+    my $target; # TBD = $tex->read_undelimited_parameter(EXPANDED);
 
-    my $cur_align = $tex->get_cur_alignment();
+    $tex->modify_xml_class(XML_DELETE_CLASS, $value, $target);
 
-    if (! defined $cur_align) {
-        $tex->print_err("You can't use \\TeXMLtoprow outside of an alignment");
-
-        $tex->set_help("Really, mate, you can't.");
-
-        $tex->error();
-
-        return;
-    }
-
-    return $cur_align->top_row($row, $col);
+    return;
 }
 
 1;

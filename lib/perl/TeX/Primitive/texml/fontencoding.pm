@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::setXMLclass;
+package TeX::Primitive::texml::fontencoding;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,13 +32,9 @@ package TeX::Primitive::Extension::setXMLclass;
 use strict;
 use warnings;
 
-use base qw(TeX::Command::Executable);
+use base qw(TeX::Command::Executable::Readable);
 
 use TeX::Class;
-
-use TeX::Constants qw(:named_args);
-
-use TeX::Node::XmlClassNode qw(:constants);
 
 sub execute {
     my $self = shift;
@@ -46,11 +42,19 @@ sub execute {
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $value = $tex->read_undelimited_parameter(EXPANDED);
+    my $new_encoding = $tex->read_undelimited_parameter();
 
-    $tex->modify_xml_class($value, XML_SET_CLASSES);
+    $tex->set_encoding($new_encoding);
 
     return;
+}
+
+sub read_value {
+    my $self = shift;
+
+    my $tex = shift;
+
+    return $tex->get_encoding();
 }
 
 1;

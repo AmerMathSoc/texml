@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::startXMLelement;
+package TeX::Primitive::texml::addCSSrule;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -44,13 +44,10 @@ sub execute {
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $qName = $tex->read_undelimited_parameter(EXPANDED);
+    my $selector = $tex->read_undelimited_parameter(EXPANDED);
+    my $body     = $tex->read_undelimited_parameter(EXPANDED);
 
-    # if ($tex->is_vmode()) {
-    #     $tex->new_graf();
-    # }
-
-    $tex->start_xml_element($qName);
+    $tex->add_css_rule([ $selector, $body ]);
 
     return;
 }

@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::importXMLfragment;
+package TeX::Primitive::texml::ifinXMLelement;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,35 +32,53 @@ package TeX::Primitive::Extension::importXMLfragment;
 use strict;
 use warnings;
 
-use base qw(TeX::Command::Executable);
+use version; our $VERSION = qv '1.0.0';
 
-use TeX::Class;
+use base qw(TeX::Primitive::If);
 
-use TeX::Constants qw(:named_args);
+use TeX::Constants qw(:booleans :named_args :tracing_macro_codes);
 
-use TeX::KPSE qw(kpse_lookup);
-
-use TeX::Utils::Misc qw(empty);
-
-sub execute {
+sub expand {
     my $self = shift;
 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $xpath    = $tex->read_undelimited_parameter(EXPANDED);
-    my $xml_file = $tex->read_undelimited_parameter(EXPANDED);
+    my $negate = shift;
 
-    my $xml_path = kpse_lookup($xml_file);
+    $tex->push_cond_stack($self);
 
-    if (empty($xml_path)) {
-        $tex->print_err("I can't find file `$xml_file'.");
-        $tex->error();
+    my $qName = $tex->read_undelimited_parameter(EXPANDED);
 
-        return;
+    my $qName_string = $qName->to_string();
+
+    my $bool = false;
+
+    for my $stack_qName ($tex->get_xml_stacks()) {
+        if ($qName_string eq $stack_qName) {
+            $bool = true;
+
+            last;
+        }
     }
 
-    $tex->import_xml_fragment($xml_path, $xpath);
+    if ($tex->tracing_macros() & TRACING_MACRO_COND) {
+        $tex->begin_diagnostic();
+
+        $tex->print_nl("");
+
+        $tex->show_token_list($cur_tok, -1, 1);
+
+        $tex->show_token_list($qName, -1, 1);
+
+        $tex->print("=> ", $bool ? 'TRUE' : 'FALSE');
+
+        $tex->end_diagnostic(true);
+    }
+
+    $bool = ! $bool if $negate;
+
+    $tex->conditional($bool);
 
     return;
 }

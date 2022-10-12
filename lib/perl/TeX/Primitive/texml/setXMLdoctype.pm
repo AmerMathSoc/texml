@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::TeXMLrowspan;
+package TeX::Primitive::texml::setXMLdoctype;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -36,36 +36,19 @@ use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
+use TeX::Constants qw(:named_args);
+
 sub execute {
     my $self = shift;
-
+ 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $num_rows = $tex->scan_int();
-    my $num_cols = $tex->scan_int();
+    my $public_id = $tex->read_undelimited_parameter(EXPANDED);
+    my $system_id = $tex->read_undelimited_parameter(EXPANDED);
 
-    if ($num_rows < 1) {
-        $tex->print_err("$num_rows is an invalid num_rows parameter for \\TeXMLrowspan");
-
-        $tex->set_help("It should be at least 2.");
-
-        $tex->error();
-
-        return;
-    }
-
-    if ($num_cols < 1) {
-        $tex->print_err("$num_cols is an invalid num_cols parameter for \\TeXMLrowspan");
-
-        $tex->set_help("It should be at least 1.");
-
-        $tex->error();
-
-        return;
-    }
-
-    $tex->init_span_record($num_rows, $num_cols);
+    $tex->set_xml_public_id($public_id);
+    $tex->set_xml_system_id($system_id);
 
     return;
 }

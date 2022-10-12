@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::tccode;
+package TeX::Primitive::texml::setRowCSSproperty;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,20 +32,13 @@ package TeX::Primitive::Extension::tccode;
 use strict;
 use warnings;
 
-use base qw(TeX::Command::Executable::Readable
-            TeX::Command::Executable::Assignment);
-
-use TeX::WEB2C qw(:scan_types);
+use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
+use TeX::Constants qw(:named_args);
 
-    $self->set_level(int_val);
-
-    return;
-}
+use TeX::Node::XmlClassNode qw(:constants);
 
 sub execute {
     my $self = shift;
@@ -53,27 +46,12 @@ sub execute {
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $modifier = shift;
+    my $property = $tex->read_undelimited_parameter(EXPANDED);
+    my $value    = $tex->read_undelimited_parameter(EXPANDED);
 
-    my $char_code = $tex->scan_char_num();
-
-    $tex->scan_optional_equals();
-
-    my $tc_code = $tex->scan_char_num();
-
-    $tex->set_tccode($char_code, $tc_code, $modifier);
+    $tex->set_row_css_property($property, $value);
 
     return;
-}
-
-sub read_value {
-    my $self = shift;
-
-    my $tex = shift;
-
-    my $char_code = $tex->scan_char_num();
-
-    return $tex->get_tccode($char_code);
 }
 
 1;

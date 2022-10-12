@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::deleteXMLclass;
+package TeX::Primitive::texml::setXSLfile;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,24 +32,27 @@ package TeX::Primitive::Extension::deleteXMLclass;
 use strict;
 use warnings;
 
+use version; our $VERSION = qv '1.0.0';
+
 use base qw(TeX::Command::Executable);
 
-use TeX::Class;
+use TeX::Utils::Misc;
 
 use TeX::Constants qw(:named_args);
 
-use TeX::Node::XmlClassNode qw(:constants);
-
 sub execute {
     my $self = shift;
-
+ 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $value = $tex->read_undelimited_parameter(EXPANDED);
-    my $target; # TBD = $tex->read_undelimited_parameter(EXPANDED);
+    my $name = $tex->read_undelimited_parameter(EXPANDED);
 
-    $tex->modify_xml_class(XML_DELETE_CLASS, $value, $target);
+    if (empty($name)) {
+        $tex->delete_xsl_file();
+    } else {
+        $tex->set_xsl_file($name);
+    }
 
     return;
 }

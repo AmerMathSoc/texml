@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::addCSSrule;
+package TeX::Primitive::texml::setXMLclass;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -38,16 +38,17 @@ use TeX::Class;
 
 use TeX::Constants qw(:named_args);
 
+use TeX::Node::XmlClassNode qw(:constants);
+
 sub execute {
     my $self = shift;
 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $selector = $tex->read_undelimited_parameter(EXPANDED);
-    my $body     = $tex->read_undelimited_parameter(EXPANDED);
+    my $value = $tex->read_undelimited_parameter(EXPANDED);
 
-    $tex->add_css_rule([ $selector, $body ]);
+    $tex->modify_xml_class($value, XML_SET_CLASSES);
 
     return;
 }

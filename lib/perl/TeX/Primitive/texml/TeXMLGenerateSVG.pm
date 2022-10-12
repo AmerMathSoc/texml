@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::TeXMLGenerateSVG;
+package TeX::Primitive::texml::TeXMLGenerateSVG;
 
 # Copyright (C) 2022 American Mathematical Society
 #

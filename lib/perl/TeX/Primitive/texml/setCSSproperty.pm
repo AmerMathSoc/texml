@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::leavevmode;
+package TeX::Primitive::texml::setCSSproperty;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -36,15 +36,18 @@ use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
+use TeX::Constants qw(:named_args);
+
 sub execute {
     my $self = shift;
 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    if ($tex->is_vmode()) {
-        $tex->new_graf();
-    }
+    my $property = $tex->read_undelimited_parameter(EXPANDED);
+    my $value    = $tex->read_undelimited_parameter(EXPANDED);
+
+    $tex->set_css_property($property, $value);
 
     return;
 }

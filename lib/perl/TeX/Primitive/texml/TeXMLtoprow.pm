@@ -1,4 +1,4 @@
-package TeX::Primitive::Extension::boxtostring;
+package TeX::Primitive::texml::TeXMLtoprow;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,23 +32,36 @@ package TeX::Primitive::Extension::boxtostring;
 use strict;
 use warnings;
 
-use base qw(TeX::Command::Expandable);
+use version; our $VERSION = qv '0.0.0';
+
+use base qw(TeX::Primitive::LastItem);
 
 use TeX::Class;
 
-sub expand {
+use TeX::WEB2C qw(:command_codes);
+
+sub read_value {
     my $self = shift;
 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $index = $tex->scan_eight_bit_int();
+    my $row = $tex->scan_int();
+    my $col = $tex->scan_int();
 
-    my $box = $tex->box($index);
+    my $cur_align = $tex->get_cur_alignment();
 
-    $tex->conv_toks($box);
+    if (! defined $cur_align) {
+        $tex->print_err("You can't use \\TeXMLtoprow outside of an alignment");
 
-    return;
+        $tex->set_help("Really, mate, you can't.");
+
+        $tex->error();
+
+        return;
+    }
+
+    return $cur_align->top_row($row, $col);
 }
 
 1;
