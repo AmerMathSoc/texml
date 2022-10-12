@@ -36,6 +36,12 @@ use base qw(TeX::Command);
 
 use TeX::Class;
 
+# Only macros can be protected, but we need to be able to query any
+# expandable command (see get_x_token()), so we have to declare the
+# property here.
+
+my %is_protected_of :BOOLEAN(:name<protected> :default<0>);
+
 sub expand {
     my $self    = shift;
     my $engine  = shift;

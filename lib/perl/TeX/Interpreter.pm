@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.12.2';
+use version; our $VERSION = qv '1.13.0';
 
 use base qw(Exporter);
 
@@ -166,6 +166,8 @@ my $TOKEN_EQUAL  = make_character_token('=', CATCODE_OTHER);
 use constant DEV_NULL => "/dev/null";
 
 use constant EMPTY_TOKEN_LIST => new_token_list();
+
+use constant RESPECT_PROTECTED => 1;
 
 ######################################################################
 ##                                                                  ##
@@ -4333,6 +4335,8 @@ sub insert_relax {
 sub get_x_token {
     my $tex = shift;
 
+    my $respect_protected = shift;
+
     while (1) {
         my $cur_tok = $tex->get_next();
 
@@ -4352,6 +4356,10 @@ sub get_x_token {
         }
 
         if (my $cur_cmd = $tex->get_expandable_meaning($cur_tok)) {
+            if ($respect_protected && $cur_cmd->is_protected()) {
+                return $cur_tok;
+            }
+
             $cur_cmd->expand($tex, $cur_tok);
         } else {
             return $cur_tok;
@@ -4359,6 +4367,12 @@ sub get_x_token {
     }
 
     # NEVER GET HERE
+}
+
+sub get_x_or_protected {
+    my $tex = shift;
+
+    return $tex->get_x_token(RESPECT_PROTECTED);
 }
 
 ## This reads as much of the parameter_text as possible, but if it
@@ -4657,8 +4671,10 @@ sub scan_optional_equals {
 sub get_next_non_blank_non_call_token {
     my $tex = shift;
 
+    my $respect_protected = shift;
+
     while (1) {
-        my $token = $tex->get_x_token();
+        my $token = $tex->get_x_token($respect_protected);
 
         next if $tex->is_space_token($token);
 
@@ -5974,7 +5990,9 @@ sub scan_toks {
 
                     last unless defined $cur_cmd; # UNEXPANDABLE
 
-                    if (eval { $cur_cmd->isa("TeX::Primitive::the") }) {
+                    if ($cur_cmd->is_protected()) {
+                        $token_list->push($cur_tok);
+                    } elsif (eval { $cur_cmd->isa("TeX::Primitive::the") }) {
                         $token_list->push($tex->the_toks($cur_tok));
                     } else {
                         $cur_cmd->expand($tex, $cur_tok);
@@ -7735,7 +7753,7 @@ sub align_peek {
   restart:
     $tex->set_align_state(ALIGN_NO_COLUMN);
 
-    my $cur_tok = $tex->get_next_non_blank_non_call_token();
+    my $cur_tok = $tex->get_next_non_blank_non_call_token(RESPECT_PROTECTED);
 
     my $cur_cmd = $tex->get_meaning($cur_tok);
 
@@ -8018,7 +8036,8 @@ sub fin_col {
 
     $tex->set_align_state(ALIGN_NO_COLUMN);
 
-    my $cur_tok = $tex->get_next_non_blank_non_call_token();
+    my $cur_tok = $tex->get_next_non_blank_non_call_token(RESPECT_PROTECTED);
+
     my $cur_cmd = $tex->get_meaning($cur_tok);
 
     $align->incr_col_ptr();
@@ -9854,7 +9873,7 @@ sub prefixed_command {
 
         $tex->print_char("'");
 
-        $tex->set_help("I'll pretend you didn't say \\long or \\outer or \\global.");
+        $tex->set_help("I'll pretend you didn't say \\long or \\outer or \\global or \\protected.");
 
         $tex->back_error($cur_tok);
 

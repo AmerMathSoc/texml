@@ -32,7 +32,7 @@ package TeX::Primitive::Macro;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
+use version; our $VERSION = qv '1.0.1';
 
 use Carp;
 
@@ -57,7 +57,6 @@ my %replacement_text_of :ATTR(:name<replacement_text> :type<TeX::TokenList>);
 
 my %is_long_of      :BOOLEAN(:name<long>      :default<0>);
 my %is_outer_of     :BOOLEAN(:name<outer>     :default<0>);
-my %is_protected_of :BOOLEAN(:name<protected> :default<0>);
 
 use overload q{==} => \&macro_equal;
 
@@ -175,6 +174,12 @@ sub print_cmd_chr {
 
     my $space = "";
 
+    if ($self->is_protected()) {
+        $tex->print_esc("protected");
+
+        $space = " ";
+    }
+    
     if ($self->is_long()) {
         $tex->print_esc("long");
 
