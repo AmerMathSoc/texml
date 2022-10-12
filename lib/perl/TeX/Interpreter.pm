@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.12.1';
+use version; our $VERSION = qv '1.12.2';
 
 use base qw(Exporter);
 
@@ -5857,6 +5857,8 @@ sub closein {
     return;
 }
 
+# Should the_toks be a method of TeX::Primitive::the?
+
 sub the_toks {
     my $tex = shift;
 
@@ -5864,11 +5866,11 @@ sub the_toks {
 
     my $cur_cmd = $tex->get_meaning($cur_tok);
 
-    if (eval { $cur_cmd->isa("TeX::Primitive::eTeX::unexpanded") }) {
+    if (eval { $cur_cmd->isa("TeX::Primitive::LuaTeX::unexpanded") }) {
         return $tex->scan_general_text();
     }
 
-    if (eval { $cur_cmd->isa("TeX::Primitive::eTeX::detokenize") }) {
+    if (eval { $cur_cmd->isa("TeX::Primitive::LuaTeX::detokenize") }) {
         return $tex->str_toks($tex->scan_general_text());
     }
 
