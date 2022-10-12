@@ -32,22 +32,9 @@ package TeX::Primitive::eTeX::unexpanded;
 use strict;
 use warnings;
 
-use base qw(TeX::Command::Expandable);
+use base qw(TeX::Primitive::the);
 
 use TeX::Class;
-
-sub expand {
-    my $self = shift;
-
-    my $tex     = shift;
-    my $cur_tok = shift;
-
-    my $toks = $tex->scan_general_text();
-
-    $tex->conv_toks($toks);
-
-    return;
-}
 
 1;
 

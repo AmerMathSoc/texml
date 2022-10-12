@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.10.1';
+use version; our $VERSION = qv '1.11.0';
 
 use base qw(Exporter);
 
@@ -5862,6 +5862,16 @@ sub the_toks {
 
     my $cur_tok = shift;
 
+    my $cur_cmd = $tex->get_meaning($cur_tok);
+
+    if (eval { $cur_cmd->isa("TeX::Primitive::eTeX::unexpanded") }) {
+        return $tex->scan_general_text();
+    }
+
+    if (eval { $cur_cmd->isa("TeX::Primitive::eTeX::detokenize") }) {
+        return $tex->str_toks($tex->scan_general_text());
+    }
+
     my $token = $tex->get_x_token();
 
     if (defined(my $meaning = $tex->get_meaning($token))) {
@@ -5931,9 +5941,12 @@ sub scan_toks {
     }
 
     if ($macro_def) {
+        # @<Scan and build the parameter part of the macro definition@>
+
         # We don't use scan_toks to read the parameter text.
 
-        # @<Scan and build the parameter part of the macro definition@>
+        # read_parameter_text() has already removed the left brace
+        # (see TeX::Primitive::def)
     } else {
         $tex->scan_left_brace(); # {remove the compulsory left brace}
     }
