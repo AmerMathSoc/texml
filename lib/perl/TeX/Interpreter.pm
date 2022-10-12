@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.13.0';
+use version; our $VERSION = qv '1.13.1';
 
 use base qw(Exporter);
 
@@ -1863,7 +1863,7 @@ FROZEN_CSNAMES: {
     }
 }
 
-sub __list_glue_parameters {
+sub __assign_glue_commands { # command code = assign_glue_cmd; Region 3
     my $tex = shift;
 
     return qw(line_skip baseline_skip par_skip above_display_skip
@@ -1873,7 +1873,7 @@ sub __list_glue_parameters {
               par_fill_skip);
 }
 
-sub __list_muglue_parameters {
+sub __assign_mu_glue_commands { # command code = assign_mu_glue; Region 3
     my $tex = shift;
 
     return qw(thin_mu_skip med_mu_skip thick_mu_skip);
@@ -1886,7 +1886,7 @@ sub __init_eqtb_region_3 {
 
     my %glue_param;
 
-    foreach my $param ($tex->__list_glue_parameters()) {
+    foreach my $param ($tex->__assign_glue_commands()) {
         my $zero_glue = make_glue_spec(0, 0, 0);
 
         $glue_param{$param} = make_eqvt($zero_glue, level_one);
@@ -1905,7 +1905,7 @@ sub __init_eqtb_region_3 {
 
     my %muglue_param;
 
-    foreach my $param ($tex->__list_muglue_parameters()) {
+    foreach my $param ($tex->__assign_mu_glue_commands()) {
         $muglue_param{$param} = make_eqvt(0, level_one);
 
         (my $csname = $param) =~ s/_//g;
@@ -1921,7 +1921,7 @@ sub __init_eqtb_region_3 {
     return;
 }
 
-sub __list_token_parameters {
+sub __assign_toks_commands {# command_code = assign_toks_cmd; Region 4
     my $tex = shift;
 
     my @toks = qw(output every_par every_math every_display every_hbox
@@ -1929,8 +1929,12 @@ sub __list_token_parameters {
 
     push @toks, qw(every_eof); # eTeX
 
+    # pdfTeX:
+
     push @toks, qw(pdf_page_attr pdf_page_resources pdf_pages_attr
                    pdf_pk_mode);
+
+    # texml:
 
     push @toks, qw(after_par);
 
@@ -1940,7 +1944,7 @@ sub __list_token_parameters {
 sub __list_node_registers {
     my $tex = shift;
 
-    return qw(end_math_list);
+    return qw(end_math_list); # texml
 }
 
 sub __init_eqtb_region_4 {
@@ -1950,7 +1954,7 @@ sub __init_eqtb_region_4 {
 
     my %token_param;
 
-    foreach my $param ($tex->__list_token_parameters()) {
+    foreach my $param ($tex->__assign_toks_commands()) {
         $token_param{$param} = make_eqvt(new_token_list(), level_one);
 
         (my $csname = $param) =~ s/_//g;
@@ -2213,7 +2217,7 @@ sub show_char_info {
     return;
 }
 
-sub __list_integer_parameters {
+sub __assign_int_commands { # command code = assign_int(_cmd); Region 5
     my $tex = shift;
 
     my @params = qw(adj_demerits bin_op_penalty broken_penalty club_penalty
@@ -2268,9 +2272,9 @@ sub __list_integer_parameters {
 
     push @params, qw(XeTeXversion);
 
-    push @params, qw(noligs); # LuaTeX
+    push @params, qw(noligs nokerns); # LuaTeX
 
-    # TeXML extensions
+    # texml extensions
 
     push @params, qw(tracing_input
                      TeXML_debug_output TeXML_SVG_mag);
@@ -2285,7 +2289,7 @@ sub __init_eqtb_region_5 {
 
     my %integer_param;
 
-    foreach my $param ($tex->__list_integer_parameters()) {
+    foreach my $param ($tex->__assign_int_commands()) {
         $integer_param{$param} = make_eqvt(0, level_one);
 
         (my $csname = $param) =~ s/_//g;
@@ -2319,7 +2323,7 @@ sub __init_eqtb_region_5 {
     return;
 }
 
-sub __list_dimen_parameters {
+sub __assign_dimen_commands { # command code = assign_dimen; Region 6
     my $tex = shift;
 
     my @dimens = qw(box_max_depth delimiter_shortfall display_indent
@@ -2338,7 +2342,7 @@ sub __list_dimen_parameters {
                      pdf_page_height pdf_page_width pdf_px_dimen
                      pdf_thread_margin pdf_v_origin);
 
-    ## TeXML extensions
+    ## texml extensions
 
     push @dimens, qw(TeXML_SVG_paperwidth);
 
@@ -2352,7 +2356,7 @@ sub __init_eqtb_region_6 {
 
     my %dimen_param;
 
-    foreach my $param ($tex->__list_dimen_parameters()) {
+    foreach my $param ($tex->__assign_dimen_commands()) {
         $dimen_param{$param} = make_eqvt(0, level_one);
 
         (my $csname = $param) =~ s/_//g;
@@ -2371,23 +2375,33 @@ sub __init_eqtb_region_6 {
     return;
 }
 
-sub __list_special_integers {
+sub __list_special_integers { # global
     my $tex = shift;
 
-    my @params = qw(deadcycles insertpenalties prevgraf spacefactor);
+    my @params = qw(deadcycles insertpenalties); # command code = set_page_int
 
-    ## TeXML extensions
+    push @params, qw(prevgraf);     # command code = set_prev_graf_cmd
+
+    push @params, qw(spacefactor);  # command code = set_aux_cmd
+
+    ## texml extensions
 
     push @params, qw(alignrowno aligncolno alignspanno);
 
     return @params;
 }
 
-sub __list_special_dimens {
+sub __list_special_dimens { # global
     my $tex = shift;
 
-    return qw(prevdepth pagegoal pagetotal pagestretch pagefilstretch
-              pagefillstretch pagefilllstretch pageshrink pagedepth);
+    my @params = qw(prevdepth); # command code = set_aux_cmd
+
+    # command code = set_page_dimen_cmd:
+
+    push @params, qw(pagegoal pagetotal pagestretch pagefilstretch
+                     pagefillstretch pagefilllstretch pageshrink pagedepth);
+
+    return @params;
 }
 
 sub __init_special_parameters {
@@ -10269,7 +10283,7 @@ sub undump_eqtb {
 
     my $glue_base = $params->glue_base();
 
-    foreach my $param ($tex->__list_glue_parameters()) {
+    foreach my $param ($tex->__assign_glue_commands()) {
         my $equiv_code = $params->get_parameter_raw("${param}_code");
 
         next unless defined $equiv_code;
@@ -10329,7 +10343,7 @@ sub undump_eqtb {
 
     my $int_base = $params->int_base();
 
-    foreach my $param ($tex->__list_integer_parameters()) {
+    foreach my $param ($tex->__assign_int_commands()) {
         my $equiv_code = $params->get_parameter_raw("${param}_code");
 
         next unless defined $equiv_code;
