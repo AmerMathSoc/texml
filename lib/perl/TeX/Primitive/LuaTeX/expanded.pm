@@ -1,4 +1,4 @@
-package TeX::Primitive::eTeX::expanded;
+package TeX::Primitive::LuaTeX::expanded;
 
 # Copyright (C) 2022 American Mathematical Society
 #
