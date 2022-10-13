@@ -1527,12 +1527,11 @@ __DATA__
     \ifx\AMS@authors\@empty\else
         \startXMLelement{contrib-group}\par
         \setXMLattribute{content-type}{authors}\par
-        \startXMLelement{contrib}
-        \setXMLattribute{contrib-type}{author}\par
+        \def\start@author{\startXMLelement{contrib}\setXMLattribute{contrib-type}{author}\par}
+        \def\end@author{\endXMLelement{contrib}\par}
         \let\author@name\XXX@author@name
         \let\authorbio\XXX@authorbio
-        \AMS@authors
-        \endXMLelement{contrib}\par
+        \AMS@authors\end@author\par
         \endXMLelement{contrib-group}\par
     \fi
     \endXMLelement{sec-meta}\par
