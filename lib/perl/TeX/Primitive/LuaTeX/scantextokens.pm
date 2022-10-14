@@ -1,4 +1,4 @@
-package TeX::Primitive::LuaTeX::scantokens;
+package TeX::Primitive::LuaTeX::scantextokens;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -38,13 +38,22 @@ use TeX::Constants qw(:file_types);
 
 use TeX::Class;
 
+## Still need to implement these:
+##
+## * \scantextokens never raises an EOF error, and it does not execute
+##   \everyeof tokens (texml doesn't implement \everyeof yet).
+##
+## * There are no `...while end of file...' error tests executed.
+##   This allows expansion to end on a different grouping level or
+##   while a conditional is still incomplete.
+
 sub expand {
     my $self = shift;
 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    $tex->pseudo_start(pseudo_file);
+    $tex->pseudo_start(pseudo_file2);
 
     return;
 }

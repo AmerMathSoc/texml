@@ -35,8 +35,6 @@ package TeX::Constants;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.0';
-
 use base qw(Exporter);
 
 our %EXPORT_TAGS;
@@ -75,11 +73,13 @@ my %TRACING_MACRO_CODES = (
 install tracing_macro_codes => %TRACING_MACRO_CODES;
 
 my %FILE_TYPES = (
-    terminal       => 0,
-    openin_file    => 1,
-    anonymous_file => 2,
-    input_file     => 3,
-    string_input   => 4,
+    terminal       =>  0,
+    openin_file    =>  1,
+    anonymous_file =>  2,    # process_file() probably a mistake
+    pseudo_file    =>  4,    # scantokens
+    pseudo_file2   =>  5,    # scantextokens
+    input_file     =>  8,
+    string_input   => 16,    # begin_string_reading(); probably a mistake
     );
 
 install file_types => %FILE_TYPES;

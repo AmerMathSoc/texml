@@ -46,7 +46,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.13.1';
+use version; our $VERSION = qv '1.14.0';
 
 use base qw(Exporter);
 
@@ -366,6 +366,32 @@ sub input_ln {
     $tex->push_char(@chars);
 
     return true;
+}
+
+sub pseudo_input_ln {
+    my $tex = shift;
+
+    my $line = $tex->shift_line();
+
+    return unless defined $line;
+
+    chomp($line);
+
+    $line =~ s/ +\z//;
+
+    $tex->set_context_line($line);
+
+    my @chars = split //, $line;
+
+    $tex->push_char(@chars);
+
+    my $suppress_eol = 0;
+
+    if ($tex->file_type() == pseudo_file2) {
+        $suppress_eol = $tex->num_lines() == 0;
+    }
+
+    return (true, $suppress_eol);
 }
 
 sub update_terminal() {
@@ -2272,7 +2298,7 @@ sub __assign_int_commands { # command code = assign_int(_cmd); Region 5
 
     push @params, qw(XeTeXversion);
 
-    push @params, qw(noligs nokerns); # LuaTeX
+    push @params, qw(noligs nokerns outputmode); # LuaTeX
 
     # texml extensions
 
@@ -3320,6 +3346,7 @@ sub print_cmd_chr {
 
     my %lexer_state_of :COUNTER(:name<lexer_state> :default(-1));
 
+    my %lines_of       :ARRAY(:name<line>);
     my %chars_of       :ARRAY(:name<char>);
     my %line_no_of     :COUNTER(:name<line_no> :default(-1));
     my %char_no_of     :COUNTER(:name<char_no> :default(-1));
@@ -3355,6 +3382,7 @@ my %scanner_status_of :COUNTER(:name<scanner_status> :default<normal>);
 ##  cur_input (the currently active InStateRecord):
 my %lexer_state_of :COUNTER(:name<lexer_state> :default(-1)); # state in tex.web
 
+my %lines_of       :ARRAY(:name<line>);
 my %chars_of       :ARRAY(:name<char>);
 my %line_no_of     :COUNTER(:name<input_line_no> :default(-1));
 my %char_no_of     :COUNTER(:name<input_char_no> :default(-1));
@@ -3461,8 +3489,10 @@ sub push_input {
                                    });
 
     $saved->push_char($tex->get_chars());
+    $saved->push_line($tex->get_lines());
 
     $tex->push_input_stack($saved);
+    $tex->delete_cur_file();
 
     return;
 }
@@ -3483,8 +3513,10 @@ sub pop_input {
         $tex->set_token_type($prev_state->token_type());
     # } else {
         $tex->delete_chars(); # should already be empty, but just in case
+        $tex->delete_lines(); # should already be empty, but just in case
 
         $tex->push_char($prev_state->get_chars());
+        $tex->push_line($prev_state->get_lines());
 
         $tex->set_input_line_no($prev_state->line_no());
         $tex->set_input_char_no($prev_state->char_no());
@@ -3658,6 +3690,7 @@ sub begin_file_reading {
     $tex->set_lexer_state(mid_line);
 
     $tex->delete_chars();
+    $tex->delete_lines();
     $tex->set_input_line_no(-1);
     $tex->set_input_char_no(-1);
     $tex->delete_file_name();
@@ -3695,8 +3728,6 @@ sub begin_string_reading {
 
     $tex->input_ln($fh);
 
-    $tex->firm_up_the_line();
-
     return;
 }
 
@@ -3708,7 +3739,7 @@ sub end_file_reading {
     if ($tex->file_type() >= input_file) {
         my $fh = $tex->get_cur_file();
 
-        close($fh); # {forget it}
+        close($fh) if defined $fh; # { forget it }
     }
 
     $tex->pop_input();
@@ -3745,7 +3776,7 @@ sub clear_for_error_prompt {
 
 my %force_eof_of :BOOLEAN(:name<force_eof> :default<false>);
 
-use constant PAR_TOKEN   => make_csname_token('par');
+use constant PAR_TOKEN => make_csname_token('par');
 
 sub maybe_check_outer_validity {
     my $tex = shift;
@@ -3894,14 +3925,14 @@ sub get_token_careful {
     return $token;
 }
 
-# Unicode: Should we allow EOL chars > 255?
+# LuaTeX has an upper limit of 127 for end_line_char and new_line_char
 
 sub end_line_char_inactive {
     my $tex = shift;
 
     my $eol = $tex->end_line_char();
 
-    return $eol < 0 || $eol > 255 || $tex->file_type() == string_input;
+    return $eol < 0 || $eol > 127 || $tex->file_type() == string_input;
 }
 
 sub get_next_from_file {
@@ -3914,23 +3945,27 @@ sub get_next_from_file {
         if (! defined $char) {
             $tex->set_lexer_state(new_line);
 
-            my $cur_file_type = $tex->file_type();
+            my $file_type = $tex->file_type();
 
-            if ($cur_file_type >= anonymous_file) {
+            if ($file_type >= anonymous_file) {
                 $tex->incr_input_line_no();
 
-                if (! $tex->is_force_eof()) {
-                    if ($tex->input_ln($tex->get_cur_file())) {
-                        # {not end of file}
+                my $suppress_eol = 0;
 
-                        $tex->firm_up_the_line();
+                if (! $tex->is_force_eof()) {
+                    my $not_done  = 0;
+
+                    if ($file_type >= pseudo_file && $file_type < input_file) {
+                        ($not_done, $suppress_eol) = $tex->pseudo_input_ln();
                     } else {
-                        $tex->set_force_eof(true);
+                        $not_done = $tex->input_ln($tex->get_cur_file());
                     }
+
+                    $tex->set_force_eof(! $not_done);
                 }
 
                 if ($tex->is_force_eof()) {
-                    if ($cur_file_type < string_input) {
+                    if ($file_type < string_input) {
                         $tex->print_char(")");
                         $tex->decr_open_parens();
                         $tex->update_terminal(); # {show user that file has been read}
@@ -3938,14 +3973,14 @@ sub get_next_from_file {
 
                     $tex->set_force_eof(false);
 
-                    $tex->end_file_reading(); # {resume previous level}
+                    $tex->end_file_reading(); # { resume previous level }
 
                     $tex->check_outer_validity();
 
                     return $tex->get_next(); # goto restart;
                 }
 
-                if (! $tex->end_line_char_inactive()) {
+                if (! $tex->end_line_char_inactive() && ! $suppress_eol) {
                     $tex->push_char(chr($tex->end_line_char));
                 }
             } else {
@@ -4218,14 +4253,6 @@ sub process_space {
     } else {
         die "Invalid lexer state '$state'";
     }
-}
-
-## Not sure we need this.
-
-sub firm_up_the_line {
-    my $tex = shift;
-
-    return;
 }
 
 sub get_next_from_token_list {
@@ -6145,7 +6172,7 @@ sub read_toks {
             $token_list->push($token);
 
             if ($tex->align_state() < ALIGN_NO_COLUMN) {
-                # {unmatched `\.\}' aborts the line}
+                # { unmatched `\.\}' aborts the line }
 
                 $tex->delete_chars();
 
@@ -6865,8 +6892,6 @@ sub start_input {
     $tex->set_input_line_no(1);
 
     $tex->input_ln($fh);
-
-    $tex->firm_up_the_line();
 
     if (! $tex->end_line_char_inactive()) {
         $tex->push_char(chr($tex->end_line_char));
@@ -10686,7 +10711,7 @@ sub __list_primitives {
 
     ## LuaTeX extensions
 
-    push @primitives, qw(expanded);
+    push @primitives, qw(expanded scantokens scantextokens);
 
     return @primitives;
 }
@@ -10936,6 +10961,8 @@ sub final_cleanup {
 
 ## These are used by perl code that needs to process some TeX input
 ## and then take control back.
+
+## TBD: This probably needs to go away.
 
 sub process_file {
     my $tex = shift;
@@ -11228,6 +11255,44 @@ sub finish_extensions {
 ##                      [53A] ETEX EXTENSIONS                       ##
 ##                                                                  ##
 ######################################################################
+
+sub pseudo_start {
+    my $tex = shift;
+
+    my $file_type = shift;
+
+    my $token_list = $tex->scan_general_text();
+
+    my $selector = $tex->selector();
+
+    $tex->set_selector(new_string);
+
+    $tex->token_show($token_list);
+
+    $tex->set_selector($selector);
+
+    my $string = $tex->get_cur_str();
+
+    my $nlc = $tex->new_line_char();
+
+    my $nl = $nlc > -1 ? chr($nlc) : undef;
+
+    $tex->begin_file_reading();
+
+    $tex->set_file_type($file_type);
+
+    my @lines;
+
+    if (defined $nl) {
+        @lines = split /$nl/, $string;
+    } else {
+        @lines = ($string);
+    }
+
+    $tex->push_line(@lines);
+
+    return;
+}
 
 sub print_group {
     my $tex = shift;
@@ -12430,6 +12495,7 @@ sub load_format {
 
         if ($tex->is_profiling()) {
             my $elapsed = time() - $start_time;
+
             $tex->__DEBUG("$class->install(): $elapsed seconds\n");
         }
      } else {
