@@ -46,8 +46,6 @@ sub install ( $ ) {
 
     $tex->read_package_data();
 
-    $tex->add_to_reset("section", "chapter");
-
     return;
 }
 
