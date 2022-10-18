@@ -48,12 +48,12 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.14.1';
+use version; our $VERSION = qv '1.14.2';
 
 use base qw(Exporter);
 
 our %EXPORT_TAGS = (all            => [ qw(make_eqvt) ],
-                    frozen_csnames => [ qw(END_TEX_TOKEN
+                    frozen_csnames => [ qw(POP_MAIN_CONTROL
                                            FROZEN_CR
                                            FROZEN_DONT_EXPAND_TOKEN
                                            FROZEN_END_GROUP
@@ -1723,12 +1723,10 @@ my %special_dimens_of   :HASH(:name<special_dimen>);   # always global
 
 use constant END_WRITE_TOKEN => make_csname_token("endwrite", UNIQUE_TOKEN);
 
-## END_TEX_TOKEN is used to indicate that the current TeX run (really,
-## the current invocation of main_control()) should be terminated.
+## POP_MAIN_CONTROL is used to indicate that the current invocation of
+## main_control() should be terminated.
 
-## TBD: This needs to go away.
-
-use constant END_TEX_TOKEN  => make_csname_token("endTeX", UNIQUE_TOKEN);
+use constant POP_MAIN_CONTROL  => make_csname_token("popTeX", UNIQUE_TOKEN);
 
 use constant FROZEN_DONT_EXPAND_TOKEN
     => make_csname_token("notexpanded", UNIQUE_TOKEN);
@@ -3513,6 +3511,8 @@ sub pop_input {
 
     $tex->set_lexer_state($prev_lexer_state);
 
+    ## TBD: This conditional broke do_resolve_xrefs().  What's missing?
+
     # if ($prev_lexer_state == token_list) {
         $tex->set_token_list($prev_state->get_token_list());
         $tex->set_token_type($prev_state->token_type());
@@ -3712,15 +3712,6 @@ sub begin_string_reading {
     my $string = shift;
 
     $tex->begin_file_reading();
-
-    $tex->set_eof_hook(
-        sub {
-            my $tex = shift;
-
-            $tex->back_input(END_TEX_TOKEN);
-
-            return;
-        });
 
     my $fh = $tex->a_open_in(\$string);
 
@@ -3938,7 +3929,7 @@ sub end_line_char_inactive {
 
     my $eol = $tex->end_line_char();
 
-    return $eol < 0 || $eol > 127 || $tex->file_type() == string_input;
+    return $eol < 0 || $eol > 127 || $tex->file_type() > input_file;
 }
 
 sub get_next_from_file {
@@ -3986,7 +3977,9 @@ sub get_next_from_file {
 
                 if ($tex->is_force_eof()) {
                     if ($file_type < string_input) {
-                        $tex->print_char(")");
+                        if ($file_type != pseudo_file && $file_type != pseudo_file2) {
+                            $tex->print_char(")");
+                        }
                         $tex->decr_open_parens();
                         $tex->update_terminal(); # { show user that file has been read }
                     }
@@ -6211,10 +6204,16 @@ sub read_toks {
     return $token_list;
 }
 
+## TBD: do_end() isn't quite right because it only exits the current
+## invocation of main_control (see push_main_control()).  On the other
+## hand, really don't rely upon do_end().  We could fix this by having
+## a separate END_TEX_TOKEN for this purpose, but it might not be
+## worth it.
+
 sub do_end {
     my $tex = shift;
 
-    $tex->back_input(END_TEX_TOKEN);
+    $tex->pop_main_control();
 
     return;
 }
@@ -6226,10 +6225,19 @@ sub tokenize {
 
     $tex->begin_string_reading($string);
 
+    $tex->set_eof_hook(
+        sub {
+            my $tex = shift;
+
+            $tex->back_input(POP_MAIN_CONTROL);
+
+            return;
+        });
+
     my $token_list = new_token_list();
 
     while (my $token = $tex->get_next()) {
-        last if ident($token) == ident(END_TEX_TOKEN);
+        last if ident($token) == ident(POP_MAIN_CONTROL);
 
         $token_list->push($token);
     }
@@ -8545,12 +8553,12 @@ sub main_control {
     my $tex = shift;
 
     while (my $cur_tok = $tex->get_x_token()) {
-        ## END_TEX_TOKEN terminates the current instance of
+        ## POP_MAIN_CONTROL terminates the current instance of
         ## main_control().  Normally, this will be the main invocation
-        ## in TeX(), but it could be an invocation from read_package_data()
-        ## and process_string() [both of which should go away].
+        ## in TeX(), but see push_main_control() for other
+        ## possibilities.
 
-        if (ident($cur_tok) == ident(END_TEX_TOKEN)) {
+        if (ident($cur_tok) == ident(POP_MAIN_CONTROL)) {
             return;
         }
 
@@ -10811,7 +10819,7 @@ sub TeX {
 
     my $file_name = shift;
 
-    # {in case we quit during initialization}
+    # { in case we quit during initialization }
     $tex->set_history(fatal_error_stop);
 
     $tex->initialize_output_routines();
@@ -10824,11 +10832,11 @@ sub TeX {
 
     $tex->start_input($file_name);
 
-    $tex->set_history(spotless); # {ready to go!}
+    $tex->set_history(spotless); # { ready to go! }
 
-    $tex->main_control(); # {come to life}
+    $tex->main_control();        # { come to life }
 
-    $tex->final_cleanup(); # {prepare for death}
+    $tex->final_cleanup();       # { prepare for death }
 
     $tex->end_of_TEX();
 
@@ -10884,13 +10892,6 @@ sub close_files_and_terminate {
 sub final_cleanup {
     my $tex = shift;
 
-    # my $c = cur_chr;
-    #
-    # if job_name = 0 then open_log_file;
-    #
-    # while input_ptr > 0 do
-    #     if state = token_list then end_token_list else end_file_reading;
-
     my $open_parens = $tex->open_parens();
 
     while ($open_parens > 0) {
@@ -10945,22 +10946,6 @@ sub final_cleanup {
     #
     #             selector := term_and_log;
     #         end;
-    #
-    # if c = 1 then
-    # begin
-    #     init
-    #         for c := top_mark_code to split_bot_mark_code do
-    #             if cur_mark[c] <> null then delete_token_ref(cur_mark[c]);
-    #
-    #         store_fmt_file;
-    #
-    #         return;
-    #     tini
-    #
-    #     print_nl("(\dump is performed only by INITEX)");
-    #     return;
-    #
-    # end;
 
     return;
 }
@@ -10971,10 +10956,33 @@ sub final_cleanup {
 ##                                                                  ##
 ######################################################################
 
-## These are used by perl code that needs to process some TeX input
+## These are used by perl code that needs to execute some TeX input
 ## and then take control back.
 
-## TBD: Both of these should go away.
+sub push_main_control {
+    my $tex = shift;
+
+    $tex->set_eof_hook(
+        sub {
+            my $tex = shift;
+
+            $tex->pop_main_control();
+
+            return;
+        });
+
+    $tex->main_control();
+
+    return;
+}
+
+sub pop_main_control {
+    my $tex = shift;
+
+    $tex->back_input(POP_MAIN_CONTROL);
+
+    return;
+}
 
 sub process_file {
     my $tex = shift;
@@ -10986,16 +10994,7 @@ sub process_file {
 
     $tex->start_input($file_spec, $fh);
 
-    $tex->set_eof_hook(
-        sub {
-            my $tex = shift;
-
-            $tex->back_input(END_TEX_TOKEN);
-
-            return;
-        });
-
-    $tex->main_control();
+    $tex->push_main_control();
 
     return;
 }
@@ -11009,7 +11008,33 @@ sub process_string {
 
     $tex->begin_string_reading($string);
 
-    $tex->main_control();
+    $tex->push_main_control();
+
+    return;
+}
+
+sub read_package_data( $ ) {
+    my $tex = shift;
+
+    my $package = caller;
+
+    my $stash = eval { no strict 'refs'; *{ "${package}::" } };
+
+    my $data_handle = *{ $stash->{DATA} }{IO};
+
+    my $position = tell($data_handle);
+
+    my $at_cat = $tex->get_catcode(ord('@'));
+
+    $tex->set_catcode(ord('@'), CATCODE_LETTER);
+
+    $tex->start_input($package, $data_handle);
+
+    $tex->push_main_control();
+
+    $tex->set_catcode(ord('@'), $at_cat);
+
+    seek($data_handle, $position, SEEK_SET);
 
     return;
 }
@@ -11022,7 +11047,7 @@ sub process_string {
 
 ## These are alternates to TeX().
 
-## These should probably be replaced by \hbox and \boxtostring.
+## Can these be replaced by \hbox and/or \boxtostring?
 
 sub convert_token_list {
     my $tex = shift;
@@ -11034,7 +11059,8 @@ sub convert_token_list {
         $token_list = $tex->read_undelimited_parameter();
     }
 
-    $token_list->push(END_TEX_TOKEN); ## BLEAH: modifies caller's copy
+    $token_list->push(POP_MAIN_CONTROL); ## BLEAH: modifies caller's copy
+                                         ## (But we remove it below.)
 
     $tex->push_output("TeX::Output::XML::Fragment");
 
@@ -11051,7 +11077,7 @@ sub convert_token_list {
     ## Should we have a dedicated token_type for this?
     $tex->begin_token_list($token_list, inserted);
 
-    $tex->set_history(spotless); # {ready to go!}
+    $tex->set_history(spotless);
 
     $tex->new_graf();
 
@@ -11061,15 +11087,13 @@ sub convert_token_list {
 
     $tex->endgroup();
 
-    $token_list->pop(); # remove END_TEX_TOKEN
+    $token_list->pop(); # remove POP_MAIN_CONTROL
 
     my $handle = $tex->pop_output();
 
     my $dom = $handle->close_document();
 
-    return $dom;
-
-    # return $dom->toString();
+    return $dom; # ->toString();
 }
 
 sub convert_fragment {
@@ -11090,13 +11114,13 @@ sub convert_fragment {
         $tex->set_xml_par_tag("");
     }
 
-    $tex->begin_string_reading($string);
-
     $tex->set_history(spotless); # {ready to go!}
 
     $tex->new_graf();
 
-    $tex->main_control();
+    $tex->begin_string_reading($string);
+
+    $tex->push_main_control();
 
     $tex->end_par();
 
@@ -12502,41 +12526,6 @@ sub load_format {
      } else {
         $tex->fatal_error("Can't load format '$fmt'");
     }
-
-    return;
-}
-
-sub read_package_data( $ ) {
-    my $tex = shift;
-
-    my $package = caller;
-
-    my $stash = eval { no strict 'refs'; *{ "${package}::" } };
-
-    my $data_handle = *{ $stash->{DATA} }{IO};
-
-    my $position = tell($data_handle);
-
-    my $at_cat = $tex->get_catcode(ord('@'));
-
-    $tex->set_catcode(ord('@'), CATCODE_LETTER);
-
-    $tex->start_input($package, $data_handle);
-
-    $tex->set_eof_hook(
-        sub {
-            my $tex = shift;
-
-            $tex->back_input(END_TEX_TOKEN);
-
-            return;
-        });
-
-    $tex->main_control();
-
-    $tex->set_catcode(ord('@'), $at_cat);
-
-    seek($data_handle, $position, SEEK_SET);
 
     return;
 }
