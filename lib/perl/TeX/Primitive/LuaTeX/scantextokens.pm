@@ -40,12 +40,14 @@ use TeX::Class;
 
 ## Still need to implement these:
 ##
-## * \scantextokens never raises an EOF error, and it does not execute
-##   \everyeof tokens (texml doesn't implement \everyeof yet).
+## * \scantextokens never raises an EOF error
 ##
 ## * There are no `...while end of file...' error tests executed.
 ##   This allows expansion to end on a different grouping level or
 ##   while a conditional is still incomplete.
+##
+## But actually texml is a lot more lax about those things than TeX
+## is, so we might not need to worry about it.
 
 sub expand {
     my $self = shift;

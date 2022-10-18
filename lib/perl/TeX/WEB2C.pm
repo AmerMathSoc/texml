@@ -678,6 +678,7 @@ my %TOKEN_TYPES = (
     every_cr_text      => 14,
     mark_text          => 15,
     write_text         => 16,
+    every_eof_text     => 32,
     );
 
 install token_types => %TOKEN_TYPES;

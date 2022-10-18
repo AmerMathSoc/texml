@@ -29,6 +29,8 @@ package TeX::Interpreter;
 # USA
 # email: tech-support@ams.org
 
+use v5.10;
+
 our $TRACING = 1;
 
 sub TRACE {
@@ -46,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.14.0';
+use version; our $VERSION = qv '1.14.1';
 
 use base qw(Exporter);
 
@@ -188,8 +190,6 @@ my %cur_enc_of  :ATTR;
 my %cur_page_of :ARRAY(:name<cur_page>);
 
 my %debugging_of :BOOLEAN(:name<debugging> :default<false>);
-
-my %profiling_of :BOOLEAN(:name<profiling> :default<false>);
 
 my %nofiles_of :BOOLEAN(:name<nofiles> :get<nofiles> :default<false>);
 
@@ -351,9 +351,9 @@ sub input_ln {
 
     my $fh = shift;
 
-    return unless defined $fh;
+    return 1 unless defined $fh;
 
-    return if eof($fh);
+    return 1 if eof($fh);
 
     chomp(my $line = <$fh>);
 
@@ -365,7 +365,7 @@ sub input_ln {
 
     $tex->push_char(@chars);
 
-    return true;
+    return;
 }
 
 sub pseudo_input_ln {
@@ -373,7 +373,7 @@ sub pseudo_input_ln {
 
     my $line = $tex->shift_line();
 
-    return unless defined $line;
+    return 1 unless defined $line;
 
     chomp($line);
 
@@ -391,7 +391,7 @@ sub pseudo_input_ln {
         $suppress_eol = $tex->num_lines() == 0;
     }
 
-    return (true, $suppress_eol);
+    return (0, $suppress_eol);
 }
 
 sub update_terminal() {
@@ -792,7 +792,7 @@ sub term_input {
 
     $tex->update_terminal();
 
-    if (! $tex->input_ln(term_in)) {
+    if ($tex->input_ln(term_in)) {
         $tex->fatal_error("End of file on the terminal!");
     }
 
@@ -1725,6 +1725,8 @@ use constant END_WRITE_TOKEN => make_csname_token("endwrite", UNIQUE_TOKEN);
 
 ## END_TEX_TOKEN is used to indicate that the current TeX run (really,
 ## the current invocation of main_control()) should be terminated.
+
+## TBD: This needs to go away.
 
 use constant END_TEX_TOKEN  => make_csname_token("endTeX", UNIQUE_TOKEN);
 
@@ -3354,6 +3356,7 @@ sub print_cmd_chr {
     my %file_handle_of :ATTR(:name<file_handle>);
     my %file_type_of   :COUNTER(:name<file_type> :default<terminal>);
     my %eof_hook_of    :ATTR(:name<eof_hook>);
+    my %eof_seen_of    :COUNTER(:name<eof_seen>);
 
     my %token_list_of  :ATTR(:name<token_list>    :type<TeX::TokenList>);
     my %token_type_of  :COUNTER(:name<token_type> :default<-1>);
@@ -3390,6 +3393,7 @@ my %file_name_of   :ATTR(:name<file_name>);
 my %file_handle_of :ATTR(:name<cur_file>);
 my %file_type_of   :COUNTER(:name<file_type> :default<terminal>);
 my %eof_hook_of    :ATTR(:name<eof_hook>);
+my %eof_seen_of    :COUNTER(:name<eof_seen>);
 
 my %token_list_of :ATTR(:name<token_list> :type<TeX::TokenList>);
 my %token_type_of :COUNTER(:name<token_type> :default<-1>);
@@ -3484,6 +3488,7 @@ sub push_input {
         file_handle => $tex->get_cur_file(),
         file_type   => $tex->file_type(),
         eof_hook    => $tex->get_eof_hook(),
+        eof_seen    => $tex->eof_seen(),
         token_list  => $tex->get_token_list(),
         token_type  => $tex->token_type(),
                                    });
@@ -3524,6 +3529,7 @@ sub pop_input {
         $tex->set_cur_file($prev_state->get_file_handle());
         $tex->set_file_type($prev_state->file_type());
         $tex->set_eof_hook($prev_state->get_eof_hook());
+        $tex->set_eof_seen($prev_state->eof_seen());
     # }
 
     return;
@@ -3953,22 +3959,36 @@ sub get_next_from_file {
                 my $suppress_eol = 0;
 
                 if (! $tex->is_force_eof()) {
-                    my $not_done  = 0;
+                    my $eof = 0;
 
                     if ($file_type >= pseudo_file && $file_type < input_file) {
-                        ($not_done, $suppress_eol) = $tex->pseudo_input_ln();
+                        ($eof, $suppress_eol) = $tex->pseudo_input_ln();
                     } else {
-                        $not_done = $tex->input_ln($tex->get_cur_file());
+                        $eof = $tex->input_ln($tex->get_cur_file());
                     }
 
-                    $tex->set_force_eof(! $not_done);
+                    if ($eof) {
+                        if (! $tex->eof_seen()) {
+                            $tex->set_eof_seen(1);
+                    
+                            my $every_eof = $tex->get_toks_list('every_eof');
+
+                            if ($file_type != pseudo_file2 && $every_eof) {
+                                $tex->begin_token_list($every_eof, every_eof_text);
+
+                                return $tex->get_next_from_token_list();
+                            }
+                        } else {
+                            $tex->set_force_eof($eof);
+                        }
+                    }
                 }
 
                 if ($tex->is_force_eof()) {
                     if ($file_type < string_input) {
                         $tex->print_char(")");
                         $tex->decr_open_parens();
-                        $tex->update_terminal(); # {show user that file has been read}
+                        $tex->update_terminal(); # { show user that file has been read }
                     }
 
                     $tex->set_force_eof(false);
@@ -6133,7 +6153,7 @@ sub read_toks {
             if ($tex->get_read_open($m) == just_open) {
                 # @<Input the first line of |read_file[m]|@>
 
-                if ($tex->input_ln($fh)) {
+                if (! $tex->input_ln($fh)) {
                     $tex->set_read_open($m, normal);
                 } else {
                     $tex->closein($fh);
@@ -6142,7 +6162,7 @@ sub read_toks {
             } else {
                 # @<Input the next line of |read_file[m]|@>;
 
-                if (! $tex->input_ln($fh)) {
+                if ($tex->input_ln($fh)) {
                     $tex->closein($m);
                     $tex->set_read_open($m, closed);
 
@@ -8527,8 +8547,8 @@ sub main_control {
     while (my $cur_tok = $tex->get_x_token()) {
         ## END_TEX_TOKEN terminates the current instance of
         ## main_control().  Normally, this will be the main invocation
-        ## in TeX(), but it could be an invocation from process_file()
-        ## and process_string().
+        ## in TeX(), but it could be an invocation from read_package_data()
+        ## and process_string() [both of which should go away].
 
         if (ident($cur_tok) == ident(END_TEX_TOKEN)) {
             return;
@@ -10196,8 +10216,6 @@ sub load_fmt_file {
 
     $fmt_file .= ".fmt" unless $fmt_file =~ m{\.fmt\z};
 
-    my $start_time = time();
-
     local $ENV{engine} = "/";
 
     my $path = $fmt_file;
@@ -10239,12 +10257,6 @@ sub load_fmt_file {
     $tex->print_char(")");
     $tex->decr_open_parens();
     $tex->update_terminal();
-
-    if ($tex->is_profiling()) {
-        my $elapsed = time() - $start_time;
-
-        $tex->__DEBUG("load_fmt_file($path): $elapsed seconds\n");
-    }
 
     return;
 }
@@ -10962,7 +10974,7 @@ sub final_cleanup {
 ## These are used by perl code that needs to process some TeX input
 ## and then take control back.
 
-## TBD: This probably needs to go away.
+## TBD: Both of these should go away.
 
 sub process_file {
     my $tex = shift;
@@ -10984,9 +10996,6 @@ sub process_file {
         });
 
     $tex->main_control();
-
-    # my $elapsed = time() - $start_time;
-    # $tex->DEBUG("process_file($file_spec): $elapsed seconds\n");
 
     return;
 }
@@ -12482,8 +12491,6 @@ sub load_format {
 
     my $class = __PACKAGE__ . "::FMT::$fmt";
 
-    my $start_time = time();
-
     my $status = $tex->load_module($class);
 
     if ($status) {
@@ -12491,12 +12498,6 @@ sub load_format {
 
         if ($@) {
             $tex->fatal_error("Can't install macro class $class: $@");
-        }
-
-        if ($tex->is_profiling()) {
-            my $elapsed = time() - $start_time;
-
-            $tex->__DEBUG("$class->install(): $elapsed seconds\n");
         }
      } else {
         $tex->fatal_error("Can't load format '$fmt'");
@@ -12520,7 +12521,18 @@ sub read_package_data( $ ) {
 
     $tex->set_catcode(ord('@'), CATCODE_LETTER);
 
-    $tex->process_file($package, $data_handle);
+    $tex->start_input($package, $data_handle);
+
+    $tex->set_eof_hook(
+        sub {
+            my $tex = shift;
+
+            $tex->back_input(END_TEX_TOKEN);
+
+            return;
+        });
+
+    $tex->main_control();
 
     $tex->set_catcode(ord('@'), $at_cat);
 
@@ -12534,25 +12546,6 @@ sub read_package_data( $ ) {
 ##                      LOADING LATEX MODULES                       ##
 ##                                                                  ##
 ######################################################################
-
-# sub core_load_notification {
-#     my $tex = shift;
-#
-#     my $name    = shift;
-#     my @options = @_;
-#
-#     # $name =~ s{^.*::}{};
-#
-#     # $tex->print_nl("Loading core macros '$name'");
-#
-#     # if (@options) {
-#     #     $tex->print(" with options @options");
-#     # }
-#
-#     # $tex->print_ln();
-#
-#     return;
-# }
 
 sub class_load_notification {
     my $tex = shift;
