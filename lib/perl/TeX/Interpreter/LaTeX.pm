@@ -629,38 +629,6 @@ sub scan_environment_body {
     return $body;
 }
 
-## process_undelimited_parameter() is similar to
-## read_undelimited_parameter(EXPANDED), except that it also invokes perl
-## handlers.
-
-## This will probably go away.
-
-sub process_undelimited_parameter {
-    my $tex = shift;
-
-    my $token_list = shift;
-
-    if (! defined $token_list) {
-        $token_list = $tex->read_undelimited_parameter();
-    }
-
-    $token_list->push(END_TEX_TOKEN);
-
-    $tex->begin_token_list($token_list, inserted);
-
-    $tex->push_nest();
-
-    $tex->main_control();
-
-    $tex->end_token_list();
-
-    $token_list->pop();
-
-    my @nodes = $tex->pop_nest();
-
-    return wantarray ? @nodes : nodes_to_string(@nodes);
-}
-
 ######################################################################
 ##                                                                  ##
 ##                           SVG CREATION                           ##
