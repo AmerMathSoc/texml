@@ -70,7 +70,7 @@ sub install ( $ ) {
 
     $tex->define_pseudo_macro(LoadIfModuleExists => \&do_load_if_module_exists);
 
-    $tex->read_package_data(*TeX::Interpreter::FMT::latex::DATA{IO});
+    $tex->read_package_data();
 
     ## Override definition of \leavevmode from latex.fmt
     $tex->define_csname(leavevmode => $tex->load_primitive('leavevmode'));
