@@ -661,28 +661,6 @@ sub process_undelimited_parameter {
     return wantarray ? @nodes : nodes_to_string(@nodes);
 }
 
-## Move to PRD/Document/Builder/LaTeX2.pm?
-
-sub read_aux_file {
-    my $tex = shift;
-
-    my $jobname = $tex->get_job_name();
-
-    my $aux_file = "$jobname.aux";
-
-    return unless -r $aux_file;
-            
-    my $at_cat = $tex->get_catcode(ord('@'));
-
-    $tex->set_catcode(ord('@'), CATCODE_LETTER);
-
-    $tex->process_file($aux_file);
-
-    $tex->set_catcode(ord('@'), $at_cat);
-
-    return;
-}
-
 ######################################################################
 ##                                                                  ##
 ##                           SVG CREATION                           ##
