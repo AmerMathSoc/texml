@@ -33,11 +33,7 @@ use strict;
 
 use base qw(TeX::Interpreter Exporter);
 
-our %EXPORT_TAGS = ( handlers => [ qw(do_gobble_opt
-                                      do_opt_gobble
-                                      do_star_opt_gobble
-                                      make_gobbler
-                                   ) ] );
+our %EXPORT_TAGS = ( handlers => [ qw(do_opt_gobble) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{handlers} } );
 
@@ -53,7 +49,7 @@ use TeX::Command::Executable::Assignment qw(:modifiers);
 
 use TeX::KPSE qw(kpse_lookup);
 
-use TeX::Interpreter qw(make_eqvt END_TEX_TOKEN);
+use TeX::Interpreter qw(make_eqvt);
 
 use File::Basename;
 
@@ -128,8 +124,6 @@ sub INITIALIZE :CUMULATIVE(BASE FIRST) {
     $tex->define_csname('@filtered@input' => \&do_filtered_input);
 
     $tex->define_pseudo_macro('@opt@gobble' => \&do_opt_gobble);
-
-    $tex->define_counter('@ckpt');
 
     $tex->define_pseudo_macro('TeXMLCreateSVG' => \&do_texml_create_svg);
     $tex->define_pseudo_macro('TeXMLImportSVG' => \&do_texml_import_svg);
@@ -291,240 +285,6 @@ sub do_filtered_input {
 
 ######################################################################
 ##                                                                  ##
-##                              ERRORS                              ##
-##                                                                  ##
-######################################################################
-
-sub latex_error {
-    my $tex = shift;
-
-    my $error = shift;
-
-    $tex->print_err("LaTeX error: $error");
-
-    $tex->error();
-
-    return;
-}
-
-######################################################################
-##                                                                  ##
-##                             COUNTERS                             ##
-##                                                                  ##
-######################################################################
-
-## Interface for accessing LaTeX counters from perl.
-
-sub __get_raw_reset_list {
-    my $tex = shift;
-
-    my $counter_name = shift;
-
-    my $eqvt = $tex->get_csname("cl\@$counter_name");
-
-    return unless defined $eqvt;
-
-    my $macro = $eqvt->get_equiv();
-
-    return unless eval { $macro->isa("TeX::Primitive::Macro") };
-
-    return $macro; #->get_replacement_text();
-}
-
-sub get_counter_reset_list {
-    my $tex = shift;
-
-    my $counter_name = shift;
-
-    my $reset_list = $tex->__get_raw_reset_list($counter_name);
-
-    return unless defined $reset_list;
-
-    my $replacement_text = $reset_list->get_replacement_text();
-
-    return unless defined $replacement_text;
-
-    my $list = $replacement_text->to_string();
-
-    my @reset_list;
-
-    while ($list =~ s{\A \\\@elt \s* \{ (.*?) \} \z}{}smx) {
-        push @reset_list, $1;
-    }
-
-    return @reset_list;
-}
-
-sub add_to_reset {
-    my $tex = shift;
-
-    my $child_counter  = shift;
-    my $parent_counter = shift;
-
-    my $macro_name = "cl\@$parent_counter";
-
-    my $eqvt = $tex->get_csname($macro_name);
-
-    if (! defined $eqvt) {
-        $tex->print_err("No counter '$parent_counter' defined");
-        $tex->error();
-
-        return;
-    }
-
-    my $macro = $eqvt->get_equiv();
-
-    ##* TODO: ERROR
-    return unless eval { $macro->isa("TeX::Primitive::Macro") };
-
-    $macro = $macro->clone();
-
-    my $list_r = $macro->get_replacement_text();
-
-    $list_r->push(ELT_TOKEN);
-    $list_r->push($tex->tokenize("{$child_counter}"));
-
-    $macro->set_replacement_text($list_r);
-
-    $tex->define_csname($macro_name, $macro, MODIFIER_GLOBAL);
-
-    return;
-}
-
-sub define_counter {
-    my $tex = shift;
-
-    my $counter_name   = shift;
-    my $parent_counter = shift;
-
-    my $csname = "c\@$counter_name";
-
-    my $eqvt = make_eqvt(0, level_one);
-
-    my $counter = make_integer_parameter($csname, \$eqvt);
-
-    $tex->define_csname($csname, $counter);
-
-    $tex->let_csname("cl\@$counter_name", '@empty', MODIFIER_GLOBAL);
-
-    $tex->add_to_reset($counter_name, '@ckpt');
-
-    if (nonempty($parent_counter)) {
-        $tex->add_to_reset($counter_name, $parent_counter);
-    }
-
-    $tex->let_csname("p\@$counter_name", '@empty', MODIFIER_GLOBAL);
-
-    $tex->define_pseudo_macro("the$counter_name",
-                       sub {
-                           my $macro = shift;
-
-                           my $tex = shift;
-                           my $token = shift;
-
-                           my $number = $tex->get_counter_value($counter_name);
-
-                           return $tex->str_toks($number);
-                       });
-
-    return;
-}
-
-sub get_counter {
-    my $tex = shift;
-
-    my $counter_name = shift;
-
-    my $eqvt = $tex->get_csname("c\@$counter_name");
-
-    if (! defined $eqvt) {
-        $tex->print_err("Unknown counter '$counter_name'");
-
-        $tex->error();
-
-        return;
-    }
-
-    my $assign_int = $eqvt->get_equiv();
-
-    ## There should probably be a cleaner way to test for this.
-
-    my $is_int = eval { $assign_int->isa("TeX::Primitive::Parameter")} &&
-        $assign_int->get_level() == int_val;
-
-    if (! $is_int) {
-        $tex->fatal_error("Can't setcounter a " . ref($assign_int));
-    }
-
-    my $eqvt_ptr = $assign_int->get_eqvt_ptr();
-
-    return $assign_int;
-}
-
-sub set_counter_value {
-    my $tex = shift;
-
-    my $counter_name = shift;
-    my $new_value    = shift;
-
-    if (defined(my $assign_int = $tex->get_counter($counter_name))) {
-        $assign_int->assign_value($tex, $new_value, MODIFIER_GLOBAL);
-    }
-
-    return;
-}
-
-sub get_counter_value {
-    my $tex = shift;
-
-    my $counter_name = shift;
-
-    if (defined(my $assign_int = $tex->get_counter($counter_name))) {
-        return $assign_int->read_value($tex);
-    }
-
-    return 0;
-}
-
-sub add_to_counter {
-    my $tex = shift;
-
-    my $counter_name = shift;
-    my $increment    = shift;
-
-    if (defined(my $assign_int = $tex->get_counter($counter_name))) {
-        my $old_value = $assign_int->read_value();
-
-        my $new_value = $old_value + $increment;
-
-        $assign_int->assign_value($tex, $new_value, MODIFIER_GLOBAL);
-
-        return $new_value;
-    }
-
-    ##* ERROR
-
-    return;
-}
-
-sub step_counter {
-    my $tex = shift;
-
-    my $counter_name = shift;
-
-    return unless defined $tex->get_counter($counter_name);
-
-    my $new_value = $tex->add_to_counter($counter_name, 1);
-
-    for my $child_counter ($tex->get_counter_reset_list($counter_name)) {
-        $tex->set_counter_value($child_counter, 0);
-    }
-
-    return $new_value;
-}
-
-######################################################################
-##                                                                  ##
 ##                         SECTION HEADINGS                         ##
 ##                                                                  ##
 ######################################################################
@@ -570,31 +330,31 @@ sub set_module_options {
 
 # sub add_module_option {
 #     my $tex = shift;
-# 
+#
 #     my $name = shift;
 #     my $ext  = shift;
-# 
+#
 #     my @options = @_;
-# 
+#
 #     $self->set_module_options($name, $ext,
 #                               $tex->get_module_options($name, $ext),
 #                               @options);
-# 
+#
 #     return;
 # }
-# 
+#
 # sub delete_module_option {
 #     my $tex = shift;
-# 
+#
 #     my $name = shift;
 #     my $ext  = shift;
-# 
+#
 #     my $option = shift;
-# 
+#
 #     my @options = grep { $_ ne $option } $tex->get_module_options($name, $ext);
-# 
+#
 #     $tex->set_module_option($name, $ext, @options);
-# 
+#
 #     return;
 # }
 
@@ -775,21 +535,6 @@ sub do_texml_import_svg {
 ##                                                                  ##
 ######################################################################
 
-## Gobble an optional argument plus a required argument.
-
-sub do_gobble_opt( $$ ) {
-    my $tex   = shift;
-    my $token = shift;
-
-    $tex->scan_optional_argument();
-
-    $tex->read_undelimited_parameter();
-
-    $tex->ignorespaces();
-
-    return;
-}
-
 ## Gobble an optional argument.
 
 sub do_opt_gobble( $$ ) {
@@ -801,33 +546,6 @@ sub do_opt_gobble( $$ ) {
     my $opt = $tex->scan_optional_argument();
 
     return;
-}
-
-## Gobble an optional * optionally followed by an optional argument.
-
-sub do_star_opt_gobble( $$ ) {
-    my $tex   = shift;
-    my $token = shift;
-
-    $tex->is_starred();
-
-    $tex->scan_optional_argument();
-
-    return;
-}
-
-sub make_gobbler( $ ) {
-    my $n = shift;
-
-    return sub {
-        my $tex   = shift;
-        my $token = shift;
-
-        for (1..$n) {
-            $tex->read_undelimited_parameter();
-        }
-
-    };
 }
 
 1;
