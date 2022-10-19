@@ -75,11 +75,13 @@ install tracing_macro_codes => %TRACING_MACRO_CODES;
 my %FILE_TYPES = (
     terminal       =>  0,
     openin_file    =>  1,
-    anonymous_file =>  2,    # process_file()/read_package_data(); probably a mistake
-    pseudo_file    =>  4,    # scantokens
-    pseudo_file2   =>  5,    # scantextokens
-    input_file     =>  8,
-    string_input   => 16,    # begin_string_reading(); probably a mistake
+
+    anonymous_file =>  2,    # process_file()/read_package_data()
+    input_file     =>  4,
+
+    string_input   =>  8,    # begin_string_reading()
+    pseudo_file    => 16,    # scantokens
+    pseudo_file2   => 17,    # scantextokens
     );
 
 install file_types => %FILE_TYPES;

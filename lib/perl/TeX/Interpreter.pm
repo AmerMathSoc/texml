@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.14.2';
+use version; our $VERSION = qv '1.14.3';
 
 use base qw(Exporter);
 
@@ -3733,7 +3733,7 @@ sub end_file_reading {
 
     my $eof_hook = $tex->get_eof_hook();
 
-    if ($tex->file_type() >= input_file) {
+    if ($tex->file_type() > anonymous_file) {
         my $fh = $tex->get_cur_file();
 
         close($fh) if defined $fh; # { forget it }
@@ -3929,7 +3929,11 @@ sub end_line_char_inactive {
 
     my $eol = $tex->end_line_char();
 
-    return $eol < 0 || $eol > 127 || $tex->file_type() > input_file;
+    return if $eol < 0 || $eol > 127;
+
+    my $file_type = $tex->file_type();
+
+    return $file_type == string_input || $file_type == pseudo_file2;
 }
 
 sub get_next_from_file {
@@ -3944,7 +3948,7 @@ sub get_next_from_file {
 
             my $file_type = $tex->file_type();
 
-            if ($file_type >= anonymous_file) {
+            if ($file_type > openin_file) {
                 $tex->incr_input_line_no();
 
                 my $suppress_eol = 0;
@@ -3952,7 +3956,7 @@ sub get_next_from_file {
                 if (! $tex->is_force_eof()) {
                     my $eof = 0;
 
-                    if ($file_type >= pseudo_file && $file_type < input_file) {
+                    if ($file_type > string_input) {
                         ($eof, $suppress_eol) = $tex->pseudo_input_ln();
                     } else {
                         $eof = $tex->input_ln($tex->get_cur_file());
@@ -3977,9 +3981,7 @@ sub get_next_from_file {
 
                 if ($tex->is_force_eof()) {
                     if ($file_type < string_input) {
-                        if ($file_type != pseudo_file && $file_type != pseudo_file2) {
-                            $tex->print_char(")");
-                        }
+                        $tex->print_char(")");
                         $tex->decr_open_parens();
                         $tex->update_terminal(); # { show user that file has been read }
                     }
