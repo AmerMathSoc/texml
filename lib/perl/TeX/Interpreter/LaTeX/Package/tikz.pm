@@ -90,7 +90,7 @@ __DATA__
 
 \DeclareSVGEnvironment{tikzcd}
 
-\newcommand{\rotatebox}[3][]{%
+\renewcommand{\rotatebox}[3][]{%
     \TeXMLCreateSVG{\rotatebox[#1]{#2}{#3}}%
 }
 
