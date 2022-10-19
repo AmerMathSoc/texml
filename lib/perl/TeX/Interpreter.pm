@@ -29,7 +29,7 @@ package TeX::Interpreter;
 # USA
 # email: tech-support@ams.org
 
-use v5.10;
+use v5.26;
 
 our $TRACING = 1;
 
@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.14.3';
+use version; our $VERSION = qv '1.14.4';
 
 use base qw(Exporter);
 
@@ -345,6 +345,11 @@ sub a_open_out {
 
     return $fh;
 }
+
+## Note that the return values of input_ln() and pseudo_input_ln() are
+## inverted with respect to the WEB code: true means we've reached
+## EOF; false means there is more content to come.  This makes the
+## code in get_next_from_file() a little less convoluted.
 
 sub input_ln {
     my $tex = shift;
@@ -3354,7 +3359,7 @@ sub print_cmd_chr {
     my %file_handle_of :ATTR(:name<file_handle>);
     my %file_type_of   :COUNTER(:name<file_type> :default<terminal>);
     my %eof_hook_of    :ATTR(:name<eof_hook>);
-    my %eof_seen_of    :COUNTER(:name<eof_seen>);
+    my %eof_already_seen_of :COUNTER(:name<eof_already_seen>);
 
     my %token_list_of  :ATTR(:name<token_list>    :type<TeX::TokenList>);
     my %token_type_of  :COUNTER(:name<token_type> :default<-1>);
@@ -3391,7 +3396,7 @@ my %file_name_of   :ATTR(:name<file_name>);
 my %file_handle_of :ATTR(:name<cur_file>);
 my %file_type_of   :COUNTER(:name<file_type> :default<terminal>);
 my %eof_hook_of    :ATTR(:name<eof_hook>);
-my %eof_seen_of    :COUNTER(:name<eof_seen>);
+my %eof_already_seen_of :COUNTER(:name<eof_already_seen>);
 
 my %token_list_of :ATTR(:name<token_list> :type<TeX::TokenList>);
 my %token_type_of :COUNTER(:name<token_type> :default<-1>);
@@ -3486,7 +3491,7 @@ sub push_input {
         file_handle => $tex->get_cur_file(),
         file_type   => $tex->file_type(),
         eof_hook    => $tex->get_eof_hook(),
-        eof_seen    => $tex->eof_seen(),
+        eof_already_seen => $tex->eof_already_seen(),
         token_list  => $tex->get_token_list(),
         token_type  => $tex->token_type(),
                                    });
@@ -3529,7 +3534,7 @@ sub pop_input {
         $tex->set_cur_file($prev_state->get_file_handle());
         $tex->set_file_type($prev_state->file_type());
         $tex->set_eof_hook($prev_state->get_eof_hook());
-        $tex->set_eof_seen($prev_state->eof_seen());
+        $tex->set_eof_already_seen($prev_state->eof_already_seen());
     # }
 
     return;
@@ -3711,19 +3716,7 @@ sub begin_string_reading {
 
     my $string = shift;
 
-    $tex->begin_file_reading();
-
-    my $fh = $tex->a_open_in(\$string);
-
-    $tex->set_file_name('<string>');
-    $tex->set_file_type(string_input);
-    $tex->set_cur_file($fh);
-
-    $tex->set_lexer_state(new_line);
-
-    $tex->set_input_line_no(1);
-
-    $tex->input_ln($fh);
+    $tex->pseudo_start(pseudo_file2, $string);
 
     return;
 }
@@ -3924,22 +3917,17 @@ sub get_token_careful {
 
 # LuaTeX has an upper limit of 127 for end_line_char and new_line_char
 
-sub end_line_char_inactive {
+sub end_line_char_active {
     my $tex = shift;
 
     my $eol = $tex->end_line_char();
 
-    return if $eol < 0 || $eol > 127;
-
-    my $file_type = $tex->file_type();
-
-    return $file_type == string_input || $file_type == pseudo_file2;
+    return $eol > -1 && $eol < 128;
 }
 
 sub get_next_from_file {
     my $tex = shift;
 
-  switch:
     while (1) {
         my ($char, $catcode) = $tex->get_next_char();
 
@@ -3948,27 +3936,27 @@ sub get_next_from_file {
 
             my $file_type = $tex->file_type();
 
+            my $eof = 0;
+
             if ($file_type > openin_file) {
                 $tex->incr_input_line_no();
 
                 my $suppress_eol = 0;
 
                 if (! $tex->is_force_eof()) {
-                    my $eof = 0;
-
-                    if ($file_type > string_input) {
+                    if ($file_type > input_file) {
                         ($eof, $suppress_eol) = $tex->pseudo_input_ln();
                     } else {
                         $eof = $tex->input_ln($tex->get_cur_file());
                     }
 
-                    if ($eof) {
-                        if (! $tex->eof_seen()) {
-                            $tex->set_eof_seen(1);
+                    if ($eof) { # This file is played out
+                        if (! $tex->eof_already_seen()) {
+                            $tex->set_eof_already_seen(1);
                     
                             my $every_eof = $tex->get_toks_list('every_eof');
 
-                            if ($file_type != pseudo_file2 && $every_eof) {
+                            if ($file_type < pseudo_file2 && $every_eof) {
                                 $tex->begin_token_list($every_eof, every_eof_text);
 
                                 return $tex->get_next_from_token_list();
@@ -3976,11 +3964,13 @@ sub get_next_from_file {
                         } else {
                             $tex->set_force_eof($eof);
                         }
+                    } elsif ($tex->end_line_char_active() && ! $suppress_eol) {
+                        $tex->push_char(chr($tex->end_line_char));
                     }
                 }
 
                 if ($tex->is_force_eof()) {
-                    if ($file_type < string_input) {
+                    if ($file_type < pseudo_file) {
                         $tex->print_char(")");
                         $tex->decr_open_parens();
                         $tex->update_terminal(); # { show user that file has been read }
@@ -3994,55 +3984,51 @@ sub get_next_from_file {
 
                     return $tex->get_next(); # goto restart;
                 }
+            } else { # We don't actually use this?...
+                $tex->fatal_error("Trying to read from the terminal...WTF?");
 
-                if (! $tex->end_line_char_inactive() && ! $suppress_eol) {
-                    $tex->push_char(chr($tex->end_line_char));
-                }
-            } else {
-                if ($tex->file_type != terminal) {
-                    # {\.{\\read} line has ended}
-
-                    return;
-                }
-
-                if (@{ $tex->get_input_stacks() } > 0){
-                    # {text was inserted during error recovery}
-
-                    $tex->end_file_reading();
-
-                    # {resume previous level}
-                    return $tex->get_next(); # goto restart;
-                }
-
-                if ($tex->selector() < log_only) {
-                    $tex->open_log_file();
-                }
-
-                if ($tex->get_interaction_mode() > nonstop_mode) {
-                    # if limit = start then {previous line was empty}
-                    $tex->print_nl("(Please type a command or say `\\end')");
-
-                    $tex->print_ln();
-
-                    $tex->prompt_input("*");
-
-                    if (! $tex->end_line_char_inactive()) {
-                        $tex->push_char(chr($tex->end_line_char));
-                    }
-                } else {
-                    $tex->fatal_error("*** (job aborted, no legal \\end found)");
-
-                    # nonstop mode, which is intended for overnight
-                    # batch processing, never waits for on-line input}
-                }
+                # if ($tex->file_type != terminal) {
+                #     # {\.{\\read} line has ended}
+                # 
+                #     return;
+                # }
+                # 
+                # if (@{ $tex->get_input_stacks() } > 0){
+                #     # {text was inserted during error recovery}
+                # 
+                #     $tex->end_file_reading();
+                # 
+                #     # {resume previous level}
+                #     return $tex->get_next(); # goto restart;
+                # }
+                # 
+                # if ($tex->selector() < log_only) {
+                #     $tex->open_log_file();
+                # }
+                # 
+                # if ($tex->get_interaction_mode() > nonstop_mode) {
+                #     # if limit = start then {previous line was empty}
+                #     $tex->print_nl("(Please type a command or say `\\end')");
+                # 
+                #     $tex->print_ln();
+                # 
+                #     $tex->prompt_input("*");
+                # 
+                #     if ($tex->end_line_char_active()) {
+                #         $tex->push_char(chr($tex->end_line_char));
+                #     }
+                # } else {
+                #     $tex->fatal_error("*** (job aborted, no legal \\end found)");
+                # 
+                #     # nonstop mode, which is intended for overnight
+                #     # batch processing, never waits for on-line input}
+                # }
             }
 
             $tex->check_interrupt();
 
             redo;
         }
-
-      reswitch:
 
         redo if $catcode == CATCODE_IGNORED;
 
@@ -6148,17 +6134,19 @@ sub read_toks {
             if ($tex->get_read_open($m) == just_open) {
                 # @<Input the first line of |read_file[m]|@>
 
-                if (! $tex->input_ln($fh)) {
-                    $tex->set_read_open($m, normal);
-                } else {
+                if ($tex->input_ln($fh)) {
                     $tex->closein($fh);
+
                     $tex->set_read_open($m, closed);
+                } else {
+                    $tex->set_read_open($m, normal);
                 }
             } else {
                 # @<Input the next line of |read_file[m]|@>;
 
                 if ($tex->input_ln($fh)) {
                     $tex->closein($m);
+
                     $tex->set_read_open($m, closed);
 
                     if ($tex->align_state() != ALIGN_NO_COLUMN) {
@@ -6177,7 +6165,7 @@ sub read_toks {
             }
         }
 
-        if (! $tex->end_line_char_inactive()) {
+        if ($tex->end_line_char_active()) {
             $tex->push_char(chr($tex->end_line_char));
         }
 
@@ -6923,7 +6911,7 @@ sub start_input {
 
     $tex->input_ln($fh);
 
-    if (! $tex->end_line_char_inactive()) {
+    if ($tex->end_line_char_active()) {
         $tex->push_char(chr($tex->end_line_char));
     }
 
@@ -11296,17 +11284,21 @@ sub pseudo_start {
 
     my $file_type = shift;
 
-    my $token_list = $tex->scan_general_text();
+    my $string = shift;
 
-    my $selector = $tex->selector();
+    if (! defined $string) {
+        my $token_list = $tex->scan_general_text();
 
-    $tex->set_selector(new_string);
+        my $selector = $tex->selector();
 
-    $tex->token_show($token_list);
+        $tex->set_selector(new_string);
 
-    $tex->set_selector($selector);
+        $tex->token_show($token_list);
 
-    my $string = $tex->get_cur_str();
+        $tex->set_selector($selector);
+
+        $string = $tex->get_cur_str();
+    }
 
     my $nlc = $tex->new_line_char();
 

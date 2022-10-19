@@ -79,9 +79,8 @@ my %FILE_TYPES = (
     anonymous_file =>  2,    # process_file()/read_package_data()
     input_file     =>  4,
 
-    string_input   =>  8,    # begin_string_reading()
-    pseudo_file    => 16,    # scantokens
-    pseudo_file2   => 17,    # scantextokens
+    pseudo_file    =>  8,    # scantokens
+    pseudo_file2   => 16,    # scantextokens
     );
 
 install file_types => %FILE_TYPES;
