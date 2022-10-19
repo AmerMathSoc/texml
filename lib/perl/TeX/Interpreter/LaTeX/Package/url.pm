@@ -92,9 +92,9 @@ sub do_url_formatstring {
     $tex->set_catcode(ord('}'),  CATCODE_END_GROUP);
     $tex->set_catcode(ord(' '),  CATCODE_IGNORED);
 
-    $formatted = $tex->tokenize(q{\leavevmode
-                                \startXMLelement{ext-link}
-                                \setXMLattribute{xlink:href}});
+    ## No linebreaks here because this is in the scope of \obeylines from \Url
+
+    $formatted = $tex->tokenize(q{\leavevmode\startXMLelement{ext-link}\setXMLattribute{xlink:href}});
 
     $formatted->push(BEGIN_GROUP, $url_for_link, END_GROUP);
 
