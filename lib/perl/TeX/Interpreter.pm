@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.14.5';
+use version; our $VERSION = qv '1.15.0';
 
 use base qw(Exporter);
 
@@ -189,7 +189,7 @@ my %cur_enc_of  :ATTR;
 
 my %cur_page_of :ARRAY(:name<cur_page>);
 
-my %debugging_of :BOOLEAN(:name<debugging> :default<false>);
+# my %debugging_of :BOOLEAN(:name<debugging> :default<false>);
 
 my %nofiles_of :BOOLEAN(:name<nofiles> :get<nofiles> :default<false>);
 
@@ -782,42 +782,6 @@ sub print_roman_int {
     return;
 }
 
-sub prompt_input {
-    my $tex = shift;
-
-    my $prompt = shift;
-
-    $tex->print($prompt);
-
-    return $tex->term_input();
-}
-
-sub term_input {
-    my $tex = shift;
-
-    $tex->update_terminal();
-
-    if ($tex->input_ln(term_in)) {
-        $tex->fatal_error("End of file on the terminal!");
-    }
-
-    $tex->set_term_offset(0);
-
-    $tex->decr_selector();
-
-    my @chars = $tex->get_chars();
-
-    if (@chars > 0) {
-        $tex->print(@chars);
-    }
-
-    $tex->print_ln();
-
-    $tex->incr_selector();
-
-    return;
-}
-
 ######################################################################
 ##                                                                  ##
 ##                       [6] REPORTING ERRORS                       ##
@@ -988,12 +952,6 @@ sub succumb {
 
     if ($tex->log_opened()) {
         $tex->error();
-    }
-
-    if ($tex->is_debugging()) {
-        if ($tex->get_interaction_mode() > batch_mode) {
-            $tex->debug_help();
-        }
     }
 
     $tex->set_history(fatal_error_stop);
@@ -6072,21 +6030,11 @@ sub read_toks {
         $tex->begin_file_reading();
 
         if ($tex->get_read_open($m) == closed) {
-            # @<Input for \read from the terminal@>
+            $tex->print_err("*** (cannot \\read from closed fileno $fileno)");
 
-            if ($tex->get_interaction_mode() > nonstop_mode) {
-                if ($fileno < 0) {
-                    $tex->prompt_input("");
-                } else {
-                    $tex->wake_up_terminal();
-                    $tex->print_ln();
-                    $tex->print($cur_tok);
-                    $tex->prompt_input("=");
-                    $fileno = -1;
-                }
-            } else {
-                $tex->fatal_error("*** (cannot \\read from terminal in nonstop modes)");
-            }
+            $tex->error();
+
+            return;
         } else {
             my $in_record = $tex->get_read_file($fileno);
 
@@ -6709,58 +6657,6 @@ sub scan_file_name {
     return $file_name;
 }
 
-sub prompt_file_name {
-    my $tex = shift;
-
-    my $s = shift;
-    my $ext = shift;
-
-    my $prev_filename = shift;
-
-    if ($tex->get_interaction_mode() == scroll_mode) {
-        $tex->wake_up_terminal();
-    }
-
-    if ($s eq "input file name") {
-        $tex->print_err("I can't find file `");
-    } else {
-        $tex->print_err("I can't write on file `");
-    }
-
-    $tex->slow_print($prev_filename);
-    $tex->print("'.");
-
-    if ($ext eq ".tex") {
-        $tex->show_context();
-    }
-
-    $tex->print_nl("Please type another ");
-    $tex->print($s);
-
-    if ($tex->get_interaction_mode() < scroll_mode) {
-        $tex->fatal_error("*** (job aborted, file error in nonstop mode)");
-    }
-
-    $tex->clear_terminal();
-    $tex->prompt_input(": ");
-
-    my $file_name;
-
-    my $char = $tex->shift_char();
-
-    while ($char eq ' ' && defined($char = $tex->shift_char())) {}
-
-    while (defined($char) && $char ne ' ') {
-        $file_name .= $char;
-
-        $char = $tex->shift_char();
-    }
-
-    $file_name .= $ext unless $file_name =~ m{\..* \z}smx;
-
-    return $file_name;
-}
-
 sub find_file_path {
     my $tex = shift;
 
@@ -6825,7 +6721,11 @@ sub start_input {
 
         $tex->end_file_reading();
 
-        $file_spec = $tex->prompt_file_name("input file name", ".tex", $file_spec);
+        $tex->print_err("Can't find file '$file_spec'");
+
+        $tex->error();
+
+        return;
     }
 
     $tex->set_file_name($path);
@@ -6848,7 +6748,7 @@ sub start_input {
         if ($tex->do_svg() && ! defined $tex->get_svg_agent()) {
             my $svg_agent = TeX::Utils::SVG->new({ base_file => $path,
                                                    interpreter => $tex,
-                                                   debug => $tex->is_debugging(),
+                                                   # debug => $tex->is_debugging(),
                                                    use_xetex => $tex->use_xetex(),
                                                  });
 
@@ -11096,40 +10996,7 @@ sub convert_fragment {
 ##                                                                  ##
 ######################################################################
 
-sub debug_help {
-    my $tex = shift;
-
-#     loop begin
-#         wake_up_terminal;
-#         print_nl("debug # (-1 to exit):");
-#         update_terminal;
-#
-#         read(term_in, m);
-#
-#         if m < 0 then
-#             return
-#         else if m = 0 then
-#         begin
-#             goto breakpoint;        {go to every label at least once}
-#             breakpoint: m := 0;     @{'BREAKPOINT'@}
-#         end
-#         else
-#         begin
-#             read(term_in, n);
-#
-#             case m of
-#                 @<Numbered cases for |debug_help|@>
-#
-#                 othercases print("?")
-#             endcases;
-#         end;
-#     end;
-#
-#   exit:
-# end;
-
-    return;
-}
+## Nope.
 
 ######################################################################
 ##                                                                  ##
