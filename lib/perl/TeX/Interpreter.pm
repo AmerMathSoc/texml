@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.14.4';
+use version; our $VERSION = qv '1.14.5';
 
 use base qw(Exporter);
 
@@ -3936,93 +3936,60 @@ sub get_next_from_file {
 
             my $file_type = $tex->file_type();
 
-            my $eof = 0;
+            if ($file_type == terminal) {
+                $tex->fatal_error("You ran out of file, mate!");
+            }
 
-            if ($file_type > openin_file) {
-                $tex->incr_input_line_no();
+            if ($file_type == openin_file) {
+                return; ## Nothing to do
+            }
+
+            $tex->incr_input_line_no();
+
+            if (! $tex->is_force_eof()) { # Try to read the next line
+                my $eof = 0;
 
                 my $suppress_eol = 0;
 
-                if (! $tex->is_force_eof()) {
-                    if ($file_type > input_file) {
-                        ($eof, $suppress_eol) = $tex->pseudo_input_ln();
-                    } else {
-                        $eof = $tex->input_ln($tex->get_cur_file());
-                    }
+                if ($file_type > input_file) {
+                    ($eof, $suppress_eol) = $tex->pseudo_input_ln();
+                } else {
+                    $eof = $tex->input_ln($tex->get_cur_file());
+                }
 
-                    if ($eof) { # This file is played out
-                        if (! $tex->eof_already_seen()) {
-                            $tex->set_eof_already_seen(1);
-                    
-                            my $every_eof = $tex->get_toks_list('every_eof');
+                if ($eof) { # This file is played out
+                    if (! $tex->eof_already_seen()) {
+                        $tex->set_eof_already_seen(1);
 
-                            if ($file_type < pseudo_file2 && $every_eof) {
-                                $tex->begin_token_list($every_eof, every_eof_text);
+                        my $every_eof = $tex->get_toks_list('every_eof');
 
-                                return $tex->get_next_from_token_list();
-                            }
-                        } else {
-                            $tex->set_force_eof($eof);
+                        if ($file_type < pseudo_file2 && $every_eof) {
+                            $tex->begin_token_list($every_eof, every_eof_text);
+
+                            return $tex->get_next_from_token_list();
                         }
-                    } elsif ($tex->end_line_char_active() && ! $suppress_eol) {
-                        $tex->push_char(chr($tex->end_line_char));
+                    } else {
+                        $tex->set_force_eof($eof);
                     }
+                } elsif ($tex->end_line_char_active() && ! $suppress_eol) {
+                    $tex->push_char(chr($tex->end_line_char));
+                }
+            }
+
+            if ($tex->is_force_eof()) {
+                if ($file_type < pseudo_file) {
+                    $tex->print_char(")");
+                    $tex->decr_open_parens();
+                    $tex->update_terminal(); # { show user that file has been read }
                 }
 
-                if ($tex->is_force_eof()) {
-                    if ($file_type < pseudo_file) {
-                        $tex->print_char(")");
-                        $tex->decr_open_parens();
-                        $tex->update_terminal(); # { show user that file has been read }
-                    }
+                $tex->set_force_eof(false);
 
-                    $tex->set_force_eof(false);
+                $tex->end_file_reading(); # { resume previous level }
 
-                    $tex->end_file_reading(); # { resume previous level }
+                $tex->check_outer_validity();
 
-                    $tex->check_outer_validity();
-
-                    return $tex->get_next(); # goto restart;
-                }
-            } else { # We don't actually use this?...
-                $tex->fatal_error("Trying to read from the terminal...WTF?");
-
-                # if ($tex->file_type != terminal) {
-                #     # {\.{\\read} line has ended}
-                # 
-                #     return;
-                # }
-                # 
-                # if (@{ $tex->get_input_stacks() } > 0){
-                #     # {text was inserted during error recovery}
-                # 
-                #     $tex->end_file_reading();
-                # 
-                #     # {resume previous level}
-                #     return $tex->get_next(); # goto restart;
-                # }
-                # 
-                # if ($tex->selector() < log_only) {
-                #     $tex->open_log_file();
-                # }
-                # 
-                # if ($tex->get_interaction_mode() > nonstop_mode) {
-                #     # if limit = start then {previous line was empty}
-                #     $tex->print_nl("(Please type a command or say `\\end')");
-                # 
-                #     $tex->print_ln();
-                # 
-                #     $tex->prompt_input("*");
-                # 
-                #     if ($tex->end_line_char_active()) {
-                #         $tex->push_char(chr($tex->end_line_char));
-                #     }
-                # } else {
-                #     $tex->fatal_error("*** (job aborted, no legal \\end found)");
-                # 
-                #     # nonstop mode, which is intended for overnight
-                #     # batch processing, never waits for on-line input}
-                # }
+                return $tex->get_next(); # goto restart;
             }
 
             $tex->check_interrupt();
@@ -6105,7 +6072,7 @@ sub read_toks {
         $tex->begin_file_reading();
 
         if ($tex->get_read_open($m) == closed) {
-            # @<Input for \.{\\read} from the terminal@>
+            # @<Input for \read from the terminal@>
 
             if ($tex->get_interaction_mode() > nonstop_mode) {
                 if ($fileno < 0) {
@@ -6175,7 +6142,7 @@ sub read_toks {
             $token_list->push($token);
 
             if ($tex->align_state() < ALIGN_NO_COLUMN) {
-                # { unmatched `\.\}' aborts the line }
+                # unmatched } aborts the line
 
                 $tex->delete_chars();
 

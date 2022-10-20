@@ -74,7 +74,7 @@ install tracing_macro_codes => %TRACING_MACRO_CODES;
 
 my %FILE_TYPES = (
     terminal       =>  0,
-    openin_file    =>  1,
+    openin_file    =>  1,    # \openin/\read/\readline
 
     anonymous_file =>  2,    # process_file()/read_package_data()
     input_file     =>  4,
