@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.16.0';
+use version; our $VERSION = qv '1.16.1';
 
 use base qw(Exporter);
 
@@ -3224,6 +3224,22 @@ sub token_show {
     return;
 }
 
+sub toks_to_string {
+    my $tex = shift;
+
+    my $token_list = shift;
+
+    my $selector = $tex->selector();
+    
+    $tex->set_selector(new_string);
+    
+    $tex->token_show($token_list);
+
+    $tex->set_selector($selector);
+    
+    return $tex->str_toks($tex->get_cur_str());
+}
+
 sub print_meaning {
     my $tex = shift;
 
@@ -5860,7 +5876,7 @@ sub the_toks {
     }
 
     if (eval { $cur_cmd->isa("TeX::Primitive::LuaTeX::detokenize") }) {
-        return $tex->str_toks($tex->scan_general_text());
+        return $tex->toks_to_string($tex->scan_general_text());
     }
 
     my $token = $tex->get_x_token();
