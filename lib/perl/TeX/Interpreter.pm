@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.15.0';
+use version; our $VERSION = qv '1.16.0';
 
 use base qw(Exporter);
 
@@ -135,6 +135,8 @@ use TeX::Primitive::Prefix;
 use TeX::Primitive::Register;
 use TeX::Primitive::SetFont;
 use TeX::Primitive::def;
+
+use TeX::Primitive::LuaTeX::CombineTokens;
 
 use TeX::Output::FontMapper qw(decode_character);
 
@@ -3039,6 +3041,8 @@ sub set_toks_list {
     my $type = shift;
     my $token_list = shift;
 
+    my $modifier = shift;
+
     my $ident = ident $tex;
 
     if (! exists $token_parameters_of{$ident}->{$type}) {
@@ -3055,7 +3059,9 @@ sub set_toks_list {
         $token_list = TeX::TokenList->new({ tokens => [ $token_list ] });
     }
 
-    $tex->eq_define(\$token_parameters_of{$ident}->{$type}, $token_list);
+    $tex->eq_define(\$token_parameters_of{$ident}->{$type},
+                    $token_list,
+                    $modifier);
 
     return;
 }
@@ -10599,6 +10605,16 @@ my %DEFS = (def  => 0,
             xdef => MODIFIER_GLOBAL | MODIFIER_EXPAND,
     );
 
+my %TOKS = (tokspre  => 0,
+            etokspre =>                   MODIFIER_EXPAND,
+            gtokspre =>                                     MODIFIER_GLOBAL,
+            xtokspre =>                   MODIFIER_EXPAND | MODIFIER_GLOBAL,
+            toksapp  => MODIFIER_APPEND,
+            etoksapp => MODIFIER_APPEND | MODIFIER_EXPAND,
+            gtoksapp => MODIFIER_APPEND |                   MODIFIER_GLOBAL,
+            xtoksapp => MODIFIER_APPEND | MODIFIER_EXPAND | MODIFIER_GLOBAL,
+    );
+
 my %PREFIXES = (long      => MODIFIER_LONG,
                 outer     => MODIFIER_OUTER,
                 global    => MODIFIER_GLOBAL,
@@ -10625,6 +10641,13 @@ sub init_prim {
 
         $tex->set_primitive($def => $cmd);
         $tex->define_csname($def => $cmd);
+    }
+
+    while (my ($toksdef, $modifier) = each %TOKS) {
+        my $cmd = TeX::Primitive::LuaTeX::CombineTokens->new({ modifier => $modifier });
+
+        $tex->set_primitive($toksdef => $cmd);
+        $tex->define_csname($toksdef => $cmd);
     }
 
     while (my ($prefix, $mask) = each %PREFIXES) {
