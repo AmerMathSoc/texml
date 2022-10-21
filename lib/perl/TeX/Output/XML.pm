@@ -340,9 +340,14 @@ sub normalize_figures {
         __move_label($fig);
         __move_caption($fig);
 
-        my $name = $fig->nodeName();
+        # my $name = $fig->nodeName();
 
         # print STDERR "*** finalize_document: Found node '$name'\n";
+    }
+
+    for my $table ($dom->findnodes("/descendant::table-wrap")) {
+        __move_label($table);
+        __move_caption($table);
     }
 
     return;
