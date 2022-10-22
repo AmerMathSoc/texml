@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.16.1';
+use version; our $VERSION = qv '1.17.0';
 
 use base qw(Exporter);
 
@@ -4834,26 +4834,40 @@ sub scan_char_num {
 
     my $cur_val = $tex->scan_int();
 
-    # if ($cur_val < first_text_char || $cur_val > last_text_char) {
-    #     $tex->print_err("Bad character code");
-    #
-    #     $tex->set_help("A character number must be between 0 and 255.",
-    #                     "I changed this one to zero.");
-    #
-    #     $tex->int_error($cur_val);
-    #
-    #     $cur_val = 0;
-    # }
-
     if ($cur_val < first_unicode_char || $cur_val > last_unicode_char) {
-        $tex->print_err("Bad character code");
+        $tex->print_err(sprintf "Bad character code %d", $cur_val);
 
-        $tex->set_help("A character number must be between 0 and 2^{31} - 1.",
-                        "I changed this one to zero.");
+        $tex->set_help(
+            sprintf("A character number must be between %d and %d.",
+                    first_unicode_char,
+                    last_unicode_char),
+                       "I changed this one to zero.");
 
         $tex->int_error($cur_val);
 
         $cur_val = 0;
+    }
+
+    return $cur_val;
+}
+
+sub scan_cat_code_num {
+    my $tex = shift;
+
+    my $cur_val = $tex->scan_int();
+
+    if ($cur_val < CATCODE_ESCAPE || $cur_val > CATCODE_INVALID) {
+        $tex->print_err(sprintf "Bad character code %d", $cur_val);
+
+        $tex->set_help(
+            sprintf("A category code must be between %d and %d.",
+                    CATCODE_ESCAPE,
+                    CATCODE_INVALID),
+                       "I changed this one to 12.");
+
+        $tex->int_error($cur_val);
+
+        $cur_val = 12;
     }
 
     return $cur_val;
@@ -10608,9 +10622,17 @@ sub __list_primitives {
     ## eTeX extensions
     push @primitives, qw(detokenize ifcsname unexpanded);
 
+    ## XeTeX extensions
+
+    push @primitives, qw(Ucharcat);
+
     ## LuaTeX extensions
 
-    push @primitives, qw(expanded scantokens scantextokens);
+    push @primitives, qw(begincsname
+                         csstring
+                         expanded
+                         scantokens scantextokens
+                         Uchar);
 
     return @primitives;
 }

@@ -1,4 +1,4 @@
-package TeX::Primitive::catcode;
+package TeX::Primitive::LuaTeX::csstring;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,48 +32,25 @@ package TeX::Primitive::catcode;
 use strict;
 use warnings;
 
-use base qw(TeX::Command::Executable::Readable
-            TeX::Command::Executable::Assignment);
-
-use TeX::WEB2C qw(:command_codes :scan_types);
+use base qw(TeX::Command::Expandable);
 
 use TeX::Class;
 
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
+use TeX::Token qw(:catcodes);
 
-    $self->set_level(int_val);
-
-    return;
-}
-
-sub execute {
+sub expand {
     my $self = shift;
 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $modifier = shift;
+    my $token = $tex->get_next();
 
-    my $char_code = $tex->scan_char_num();
+    my $string = $token->get_datum();
 
-    $tex->scan_optional_equals();
-
-    my $cat_code = $tex->scan_cat_code_num();
-
-    $tex->set_catcode($char_code, $cat_code, $modifier);
+    $tex->conv_toks($string);
 
     return;
-}
-
-sub read_value {
-    my $self = shift;
-
-    my $tex = shift;
-
-    my $char_code = $tex->scan_char_num();
-
-    return $tex->get_catcode($char_code);
 }
 
 1;
