@@ -50,7 +50,13 @@ sub execute {
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $next = $tex->get_token_careful();
+    my $save_scanner_status = $tex->scanner_status();
+
+    $tex->set_scanner_status(0); # normal
+
+    my $next = $tex->get_token();
+
+    $tex->set_scanner_status($save_scanner_status);
 
     if ($next != CATCODE_CSNAME) {
         $self->missing_primitive($tex, $next);
