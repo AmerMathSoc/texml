@@ -38,7 +38,7 @@ package TeX::Class;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.1';
+use version; our $VERSION = qv '1.1.2';
 
 ## This is a modified version of Class::Std, v0.011, with the
 ## following modifications:
@@ -427,7 +427,7 @@ sub __declare_BOOLEAN( $$$ ) {
     my $getter = _extract_get($config);
 
     if (__empty($getter)) {
-        if ($name =~ m{\A (do|is|has|needs|no|use|uses)_}smx) {
+        if ($name =~ m{\A (do|is|has|needs|no|use|uses|allow)_}smx) {
             $getter = $name;
         } else {
             $getter = "is_$name";
