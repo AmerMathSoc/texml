@@ -139,7 +139,27 @@ __DATA__
 
 \def\subcaption@reffmt#1#2{\bothIfFirst {#1}{\nobreakspace }#2}
 
-\def\subcaptionbox#1#2{\caption@iiibox{}{}{#1}{}[]{#2}}
+% \subcaptionbox[<list entry>]{<heading>}[<width>][<inner-pos>]{<contents>}
+% \subcaptionbox*             {<heading>}[<width>][<inner-pos>]{<contents>}
+%
+% \subcaption[<list entry>]{<heading>}
+% \subcaption*             {<heading>}
+
+\def\subcaptionbox{%
+    \@ifstar{\st@rredtrue\subcaptionbox@}{\st@rredfalse\subcaptionbox@}%
+}
+
+\newcommand{\subcaptionbox@}[2][]{%
+    \@ifnextchar[{\subcaptionbox@@{#2}}{\subcaptionbox@@{#2}[]}%
+}
+
+\def\subcaptionbox@@#1[#2]{%
+    \@ifnextchar[{\subcaptionbox@@@{#1}}{\subcaptionbox@@@{#1}[]}%
+}
+
+\def\subcaptionbox@@@#1[#2]#3{%
+    \begin{subfigure}{}\caption{#1}#3\end{subfigure}%
+}
 
 \endinput
 
