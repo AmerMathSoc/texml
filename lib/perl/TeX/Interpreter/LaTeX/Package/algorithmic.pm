@@ -214,7 +214,7 @@ __DATA__
 \def\ALC@close@IF{\protect \ALG@close {if}}
 
 \newcommand{\IF}[2][]{%
-    \ALG@open@structure{if}{\algorithmicif}{#2}{#1}{\algorithmicthen}
+    \ALG@open@structure{if}{\algorithmicif}{#2}{#1}{\algorithmicthen}%
 }
 
 \newcommand{\ELSIF}[2][]{%

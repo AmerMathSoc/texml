@@ -330,7 +330,7 @@ __DATA__
         % Begin statement manually so we don't prematurely close the condition.
         \ALG@pushtag{statement}% maybe just a line here?
             \ALG@instatementtrue
-            #2 #3 #5\par
+            #2 #3 #5%\par
             \ALG@com{#4}%
         % Can't end the condition here because there might be a \Comment
         \ALG@startblocktrue
