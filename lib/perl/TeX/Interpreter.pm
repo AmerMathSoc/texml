@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.17.0';
+use version; our $VERSION = qv '1.18.0';
 
 use base qw(Exporter);
 
@@ -2539,7 +2539,7 @@ sub load_primitive( $;$ ) {
             } else {
                 @candidates = ("TeX::Primitive::$class_name");
 
-                for my $engine (qw(texml LuaTeX eTeX pdfTeX XeTeX)) {
+                for my $engine (qw(texml LuaTeX pdfTeX XeTeX)) {
                     push @candidates, "TeX::Primitive::${engine}::$class_name"
                 }
             }
@@ -10575,44 +10575,61 @@ sub list_macros {
 sub __list_primitives {
     my $tex = shift;
 
-    my @primitives = qw(above abovewithdelims accent advance
-                        afterassignment aftergroup atop atopwithdelims
+    my @primitives = qw(accent advance
+                        afterassignment aftergroup
                         badness batchmode begingroup botmark box
-                        catcode char chardef cleaders closein closeout
+                        catcode char chardef closein closeout
                         copy count countdef cr crcr csname delcode
-                        delimiter dimen dimendef discretionary
-                        displaylimits displaystyle divide dp dump else
-                        end endcsname endgroup endinput eqno
+                        dimen dimendef discretionary
+                        divide else
+                        end endcsname endgroup endinput
                         errmessage errorstopmode expandafter fi
                         firstmark font fontdimen fontname futurelet
-                        halign hbox hfil hfill hfilneg hrule hskip hss
-                        ht hyphenation hyphenchar if ifcase ifcat
+                        halign hbox hrule hskip
+                        hyphenation hyphenchar if ifcase ifcat
                         ifdim ifeof iffalse ifhbox ifhmode ifinner
                         ifmmode ifnum ifodd iftrue ifvbox ifvoid ifx
                         ignorespaces immediate indent input
-                        inputlineno insert jobname kern lastbox
-                        lastkern lastpenalty lastskip lccode leaders
-                        left leqno let limits lower lowercase mark
-                        mathaccent mathbin mathchar mathchardef
-                        mathchoice mathclose mathcode mathinner mathop
-                        mathopen mathord mathpunct mathrel meaning
-                        message mkern moveleft moveright mskip
-                        multiply muskip muskipdef noalign noboundary
-                        noexpand noindent nolimits nonscript
+                        inputlineno jobname kern lastbox
+                        lastkern lastpenalty lastskip lccode
+                        let lower lowercase mark
+                        mathchardef
+                        mathcode
+                        meaning
+                        message
+                        multiply muskip muskipdef noalign
+                        noexpand noindent
                         nonstopmode nullfont number omit openin
-                        openout or over overline overwithdelims par
-                        parshape patterns penalty radical raise read
-                        relax right romannumeral scriptfont
-                        scriptscriptfont scriptscriptstyle scriptstyle
-                        scrollmode setbox setlanguage sfcode shipout
-                        show showbox showlists showthe skewchar skip
-                        skipdef span special splitbotmark
-                        splitfirstmark string tabskip textfont
-                        textstyle the toks toksdef topmark uccode
-                        underline unhbox unhcopy unkern unpenalty
-                        unskip unvbox unvcopy uppercase vadjust valign
-                        vbox vcenter vfil vfill vfilneg vrule vskip
-                        vsplit vss vss vtop wd write xleaders);
+                        openout or par
+                        patterns penalty raise read
+                        relax romannumeral
+                        scrollmode setbox setlanguage sfcode
+                        showthe skewchar skip
+                        skipdef span splitbotmark
+                        splitfirstmark string tabskip
+                        the toks toksdef topmark uccode
+                        unhbox unhcopy
+                        unskip unvbox unvcopy uppercase valign
+                        vbox vcenter vrule vskip
+                        vsplit vtop write);
+
+    ## The following aren't implemented, but they need to be bound to
+    ## keep various macro packages from complaining.
+
+    push @primitives, qw(above abovewithdelims atop atopwithdelims
+                         cleaders delimiter displaylimits displaystyle
+                         dp dump eqno hfil hfill hfilneg hss ht insert
+                         leaders left leqno limits mathaccent mathbin
+                         mathchar mathchoice mathclose mathinner
+                         mathop mathopen mathord mathpunct mathrel
+                         mkern moveleft moveright mskip noboundary
+                         nolimits nonscript over overline
+                         overwithdelims parshape radical scriptfont
+                         scriptscriptfont scriptscriptstyle
+                         scriptstyle shipout show showbox showlists
+                         special textfont textstyle underline unkern
+                         unpenalty vadjust vfil vfill vfilneg vss wd
+                         xleaders);
 
     ## \titlecase is much less useful than it seems.
     push @primitives, qw(tccode titlecase boxtostring endutemplate);
