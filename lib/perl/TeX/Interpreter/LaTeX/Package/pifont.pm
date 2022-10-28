@@ -51,6 +51,9 @@ __DATA__
 \ProvidesPackage{pifont}
 
 \@namedef{pifont@ding@51}{\ensuremath{\checkmark}}
+\@namedef{pifont@ding@54}{\char"2716 }
+\@namedef{pifont@ding@55}{\char"2717 }
+\@namedef{pifont@ding@56}{\char"2718 }
 
 \def\ding#1{%
     \@ifundefined{pifont@ding@#1}{%
