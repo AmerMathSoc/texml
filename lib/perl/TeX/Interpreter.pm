@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.18.0';
+use version; our $VERSION = qv '1.18.1';
 
 use base qw(Exporter);
 
@@ -10634,14 +10634,12 @@ sub __list_primitives {
     ## \titlecase is much less useful than it seems.
     push @primitives, qw(tccode titlecase boxtostring endutemplate);
 
-    push @primitives, qw(XeTeXmathcode);
-
     ## eTeX extensions
     push @primitives, qw(detokenize ifcsname unexpanded);
 
     ## XeTeX extensions
 
-    push @primitives, qw(Ucharcat);
+    push @primitives, qw(strcmp Ucharcat XeTeXmathcode);
 
     ## LuaTeX extensions
 
