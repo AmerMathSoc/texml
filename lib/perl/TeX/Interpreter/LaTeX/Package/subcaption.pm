@@ -104,10 +104,17 @@ __DATA__
     \begingroup
         \protected@edef\@currentlabel{\csname thesub\@captype\endcsname}%
         \subcaption@ORI@label#1{sub@#2}%
-        %% CHEAT
-        %% This isn't right if the caption is at the top, but is it ok
-        %% otherwise?
-        \expandafter\advance \csname c@\@captype\endcsname \@ne
+        %%
+        %% TBD: For tables, we expect the main caption at the
+        %% beginning, before any subcaptions; for figure, we expect
+        %% the main caption at the end, *after* any subcaptions.  So,
+        %% we need to pre-increment the figure counter in order to set
+        %% the subcaption labels.
+        %%
+        \def\@tempa{figure}%
+        \ifx\@captype\@tempa
+            \expandafter\advance \csname c@\@captype\endcsname \@ne
+        \fi
         \protected@edef\@currentlabel{\csname the\@captype\endcsname\@currentlabel}%
         \subcaption@ORI@label#1{#2}%
       \endgroup
