@@ -1879,12 +1879,15 @@ __DATA__
     \fi
     \if###3##\else
         \par
-        \startXMLelement{caption}%
-            \startXMLelement{p}%
-            #3%
-            \endXMLelement{p}%
-        \endXMLelement{caption}%
-        \par
+        \begingroup
+            \def\jats@graphics@element{inline-graphic}
+            \startXMLelement{caption}%
+                \startXMLelement{p}%
+                #3%
+                \endXMLelement{p}%
+            \endXMLelement{caption}%
+            \par
+        \endgroup
     \fi
 }
 
