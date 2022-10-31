@@ -52,6 +52,7 @@ __DATA__
 \RequirePackage{caption}[2012/03/25] % needs v3.3 or newer
 
 \def\jats@figure@element{fig-group}
+\def\jats@table@element{table-wrap-group}
 
 \newcounter{subfigure}
 \def\thesubfigure{\alph{subfigure}}
@@ -90,10 +91,10 @@ __DATA__
     \def\caption@{\@dblarg{\@caption{subtable}}}
     \def\subcaption{\caption}%
     \def\jats@graphics@element{graphic}
-    \startXMLelement{fig}%
+    \startXMLelement{table-wrap}%
     \addXMLid
 }{%
-    \endXMLelement{fig}%
+    \endXMLelement{table-wrap}%
     \par
 }
 
@@ -111,8 +112,7 @@ __DATA__
         %% we need to pre-increment the figure counter in order to set
         %% the subcaption labels.
         %%
-        \def\@tempa{figure}%
-        \ifx\@captype\@tempa
+        \ifnum\strcmp{\@captype}{figure}=0
             \expandafter\advance \csname c@\@captype\endcsname \@ne
         \fi
         \protected@edef\@currentlabel{\csname the\@captype\endcsname\@currentlabel}%

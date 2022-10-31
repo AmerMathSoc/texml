@@ -345,6 +345,25 @@ sub normalize_figures {
         # print STDERR "*** finalize_document: Found node '$name'\n";
     }
 
+    for my $table_group ($dom->findnodes("/descendant::table-wrap-group")) {
+        __move_label($table_group);
+        __move_caption($table_group);
+
+        my $name = $table_group->nodeName();
+
+        my @tables = $table_group->findnodes("table-wrap");
+
+        if (@tables) {
+            # for my $fig (@figs) {
+            #     print STDERR "*** finalize_document: Found fig inside '$name'\n";
+            # }
+        } else {
+            # print STDERR "*** Changing empty fig-group to fig\n";
+
+            $table_group->setNodeName("table-wrap");
+        }
+    }
+
     for my $table ($dom->findnodes("/descendant::table-wrap")) {
         __move_label($table);
         __move_caption($table);

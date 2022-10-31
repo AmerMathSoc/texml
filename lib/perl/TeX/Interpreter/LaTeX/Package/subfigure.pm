@@ -62,6 +62,7 @@ __DATA__
 % necessary.
 
 \def\jats@figure@element{fig-group}
+\def\jats@table@element{table-wrap-group}
 
 \def\thesubfigure{\alph{subfigure}}
 \def\thesubtable{\alph{subtable}}
@@ -85,13 +86,21 @@ __DATA__
 
 \long\def\@subfloat#1[#2][#3]#4{%
     \leavevmode
-    \startXMLelement{fig}%
+    \ifnum\strcmp{#1}{subfigure}=0
+        \startXMLelement{fig}%
+    \else
+        \startXMLelement{table-wrap}%
+    \fi
     \addXMLid
     \ifx\@empty#3\relax\else
         \@subcaption{#1}{#2}{#3}%
     \fi
     #4%
-    \endXMLelement{fig}%
+    \ifnum\strcmp{#1}{subfigure}=0
+        \endXMLelement{fig}%
+    \else
+        \endXMLelement{table-wrap}%
+    \fi
   \egroup
 }
 
