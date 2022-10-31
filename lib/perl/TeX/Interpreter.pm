@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.18.1';
+use version; our $VERSION = qv '1.18.2';
 
 use base qw(Exporter);
 
@@ -3230,13 +3230,13 @@ sub toks_to_string {
     my $token_list = shift;
 
     my $selector = $tex->selector();
-    
+
     $tex->set_selector(new_string);
-    
+
     $tex->token_show($token_list);
 
     $tex->set_selector($selector);
-    
+
     return $tex->str_toks($tex->get_cur_str());
 }
 
@@ -10631,23 +10631,25 @@ sub __list_primitives {
                          unpenalty vadjust vfil vfill vfilneg vss wd
                          xleaders);
 
-    ## \titlecase is much less useful than it seems.
-    push @primitives, qw(tccode titlecase boxtostring endutemplate);
-
     ## eTeX extensions
     push @primitives, qw(detokenize ifcsname unexpanded);
 
     ## XeTeX extensions
 
-    push @primitives, qw(strcmp Ucharcat XeTeXmathcode);
+    push @primitives, qw(strcmp Ucharcat XeTeXmathcode ifprimitive);
 
     ## LuaTeX extensions
 
     push @primitives, qw(begincsname
                          csstring
                          expanded
+                         ifcondition
+                         letcharcode
                          scantokens scantextokens
                          Uchar);
+
+    ## texml extensions (\titlecase is much less useful than it seems)
+    push @primitives, qw(tccode titlecase boxtostring endutemplate);
 
     return @primitives;
 }
@@ -10689,6 +10691,18 @@ sub init_prim {
     $tex->primitive("-" => "discretionary_hyphen");
     $tex->primitive("/" => "ital_corr");
 
+    # "These three primitives are like \vbox, \hbox and \vtop but
+    # don’t apply the related callbacks." -- LuaTeX Reference Manual
+
+    $tex->primitive(vpack => 'vbox');
+    $tex->primitive(hpack => 'hbox');
+    $tex->primitive(tpack => 'vtop');
+
+    my $glet = TeX::Primitive::let->new({ modifier => MODIFIER_GLOBAL });
+
+    $tex->set_primitive(glet => $glet);
+    $tex->define_csname(glet => $glet);
+
     while (my ($def, $modifier) = each %DEFS) {
         my $cmd = TeX::Primitive::def->new({ modifier => $modifier });
 
@@ -10718,6 +10732,23 @@ sub init_prim {
     $tex->install_xml_extensions();
 
     $tex->install_svg_extensions();
+
+    ## Provide aliases for pdfTeX names
+
+    my $ifabsnum = TeX::Primitive::ifnum->new({ abs => 1 });
+    my $ifabsdim = TeX::Primitive::ifdim->new({ abs => 1 });
+
+    $tex->set_primitive(ifabsnum => $ifabsnum);
+    $tex->define_csname(ifabsnum => $ifabsnum);
+    $tex->set_primitive(ifpdfabsnum => $ifabsnum);
+    $tex->define_csname(ifpdfabsnum => $ifabsnum);
+
+    $tex->set_primitive(ifabsdim => $ifabsdim);
+    $tex->define_csname(ifabsdim => $ifabsdim);
+    $tex->set_primitive(ifpdfabsdim => $ifabsdim);
+    $tex->define_csname(ifpdfabsdim => $ifabsdim);
+
+    $tex->primitive(ifpdfprimitive => 'ifprimitive');
 
     return;
 }

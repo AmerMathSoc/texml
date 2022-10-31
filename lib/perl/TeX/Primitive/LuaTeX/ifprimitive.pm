@@ -1,4 +1,4 @@
-package TeX::Primitive::let;
+package TeX::Primitive::LuaTeX::ifprimitive;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -32,59 +32,41 @@ package TeX::Primitive::let;
 use strict;
 use warnings;
 
-use base qw(TeX::Command::Executable::Assignment);
-
-use TeX::Command::Executable::Assignment qw(:modifiers);
+use base qw(TeX::Primitive::If);
 
 use TeX::Class;
 
-my %modifier_of :ATTR(:get<modifier> :init_arg<modifier> :default(0));
+use Scalar::Util qw(refaddr);
 
-use TeX::Constants qw(:booleans :tracing_macro_codes);
+use TeX::Interpreter qw(UNDEFINED_CS);
 
-use TeX::Token qw(:catcodes);
-
-sub execute {
+sub expand {
     my $self = shift;
 
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $prefix = exists $_[0] ? shift : 0;
+    my $negate = shift;
 
-    my $modifier = $prefix | $self->get_modifier();
+    $tex->push_cond_stack($self);
 
-    my $r_token = $tex->get_r_token();
+    my $bool = 0;
 
-    my $next_token = $tex->get_next();
+    my $cs = $tex->get_next();
 
-    while ($next_token == CATCODE_SPACE) {
-        $next_token = $tex->get_next();
-    }
+    my $csname = $cs->get_csname();
 
-    if ($next_token == CATCODE_OTHER && $next_token eq "=") {
-        $next_token = $tex->get_next();
+    if (defined (my $prim_meaning = $tex->get_primitive($csname))) {
+        my $cur_meaning = $tex->get_meaning($cs);
 
-        if ($next_token == CATCODE_SPACE) {
-            $next_token = $tex->get_next();
+        if (refaddr($cur_meaning) != refaddr(UNDEFINED_CS())) {
+            $bool = refaddr($cur_meaning) == refaddr($prim_meaning); 
         }
     }
 
-    if ($tex->tracing_macros() & TRACING_MACRO_DEFS) {
-        $tex->begin_diagnostic();
+    $bool = ! $bool if $negate;
 
-        $tex->print_ln();
-
-        $tex->print("$cur_tok$r_token:=$next_token");
-
-        $tex->print_ln();
-
-        $tex->end_diagnostic(false);
-    }
-
-    my $equiv = $tex->get_meaning($next_token);
-
-    $tex->define($r_token, $equiv, $modifier);
+    $tex->conditional($bool);
 
     return;
 }

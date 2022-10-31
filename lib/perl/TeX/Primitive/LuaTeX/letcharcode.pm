@@ -1,4 +1,4 @@
-package TeX::Primitive::let;
+package TeX::Primitive::LuaTeX::letcharcode;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -54,7 +54,7 @@ sub execute {
 
     my $modifier = $prefix | $self->get_modifier();
 
-    my $r_token = $tex->get_r_token();
+    my $char_code = $tex->scan_char_num();
 
     my $next_token = $tex->get_next();
 
@@ -75,7 +75,7 @@ sub execute {
 
         $tex->print_ln();
 
-        $tex->print("$cur_tok$r_token:=$next_token");
+        $tex->print("active char($char_code):=$next_token");
 
         $tex->print_ln();
 
@@ -84,7 +84,7 @@ sub execute {
 
     my $equiv = $tex->get_meaning($next_token);
 
-    $tex->define($r_token, $equiv, $modifier);
+    $tex->define_active_char(chr($char_code), $equiv, $modifier);
 
     return;
 }

@@ -36,6 +36,8 @@ use base qw(TeX::Primitive::If);
 
 use TeX::Class;
 
+my %absolute_value_of :BOOLEAN(:name<abs> :default<0>);
+
 sub expand {
     my $self = shift;
 
@@ -51,6 +53,11 @@ sub expand {
     my $op = $tex->scan_comparison_operator($cur_tok);
 
     my $num_b = $tex->scan_int();
+
+    if ($self->is_abs()) {
+        $num_a = abs($num_a);
+        $num_b = abs($num_b);
+    }
 
     my $bool = $tex->do_conditional_comparison($cur_tok, $num_a, $op, $num_b);
 
