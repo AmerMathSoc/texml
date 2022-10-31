@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.18.3';
+use version; our $VERSION = qv '1.18.4';
 
 use base qw(Exporter);
 
@@ -794,15 +794,13 @@ my %err_help_of :ARRAY(:name<err_help>);
 
 my %history_of    :ATTR(:name<history> :default<fatal_error_stop>);
 
-my %deletions_allowed :BOOLEAN(:name<deletions_allowed> :default<true>);
+# I doubt that set_box_allowed is useful for us.
+
 my %set_box_allowed   :BOOLEAN(:name<set_box_allowed> :getter<set_box_allowed> :default<true>);
 
 my %error_count_of :COUNTER(:name<error_count> :default<0>);
 
 my %use_err_help_of :BOOLEAN(:name<use_err_help> :default<false>);
-
-my %interrupt_of       :BOOLEAN(:name<OK_interrupt>    :default<false>);
-my %OK_to_interrupt_of :BOOLEAN(:name<OK_to_interrupt> :default<true>);
 
 sub set_help {
     my $tex = shift;
@@ -1032,46 +1030,6 @@ sub confusion {
     $tex->succumb();
 
     die "You shouldn't have gotten here!";
-}
-
-sub check_interrupt {
-    my $tex = shift;
-
-    if ($tex->is_OK_interrupt()) {
-        $tex->pause_for_instructions();
-    }
-
-    return;
-}
-
-sub pause_for_instructions {
-    my $tex = shift;
-
-    return unless $tex->is_OK_to_interrupt();
-
-    $tex->set_interaction_mode(error_stop_mode);
-
-    my $selector = $tex->selector();
-
-    if ( $selector == log_only || $selector == no_print ) {
-        $tex->incr_selector();
-    }
-
-    $tex->print_err("Interruption");
-
-    $tex->set_help("You rang?",
-                   "Try to insert some instructions for me (e.g.,`I\\showlists'),",
-                   "unless you just want to quit by typing `X'.");
-
-    $tex->set_deletions_allowed(false);
-
-    $tex->error();
-
-    $tex->set_deletions_allowed(true);
-
-    $tex->set_interrupt(0);
-
-    return;
 }
 
 ######################################################################
@@ -3634,8 +3592,6 @@ sub end_token_list { # {leave a token-list input level}
 
     $tex->pop_input();
 
-    $tex->check_interrupt();
-
     return;
 }
 
@@ -3644,11 +3600,7 @@ sub back_error {
 
     my $token = shift;
 
-    $tex->set_OK_to_interrupt(false);
-
     $tex->back_input($token);
-
-    $tex->set_OK_to_interrupt(true);
 
     $tex->error();
 
@@ -3660,13 +3612,9 @@ sub ins_error {
 
     my $token = shift;
 
-    $tex->set_OK_to_interrupt(false);
-
     $tex->back_input($token);
 
     $tex->set_token_type(inserted);
-
-    $tex->set_OK_to_interrupt(true);
 
     $tex->error();
 
@@ -3972,8 +3920,6 @@ sub get_next_from_file {
                 return $tex->get_next(); # goto restart;
             }
 
-            $tex->check_interrupt();
-
             redo;
         }
 
@@ -3993,11 +3939,7 @@ sub get_next_from_file {
             $tex->set_help("A funny symbol that I can't read has just been input.",
                            "Continue, and I'll forget that it ever happened.");
 
-            $tex->set_deletions_allowed(false);
-
             $tex->error();
-
-            $tex->set_deletions_allowed(true);
 
             return $tex->get_next(); # goto restart;
         }
