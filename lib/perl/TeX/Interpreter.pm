@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.18.2';
+use version; our $VERSION = qv '1.18.3';
 
 use base qw(Exporter);
 
@@ -9979,7 +9979,7 @@ sub do_assignments {
 
     my $cur_cmd = $tex->get_meaning($cur_tok);
 
-    if (! eval { $cur_cmd->isa("TeX::Command::Executable::Assignment") }) {
+    if (! eval { $cur_cmd->isa("TeX::Command::Prefixed") }) {
         $tex->back_input($cur_tok);
 
         return;
@@ -10644,6 +10644,8 @@ sub __list_primitives {
                          csstring
                          expanded
                          ifcondition
+                         immediateassigned
+                         immediateassignment
                          letcharcode
                          scantokens scantextokens
                          Uchar);
