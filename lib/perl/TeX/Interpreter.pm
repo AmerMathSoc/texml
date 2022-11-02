@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.18.4';
+use version; our $VERSION = qv '1.19.0';
 
 use base qw(Exporter);
 
@@ -2473,10 +2473,24 @@ sub undefined {
 
 my %primitives_of :HASH(:name<primitive>);
 
-my %no_new_control_sequence :BOOLEAN(:name<no_new_control_sequence> :default<true>);
-
 ## This section is mostly irrelevant, but we might want to implement
 ## some version of print_cs and sprint_cs.
+
+# sub id_lookup {
+#     my $tex = shift;
+#
+#     my $csname = shift;
+#
+#     my $eqvt = $tex->get_csname($csname);
+#
+#     if (! defined $eqvt) {
+#         $tex->define_csname($csname, UNDEFINED_CS);
+#
+#         $eqvt = $tex->get_csname($csname);
+#     }
+#
+#     return $eqvt;
+# }
 
 sub load_primitive( $;$ ) {
     my $tex = shift;
@@ -3820,11 +3834,7 @@ sub get_next_careful {
 sub get_token {
     my $tex = shift;
 
-    $tex->set_no_new_control_sequence(false);
-
     my $token = $tex->get_next();
-
-    $tex->set_no_new_control_sequence(true);
 
     return $token;
 }
@@ -4069,11 +4079,9 @@ sub scan_control_sequence {
 
     my $cur_tok = make_csname_token($control_name);
 
-    # if (! $tex->no_new_control_sequence()) {
-        if (! defined($tex->get_meaning($cur_tok))) {
-            $tex->define_csname($control_name => UNDEFINED_CS);
-        }
-    # }
+    if (! defined($tex->get_meaning($cur_tok))) {
+        $tex->define_csname($control_name => UNDEFINED_CS);
+    }
 
     $tex->maybe_check_outer_validity($cur_tok);
 
@@ -4205,10 +4213,14 @@ sub get_next_from_token_list {
 ##                                                                  ##
 ######################################################################
 
-sub do_csname { # @<Manufacture a control sequence name@>
+my %last_cs_name_of :ATTR(:name<last_cs_name>);
+
+sub manufacture_csname { # @<Manufacture a control sequence name@>
     my $tex = shift;
 
     my $cur_tok = shift;
+
+    my $flag = shift || 0;
 
     my $csname = "";
 
@@ -4235,12 +4247,16 @@ sub do_csname { # @<Manufacture a control sequence name@>
 
     my $new_tok = make_csname_token($csname);
 
-    if (! $tex->no_new_control_sequence()) { ## ???
-        my $meaning = $tex->get_meaning($new_tok);
+    $tex->set_last_cs_name($new_tok);
 
-        if ( (! defined($meaning)) || ident($meaning) == ident(UNDEFINED_CS) ) {
+    my $meaning = $tex->get_meaning($new_tok);
+
+    if ( (! defined($meaning)) || ident($meaning) == ident(UNDEFINED_CS) ) {
+        if ($flag == 0) { # \csname
             $tex->define_csname($csname => FROZEN_RELAX);
         }
+
+        return if $flag == 2; # \begincsname
     }
 
     return $new_tok;
@@ -10588,6 +10604,7 @@ sub __list_primitives {
                          ifcondition
                          immediateassigned
                          immediateassignment
+                         lastnamedcs
                          letcharcode
                          scantokens scantextokens
                          Uchar);

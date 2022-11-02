@@ -44,13 +44,7 @@ sub expand {
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $e = $tex->no_new_control_sequence();
-
-    $tex->set_no_new_control_sequence(false);
-
-    my $new_tok = $tex->do_csname($cur_tok);
-
-    $tex->set_no_new_control_sequence($e);
+    my $new_tok = $tex->manufacture_csname($cur_tok, 0);
 
     $tex->back_input($new_tok);
 }

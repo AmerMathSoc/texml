@@ -1,4 +1,4 @@
-package TeX::Primitive::LuaTeX::begincsname;
+package TeX::Primitive::LuaTeX::lastnamedcs;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -44,9 +44,11 @@ sub expand {
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $new_tok = $tex->manufacture_csname($cur_tok, 2);
+    if (defined(my $last_cs = $tex->get_last_cs_name())) {
+        $tex->back_input($last_cs);
+    }
 
-    $tex->back_input($new_tok) if defined $new_tok;
+    return;
 }
 
 1;

@@ -46,7 +46,7 @@ sub expand {
 
     $tex->push_cond_stack($self);
 
-    my $token = $tex->do_csname($cur_tok);
+    my $token = $tex->manufacture_csname($cur_tok, 1);
 
     my $meaning = $tex->get_meaning($token);
 
