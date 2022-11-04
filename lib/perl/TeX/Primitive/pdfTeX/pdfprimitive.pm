@@ -54,7 +54,7 @@ sub execute {
 
     $tex->set_scanner_status(0); # normal
 
-    my $next = $tex->get_token();
+    my $next = $tex->get_next();
 
     $tex->set_scanner_status($save_scanner_status);
 

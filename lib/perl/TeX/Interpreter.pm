@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.19.0';
+use version; our $VERSION = qv '1.19.1';
 
 use base qw(Exporter);
 
@@ -2476,22 +2476,6 @@ my %primitives_of :HASH(:name<primitive>);
 ## This section is mostly irrelevant, but we might want to implement
 ## some version of print_cs and sprint_cs.
 
-# sub id_lookup {
-#     my $tex = shift;
-#
-#     my $csname = shift;
-#
-#     my $eqvt = $tex->get_csname($csname);
-#
-#     if (! defined $eqvt) {
-#         $tex->define_csname($csname, UNDEFINED_CS);
-#
-#         $eqvt = $tex->get_csname($csname);
-#     }
-#
-#     return $eqvt;
-# }
-
 sub load_primitive( $;$ ) {
     my $tex = shift;
 
@@ -3825,28 +3809,6 @@ sub get_next_careful {
     $tex->set_scanner_status(normal);
 
     my $token = $tex->get_next();
-
-    $tex->set_scanner_status($save_scanner_status);
-
-    return $token;
-}
-
-sub get_token {
-    my $tex = shift;
-
-    my $token = $tex->get_next();
-
-    return $token;
-}
-
-sub get_token_careful {
-    my $tex = shift;
-
-    my $save_scanner_status = $tex->scanner_status();
-
-    $tex->set_scanner_status(normal);
-
-    my $token = $tex->get_token();
 
     $tex->set_scanner_status($save_scanner_status);
 
@@ -7502,19 +7464,19 @@ sub get_preamble_token {
     my $tex = shift;
 
   restart:
-    my $cur_tok = $tex->get_token();
+    my $cur_tok = $tex->get_next();
 
     my $cur_cmd = $tex->get_meaning($cur_tok);
 
     while (eval { $cur_cmd->isa("TeX::Primitive::span") }) {
-        $cur_tok = $tex->get_token(); # {this token will be expanded once}
+        $cur_tok = $tex->get_next(); # {this token will be expanded once}
 
         $cur_cmd = $tex->get_meaning($cur_tok);
 
         if (eval { $cur_cmd->isa('TeX::Command::Expandable') }) {
             $cur_cmd->expand($tex, $cur_tok);
 
-            $cur_tok = $tex->get_token();
+            $cur_tok = $tex->get_next();
             $cur_cmd = $tex->get_meaning($cur_tok);
         }
     }
