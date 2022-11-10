@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.19.1';
+use version; our $VERSION = qv '1.19.2';
 
 use base qw(Exporter);
 
@@ -417,12 +417,6 @@ sub clear_terminal {
     return;
 }
 
-sub wake_up_terminal {
-    my $tex = shift;
-
-    return;
-}
-
 ## We don't need init_terminal because term_in (aka STDIN) is
 ## automatically opened, and we aren't interested in supporting the
 ## special input from the terminal that TeX performs when invoked with
@@ -772,18 +766,6 @@ sub print_hex {
     return;
 }
 
-sub print_roman_int {
-    my $tex = shift;
-
-    my $n = shift;
-
-    my $roman = int_as_roman($n);
-
-    $tex->print($roman);
-
-    return;
-}
-
 ######################################################################
 ##                                                                  ##
 ##                       [6] REPORTING ERRORS                       ##
@@ -979,34 +961,6 @@ sub fatal_error {
     croak "You shouldn't have gotten here!";
 }
 
-## This should never be needed.
-
-sub overflow {
-    my $tex = shift;
-
-    my $s = shift;
-    my $n = shift;
-
-    $tex->normalize_selector();
-
-    $tex->print_err("TeX capacity exceeded, sorry [");
-
-    $tex->print($s);
-
-    $tex->print_char("=");
-
-    $tex->print_int($n);
-
-    $tex->print_char("]");
-
-    $tex->set_help("If you really absolutely need more capacity,",
-                   "you can ask a wizard to enlarge me.");
-
-    $tex->succumb();
-
-    die "You shouldn't have gotten here!";
-}
-
 sub confusion {
     my $tex = shift;
 
@@ -1074,36 +1028,6 @@ sub confusion {
 
 ## Most of this section is in TeX::Nodes.
 
-## We may not need new_spec, but if we do need it, it should probably
-## be in TeX::Nodes.
-
-sub new_spec {
-    my $tex = shift;
-
-    # @ Here is a function that returns a pointer to a copy of a glue spec.
-    # The reference count in the copy is |null|, because there is assumed
-    # to be exactly one reference to the new specification.
-    #
-    # @p function new_spec(p: pointer): pointer; {duplicates a glue specification}
-    #     var q: pointer; {the new spec}
-    # begin
-    #     q := get_node(glue_spec_size);
-    #
-    #     mem[q] := mem[p];
-    #
-    #     glue_ref_count(q) := null;
-    #
-    #     width(q)   := width(p);
-    #     stretch(q) := stretch(p);
-    #     shrink(q)  := shrink(p);
-    #
-    #     new_spec := q;
-    # end;
-    #
-
-    return;
-}
-
 sub new_param_glue {
     my $tex = shift;
 
@@ -1114,28 +1038,13 @@ sub new_param_glue {
     return new_glue({ glue => $glue_param->get_equiv()->get_value() } );
 }
 
-# function new_skip_param(n: small_number): pointer;
-#     var p: pointer; {the new node}
-# begin
-#     temp_ptr := new_spec(@<Current |mem| equivalent of glue parameter...@>);
-#
-#     p := new_glue(temp_ptr);
-#
-#     glue_ref_count(temp_ptr) := null;
-#
-#     subtype(p) := n + 1;
-#
-#     new_skip_param := p;
-# end;
-
 ######################################################################
 ##                                                                  ##
 ##                        [11] MEMORY LAYOUT                        ##
 ##                                                                  ##
 ######################################################################
 
-## Mostly irrelevant, but possibly need parts of
-## @<Initialize table entries...@>
+## Irrelevant.
 
 ######################################################################
 ##                                                                  ##
@@ -1146,64 +1055,6 @@ sub new_param_glue {
 ## Don't need most of this section since we're not building boxes.
 
 my %show_depth_of :COUNTER(:name<show_depth>);
-
-sub print_rule_dimen {
-    my $tex = shift;
-
-    my $scaled = shift;
-
-    $tex->print(rule_dimen_to_string($scaled));
-
-    return;
-}
-
-sub print_glue {
-    my $tex = shift;
-
-    my $scaled = shift;
-    my $order  = shift;
-    my $units = shift;
-
-    $tex->print(glue_to_string($scaled, $order));
-
-    if (nonempty($units)) {
-        $tex->print($units);
-    }
-
-    return;
-}
-
-sub print_spec { # {prints a glue specification}
-    my $tex = shift;
-
-    my $val   = shift; # ???
-    my $units = shift;
-
-    carp "print_spec not implemented yet";
-
-    # if (p < mem_min) or (p >= lo_mem_max) then
-    #     print_char("*")
-    # else
-    # begin
-    #     print_scaled(width(p));
-    #
-    #     if s <> 0 then print(s);
-    #
-    #     if stretch(p) <> 0 then
-    #     begin
-    #         print(" plus ");
-    #         print_glue(stretch(p), stretch_order(p), s);
-    #     end;
-    #
-    #     if shrink(p) <> 0 then
-    #     begin
-    #         print(" minus ");
-    #         print_glue(shrink(p), shrink_order(p), s);
-    #     end;
-    # end;
-
-    return;
-}
 
 sub show_node_list {
     my $tex = shift;
@@ -1580,7 +1431,7 @@ my %IS_WHITESPACE = (" "  => 1,
                      "\n" => 1,
                      );
 
-sub is_whitespace {
+sub is_whitespace { ## TBD: 
     my $tex = shift;
 
     my $char_code = shift;
@@ -2114,57 +1965,57 @@ sub initialize_char_codes {
     return;
 }
 
-sub show_char_info {
-    my $tex = shift;
-
-    my $usv = shift;
-
-    $tex->print_ln();
-
-    my $file_name = $tex->get_file_name() || '<undef>';
-    my $line_no   = $tex->input_line_no() || '<undef>';
-
-    $tex->print_nl("*** charinfo on line $line_no of $file_name");
-
-    $tex->print_nl(sprintf "***      usv = 0x%04X (%s)", $usv, chr($usv));
-    $tex->print_nl(sprintf "***  catcode = %d", $tex->get_catcode($usv));
-
-    if ((my $code = $tex->get_uccode($usv)) == 0) {
-        $tex->print_nl('***   uccode = 0');
-    } else {
-        $tex->print_nl(sprintf '***   uccode = 0x%04X (%s)', $code, chr($code));
-    }
-
-    if ((my $code = $tex->get_lccode($usv)) == 0) {
-        $tex->print_nl('***   lccode = 0');
-    } else {
-        $tex->print_nl(sprintf '***   lccode = 0x%04X (%s)', $code, chr($code));
-    }
-
-    if ((my $code = $tex->get_tccode($usv)) == 0) {
-        $tex->print_nl('***   tccode = 0');
-    } else {
-        $tex->print_nl(sprintf '***   tccode = 0x%04X (%s)', $code, chr($code));
-    }
-
-    $tex->print_nl(sprintf "***   sfcode = %d", $tex->get_sfcode($usv));
-
-    if ((my $code = $tex->get_mathcode($usv)) == -1) {
-        $tex->print_nl(sprintf "*** mathcode = -1");
-    } else {
-        $tex->print_nl(sprintf "*** mathcode = 0x%06X", $code);
-    }
-
-    if ((my $code = $tex->get_delcode($usv)) == -1) {
-        $tex->print_nl(sprintf "***  delcode = -1");
-    } else {
-        $tex->print_nl(sprintf "***  delcode = 0x%06X", $code);
-    }
-
-    $tex->print_ln();
-
-    return;
-}
+# sub show_char_info {
+#     my $tex = shift;
+# 
+#     my $usv = shift;
+# 
+#     $tex->print_ln();
+# 
+#     my $file_name = $tex->get_file_name() || '<undef>';
+#     my $line_no   = $tex->input_line_no() || '<undef>';
+# 
+#     $tex->print_nl("*** charinfo on line $line_no of $file_name");
+# 
+#     $tex->print_nl(sprintf "***      usv = 0x%04X (%s)", $usv, chr($usv));
+#     $tex->print_nl(sprintf "***  catcode = %d", $tex->get_catcode($usv));
+# 
+#     if ((my $code = $tex->get_uccode($usv)) == 0) {
+#         $tex->print_nl('***   uccode = 0');
+#     } else {
+#         $tex->print_nl(sprintf '***   uccode = 0x%04X (%s)', $code, chr($code));
+#     }
+# 
+#     if ((my $code = $tex->get_lccode($usv)) == 0) {
+#         $tex->print_nl('***   lccode = 0');
+#     } else {
+#         $tex->print_nl(sprintf '***   lccode = 0x%04X (%s)', $code, chr($code));
+#     }
+# 
+#     if ((my $code = $tex->get_tccode($usv)) == 0) {
+#         $tex->print_nl('***   tccode = 0');
+#     } else {
+#         $tex->print_nl(sprintf '***   tccode = 0x%04X (%s)', $code, chr($code));
+#     }
+# 
+#     $tex->print_nl(sprintf "***   sfcode = %d", $tex->get_sfcode($usv));
+# 
+#     if ((my $code = $tex->get_mathcode($usv)) == -1) {
+#         $tex->print_nl(sprintf "*** mathcode = -1");
+#     } else {
+#         $tex->print_nl(sprintf "*** mathcode = 0x%06X", $code);
+#     }
+# 
+#     if ((my $code = $tex->get_delcode($usv)) == -1) {
+#         $tex->print_nl(sprintf "***  delcode = -1");
+#     } else {
+#         $tex->print_nl(sprintf "***  delcode = 0x%06X", $code);
+#     }
+# 
+#     $tex->print_ln();
+# 
+#     return;
+# }
 
 sub __assign_int_commands { # command code = assign_int(_cmd); Region 5
     my $tex = shift;
@@ -3801,20 +3652,6 @@ sub get_next {
     return $cur_tok;
 }
 
-sub get_next_careful {
-    my $tex = shift;
-
-    my $save_scanner_status = $tex->scanner_status();
-
-    $tex->set_scanner_status(normal);
-
-    my $token = $tex->get_next();
-
-    $tex->set_scanner_status($save_scanner_status);
-
-    return $token;
-}
-
 # LuaTeX has an upper limit of 127 for end_line_char and new_line_char
 
 sub end_line_char_active {
@@ -4278,12 +4115,6 @@ sub get_x_token {
     # NEVER GET HERE
 }
 
-sub get_x_or_protected {
-    my $tex = shift;
-
-    return $tex->get_x_token(RESPECT_PROTECTED);
-}
-
 ## This reads as much of the parameter_text as possible, but if it
 ## can't read the entire parameter_text, it returns an empty list and
 ## loses any tokens that it has already read.  It might be useful to
@@ -4548,10 +4379,12 @@ sub scan_left_brace {
 sub get_next_non_blank_non_relax_non_call_token {
     my $tex = shift;
 
+    ## TBD: respect_protected? (cf. below)
+
     while (1) {
         my $token = $tex->get_x_token();
 
-        next if $token == CATCODE_SPACE; #*?
+        next if $token == CATCODE_SPACE; ## TBD: is_space_token()?
 
         if ($token->is_definable) {
             my $cur_cmd = $tex->get_meaning($token);
@@ -4560,18 +4393,6 @@ sub get_next_non_blank_non_relax_non_call_token {
         }
 
         return $token;
-    }
-
-    return;
-}
-
-sub scan_optional_equals {
-    my $tex = shift;
-
-    my $token = $tex->get_next_non_blank_non_call_token();
-
-    unless ($token == $TOKEN_EQUAL) {
-        $tex->back_input($token);
     }
 
     return;
@@ -4596,6 +4417,8 @@ sub get_next_non_blank_non_call_token {
 sub peek_next_non_blank_non_call_token {
     my $tex = shift;
 
+    ## TBD: respect_protected? (cf. above)
+
     my $token = $tex->get_next_non_blank_non_call_token();
 
     if (defined($token)) {
@@ -4603,6 +4426,18 @@ sub peek_next_non_blank_non_call_token {
     }
 
     return $token;
+}
+
+sub scan_optional_equals {
+    my $tex = shift;
+
+    my $token = $tex->get_next_non_blank_non_call_token();
+
+    unless ($token == $TOKEN_EQUAL) {
+        $tex->back_input($token);
+    }
+
+    return;
 }
 
 sub ignorespaces {
@@ -6067,9 +5902,9 @@ sub read_toks {
 
 ## TBD: do_end() isn't quite right because it only exits the current
 ## invocation of main_control (see push_main_control()).  On the other
-## hand, really don't rely upon do_end().  We could fix this by having
-## a separate END_TEX_TOKEN for this purpose, but it might not be
-## worth it.
+## hand, we don't really rely upon do_end().  We could fix this by
+## having a separate END_TEX_TOKEN for this purpose, but it might not
+## be worth it.
 
 sub do_end {
     my $tex = shift;
@@ -8101,7 +7936,7 @@ sub finish_align_in_display {
 
 my %output_line_length_of :COUNTER(:name<output_line_length> :default<72>);
 
-sub __unskip {
+sub __unskip { ## TBD: Review this
     my @nodes = @_;
 
     my @prefix;
@@ -8140,7 +7975,7 @@ sub __unskip {
 ## general solution would require us to classify all nodes according
 ## to whether they count as content or not.
 
-sub __is_empty_par {
+sub __is_empty_par { ## TBD: Review this.
     my @nodes = @_;
 
     return 1 if @nodes == 0;
@@ -8544,7 +8379,7 @@ sub adjust_space_factor {
     return;
 }
 
-sub maybe_do_ligature( $ ) {
+sub maybe_do_ligature( $ ) { ## TBD: Ugh.
     my $tex = shift;
 
     my $token = shift;
@@ -9034,7 +8869,8 @@ sub package {
 
 ## Note that the valence of the argument has been reversed with
 ## respect to tex.web's new_graf().  This reflects the fact that
-## invoking new_graf() with indentation suppressed is the exception.
+## invoking new_graf() with indentation suppressed is the exception
+## (and doesn't currently have any effect anyway).
 
 sub new_graf {
     my $tex = shift;
@@ -9366,28 +9202,6 @@ sub enter_display_math_mode {
     return;
 }
 
-sub scan_math {
-    my $tex = shift;
-
-    my $pointer = shift;
-
-    return;
-}
-
-sub set_math_char {
-    my $tex = shift;
-
-    my $pointer = shift;
-
-    return;
-}
-
-sub math_limit_switch {
-    my $tex = shift;
-
-    return;
-}
-
 sub scan_delimiter {
     my $tex = shift;
 
@@ -9433,12 +9247,6 @@ sub scan_delimiter {
     return $cur_val;
 }
 
-sub math_radical {
-    my $tex = shift;
-
-    return;
-}
-
 sub math_ac {
     my $tex = shift;
 
@@ -9463,24 +9271,6 @@ sub math_ac {
     #     fam(accent_chr(tail)) := (cur_val div 256) mod 16;
     #
     # scan_math(nucleus(tail));
-
-    return;
-}
-
-sub append_choices {
-    my $tex = shift;
-
-    return;
-}
-
-sub build_choices {
-    my $tex = shift;
-
-    return;
-}
-
-sub sub_sup {
-    my $tex = shift;
 
     return;
 }
@@ -10435,56 +10225,56 @@ sub extract_token {
     return;
 }
 
-sub __show_macro {
-    my $macro = shift;
+# sub __show_macro {
+#     my $macro = shift;
+# 
+#     my $param_text = $macro->get_parameter_text();
+#     my $macro_text = $macro->get_replacement_text();
+# 
+#     if (defined $param_text) {
+#         print $param_text;
+#     }
+# 
+#     print "->";
+# 
+#     print $macro_text;
+# 
+#     return;
+# }
 
-    my $param_text = $macro->get_parameter_text();
-    my $macro_text = $macro->get_replacement_text();
-
-    if (defined $param_text) {
-        print $param_text;
-    }
-
-    print "->";
-
-    print $macro_text;
-
-    return;
-}
-
-sub list_macros {
-    my $tex = shift;
-
-    my $active_chars = $tex->get_active_chars();
-
-    while (my ($char, $eqvt) = each %{ $active_chars }) {
-        my $meaning = $eqvt->get_equiv();
-
-        if (defined $meaning) {
-            $tex->print_ln();
-            $tex->print_char($char);
-            $tex->print(": ");
-            $tex->print_meaning($meaning);
-            $tex->print_ln();
-        }
-    }
-
-    my $csnames = $tex->get_csnames();
-
-    while (my ($csname, $eqvt) = each %{ $csnames }) {
-        my $meaning = $eqvt->get_equiv();
-
-        if (defined $meaning) {
-            $tex->print_ln();
-            $tex->print_esc($csname);
-            $tex->print(": ");
-            $tex->print_meaning($meaning);
-            $tex->print_ln();
-        }
-    }
-
-    return;
-}
+# sub list_macros {
+#     my $tex = shift;
+# 
+#     my $active_chars = $tex->get_active_chars();
+# 
+#     while (my ($char, $eqvt) = each %{ $active_chars }) {
+#         my $meaning = $eqvt->get_equiv();
+# 
+#         if (defined $meaning) {
+#             $tex->print_ln();
+#             $tex->print_char($char);
+#             $tex->print(": ");
+#             $tex->print_meaning($meaning);
+#             $tex->print_ln();
+#         }
+#     }
+# 
+#     my $csnames = $tex->get_csnames();
+# 
+#     while (my ($csname, $eqvt) = each %{ $csnames }) {
+#         my $meaning = $eqvt->get_equiv();
+# 
+#         if (defined $meaning) {
+#             $tex->print_ln();
+#             $tex->print_esc($csname);
+#             $tex->print(": ");
+#             $tex->print_meaning($meaning);
+#             $tex->print_ln();
+#         }
+#     }
+# 
+#     return;
+# }
 
 ######################################################################
 ##                                                                  ##
@@ -10698,8 +10488,8 @@ sub initialize_output_routines {
     return;
 }
 
-## Need to allow a filehandle to be passed in.  Also need to be able
-## to take the TeX document as a string.
+## TBD: Maybe allow a filehandle to be passed in?  And/or allow the
+## TeX document to be passed in a a string?
 
 sub TeX {
     my $tex = shift;
@@ -10839,7 +10629,7 @@ sub final_cleanup {
 
 ######################################################################
 ##                                                                  ##
-##                  SPECIAL RECURSIVE MAIN_LOOP'S                   ##
+##                  SPECIAL RECURSIVE MAIN_LOOPS                    ##
 ##                                                                  ##
 ######################################################################
 
