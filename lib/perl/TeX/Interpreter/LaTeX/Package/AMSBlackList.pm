@@ -54,11 +54,13 @@ __DATA__
 
 % \AMSBlackListPackage{listings}
 %\AMSBlackListPackage{mathabx}
+%\AMSBlackListPackage{tabularx}
 \AMSBlackListPackage{amstix2}
 \AMSBlackListPackage{amstixbb}
 \AMSBlackListPackage{backrefs}
 \AMSBlackListPackage{breakurl}
 \AMSBlackListPackage{ctable}
+\AMSBlackListPackage{dutchcal}
 \AMSBlackListPackage{etoolbox}
 \AMSBlackListPackage{footmisc}
 \AMSBlackListPackage{geometry}
@@ -73,12 +75,11 @@ __DATA__
 \AMSBlackListPackage{pspicture}
 \AMSBlackListPackage{shaderef}
 \AMSBlackListPackage{stix2}
-%\AMSBlackListPackage{tabularx}
 \AMSBlackListPackage{textcomp}
 \AMSBlackListPackage{thm-listof}
-\AMSBlackListPackage{tikz-qtree-compat}
-\AMSBlackListPackage{tikz-fct}
 \AMSBlackListPackage{tikz-base}
+\AMSBlackListPackage{tikz-fct}
+\AMSBlackListPackage{tikz-qtree-compat}
 \AMSBlackListPackage{tkz-euclide}
 
 \endinput
