@@ -974,7 +974,10 @@ __DATA__
                     \thisxmlpartag{meta-name}
                     titlepic\par
                     \startXMLelement{meta-value}
-                    \@titlepic\par
+                    \begingroup
+                        \def\jats@graphics@element{graphic}
+                        \@titlepic\par
+                    \endgroup
                     \endXMLelement{meta-value}
                 \endXMLelement{custom-meta}
             \fi
