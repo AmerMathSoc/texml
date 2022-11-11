@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.19.3';
+use version; our $VERSION = qv '1.19.4';
 
 use base qw(Exporter);
 
@@ -10342,7 +10342,7 @@ sub __list_primitives {
                          xleaders);
 
     ## eTeX extensions
-    push @primitives, qw(detokenize ifcsname ifdefined unexpanded);
+    push @primitives, qw(detokenize ifcsname ifdefined unexpanded unless);
 
     ## XeTeX extensions
 
