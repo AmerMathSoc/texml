@@ -58,6 +58,8 @@ __DATA__
     \setXMLattribute{content-type}{tcolorbox}%
     \setXMLattribute{position}{anchor}%
     \setXMLattribute{border-color}{black}%
+    \setXMLattribute{border-width}{medium}%
+    \setXMLattribute{border-style}{solid}%
     \setXMLattribute{background-color}{lightgray}%
     \par
 }{%
