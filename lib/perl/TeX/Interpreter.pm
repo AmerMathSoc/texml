@@ -48,7 +48,7 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.19.4';
+use version; our $VERSION = qv '1.20.0';
 
 use base qw(Exporter);
 
@@ -4824,6 +4824,20 @@ sub scan_optional_space() {
     my $cur_cmd = $tex->get_meaning($cur_tok);
 
     if ($cur_cmd != spacer) {
+        $tex->back_input($cur_tok);
+    }
+
+    return;
+}
+
+sub scan_optional_relax() {
+    my $tex = shift;
+
+    my $cur_tok = $tex->get_next();
+
+    my $cur_cmd = $tex->get_meaning($cur_tok);
+
+    if (ident($cur_cmd) != ident(FROZEN_RELAX)) {
         $tex->back_input($cur_tok);
     }
 
@@ -10342,7 +10356,11 @@ sub __list_primitives {
                          xleaders);
 
     ## eTeX extensions
-    push @primitives, qw(detokenize ifcsname ifdefined unexpanded unless);
+    push @primitives, qw(detokenize
+                         ifcsname ifdefined
+                         dimexpr glueexpr muexpr numexpr
+                         unexpanded unless
+        );
 
     ## XeTeX extensions
 
@@ -11039,6 +11057,170 @@ sub scan_pdf_ext_toks {
     my $tex = shift;
 
     return $tex->scan_toks(false, true);
+}
+
+######################################################################
+##                                                                  ##
+##                NUMEXPR, DIMEXPR, GLUEEXPR, MUEXPR                ##
+##                                                                  ##
+######################################################################
+
+# <integer expr>
+#     <integer term>
+#     <integer expr> <add or sub> <integer term>
+#
+# <integer term>
+#     <integer factor>
+#     <integer term> <mul or div> <integer factor>
+#
+# <integer factor>
+#     <number>
+#     <left paren> <integer expr> <right paren>
+
+my $TOKEN_MULTIPLY = make_character_token('*', CATCODE_OTHER);
+my $TOKEN_DIVIDE   = make_character_token('/', CATCODE_OTHER);
+my $TOKEN_LPAREN   = make_character_token('(', CATCODE_OTHER);
+my $TOKEN_RPAREN   = make_character_token(')', CATCODE_OTHER);
+
+sub scan_factor {   # F := N | ( E )
+    my $tex = shift;
+
+    my $level = shift;
+
+    my @factor;
+
+    my $next = $tex->get_next_non_blank_non_call_token();
+
+    if ($next == $TOKEN_LPAREN) {
+        push @factor, $tex->scan_expr($level);
+
+        $next = $tex->get_next_non_blank_non_call_token();
+
+        unless ($next == $TOKEN_RPAREN) {
+            $tex->print_err("Missing ) inserted for expression");
+
+            $tex->set_help("I was expecting to see '$TOKEN_RPAREN'.");
+
+            $tex->back_error($next);
+        }
+    } else {
+        $tex->back_input($next);
+
+        if ($level == int_val) {
+            push @factor, scalar $tex->scan_int();
+        } elsif ($level == dimen_val) {
+            push @factor, scalar $tex->scan_normal_dimen();
+        } elsif ($level == glue_val) {
+            push @factor, $tex->scan_glue(glue_val);
+        } else {
+            push @factor, $tex->scan_glue(mu_val);
+        }
+    }
+
+    return @factor;
+}
+
+sub scan_term {       # T := F | T * F
+    my $tex = shift;
+
+    my $level = shift;
+
+    my @term = $tex->scan_factor($level);
+
+    while (1) {
+        my $next = $tex->get_next_non_blank_non_call_token();
+
+        if ($next == $TOKEN_MULTIPLY || $next == $TOKEN_DIVIDE) {
+            push @term, $tex->scan_factor(int_val);
+
+            push @term, $next->get_char();
+        } else {
+            $tex->back_input($next);
+
+            last;
+        }
+    }
+
+    return @term;
+}
+
+sub scan_expr {       # E := T | E + T
+    my $tex = shift;
+
+    my $level = shift;
+
+    my @expr = $tex->scan_term($level);
+
+    while (1) {
+        my $next = $tex->get_next_non_blank_non_call_token();
+
+        if ($next == $TOKEN_PLUS || $next == $TOKEN_MINUS) {
+            my @term = $tex->scan_term($level);
+
+            push @expr, @term;
+
+            push @expr, $next->get_char();
+        } else {
+            $tex->back_input($next);
+
+            last;
+        }
+    }
+
+    $tex->scan_optional_relax();
+
+    return @expr;
+}
+
+use POSIX;
+
+# Note that we aren't quite as careful as eTeX in performing these
+# calculations; we don't currently implement add_or_sub, quotient,
+# fract, and the such, or check for overflow.  We should probably add
+# those at some point.
+
+sub evaluate_expression {
+    my $tex = shift;
+
+    my @ops = @_;
+
+    my @stack = ();
+
+    for my $op (@ops) {
+        if ($op eq "+") {
+            my $b = pop @stack;
+            my $a = pop @stack;
+
+            push @stack, $a + $b;
+        }
+        elsif ($op eq '-') {
+            my $b = pop @stack;
+            my $a = pop @stack;
+
+            push @stack, $a - $b;
+        }
+        elsif ($op eq '*') {
+            my $b = pop @stack;
+            my $a = pop @stack;
+
+            push @stack, $a * $b;
+        }
+        elsif ($op eq '/') {
+            my $b = pop @stack;
+            my $a = pop @stack;
+
+            push @stack, POSIX::floor($a/$b + 1/2);  ## IS THIS RIGHT?
+        }
+        else {
+            push @stack, $op;
+        }        
+    }
+
+    if (@stack == 1) {
+        return $stack[0];
+    }
+
+    $tex->fatal_error("Bad expression stack: @stack");
 }
 
 ######################################################################
@@ -12339,53 +12521,3 @@ sub AUTOMETHOD {
 1;
 
 __END__
-#     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-#      * XML initialization
-#      *
-#      * These should really be disabled when nts.output.format != xml
-#      */
-#
-#     private final XmlStringParam
-#         xml_par_tag   = new XmlStringParam("XMLpartag", XML.DEFAULT_PAR_TAG),
-#         xml_table_tag = new XmlStringParam("XMLtabletag", XML.DEFAULT_TABLE_TAG),
-#         xml_row_tag   = new XmlStringParam("XMLrowtag", XML.DEFAULT_ROW_TAG),
-#         xml_cell_tag  = new XmlStringParam("XMLcelltag", XML.DEFAULT_CELL_TAG),
-#         xml_encoding  = new XmlPrologParam("XMLencoding", XML.DEFAULT_ENCODING),
-#         xml_namespace = new XmlPrologParam("XMLnamespace");
-#
-#     private XmlOpenPrim  xml_open_prim  = new XmlOpenPrim("startXMLelement");
-#     private XmlClosePrim xml_close_prim = new XmlClosePrim("endXMLelement");
-#
-#     public void startXMLelement(Builder bld, String qName) {
-#         xml_open_prim.exec(bld, qName);
-#     }
-#
-#     public void endXMLelement(Builder bld, String qName) {
-#         xml_close_prim.exec(bld, qName);
-#     }
-#
-#     {
-#       debugMessage("Primitives.<init(9)>");
-#
-#         def(new IfXMLPrim("ifXMLoutput"));
-#
-#         def(new XmlDocTypePrim("XMLdoctype"));
-#         def(xml_encoding);
-#         def(xml_par_tag);
-#         def(xml_table_tag);
-#         def(xml_row_tag);
-#         def(xml_cell_tag);
-#         def(xml_namespace);
-#
-#         def(xml_open_prim);
-#         def(xml_close_prim);
-#         def(new XmlAttributePrim("addXMLattribute"));
-#
-#         def(new XmlStartCDATAPrim("startXMLcdata"));
-#         def(new XmlEndCDATAPrim("endXMLcdata"));
-#
-#         def(new XmlCommentPrim("XMLcomment"));
-#         def(new XmlDeclarationPrim("XMLdeclaration"));
-#         def(new XmlPIPrim("XMLpi"));
-#         def(new XmlReferencePrim("XMLreference"));
-#     }

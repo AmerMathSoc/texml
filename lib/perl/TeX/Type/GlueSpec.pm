@@ -60,6 +60,7 @@ my %shrink_order_of  :ATTR(:name<shrink_order>  :default<normal>);
 
 use overload
     '+' => \&glue_add,
+    '-' => \&glue_subtract,
     '*' => \&glue_multiply,
     '/' => \&glue_divide;
 
@@ -117,6 +118,44 @@ sub glue_add {
 
     if ($a_shrink_order == $b_shrink_order) {
         $shrink_of{$ident_sum} += $b->get_shrink();
+    } elsif ( $a_shrink_order < $b_shrink_order && $b->get_shrink() != 0 ) {
+        $sum->set_shrink($b->get_shrink());
+        $sum->set_shrink_order($b_shrink_order);
+    }
+
+    return $sum;
+}
+
+sub glue_subtract {
+    my $a = shift;
+
+    my $b = shift;
+
+    my $sum = $a->clone();
+
+    my $ident_sum = ident $sum;
+
+    $width_of{$ident_sum} -= $b->get_width();
+
+    if ($sum->get_stretch() == 0) {
+        $sum->set_stretch_order(normal);
+    }
+
+    my $a_stretch_order = $a->get_stretch_order();
+    my $b_stretch_order = $b->get_stretch_order();
+
+    if ($a_stretch_order == $b_stretch_order) {
+        $stretch_of{$ident_sum} -= $b->get_stretch();
+    } elsif ( $a_stretch_order < $b_stretch_order && $b->get_stretch() != 0 ) {
+        $sum->set_stretch($b->get_stretch());
+        $sum->set_stretch_order($b_stretch_order);
+    }
+
+    my $a_shrink_order = $a->get_shrink_order();
+    my $b_shrink_order = $b->get_shrink_order();
+
+    if ($a_shrink_order == $b_shrink_order) {
+        $shrink_of{$ident_sum} -= $b->get_shrink();
     } elsif ( $a_shrink_order < $b_shrink_order && $b->get_shrink() != 0 ) {
         $sum->set_shrink($b->get_shrink());
         $sum->set_shrink_order($b_shrink_order);
