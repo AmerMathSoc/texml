@@ -1861,10 +1861,10 @@ __DATA__
         \@ifundefined{fnum@#1}{%
             % old-style
             \protected@edef\@templabel{\csname #1name\endcsname}%
-            \ifx\@templabel\@empty\else
-                \protected@edef\@templabel{\@templabel\space}%
-            \fi
             \expandafter\ifx\csname the#1\endcsname \@empty \else
+                \ifx\@templabel\@empty\else
+                    \protected@edef\@templabel{\@templabel\space}%
+                \fi
                 \protected@edef\@templabel{\@templabel\csname the#1\endcsname}%
             \fi
         }{%
@@ -1873,7 +1873,7 @@ __DATA__
         }%
         \ifx\@templabel\@empty\else
             \startXMLelement{label}%
-            \ignorespaces\@templabel
+            \ignorespaces\@templabel\unskip
             \endXMLelement{label}%
         \fi
     \fi
