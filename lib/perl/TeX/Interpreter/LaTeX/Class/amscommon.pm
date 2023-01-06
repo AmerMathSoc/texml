@@ -589,6 +589,8 @@ __DATA__
 
 \let\address\relax\let\curraddr\relax\let\email\relax\let\urladdr\relax
 
+\def\author@contrib@type{author}%
+
 \let\@authorname\relax
 
 \let\start@author\relax
@@ -846,7 +848,7 @@ __DATA__
     \setXMLattribute{content-type}{authors}
     \ifx\this@name\@empty\else
         \startXMLelement{contrib}
-            \setXMLattribute{contrib-type}{author}
+            \setXMLattribute{contrib-type}{\author@contrib@type}
             \startXMLelement{string-name}
                 \this@name
             \endXMLelement{string-name}\par
