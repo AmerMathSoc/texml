@@ -87,7 +87,40 @@ __DATA__
     \fi
 }
 
-\def\category{\gdef\@noti@category}
+\newcommand{\category}[1]{%
+    \gdef\@noti@category{#1}%
+    \@nameuse{init@\@noti@category}%
+}
+
+\def\init@bookreview{%
+    \def\author@contrib@type{reviewer}%
+}
+
+\newcommand{\noti@month@name}{%
+    \relax\ifcase\AMS@issue@month\or
+    January\or February\or March\or April\or May\or June\or
+    July\or August\or September\or October\or November\or December\fi
+}
+
+\def\init@bookshelf{%
+    \setpermissiontext{}%
+    \title{New and Noteworthy Titles on our Bookshelf}%
+    \subtitle{\noti@month@name\ \AMS@issue@year}%
+}
+
+\def\init@amsbookshelf{%
+    \disclaimertext{The AMS Book Program serves the mathematical community by
+        publishing books that further mathematical research,
+        awareness, education, and the profession while generating
+        resources that support other Society programs and
+        activities.  As a professional society of mathematicians
+        and one of the world's leading publishers of mathematical
+        literature, we publish books that meet the highest
+        standards for their content and production.
+        Visit \href{https://bookstore.ams.org}{\textbf{bookstore.ams.org}}
+        to explore the entire collection of AMS titles.
+    }
+}
 
 \newcommand{\titlepic}{\def\@titlepic}
 \newcommand{\titlegraphicnote}{\def\@titlegraphicnote}
@@ -99,6 +132,9 @@ __DATA__
 \def\commbytext{\def\@commbytext}
 \def\@commbytext{Communicated by \emph{Notices} Associate Editor }
 \def\commby{\gdef\AMS@commby}
+
+%% \def\@commbytext{Communicated by}
+% \def\commby#1{\gdef\AMS@commby{\emph{Notices} Associate Editor #1}}
 
 \newcommand{\disclaimertext}{%
     \gdef\@disclaimertext
