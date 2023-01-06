@@ -107,7 +107,7 @@ __DATA__
 \disclaimertext{}
 
 % \newcommand{\notiemail}[1]{\texttt{\upshape\nolinkurl{#1}}}
-\newcommand{\notiemail}[1]{\XMLelement{email}{\ignorespaces#1}}
+\newcommand{\notiemail}[1]{\leavevmode\XMLelement{email}{\ignorespaces#1}}
 
 % Doesn't handle catcode changes
 
@@ -225,6 +225,20 @@ __DATA__
 \newenvironment{intro}{%
     \section*{}
 }{%
+}
+
+\newenvironment{lettersignature}[2][Sincerely]{%
+    \def\@receiveddate{#2}%
+    \def\\{\emptyXMLelement{br}}%
+    \let\par\@empty
+    \@@par
+    \if###1##\else#1,\\\fi
+    \startXMLelement{italic}%
+    \setXMLattribute{toggle}{yes}%
+}{%
+    \ifx\@receiveddate\@empty\else(Received \@receiveddate)\fi
+    \endXMLelement{italic}%
+    \par
 }
 
 \def\reviewheaderskip#1{%
