@@ -48,7 +48,7 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * apt install libxml-libxslt-perl [XML::LibXSLT]
 
-* apt install xml-twig-tools [xml_pp]
+* apt install xml-twig-tools [XML::Twig]
 
 * apt install libpng-dev
 
