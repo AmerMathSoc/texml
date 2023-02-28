@@ -50,6 +50,9 @@ __DATA__
 
 \ProvidesPackage{arydshln}
 
+\let\dashlinedash\dimen@
+\let\dashlinegap\dimen@
+
 %% Not yet implemented:
 %% -- \hdashline\hdashline
 %% -- \dashlinedash, \dashlinegap, etc. (optional arg to \[ch]dashline)
