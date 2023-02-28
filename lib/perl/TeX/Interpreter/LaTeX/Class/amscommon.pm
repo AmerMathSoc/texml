@@ -816,7 +816,11 @@ __DATA__
         \begingroup
             \let\start@author\start@author@
             \let\end@author\end@author@
-            \AMS@authors\end@author\par
+            \startXMLelement{contrib-group}
+            \setXMLattribute{content-type}{authors}
+                \AMS@authors
+                \end@author\par
+            \endXMLelement{contrib-group}
         \endgroup
     \fi
 }
@@ -844,8 +848,8 @@ __DATA__
 }
 
 \def\end@author@{%
-    \startXMLelement{contrib-group}
-    \setXMLattribute{content-type}{authors}
+    % \startXMLelement{contrib-group}
+    % \setXMLattribute{content-type}{authors}
     \ifx\this@name\@empty\else
         \startXMLelement{contrib}
             \setXMLattribute{contrib-type}{\author@contrib@type}
@@ -869,7 +873,7 @@ __DATA__
             \this@email
         \endXMLelement{email}\par
     \fi
-    \endXMLelement{contrib-group}
+    % \endXMLelement{contrib-group}
 }
 
 \def\output@article@notes{% Notices stuff
