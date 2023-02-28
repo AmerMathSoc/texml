@@ -145,7 +145,7 @@ sub do_modify_bib_label {
 
     my $citesel = $tex->get_macro_expansion_text($b);
 
-    $citesel =~ s{\{$old_label\}}{\{$new_label\}};
+    $citesel =~ s{\{\Q$old_label\E\}}{\{$new_label\}};
 
     $tex->define_simple_macro($b, $citesel, MODIFIER_GLOBAL);
 
@@ -394,7 +394,7 @@ __DATA__
 }
 
 \def\parse@MR#1 (#2)#3\@nil{%
-    \def\MR@url{https://www.ams.org/mathscinet-getitem?mr=#1}%
+    \def\MR@url{https://mathscinet.ams.org/mathscinet-getitem?mr=#1}%
     \def\@tempd{#1}%
     \def\@tempe{#2}%
 }%

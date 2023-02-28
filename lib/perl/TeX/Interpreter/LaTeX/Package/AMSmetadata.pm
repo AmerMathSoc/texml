@@ -415,7 +415,7 @@ sub add_contributors {
         }
 
         if (nonempty(my $mrauth_id = $this_contrib->get_mrauth_id())) {
-            my $uri = qq{https://www.ams.org/mathscinet/search/author.html?mrauthid=$mrauth_id};
+            my $uri = qq{https://mathscinet.ams.org/mathscinet/search/author.html?mrauthid=$mrauth_id};
 
             my $contrib_id = append_xml_element($contrib, "contrib-id", $uri);
 
@@ -646,15 +646,16 @@ sub add_self_uris {
     $uri =~ s{^http:}{https:};
 
     append_xml_element($parent, "self-uri", $uri,
-                   { "xlink:href" => $uri });
+                       { "content-type" => "abstract",
+                         "xlink:href"   => $uri });
 
     my $pii = $gentag->get_pii();
 
     my $pdf_uri = caturl($uri, "$pii.pdf");
 
     append_xml_element($parent, "self-uri", undef,
-                   { "content-type" => "pdf",
-                     "xlink:href" => $pdf_uri });
+                       { "content-type" => "pdf",
+                         "xlink:href"   => $pdf_uri });
 
     return;
 }
