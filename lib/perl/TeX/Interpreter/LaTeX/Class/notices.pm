@@ -92,6 +92,16 @@ __DATA__
     \@nameuse{init@\@noti@category}%
 }
 
+\def\init@amsupdates{%
+    \gdef\@noti@category{news}%
+    \title{AMS Updates}%
+}
+
+\def\init@mathpeople{%
+    \gdef\@noti@category{news}%
+    \title{Mathematics People}%
+}
+
 \def\init@bookreview{%
     \def\author@contrib@type{reviewer}%
 }
@@ -103,7 +113,7 @@ __DATA__
 }
 
 \def\init@bookshelf{%
-    \setpermissiontext{}%
+    % \setpermissiontext{}%
     \title{New and Noteworthy Titles on our Bookshelf}%
     \subtitle{\noti@month@name\ \AMS@issue@year}%
 }
@@ -130,11 +140,16 @@ __DATA__
 \def\thanks{\authorbio}
 
 \def\commbytext{\def\@commbytext}
-\def\@commbytext{Communicated by \emph{Notices} Associate Editor }
-\def\commby{\gdef\AMS@commby}
+
+% \def\@commbytext{Communicated by \emph{Notices} Associate Editor }
+% \def\commby{\gdef\AMS@commby}
 
 %% \def\@commbytext{Communicated by}
-% \def\commby#1{\gdef\AMS@commby{\emph{Notices} Associate Editor #1}}
+\def\commby#1{%
+    \if###1##\else
+        \gdef\AMS@commby{\emph{Notices} Associate Editor #1}%
+    \fi
+}
 
 \newcommand{\disclaimertext}{%
     \gdef\@disclaimertext
@@ -265,15 +280,15 @@ __DATA__
 
 \newenvironment{lettersignature}[2][Sincerely]{%
     \def\@receiveddate{#2}%
-    \def\\{\emptyXMLelement{br}}%
+    \def\\{\emptyXMLelement{break}}%
     \let\par\@empty
     \@@par
     \if###1##\else#1,\\\fi
-    \startXMLelement{italic}%
-    \setXMLattribute{toggle}{yes}%
+    % \startXMLelement{italic}%
+    % \setXMLattribute{toggle}{yes}%
 }{%
     \ifx\@receiveddate\@empty\else(Received \@receiveddate)\fi
-    \endXMLelement{italic}%
+    % \endXMLelement{italic}%
     \par
 }
 
