@@ -94,8 +94,9 @@ __DATA__
 \DefineAMSMathSimpleEnvironment{multlined}
 
 \DefineAMSMathSimpleEnvironment{matrix*}
-
 \DefineAMSMathSimpleEnvironment{bmatrix*}
+\DefineAMSMathSimpleEnvironment{pmatrix*}
+
 \DefineAMSMathSimpleEnvironment{bsmallmatrix}
 
 \DefineAMSMathSimpleEnvironment{psmallmatrix}
