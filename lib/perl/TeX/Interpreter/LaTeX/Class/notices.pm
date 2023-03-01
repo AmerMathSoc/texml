@@ -184,10 +184,13 @@ __DATA__
 \newcommand{\@authorgraphicsi}{%
     \@ifnextchar\endauthorgraphics{\@endauthorgraphics}{\@authorgraphicsii}}
 
-\newcommand{\@authorgraphicsii}[2]{%
+\newcommand{\@authorgraphicsii}[3][]{%
     \begin{figure}
-        \includegraphics[width=7pc,height=9pc]{#2}
-        \caption*{#1}%
+        \includegraphics[width=7pc,height=9pc]{#3}
+        \caption*{#2}%
+        \if###1##\else
+            \thisxmlpartag{alt-text}#1\par
+        \fi
     \end{figure}
     \@authorgraphicsi
 }
