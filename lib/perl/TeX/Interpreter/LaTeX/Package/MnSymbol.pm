@@ -64,6 +64,8 @@ __DATA__
 \def\llangle{\lAngle}
 \def\rrangle{\rAngle}
 
+\def\strokedint{\fint}
+
 \endinput
 
 __END__
