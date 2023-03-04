@@ -341,6 +341,9 @@ sub do_resolve_xrefs {
             (undef, my $ref_cmd) = split / /, $xref->getAttribute('specific-use');
 
             if ($ref_cmd eq 'cite') {
+                # Disable 'bysame' processing for amsrefs.
+                $tex->define_simple_macro('prev@names', "");
+
                 (my $key = $xref->getAttribute("rid")) =~ s{^bibr-}{b\@};
 
                 my $token = make_csname_token($key);
