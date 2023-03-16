@@ -93,7 +93,12 @@ __DATA__
 
 \newcommand\textproc{\textsc}
 
-\let\Comment\COMMENT % TBD: This isn't right since braces around arg not not required
+\def\Comment{\@ifnextchar\bgroup\COMMENT\alg@Comment@error}
+
+\def\alg@Comment@error{%
+    \PackageError{algpseudocode}{\string\Comment\space should be followed by a left brace}{}%
+}
+
 \let\State\STATE
 
 \def@ALG@statement*{\Statex}{statement}
