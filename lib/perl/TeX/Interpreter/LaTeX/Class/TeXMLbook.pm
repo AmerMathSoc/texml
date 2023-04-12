@@ -122,9 +122,15 @@ __DATA__
                         \AMS@volumeid\par
                     \endXMLelement{book-id}%
                 \fi
-                \ifx\AMS@manid\@empty\else
+                \ifx\AMS@volumeno\@empty
+                    \ifx\AMS@manid\@empty\else
+                        \startXMLelement{book-volume-number}%
+                            \AMS@manid\par
+                        \endXMLelement{book-volume-number}%
+                    \fi
+                \else
                     \startXMLelement{book-volume-number}%
-                        \AMS@manid\par
+                        \AMS@volumeno\par
                     \endXMLelement{book-volume-number}%
                 \fi
             \endXMLelement{book-meta}%
