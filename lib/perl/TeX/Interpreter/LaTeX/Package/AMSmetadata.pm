@@ -1023,10 +1023,14 @@ sub add_article_citation {
     $record .= sprintf qq{  journal={%s},\n}, $publication->get_abbrev_title();
 
     if (nonempty(my $volume = $gentag->get_volume())) {
+        $volume =~ s{^0+}{};
+
         $record .= sprintf qq{  volume={%s},\n}, $volume;
     }
 
     if (nonempty(my $number = $gentag->get_number())) {
+        $number =~ s{^0+}{};
+
         $record .= sprintf qq{  number={%s},\n}, $number;
     }
 
