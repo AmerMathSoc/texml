@@ -561,7 +561,7 @@ __DATA__
 \DeclareMathPassThrough{shoveleft}[1]
 \DeclareMathPassThrough{shoveright}[1]
 
-\DeclareMathPassThrough{smash}
+% \DeclareMathPassThrough{smash}
 
 \DeclareMathPassThrough{underleftarrow}
 \DeclareMathPassThrough{underleftrightarrow}
