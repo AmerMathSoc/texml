@@ -379,7 +379,9 @@ __DATA__
     \startXMLelement{contrib}
     \setXMLattribute{contrib-type}{author}\par
     \thisxmlpartag{string-name}#2\par
-    \thisxmlpartag{bio}#3\par
+    \startXMLelement{bio}
+    #3\par
+    \endXMLelement{bio}
     \endXMLelement{contrib}\par
     \endXMLelement{contrib-group}\par
     \endXMLelement{sec-meta}\par
