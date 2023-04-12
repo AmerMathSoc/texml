@@ -64,6 +64,8 @@ __DATA__
 \let\SetAlFnt\@gobble
 \let\SetAlCapFnt\@gobble
 
+\let\SetAlgoCaptionSeparator\@gobble
+
 \let\IncMargin\@gobble
 
 \def\fnum@algocf{\algorithmcfname\nobreakspace \thealgocf}
