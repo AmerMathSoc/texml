@@ -137,26 +137,26 @@ __DATA__
 % #3 = caption
 
 \long\def\sf@subcaption#1#2#3{%
-    \protected@edef\@tempa{%
-        \@ifundefined{sub\@captype name}{}{\@nameuse{sub\@captype name}}%
-    }%
-    \ifx\@tempa\@empty\else
-        \@ifundefined{thesub\@captype}{}{%
-            \protected@edef\@tempa{\@tempa\space}%
+    \ifx\@empty#3\relax \else
+        \protected@edef\@tempa{%
+            \@ifundefined{sub\@captype name}{}{\@nameuse{sub\@captype name}}%
         }%
-    \fi
-    \@ifundefined{thesub\@captype}{}{%
-        \protected@edef\@tempa{\@tempa\@nameuse{thesub\@captype}}%
-    }%
-    % \ifx\caption@lfmt\caption@lfmt@EMPTY\else
         \ifx\@tempa\@empty\else
-            \startXMLelement{label}%
-                % \caption@lfmt{\@nameuse{#1name}}%
-                \@tempa
-            \endXMLelement{label}%
+            \@ifundefined{thesub\@captype}{}{%
+                \protected@edef\@tempa{\@tempa\space}%
+            }%
         \fi
-    % \fi
-    \if###3##\else
+        \@ifundefined{thesub\@captype}{}{%
+            \protected@edef\@tempa{\@tempa\@nameuse{thesub\@captype}}%
+        }%
+        % \ifx\caption@lfmt\caption@lfmt@EMPTY\else
+            \ifx\@tempa\@empty\else
+                \startXMLelement{label}%
+                    % \caption@lfmt{\@nameuse{#1name}}%
+                    \@tempa
+                \endXMLelement{label}%
+            \fi
+        % \fi
         \startXMLelement{caption}%
             \startXMLelement{p}%
             #3%
