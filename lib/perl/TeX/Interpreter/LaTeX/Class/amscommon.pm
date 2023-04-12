@@ -458,9 +458,9 @@ __DATA__
 \let\AMS@manid\@empty
 
 \def\seriesinfo#1#2#3{%
-    \gdef\AMS@@publkey{#1}%
-    \gdef\AMS@@volumeid{#2}%
-    \gdef\AMS@@volumeno{#3}%
+    \gdef\AMS@publkey{#1}%
+    \gdef\AMS@volumeid{#2}%
+    \gdef\AMS@volumeno{#3}%
 }
 
 \let\AMS@volumeno\@empty
@@ -1519,6 +1519,12 @@ __DATA__
 
 \def\XXX@author@name#1{\thisxmlpartag{string-name}#1\par}
 \def\XXX@authorbio#1{\thisxmlpartag{bio}#1\par}
+
+% \def\XXX@authorbio#1{%
+%     \startXMLelement{bio}
+%     #1\par
+%     \endXMLelement{bio}
+% }
 
 \newenvironment{sectionWithMetadata}{%
     \let\deferred@section@command\@empty
