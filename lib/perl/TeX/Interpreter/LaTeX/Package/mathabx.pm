@@ -56,6 +56,7 @@ __DATA__
 \def\vvvert{\Vvert}
 
 \DeclareSVGMathChar\bigboxtimes\mathop
+\DeclareSVGMathChar\lefttorightarrow\mathord
 
 \def\rdbrack{\rBrack}
 \def\ldbrack{\lBrack}
