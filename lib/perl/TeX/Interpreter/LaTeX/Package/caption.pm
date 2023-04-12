@@ -60,8 +60,6 @@ __DATA__
 
 %\newcommand\DeclareCaptionOption{\@gobbletwo}
 
-\def\captionsetup{\@ifstar\@gobble@opt\@gobble@opt}
-
 % #1 \setcaptionsubtype
 % #2 ??? (caption optional argument?)
 % #3 SUBFIGURE CAPTION TEXT
