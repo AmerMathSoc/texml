@@ -64,9 +64,9 @@ __DATA__
 %   \@ifstar
 %     \sf@@subref
 %     \sf@subref}
-% 
+%
 % \def\sf@subref#1{\ref{sub@#1}}
-% 
+%
 % \def\sf@@subref#1{\pageref{sub@#1}}
 
 \def\caption@lstfmt#1#2{#1(#2)}
@@ -124,6 +124,14 @@ __DATA__
     \ignorespaces
 }
 
+% \gdef\caption@lfmt@EMPTY#1#2{}
+
+% \DeclareCaptionLabelFormat{parens}{\bothIfFirst{#1}{\XMLgeneratedText\nobreakspace}\XMLgeneratedText(#2\XMLgeneratedText)}
+
+% If there's a subfigurename, should it also be put in <x>?
+
+% \def\subfigurename{Subfigure}
+
 % #1 = sub\@captype
 % #2 = list-entry (ignored)
 % #3 = caption
@@ -140,11 +148,14 @@ __DATA__
     \@ifundefined{thesub\@captype}{}{%
         \protected@edef\@tempa{\@tempa\@nameuse{thesub\@captype}}%
     }%
-    \ifx\@tempa\@empty\else
-        \startXMLelement{label}%
-            \@tempa
-        \endXMLelement{label}%
-    \fi
+    % \ifx\caption@lfmt\caption@lfmt@EMPTY\else
+        \ifx\@tempa\@empty\else
+            \startXMLelement{label}%
+                % \caption@lfmt{\@nameuse{#1name}}%
+                \@tempa
+            \endXMLelement{label}%
+        \fi
+    % \fi
     \if###3##\else
         \startXMLelement{caption}%
             \startXMLelement{p}%
