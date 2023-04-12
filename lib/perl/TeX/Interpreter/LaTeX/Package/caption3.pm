@@ -56,14 +56,16 @@ __DATA__
 
 \ProvidesPackage{caption3}
 
-\newcommand\DeclareCaptionOption{\@gobbletwo}
+\LoadRawMacros
 
-\def\captionsetup{\@ifstar\@gobble@opt\@gobble@opt}
+% \newcommand\DeclareCaptionOption{\@gobbletwo}
 
-\newcommand*\caption@withoptargs[1]{%
-  \@ifstar
-    {\def\caption@tempa{*}\caption@@withoptargs{#1}}%
-    {\def\caption@tempa{}\caption@@withoptargs{#1}}}
+% \def\captionsetup{\@ifstar\@gobble@opt\@gobble@opt}
+
+% \newcommand*\caption@withoptargs[1]{%
+%   \@ifstar
+%     {\def\caption@tempa{*}\caption@@withoptargs{#1}}%
+%     {\def\caption@tempa{}\caption@@withoptargs{#1}}}
 
 \def\caption@@withoptargs#1{%
   \@ifnextchar[%]
