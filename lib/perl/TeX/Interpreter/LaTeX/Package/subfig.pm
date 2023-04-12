@@ -140,12 +140,10 @@ __DATA__
     \@ifundefined{thesub\@captype}{}{%
         \protected@edef\@tempa{\@tempa\@nameuse{thesub\@captype}}%
     }%
-    \ifx#3\@empty\relax\else
-        \ifx\@tempa\@empty\else
-            \startXMLelement{label}%
-                \@tempa
-            \endXMLelement{label}%
-        \fi
+    \ifx\@tempa\@empty\else
+        \startXMLelement{label}%
+            \@tempa
+        \endXMLelement{label}%
     \fi
     \if###3##\else
         \startXMLelement{caption}%
