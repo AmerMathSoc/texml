@@ -56,6 +56,8 @@ __DATA__
 
 \def\xout{\cancel}
 
+\@declarefontcommand\uline\underline{underline}
+
 \endinput
 
 __END__
