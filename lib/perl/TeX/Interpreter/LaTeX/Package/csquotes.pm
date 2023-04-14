@@ -52,6 +52,9 @@ __DATA__
 
 \def\enquote#1{``#1''}
 
+\let\displayquote\quote
+\let\enddisplayquote\endquote
+
 \endinput
 
 __END__
