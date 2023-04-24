@@ -58,6 +58,10 @@ __DATA__
     \TeXMLCreateSVG{\ydiagram{#1}}%
 }
 
+\def\ytableaushort#1{%
+    \TeXMLCreateSVG{\ytableaushort{#1}}%
+}
+
 \endinput
 
 __END__
