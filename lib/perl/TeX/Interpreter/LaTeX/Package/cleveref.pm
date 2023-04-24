@@ -59,6 +59,9 @@ __DATA__
 
 \ProvidesPackage{cleveref}
 
+\PackageError{cleverref}{Cleverref doesn't work yet!}\@ehd
+\@@end
+
 \LoadRawMacros
 
 \AtBeginDocument{%
