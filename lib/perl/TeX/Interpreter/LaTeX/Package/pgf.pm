@@ -66,6 +66,9 @@ __DATA__
 
 \let\pgfmathdeclarefunction\@gobblethree
 
+\let\pgfdeclarelayer\@gobble
+\let\pgfsetlayers\@gobble
+
 \let\usepgflibrary\@gobble
 
 \newcommand{\pgfarrowsdeclarecombine}[7][]{}
