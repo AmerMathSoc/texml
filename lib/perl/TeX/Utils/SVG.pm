@@ -32,7 +32,7 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.10';
+use version; our $VERSION = qv '1.3.11';
 
 use Cwd;
 
@@ -357,6 +357,11 @@ sub convert_tex {
         print { $fh } qq{\\setmathfontface\\mathit{STIX Two Text Italic}\n};
         printf { $fh } qq{\\setmathfontface\\mathsf{%s}\n}, MATH_SF_FONT;
         print { $fh } qq{\\let\\bm\\mathbfit\n};
+
+        # Override the default graphicx include rule so we can handle
+        # filenames like "foo.x.eps".
+
+        print { $fh } qq{\\csname \@namedef\\endcsname{Gin\@rule\@*}#1{{eps}{\\csname Gin\@ext\\endcsname }{#1}}};
     } else {
         # print { $fh } qq{\\usepackage{stix2}\n};
     }
