@@ -68,6 +68,8 @@ my %TRACING_MACRO_CODES = (
     TRACING_MACRO_TOKS  => 2,
     TRACING_MACRO_DEFS  => 4,
     TRACING_MACRO_COND  => 8,
+    TRACING_MAIN_TOKS   => 16,
+    TRACING_ALIGN       => 32,
     );
 
 install tracing_macro_codes => %TRACING_MACRO_CODES;
