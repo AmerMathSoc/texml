@@ -563,6 +563,10 @@ __DATA__
 
 % \DeclareMathPassThrough{smash}
 
+\def\smash{%
+    \ifmmode\string\smash\else\@firstofone\fi
+}
+
 \DeclareMathPassThrough{underleftarrow}
 \DeclareMathPassThrough{underleftrightarrow}
 \DeclareMathPassThrough{overleftarrow}
