@@ -62,14 +62,18 @@ __DATA__
 \AMSBlackListPackage{ctable}
 \AMSBlackListPackage{dutchcal}
 \AMSBlackListPackage{etoolbox}
+\AMSBlackListPackage{fontenc}
 \AMSBlackListPackage{footmisc}
 \AMSBlackListPackage{geometry}
+\AMSBlackListPackage{grffile}
+\AMSBlackListPackage{hypcap}%      %% This one looks worth a look
 \AMSBlackListPackage{iftexml}
 \AMSBlackListPackage{layout}
 \AMSBlackListPackage{lmodern}
 \AMSBlackListPackage{makeidx}
 \AMSBlackListPackage{mathalfa}
 \AMSBlackListPackage{morefloats}
+\AMSBlackListPackage{ogonek}
 \AMSBlackListPackage{pict2e}
 \AMSBlackListPackage{pictexwd}
 \AMSBlackListPackage{pspicture}
@@ -79,6 +83,7 @@ __DATA__
 \AMSBlackListPackage{thm-listof}
 \AMSBlackListPackage{tikz-base}
 \AMSBlackListPackage{tikz-fct}
+\AMSBlackListPackage{tkz-graph}
 \AMSBlackListPackage{tikz-qtree-compat}
 \AMSBlackListPackage{tkz-euclide}
 
