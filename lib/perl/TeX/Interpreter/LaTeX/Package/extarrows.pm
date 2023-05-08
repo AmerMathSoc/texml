@@ -55,6 +55,10 @@ __DATA__
 \def\xlongrightarrow{\xrightarrow}
 \def\xlongleftarrow{\xleftarrow}
 
+\newcommand{\xLongrightarrow}[2][]{%
+    \TeXMLCreateSVG{$\xLongrightarrow[#1]{#2}$}%
+}
+
 \endinput
 
 __END__
