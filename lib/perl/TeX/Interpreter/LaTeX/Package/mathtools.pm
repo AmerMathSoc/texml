@@ -50,7 +50,7 @@ __DATA__
 
 \ProvidesPackage{mathtools}
 
-\LoadRawMacros
+\LoadRawMacros % May not need this.  Need to check.
 
 \AtBeginDocument{%
     \def\coloneqq{\coloneq}
@@ -65,8 +65,6 @@ __DATA__
 \def\vdotswithin#1{\ensuremath{\vdots}}
 
 % Meh.
-
-\renewcommand{\prescript}[3]{{}^{#1}_{#2}#3}
 
 \renewcommand*\DeclarePairedDelimiter[3]{%
     \newcommand{#1}{\mathtools@PD{#2}{#3}}%
@@ -88,39 +86,115 @@ __DATA__
     \endgroup
 }
 
+\DeclareMathPassThrough{Aboxed}
+\DeclareMathPassThrough{adjustlimits}
+\DeclareMathPassThrough{ArrowBetweenLines}
+\DeclareMathPassThrough{bigtimes}
+\DeclareMathPassThrough{centercolon}
+\DeclareMathPassThrough{clap}
+\DeclareMathPassThrough{colonapprox}
+\DeclareMathPassThrough{Colonapprox}
 \DeclareMathPassThrough{coloneq}
-\DeclareMathPassThrough{underbrace}[1]
+\DeclareMathPassThrough{Coloneq}
+\DeclareMathPassThrough{coloneqq}
+\DeclareMathPassThrough{Coloneqq}
+\DeclareMathPassThrough{colonsim}
+\DeclareMathPassThrough{Colonsim}
+\DeclareMathPassThrough{cramped}
+\DeclareMathPassThrough{crampedclap}
+\DeclareMathPassThrough{crampedllap}
+\DeclareMathPassThrough{crampedrlap}
+\DeclareMathPassThrough{crampedsubstack}
+\DeclareMathPassThrough{dblcolon}
+\DeclareMathPassThrough{DeclarePairedDelimiters}
+\DeclareMathPassThrough{DeclarePairedDelimitersX}
+\DeclareMathPassThrough{DeclarePairedDelimitersXPP}
+\DeclareMathPassThrough{eqcolon}
+\DeclareMathPassThrough{Eqcolon}
+\DeclareMathPassThrough{eqqcolon}
+\DeclareMathPassThrough{Eqqcolon}
+\DeclareMathPassThrough{lparen}
+\DeclareMathPassThrough{mathclap}
+\DeclareMathPassThrough{mathllap}
+\DeclareMathPassThrough{mathmakebox}
+\DeclareMathPassThrough{mathmbox}
+\DeclareMathPassThrough{mathrlap}
+\DeclareMathPassThrough{mathtoolsset}
+\DeclareMathPassThrough{MoveEqLeft}
+\DeclareMathPassThrough{MTFlushSpaceAbove}
+\DeclareMathPassThrough{MTFlushSpaceBelow}
+\DeclareMathPassThrough{MTThinColon}
+\DeclareMathPassThrough{ndownarrow}
+\DeclareMathPassThrough{newtagform}
+\DeclareMathPassThrough{nuparrow}
+\DeclareMathPassThrough{ordinarycolon}
+\DeclareMathPassThrough{overbracket}
+\DeclareMathPassThrough{prescript}
+\DeclareMathPassThrough{refeq}
+\DeclareMathPassThrough{renewtagform}
+\DeclareMathPassThrough{rparen}
+\DeclareMathPassThrough{shortvdotswithin}
+\DeclareMathPassThrough{shoveleft}
+\DeclareMathPassThrough{shoveright}
+\DeclareMathPassThrough{splitdfrac}
+\DeclareMathPassThrough{splitfrac}
+\DeclareMathPassThrough{textclap}
+\DeclareMathPassThrough{textllap}
+\DeclareMathPassThrough{textrlap}
+\DeclareMathPassThrough{underbracket}
+\DeclareMathPassThrough{usetagform}
+\DeclareMathPassThrough{vdotswithin}
+\DeclareMathPassThrough{xhookleftarrow}
+\DeclareMathPassThrough{xhookrightarrow}
+\DeclareMathPassThrough{xLeftarrow}
+\DeclareMathPassThrough{xleftharpoondown}
+\DeclareMathPassThrough{xleftharpoonup}
+\DeclareMathPassThrough{xleftrightarrow}
+\DeclareMathPassThrough{xLeftrightarrow}
+\DeclareMathPassThrough{xleftrightharpoons}
+\DeclareMathPassThrough{xmapsto}
+\DeclareMathPassThrough{xmathstrut}
+\DeclareMathPassThrough{xRightarrow}
+\DeclareMathPassThrough{xrightharpoondown}
+\DeclareMathPassThrough{xrightharpoonup}
+\DeclareMathPassThrough{xrightleftharpoons}
 
-\DefineAMSMathSimpleEnvironment{multlined}
-
-\DefineAMSMathSimpleEnvironment{matrix*}
+\DefineAMSMathSimpleEnvironment{Bmatrix*}
+\DefineAMSMathSimpleEnvironment{Bsmallmatrix}
+\DefineAMSMathSimpleEnvironment{Bsmallmatrix*}
+\DefineAMSMathSimpleEnvironment{Vmatrix*}
+\DefineAMSMathSimpleEnvironment{Vsmallmatrix}
+\DefineAMSMathSimpleEnvironment{Vsmallmatrix*}
 \DefineAMSMathSimpleEnvironment{bmatrix*}
-\DefineAMSMathSimpleEnvironment{pmatrix*}
-
 \DefineAMSMathSimpleEnvironment{bsmallmatrix}
-
-\DefineAMSMathSimpleEnvironment{psmallmatrix}
-
+\DefineAMSMathSimpleEnvironment{bsmallmatrix*}
+% \DefineAMSMathSimpleEnvironment{cases*}
+\DefineAMSMathSimpleEnvironment{crampedsubarray}
 \DefineAMSMathSimpleEnvironment{dcases}
+% \DefineAMSMathSimpleEnvironment{dcases*}
+\DefineAMSMathSimpleEnvironment{drcases}
+% \DefineAMSMathSimpleEnvironment{drcases*}
+\DefineAMSMathSimpleEnvironment{lgathered}
+\DefineAMSMathSimpleEnvironment{matrix*}
+\DefineAMSMathSimpleEnvironment{multlined}
+\DefineAMSMathSimpleEnvironment{pmatrix*}
+\DefineAMSMathSimpleEnvironment{psmallmatrix}
+\DefineAMSMathSimpleEnvironment{psmallmatrix*}
 \DefineAMSMathSimpleEnvironment{rcases}
+% \DefineAMSMathSimpleEnvironment{rcases*}
+\DefineAMSMathSimpleEnvironment{rgathered}
+\DefineAMSMathSimpleEnvironment{smallmatrix*}
+\DefineAMSMathSimpleEnvironment{spreadlines}
+\DefineAMSMathSimpleEnvironment{vmatrix*}
+\DefineAMSMathSimpleEnvironment{vsmallmatrix}
+\DefineAMSMathSimpleEnvironment{vsmallmatrix*}
 
-\let\xrightharpoonup\relax
-\newcommand{\xrightharpoonup}[2][]{%
-    \TeXMLCreateSVG{$\xrightharpoonup[#1]{#2}$}%
-}
-
-\let\xhookrightarrow\relax
-\newcommand*\xhookrightarrow[2][]{%
-    \TeXMLCreateSVG{$\xhookrightarrow[#1]{#2}$}%
-}
-
-\DeclareMathPassThrough{xleftrightarrow}%[2][]
-
-\DeclareMathPassThrough{xmapsto}%[2][]
-
-\DeclareMathPassThrough{overbrace}
+%% mathtools redefines gathered, so we need to re-redefine it.
 
 \DefineAMSMathSimpleEnvironment{gathered}
+
+\DeclareMathPassThrough{underbrace}[1]
+\DeclareMathPassThrough{overbrace}[1]
 
 \endinput
 
