@@ -56,6 +56,8 @@ __DATA__
 
 \ProvidesPackage{caption}
 
+\let\caption@Debug\@gobble
+
 \RequirePackage{caption3}
 
 %\newcommand\DeclareCaptionOption{\@gobbletwo}
