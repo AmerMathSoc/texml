@@ -57,6 +57,7 @@ use TeX::Utils::LibXML;
 ######################################################################
 
 my $PUBS;
+my $BUILDER;
 
 ######################################################################
 ##                                                                  ##
@@ -82,10 +83,6 @@ sub __to_unicode( $ ) {
 ##                                                                  ##
 ######################################################################
 
-my %ISSUE_YEAR = (bproc => {1 => 2014, 2 => 2015, 3 => 2016, 4 => 2017, 5 => 2018, 6 => 2019},
-                  btran => {1 => 2014, 2 => 2015, 3 => 2016, 4 => 2017, 5 => 2018, 6 => 2019},
-    );
-
 sub find_gentag_file( $ ) {
     my $dom = shift;
 
@@ -98,33 +95,9 @@ sub find_gentag_file( $ ) {
 
         my $article_meta = find_unique_node($dom, "/article/front/article-meta");
 
-        my $publ_key = $journal_meta->findvalue('journal-id[@journal-id-type="publisher"]');
+        my $pii = $article_meta->findvalue('article-id[@pub-id-type="pii"]');
 
-        my $issue_year = $article_meta->findvalue('history/date[@date-type="issue-date"]/year');
-        my $volume     = $article_meta->findvalue('volume');
-        my $number     = $article_meta->findvalue('issue');
-        my $pii        = $article_meta->findvalue('article-id[@pub-id-type="pii"]');
-
-        if (empty($issue_year)) {
-            $issue_year = $ISSUE_YEAR{$publ_key}->{$volume};
-        }
-
-        my $gentag = $PUBS->journal_gentag_file({ publ_key => $publ_key,
-                                                  year     => $issue_year,
-                                                  volume   => $volume,
-                                                  number   => $number,
-                                                  pii      => $pii });
-
-        return $gentag if defined $gentag;
-
-        ## If it's just been assigned to an issue, the gentag file
-        ## might still be in the EFF directory.
-
-        return $PUBS->journal_gentag_file({ publ_key => $publ_key,
-                                            year     => 0,
-                                            volume   => 0,
-                                            number   => 0,
-                                            pii      => $pii });
+        return $PUBS->journal_gentag_file({ pii => $pii });
     } elsif ($type eq 'book') {
         my $book = find_unique_node($dom, q{/book});
 
@@ -160,6 +133,8 @@ sub install {
 
     if (eval "require PRD::Document::Builder") {
         $tex->print_nl("Found private AMS modules: Enabling full metadata support");
+
+        $BUILDER = PRD::Document::Builder->new();
 
         require PRD::Publications; # No imports needed.
 
@@ -214,9 +189,7 @@ sub do_add_ams_metadata {
 
     $tex->print_nl("%% Loading $gentag_file");
 
-    my $builder = PRD::Document::Builder->new();
-
-    my $gentag = $builder->convert_xml_file($gentag_file);
+    my $gentag = $BUILDER->convert_xml_file($gentag_file);
 
     if (! defined $gentag) {
         $tex->print_err("%% FAILED: Could not parse gentag file");
@@ -700,6 +673,35 @@ sub add_related_articles {
 
         append_xml_element($related, 'pub-id', $pii,
                            { "pub-id-type" => "pii" });
+
+        if (defined (my $gentag = $PUBS->journal_gentag_file({ pii => $pii }))) {
+            my $doc = $BUILDER->convert_xml_file($gentag);
+
+            my $publication = $doc->get_publication();
+
+            my $abbrev_title = $publication->get_abbrev_title();
+
+            my $text = qq{$abbrev_title};
+
+            if (nonempty(my $volume = $doc->get_volume())) {
+                my $year   = $doc->get_issuedate()->get_year();
+
+                $text .= qq{ $volume ($year)};
+
+                if (defined(my $pages = $doc->get_page_range(0))) {
+                    $text .= qq{, $pages};
+                }
+
+                $text .= q{.};
+            } else {
+                $text .= qq{ (to appear).};
+            }
+
+            my $url = $doc->get_uri();
+
+            append_xml_element($related, 'ext-link', $text,
+                               { 'ext-link' => $url });
+        }
     }
 
     return;
