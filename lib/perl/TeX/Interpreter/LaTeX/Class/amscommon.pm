@@ -446,6 +446,7 @@ __DATA__
 \@namedef{TeXML@month@October}{10}
 \@namedef{TeXML@month@November}{11}
 \@namedef{TeXML@month@December}{12}
+\@namedef{TeXML@month@June/July}{13}% Notices
 
 \def\publinfo#1#2#3{%
     \gdef\AMS@publkey{#1}%
