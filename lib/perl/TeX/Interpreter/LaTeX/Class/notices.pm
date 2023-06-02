@@ -109,7 +109,8 @@ __DATA__
 \newcommand{\noti@month@name}{%
     \relax\ifcase\AMS@issue@month\or
     January\or February\or March\or April\or May\or June\or
-    July\or August\or September\or October\or November\or December\fi
+    July\or August\or September\or October\or November\or December\or
+    June/July\fi % Notices
 }
 
 \def\init@bookshelf{%
@@ -326,6 +327,7 @@ __DATA__
 %     #1      #2        #3      #4      #5      #6         #7
 
 \def\reviewedwork@main#1[#2]#3#4#5#6#7{%
+    \leavevmode
     \begin{figure}[H]
     \setXMLattribute{specific-use}{reviewedwork}%
     \if###3##\else
