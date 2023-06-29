@@ -53,7 +53,10 @@ __DATA__
 \RequirePackage{amsmath}
 
 \def\tagform@numcases#1{%
-    \string\tag\string{#1\string}%
+    \startXMLelement{tag}%
+    \setXMLattribute{parens}{yes}%
+        \hbox{#1}%
+    \endXMLelement{tag}%
 }%
 
 \def\texml@tab@to@tag@cases{%
