@@ -307,7 +307,10 @@ __DATA__
             % \@xp\ltx@label\@xp{\df@label}%
         \fi
     \fi
-        \string\tag{\hbox{#1}}%
+        \startXMLelement{tag}%
+        \setXMLattribute{parens}{yes}%
+          \hbox{#1}%
+        \endXMLelement{tag}%
     \ifTeXMLeqntargets@
         \ifx\df@label\@empty\else
             \endXMLelement{target}%
@@ -325,7 +328,10 @@ __DATA__
             % \@xp\ltx@label\@xp{\df@label}%
         \fi
     \fi
-        \string\tag*{\hbox{#1}}%
+        \startXMLelement{tag}%
+        \setXMLattribute{parens}{no}%
+          \hbox{#1}%
+        \endXMLelement{tag}%
     \ifTeXMLeqntargets@
         \ifx\df@label\@empty\else
             \endXMLelement{target}%
