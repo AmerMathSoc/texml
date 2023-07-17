@@ -58,6 +58,9 @@ __DATA__
 
 \RequirePackage{unicode-math}
 
+\def\nin{\notin}
+\newcommand{\divides}{\mathrel{|}}
+
 \def\lsem{\lBrack}
 \def\rsem{\rBrack}
 
