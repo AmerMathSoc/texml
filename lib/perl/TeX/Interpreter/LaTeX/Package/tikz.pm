@@ -83,7 +83,11 @@ __DATA__
 
 \def\usetikzlibrary#1{}
 
-\def\tikzstyle#1=[#2]{}
+\def\tikzstyle#1{%
+    \@ifnextchar={\tikzstyle@gobble}{\@gobble}%
+}
+
+\def\tikzstyle@gobble=#1[#2]{}
 
 \let\tikzset\@gobble
 \let\entrymodifiers\@gobble
