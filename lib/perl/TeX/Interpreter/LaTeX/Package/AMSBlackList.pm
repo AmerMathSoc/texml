@@ -55,6 +55,7 @@ __DATA__
 % \AMSBlackListPackage{listings}
 %\AMSBlackListPackage{mathabx}
 %\AMSBlackListPackage{tabularx}
+\AMSBlackListPackage{amsmathbfit}
 \AMSBlackListPackage{amstix2}
 \AMSBlackListPackage{amstixbb}
 \AMSBlackListPackage{backrefs}
@@ -86,6 +87,7 @@ __DATA__
 \AMSBlackListPackage{tkz-graph}
 \AMSBlackListPackage{tikz-qtree-compat}
 \AMSBlackListPackage{tkz-euclide}
+\AMSBlackListPackage{tikzsymbols}
 
 \endinput
 
