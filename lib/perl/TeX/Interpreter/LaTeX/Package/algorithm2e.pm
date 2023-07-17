@@ -54,6 +54,7 @@ __DATA__
 
 \let\SetKw\@gobbletwo
 \let\SetKwInput\@gobbletwo
+\def\SetKwFor#1#2#3#4{}
 
 \let\SetArgSty\@gobble
 \let\SetFuncSty\@gobble
@@ -142,6 +143,54 @@ __DATA__
             \par
         }%
 }
+
+% \let\algorithm\relax
+\newcommand{\@algorithmtwoE}[1][]{%
+    \endgroup
+    \begingroup
+        \TeXMLSVGpaperwidth=\AlgorithmPaperWidth
+        \edef\texml@body{%
+            % \noexpand\SetAlgoRefName{\algocf@algocfref}%
+            \noexpand\begin{algorithm2e}%
+        }%
+        % \@tempa holds the name of the environment whose body
+        % \texml@collect should collect (cf. \texml@process@env).
+        \def\@tempa{algorithm2e}%
+        \afterassignment\texml@collect
+        \def\texml@callback{%
+            \par
+            \let\center\@empty
+            \let\endcenter\@empty
+            \xmlpartag{}%
+            \leavevmode
+            \def\@currentreftype{algorithm}%
+            \def\@captype{algocf}%
+            \def\jats@graphics@element{graphic}
+            \startXMLelement{\jats@figure@element}%
+            \addXMLid
+            \setXMLattribute{content-type}{algorithm}%
+            \set@float@fps@attribute{#1}%
+            \@tempswafalse
+            \TeXML@extract@caption
+            \TeXML@extract@caption % Delete an empty \caption/\label
+            \toks@\expandafter{\texml@body}%
+            \edef\next@{\noexpand\TeXMLCreateSVG{\the\toks@}}%
+            \next@
+            \if@tempswa
+                \ifx\algocf@algocfref\@empty\else
+                    \let\thealgocf\algocf@algocfref
+                \fi
+                \caption{\TeXML@caption}%
+            \fi
+            \ifx\TeXML@label\@empty\else
+                \label{\TeXML@label}%
+            \fi
+            \endXMLelement{\jats@figure@element}%
+            \par
+        }%
+}
+
+\expandafter\let\csname algorithm2e\endcsname\@algorithmtwoE
 
 \def\TeXML@extract@caption{%
     \expandafter\@TeXML@extract@caption\texml@body\caption{\@nil}\@nil
