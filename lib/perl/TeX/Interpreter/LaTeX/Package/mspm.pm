@@ -53,6 +53,8 @@ __DATA__
 \RequirePackage{moresymb}
 
 \def\bbone{\Bbbone}% U+1D7D9
+\def\ltrivert{\left\Vvert}
+\def\rtrivert{\right\Vvert}
 
 \endinput
 
