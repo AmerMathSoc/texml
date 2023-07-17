@@ -95,9 +95,32 @@ sub find_gentag_file( $ ) {
 
         my $article_meta = find_unique_node($dom, "/article/front/article-meta");
 
-        my $pii = $article_meta->findvalue('article-id[@pub-id-type="pii"]');
+        if (nonempty(my $pii = $article_meta->findvalue('article-id[@pub-id-type="pii"]'))) {
+            return $PUBS->journal_gentag_file({ pii => $pii });
+            }
 
-        return $PUBS->journal_gentag_file({ pii => $pii });
+        my $publ_key = $journal_meta->findvalue('journal-id[@journal-id-type="publisher"]');
+
+        my $issue_year = $article_meta->findvalue('history/date[@date-type="issue-date"]/year');
+        my $volume     = $article_meta->findvalue('volume');
+        my $number     = $article_meta->findvalue('issue');
+        my $pii        = $article_meta->findvalue('article-id[@pub-id-type="pii"]');
+        my $gentag = $PUBS->journal_gentag_file({ publ_key => $publ_key,
+                                                  year     => $issue_year,
+                                                  volume   => $volume,
+                                                  number   => $number,
+                                                  pii      => $pii });
+
+        return $gentag if defined $gentag;
+
+        ## If it's just been assigned to an issue, the gentag file
+        ## might still be in the EFF directory.
+
+        return $PUBS->journal_gentag_file({ publ_key => $publ_key,
+                                            year     => 0,
+                                            volume   => 0,
+                                            number   => 0,
+                                            pii      => $pii });
     } elsif ($type eq 'book') {
         my $book = find_unique_node($dom, q{/book});
 
