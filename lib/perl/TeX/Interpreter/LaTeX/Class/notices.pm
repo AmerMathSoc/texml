@@ -174,6 +174,8 @@ __DATA__
     \endgroup
 }
 
+\def\notidoi#1{\PrintDOI{10.1090/noti/#1}}
+
 \newcommand{\authorgraphics}[1][0pt]{%
   \let\endauthorgraphics\relax%
   \par
