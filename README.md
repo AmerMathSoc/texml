@@ -45,7 +45,7 @@ for journal articles or EPUB for books.  During this stage, MathML is
 used to process mathematical content into a highly-accessible form.
 Neither of these tools are open source at this time.
 
-The goal of `texml' is to convert real-life LaTeX documents into
+The goal of `texml` is to convert real-life LaTeX documents into
 high-quality XML output.  More specifically, the goal is to handle
 (almost) anything an author throws at it in terms of "clever" macros
 and the such.  This is what I mean by "real-life LaTeX".  Ideally, an
