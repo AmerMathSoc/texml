@@ -144,8 +144,8 @@ fonts-stix package (I think).)
 
 If you get that far, try this:
 
-> cd tests
-> ./00regresh.sh
+    cd tests
+    ./00regresh.sh
 
 ## Modules that have been neutered
 
