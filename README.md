@@ -147,24 +147,21 @@ If you get that far, try this:
     cd tests
     ./00regresh.sh
 
-## Modules that have been neutered
-
-TeX::Interpreter::LaTeX::Package::AMSMeta
-
-TeX::Interpreter::LaTeX::Class::amscommon
-
-All of the metadata-related code has been ripped out of these, so
-basically there will be no `<front>` element.  Eventually this should
-be reimplemented in a way that doesn't presume the existence of the
-whole AMS environment.
-
 ## Reimplemented
 
-TeX::KPSE (not so much)
+The version of `TeX::KPSE` distributed with `texml` relies on system
+calls to the external `kpsewhich` executable.  Internally we use a
+version with perl bindings to the KPSE libraries.
 
 ## Aliens
 
-TeX::Lexer, TeX::Parser, TeX::Parser::LaTeX (needed only for
-PTG::Unicode::Translators, which is needed for TeX::Output::XML, but
-should be replaced someday)
+The following packages are not part of `texml` per se
 
+* TeX::Lexer
+* TeX::Parser
+* TeX::Parser::LaTeX
+
+They are an independent implementation of a much simpler TeX parser
+that is used by PTG::Unicode::Translators, which is used for
+convenience by TeX::Utils::XML.  Someday I will implement a
+TeX::Interpreter-based solution.
