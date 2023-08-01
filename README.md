@@ -41,7 +41,7 @@ BITS schemas](https://jats.nlm.nih.gov/).
 
 The second stage converts this XML file to a fairly generic HTML file.
 The third converts that HTML into the final format -- MathViewer HTML
-for journal articles or EPUB for books.  During this stage, MathML is
+for journal articles or EPUB for books.  During this stage, MathJax is
 used to process mathematical content into a highly-accessible form.
 Neither of these tools are open source at this time.
 
