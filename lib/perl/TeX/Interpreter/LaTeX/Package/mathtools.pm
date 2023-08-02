@@ -133,7 +133,7 @@ __DATA__
 \DeclareMathPassThrough{refeq}
 \DeclareMathPassThrough{renewtagform}
 \DeclareMathPassThrough{rparen}
-\DeclareMathPassThrough{shortvdotswithin}
+% \DeclareMathPassThrough{shortvdotswithin}
 \DeclareMathPassThrough{shoveleft}
 \DeclareMathPassThrough{shoveright}
 \DeclareMathPassThrough{splitdfrac}
@@ -143,7 +143,7 @@ __DATA__
 \DeclareMathPassThrough{textrlap}
 \DeclareMathPassThrough{underbracket}
 \DeclareMathPassThrough{usetagform}
-\DeclareMathPassThrough{vdotswithin}
+% \DeclareMathPassThrough{vdotswithin}
 \DeclareMathPassThrough{xhookleftarrow}
 \DeclareMathPassThrough{xhookrightarrow}
 \DeclareMathPassThrough{xLeftarrow}
