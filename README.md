@@ -94,7 +94,7 @@ provide structured listings of theorems and lemmas and corollaries.
 One notable thing that `texml` does *not* try to do is format
 mathematical content or convert that content to another format.
 Instead, it focuses on normalizing the LaTeX markup into a form that
-can be processed by MathML.
+can be processed by MathJax.
 
 ## Installation
 
