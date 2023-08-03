@@ -51,6 +51,16 @@ __DATA__
 
 \RequirePackage{hyperref}
 
+\def\hyperamsURLdef#1{%
+    \begingroup
+        \let\do\@makeother \dospecials
+        \catcode`\\=0
+        \catcode`\{=1
+        \catcode`\}=2
+        \afterassignment\endgroup
+        \xdef#1%
+}
+
 \endinput
 
 __END__
