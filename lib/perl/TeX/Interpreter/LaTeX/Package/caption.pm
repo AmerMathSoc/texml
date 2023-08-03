@@ -60,6 +60,8 @@ __DATA__
 
 \RequirePackage{caption3}
 
+\DeclareCaptionOption{compatibility}[1]{}
+
 %\newcommand\DeclareCaptionOption{\@gobbletwo}
 
 % #1 \setcaptionsubtype
