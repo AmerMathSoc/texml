@@ -49,6 +49,8 @@ __DATA__
 
 \ProvidesPackage{subfig}
 
+\let\caption@Debug\@gobble
+
 \LoadRawMacros
 
 % All figures will be enclosed by <fig-group> elements, which will be
