@@ -41,7 +41,7 @@ BITS schemas](https://jats.nlm.nih.gov/).
 
 The second stage converts this XML file to a fairly generic HTML file.
 The third converts that HTML into the final format -- MathViewer HTML
-for journal articles or EPUB for books.  During this stage, MathML is
+for journal articles or EPUB for books.  During this stage, MathJax is
 used to process mathematical content into a highly-accessible form.
 Neither of these tools are open source at this time.
 
@@ -94,7 +94,7 @@ provide structured listings of theorems and lemmas and corollaries.
 One notable thing that `texml` does *not* try to do is format
 mathematical content or convert that content to another format.
 Instead, it focuses on normalizing the LaTeX markup into a form that
-can be processed by MathML.
+can be processed by MathJax.
 
 ## Installation
 
