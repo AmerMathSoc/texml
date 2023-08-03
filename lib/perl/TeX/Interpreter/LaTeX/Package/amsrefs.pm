@@ -458,8 +458,14 @@ __DATA__
 
 \providecommand{\DOIURLPrefix}{https://doi.org/}
 
-\renewcommand{\PrintDOI}[1]{%
-    DOI \href{\DOIURLPrefix#1}{#1}%
+\renewcommand{\PrintDOI}{\maybe@st@rred\@PrintDOI}
+
+\newcommand{\@PrintDOI}[1]{%
+    \ifst@rred
+        \expandafter\url\expandafter{\DOIURLPrefix#1}%
+    \else
+        DOI \href{\DOIURLPrefix#1}{#1}%
+    \fi
 }
 
 \catcode`\'=11
@@ -497,6 +503,34 @@ __DATA__
             }%
         }%
     \endgroup
+}
+
+\BibSpec{article}{%
+    +{}  {\PrintAuthors}                {author}
+    +{,} { \textit}                     {title}
+    +{.} { }                            {part}
+    +{:} { \textit}                     {subtitle}
+    +{}  { \parenthesize}               {language}
+    +{,} { \PrintContributions}         {contribution}
+    +{.} { \PrintPartials}              {partial}
+    +{,} { }                            {booktitle}
+    +{,} { }                            {journal}
+    +{}  { \textbf}                     {volume}
+%    \end{macrocode}
+%    The date form is tricky depending on presence or absence of DOI.
+%    \begin{macrocode}
+    +{}  { \PrintDatePV}                {date}
+    +{,} { \issuetext}                  {number}
+    +{,} { \eprintpages}                {pages}
+    +{,} { }                            {status}
+    +{,} { \PrintDOI}                   {doi}
+    +{,} { available at \eprint}        {eprint}
+    +{,} { \arXiv}                      {arxiv}
+    +{}  { \PrintTranslation}           {translation}
+    +{;} { \PrintReprint}               {reprint}
+    +{.} { }                            {note}
+    +{.} {}                             {transition}
+    +{}  {\SentenceSpace \PrintReviews} {review}
 }
 
 \endinput
