@@ -2593,7 +2593,7 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\RequirePackage{AMSBlackList}
+\RequirePackage{DisablePackages}
 \RequirePackage{HTMLtable}
 \RequirePackage{Diacritics}
 

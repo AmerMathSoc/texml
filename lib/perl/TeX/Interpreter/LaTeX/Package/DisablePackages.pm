@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Package::AMSBlackList;
+package TeX::Interpreter::LaTeX::Package::DisablePackages;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -48,46 +48,47 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesPackage{AMSBlackList}
+\ProvidesPackage{DisablePackages}
 
-\def\AMSBlackListPackage#1{\@namedef{ver@#1.sty}{Skip}}
+\def\DisablePackage#1{\@namedef{ver@#1.sty}{Skip}}
 
-% \AMSBlackListPackage{listings}
-%\AMSBlackListPackage{mathabx}
-%\AMSBlackListPackage{tabularx}
-\AMSBlackListPackage{amsmathbfit}
-\AMSBlackListPackage{amstix2}
-\AMSBlackListPackage{amstixbb}
-\AMSBlackListPackage{backrefs}
-\AMSBlackListPackage{breakurl}
-\AMSBlackListPackage{ctable}
-\AMSBlackListPackage{dutchcal}
-\AMSBlackListPackage{etoolbox}
-\AMSBlackListPackage{fontenc}
-\AMSBlackListPackage{footmisc}
-\AMSBlackListPackage{geometry}
-\AMSBlackListPackage{grffile}
-\AMSBlackListPackage{hypcap}%      %% This one looks worth a look
-\AMSBlackListPackage{iftexml}
-\AMSBlackListPackage{layout}
-\AMSBlackListPackage{lmodern}
-\AMSBlackListPackage{makeidx}
-\AMSBlackListPackage{mathalfa}
-\AMSBlackListPackage{morefloats}
-\AMSBlackListPackage{ogonek}
-\AMSBlackListPackage{pict2e}
-\AMSBlackListPackage{pictexwd}
-\AMSBlackListPackage{pspicture}
-\AMSBlackListPackage{shaderef}
-\AMSBlackListPackage{stix2}
-\AMSBlackListPackage{textcomp}
-\AMSBlackListPackage{thm-listof}
-\AMSBlackListPackage{tikz-base}
-\AMSBlackListPackage{tikz-fct}
-\AMSBlackListPackage{tkz-graph}
-\AMSBlackListPackage{tikz-qtree-compat}
-\AMSBlackListPackage{tkz-euclide}
-\AMSBlackListPackage{tikzsymbols}
+% \DisablePackage{listings}
+%\DisablePackage{mathabx}
+%\DisablePackage{tabularx}
+\DisablePackage{amsmathbfit}
+\DisablePackage{amstix2}
+\DisablePackage{amstixbb}
+\DisablePackage{backrefs}
+\DisablePackage{breakurl}
+\DisablePackage{ctable}
+\DisablePackage{dutchcal}
+\DisablePackage{etoolbox}
+\DisablePackage{fontenc}
+\DisablePackage{footmisc}
+\DisablePackage{geometry}
+\DisablePackage{grffile}
+\DisablePackage{hypcap}%      %% This one looks worth a look
+\DisablePackage{iftexml}
+\DisablePackage{layout}
+\DisablePackage{lmodern}
+\DisablePackage{makeidx}
+\DisablePackage{mathalfa}
+\DisablePackage{morefloats}
+\DisablePackage{ogonek}
+\DisablePackage{pict2e}
+\DisablePackage{pictexwd}
+\DisablePackage{pspicture}
+\DisablePackage{shaderef}
+\DisablePackage{stix2}
+\DisablePackage{textcomp}
+\DisablePackage{thm-listof}
+\DisablePackage{tikz-base}
+\DisablePackage{tikz-fct}
+\DisablePackage{tkz-graph}
+\DisablePackage{tikz-qtree-compat}
+\DisablePackage{tkz-euclide}
+\DisablePackage{tikzsymbols}
+\DisablePackage{xstring}
 
 \endinput
 

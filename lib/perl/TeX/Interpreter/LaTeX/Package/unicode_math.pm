@@ -29,7 +29,7 @@ package TeX::Interpreter::LaTeX::Package::unicode_math;
 # USA
 # email: tech-support@ams.org
 
-## Should unicode-math be added to AMSBlackList?
+## Should unicode-math be added to DisablePackages?
 
 use strict;
 use warnings;
