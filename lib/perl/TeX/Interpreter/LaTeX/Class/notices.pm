@@ -71,7 +71,7 @@ __DATA__
 
 \RequirePackage[lite,nobysame]{amsrefs}
 
-\RequirePackage{hyperref}
+\RequirePackage{hyperams}
 
 \def\DOI#1{\gdef\AMS@DOI{#1}\extract@manid@from@doi}
 
@@ -199,6 +199,14 @@ __DATA__
 }
 
 \newcommand{\@endauthorgraphics}{\endgroup\par}
+
+\newcommand{\featurepic}[4][]{%
+    \leavevmode
+    \begin{figure}[H]
+        \includegraphics{#2}
+        \caption{#3}
+    \end{figure}
+}
 
 \let\c@refhead\c@section
 \def\therefhead{\thesection}
