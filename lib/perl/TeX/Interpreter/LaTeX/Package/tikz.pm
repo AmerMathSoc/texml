@@ -62,6 +62,7 @@ __DATA__
 
 \let\tikzcdset\@gobble
 \let\usetkzobj\@gobble
+\let\usepgfmodule\@gobble
 
 \newcommand{\tikz}[1][]{%
     \@ifnextchar\bgroup{\@tikz[#1]}{\@@tikz[#1]}%
@@ -93,6 +94,10 @@ __DATA__
 \let\entrymodifiers\@gobble
 
 \DeclareSVGEnvironment{tikzcd}
+
+\let\tz\relax
+\let\endtz\endrelax
+\DeclareSVGEnvironment{tz}
 
 \renewcommand{\rotatebox}[3][]{%
     \TeXMLCreateSVG{\rotatebox[#1]{#2}{#3}}%
