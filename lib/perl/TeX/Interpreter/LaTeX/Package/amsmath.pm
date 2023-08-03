@@ -400,6 +400,34 @@ __DATA__
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
+%%                           TEXTEQUATION                           %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% An extension for something that consists of text content but needs
+% to be numbered like an equation.  Works with \label, \notag, and
+% \tag.  There's no textequation* -- just use \notag.
+
+\newenvironment{textequation}{%
+    \st@rredfalse
+    \global\tag@false
+    \expandafter\global\ifst@rred\@eqnswfalse \else\@eqnswtrue \fi
+    \global\let\df@label\@empty
+    \let\tag\tag@in@align
+    \let\label\label@in@display
+    \par
+    \startXMLelement{disp-formula}
+    \addXMLid
+    \setXMLattribute{content-type}{text}
+}{%
+    \par
+    \process@amsmath@tag
+    \endXMLelement{disp-formula}
+    \par
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
 %%                       MATHJAX-SAFE MACROS                        %%
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
