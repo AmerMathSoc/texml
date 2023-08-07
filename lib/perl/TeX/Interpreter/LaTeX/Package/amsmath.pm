@@ -409,6 +409,7 @@ __DATA__
 % \tag.  There's no textequation* -- just use \notag.
 
 \newenvironment{textequation}{%
+    \def\@currentreftype{disp-formula}%
     \st@rredfalse
     \global\tag@false
     \expandafter\global\ifst@rred\@eqnswfalse \else\@eqnswtrue \fi
