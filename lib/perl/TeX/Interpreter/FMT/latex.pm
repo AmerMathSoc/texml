@@ -1363,7 +1363,7 @@ __DATA__
     \obeylines
 }
 
-\def\verbatim{\@verbatim \frenchspacing\@vobeyspaces \@xverbatim}
+% \def\verbatim{\@verbatim \frenchspacing\@vobeyspaces \@xverbatim}
 
 \def\endverbatim{%
     \par
