@@ -724,6 +724,10 @@ sub add_related_articles {
 
             append_xml_element($related, 'ext-link', $text,
                                { 'ext-link' => $url });
+        } else {
+            $tex->print_err("%% FAILED: Can't find gentag for $label $pii");
+
+            $tex->error();
         }
     }
 
