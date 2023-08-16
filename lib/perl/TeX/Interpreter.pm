@@ -48,8 +48,6 @@ sub TRACE {
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.20.0';
-
 use base qw(Exporter);
 
 our %EXPORT_TAGS = (all            => [ qw(make_eqvt) ],
@@ -1431,7 +1429,7 @@ my %IS_WHITESPACE = (" "  => 1,
                      "\n" => 1,
                      );
 
-sub is_whitespace { ## TBD: 
+sub is_whitespace { ## TBD:
     my $tex = shift;
 
     my $char_code = shift;
@@ -1967,53 +1965,53 @@ sub initialize_char_codes {
 
 # sub show_char_info {
 #     my $tex = shift;
-# 
+#
 #     my $usv = shift;
-# 
+#
 #     $tex->print_ln();
-# 
+#
 #     my $file_name = $tex->get_file_name() || '<undef>';
 #     my $line_no   = $tex->input_line_no() || '<undef>';
-# 
+#
 #     $tex->print_nl("*** charinfo on line $line_no of $file_name");
-# 
+#
 #     $tex->print_nl(sprintf "***      usv = 0x%04X (%s)", $usv, chr($usv));
 #     $tex->print_nl(sprintf "***  catcode = %d", $tex->get_catcode($usv));
-# 
+#
 #     if ((my $code = $tex->get_uccode($usv)) == 0) {
 #         $tex->print_nl('***   uccode = 0');
 #     } else {
 #         $tex->print_nl(sprintf '***   uccode = 0x%04X (%s)', $code, chr($code));
 #     }
-# 
+#
 #     if ((my $code = $tex->get_lccode($usv)) == 0) {
 #         $tex->print_nl('***   lccode = 0');
 #     } else {
 #         $tex->print_nl(sprintf '***   lccode = 0x%04X (%s)', $code, chr($code));
 #     }
-# 
+#
 #     if ((my $code = $tex->get_tccode($usv)) == 0) {
 #         $tex->print_nl('***   tccode = 0');
 #     } else {
 #         $tex->print_nl(sprintf '***   tccode = 0x%04X (%s)', $code, chr($code));
 #     }
-# 
+#
 #     $tex->print_nl(sprintf "***   sfcode = %d", $tex->get_sfcode($usv));
-# 
+#
 #     if ((my $code = $tex->get_mathcode($usv)) == -1) {
 #         $tex->print_nl(sprintf "*** mathcode = -1");
 #     } else {
 #         $tex->print_nl(sprintf "*** mathcode = 0x%06X", $code);
 #     }
-# 
+#
 #     if ((my $code = $tex->get_delcode($usv)) == -1) {
 #         $tex->print_nl(sprintf "***  delcode = -1");
 #     } else {
 #         $tex->print_nl(sprintf "***  delcode = 0x%06X", $code);
 #     }
-# 
+#
 #     $tex->print_ln();
-# 
+#
 #     return;
 # }
 
@@ -2294,6 +2292,22 @@ sub end_diagnostic {
     }
 
     $tex->set_selector($tex->old_setting());
+
+    return;
+}
+
+sub diagnosic {
+    my $tex = shift;
+
+    my $msg = shift;
+
+    $tex->print_nl("");
+
+    $tex->begin_diagnostic();
+
+    $tex->print($msg);
+
+    $tex->end_diagnostic(false);
 
     return;
 }
@@ -8215,6 +8229,26 @@ sub main_control {
     my $tex = shift;
 
     while (my $cur_tok = $tex->get_x_token()) {
+        # if ($tex->tracing_macros() & TRACING_MAIN_TOKS) {
+        #     $tex->begin_diagnostic();
+        #
+        #     $tex->print_nl("");
+        #
+        #     my $catcode = $cur_tok->get_catcode();
+        #
+        #     my $token;
+        #
+        #     if ($catcode == CATCODE_CSNAME) {
+        #         $token = "\\" . $cur_tok->get_csname();
+        #     } else {
+        #         $token = qq{'$cur_tok'};
+        #     }
+        #
+        #     $tex->print("main_control: $token ($catcode)");
+        #
+        #     $tex->end_diagnostic(false);
+        # }
+
         ## POP_MAIN_CONTROL terminates the current instance of
         ## main_control().  Normally, this will be the main invocation
         ## in TeX(), but see push_main_control() for other
@@ -10241,29 +10275,29 @@ sub extract_token {
 
 # sub __show_macro {
 #     my $macro = shift;
-# 
+#
 #     my $param_text = $macro->get_parameter_text();
 #     my $macro_text = $macro->get_replacement_text();
-# 
+#
 #     if (defined $param_text) {
 #         print $param_text;
 #     }
-# 
+#
 #     print "->";
-# 
+#
 #     print $macro_text;
-# 
+#
 #     return;
 # }
 
 # sub list_macros {
 #     my $tex = shift;
-# 
+#
 #     my $active_chars = $tex->get_active_chars();
-# 
+#
 #     while (my ($char, $eqvt) = each %{ $active_chars }) {
 #         my $meaning = $eqvt->get_equiv();
-# 
+#
 #         if (defined $meaning) {
 #             $tex->print_ln();
 #             $tex->print_char($char);
@@ -10272,12 +10306,12 @@ sub extract_token {
 #             $tex->print_ln();
 #         }
 #     }
-# 
+#
 #     my $csnames = $tex->get_csnames();
-# 
+#
 #     while (my ($csname, $eqvt) = each %{ $csnames }) {
 #         my $meaning = $eqvt->get_equiv();
-# 
+#
 #         if (defined $meaning) {
 #             $tex->print_ln();
 #             $tex->print_esc($csname);
@@ -10286,7 +10320,7 @@ sub extract_token {
 #             $tex->print_ln();
 #         }
 #     }
-# 
+#
 #     return;
 # }
 
@@ -11026,7 +11060,7 @@ sub group_trace {
 
     my $leaving    = shift;
     my $group_type = shift;
-    my $line_no    = shift;
+    my $line_no    = 2 + shift; ## TODO: WTF?
 
     $tex->begin_diagnostic();
 
@@ -11213,7 +11247,7 @@ sub evaluate_expression {
         }
         else {
             push @stack, $op;
-        }        
+        }
     }
 
     if (@stack == 1) {
