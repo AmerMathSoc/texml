@@ -1186,23 +1186,7 @@ __DATA__
         \fi
         \if@TeXMLend
             \ifcsname r@#1\endcsname
-                \edef\texml@refinfo{\csname r@#1\endcsname}%
-                \edef\ref@rid{\expandafter\texml@get@refid\texml@refinfo}%
-                \ifx\ref@rid\@empty
-                    \setXMLattribute{linked}{no}%
-                \else
-                    \setXMLattribute{rid}{\ref@rid}%
-                \fi
-                \edef\ref@reftype{\expandafter\texml@get@reftype\texml@refinfo}%
-                \setXMLattribute{ref-type}{\ref@reftype}%
-                \setXMLattribute{specific-use}{\expandafter\@gobble\string#2}%
-                \texml@set@prefix#2\ref@reftype
-%                \def\texml@get{\csname texml@get@\expandafter\@gobble\string#2\endcsname}%
-                \ifx\ref@prefix\@empty\else
-                    \ref@prefix~%
-                \fi
-                % \expandafter\texml@get\texml@refinfo
-                \texml@get@reftext@#2\texml@refinfo
+                \@setref@link@{#1}#2%
             \else
                 \setXMLattribute{specific-use}{undefined}%
                 \texttt{?#1}%
@@ -1213,6 +1197,24 @@ __DATA__
         \fi
         \endXMLelement{xref}%
     \endgroup
+}
+
+\def\@setref@link@#1#2{%
+    \edef\texml@refinfo{\csname r@#1\endcsname}%
+    \edef\ref@rid{\expandafter\texml@get@refid\texml@refinfo}%
+    \ifx\ref@rid\@empty
+        \setXMLattribute{linked}{no}%
+    \else
+        \setXMLattribute{rid}{\ref@rid}%
+    \fi
+    \edef\ref@reftype{\expandafter\texml@get@reftype\texml@refinfo}%
+    \setXMLattribute{ref-type}{\ref@reftype}%
+    \setXMLattribute{specific-use}{\expandafter\@gobble\string#2}%
+    \texml@set@prefix#2\ref@reftype
+    \ifx\ref@prefix\@empty\else
+        \ref@prefix~%
+    \fi
+    \texml@get@reftext@#2\texml@refinfo
 }
 
 \def\@setref@nolink#1#2{%
