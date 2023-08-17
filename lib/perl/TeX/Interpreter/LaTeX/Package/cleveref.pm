@@ -122,8 +122,8 @@ __DATA__
             }{%
                 \edef\@tempa{\@nameuse{r@#1}}%
                 \setXMLattribute{specific-use}{#2}%
-                \setXMLattribute{rid}{\expandafter\@thirdoffour\@tempa}%
-                \setXMLattribute{ref-type}{\expandafter\@fourthoffour\@tempa}%
+                \setXMLattribute{rid}{\expandafter\texml@get@xmlid\@tempa}%
+                \setXMLattribute{ref-type}{\expandafter\texml@get@reftype\@tempa}%
                 \setXMLattribute{ref-label}{\@temptype}%
                 \expandafter\@@setcref\expandafter
                     {\csname #2@\@temptype @format#3\endcsname}{#1}%

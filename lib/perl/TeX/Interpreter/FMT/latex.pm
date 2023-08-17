@@ -93,8 +93,6 @@ sub install ( $ ) {
 
     $tex->define_csname('TeXML@add@graphic@attributes' => \&do_graphic_attibutes);
 
-    $tex->define_pseudo_macro('auto@ref@label' => \&do_auto_ref_label);
-
     $tex->define_pseudo_macro(documentclass => \&do_documentclass);
 
     return;
@@ -633,75 +631,6 @@ sub do_graphic_attibutes {
     return;
 }
 
-sub do_auto_ref_label {
-    my $self = shift;
-
-    my $tex   = shift;
-    my $token = shift;
-
-    my $id = $tex->read_undelimited_parameter(EXPANDED);
-
-    return auto_ref_label($tex, $id);
-}
-
-sub auto_ref_label {
-    my $tex = shift;
-    my $id  = shift;
-
-    my $handle;
-
-    if (defined (my $main = $tex->get_output_stack(0))) {
-        $handle = $main->get_handle();
-    } else {
-        $handle = $tex->get_output_handle();
-    }
-
-    my $dom = $handle->get_dom();
-
-    my $type;
-
-    my @nodes = $dom->findnodes(qq{descendant::*[attribute::id="$id"]});
-
-    if (@nodes) {
-        my $node = pop @nodes;
-
-        if ($node->hasAttribute('specific-use')) {
-            $type = $node->getAttribute('specific-use');
-
-            ## Inside of appendixes, autoref uses a different name for
-            ## sections, but not for subsections, etc.  Since we
-            ## haven't replaced <sec> by <app> yet (see jats.xsl), we
-            ## check to see whether the parent element is an app-group
-            ## rather than checking $node->nodeName() directly.
-
-            if ($type eq 'section') {
-                if (defined (my $parent = $node->parentNode())) {
-                    if ($parent->nodeName() eq 'app-group') {
-                        $type = "appendix";
-                    }
-                }
-            }
-        }
-        elsif ($node->hasAttribute('content_type')) {
-            ($type) = split / /, $node->getAttribute('specific-use');
-        }
-    }
-
-    if (defined $type) {
-        if (defined (my $name = $tex->get_macro_expansion_text("${type}autorefname"))) {
-            return $name;
-        }
-
-        if (defined (my $name = $tex->get_macro_expansion_text("${type}name"))) {
-            return $name;
-        }
-
-        return $tex->tokenize($type);
-    }
-
-    return new_token_list();
-}
-
 1;
 
 __DATA__
@@ -1157,6 +1086,7 @@ __DATA__
 \let\@currentlabel\@empty
 \let\@currentXMLid\@empty
 \def\@currentreftype{sec}
+\def\@currentrefsubtype{section}%% NEW
 
 \newcounter{xmlid}
 
@@ -1177,9 +1107,10 @@ __DATA__
         \protected@edef\@tempa{%
             \noexpand\newlabel{#1}{%
                 {\@currentlabel}%
-                {\thepage}%
+                {\thepage}%  Should probably drop this entirely
                 {\@currentXMLid}%
                 {\ifmmode disp-formula\else\@currentreftype\fi}%
+                % {\ifmmode equation\else\@currentreftype\fi}%
             }%
         }%
     \expandafter\endgroup
@@ -1198,10 +1129,10 @@ __DATA__
     \@latex@warning{Reference `#1' on page \thepage\space undefined}%
 }
 
-\long\def \@firstoffour#1#2#3#4{#1}
-\long\def\@secondoffour#1#2#3#4{#2}
-\long\def \@thirdoffour#1#2#3#4{#3}
-\long\def\@fourthoffour#1#2#3#4{#4}
+\long\def\texml@get@ref    #1#2#3#4{#1}
+\long\def\texml@get@pageref#1#2#3#4{#2}
+\long\def\texml@get@xmlid  #1#2#3#4{#3}
+\long\def\texml@get@reftype#1#2#3#4{#4}
 
 \DeclareRobustCommand\ref{%
     \begingroup
@@ -1209,16 +1140,16 @@ __DATA__
 }
 
 \def\@ref#1{%
-    \expandafter\@setref\csname r@#1\endcsname\@firstoffour{#1}\ref
+    \expandafter\@setref {#1} \ref
 }
 
-\def\pageref{%
+\DeclareRobustCommand\pageref{%
     \begingroup
         \maybe@st@rred\@pageref
 }
 
 \def\@pageref#1{%
-    \expandafter\@setref\csname r@#1\endcsname\@secondoffour{#1}\pageref
+    \expandafter\@setref {#1} \pageref
 }
 
 \def\double@expand#1{%
@@ -1228,65 +1159,76 @@ __DATA__
     \@temp@expand
 }
 
-% #1 = \r@LABEL
-% #2 = getter
-% #3 = LABEL
-% %4 = \ref | \autoref | \pageref
+% #1 = LABEL
+% %2 = \ref | \autoref | \pageref
 
 \def\@setref{\csname @setref@\ifst@rred no\fi link\endcsname}
 
-\def\@setref@link#1#2#3#4{%
+% \def\texml@set@prefix#1{%
+%     texml@set@prefix@\expandafter\@gobble\string#1%
+% }
+
+\let\ref@prefix\@empty
+
+\def\texml@set@prefix#1#2{%
+    \ifcsname texml@set@prefix@\expandafter\@gobble\string#1\endcsname
+        \edef\ref@prefix{\csname texml@set@prefix@\expandafter\@gobble\string#1\endcsname{#2}}%
+    \else
+        \let\ref@prefix\@empty
+    \fi
+}
+
+\def\@setref@link#1#2{%
         \leavevmode
         \startXMLelement{xref}%
         \ifst@rred
             \setXMLattribute{linked}{no}%
         \fi
         \if@TeXMLend
-            \@ifundefined{r@#3}{%
+            \ifcsname r@#1\endcsname
+                \edef\texml@refinfo{\csname r@#1\endcsname}%
+                \edef\ref@rid{\expandafter\texml@get@xmlid\texml@refinfo}%
+                \ifx\ref@rid\@empty
+                    \setXMLattribute{linked}{no}%
+                \else
+                    \setXMLattribute{rid}{\ref@rid}%
+                \fi
+                \edef\ref@reftype{\expandafter\texml@get@reftype\texml@refinfo}%
+                \setXMLattribute{ref-type}{\ref@reftype}%
+                \setXMLattribute{specific-use}{\expandafter\@gobble\string#2}%
+                \texml@set@prefix#2\ref@reftype
+                \def\texml@get{\csname texml@get@\expandafter\@gobble\string#2\endcsname}%
+                \ifx\ref@prefix\@empty\else
+                    \ref@prefix~%
+                \fi
+                \expandafter\texml@get\texml@refinfo
+            \else
                 \setXMLattribute{specific-use}{undefined}%
-                \texttt{?#3}%
-            }{%
-                \begingroup
-                    \edef\ref@rid{\expandafter\@thirdoffour#1}%
-                    \ifx\ref@rid\@empty
-                        \setXMLattribute{linked}{no}%
-                    \else
-                        \setXMLattribute{rid}{\ref@rid}%
-                        \double@expand{%
-                            \edef\noexpand\@ref@label@attr{%
-                                \noexpand\auto@ref@label{\ref@rid}%
-                            }%
-                        }%
-                        \ifx\@ref@label@attr\@empty\else
-                            \setXMLattribute{ref-label}{\@ref@label@attr}%
-                        \fi
-                    \fi
-                \endgroup
-                \setXMLattribute{specific-use}{\expandafter\@gobble\string#4}%
-                \setXMLattribute{ref-type}{\expandafter\@fourthoffour#1}%
-                \protect\printref{\expandafter#2#1}%
-            }%
+                \texttt{?#1}%
+            \fi
         \else
-            \setXMLattribute{ref-key}{#3}%
-            \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#4}%
+            \setXMLattribute{ref-key}{#1}%
+            \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#2}%
         \fi
         \endXMLelement{xref}%
     \endgroup
 }
 
-\def\@setref@nolink#1#2#3#4{%
+\def\@setref@nolink#1#2{%
         \leavevmode
         \if@TeXMLend
-            \@ifundefined{r@#3}{%
-                \texttt{?#3}%
-            }{%
-                \protect\printref{\expandafter#2#1}%
-            }%
+            \ifcsname r@#1\endcsname
+                \edef\texml@refinfo{\csname r@#1\endcsname}%
+                \def\texml@get{\csname texml@get@\expandafter\@gobble\string#2\endcsname}%
+                \protect\printref{\expandafter\texmf@get\texml@refinfo}%
+            \else
+                \texttt{?#1}%
+            \fi
         \else
             \startXMLelement{xref}%
             \setXMLattribute{linked}{no}%
-            \setXMLattribute{ref-key}{#3}%
-            \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#4}%
+            \setXMLattribute{ref-key}{#1}%
+            \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#2}%
             \endXMLelement{xref}%
         \fi
     \endgroup

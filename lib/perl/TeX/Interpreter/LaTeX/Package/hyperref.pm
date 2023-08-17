@@ -63,23 +63,18 @@ __DATA__
         \maybe@st@rred\@autoref
 }
 
+\let\texml@get@autoref\texml@get@ref
+
 \def\@autoref#1{%
-    \expandafter\@setref\csname r@#1\endcsname\set@autoref{#1}\autoref
+    \expandafter\@setref {#1} \autoref
 }
 
-\def\set@autoref#1#2#3#4{%
-    \begingroup
-        \edef\@tempa{\auto@ref@label{#3}}%
-        \ifx\@tempa\@empty\else
-            \XMLgeneratedText\@tempa~%
-        \fi
-        #1%
-    \endgroup
+\def\texml@set@prefix@autoref#1{%
+    \ifcsname #1autorefname\endcsname\relax
+        \csname #1autorefname\endcsname
+    \fi
 }
 
-\providecommand*\AMSautorefname{\equationautorefname}
-\providecommand*\Hfootnoteautorefname{\footnoteautorefname}
-\providecommand*\Itemautorefname{\itemautorefname}
 \providecommand*\itemautorefname{item}
 \providecommand*\equationautorefname{Equation}
 \providecommand*\footnoteautorefname{footnote}
