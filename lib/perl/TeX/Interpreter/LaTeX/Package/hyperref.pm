@@ -63,7 +63,7 @@ __DATA__
         \maybe@st@rred\@autoref
 }
 
-\let\texml@get@autoref\texml@get@ref
+\let\texml@get@autoref\texml@get@reftext
 
 \def\@autoref#1{%
     \expandafter\@setref {#1} \autoref
@@ -75,23 +75,26 @@ __DATA__
     \fi
 }
 
-\providecommand*\itemautorefname{item}
-\providecommand*\equationautorefname{Equation}
+\providecommand*\pageautorefname{page}
+
+\providecommand*\FancyVerbLineautorefname{line}
 \providecommand*\footnoteautorefname{footnote}
 \providecommand*\itemautorefname{item}
-\providecommand*\figureautorefname{Figure}
-\providecommand*\tableautorefname{Table}
 \providecommand*\partautorefname{Part}
-\providecommand*\appendixautorefname{Appendix}
-\providecommand*\chapterautorefname{chapter}
-\providecommand*\sectionautorefname{section}
-\providecommand*\subsectionautorefname{subsection}
-\providecommand*\subsubsectionautorefname{subsubsection}
-\providecommand*\paragraphautorefname{paragraph}
-\providecommand*\subparagraphautorefname{subparagraph}
-\providecommand*\FancyVerbLineautorefname{line}
+
+\providecommand*\figureautorefname{Figure}
+\providecommand*\tableautorefname {Table}
+
+\providecommand*\equationautorefname{Equation}
 \providecommand*\theoremautorefname{Theorem}
-\providecommand*\pageautorefname{page}
+
+\providecommand*\appendixautorefname     {Appendix}
+\providecommand*\chapterautorefname      {chapter}
+\providecommand*\sectionautorefname      {section}
+\providecommand*\subsectionautorefname   {subsection}
+\providecommand*\subsubsectionautorefname{subsubsection}
+\providecommand*\paragraphautorefname    {paragraph}
+\providecommand*\subparagraphautorefname {subparagraph}
 
 \let\href\relax
 

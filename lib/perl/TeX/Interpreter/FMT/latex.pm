@@ -1107,10 +1107,9 @@ __DATA__
         \protected@edef\@tempa{%
             \noexpand\newlabel{#1}{%
                 {\@currentlabel}%
-                {\thepage}%  Should probably drop this entirely
                 {\@currentXMLid}%
                 {\ifmmode disp-formula\else\@currentreftype\fi}%
-                % {\ifmmode equation\else\@currentreftype\fi}%
+                {\ifmmode equation\else\@currentrefsubtype\fi}%
             }%
         }%
     \expandafter\endgroup
@@ -1129,10 +1128,12 @@ __DATA__
     \@latex@warning{Reference `#1' on page \thepage\space undefined}%
 }
 
-\long\def\texml@get@ref    #1#2#3#4{#1}
-\long\def\texml@get@pageref#1#2#3#4{#2}
-\long\def\texml@get@xmlid  #1#2#3#4{#3}
-\long\def\texml@get@reftype#1#2#3#4{#4}
+\long\def\texml@get@reftext#1#2#3#4{#1}
+\long\def\texml@get@refid  #1#2#3#4{#2}
+\long\def\texml@get@reftype#1#2#3#4{#3}
+\long\def\texml@get@subtype#1#2#3#4{#4}
+
+\let\texml@get@ref\texml@get@reftext
 
 \DeclareRobustCommand\ref{%
     \begingroup
@@ -1143,6 +1144,8 @@ __DATA__
     \expandafter\@setref {#1} \ref
 }
 
+\long\def\texml@get@pageref#1#2#3#4{\@latex@warning{Use of \string\pageref}}
+
 \DeclareRobustCommand\pageref{%
     \begingroup
         \maybe@st@rred\@pageref
@@ -1152,17 +1155,8 @@ __DATA__
     \expandafter\@setref {#1} \pageref
 }
 
-\def\double@expand#1{%
-    \begingroup
-        \protected@edef\@temp@expand{#1}%
-    \expandafter\endgroup
-    \@temp@expand
-}
-
 % #1 = LABEL
-% %2 = \ref | \autoref | \pageref
-
-\def\@setref{\csname @setref@\ifst@rred no\fi link\endcsname}
+% %2 = \ref | \autoref | \pageref | ...
 
 % \def\texml@set@prefix#1{%
 %     texml@set@prefix@\expandafter\@gobble\string#1%
@@ -1178,6 +1172,12 @@ __DATA__
     \fi
 }
 
+\def\texml@get@reftext@#1{%
+    \expandafter\expandafter\csname texml@get@\expandafter\@gobble\string#1\endcsname
+}
+
+\def\@setref{\csname @setref@\ifst@rred no\fi link\endcsname}
+
 \def\@setref@link#1#2{%
         \leavevmode
         \startXMLelement{xref}%
@@ -1187,7 +1187,7 @@ __DATA__
         \if@TeXMLend
             \ifcsname r@#1\endcsname
                 \edef\texml@refinfo{\csname r@#1\endcsname}%
-                \edef\ref@rid{\expandafter\texml@get@xmlid\texml@refinfo}%
+                \edef\ref@rid{\expandafter\texml@get@refid\texml@refinfo}%
                 \ifx\ref@rid\@empty
                     \setXMLattribute{linked}{no}%
                 \else
@@ -1197,11 +1197,12 @@ __DATA__
                 \setXMLattribute{ref-type}{\ref@reftype}%
                 \setXMLattribute{specific-use}{\expandafter\@gobble\string#2}%
                 \texml@set@prefix#2\ref@reftype
-                \def\texml@get{\csname texml@get@\expandafter\@gobble\string#2\endcsname}%
+%                \def\texml@get{\csname texml@get@\expandafter\@gobble\string#2\endcsname}%
                 \ifx\ref@prefix\@empty\else
                     \ref@prefix~%
                 \fi
-                \expandafter\texml@get\texml@refinfo
+                % \expandafter\texml@get\texml@refinfo
+                \texml@get@reftext@#2\texml@refinfo
             \else
                 \setXMLattribute{specific-use}{undefined}%
                 \texttt{?#1}%
@@ -1238,6 +1239,13 @@ __DATA__
 
 %% Wrap \@newl@bel in \begingroup...\endgroup instead of {...} for
 %% compatibility with texml processing of math mode.
+
+\def\double@expand#1{%
+    \begingroup
+        \protected@edef\@temp@expand{#1}%
+    \expandafter\endgroup
+    \@temp@expand
+}
 
 \def\@newl@bel#1#2#3{%
     \begingroup

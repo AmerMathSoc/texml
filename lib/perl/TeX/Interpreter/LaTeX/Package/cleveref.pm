@@ -122,7 +122,7 @@ __DATA__
             }{%
                 \edef\@tempa{\@nameuse{r@#1}}%
                 \setXMLattribute{specific-use}{#2}%
-                \setXMLattribute{rid}{\expandafter\texml@get@xmlid\@tempa}%
+                \setXMLattribute{rid}{\expandafter\texml@get@refid\@tempa}%
                 \setXMLattribute{ref-type}{\expandafter\texml@get@reftype\@tempa}%
                 \setXMLattribute{ref-label}{\@temptype}%
                 \expandafter\@@setcref\expandafter
