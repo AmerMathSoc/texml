@@ -390,6 +390,8 @@ __DATA__
 \let\paragraphname\@empty
 \let\subparagraphname\@empty
 
+\def\section@subreftype@{section}
+
 \def\partname{Part}
 
 %    Specialsection correlates to our inhouse Z-head.
@@ -1145,6 +1147,7 @@ __DATA__
     \c@subsection\z@
     \let\sectionname\appendixname
     \def\thesection{\@Alph\c@section}%
+    \def\section@subreftype@{appendix}%
 }
 
 \let\printindex\@empty
