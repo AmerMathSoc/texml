@@ -1214,9 +1214,12 @@ __DATA__
     \setXMLattribute{ref-type}{\ref@reftype}%
     %
     \edef\ref@subtype{\expandafter\texml@get@subtype\texml@refinfo}%
-    \texml@set@prefix#2\ref@subtype
-    \ifx\ref@prefix\@empty\else
-        \ref@prefix~%
+    \ifx\ref@subtype\@empty\else
+        \setXMLattribute{ref-subtype}{\ref@subtype}%
+        \texml@set@prefix#2\ref@subtype
+        \ifx\ref@prefix\@empty\else
+            \ref@prefix~%
+        \fi
     \fi
     %
     \texml@get@reftext@#2\texml@refinfo
@@ -1692,6 +1695,27 @@ __DATA__
     \@ifstar{\st@rredtrue\@tempa}{\st@rredfalse\@tempa}%
 }
 
+%% Ideally we would just say
+%%
+%%     \def\@currentrefsubtype{#1}
+%%
+%% in \@sect, but we need a level of indirection in order to change
+%% the type of \section from "section" to "appendix" in appendices.
+
+\def\set@sec@subreftype#1{%
+    \begingroup
+        \let\@tempa\@empty
+        \ifcsname #1@subreftype@\endcsname
+            \edef\@tempa{\csname #1@subreftype@\endcsname}%
+        \fi
+        \ifx\@tempa\@empty
+            \def\@tempa{#1}%
+        \fi
+        \edef\@tempa{\def\noexpand\@currentrefsubtype{\@tempa}}%
+    \expandafter\endgroup
+    \@tempa
+}
+
 \PreserveMacroDefinition\@startsection
 
 % \@sect{NAME}{LEVEL}{INDENT}{BEFORESKIP}{AFTERSKIP}{STYLE}[ARG1]{ARG2}
@@ -1700,7 +1724,7 @@ __DATA__
 
 \def\@sect#1#2#3#4#5#6[#7]#8{%
     \def\@currentreftype{sec}%
-    \def\@currentrefsubtype{#1}%
+    \set@sec@subreftype{#1}%
     \ams@measure{#8}%
     \edef\@toclevel{\number#2}%
     \ifst@rred
