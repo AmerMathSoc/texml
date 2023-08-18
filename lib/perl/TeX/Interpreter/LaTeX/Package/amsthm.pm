@@ -94,56 +94,60 @@ sub do_newtheorem {
 
     my $parent_ctr = $tex->scan_optional_argument();
 
-    my $theorem_style = $tex->get_toks_list('thm@style');
-
-    $tex->begingroup();
-
-    $tex->set_catcode(ord '@', CATCODE_LETTER);
-
-    my $the_def = TeX::TokenList->new();
+    my $the_def;
 
     my $ctr_name = '';
 
     if ($numbered) {
+        $the_def .= qq{\\providecommand{\\${env_name}autorefname}{$theorem_label}\n};
+
         $ctr_name = $env_name;
 
         if ($sibling_ctr) {
             $ctr_name = $sibling_ctr;
 
-            my $def = sprintf('\global\@namedef{the%s}{\csname the%s\endcsname}',
+            $the_def .= sprintf('\global\@namedef{the%s}{\csname the%s\endcsname}%%',
                                $env_name,
                                $sibling_ctr);
 
-            $the_def->push($tex->tokenize($def));
+            $the_def .= "\n";
         } else {
-            my $ctr_def = qq{\\newcounter{$ctr_name}};
+            my $ctr_def = qq{\\newcounter{$ctr_name}\n};
 
             if ($parent_ctr) {
                 $ctr_def .= qq{[$parent_ctr]};
 
-                $ctr_def .= sprintf('\global\@namedef{the%s}{\csname the%s\endcsname.\arabic{%s}}',
+                $ctr_def .= sprintf('\global\@namedef{the%s}{\csname the%s\endcsname.\arabic{%s}}%%',
                                    $ctr_name,
                                    $parent_ctr,
                                    $ctr_name);
             } else {
-                $ctr_def .= sprintf('\global\@namedef{the%s}{\arabic{%s}}',
+                $ctr_def .= sprintf('\global\@namedef{the%s}{\arabic{%s}}%%',
                                    $ctr_name,
                                    $ctr_name);
             }
 
-            $the_def->push($tex->tokenize($ctr_def));
+            $the_def .= qq{$ctr_def\n};
         }
     }
 
-    $the_def->push($tex->tokenize(qq{\\global\\\@namedef{${env_name}}{\\\@begintheorem{$theorem_style}{$theorem_label}{$ctr_name}}}));
+    my $theorem_style = $tex->get_toks_list('thm@style');
 
-    $the_def->push($tex->tokenize(qq{\\global\\expandafter\\let\\csname end${env_name}\\endcsname\\\@endtheorem}));
+    $the_def .= qq{\\global\\\@namedef{${env_name}}{\\\@begintheorem{$theorem_style}{$theorem_label}{$ctr_name}}%\n};
 
-    $tex->endgroup();
+    $the_def .= qq{\\global\\expandafter\\let\\csname end${env_name}\\endcsname\\\@endtheorem\n};
 
     # $tex->__DEBUG(qq{the_def = "$the_def"});
 
-    return $the_def;
+    $tex->begingroup();
+
+    $tex->set_catcode(ord '@', CATCODE_LETTER);
+
+    my $tokenized = $tex->tokenize($the_def);
+
+    $tex->endgroup();
+
+    return $tokenized;
 }
 
 sub do_newtheoremstyle {
