@@ -218,6 +218,7 @@ __DATA__
     \c@subsection\z@
     \let\chaptername\appendixname
     \def\thechapter{\@Alph\c@chapter}%
+    \def\@chapterefsubtype{appendix}%
 }
 
 \let\default@XML@section@tag\XML@section@tag
@@ -248,8 +249,11 @@ __DATA__
     \@chapdef\@chapter\@schapter
 }
 
+\def\@chapterefsubtype{chapter}
+
 \def\@chapter[#1]#2{%
-%    \begingroup
+        \def\@currentreftype{sec}%
+        \edef\@currentrefsubtype{\@chapterefsubtype}%
         \def\@toclevel{0}%
         \@Guess@FM@type{#2}%
         \let\@secnumber\@empty

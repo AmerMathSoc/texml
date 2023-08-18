@@ -72,6 +72,7 @@ __DATA__
 \newenvironment{numcases}[1]{%
     \st@rredfalse
     \def\@currentreftype{disp-formula}%
+    \def\@currentrefsubtype{equation}%
     $$
     \begingroup
         \advance\c@equation\@ne

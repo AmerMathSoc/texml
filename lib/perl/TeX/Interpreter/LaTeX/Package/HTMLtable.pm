@@ -729,6 +729,7 @@ __DATA__
     \begingroup
         \edef\@currentXMLid{ltxid\arabic{xmlid}}%
         \def\@currentreftype{fn}%
+        \def\@currentrefsubtype{footnote}%
         \protected@edef\@currentlabel{%
            \csname p@footnote\endcsname\@thefnmark
         }%

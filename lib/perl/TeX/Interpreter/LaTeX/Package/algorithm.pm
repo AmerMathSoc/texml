@@ -77,6 +77,7 @@ __DATA__
     \xmlpartag{}%
     \leavevmode
     \def\@currentreftype{algorithm}%
+    \let\@currentrefsubtype\@currentreftype
     \def\@captype{algorithm}%
     \def\jats@graphics@element{graphic}
     \startXMLelement{\jats@figure@element}%

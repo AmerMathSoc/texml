@@ -96,6 +96,7 @@ __DATA__
     \par
     \startXMLelement{disp-formula-group}%
         \def\@currentreftype{disp-formula}%
+        \def\@currentrefsubtype{equation}%
         \addXMLid
         \startXMLelement{label}%
             \ignorespaces\theparentequation
@@ -410,6 +411,7 @@ __DATA__
 
 \newenvironment{textequation}{%
     \def\@currentreftype{disp-formula}%
+    \def\@currentrefsubtype{equation}%
     \st@rredfalse
     \global\tag@false
     \expandafter\global\ifst@rred\@eqnswfalse \else\@eqnswtrue \fi

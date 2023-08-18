@@ -219,6 +219,7 @@ __DATA__
     \setXMLattribute{style}{thm#1}%
     \addXMLid
     \def\@currentreftype{statement}%
+    \edef\@currentrefsubtype{\@currenvir}%
     %%
     %% Inside lists, \xmlpartag is turned off, so we need to make
     %% sure to turn it back on.  Cf. car-brown2.  TBD: Can we

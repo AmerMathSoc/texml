@@ -1085,8 +1085,8 @@ __DATA__
 
 \let\@currentlabel\@empty
 \let\@currentXMLid\@empty
-\def\@currentreftype{sec}
-\def\@currentrefsubtype{section}%% NEW
+\def\@currentreftype{}
+\def\@currentrefsubtype{}%% NEW
 
 \newcounter{xmlid}
 
@@ -1201,19 +1201,24 @@ __DATA__
 
 \def\@setref@link@#1#2{%
     \edef\texml@refinfo{\csname r@#1\endcsname}%
+    \setXMLattribute{specific-use}{\expandafter\@gobble\string#2}%
+    %
     \edef\ref@rid{\expandafter\texml@get@refid\texml@refinfo}%
     \ifx\ref@rid\@empty
         \setXMLattribute{linked}{no}%
     \else
         \setXMLattribute{rid}{\ref@rid}%
     \fi
+    %
     \edef\ref@reftype{\expandafter\texml@get@reftype\texml@refinfo}%
     \setXMLattribute{ref-type}{\ref@reftype}%
-    \setXMLattribute{specific-use}{\expandafter\@gobble\string#2}%
-    \texml@set@prefix#2\ref@reftype
+    %
+    \edef\ref@subtype{\expandafter\texml@get@subtype\texml@refinfo}%
+    \texml@set@prefix#2\ref@subtype
     \ifx\ref@prefix\@empty\else
         \ref@prefix~%
     \fi
+    %
     \texml@get@reftext@#2\texml@refinfo
 }
 
@@ -1409,6 +1414,7 @@ __DATA__
         \fi
     \fi
     \def\@currentreftype{list}%
+    \def\@currentrefsubtype{item}%
     \@listconfig
     \global\@newlisttrue
     \afterfigureinlist@false
@@ -1693,6 +1699,8 @@ __DATA__
 % LEVEL = \@m if *-ed
 
 \def\@sect#1#2#3#4#5#6[#7]#8{%
+    \def\@currentreftype{sec}%
+    \def\@currentrefsubtype{#1}%
     \ams@measure{#8}%
     \edef\@toclevel{\number#2}%
     \ifst@rred
@@ -1868,6 +1876,7 @@ __DATA__
     \xmlpartag{}%
     \leavevmode
     \def\@currentreftype{#1}%
+    \def\@currentrefsubtype{#1}%
     \def\@captype{#1}%
     \def\jats@graphics@element{graphic}
     \edef\JATS@float@wrapper{%
@@ -1945,6 +1954,7 @@ __DATA__
     \begingroup
         \edef\@currentXMLid{ltxid\arabic{xmlid}}%
         \def\@currentreftype{fn}%
+        \def\@currentrefsubtype{footnote}%
         \protected@edef\@currentlabel{%
            \csname p@footnote\endcsname\@thefnmark
         }%
