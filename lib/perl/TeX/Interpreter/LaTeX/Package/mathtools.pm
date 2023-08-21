@@ -56,6 +56,8 @@ __DATA__
     \def\coloneqq{\coloneq}
 }
 
+\let\noeqref\@gobble
+
 \let\adjustlimits\@empty
 
 \let\smashoperator\@gobbleopt
