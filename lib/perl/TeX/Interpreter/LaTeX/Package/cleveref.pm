@@ -39,16 +39,16 @@ sub install ( $ ) {
 
     $tex->package_load_notification();
 
-    # Hide hyperref from cleveref so it doesn't try to implement it's
-    # own linking.
-
-    my $ver_hyperref = $tex->get_macro_expansion_text('ver@hyperref.sty');
-
-    $tex->let_csname('ver@hyperref.sty' => '@undefined');
+    # # Hide hyperref from cleveref so it doesn't try to implement it's
+    # # own linking.
+    # 
+    # my $ver_hyperref = $tex->get_macro_expansion_text('ver@hyperref.sty');
+    # 
+    # $tex->let_csname('ver@hyperref.sty' => '@undefined');
 
     $tex->read_package_data();
 
-    $tex->define_macro('ver@hyperref.sty', undef, $ver_hyperref);
+    # $tex->define_macro('ver@hyperref.sty', undef, $ver_hyperref);
 
     return;
 }
@@ -64,47 +64,64 @@ __DATA__
 
 \LoadRawMacros
 
+\def\TEXMLcref#1{\@setcref{#1}{cref}{}}
+\def\TEXMLCref#1{\@setcref{#1}{Cref}{}}
+
+\def\texmlcleveref#1#2{\@setcref{#2}{#1}{}}
+
+\def\refstepcounter{%
+    \@dblarg\refstepcounter@cref
+}%
+
+\def\refstepcounter@cref[#1]#2{%
+    \cref@old@refstepcounter{#2}%
+    \cref@constructprefix{#2}{\cref@result}%
+    \@ifundefined{cref@#1@alias}{%
+        \def\@tempa{#1}%
+    }{%
+        \def\@tempa{\csname cref@#1@alias\endcsname}%
+    }%
+    \protected@edef\cref@currentlabel{%
+        [\@tempa][\arabic{#2}][\cref@result]%
+        \csname p@#2\endcsname\csname the#2\endcsname}%
+}
+
 \AtBeginDocument{%
-    \def\label@noarg#1{%
-        \@bsphack
-            \cref@old@label{#1}%
-            \begingroup
-                \let\ref\relax
-                \protected@edef\@tempa{%
-                    \noexpand\newlabel{#1@cref}{%
-                        {\cref@currentlabel}%
-                        {\thepage}%
-                    }%
-                }%
-            \expandafter\endgroup
-            \@tempa
-        \@esphack
-    }%
-    \def\label@optarg[#1]#2{%
-        \@bsphack
-            \cref@old@label{#2}%
-            \begingroup
-                \protected@edef\cref@currentlabel{%
-                    \expandafter\cref@override@label@type\cref@currentlabel\@nil{#1}%
-                }%
-                \protected@edef\@tempa{%
-                    \noexpand\newlabel{#1@cref}{%
-                        {\cref@currentlabel}%
-                        {\thepage}%
-%                        {}%
-%                        {}%
-                }%
-                }%
-            \expandafter\endgroup
-            \@tempa
-        \@esphack
-    }%
+    \def\label{\@ifnextchar[\label@cref@\label@cref}%]
+    \let\ltx@label\label
+}
+
+\def\label@cref#1{%
+    \@bsphack
+        \cref@old@label{#1}%
+        \begingroup
+            \protected@edef\@tempa{%
+                \noexpand\newlabel{#1@cref}{{\cref@currentlabel}{\thepage}}%
+            }%
+        \expandafter\endgroup
+        \@tempa
+    \@esphack
+}
+
+\def\label@cref@[#1]#2{%
+    \@bsphack
+        \cref@old@label{#2}%
+        \begingroup
+            \protected@edef\@tempa{%
+                \noexpand\newlabel{#2@cref}{{\cref@currentlabel}{\thepage}}%
+            }%
+        \expandafter\endgroup
+        \@tempa
+        \protected@edef\cref@currentlabel{%
+            \expandafter\cref@override@label@type\cref@currentlabel\@nil{#1}%
+        }%
+    \@esphack
 }
 
 \def\@setcref#1#2#3{%
     \startXMLelement{xref}%
     \if@TeXMLend
-        \@ifundefined{r@#1}{%
+        \@ifundefined{r@#1@cref}{%
             \setXMLattribute{specific-use}{undefined}%
             \texttt{?#1}%
         }{%
@@ -115,18 +132,20 @@ __DATA__
                 \ifx\@tempa\@tempb\def\@temptype{default}\fi
             }{}%
             \@ifundefined{#2@\@temptype @format#3}{%
-                \@latex@warning{#2 \space reference format for label type
-                    `\@temptype' undefined}%
+                \@latex@warning{#2\space reference format for label type `\@temptype' undefined}%
                 \setXMLattribute{specific-use}{undefined}%
                 \texttt{?#3}%
             }{%
-                \edef\@tempa{\@nameuse{r@#1}}%
+                % \edef\@tempa{\@nameuse{r@#1@cref}}%
+                \edef\texml@refinfo{\@nameuse{r@#1}}%
                 \setXMLattribute{specific-use}{#2}%
-                \setXMLattribute{rid}{\expandafter\texml@get@refid\@tempa}%
-                \setXMLattribute{ref-type}{\expandafter\texml@get@reftype\@tempa}%
-                \setXMLattribute{ref-label}{\@temptype}%
-                \expandafter\@@setcref\expandafter
-                    {\csname #2@\@temptype @format#3\endcsname}{#1}%
+                \setXMLattribute{rid}{\expandafter\texml@get@refid\texml@refinfo}%
+                \setXMLattribute{ref-type}{\expandafter\texml@get@reftype\texml@refinfo}%
+                \edef\ref@subtype{\expandafter\texml@get@subtype\texml@refinfo}%
+                \ifx\ref@subtype\@empty\else
+                    \setXMLattribute{ref-subtype}{\ref@subtype}%
+                \fi
+                \expandafter\@@setcref\expandafter{\csname #2@\@temptype @format#3\endcsname}{#1}%
             }%
         }%
     \else
@@ -138,7 +157,7 @@ __DATA__
 
 % AMSTHM
 
-\def\amsthm@refstepcounter#1#2{\refstepcounter[#1]{#2}}%
+% \def\amsthm@refstepcounter#1#2{\refstepcounter[#1]{#2}}%
 
 \def\amsthm@cref@init#1#2{%
     \edef\@tempa{\expandafter\noexpand\csname cref@#1@name@preamble\endcsname}%

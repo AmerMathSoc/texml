@@ -101,6 +101,8 @@ sub do_newtheorem {
     if ($numbered) {
         $the_def .= qq{\\providecommand{\\${env_name}autorefname}{$theorem_label}\n};
 
+        $the_def .= qq{\\amsthm\@cref\@init{$env_name}{$theorem_label}%};
+
         $ctr_name = $env_name;
 
         if ($sibling_ctr) {
@@ -195,6 +197,8 @@ sub do_newtheoremstyle {
 __DATA__
 
 \ProvidesPackage{amsthm}
+
+\providecommand{\amsthm@cref@init}{\@gobbletwo}
 
 \newtoks\thm@style
 

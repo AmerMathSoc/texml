@@ -362,10 +362,10 @@ sub do_resolve_xrefs {
 
                     $num_cites++;
                 }
-            } elsif ($ref_cmd eq 'cref') {
+            } elsif (lc($ref_cmd) eq 'cref') {
                 my $ref_key = $xref->getAttribute('ref-key');
 
-                my $new_node = $tex->convert_fragment(qq{\\${ref_cmd}{$ref_key}});
+                my $new_node = $tex->convert_fragment(qq{\\texmlcleveref{${ref_cmd}}{$ref_key}});
 
                 my $flag = $new_node->firstChild()->getAttribute("specific-use");
 
@@ -1100,12 +1100,13 @@ __DATA__
     \setXMLattribute{id}{\@currentXMLid}%
 }
 
-\def\label#1{%
+\let\label\relax
+\newcommand{\label}[2][]{%
     \@bsphack
     \begingroup
         \let\ref\relax
         \protected@edef\@tempa{%
-            \noexpand\newlabel{#1}{%
+            \noexpand\newlabel{#2}{%
                 {\@currentlabel}%
                 {\@currentXMLid}%
                 {\ifmmode disp-formula\else\@currentreftype\fi}%
@@ -1114,11 +1115,6 @@ __DATA__
         }%
     \expandafter\endgroup
     \@tempa
-    % \protected@write\@auxout{}{%
-    %     \string\newlabel{#1}{{\@currentlabel}%
-    %                          {\thepage}%
-    %                          {\@currentXMLid}%
-    %                          {\ifmmode disp-formula\else\@currentreftype\fi}}}%
     \@esphack
 }
 
