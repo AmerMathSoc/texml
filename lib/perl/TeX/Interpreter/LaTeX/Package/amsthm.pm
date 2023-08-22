@@ -101,7 +101,7 @@ sub do_newtheorem {
     if ($numbered) {
         $the_def .= qq{\\providecommand{\\${env_name}autorefname}{$theorem_label}\n};
 
-        $the_def .= qq{\\amsthm\@cref\@init{$env_name}{$theorem_label}%};
+        $the_def .= qq{\\amsthm\@cref\@init{$env_name}{$theorem_label}%\n};
 
         $ctr_name = $env_name;
 
@@ -135,7 +135,7 @@ sub do_newtheorem {
 
     my $theorem_style = $tex->get_toks_list('thm@style');
 
-    $the_def .= qq{\\global\\\@namedef{${env_name}}{\\\@begintheorem{$theorem_style}{$theorem_label}{$ctr_name}}%\n};
+    $the_def .= qq{\\global\\\@namedef{${env_name}}{\\\@begintheorem{$theorem_style}{$theorem_label}{$env_name}{$ctr_name}}%\n};
 
     $the_def .= qq{\\global\\expandafter\\let\\csname end${env_name}\\endcsname\\\@endtheorem\n};
 
@@ -214,13 +214,19 @@ __DATA__
 \def\th@definition{\thm@headpunct{.}}
 \def\th@remark{\thm@headpunct{.}}
 
+\def\refstepcounter@cref[#1]#2{%
+    \refstepcounter{#2}%
+}
+
 % #1    theorem style
-% #2    theorem name
-% #3    theorem counter
+% #2    theorem prefix
+% #3    env name
+% #4    theorem counter
+% #5    title (optional)
 
-\def\@begintheorem#1#2#3{\@oparg{\@begintheorem@{#1}{#2}{#3}}[]}
+\def\@begintheorem#1#2#3#4{\@oparg{\@begintheorem@{#1}{#2}{#3}{#4}}[]}
 
-\def\@begintheorem@#1#2#3[#4]{
+\def\@begintheorem@#1#2#3#4[#5]{
     \everypar{}\par
     \startXMLelement{statement}%
     \setXMLattribute{content-type}{theorem \@currenvir}%
@@ -238,14 +244,14 @@ __DATA__
     \thisxmlpartag{label}%
     #2%
     %
-    \if###3##\else
-        \refstepcounter{#3}%
-        \space\@nameuse{the#3}%
+    \if###4##\else
+        \refstepcounter@cref[#3]{#4}%
+        \space\@nameuse{the#4}%
     \fi
     \par
-    \if###4##\else
+    \if###5##\else
         \thisxmlpartag{title}%
-        (#4)\par
+        (#5)\par
     \fi
     \@nameuse{th#1}%
     \par

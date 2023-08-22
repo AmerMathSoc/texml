@@ -39,16 +39,7 @@ sub install ( $ ) {
 
     $tex->package_load_notification();
 
-    # # Hide hyperref from cleveref so it doesn't try to implement it's
-    # # own linking.
-    # 
-    # my $ver_hyperref = $tex->get_macro_expansion_text('ver@hyperref.sty');
-    # 
-    # $tex->let_csname('ver@hyperref.sty' => '@undefined');
-
     $tex->read_package_data();
-
-    # $tex->define_macro('ver@hyperref.sty', undef, $ver_hyperref);
 
     return;
 }
@@ -59,13 +50,9 @@ __DATA__
 
 \ProvidesPackage{cleveref}
 
-% \PackageError{cleverref}{Cleverref doesn't work yet!}\@ehd
-% \@@end
+\newif\if@crefstarred
 
 \LoadRawMacros
-
-\def\TEXMLcref#1{\@setcref{#1}{cref}{}}
-\def\TEXMLCref#1{\@setcref{#1}{Cref}{}}
 
 \def\texmlcleveref#1#2{\@setcref{#2}{#1}{}}
 
@@ -156,8 +143,6 @@ __DATA__
 }
 
 % AMSTHM
-
-% \def\amsthm@refstepcounter#1#2{\refstepcounter[#1]{#2}}%
 
 \def\amsthm@cref@init#1#2{%
     \edef\@tempa{\expandafter\noexpand\csname cref@#1@name@preamble\endcsname}%
