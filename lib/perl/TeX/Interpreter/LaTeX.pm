@@ -178,6 +178,10 @@ sub do_load_raw_macros {
 
     my $path = kpse_lookup($file_name);
 
+    if (empty($path) && $file_name =~ s{_}{-}g) {
+        $path = kpse_lookup($file_name);
+    }
+
     if (empty($path)) {
         $tex->print_err("I can't find file `$file_name'.");
 
