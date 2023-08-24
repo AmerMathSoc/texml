@@ -246,7 +246,7 @@ __DATA__
     %
     \if###4##\else
         \refstepcounter@cref[#3]{#4}%
-        \space\@nameuse{the#4}%
+        \space\@nameuse{the#3}%
     \fi
     \par
     \if###5##\else
