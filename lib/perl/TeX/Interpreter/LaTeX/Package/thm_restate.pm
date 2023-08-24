@@ -64,15 +64,25 @@ __DATA__
         }%
     \expandafter\endgroup
     \@tempa
+    \double@expand{%
+        \global\let\expandafter\noexpand\csname thmt@stored@#3@\endcsname
+            \expandafter\noexpand\csname thmt@stored@#3\endcsname
+        \gdef\expandafter\noexpand\csname thmt@stored@#3\endcsname{%
+        \begingroup
+            \let\noexpand\refstepcounter@cref\noexpand\@gobble@opt
+            \expandafter\noexpand\csname thmt@stored@#3@\endcsname
+        \endgroup
+        }%
+    }%
 }{%
     \endthmt@restatable
 }
 
 \renewenvironment{restatable*}{%
     \PackageError{thm-restate}{restatable* doesn't work with texml!}\@ehd
-  \thmt@thisistheonefalse\thmt@restatable
+    \thmt@thisistheonefalse\thmt@restatable
 }{%
-  \endthmt@restatable
+    \endthmt@restatable
 }
 
 \endinput
