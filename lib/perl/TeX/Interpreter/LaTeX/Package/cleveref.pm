@@ -124,7 +124,7 @@ __DATA__
                 \texttt{?#3}%
             }{%
                 % \edef\@tempa{\@nameuse{r@#1@cref}}%
-                \edef\texml@refinfo{\@nameuse{r@#1}}%
+                \protected@edef\texml@refinfo{\@nameuse{r@#1}}%
                 \setXMLattribute{specific-use}{#2}%
                 \setXMLattribute{rid}{\expandafter\texml@get@refid\texml@refinfo}%
                 \setXMLattribute{ref-type}{\expandafter\texml@get@reftype\texml@refinfo}%

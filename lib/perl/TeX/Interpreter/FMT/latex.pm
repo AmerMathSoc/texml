@@ -1196,7 +1196,7 @@ __DATA__
 }
 
 \def\@setref@link@#1#2{%
-    \edef\texml@refinfo{\csname r@#1\endcsname}%
+    \protected@edef\texml@refinfo{\csname r@#1\endcsname}%
     \setXMLattribute{specific-use}{\expandafter\@gobble\string#2}%
     %
     \edef\ref@rid{\expandafter\texml@get@refid\texml@refinfo}%
@@ -1225,7 +1225,7 @@ __DATA__
         \leavevmode
         \if@TeXMLend
             \ifcsname r@#1\endcsname
-                \edef\texml@refinfo{\csname r@#1\endcsname}%
+                \protected@edef\texml@refinfo{\csname r@#1\endcsname}%
                 \def\texml@get{\csname texml@get@\expandafter\@gobble\string#2\endcsname}%
                 \protect\printref{\expandafter\texmf@get\texml@refinfo}%
             \else
