@@ -99,7 +99,7 @@ sub do_newtheorem {
     my $ctr_name = '';
 
     if ($numbered) {
-        $the_def .= qq{\\providecommand{\\${env_name}autorefname}{$theorem_label}\n};
+        $the_def .= qq{\\expandafter\\providecommand\\csname ${env_name}autorefname\\endcsname{$theorem_label}\n};
 
         $the_def .= qq{\\amsthm\@cref\@init{$env_name}{$theorem_label}%\n};
 
