@@ -126,6 +126,8 @@ __DATA__
             \setXMLattribute{content-type}{algorithm}%
             \set@float@fps@attribute{#1}%
             \@tempswafalse
+            \def\TeXML@label{}%
+            \def\TeXML@caption{}%
             \TeXML@extract@caption
             \TeXML@extract@caption % Delete an empty \caption/\label
             \toks@\expandafter{\texml@body}%
@@ -173,6 +175,8 @@ __DATA__
             \setXMLattribute{content-type}{algorithm}%
             \set@float@fps@attribute{#1}%
             \@tempswafalse
+            \def\TeXML@label{}%
+            \def\TeXML@caption{}%
             \TeXML@extract@caption
             \TeXML@extract@caption % Delete an empty \caption/\label
             \toks@\expandafter{\texml@body}%
@@ -215,8 +219,8 @@ __DATA__
     \ifx\@tempb\@nnil
         \def\texml@body{#1}%
     \else
-        \def\TeXML@label{#2}%
         \def\texml@body{#1#3}%
+        \def\TeXML@label{#2}%
     \fi
 }
 
