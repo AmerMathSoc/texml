@@ -87,7 +87,9 @@ use TeX::Utils::SVG;
 
 my %document_class_of :ATTR(:name<document_class>);
 
-# my %document_labels_of   :HASH(:name<document_label>);
+my %refkeys_of  :HASH(:name<refkey>);
+my %cur_ref_of :ATTR(:name<cur_ref>);
+
 # my %document_bibcites_of :HASH(:name<document_bibcite>);
 
 ######################################################################

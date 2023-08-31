@@ -46,6 +46,8 @@ use TeX::Constants qw(:named_args);
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
 
+use TeX::Interpreter::LaTeX::Types::RefRecord qw(:all);
+
 use TeX::Token qw(:factories :catcodes);
 
 use TeX::Token::Constants;
@@ -87,11 +89,15 @@ sub install ( $ ) {
 
     $tex->define_csname('TeXML@resolveXMLxrefs' => \&do_resolve_xrefs);
 
+    $tex->define_csname('TeXML@resolverefgroups' => \&do_resolve_xref_groups);
+
     $tex->define_csname('TeXML@sortXMLcites' => \&do_sort_cites);
 
     $tex->define_csname('TeXML@setliststyle' => \&do_set_list_style);
 
     $tex->define_csname('TeXML@add@graphic@attributes' => \&do_graphic_attibutes);
+
+    $tex->define_csname('TeXML@register@refkey' => \&do_register_refkey);
 
     $tex->define_pseudo_macro(documentclass => \&do_documentclass);
 
@@ -301,18 +307,6 @@ sub do_clear_toc_stack {
 #     return;
 # }
 
-sub __parse_ref_record( $ ) {
-    my $ref_record = shift;
-
-    # {@currentlabel}{thepage}{@currentXMLid}{@currentreftype}
-
-    if ($ref_record =~ m{\A \{(.*)\} \{(.*)\} \{(.*)\} \{(.*)\} \z}smx) {
-        return ($3, $4, $1, $2);
-    }
-
-    return;
-}
-
 sub do_resolve_xrefs {
     my $tex   = shift;
     my $token = shift;
@@ -391,7 +385,7 @@ sub do_resolve_xrefs {
                     $xref->setAttribute('specific-use' => 'undefined');
 
                     if (defined $r) {
-                        my ($xml_id, $ref_type) = __parse_ref_record($r);
+                        my ($xml_id, $ref_type) = parse_ref_record($r);
 
                         if (nonempty($xml_id)) {
                             $xref->setAttribute(rid => $xml_id);
@@ -446,6 +440,52 @@ sub do_resolve_xrefs {
         for my $xref (@cites) {
             $tex->print_nl("    $xref");
         }
+    }
+
+    return;
+}
+
+sub do_resolve_xref_groups {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $handle = $tex->get_output_handle();
+
+    my $body = $handle->get_dom();
+
+    $tex->print_nl("Resolving <xref-group>s");
+
+    for my $group ($body->findnodes(qq{descendant::xref-group})) {
+        my $first = $group->getAttribute('first');
+        my $last  = $group->getAttribute('last');
+
+        $tex->print_ln();
+
+        $tex->__DEBUG("xref_group: first = '$first'; last = '$last'");
+
+        my @middle;
+
+        if (defined(my $record = $tex->get_refkey($first))) {
+            my $type = $record->get_sub_type();
+
+            $group->setAttribute(first => $record->get_xml_id);
+
+            while ($record = $record->get_next_ref()) {
+                if ($record->get_refkey eq $last) {
+                    $group->setAttribute(last => $record->get_xml_id);
+
+                    last;
+                }
+
+                if ($record->get_sub_type eq $type) {
+                    push @middle, $record->get_xml_id;
+                }
+            }
+        }
+
+        $group->setAttribute(middle => "@middle");
+
+        $tex->__DEBUG("middle refs = @middle");
     }
 
     return;
@@ -631,6 +671,31 @@ sub do_graphic_attibutes {
     return;
 }
 
+sub do_register_refkey {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $prefix = $tex->read_undelimited_parameter();
+    my $refkey = $tex->read_undelimited_parameter();
+    my $data   = $tex->read_undelimited_parameter();
+
+    return unless $prefix eq 'r';
+
+    my $prev_ref = $tex->get_cur_ref();
+
+    my $new_ref = new_refrecord($refkey, $data, $prev_ref);
+
+    if (defined $prev_ref) {
+        $prev_ref->set_next_ref($new_ref);
+    }
+
+    $tex->set_refkey($refkey => $new_ref);
+
+    $tex->set_cur_ref($new_ref);
+
+    return;
+}
+
 1;
 
 __DATA__
@@ -638,6 +703,7 @@ __DATA__
 \setXSLfile{jats}
 
 \AtTeXMLend{\TeXML@resolveXMLxrefs}
+\AtTeXMLend{\TeXML@resolverefgroups}
 
 \def\TeXMLNoResolveXrefs{\let\TeXML@resolveXMLxrefs\@empty}
 
@@ -1131,6 +1197,24 @@ __DATA__
 
 \let\texml@get@ref\texml@get@reftext
 
+\DeclareRobustCommand\refRange[2]{%
+    \leavevmode
+    \startXMLelement{xref-group}%
+        \setXMLattribute{first}{#1}%
+        \setXMLattribute{last}{#2}%
+        \ref{#1}\XMLgeneratedText{--}\ref{#2}%
+    \endXMLelement{xref-group}%
+}
+
+\DeclareRobustCommand\eqrefRange[2]{%
+    \leavevmode
+    \startXMLelement{xref-group}%
+        \setXMLattribute{first}{#1}%
+        \setXMLattribute{last}{#2}%
+        \eqref{#1}\XMLgeneratedText{--}\eqref{#2}%
+    \endXMLelement{xref-group}%
+}
+
 \DeclareRobustCommand\ref{%
     \begingroup
         \maybe@st@rred\@ref
@@ -1269,6 +1353,7 @@ __DATA__
                 \@latex@warning@no@line{Label `#2' multiply defined: changed from '\prev@value' to '#3'}%
             \fi
         \fi
+        \TeXML@register@refkey{#1}{#2}{#3}%
     \endgroup
 }
 
