@@ -1,6 +1,6 @@
 package TeX::Output::XML;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2023 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -451,8 +451,6 @@ sub normalize_ids {
         my $new_id = $self->__normalize_id($id);
 
         if ($id ne $new_id) {
-            my $element_name = $node->nodeName();
-
             $node->setAttribute(rid => $new_id);
         }
     }
@@ -462,14 +460,30 @@ sub normalize_ids {
         my $new_id = $self->__normalize_id($id);
 
         if ($id ne $new_id) {
-            my $element_name = $node->nodeName();
-
             $node->setAttribute(id => $new_id);
         }
     }
 
     for my $node ($dom->findnodes("/descendant::tex-math")) {
         $self->__replace_cssID($node);
+    }
+
+    for my $group ($dom->findnodes(qq{descendant::xref-group})) {
+        if (nonempty(my $id = $group->getAttribute('first'))) {
+            $group->setAttribute(first => $self->__normalize_id($id));
+        }
+
+        if (nonempty(my $id = $group->getAttribute('last'))) {
+            $group->setAttribute(last => $self->__normalize_id($id));
+        }
+
+        if (nonempty(my $ids = $group->getAttribute('middle'))) {
+            my @ids = split / /, $ids;
+
+            my @new = map { $self->__normalize_id($_) } @ids;
+
+            $group->setAttribute(middle => "@new");
+        }
     }
 
     return;

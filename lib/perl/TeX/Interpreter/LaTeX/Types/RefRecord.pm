@@ -49,8 +49,8 @@ my %refkey_of   :ATTR(:name<refkey>);
 
 my %label_of    :ATTR(:name<label>);
 my %xml_id_of   :ATTR(:name<xml_id>);
-my %ref_type_of :ATTR(:name<ref_type>);
-my %sub_type_of :ATTR(:name<sub_type>);
+my %ref_type_of :ATTR(:name<type>);
+my %sub_type_of :ATTR(:name<subtype>);
 
 my %prev_ref_of :ATTR(:name<prev_ref>);
 my %next_ref_of :ATTR(:name<next_ref>);
@@ -74,16 +74,45 @@ sub new_refrecord {
     my $data     = shift;
     my $prev_ref = shift;
 
-    my ($xml_id, $ref_type, $label, $sub_type) = parse_ref_record($data);
+    my ($xml_id, $type, $label, $subtype) = parse_ref_record($data);
 
     return __PACKAGE__->new( {
         refkey   => $refkey,
         label    => $label,
         xml_id   => $xml_id,
-        ref_type => $ref_type,
-        sub_type => $sub_type,
+        type     => $type,
+        subtype  => $subtype,
         prev_ref => $prev_ref,
                          });
+}
+
+sub to_string :STRINGIFY {
+    my $self = shift;
+
+    my $refkey  = $self->get_refkey();
+    my $label   = $self->get_label();
+    my $xml_id  = $self->get_xml_id();
+    my $type    = $self->get_type;
+    my $subtype = $self->get_subtype;
+
+    my $prev = $self->get_prev_ref;
+
+    my $prev_ref = defined $prev ? $prev->get_refkey : '<undef>';
+
+    my $next = $self->get_next_ref;
+
+    my $next_ref = defined $next ? $next->get_refkey : '<undef>';
+
+    my $string = qq{RefRecord \{ refkey  = '$refkey'; };
+    $string   .= qq{label = '$label'; };
+    $string   .= qq{xml_id = '$xml_id'; };
+    $string   .= qq{type = '$type'; };
+    $string   .= qq{subtype = '$subtype'; };
+    $string   .= qq{prev = '$prev_ref'; };
+    $string   .= qq{next = '$next_ref' };
+    $string   .= qq{\}\n};
+
+    return $string;
 }
 
 1;

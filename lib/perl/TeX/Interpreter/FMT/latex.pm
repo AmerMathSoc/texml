@@ -1,6 +1,6 @@
 package TeX::Interpreter::FMT::latex;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2023 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -461,23 +461,27 @@ sub do_resolve_xref_groups {
 
         $tex->print_ln();
 
-        $tex->__DEBUG("xref_group: first = '$first'; last = '$last'");
+        # $tex->__DEBUG("xref_group: first = '$first'; last = '$last'");
 
         my @middle;
 
         if (defined(my $record = $tex->get_refkey($first))) {
-            my $type = $record->get_sub_type();
+            # $tex->__DEBUG("xref_group: first refrecord = $record");
+
+            my $type = $record->get_subtype();
 
             $group->setAttribute(first => $record->get_xml_id);
 
             while ($record = $record->get_next_ref()) {
+                # $tex->__DEBUG("xref_group: next refrecord = $record");
+
                 if ($record->get_refkey eq $last) {
                     $group->setAttribute(last => $record->get_xml_id);
 
                     last;
                 }
 
-                if ($record->get_sub_type eq $type) {
+                if ($record->get_subtype eq $type) {
                     push @middle, $record->get_xml_id;
                 }
             }
@@ -485,7 +489,7 @@ sub do_resolve_xref_groups {
 
         $group->setAttribute(middle => "@middle");
 
-        $tex->__DEBUG("middle refs = @middle");
+        # $tex->__DEBUG("middle refs = @middle");
     }
 
     return;
