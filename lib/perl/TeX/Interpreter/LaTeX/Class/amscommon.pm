@@ -275,6 +275,8 @@ __DATA__
 
 \RequirePackage{xspace}
 
+\RequirePackage{graphicx}
+
 \LoadIfModuleExists{AMSmetadata}{sty}{}{%
     \typeout{No AMSmetadata support}%
     \let\noAMSmetadata\@empty
