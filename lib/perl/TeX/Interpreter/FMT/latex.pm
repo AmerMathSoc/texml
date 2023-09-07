@@ -2568,7 +2568,17 @@ __DATA__
 
 \DeclareMathJaxMacro\strut
 \DeclareMathJaxMacro\smash
+
 \DeclareMathJaxMacro\fbox
+
+\@namedef{fbox }#1{%
+    \ifmmode
+        \string\fbox{\hbox{#1}}%
+    \else
+        \@nameuse{non@mathmode@\string\fbox}%
+    \fi
+}
+
 \DeclareMathPassThrough{stackrel}[2]
 
 \DeclareMathPassThrough{mathbin}[1]
