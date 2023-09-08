@@ -459,16 +459,49 @@ sub do_resolve_xref_groups {
         my $first = $group->getAttribute('first');
         my $last  = $group->getAttribute('last');
 
-        $tex->print_ln();
+        my $first_record = $tex->get_refkey($first);
 
-        # $tex->__DEBUG("xref_group: first = '$first'; last = '$last'");
+        my $skip;
+
+        my $subtype;
+
+        if (! defined $first_record) {
+            $tex->print_err("Can't find initial xref-group id '$first'");
+
+            $tex->error();
+
+            $skip = 1;
+        } else {
+            $subtype = $first_record->get_subtype();
+        }
+
+        if (defined(my $last_record = $tex->get_refkey($last))) {
+            my $t_subtype = $last_record->get_subtype;
+
+            if (defined $subtype && $subtype ne $t_subtype) {
+                $tex->print_err("Initial xref-group subtype '$subtype' does not match terminal subtype group '$t_subtype'");
+
+                $tex->error();
+
+                $skip = 1;
+            }
+        } else {
+            $tex->print_err("Can't find terminal xref-group id '$last'");
+
+            $tex->error();
+
+            $skip = 1;
+        }
+
+        next if $skip;
+
+        $group->setAttribute("ref-type",    $first_record->get_type());
+        $group->setAttribute("ref-subtype", $subtype);
 
         my @middle;
 
-        if (defined(my $record = $tex->get_refkey($first))) {
-            # $tex->__DEBUG("xref_group: first refrecord = $record");
-
-            my $type = $record->get_subtype();
+        if (defined(my $record = $first_record)) {
+            my $subtype = $record->get_subtype();
 
             $group->setAttribute(first => $record->get_xml_id);
 
@@ -481,7 +514,7 @@ sub do_resolve_xref_groups {
                     last;
                 }
 
-                if ($record->get_subtype eq $type) {
+                if ($record->get_subtype eq $subtype) {
                     push @middle, $record->get_xml_id;
                 }
             }
