@@ -1239,7 +1239,7 @@ __DATA__
     \startXMLelement{xref-group}%
         \setXMLattribute{first}{#1}%
         \setXMLattribute{last}{#2}%
-        \ref{#1}\XMLgeneratedText{--}\ref{#2}%
+        \ref{#1}--\ref{#2}%
     \endXMLelement{xref-group}%
 }
 
@@ -1248,7 +1248,7 @@ __DATA__
     \startXMLelement{xref-group}%
         \setXMLattribute{first}{#1}%
         \setXMLattribute{last}{#2}%
-        \eqref{#1}\XMLgeneratedText{--}\eqref{#2}%
+        \eqref{#1}--\eqref{#2}%
     \endXMLelement{xref-group}%
 }
 
