@@ -90,37 +90,39 @@ sub find_gentag_file( $ ) {
 
     my $type = $document_element->nodeName();
 
+    my $gentag;
+
     if ($type eq 'article') {
         my $journal_meta = find_unique_node($dom, "/article/front/journal-meta");
 
         my $article_meta = find_unique_node($dom, "/article/front/article-meta");
 
         if (nonempty(my $pii = $article_meta->findvalue('article-id[@pub-id-type="pii"]'))) {
-            return $PUBS->journal_gentag_file({ pii => $pii });
+            $gentag = $PUBS->journal_gentag_file({ pii => $pii });
+        } else {
+            my $publ_key = $journal_meta->findvalue('journal-id[@journal-id-type="publisher"]');
+
+            my $issue_year = $article_meta->findvalue('history/date[@date-type="issue-date"]/year');
+            my $volume     = $article_meta->findvalue('volume');
+            my $number     = $article_meta->findvalue('issue');
+            my $pii        = $article_meta->findvalue('article-id[@pub-id-type="pii"]');
+            $gentag = $PUBS->journal_gentag_file({ publ_key => $publ_key,
+                                                   year     => $issue_year,
+                                                   volume   => $volume,
+                                                   number   => $number,
+                                                   pii      => $pii });
+
+            if (! defined $gentag) {
+                ## If it's just been assigned to an issue, the gentag file
+                ## might still be in the EFF directory.
+
+                $gentag = $PUBS->journal_gentag_file({ publ_key => $publ_key,
+                                                       year     => 0,
+                                                       volume   => 0,
+                                                       number   => 0,
+                                                       pii      => $pii });
             }
-
-        my $publ_key = $journal_meta->findvalue('journal-id[@journal-id-type="publisher"]');
-
-        my $issue_year = $article_meta->findvalue('history/date[@date-type="issue-date"]/year');
-        my $volume     = $article_meta->findvalue('volume');
-        my $number     = $article_meta->findvalue('issue');
-        my $pii        = $article_meta->findvalue('article-id[@pub-id-type="pii"]');
-        my $gentag = $PUBS->journal_gentag_file({ publ_key => $publ_key,
-                                                  year     => $issue_year,
-                                                  volume   => $volume,
-                                                  number   => $number,
-                                                  pii      => $pii });
-
-        return $gentag if defined $gentag;
-
-        ## If it's just been assigned to an issue, the gentag file
-        ## might still be in the EFF directory.
-
-        return $PUBS->journal_gentag_file({ publ_key => $publ_key,
-                                            year     => 0,
-                                            volume   => 0,
-                                            number   => 0,
-                                            pii      => $pii });
+        }
     } elsif ($type eq 'book') {
         my $book = find_unique_node($dom, q{/book});
 
@@ -133,12 +135,18 @@ sub find_gentag_file( $ ) {
             TeX::RunError->throw("Missing publ_key or volume\n");
         }
 
-        return $PUBS->book_gentag_file($publ_key, $volume);
+        $gentag = $PUBS->book_gentag_file($publ_key, $volume);
     } else {
         TeX::RunError->throw("Unknown document type '$type'");
     }
 
-    return;
+    my $texml_gentag = $gentag =~ s{\.xml}{.texml.xml}r;
+
+    print STDERR qq{*** texml_gentag = '$texml_gentag'\n};
+
+    return $texml_gentag if -e $texml_gentag;
+
+    return $gentag;
 }
 
 ######################################################################
