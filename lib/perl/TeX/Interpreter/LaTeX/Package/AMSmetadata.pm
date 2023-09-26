@@ -142,8 +142,6 @@ sub find_gentag_file( $ ) {
 
     my $texml_gentag = $gentag =~ s{\.xml}{.texml.xml}r;
 
-    print STDERR qq{*** texml_gentag = '$texml_gentag'\n};
-
     return $texml_gentag if -e $texml_gentag;
 
     return $gentag;
