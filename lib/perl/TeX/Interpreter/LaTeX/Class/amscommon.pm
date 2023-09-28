@@ -804,8 +804,10 @@ __DATA__
         \fi
         \ifx\AMS@abstract\@empty\else
             \startXMLelement{abstract}
-                \thisxmlpartag{title}
-                \abstractname\par
+                \ifx\abstractname\@empty\else
+                    \thisxmlpartag{title}
+                    \abstractname\par
+                \fi
                 \begingroup
                     \xmlpartag{p}%
                     \AMS@abstract\par
