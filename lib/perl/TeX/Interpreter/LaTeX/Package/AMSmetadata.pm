@@ -140,9 +140,11 @@ sub find_gentag_file( $ ) {
         TeX::RunError->throw("Unknown document type '$type'");
     }
 
-    my $texml_gentag = $gentag =~ s{\.xml}{.texml.xml}r;
+    if (defined $gentag) {
+        my $texml_gentag = $gentag =~ s{\.xml}{.texml.xml}r;
 
-    return $texml_gentag if -e $texml_gentag;
+        return $texml_gentag if -e $texml_gentag;
+    }
 
     return $gentag;
 }
