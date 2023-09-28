@@ -60,6 +60,7 @@ __DATA__
 \DisablePackage{amstixbb}
 \DisablePackage{backrefs}
 \DisablePackage{breakurl}
+\DisablePackage{circuitikz}
 \DisablePackage{ctable}
 \DisablePackage{dutchcal}
 \DisablePackage{etoolbox}
