@@ -98,9 +98,7 @@ __DATA__
         \def\@currentreftype{disp-formula}%
         \def\@currentrefsubtype{equation}%
         \addXMLid
-        \startXMLelement{label}%
-            \ignorespaces\theparentequation
-        \endXMLelement{label}%
+        \thisxmlpartag{label}\ignorespaces\theparentequation\par
         \xmlpartag{}%
         \ignorespaces
 }{%
@@ -590,7 +588,8 @@ __DATA__
 
 \def\substack#1{%
     \begingroup
-        \def\\{\string\\}%
+        \let\math@cr@@\math@cr@@simple
+        \let\math@cr@@@\math@cr@@@simple
         \string\substack\string{#1\string}%
     \endgroup
 }
