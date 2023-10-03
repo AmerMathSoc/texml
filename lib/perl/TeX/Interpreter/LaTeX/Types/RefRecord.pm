@@ -32,8 +32,6 @@ package TeX::Interpreter::LaTeX::Types::RefRecord;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '0.0.0';
-
 use base qw(Exporter);
 
 our %EXPORT_TAGS = (all       => [ qw(parse_ref_record new_refrecord) ],
@@ -89,11 +87,11 @@ sub new_refrecord {
 sub to_string :STRINGIFY {
     my $self = shift;
 
-    my $refkey  = $self->get_refkey();
-    my $label   = $self->get_label();
-    my $xml_id  = $self->get_xml_id();
-    my $type    = $self->get_type;
-    my $subtype = $self->get_subtype;
+    my $refkey  = $self->get_refkey() || '<undef>';
+    my $label   = $self->get_label()  || '<undef>';
+    my $xml_id  = $self->get_xml_id() || '<undef>';
+    my $type    = $self->get_type     || '<undef>';
+    my $subtype = $self->get_subtype  || '<undef>';
 
     my $prev = $self->get_prev_ref;
 
