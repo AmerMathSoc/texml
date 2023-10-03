@@ -508,13 +508,21 @@ sub do_resolve_xref_groups {
             while ($record = $record->get_next_ref()) {
                 # $tex->__DEBUG("xref_group: next refrecord = $record");
 
-                if ($record->get_refkey eq $last) {
+                my $this_refkey = $record->get_refkey;
+
+                next if $this_refkey =~ m{\@cref$};
+
+                if ($this_refkey eq $last) {
                     $group->setAttribute(last => $record->get_xml_id);
 
                     last;
                 }
 
-                if ($record->get_subtype eq $subtype) {
+                if (! defined $record->get_subtype) {
+                    $tex->print_err("No subtype in ref $record");
+
+                    $tex->error();
+                } elsif ($record->get_subtype eq $subtype) {
                     push @middle, $record->get_xml_id;
                 }
             }
