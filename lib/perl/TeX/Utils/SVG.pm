@@ -32,8 +32,6 @@ package TeX::Utils::SVG;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.11';
-
 use Cwd;
 
 use File::Basename;
@@ -258,6 +256,23 @@ sub generate_svg {
 ##                                                                  ##
 ######################################################################
 
+sub __scratch_dir {
+    my $self = shift;
+
+    my $tmp_dir = tempdir("texml-svg-XXXXXX",
+                          DIR => $ENV{TMPDIR} || "/tmp",
+                          CLEANUP => ! $self->is_debug())
+        or do {
+            die "temp directory error: $!\n";
+    };
+
+    my $mask = 02777 & ~umask;
+
+    chmod($mask, $tmp_dir);
+
+    return $tmp_dir;
+}
+
 sub convert_tex {
     my $self = shift;
 
@@ -292,12 +307,7 @@ sub convert_tex {
     #     $use_xetex = (! $is_external_graphic) && $tex_fragment !~ m{\.pstex_t};
     # }
 
-    my $tmp_dir = tempdir("texml-svg-XXXXXX",
-                          DIR => $ENV{TMPDIR} || "/tmp",
-                          CLEANUP => ! $self->is_debug())
-        or do {
-            die "temp directory error: $!\n";
-    };
+    my $tmp_dir = $self->__scratch_dir();
 
     my $cwd = getcwd();
 
