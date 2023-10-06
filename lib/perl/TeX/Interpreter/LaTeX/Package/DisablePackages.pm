@@ -66,6 +66,7 @@ __DATA__
 \DisablePackage{etoolbox}
 \DisablePackage{fontenc}
 \DisablePackage{footmisc}
+\DisablePackage{forest}
 \DisablePackage{geometry}
 \DisablePackage{grffile}
 \DisablePackage{hypcap}%      %% This one looks worth a look
