@@ -189,7 +189,7 @@ my %cur_enc_of  :ATTR;
 
 my %cur_page_of :ARRAY(:name<cur_page>);
 
-# my %debugging_of :BOOLEAN(:name<debugging> :default<false>);
+my %debug_of :BOOLEAN(:name<debug> :default<0>);
 
 my %nofiles_of :BOOLEAN(:name<nofiles> :get<nofiles> :default<false>);
 
@@ -6567,7 +6567,7 @@ sub start_input {
         if ($tex->do_svg() && ! defined $tex->get_svg_agent()) {
             my $svg_agent = TeX::Utils::SVG->new({ base_file => $path,
                                                    interpreter => $tex,
-                                                   # debug => $tex->is_debugging(),
+                                                   debug => $tex->is_debug(),
                                                    use_xetex => $tex->use_xetex(),
                                                  });
 
