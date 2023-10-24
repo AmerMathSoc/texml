@@ -52,6 +52,8 @@ __DATA__
 
 \DeclareMathPassThrough{accentset}[2]
 
+\newcommand{\undertilde}[1]{\TeXMLCreateSVG{$\undertilde{#1}$}}
+
 \endinput
 
 __END__
