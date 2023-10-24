@@ -55,26 +55,11 @@ __DATA__
 \RequirePackage{mathtools}
 \RequirePackage[only,shortleftarrow,shortrightarrow]{stmaryrd}
 
-\newcommand{\xtwoheadrightarrow}[2][]{%
-    \TeXMLCreateSVG{$\xtwoheadrightarrow[#1]{#2}$}%
-}
-
-\newcommand{\xtwoheadleftarrow}[2][]{%
-    \TeXMLCreateSVG{$\xtwoheadleftarrow[#1]{#2}$}%
-}
-
-\let\xmapsto\undefined
-\newcommand{\xmapsto}[2][]{%
-    \TeXMLCreateSVG{$\xmapsto[#1]{#2}$}%
-}
-
-\newcommand{\xlongequal}[2][]{%
-    \TeXMLCreateSVG{$\xlongequal[#1]{#2}$}%
-}
-
-\newcommand{\xtofrom}[2][]{%
-    \TeXMLCreateSVG{$\xtofrom[#1]{#2}$}%
-}
+\DeclareMathPassThrough{xtwoheadrightarrow}
+\DeclareMathPassThrough{xtwoheadleftarrow}
+\DeclareMathPassThrough{xmapsto}
+\DeclareMathPassThrough{xlongequal}
+\DeclareMathPassThrough{xtofrom}
 
 \endinput
 
