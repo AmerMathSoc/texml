@@ -2696,6 +2696,7 @@ __DATA__
 \DeclareMathPassThrough{rceil}
 \DeclareMathPassThrough{rfloor}
 \DeclareMathPassThrough{rgroup}
+\DeclareMathPassThrough{rule}
 \DeclareMathPassThrough{rmoustache}
 % \DeclareMathJaxMacro\Rule
 \DeclareMathJaxMacro\S
