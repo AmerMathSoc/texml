@@ -95,6 +95,7 @@ __DATA__
     made publicly available in any way.  You may not copy, reproduce,
     or upload this ebook except to read it on your personal devices.
     \end{NLMnote}
+    \glet\insertAMSDRMstatement\@empty
 }
 
 \AtBeginDocument{%
