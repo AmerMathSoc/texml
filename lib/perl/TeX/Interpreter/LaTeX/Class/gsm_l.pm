@@ -54,6 +54,8 @@ __DATA__
 
 \seriesinfo{gsm}{}{}
 
+\def\tableofcontents{\@starttoc{toc}\contentsname\insertAMSDRMstatement}
+
 \endinput
 
 __END__
