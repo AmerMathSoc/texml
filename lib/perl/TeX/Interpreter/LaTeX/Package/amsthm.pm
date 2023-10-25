@@ -250,7 +250,7 @@ __DATA__
     \if S#1%
         \if###5##\else
             \refstepcounter@cref[#4]{#5}%
-            \@nameuse{the#4}\space
+            \@nameuse{the#4}.\space % ??? Where is the period in amsthm.dtx?
         \fi
         %
         #3%
