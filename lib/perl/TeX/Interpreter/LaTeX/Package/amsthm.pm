@@ -135,7 +135,9 @@ sub do_newtheorem {
 
     my $theorem_style = $tex->get_toks_list('thm@style');
 
-    $the_def .= qq{\\global\\\@namedef{${env_name}}{\\\@begintheorem{$theorem_style}{$theorem_label}{$env_name}{$ctr_name}}%\n};
+    my $thm_swap = $tex->expansion_of('thm@swap') || 'N';
+
+    $the_def .= qq{\\global\\\@namedef{${env_name}}{\\\@begintheorem{$thm_swap}{$theorem_style}{$theorem_label}{$env_name}{$ctr_name}}%\n};
 
     $the_def .= qq{\\global\\expandafter\\let\\csname end${env_name}\\endcsname\\\@endtheorem\n};
 
@@ -218,19 +220,22 @@ __DATA__
     \refstepcounter{#2}%
 }
 
+\def\swapnumbers{\edef\thm@swap{\if S\thm@swap N\else S\fi}}
+\def\thm@swap{N}%
+
 % #1    theorem style
 % #2    theorem prefix
 % #3    env name
 % #4    theorem counter
 % #5    title (optional)
 
-\def\@begintheorem#1#2#3#4{\@oparg{\@begintheorem@{#1}{#2}{#3}{#4}}[]}
+\def\@begintheorem#1#2#3#4#5{\@oparg{\@begintheorem@{#1}{#2}{#3}{#4}{#5}}[]}
 
-\def\@begintheorem@#1#2#3#4[#5]{
+\def\@begintheorem@#1#2#3#4#5[#6]{
     \everypar{}\par
     \startXMLelement{statement}%
     \setXMLattribute{content-type}{theorem \@currenvir}%
-    \setXMLattribute{style}{thm#1}%
+    \setXMLattribute{style}{thm#2}%
     \addXMLid
     \def\@currentreftype{statement}%
     \edef\@currentrefsubtype{\@currenvir}%
@@ -242,18 +247,27 @@ __DATA__
     \xmlpartag{p}%
     %%
     \thisxmlpartag{label}%
-    #2%
-    %
-    \if###4##\else
-        \refstepcounter@cref[#3]{#4}%
-        \space\@nameuse{the#3}%
+    \if S#1%
+        \if###5##\else
+            \refstepcounter@cref[#4]{#5}%
+            \@nameuse{the#4}\space
+        \fi
+        %
+        #3%
+    \else
+        #3%
+        %
+        \if###5##\else
+            \refstepcounter@cref[#4]{#5}%
+            \space\@nameuse{the#4}%
+        \fi
     \fi
     \par
-    \if###5##\else
+    \if###6##\else
         \thisxmlpartag{title}%
-        (#5)\par
+        (#6)\par
     \fi
-    \@nameuse{th#1}%
+    \@nameuse{th#2}%
     \par
     \everypar{\setXMLattribute{content-type}{noindent}\everypar{}}%
     \ignorespaces
