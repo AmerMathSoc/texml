@@ -68,7 +68,7 @@ __DATA__
     \xmlpartag{}%
     \everypar{}%
     \startXMLelement{pre}%
-%    \setXMLattribute{specific-use}{#1}%
+    \setXMLattribute{specific-use}{#1}%
     \let\do\@makeother \dospecials
     \noligs=1
     \obeylines
