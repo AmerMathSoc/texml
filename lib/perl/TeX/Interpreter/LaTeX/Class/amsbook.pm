@@ -60,6 +60,7 @@ __DATA__
 \LoadClass{TeXMLbook}
 
 \let\maketitle\@empty
+\let\makehalftitle\@empty
 \let\chap@maketitle\@empty
 
 \let\c@xcb=\c@section
