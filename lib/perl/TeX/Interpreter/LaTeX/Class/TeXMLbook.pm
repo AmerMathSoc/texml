@@ -358,6 +358,14 @@ __DATA__
     \endXMLelement{dedication}
 }
 
+\def\makededicatory{%
+    \ifx\AMS@dedication\@empty\else
+        \begin{dedication}
+        \AMS@dedication
+        \end{dedication}
+    \fi
+}
+
 \def\refname{Bibliography}
 
 \renewenvironment{thebibliography}[1]{%
