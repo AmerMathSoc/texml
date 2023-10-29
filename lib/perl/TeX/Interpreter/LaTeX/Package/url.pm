@@ -79,7 +79,7 @@ sub do_url_formatstring {
 
     my $url_for_link = $url_for_display->clone();
 
-    if ($url_for_link !~ m{^(ftp|https?)://}) {
+    if ($url_for_link !~ m{^((ftp|https?)://|mailto:)}) {
         $url_for_link->unshift($tex->tokenize('http://'));
     }
 
