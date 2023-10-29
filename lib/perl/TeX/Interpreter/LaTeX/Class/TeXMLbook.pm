@@ -358,7 +358,7 @@ __DATA__
     \endXMLelement{dedication}
 }
 
-\def\makededicatory{%
+\def\makededication{%
     \ifx\AMS@dedication\@empty\else
         \begin{dedication}
         \AMS@dedication
