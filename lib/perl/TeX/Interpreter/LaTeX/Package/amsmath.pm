@@ -590,6 +590,8 @@ __DATA__
     \begingroup
         \let\math@cr@@\math@cr@@simple
         \let\math@cr@@@\math@cr@@@simple
+        \Let@
+        \restore@math@cr
         \string\substack\string{#1\string}%
     \endgroup
 }
