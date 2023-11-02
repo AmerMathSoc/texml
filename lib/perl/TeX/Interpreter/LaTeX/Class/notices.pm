@@ -275,6 +275,7 @@ __DATA__
 }
 
 \newenvironment{PhotoCredits}[1][Credits]{%
+    \backmatter
     \par
     \refhead{#1}
 }{%
