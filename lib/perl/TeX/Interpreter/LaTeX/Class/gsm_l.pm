@@ -56,6 +56,36 @@ __DATA__
 
 \def\tableofcontents{\@starttoc{toc}\contentsname\insertAMSDRMstatement}
 
+\def\@schapter[#1]#2{%
+%    \begingroup
+        \let\saved@footnote\footnote
+        \let\footnote\@gobble
+        \typeout{#2}%
+        \@Guess@FM@type{#2}%
+        \def\@toclevel{0}%
+        \let\@secnumber\@empty
+        \let\footnote\saved@footnote
+        \start@XML@section{chapter}{0}{}{#2}%
+        \let\XML@section@tag\default@XML@section@tag
+        \let\footnote\@gobble
+    %% Add a <label> even for unnumbered appendixes; see, e.g., gsm/228.
+    %% Should this be added to all series?
+        \ifx\chaptername\appendixname
+            \@tocwriteb\tocappendix{chapter}{#2}%
+            \ifx\appendixname\@empty\else
+                \par\thisxmlpartag{label}\appendixname\par
+            \fi
+        \else
+            \@tocwriteb\tocchapter{chapter}{#2}%
+        \fi
+        \let\footnote\saved@footnote
+%    \endgroup
+    % \chaptermark{#2}%
+    % \addtocontents{lof}{\protect\addvspace{10\p@}}%
+    % \addtocontents{lot}{\protect\addvspace{10\p@}}%
+    \@afterheading
+}
+
 \endinput
 
 __END__
