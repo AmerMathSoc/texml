@@ -133,7 +133,7 @@ sub do_normalize_url {
         $url = qq{$proto://$host};
 
         if (nonempty($path)) {
-            $path =~ s{([^A-Za-z0-9/\-\._~])}{ sprintf("%%%02X", ord($1)) }eg;
+            $path =~ s{([^A-Za-z0-9/\-\._~\#])}{ sprintf("%%%02X", ord($1)) }eg;
 
             $url .= qq{/$path};
         }
