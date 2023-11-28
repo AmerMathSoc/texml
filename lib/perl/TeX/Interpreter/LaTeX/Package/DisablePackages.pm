@@ -90,6 +90,7 @@ __DATA__
 \DisablePackage{tikz-qtree-compat}
 \DisablePackage{tkz-euclide}
 \DisablePackage{tikzsymbols}
+\DisablePackage{xkeyval}
 \DisablePackage{xstring}
 
 \endinput
