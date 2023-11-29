@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Package::TEMPLATE;
+package TeX::Interpreter::LaTeX::Package::tensor;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -48,9 +48,19 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesPackage{TEMPLATE}
+\ProvidesPackage{tensor}
 
 % \LoadRawMacros
+
+% This isn't as fine-tuned as the real \tensor, but it should be good
+% enough for simple uses.
+
+\newcommand{\tensor}[3][]{%
+    \mathbin{%
+        \if###1##\else{}#1\fi
+        #2{#3}%
+    }%
+}
 
 \endinput
 
