@@ -588,11 +588,16 @@ __DATA__
 
 \def\substack#1{%
     \begingroup
-        \let\math@cr@@\math@cr@@simple
-        \let\math@cr@@@\math@cr@@@simple
         \Let@
         \restore@math@cr
-        \string\substack\string{#1\string}%
+        \let\math@cr@@\math@cr@@simple
+        \default@tag
+        %
+        % The \begingroup ... \endgroup in the next line match the
+        % groups in \math@cr@@@simple and keep the above declarations
+        % in scope.
+        %
+        \string\substack\string{\begingroup#1\endgroup\string}%
     \endgroup
 }
 
