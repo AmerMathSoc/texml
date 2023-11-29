@@ -766,12 +766,6 @@ __DATA__
 
 \def\@no@lnbk #1[#2]{ }% *sigh*
 
-\newif\ifst@rred
-
-\def\maybe@st@rred#1{%
-    \@ifstar{\st@rredtrue#1}{\st@rredfalse#1}%
-}
-
 \def\controldates#1{}
 
 % It's not clear that it's worth preserving these outside of math
@@ -1011,9 +1005,15 @@ __DATA__
 \UCSchardef\textasciitilde"02DC
 \UCSchardef\textasteriskcentered"204E
 \UCSchardef\textbaht"0E3F
+\UCSchardef\textbar"007C
+\UCSchardef\textless"003C
+\UCSchardef\textgreater"003E
+
 \UCSchardef\textbardbl"2016
 \UCSchardef\textbigcircle"25EF
 \UCSchardef\textblank"2422
+\UCSchardef\textbraceleft"007B
+\UCSchardef\textbraceright"007D
 \UCSchardef\textbrokenbar"00A6
 \UCSchardef\textbullet"2022
 \UCSchardef\textcelsius"2103
