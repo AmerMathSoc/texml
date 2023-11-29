@@ -55,7 +55,7 @@ sub execute {
     } elsif ($tail->is_char_node()) {
         my $char_code = $tail->get_char_code();
 
-        if ($tex->is_whitespace($char_code)) {
+        if (defined $char_code && $tex->is_whitespace($char_code)) {
             $cur_list->pop_node();
         }
     }
