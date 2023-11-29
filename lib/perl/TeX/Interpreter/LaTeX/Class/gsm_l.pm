@@ -65,16 +65,15 @@ __DATA__
         \def\@toclevel{0}%
         \let\@secnumber\@empty
         \let\footnote\saved@footnote
-        \start@XML@section{chapter}{0}{}{#2}%
-        \let\XML@section@tag\default@XML@section@tag
-        \let\footnote\@gobble
     %% Add a <label> even for unnumbered appendixes; see, e.g., gsm/228.
     %% Should this be added to all series?
+        \start@XML@section{chapter}{0}{%
+            \ifx\chaptername\appendixname\appendixname\fi
+        }{#2}%
+        \let\XML@section@tag\default@XML@section@tag
+        \let\footnote\@gobble
         \ifx\chaptername\appendixname
             \@tocwriteb\tocappendix{chapter}{#2}%
-            \ifx\appendixname\@empty\else
-                \par\thisxmlpartag{label}\appendixname\par
-            \fi
         \else
             \@tocwriteb\tocchapter{chapter}{#2}%
         \fi
