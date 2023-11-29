@@ -510,6 +510,24 @@ sub __replace_cssID {
     return;
 }
 
+sub normalize_app_group {
+    my $self = shift;
+
+    my $dom = $self->get_dom();
+
+    ## There should only be one book-app-group, but this is a convenient idiom
+
+    for my $app_group ($dom->findnodes("/descendant::book-app-group")) {
+        my @apps = $app_group->findnodes('book-app');
+
+        if (@apps == 1) {
+            $app_group->replaceNode($apps[0]);
+        }
+    }
+
+    return;
+}
+
 sub normalize_disp_level {
     my $self = shift;
 
@@ -646,6 +664,8 @@ sub finalize_document {
     ## TODO: Should probably have a way to skip normalize_tables();
 
     $self->normalize_tables();
+
+    $self->normalize_app_group();
 
     $self->normalize_disp_level();
 
