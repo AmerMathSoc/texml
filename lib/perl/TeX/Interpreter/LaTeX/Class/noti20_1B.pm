@@ -52,6 +52,28 @@ __DATA__
 
 \LoadClass{notices}
 
+\def\init@classified{%
+    \title{Classified Advertising}
+    \subtitle{Employment Opportunities}
+}
+
+\newcommand{\adno}[1]{%
+    \par
+    #1\setXMLattribute{content-type}{adno}%
+    \par
+}
+
+\newenvironment{classifiedad}[1]{%
+    \section*{#1}
+    \par
+    \startXMLelement{abstract}\par
+    \def\\{\emptyXMLelement{break}\UnicodeLineFeed}%
+}{%
+    \par
+    \endXMLelement{abstract}\par
+    \global\everypar{}%
+}
+
 \endinput
 
 __END__
