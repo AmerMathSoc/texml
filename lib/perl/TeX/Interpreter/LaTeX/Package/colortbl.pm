@@ -91,6 +91,16 @@ __DATA__
     \@gobbleopts
 }
 
+% TODO: \rowcolors must be used before a table starts
+
+% \rowcolors[<commands>]{<row>}{<odd-row color>}{even-row color>}
+% \rowcolors*[<commands>]{<row>}{<odd-row color>}{even-row color>}
+
+\newcommand{\rowcolors}{\maybe@st@rred\@rowcolors}
+
+\newcommand{\@rowcolors}[4][]{%
+}
+
 % \rowcolor must be used at the start of a row
 
 % \rowcolor[<color model>]{<color>}[<left overhang>][<right overhang>]
