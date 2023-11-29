@@ -56,6 +56,8 @@ __DATA__
 
 \ProvidesPackage{xy}
 
+\RequirePackage{tikz}
+
 \DeclareSVGEnvironment{xy}
 
 \let\UseAllTwocells\@empty
