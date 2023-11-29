@@ -55,6 +55,8 @@ __DATA__
 \def\wideparen{\overparen}
 \def\vvvert{\Vvert}
 
+\def\widebar{\bar}% Not extensible.
+
 \DeclareSVGMathChar\bigboxtimes\mathop
 \DeclareSVGMathChar\lefttorightarrow\mathord
 
