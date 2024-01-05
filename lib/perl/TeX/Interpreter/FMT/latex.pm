@@ -40,6 +40,8 @@ use Image::JPEG::Size;
 
 use List::Util qw(all);
 
+use TeX::Utils::LibXML;
+
 use TeX::Utils::Misc qw(empty file_mimetype empty nonempty pluralize trim);
 
 use TeX::Constants qw(:named_args);
@@ -296,20 +298,73 @@ sub do_clear_toc_stack {
     return;
 }
 
-# sub do_show_toc_stack {
-#     my $tex   = shift;
-#     my $token = shift;
-#
-#     my @stack = reverse $tex->get_toc_stacks();
-#
-#     $tex->DEBUG("toc_stack: @stack");
-#
-#     return;
-# }
+sub do_showonlyrefs {
+    my $tex   = shift;
+
+    my $handle = $tex->get_output_handle();
+
+    my $body = $handle->get_dom();
+
+    my @tags = $body->findnodes(q{descendant::tag[@SOR_key]});
+
+    return unless @tags;
+
+    $tex->print_nl("Tagging referenced equations");
+
+    $tex->convert_fragment(qq{\\setcounter{equation}{0}});
+
+    for my $tag (@tags) {
+        my $key = $tag->getAttribute('SOR_key');
+
+        if ($key =~ m{^set (.+) (\d+)$}) {
+            $tex->convert_fragment(qq{\\setcounter{$1}{$2}});
+
+            $tag->unbindNode();
+        }
+        elsif ($key eq 'SUBEQUATION_START') {
+            $tex->convert_fragment(q{\begingroup \csname subequation@start\endcsname}, undef, 1);
+
+            $tag->unbindNode();
+        }
+        elsif ($key eq 'SUBEQUATION_END') {
+            $tex->convert_fragment(q{\csname subequation@end\endcsname\endgroup}, undef, 1);
+
+            $tag->unbindNode();
+        } elsif (defined $tex->expansion_of(qq{MT_r_$key})) {
+            if (nonempty(my $counter = $tag->getAttribute('SOR_counter'))) {
+                $tex->convert_fragment(qq{\\refstepcounter{$counter}}, undef, 1);
+
+                $tag->removeAttribute('SOR_counter');
+            }
+
+            if (nonempty(my $label = $tag->getAttribute('SOR_label'))) {
+                my $xml_id = $tag->getAttribute('SOR_id');
+
+                $tag->removeAttribute('SOR_id');
+
+                my $text = $tex->convert_fragment($label);
+
+                $tag->appendChild($text);
+
+                $tag->removeAttribute('SOR_label');
+
+                $tex->convert_fragment(qq{\\csname SOR\@relabel\\endcsname{$key}{$xml_id}{$label}});
+            }
+
+            my $x = $tag->removeAttribute('SOR_key');
+        } else {
+            $tag->unbindNode();
+        }
+    }
+
+    return;
+}
 
 sub do_resolve_xrefs {
     my $tex   = shift;
     my $token = shift;
+
+    do_showonlyrefs($tex); # grrr.  methods fucked up
 
     my $handle = $tex->get_output_handle();
 

@@ -10784,6 +10784,8 @@ sub convert_token_list {
     my $token_list = shift;
     my $par_tags   = shift;
 
+    my $no_group = shift;
+
     if (! defined $token_list) {
         $token_list = $tex->read_undelimited_parameter();
     }
@@ -10793,7 +10795,7 @@ sub convert_token_list {
 
     $tex->push_output("TeX::Output::XML::Fragment");
 
-    $tex->begingroup();
+    $tex->begingroup() unless $no_group;
 
     $tex->set_toks_list('every_par', new_token_list());
 
@@ -10814,7 +10816,7 @@ sub convert_token_list {
 
     $tex->end_par();
 
-    $tex->endgroup();
+    $tex->endgroup() unless $no_group;
 
     $token_list->pop(); # remove POP_MAIN_CONTROL
 
@@ -10831,9 +10833,11 @@ sub convert_fragment {
     my $string   = shift;
     my $par_tags = shift;
 
+    my $no_group = shift;
+
     $tex->push_output("TeX::Output::XML::Fragment");
 
-    $tex->begingroup();
+    $tex->begingroup() unless $no_group;
 
     $tex->set_toks_list('every_par', new_token_list());
 
@@ -10853,7 +10857,7 @@ sub convert_fragment {
 
     $tex->end_par();
 
-    $tex->endgroup();
+    $tex->endgroup() unless $no_group;
 
     my $handle = $tex->pop_output();
 

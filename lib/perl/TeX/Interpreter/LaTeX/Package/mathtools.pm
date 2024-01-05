@@ -50,13 +50,177 @@ __DATA__
 
 \ProvidesPackage{mathtools}
 
-\LoadRawMacros % May not need this.  Need to check.
+\LoadRawMacros
+
+\MHInternalSyntaxOff % \AtEndOfPackage not working
+
+\MHInternalSyntaxOn
+
+\renewcommand*\MT_showonlyrefs_true:{
+    \MH_if_boolean:nF {show_only_refs}{
+        \MH_set_boolean_T:n {show_only_refs}
+
+        %% Save original definitions:
+
+        % \MH_let:NwN \MT_maketag:n             \maketag@@@
+        % \MH_let:NwN \MT_prev_tagform:n        \tagform@
+        % \MH_let:NwN \MT_eqref:n               \eqref
+        % \MH_let:NwN \MT_refeq:n               \refeq
+
+        \MH_let:NwN \MT_incr_eqnum:           \incr@eqnum
+        \MH_let:NwN \MT_array_parbox_restore: \@arrayparboxrestore
+        \MH_let:NwN \MT_output_raw_tag:       \output@raw@tag@
+
+        \MH_let:NwN \MT_subequation_start: \subequation@start
+        \MH_let:NwN \MT_subequation_end:   \subequation@end
+
+        \MH_let:NwN \MT_setcounter:nn   \setcounter
+        \MH_let:NwN \MT_addtocounter:nn \addtocounter
+        \MH_let:NwN \MT_stepcounter:n   \stepcounter
+        \MH_let:NwN \MT_label:n         \ltx@label
+
+        %% Install modified definitions:
+
+        % \MH_let:NwN \maketag@@@ \MT_extended_maketag:n
+        % \def\tagform@##1{\MT_extended_tagform:n {##1}}
+        % \MH_let:NwN \eqref      \MT_extended_eqref:n
+        % \MH_let:NwN \refeq      \MT_extended_refeq:n
+
+        \MH_let:NwN \incr@eqnum \@empty
+
+        \@xp\def\@xp\@arrayparboxrestore\@xp{%
+            \@arrayparboxrestore
+            \MH_let:NwN \incr@eqnum \@empty
+        }
+
+        \@xp\def\@xp\subequation@start\@xp{%
+            \subequation@start
+            \subequation@start@SOR
+        }
+
+        \@xp\def\@xp\subequation@end\@xp{%
+            \subequation@end
+            \subequation@end@SOR
+        }
+
+        \MH_let:NwN \output@raw@tag@ \output@raw@tag@SOR
+        \MH_let:NwN \setcounter      \setcounter@SOR
+        \MH_let:NwN \addtocounter    \addtocounter@SOR
+
+        \def\stepcounter##1{%
+            \MT_stepcounter:n{##1}%
+            \save@counter@SOR{##1}%
+        }
+
+        \MH_let:NwN \ltx@label       \@gobble
+    }
+}
+
+\def\MT_showonlyrefs_false: {
+    \MH_if_boolean:nT {show_only_refs}{
+        \MH_set_boolean_F:n {show_only_refs}
+
+        % \MH_let:NwN \maketag@@@          \MT_maketag:n
+        % \MH_let:NwN \tagform@            \MT_prev_tagform:n
+        % \MH_let:NwN \eqref               \MT_eqref:n
+        % \MH_let:NwN \refeq               \MT_refeq:n
+
+        \MH_let:NwN \incr@eqnum          \MT_incr_eqnum:
+        \MH_let:NwN \@arrayparboxrestore \MT_array_parbox_restore:
+        \MH_let:NwN \output@raw@tag@     \MT_output_raw_tag:
+
+        \MH_let:NwN \subequation@start   \MT_subequation_start:
+        \MH_let:NwN \subequation@end     \MT_subequation_end:
+
+        \MH_let:NwN \setcounter   \MT_setcounter:nn
+        \MH_let:NwN \addtocounter \MT_addtocounter:nn
+        \MH_let:NwN \stepcounter  \MT_stepcounter:n
+        \MH_let:NwN \ltx@label    \MT_label:n
+    }
+}
+
+\MHInternalSyntaxOff
+
+\def\SOR@relabel#1#2#3{%
+    \begingroup
+        \def\@currentreftype{disp-formula}%
+        \def\@currentrefsubtype{equation}%
+        \def\@currentXMLid{#2}%
+        \def\@currentlabel{#3}%
+        % \expandafter\let\csname r@#1\endcsname\undefined
+        \label{#1}%
+    \endgroup
+}
+
+\def\save@counter@SOR#1{%
+    \startXMLelement{tag}%
+        \setXMLattribute{SOR_key}{set #1 \the\value{#1}}%
+    \endXMLelement{tag}%
+}
+
+\def\setcounter@SOR#1#2{%
+    \@ifundefined{c@#1}%
+        {\@nocounterr{#1}}%
+        {\global\csname c@#1\endcsname#2\relax\save@counter@SOR{#1}}%
+}
+
+\def\addtocounter@SOR#1#2{%
+    \@ifundefined{c@#1}%
+        {\@nocounterr{#1}}%
+        {\global\advance\csname c@#1\endcsname #2\relax\save@counter@SOR{#1}}%
+}
+
+\def\output@raw@tag@SOR#1{%
+    \ifx\df@label\@empty\else
+        \setXMLattribute{SOR_key}{\df@label}%
+        \ifx\theequation#1%
+            \setXMLattribute{SOR_counter}{equation}%
+            \setXMLattribute{SOR_label}{\string\theequation}%
+            \setXMLattribute{SOR_id}{\@currentXMLid}%
+        \else
+            \setXMLattribute{SOR_label}{#1}%
+            \setXMLattribute{SOR_id}{\@currentXMLid}%
+        \fi
+    \fi
+}
+
+\def\subequation@start@SOR{%
+    \startXMLelement{tag}%
+        \setXMLattribute{SOR_key}{SUBEQUATION_START}%
+    \endXMLelement{tag}%
+}
+
+\def\subequation@end@SOR{%
+    \startXMLelement{tag}%
+        \setXMLattribute{SOR_key}{SUBEQUATION_END}%
+    \endXMLelement{tag}%
+}
 
 \AtBeginDocument{%
     \def\coloneqq{\coloneq}
 }
 
-\let\noeqref\@gobble
+% \let\noeqref\@gobble
+
+\renewcommand\noeqref[1]{%
+    \@bsphack
+    \@for\@tempa:=#1\do{%
+        \@safe@activestrue%
+        \edef\@tempa{\expandafter\@firstofone\@tempa}%
+        % \@ifundefined{r@\@tempa}{%
+        %     \protect\G@refundefinedtrue%
+        %     \@latex@warning{Reference `\@tempa' on page \thepage \space undefined (\string\noeqref)}%
+        % }{}%
+        \global\@namedef{MT_r_\@tempa}{\@tempa}%
+        % \if@filesw
+        %     \protected@write\@auxout{}{\string\MT@newlabel{\@tempa}}%
+        % \fi
+        \@safe@activesfalse
+    }
+    \@esphack
+}
+
+%% TBD: \usetagform
 
 \let\adjustlimits\@empty
 
@@ -121,7 +285,7 @@ __DATA__
 \DeclareMathPassThrough{mathmakebox}
 \DeclareMathPassThrough{mathmbox}
 \DeclareMathPassThrough{mathrlap}
-\DeclareMathPassThrough{mathtoolsset}
+% \DeclareMathPassThrough{mathtoolsset}
 \DeclareMathPassThrough{MoveEqLeft}
 \DeclareMathPassThrough{MTFlushSpaceAbove}
 \DeclareMathPassThrough{MTFlushSpaceBelow}
@@ -144,7 +308,7 @@ __DATA__
 \DeclareMathPassThrough{textllap}
 \DeclareMathPassThrough{textrlap}
 \DeclareMathPassThrough{underbracket}
-\DeclareMathPassThrough{usetagform}
+% \DeclareMathPassThrough{usetagform}
 % \DeclareMathPassThrough{vdotswithin}
 \DeclareMathPassThrough{xhookleftarrow}
 \DeclareMathPassThrough{xhookrightarrow}

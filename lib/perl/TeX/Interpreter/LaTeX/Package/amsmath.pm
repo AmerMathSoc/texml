@@ -79,20 +79,33 @@ __DATA__
 \def\root#1\of#2{\sqrt[#1]{#2}}
 
 \renewcommand{\eqref}[1]{%
+    \global\@namedef{MT_r_#1}{#1}%
     \leavevmode
     \XMLgeneratedText(%
     \ref{#1}%
+    % \begingroup
+    %     \st@rredfalse
+    %     \expandafter\@setref {#1} \eqref
     \XMLgeneratedText)%
+}
+
+\def\subequation@start{%
+    \refstepcounter{equation}%
+    \protected@edef\theparentequation{\theequation}%
+    \setcounter{parentequation}{\value{equation}}%
+    % \setcounter{equation}{0}%
+    \c@equation\z@
+    \def\theequation{\theparentequation\alph{equation}}%
+}
+
+\def\subequation@end{%
+    \setcounter{equation}{\value{parentequation}}%
 }
 
 \renewenvironment{subequations}{%
     \everypar{}%
     \par
-    \refstepcounter{equation}%
-    \protected@edef\theparentequation{\theequation}%
-    \setcounter{parentequation}{\value{equation}}%
-    \setcounter{equation}{0}%
-    \def\theequation{\theparentequation\alph{equation}}%
+    \subequation@start
     \par
     \startXMLelement{disp-formula-group}%
         \def\@currentreftype{disp-formula}%
@@ -104,7 +117,7 @@ __DATA__
 }{%
     \endXMLelement{disp-formula-group}%
     \par
-    \setcounter{equation}{\value{parentequation}}%
+    \subequation@end
     \ignorespacesafterend
 }
 
@@ -270,9 +283,6 @@ __DATA__
 
 \let\texml@tab@to@tag\@empty
 
-\newif\ifTeXMLeqntargets@
-\TeXMLeqntargets@true
-
 \def\make@display@tag{%
     \texml@tab@to@tag
     \if@eqnsw
@@ -285,58 +295,32 @@ __DATA__
         \fi
     \fi
     \global\tag@false
-\ifTeXMLeqntargets@\else
-    \ifx\df@label\@empty\else
-        \xdef\@currentXMLid{\df@label}%
-        \string\cssId\string{\@currentXMLid\string}\string{\string}%
-    \fi
-\fi
     \ifx\df@label\@empty\else
         \@xp\ltx@label\@xp{\df@label}%
         \global\let\df@label\@empty
     \fi
 }
 
-\def\tagform@#1{%
-    \ifTeXMLeqntargets@
-        \ifx\df@label\@empty\else
-            \startXMLelement{target}%
-            \xdef\@currentXMLid{\df@label}%
-            \setXMLattribute{id}{\@currentXMLid}%
-            % \@xp\ltx@label\@xp{\df@label}%
-        \fi
-    \fi
-        \startXMLelement{tag}%
-        \setXMLattribute{parens}{yes}%
-          \hbox{#1}%
-        \endXMLelement{tag}%
-    \ifTeXMLeqntargets@
-        \ifx\df@label\@empty\else
-            \endXMLelement{target}%
-        \fi
-        % \global\let\df@label\@empty
-    \fi
-}
+\def\tagform@{\output@tag@element{yes}}
+\def\maketag@@@{\output@tag@element{no}}
 
-\def\maketag@@@#1{%
-    \ifTeXMLeqntargets@
+\def\output@raw@tag@{\hbox}
+
+\def\output@tag@element#1#2{%
         \ifx\df@label\@empty\else
             \startXMLelement{target}%
             \xdef\@currentXMLid{\df@label}%
             \setXMLattribute{id}{\@currentXMLid}%
             % \@xp\ltx@label\@xp{\df@label}%
         \fi
-    \fi
         \startXMLelement{tag}%
-        \setXMLattribute{parens}{no}%
-          \hbox{#1}%
+        \setXMLattribute{parens}{#1}%
+          \output@raw@tag@{#2}%
         \endXMLelement{tag}%
-    \ifTeXMLeqntargets@
         \ifx\df@label\@empty\else
             \endXMLelement{target}%
         \fi
         % \global\let\df@label\@empty
-    \fi
 }
 
 \DefineAMSTaggedEnvironment[\let\math@cr@@\math@cr@@gobble]{equation}\st@rredfalse
