@@ -48,7 +48,7 @@ sub expand {
 
     my $meaning = $tex->get_meaning($token);
 
-    if ($meaning->isa("TeX::Primitive::If")) {
+    if ($meaning->isa("TeX::Primitive::BeginIf")) {
         return $meaning->expand($tex, $token, true);
     }
 

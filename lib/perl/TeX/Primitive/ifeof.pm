@@ -32,7 +32,7 @@ package TeX::Primitive::ifeof;  ##INCOMPLETE
 use strict;
 use warnings;
 
-use base qw(TeX::Primitive::If);
+use base qw(TeX::Primitive::BeginIf);
 
 use TeX::WEB2C qw(:io_status);
 

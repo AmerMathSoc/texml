@@ -6005,7 +6005,7 @@ sub pass_text {
     while (my $next_token = $tex->get_next()) {
         my $cur_cmd = $tex->get_meaning($next_token);
 
-        if (eval { $cur_cmd->isa("TeX::Primitive::Fi") }) {
+        if (eval { $cur_cmd->isa("TeX::Primitive::EndIf") }) {
             if ($level == 0) {
                 $tex->set_scanner_status($save_scanner_status);
 
@@ -6016,7 +6016,7 @@ sub pass_text {
                 $level--;
             }
         } else {
-            if (eval { $cur_cmd->isa("TeX::Primitive::If") }) {
+            if (eval { $cur_cmd->isa("TeX::Primitive::BeginIf") }) {
                 $level++;
             }
         }

@@ -32,7 +32,7 @@ package TeX::Primitive::LuaTeX::ifcondition;
 use strict;
 use warnings;
 
-use base qw(TeX::Primitive::If);
+use base qw(TeX::Primitive::BeginIf);
 
 use TeX::Class;
 

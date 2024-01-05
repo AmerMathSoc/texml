@@ -34,7 +34,7 @@ use warnings;
 
 use version; our $VERSION = qv '1.0.0';
 
-use base qw(TeX::Primitive::If);
+use base qw(TeX::Primitive::BeginIf);
 
 use TeX::Constants qw(:booleans :named_args :tracing_macro_codes);
 

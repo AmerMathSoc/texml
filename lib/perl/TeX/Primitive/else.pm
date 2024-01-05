@@ -32,7 +32,7 @@ package TeX::Primitive::else;
 use strict;
 use warnings;
 
-use base qw(TeX::Primitive::Fi);
+use base qw(TeX::Primitive::EndIf);
 
 use TeX::Class;
 
