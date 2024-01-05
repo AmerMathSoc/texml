@@ -530,7 +530,11 @@ sub do_resolve_xref_groups {
             $subtype = $first_record->get_subtype();
         }
 
+        # $tex->__DEBUG("xref_group: first refrecord = $first_record");
+
         if (defined(my $last_record = $tex->get_refkey($last))) {
+            # $tex->__DEBUG("xref_group: last refrecord = $last_record");
+
             my $t_subtype = $last_record->get_subtype;
 
             if (defined $subtype && $subtype ne $t_subtype) {
@@ -555,7 +559,11 @@ sub do_resolve_xref_groups {
 
         my @middle;
 
+        my $last_found = 0;
+
         if (defined(my $record = $first_record)) {
+            # $tex->__DEBUG("xref_group: Starting scan with $record");
+
             my $subtype = $record->get_subtype();
 
             $group->setAttribute(first => $record->get_xml_id);
@@ -568,6 +576,9 @@ sub do_resolve_xref_groups {
                 next if $this_refkey =~ m{\@cref$};
 
                 if ($this_refkey eq $last) {
+                    $last_found = 1;
+
+                    # Is this redundant?
                     $group->setAttribute(last => $record->get_xml_id);
 
                     last;
@@ -581,6 +592,14 @@ sub do_resolve_xref_groups {
                     push @middle, $record->get_xml_id;
                 }
             }
+        }
+
+        if (! $last_found) {
+            $tex->print_err(qq{reference range '$first-$last':});
+            $tex->print_err(qq{    Did not find label '$last' when scanning forward from label '$first'});
+            $tex->print_err(qq{    Are the first and last keys reversed?});
+
+            $tex->error();
         }
 
         $group->setAttribute(middle => "@middle");
