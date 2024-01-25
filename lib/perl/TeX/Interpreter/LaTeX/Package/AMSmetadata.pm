@@ -173,9 +173,9 @@ sub install {
 
         require PRD::MSC;          # No imports needed.
 
-        require PTG::URLUtils;
+        require PTG::URL::Utils;
 
-        PTG::URLUtils->import();
+        PTG::URL::Utils->import();
 
         $tex->define_csname(AddAMSmetadata => \&do_add_ams_metadata);
     } else {
