@@ -200,14 +200,18 @@ sub do_add_ams_metadata {
     $tex->print_ln();
     $tex->print_nl("%% Loading AMS metadata");
 
-    my $gentag_file = eval { find_gentag_file($dom) };
+    my $gentag_file = $tex->get_output_file_name() =~ s{\.xml}{-gentag.xml}r;
 
-    if ($@) {
-        $tex->print_nl("%% FAILED: $@");
-        $tex->print_ln();
-        $tex->print_ln();
+    if (! -e $gentag_file) {
+        $gentag_file = eval { find_gentag_file($dom) };
 
-        return;
+        if ($@) {
+            $tex->print_nl("%% FAILED: $@");
+            $tex->print_ln();
+            $tex->print_ln();
+
+            return;
+        }
     }
 
     if (empty($gentag_file) || ! -e $gentag_file) {
