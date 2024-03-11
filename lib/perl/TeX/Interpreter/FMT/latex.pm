@@ -1509,6 +1509,8 @@ __DATA__
     \endXMLelement{disp-quote}%
 }
 
+%% Redefined ^^M to \UnicodeLineFeed instead of \par:
+
 {\catcode`\^^M=\active % these lines must end with %
   \gdef\obeylines{\catcode`\^^M\active \let^^M\UnicodeLineFeed}%
   \global\let^^M\UnicodeLineFeed} % this is in case ^^M appears in a \write
