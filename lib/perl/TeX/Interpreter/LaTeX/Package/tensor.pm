@@ -56,10 +56,7 @@ __DATA__
 % enough for simple uses.
 
 \newcommand{\tensor}[3][]{%
-    \mathbin{%
-        \if###1##\else{}#1\fi
-        #2{#3}%
-    }%
+    \sideset{#1}{#3}{\mathop{#2}}%
 }
 
 \endinput
