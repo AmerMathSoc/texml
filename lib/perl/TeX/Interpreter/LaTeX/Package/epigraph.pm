@@ -50,14 +50,16 @@ __DATA__
 
 \ProvidesPackage{epigraph}
 
-\providecommand{\epigraphsize}{}
+\let\epigraphwidth\dimen@
 
 \def\epigraph#1#2{%
+    \par
     \startXMLelement{disp-quote}%
     \setXMLattribute{content-type}{epigraph}%
     #1\par
     \thisxmlpartag{attrib}#2\par
     \endXMLelement{disp-quote}%
+    \par
 }
 
 \endinput
