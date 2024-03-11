@@ -78,7 +78,7 @@ __DATA__
 
 \def\root#1\of#2{\sqrt[#1]{#2}}
 
-\renewcommand{\eqref}[1]{%
+\DeclareRobustCommand{\eqref}[1]{%
     \global\@namedef{MT_r_#1}{#1}%
     \leavevmode
     \XMLgeneratedText(%
