@@ -338,7 +338,9 @@ sub append_date {
 
     my $date_element = append_xml_element($parent, $date_tag);
 
-    $date_element->setAttribute("date-type", $date_type);
+    if (defined $date_type) {
+        $date_element->setAttribute("date-type", $date_type);
+    }
 
     if (nonempty($pub_format)) {
         $date_element->setAttribute("publication-format", $pub_format);
@@ -657,11 +659,30 @@ sub add_self_uris {
                        { "content-type" => "abstract",
                          "xlink:href"   => $uri });
 
-    my $pii = $gentag->get_pii();
+    my $doctype = $gentag->get_doctype();
 
-    my $pdf_uri = caturl($uri, "$pii.pdf");
+    my $pdf_uri;
 
-    append_xml_element($parent, "self-uri", undef,
+    if ($doctype eq 'article') {
+        my $pii = $gentag->get_pii();
+
+        $pdf_uri = caturl($uri, "$pii.pdf");
+    } elsif ($doctype eq 'monograph') {
+        my $publ_key = $gentag->get_publ_key();
+
+        my $volume = $gentag->get_volume();
+
+        if ($doctype eq 'memoirs') {
+            $volume = $gentag->get_number();
+        }
+
+        my $pdf_filename = sprintf "%s%03d.pdf", $publ_key, $volume;
+
+        $pdf_uri = caturl($uri, $pdf_filename);
+    } else {
+    }
+
+    append_xml_element($parent, "self-uri", $pdf_uri,
                        { "content-type" => "pdf",
                          "xlink:href"   => $pdf_uri });
 
@@ -944,8 +965,9 @@ sub append_journal_meta {
     append_xml_element($title_group,
                    "journal-title", $publication->get_full_title());
 
-    append_xml_element($title_group,
-                   "abbrev-journal-title", $publication->get_abbrev_title());
+    if (defined(my $abbrev = $publication->get_abbrev_title())) {
+        append_xml_element($title_group, "abbrev-journal-title", $abbrev);
+    }
 
     for my $issn ($publication->get_issns()) {
         my %atts;
@@ -1148,7 +1170,7 @@ sub append_article_meta {
     add_contributors($tex, $meta, $gentag);
 
     if (nonempty(my $posted = $gentag->get_postdate())) {
-        append_date($tex, $meta, $posted, "pub", "electronic", "pub-date");
+        append_date($tex, $meta, $posted, undef, "electronic", "pub-date");
     }
 
     if (nonempty(my $volume = $gentag->get_volume())) {
@@ -1260,9 +1282,14 @@ sub create_collection_meta( $$ ) {
 
     my $meta = new_xml_element('collection-meta');
 
+    $meta->setAttribute('collection-type' => "book series");
+
     my $publ_key  = $gentag->get_publ_key();
     my $volume_no = $gentag->get_volume();
     my $volume_id = $gentag->get_volume_id();
+
+    append_xml_element($meta, 'collection-id', $publ_key,
+                       { 'collection-id-type' => 'publisher' });
 
     if (nonempty(my $title = $PUBS->title($publ_key))) {
         my $title_group = new_child_element($meta, 'title-group');
@@ -1305,6 +1332,10 @@ sub create_collection_meta( $$ ) {
         append_custom_meta($tex, $custom, "subseries", $copub);
     }
 
+    my $url = qq{https://www.ams.org/$publ_key/};
+
+    append_xml_element($meta, 'self-uri', $url, { 'xlink:href' => $url });
+
     return $meta;
 }
 
@@ -1332,6 +1363,12 @@ sub create_book_meta( $$ ) {
                              'assigning-authority' => 'crossref' });
     }
 
+    if (nonempty(my $lccn = $gentag->get_lccn())) {
+        append_xml_element($meta, 'book-id', $lccn,
+                           { 'book-id-type' => 'lccn',
+                             'assigning-authority' => 'Library of Congress' });
+    }
+
     my $title_group = new_child_element($meta, 'book-title-group');
 
     if (nonempty(my $title = $gentag->get_title())) {
@@ -1346,19 +1383,27 @@ sub create_book_meta( $$ ) {
 
     add_history($tex, $meta, $gentag);
 
+    if (nonempty(my $pubdate = $gentag->get_pubdate())) {
+        append_date($tex, $meta, $pubdate, undef, undef, 'pub-date');
+    }
+
     append_xml_element($meta, 'book-volume-number', $volume_no);
 
-    if (defined(my $publication = $gentag->get_publication())) {
-        for my $issn ($publication->get_issns()) {
-            my %atts;
-
-            if (defined(my $type = $issn->get_type())) {
-                $atts{"publication-format"} = $type;
-            }
-
-            append_xml_element($meta, "issn", $issn->get_value(), \%atts);
-        }
+    if (nonempty(my $volume_id = $gentag->get_volume_id())) {
+        append_xml_element($meta, 'book-volume-id' => $volume_id);
     }
+
+    # if (defined(my $publication = $gentag->get_publication())) {
+    #     for my $issn ($publication->get_issns()) {
+    #         my %atts;
+    # 
+    #         if (defined(my $type = $issn->get_type())) {
+    #             $atts{"publication-format"} = $type;
+    #         }
+    # 
+    #         append_xml_element($meta, "issn", $issn->get_value(), \%atts);
+    #     }
+    # }
 
     for my $isbn ($gentag->get_isbns()) {
         my %atts;
@@ -1382,6 +1427,8 @@ sub create_book_meta( $$ ) {
     }
 
     add_permissions($tex, $meta, $gentag);
+
+    add_self_uris($tex, $meta, $gentag);
 
     if (nonempty(my $edition = $gentag->get_edition())) {
         append_xml_element($meta, 'edition', $edition);
