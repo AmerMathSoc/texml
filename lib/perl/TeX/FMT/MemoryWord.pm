@@ -29,6 +29,8 @@ package TeX::FMT::MemoryWord;
 # USA
 # email: tech-support@ams.org
 
+## WARNING: Not all of this has been tested.
+
 use strict;
 use warnings;
 
@@ -61,22 +63,6 @@ use constant {
     B3_INDEX => RH_INDEX + 3 * QUARTER_WORD_SIZE,
 };
 
-sub to_signed {
-    my $bytes = shift;
-
-    my @bytes = unpack "C*", $bytes;
-
-    my $val = shift @bytes;
-
-    $val -= 256 if $val >= 128;
-
-    foreach my $byte (@bytes) {
-        $val = ($val * 256) + $byte;
-    }
-
-    return $val;
-}
-
 sub to_unsigned {
     my $bytes = shift;
 
@@ -89,12 +75,26 @@ sub to_unsigned {
     return $val;
 }
 
+sub to_signed {
+    my $bytes = shift;
+
+    my $uint = to_unsigned($bytes);
+
+    my $num_bits = 8 * length($bytes);
+
+    my $max_signed = 2 ** ($num_bits - 1) - 1;
+
+    my $int = $uint > $max_signed ? $uint - 2 ** $num_bits : $uint;
+
+    return $int;
+}
+
 sub get_int {
     my $self = shift;
 
-    ##* ugh, ugh, ugh
+    my $field = substr($self->get_record(), RH_INDEX, HALF_WORD_SIZE);
 
-    return unpack "N", $self->get_record();
+    return to_signed($field);
 }
 
 sub get_sc { ##* ???
@@ -114,13 +114,17 @@ sub get_gr {
 sub get_rh {
     my $self = shift;
 
-    return to_signed(substr($self->get_record(), RH_INDEX, HALF_WORD_SIZE));
+    my $field = substr($self->get_record(), RH_INDEX, HALF_WORD_SIZE);
+
+    return to_signed($field);
 }
 
 sub get_lh {
     my $self = shift;
 
-    return to_signed(substr($self->get_record(), LH_INDEX, HALF_WORD_SIZE));
+    my $field = substr($self->get_record(), LH_INDEX, HALF_WORD_SIZE);
+
+    return to_signed($field);
 }
 
 sub get_hh_b0 {
@@ -142,25 +146,33 @@ sub get_hh_b1 {
 sub get_b0 {
     my $self = shift;
 
-    return to_unsigned(substr($self->get_record(), B0_INDEX, QUARTER_WORD_SIZE));
+    my $field = substr($self->get_record(), B0_INDEX, QUARTER_WORD_SIZE);
+
+    return to_unsigned($field);
 }
 
 sub get_b1 {
     my $self = shift;
 
-    return to_unsigned(substr($self->get_record(), B1_INDEX, QUARTER_WORD_SIZE));
+    my $field = substr($self->get_record(), B1_INDEX, QUARTER_WORD_SIZE);
+
+    return to_unsigned($field);
 }
 
 sub get_b2 {
     my $self = shift;
 
-    return to_unsigned(substr($self->get_record(), B2_INDEX, QUARTER_WORD_SIZE));
+    my $field = substr($self->get_record(), B2_INDEX, QUARTER_WORD_SIZE);
+
+    return to_unsigned($field);
 }
 
 sub get_b3 {
     my $self = shift;
 
-    return to_unsigned(substr($self->get_record(), B3_INDEX, QUARTER_WORD_SIZE));
+    my $field = substr($self->get_record(), B3_INDEX, QUARTER_WORD_SIZE);
+
+    return to_unsigned($field);
 }
 
 sub get_type {
@@ -238,3 +250,76 @@ sub to_string {
 1;
 
 __END__
+
+/* texmfmem.h: the memory_word type, which is too hard to translate
+   automatically from Pascal.  We have to make sure the byte-swapping
+   that the (un)dumping routines do suffices to put things in the right
+   place in memory.
+
+   A memory_word can be broken up into a `twohalves' or a
+   `fourquarters', and a `twohalves' can be further broken up.  Here is
+   a picture.  ..._M = most significant byte, ..._L = least significant
+   byte.
+   
+   The halfword fields are four bytes if we are building a big TeX or MF;
+   this leads to further complications:
+   
+   BigEndian:
+   twohalves.v:  RH_MM RH_ML RH_LM RH_LL LH_MM LH_ML LH_LM LH_LL
+   twohalves.u:  ---------JUNK----------  B0         B1
+   fourquarters:   B0    B1    B2    B3
+
+   I guess TeX and Metafont never refer to the B1 and B0 in the
+   fourquarters structure as the B1 and B0 in the twohalves.u structure.
+   
+   The B0 and B1 fields are declared short instead of quarterword,
+   because they are used in character nodes to store a font number and a
+   character.  If left as a quarterword (which is a single byte), we
+   couldn't support more than 256 fonts. (If shorts aren't two bytes,
+   this will lose.)
+*/
+
+typedef union {
+  struct {
+    halfword RH, LH;
+    halfword LH, RH;
+  } v;
+
+  struct { /* Make B0,B1 overlap the most significant bytes of LH.  */
+    halfword junk;
+    short B0, B1;
+  } u;
+} twohalves;
+
+typedef struct {
+  struct {
+    quarterword B0, B1, B2, B3;
+  } u;
+} fourquarters;
+
+typedef union {
+  glueratio gr;
+  twohalves hh;
+
+  integer cint;
+  fourquarters qqqq;
+} memoryword;
+
+/* fmemory_word for font_list; needs to be only four bytes.  This saves
+   significant space in the .fmt files. (Not true in XeTeX, actually!) */
+
+typedef union {
+  integer cint;
+  fourquarters qqqq;
+} fmemoryword;
+
+/* To keep the original structure accesses working, we must go through
+   the extra names C forced us to introduce.  */
+
+#define	b0 u.B0
+#define	b1 u.B1
+#define	b2 u.B2
+#define	b3 u.B3
+
+#define rh v.RH
+#define lhfield	v.LH
