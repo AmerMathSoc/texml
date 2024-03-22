@@ -67,7 +67,7 @@ __DATA__
 \RequirePackage{xspace}
 \RequirePackage{amsthm}
 \RequirePackage{subfig}
-\RequirePackage{xcolor}
+\RequirePackage[table]{xcolor}
 
 \RequirePackage[lite,nobysame]{amsrefs}
 
@@ -305,6 +305,43 @@ __DATA__
     \ifx\@receiveddate\@empty\else(Received \@receiveddate)\fi
     % \endXMLelement{italic}%
     \par
+}
+
+\newenvironment{featureditem}{%%
+  \ignorespaces
+  \def\lines{\def\@featureditem@lines}
+  \def\@featureditem@lines{11}
+  \newif\ifborder
+  \borderfalse
+  \let\@featureditem@border\@empty
+  \def\graphic{\def\@featureditem@graphic}
+  \let\@featureditem@graphic\@empty
+  \def\byline{\def\@featureditem@byline}
+  \let\@featureditem@byline\@empty
+  \def\title{\long\def\@featureditem@title}
+  \let\@featureditem@title\@empty
+  \def\subtitle{\long\def\@featureditem@subtitle}
+  \let\@featureditem@subtitle\@empty
+  \def\authors{\long\def\@featureditem@authors}
+  \let\@featureditem@authors\@empty
+  \def\caption{\long\def\@featureditem@caption}
+  \let\@featureditem@caption\@empty
+}{%
+  \ifborder
+    \def\@featureditem@border{999}
+    \let\@featureditem@caption\@empty
+  \fi
+    \protected@xdef\set@featureditem{%
+      \noexpand\reviewedwork@main{\@featureditem@lines}%
+                        [\@featureditem@border]%
+                        {\@featureditem@graphic}%
+                        {\@featureditem@byline}%
+                        {\@featureditem@title}%
+                        {\@featureditem@subtitle}%
+                        {\@featureditem@authors}%
+                        {\@featureditem@caption}%
+   }%
+   \set@featureditem
 }
 
 \def\reviewheaderskip#1{%
