@@ -96,6 +96,16 @@ mathematical content or convert that content to another format.
 Instead, it focuses on normalizing the LaTeX markup into a form that
 can be processed by MathJax.
 
+## Limitations
+
+It's important to remember that to date, `texml` has only been used
+internally at the AMS.  As a result, only our own `amsart` and
+`amsbook` document classes are currently well-supported, and priority
+has been given to packages that we commonly encounter and allow in our
+production workflow.  We welcome feedback about what extensions you
+would like to see.  Although we cannot promise any support, we will
+keep this in mind when setting priorities for development.
+
 ## Installation
 
 Starting with an Ubuntu 18.04.5 LTS installation:
