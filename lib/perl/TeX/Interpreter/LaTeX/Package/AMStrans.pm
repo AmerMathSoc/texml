@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Class::mosc_l;
+package TeX::Interpreter::LaTeX::Package::AMStrans;
 
 # Copyright (C) 2022 American Mathematical Society
 #
@@ -37,7 +37,7 @@ sub install ( $ ) {
 
     my $tex = shift;
 
-    $tex->class_load_notification();
+    $tex->package_load_notification();
 
     $tex->read_package_data();
 
@@ -48,24 +48,15 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{mosc-l}
+\ProvidesPackage{AMStrans}
 
-\RequirePackage{AMStrans}
+\let\originfo\@gobblefour
 
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
-
-\ProcessOptions\relax
-
-\LoadClass{amsart}[1996/10/24]
-
-\publinfo{mosc}{}{}
-
-% TBD: Russian title (Trudy Moskov. Matem. Obshch.)
-
-\def\AMS@publname{Trans. Moscow Math. Soc.}
-
-\def\AMS@eissn{1547-738X}
-\def\AMS@pissn{0077-1554}
+\let\eo\@gobble
+\let\rv\@gobble
+\let\op\@gobble
+\let\eb\@gobble
+\let\origlang\@gobble
 
 \endinput
 

@@ -50,6 +50,8 @@ __DATA__
 
 \ProvidesClass{spmj-l}
 
+\RequirePackage{AMStrans}
+
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 
 \ProcessOptions\relax
