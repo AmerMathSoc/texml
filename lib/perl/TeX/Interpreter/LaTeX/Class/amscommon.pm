@@ -544,6 +544,8 @@ __DATA__
 \def\articlenote{\gdef\AMS@articlenote}
 \let\AMS@articlenote\@empty
 
+\let\earlydescriptiontext\@gobble
+
 \def\copublisher{\gdef\AMS@copublisher}
 \let\AMS@copublisher\@empty
 
@@ -627,6 +629,12 @@ __DATA__
 \newcommand{\email}[2][]   {\g@addto@macro\AMS@authors{\email{#1}{#2}}}
 \newcommand{\urladdr}[2][] {\g@addto@macro\AMS@authors{\urladdr{#1}{#2}}}
 \newcommand{\authorbio}[1] {\g@addto@macro\AMS@authors{\authorbio{#1}}}
+
+% Ignore \orcid in the LaTeX file for now since we get the ORCID id
+% and other metadata from the gentag file.  We should provide some
+% sort of support for it later, though.
+
+\let\orcid\@gobble
 
 \def\editor#1{%
     \ifx\AMS@editorlist\@empty
