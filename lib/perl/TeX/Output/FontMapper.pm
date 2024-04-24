@@ -65,6 +65,8 @@ my $UNKNOWN_CHARACTER = "<0xFFFD>";
 
         next if /^\s*$/;
 
+        next if /^%/;
+
         my ($tex_name, $encoding, $spec) = split / +/, $_, 3;
 
         $FONT_MAP{$tex_name} = [ split /,\s*/, $spec ];
