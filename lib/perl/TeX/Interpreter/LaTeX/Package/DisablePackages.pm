@@ -78,6 +78,7 @@ __DATA__
 \DisablePackage{mathbbol}
 \DisablePackage{morefloats}
 \DisablePackage{ogonek}
+\DisablePackage{old-arrows}
 \DisablePackage{pict2e}
 \DisablePackage{pictexwd}
 \DisablePackage{pspicture}
