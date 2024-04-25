@@ -52,13 +52,55 @@ __DATA__
 
 \DeclareTeXMLMathAlphabet\mathbb
 
-\def\BbbLambda{%
-    \TeXMLCreateSVG{%
 \DeclareSymbolFont{MVbbold}{U}{bbold}{m}{n}%
-\DeclareMathSymbol{\BbbLambda}{\mathord}{MVbbold}{"03}%
-$\BbbLambda$%
+
+\def\X#1#2{%
+    \@namedef{Bbb#1}{%
+        \mathord{%
+            \TeXMLCreateSVG{%
+                {\usefont{U}{bbold}{m}{n}\char#2}%
+            }%
+        }%
     }%
 }
+
+\X{Gamma}{"00}
+\X{Delta}{"01}
+\X{Theta}{"02}
+\X{Lambda}{"03}
+\X{Xi}{"04}
+\X{Pi}{"05}
+\X{Sigma}{"06}
+\X{Upsilon}{"07}
+\X{Phi}{"08}
+\X{Psi}{"09}
+\X{Omega}{"0A}
+
+\X{alpha}{"0B}
+\X{beta}{"0C}
+\X{gamma}{"0D}
+\X{delta}{"0E}
+\X{epsilon}{"0F}
+\X{zeta}{"10}
+\X{eta}{"11}
+\X{theta}{"12}
+\X{iota}{"13}
+\X{kappa}{"14}
+\X{lambda}{"15}
+\X{mu}{"16}
+\X{nu}{"17}
+\X{xi}{"18}
+\X{pi}{"19}
+\X{rho}{"1A}
+\X{sigma}{"1B}
+\X{tau}{"1C}
+\X{upsilon}{"1D}
+\X{phi}{"1E}
+\X{chi}{"1F}
+
+\X{psi}{"20}
+
+\X{omega}{"7F}
 
 \endinput
 
