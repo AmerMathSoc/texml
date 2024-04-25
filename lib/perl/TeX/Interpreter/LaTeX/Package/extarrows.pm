@@ -59,6 +59,10 @@ __DATA__
     \TeXMLCreateSVG{$\xLongrightarrow[#1]{#2}$}%
 }
 
+\newcommand{\xlongequal}[2][]{%
+    \TeXMLCreateSVG{$\xlongequal[#1]{#2}$}%
+}
+
 \endinput
 
 __END__
