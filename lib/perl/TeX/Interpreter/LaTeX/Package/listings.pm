@@ -52,7 +52,31 @@ __DATA__
 
 \let\lstset\@gobble
 \let\lstdefinestyle\@gobbletwo
-\def\lstdefinelanguage#1#2{\@gobbleopt}
+
+\def\lstdefinelanguage{%
+    \kernel@ifnextchar[\@lstdfnlng{\@lstdfnlng[]}%
+}
+
+\def\@lstdfnlng[#1]#2{% [dialect]{language}
+    \kernel@ifnextchar[\@@lstdfnlng{\@@@lstdfnlng}%
+}
+
+\def\@@lstdfnlng[#1]#2#3{% [base dialect]{base language}{key=value list}
+    \@gobbleopt
+}
+
+\def\@@@lstdfnlng#1{\@gobbleopt}
+
+\def\lstnewenvironment#1{% <name>
+    \kernel@ifnextchar[\@lstnewenv{\@lstnewenv[]}%
+}
+
+\def\@lstnewenv[#1]{% [<number>]
+    \kernel@ifnextchar[\@@lstnewenv{\@@lstnewenv[]}%
+}
+
+\def\@lstnewenv[#1]#2#3{% [opt default arg]{starting code}{ending code}
+}
 
 \DeclareSVGEnvironment*{listings}
 
@@ -69,6 +93,7 @@ __DATA__
     \everypar{}%
     \startXMLelement{pre}%
     \setXMLattribute{specific-use}{#1}%
+    \UnicodeLineFeed
     \let\do\@makeother \dospecials
     \noligs=1
     \obeylines
@@ -83,7 +108,27 @@ __DATA__
 
 \let\endlstlisting\endverbatim
 
-
 \endinput
 
 __END__
+
+\LoadRawMacros
+
+\let\lstlisting\relax
+\let\lstlisting@\relax
+
+\lstnewenvironment{lstlisting}[2][]{%
+    \par
+    \startXMLelement{lstlisting}
+    \lst@TestEOLChar{#2}%
+    \lstset{#1}%
+    \csname\@lst @SetFirstNumber\endcsname
+}{%
+    \csname\@lst @SaveFirstNumber\endcsname
+    \endXMLelement{lstlisting}
+}
+
+
+\endinput
+
+
