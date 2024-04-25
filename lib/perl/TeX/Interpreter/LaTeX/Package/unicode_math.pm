@@ -56,8 +56,6 @@ __DATA__
 
 \RequirePackage{fontspec}
 
-\let\mathscr\mathcal
-
 \endinput
 
 __END__
