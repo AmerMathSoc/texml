@@ -49,8 +49,6 @@ __DATA__
 
 \ProvidesPackage{mathrsfs}
 
-\def\mathscr{\mathcal}
-
 \DeclareTeXMLMathAlphabet\mathscr
 
 \endinput
