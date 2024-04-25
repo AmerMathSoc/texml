@@ -52,6 +52,8 @@ __DATA__
 
 \newcounter{algocf}
 
+\let\SetAlgoHangIndent\@gobble
+
 \let\SetKw\@gobbletwo
 \let\SetKwInput\@gobbletwo
 \def\SetKwFor#1#2#3#4{}
