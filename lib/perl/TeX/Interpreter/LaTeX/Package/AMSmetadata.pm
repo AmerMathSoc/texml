@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::AMSmetadata;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -648,6 +648,10 @@ sub add_self_uris {
     my $parent = shift;
     my $gentag = shift;
 
+    my $publ_key = $gentag->get_publ_key();
+
+    return unless $PUBS->is_journal($publ_key) || $PUBS->is_web_product($publ_key);
+
     $gentag->delete_uri();
     $gentag->assign_uri();
 
@@ -668,8 +672,6 @@ sub add_self_uris {
 
         $pdf_uri = caturl($uri, "$pii.pdf");
     } elsif ($doctype eq 'monograph') {
-        my $publ_key = $gentag->get_publ_key();
-
         my $volume = $gentag->get_volume();
 
         if ($doctype eq 'memoirs') {
