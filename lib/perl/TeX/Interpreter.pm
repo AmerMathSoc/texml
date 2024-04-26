@@ -1,6 +1,6 @@
 package TeX::Interpreter;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022-2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -1752,12 +1752,16 @@ sub __init_eqtb_region_4 {
 
     my %token_param;
 
-    foreach my $param ($tex->__assign_toks_commands()) {
-        $token_param{$param} = make_eqvt(new_token_list(), level_one);
+    foreach my $param_name ($tex->__assign_toks_commands()) {
+        $token_param{$param_name} = make_eqvt(new_token_list(), level_one);
 
-        (my $csname = $param) =~ s/_//g;
+        my $csname = $param_name =~ s/_//rg;
 
-        my $param = make_toks_parameter($csname, \$token_param{$param});
+        my $param = make_toks_parameter($csname, \$token_param{$param_name});
+
+        # print STDERR qq{***__init_eqtb_region_4: Aliasing toks param '$csname' to '$param_name'\n};
+
+        # $token_param{$csname} = $token_param{$param_name};
 
         $tex->set_primitive($csname => $param);
         $tex->define_csname($csname => $param);
@@ -9196,8 +9200,6 @@ sub enter_ordinary_math_mode {
 
     $tex->set_cur_fam(-1);
 
-    ## TODO: This doesn't work yet because of LaTeX \frozen@everymath hack.
-
     $tex->begin_token_list($tex->get_toks_list('every_math'), every_math_text);
 
     return;
@@ -10117,9 +10119,6 @@ sub extract_meaning {
 
     my ($type, $subtype) = $params->interpret_cmd_chr($eq_type, $equiv);
 
-    # printf STDERR "*** extract_meaning: type = '%s'; subtype = '%s'\n",
-    # $type || "<undef>", $subtype || "<undef>";
-
     return unless defined $type;
 
     return if $type eq 'UNKNOWN';
@@ -10141,10 +10140,8 @@ sub extract_meaning {
         return make_math_given($subtype);
     }
 
-    if ($type =~ m{\A assign_(dimen|glue|int|toks|) \z}smx) {
-        if (defined(my $eqvt = $tex->get_csname($subtype))) {
-            return $eqvt->get_equiv();
-        }
+    if ($type =~ m{\A assign_(dimen|glue|int|toks) \z}smx) {
+        return $tex->get_primitive($subtype);
     }
 
     if ($type eq 'set_font' && defined $subtype) {
