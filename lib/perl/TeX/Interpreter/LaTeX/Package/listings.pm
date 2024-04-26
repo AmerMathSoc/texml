@@ -75,7 +75,7 @@ __DATA__
     \kernel@ifnextchar[\@@lstnewenv{\@@lstnewenv[]}%
 }
 
-\def\@lstnewenv[#1]#2#3{% [opt default arg]{starting code}{ending code}
+\def\@@lstnewenv[#1]#2#3{% [opt default arg]{starting code}{ending code}
 }
 
 \DeclareSVGEnvironment*{listings}
@@ -128,7 +128,4 @@ __END__
     \endXMLelement{lstlisting}
 }
 
-
 \endinput
-
-
