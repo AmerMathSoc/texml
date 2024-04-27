@@ -10007,13 +10007,17 @@ sub undump_eqtb {
 
     ## REGION 4
 
-    $tex->extract_toks_list('every_par',     every_par_loc, $fmt);
-    $tex->extract_toks_list('every_math',    every_math_loc, $fmt);
-    $tex->extract_toks_list('every_display', every_display_loc, $fmt);
-    $tex->extract_toks_list('every_hbox',    every_hbox_loc, $fmt);
-    $tex->extract_toks_list('every_vbox',    every_vbox_loc, $fmt);
-    $tex->extract_toks_list('every_job',     every_job_loc, $fmt);
-    $tex->extract_toks_list('every_cr',      every_cr_loc, $fmt);
+    $tex->extract_token_parameter($fmt, 'every_par',     every_par_loc);
+    $tex->extract_token_parameter($fmt, 'every_math',    every_math_loc);
+    $tex->extract_token_parameter($fmt, 'every_display', every_display_loc);
+    $tex->extract_token_parameter($fmt, 'every_hbox',    every_hbox_loc);
+    $tex->extract_token_parameter($fmt, 'every_vbox',    every_vbox_loc);
+    $tex->extract_token_parameter($fmt, 'every_job',     every_job_loc);
+    $tex->extract_token_parameter($fmt, 'every_cr',      every_cr_loc);
+
+    for my $index (0..255) {
+        $tex->extract_token_register($fmt, $index);
+    }
 
     my $cat_base  = $params->cat_code_base();
     my $lc_base   = $params->lc_code_base();
@@ -10108,40 +10112,69 @@ my %MACRO = (call            => 0,
              long_outer_call => MODIFIER_LONG | MODIFIER_OUTER,
     );
 
+sub extract_token_parameter {
+    my $tex = shift;
+
+    my $fmt             = shift;
+    my $token_parameter = shift;
+    my $eqtb_index      = shift;
+
+    if (defined (my $toks = $tex->extract_toks_list($fmt, $eqtb_index))) {
+        $tex->set_toks_list($token_parameter, $toks);
+
+        $token_parameter =~ s{_}{}g;
+
+        $tex->__DEBUG(qq{\\$token_parameter = {$toks}});
+    }
+
+    return;
+}
+
+sub extract_token_register {
+    my $tex = shift;
+
+    my $fmt   = shift;
+    my $index = shift;
+
+    my $eqtb_index = toks_base + $index;
+
+    if (defined (my $toks = $tex->extract_toks_list($fmt, $eqtb_index))) {
+        my $registers = $toks_registers_of{ident $tex};
+
+        $tex->eq_define(\$registers->{$index}, $toks);
+
+        $tex->__DEBUG(qq{\\toks$index = {$toks}});
+    }
+
+    return;
+}
+
 sub extract_toks_list {
     my $tex = shift;
 
-    my $toks_register = shift;
-    my $location      = shift;
-    my $fmt           = shift;
+    my $fmt        = shift;
+    my $eqtb_index = shift;
 
-    my $params = $fmt->get_params();
     my $eqtb   = $fmt->get_eqtb();
     my $mem    = $fmt->get_mem();
 
-    my $null_ptr = $params->null();
-
-    my $eqtb_entry = $eqtb->get_word($location);
+    my $eqtb_entry = $eqtb->get_word($eqtb_index);
 
     my $equiv = $eqtb_entry->get_equiv();
 
-    return unless defined $equiv && $equiv != $null_ptr;
+    return unless defined $equiv && $equiv != null_ptr;
 
     my $toks = new_token_list();
 
     for (my $ptr = $mem->get_link($equiv);
-         $ptr != $null_ptr;
+         $ptr != null_ptr;
          $ptr = $mem->get_link($ptr)) {
         my $token = $tex->extract_token($fmt, $ptr);
 
         $toks->push($token);
     }
 
-    $tex->__DEBUG(qq{\\the\\$toks_register = {$toks}?});
-
-    $tex->set_toks_list($toks_register, $toks);
-
-    return;
+    return $toks;
 }
 
 sub extract_meaning {
@@ -10231,14 +10264,12 @@ sub extract_macro {
     my $params = $fmt->get_params();
     my $mem    = $fmt->get_mem();
 
-    my $null_ptr = $params->null();
-
     my $token_list = new_token_list();
 
     my $param_no = 0;
 
     for (my $ptr = $mem->get_link($ref_cnt_ptr);
-         $ptr != $null_ptr;
+         $ptr != null_ptr;
          $ptr = $mem->get_link($ptr)) {
         my $token = $tex->extract_token($fmt, $ptr);
 
