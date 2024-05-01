@@ -52,6 +52,7 @@ __DATA__
 
 \let\originfo\@gobblefour
 
+\let\oa\@gobble
 \let\eo\@gobble
 \let\rv\@gobble
 \let\op\@gobble
