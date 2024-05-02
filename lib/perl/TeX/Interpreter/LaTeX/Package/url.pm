@@ -178,7 +178,6 @@ __DATA__
 }%
 
 \catcode13=12 %
-
 \gdef\Url@percent{\@ifnextchar^^M{\@gobble}{\mathbin{\mathchar`\%}}}%
 \endgroup%
 
