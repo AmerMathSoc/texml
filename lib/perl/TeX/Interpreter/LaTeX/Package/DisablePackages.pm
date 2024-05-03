@@ -94,6 +94,7 @@ __DATA__
 \DisablePackage{tikzsymbols}
 \DisablePackage{xkeyval}
 \DisablePackage{xstring}
+\DisablePackage{yhmath}
 
 \endinput
 
