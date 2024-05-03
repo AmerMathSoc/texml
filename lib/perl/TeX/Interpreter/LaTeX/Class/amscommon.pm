@@ -504,6 +504,10 @@ __DATA__
 
 \let\@datesrevised\@empty
 
+\def\dateaccepted{\gdef\AMS@dateaccepted}
+
+\let\AMS@dateaccepted\@empty
+
 \def\DOI{\gdef\AMS@DOI}
 \let\AMS@DOI\@empty
 
