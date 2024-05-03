@@ -10123,8 +10123,6 @@ sub extract_token_parameter {
         $tex->set_toks_list($token_parameter, $toks);
 
         $token_parameter =~ s{_}{}g;
-
-        $tex->__DEBUG(qq{\\$token_parameter = {$toks}});
     }
 
     return;
@@ -10142,8 +10140,6 @@ sub extract_token_register {
         my $registers = $toks_registers_of{ident $tex};
 
         $tex->eq_define(\$registers->{$index}, $toks);
-
-        $tex->__DEBUG(qq{\\toks$index = {$toks}});
     }
 
     return;
