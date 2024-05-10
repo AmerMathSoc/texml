@@ -854,8 +854,6 @@ __DATA__
 
 \def\HyperFirstAtBeginDocument#1{}
 
-% \def\mathscr{\mathcal}
-
 \def\startXMLspan#1{%
     \startXMLelement{span}%
     \setXMLclass{#1}%
@@ -1509,11 +1507,11 @@ __DATA__
     \endXMLelement{disp-quote}%
 }
 
-%% Redefined ^^M to \UnicodeLineFeed instead of \par:
+%% In verbatim-like environments, we need ^^M to generate
+%% \UnicodeLineFeed instead of \par:
 
 {\catcode`\^^M=\active % these lines must end with %
-  \gdef\obeylines{\catcode`\^^M\active \let^^M\UnicodeLineFeed}%
-  \global\let^^M\UnicodeLineFeed} % this is in case ^^M appears in a \write
+  \gdef\verbatim@obeylines{\catcode`\^^M\active \let^^M\UnicodeLineFeed}}%
 
 \def\@verbatim{
     \par
@@ -1522,7 +1520,7 @@ __DATA__
     \startXMLelement{pre}%
     \let\do\@makeother \dospecials
     \noligs=1
-    \obeylines
+    \verbatim@obeylines
 }
 
 % \def\verbatim{\@verbatim \frenchspacing\@vobeyspaces \@xverbatim}
@@ -1657,13 +1655,6 @@ __DATA__
         \endXMLelement{\@listpartag}%
     \fi
 }
-
-% \def\@mklab#1{%
-%     \everypar{\addXMLid}%
-% %    \thisxmlpartag{term}%
-%     #1%
-%     \par
-% }
 
 \def\@mklab#1{%
     \gdef\list@item@init{%
@@ -2600,6 +2591,9 @@ __DATA__
 
 \DeclareMathJaxMacro*\ %
 \DeclareMathJaxMacro*\!
+
+% \everymath{\def\!{ }}
+
 \DeclareMathJaxMacro*\#
 \DeclareMathJaxMacro*\$
 \DeclareMathJaxMacro*\%
