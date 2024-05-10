@@ -51,6 +51,14 @@ __DATA__
 
 \RequirePackage{hyperref}
 
+\newcommand{\breakurl}[2]{%
+    \url{#1#2}%
+}
+
+\newcommand{\breakhref}[3]{%
+    \href{#1}{#2#3}%
+}
+
 \def\hyperamsURLdef#1{%
     \begingroup
         \let\do\@makeother \dospecials
