@@ -96,7 +96,7 @@ __DATA__
     \UnicodeLineFeed
     \let\do\@makeother \dospecials
     \noligs=1
-    \obeylines
+    \verbatim@obeylines
 }
 
 \newcommand{\lstlisting}[1][]{%
