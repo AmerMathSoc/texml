@@ -156,31 +156,71 @@ __DATA__
 
 \LoadRawMacros
 
-\begingroup
-% \Url@acthash:    convert `other' (doubled) ## to active #
-% \Url@actpercent: convert `other' % to active %
-\lccode`+=`\#
-\lccode`\~=`\#
-\catcode`\#=12
-\lowercase{%
-    \long\gdef\Url@acthash{%
-        \Url@Edit\Url@String{++}{~}%
-        \ifnum\mathcode`\#<32768 \edef~{#}\fi
-    }
-}%
-\lccode`+=`\%
-\lccode`\~=`\%
-\lowercase{%
-    \long\gdef\Url@actpercent{%
-        \Url@Edit\Url@String{+}{~}%
-        \ifnum\mathcode`\%<32768 \def~{\@percentchar}\fi
-    }%
-}%
+% \def\url{%
+%   \leavevmode
+%   \begingroup
+%       \Url
+% }
 
-\catcode13=12 %
-\gdef\Url@percent{\@ifnextchar^^M{\@gobble}{\mathbin{\mathchar`\%}}}%
-\endgroup%
+%% TBD: Might need to remove spaces
+
+\def\Url{%      % # & _ ~ $ ^
+        \Url@movingtest
+        \ifmmode\@inmatherr$\fi %$
+        \let\do\@makeother \dospecials % verbatim catcodes
+        \catcode`\\=\z@  % Vide infra.
+        \catcode`\{=\@ne % with exceptions
+        \catcode`\}=\tw@
+        \catcode`\ =10 % allow "\url {x}"
+        \let\%\@percentchar
+        \edef\#{\string##}%
+        \edef\&{\string&}%
+        \edef\_{\string_}%
+        \edef\~{\string~}%
+        \def\\{\textbackslash}%\textbackslash
+        \let\\\textbackslash
+        \edef\\{\Uchar"005C }
+        \@ifnextchar\bgroup{\obeyspaces\obeylines\Url@z}\Url@y
+}
+
+\def\Url@z#1{%
+        \toks@\expandafter{\expanded{#1}}% Vide infra.
+        \edef\Url@String{\the\toks@}%
+        \edef\Url@String{\expandafter\strip@prefix\meaning\Url@String}%
+        \Url@ObeySp % may be no-op; otherwise put ordinary (12) space characters
+        \Url@HyperHook
+        {\Url@FormatString}%
+    \endgroup
+}
 
 \endinput
 
 __END__
+
+Consider this document:
+
+    \documentclass{amsart}
+
+    \usepackage{url}
+
+    \def\A{https://www.ams.org}
+
+    \begin{document}
+
+    \url{\A}
+
+    \end{document}
+
+The output is "\A" (unlinked because url.sty alone doesn't create
+links.)
+
+If you replace the url package by hyperref, the output is
+"https://www.ams.org" (properly linked).
+
+In other words, hyperref.sty expands macros inside of \url; url.sty
+doesn't.
+
+I don't want to implement two different versions of \url, so I'm just
+going to fold hyperref's behaviour into url.  This involves changing
+the catcode of `\\ in \Url and expanding the token list in the first
+line of \Url@z.
