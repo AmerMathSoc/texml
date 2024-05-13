@@ -65,6 +65,9 @@ __DATA__
         \catcode`\\=0
         \catcode`\{=1
         \catcode`\}=2
+        \edef\\{\expandafter\@gobble\string\\}%
+        \let\{\@charlb
+        \let\}\@charrb
         \afterassignment\endgroup
         \xdef#1%
 }
