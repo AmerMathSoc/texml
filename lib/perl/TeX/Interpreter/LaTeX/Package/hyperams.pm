@@ -51,23 +51,50 @@ __DATA__
 
 \RequirePackage{hyperref}
 
-\newcommand{\breakurl}[2]{%
-    \url{#1#2}%
+\def\url@setup{%
+    \let\do\@makeother \dospecials
+    \catcode`\\=0
+    \catcode`\{=1
+    \catcode`\}=2
+    \edef\\{\expandafter\@gobble\string\\}%
+    \let\{\@charlb
+    \let\}\@charrb
 }
 
-\newcommand{\breakhref}[3]{%
-    \href{#1}{#2#3}%
+\def\breakurl{%
+    \begingroup
+        \url@setup
+        \@breakurl
+}
+
+\def\@breakurl#1#2{%
+        \url{#1#2}%
+    \endgroup
+}
+
+\def\breakhref{%
+    \begingroup
+        \url@setup
+        \@breakhref
+}
+
+\def\@breakhref#1{%
+    \endgroup
+    \begingroup
+        \@@breakhref{#1}%
+}
+
+\def\@@breakhref#1#2#3{%
+        \edef\\{\expandafter\@gobble\string\\}%
+        \let\{\@charlb
+        \let\}\@charrb
+        \href{#1}{#2#3}%
+    \endgroup
 }
 
 \def\hyperamsURLdef#1{%
     \begingroup
-        \let\do\@makeother \dospecials
-        \catcode`\\=0
-        \catcode`\{=1
-        \catcode`\}=2
-        \edef\\{\expandafter\@gobble\string\\}%
-        \let\{\@charlb
-        \let\}\@charrb
+        \url@setup
         \afterassignment\endgroup
         \xdef#1%
 }
