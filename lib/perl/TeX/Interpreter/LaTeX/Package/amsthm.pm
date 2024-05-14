@@ -233,6 +233,8 @@ __DATA__
 
 \def\@begintheorem@#1#2#3#4#5[#6]{
     \everypar{}\par
+    \texml@inlist@hack@start
+    \xmlpartag{p}
     \startXMLelement{statement}%
     \setXMLattribute{content-type}{theorem \@currenvir}%
     \setXMLattribute{style}{thm#2}%
@@ -276,6 +278,7 @@ __DATA__
 \def\@endtheorem{%
     \par
     \endXMLelement{statement}%
+    \texml@inlist@hack@end
 }
 
 \let\QED@stack\@empty
@@ -348,6 +351,8 @@ __DATA__
     \par
     \everypar{}%
     \pushQED{\qed}%
+    \texml@inlist@hack@start
+    \xmlpartag{p}
     \startXMLelement{statement}%
     \setXMLattribute{content-type}{proof \@currenvir}
     \par
@@ -360,6 +365,7 @@ __DATA__
     \par
     \popQED
     \endXMLelement{statement}%
+    \texml@inlist@hack@end
 }
 
 \endinput

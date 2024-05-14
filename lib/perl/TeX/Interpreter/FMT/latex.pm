@@ -1576,6 +1576,8 @@ __DATA__
 \def\@listdefname{def}
 \let\@listconfig\@empty
 
+%% afterfigureinlist@ should probably be replaced by \texml@inlist@hack@start
+
 \newif\ifafterfigureinlist@
 \afterfigureinlist@false
 
@@ -1729,6 +1731,37 @@ __DATA__
     \fi
     \list@beginpar
     \@noitemargfalse
+}
+
+%% See, for example, amsthm.pm.  This should be used in other places
+%% as well (floats, etc.)
+
+\def\texml@inlist@hack@start{%
+    \ifinXMLelement{def-list}%
+        \ifinXMLelement{def-item}%
+            \ifinXMLelement{def}%
+                \ifinXMLelement{p}%
+                    \list@endpar
+                \else%
+                    % NO-OP
+                \fi
+            \else%
+                \list@everypar\list@endpar
+            \fi
+        \else%
+            \list@everypar\list@endpar
+        \fi
+        \par
+    \else
+        % NO-OP
+    \fi
+    %
+}
+
+\def\texml@inlist@hack@end{%
+    \ifinXMLelement{def-item}%
+        \list@beginpar
+    \fi
 }
 
 \renewenvironment{itemize}{%
