@@ -1717,11 +1717,6 @@ __DATA__
         \ifx\@listitemname\@empty\else
             \startXMLelement{\@listitemname}%
             \setXMLattribute{id}{\@currentXMLid}%
-            \if@nmbrlist
-                \if@noitemarg
-                    % \setXMLattribute{html:value}{\expandafter\the\csname c@\@listctr\endcsname}%
-                \fi
-            \fi
             \list@item@init
             \global\let\list@item@init\@empty
         \fi
