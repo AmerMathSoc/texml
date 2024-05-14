@@ -32,7 +32,7 @@ package PTG::Unicode::Translators;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.0.1';
+use version; our $VERSION = qv '2.1.0';
 
 use base qw(Exporter);
 
@@ -238,7 +238,7 @@ BEGIN {
         textasciicircum      => "\x{02C6}",
         textasciidieresis    => "\x{00A8}",
         textasciimacron      => "\x{00AF}",
-        textasciitilde       => "\x{02DC}",
+        textasciitilde       => "\x{007E}", # Not "\x{02DC}"
         textasteriskcentered => "\x{204E}",
         textbaht             => "\x{0E3F}",
         textbardbl           => "\x{2016}",
@@ -324,6 +324,7 @@ BEGIN {
         # cdprime => "\x{042A}",
         cprime  => "\x{2032}", # AMS transliteration
         cdprime => "\x{2033}", # AMS transliteration
+        cydot   => "\x{00B7}",
         ##
         ## math symbols (from stixfont-tbl, 17 Nov 2003)
         ##
@@ -468,6 +469,7 @@ BEGIN {
         sqsubseteq       => "\x{2291}",
         sqsupseteq       => "\x{2292}",
         star             => "\x{22C6}",
+        strokedint       => "\x{2A0F}",
         subset           => "\x{2282}",
         subseteq         => "\x{2286}",
         succ             => "\x{227B}",
@@ -679,6 +681,15 @@ BEGIN {
         ge  => "\x{2265}",
         neq => "\x{2260}",
         to  => "\x{2192}",
+        lhd => "\x{22B2}",
+        rhd => "\x{22B3}",
+        unlhd => "\x{22B4}",
+        unrhd => "\x{22B5}",
+        ## stmaryrd
+        llbracket => "\x{27E6}",
+        rrbracket => "\x{27E7}",
+        ##
+        TeX => q{TeX},
         );
 }
 
@@ -693,22 +704,29 @@ my %TEX_SKIPPED_TOKEN = map { $_ => 1 } qw(- ! @ : / > ;
                                          eject
                                          hfil
                                          hfill
+                                         ignorespaces
+                                         limits
                                          medskip
                                          newblock
                                          newline
                                          newpage
                                          nobreak
                                          noindent
+                                         nolimits
+                                         normalsize
                                          protect
                                          relax
                                          sc
                                          scriptscriptstyle
                                          scriptstyle
+                                         scriptsize
                                          small
                                          smallskip
                                          textstyle
+                                         tiny
                                          tochyphenbreak
                                          unskip
+                                         upshape
                                          forcehyphenbreak
                                          vfil
                                          vfill
@@ -741,7 +759,15 @@ my %TEX_MATH_OPERATOR_NAME = map { $_ => 1 } qw(Pr
 ## to generate them.  Putting them here keeps them out of
 ## UNICODE_TO_TEX_MAP.
 
+our %TEXTGREEK_MAP = (
+    straightphi     => "\x{03D5}",
+    scripttheta     => "\x{03D1}",
+    straighttheta   => "\x{03B8}",
+    straightepsilon => "\x{03F5}",
+    );
+
 my %EXTRA_TEX_TO_UNICODE_MAP = (
+    %TEXTGREEK_MAP,
 #    q{ }   => " ",
     space    => " ",
     Mc       => "Mc",
@@ -804,8 +830,35 @@ my %EXTRA_TEX_TO_UNICODE_MAP = (
     indexname => "Index",
     lbrace    => "q[{]",
     rbrace    => "q[}]",
+    le        => "\x{2264}",
+    ge        => "\x{2265}",
     lt        => "\x{003C}",
     gt        => "\x{003E}",
+    perp      => "\x{22A5}",
+    vert      => "\x{007C}",
+    lvert      => "\x{007C}",
+    rvert      => "\x{007C}",
+    Vert      => "\x{2016}",
+    bowtie    => "\x{22C8}",
+    mid       => "\x{2223}",
+    cdots     => "\x{22EF}",
+    triangleright => "\x{25B7}",
+    sqsubset  => "\x{228F}",
+    sqsupset  => "\x{2290}",
+    cdotp     => "\x{22C5}",
+    dotsb     => "\x{2026}",
+    dotsc     => "\x{2026}",
+    hbar      => "\x{210F}",
+    notin     => "\x{2209}",
+    parallel  => "\x{2225}",
+    vartriangleleft => "\x{22B2}",
+    vartriangleright => "\x{22B3}",
+    trianglelefteq => "\x{22B4}",
+    trianglerighteq => "\x{22B5}",
+    varkappa   => "\x{03BA}",
+    lor        => "\x{2227}",
+    lbracket   => "q{[}",
+    rbracket   => "q{]}",
     );
 
 ## UNICODE_TO_TEX_MAP is the inverse of TEX_TO_UNICODE_MAP.  It's
@@ -973,6 +1026,7 @@ my %UNICODE_SUBSCRIPT_MAP = (
     e     => "\x{2091}",
     i     => "\x{1D62}",
     j     => "\x{2C7C}",
+    m     => "\x{2098}",
     o     => "\x{2092}",
     r     => "\x{1D63}",
     u     => "\x{1D64}",
@@ -1329,6 +1383,7 @@ my %UNICODE_TO_HTML_MAP = (
     "\x{00B2}" => 'sup2',
     "\x{00B3}" => 'sup3',
     "\x{2287}" => 'supe',
+    "\x{2A0F}" => 'strokedint',
     "\x{00DF}" => 'szlig',
     "\x{03A4}" => 'Tau',
     "\x{03C4}" => 'tau',
@@ -3139,6 +3194,7 @@ my %XML_TO_UNICODE_MAP = (
     sube        => "\x{2286}",
     sup         => "\x{2283}",
     supe        => "\x{2287}",
+    strokedint  => "\x{2A0F}",
     "there4"    => "\x{2234}",
     ##
     ## MISC HTML 4.01 HTMLsymbol.ent chars
@@ -3202,7 +3258,7 @@ BEGIN {
     }
 }
 
-sub __create_parser() {
+sub __create_parser {
     my $parser = TeX::Parser::LaTeX->new( { encoding => 'utf8',
                                             # end_line_char => -1,
                                           });
