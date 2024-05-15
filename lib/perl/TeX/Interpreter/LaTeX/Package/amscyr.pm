@@ -50,6 +50,8 @@ __DATA__
 
 \ProvidesPackage{amscyr}
 
+\def\mitBe{\mathit{\char"0411 }}
+
 \def\cyrCh{\mathrm{\char"0427}}
 \def\Sha{\mathrm{\char"0428}}
 \def\Shcha{\mathrm{\char"0429}}
