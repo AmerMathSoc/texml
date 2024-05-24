@@ -2267,8 +2267,9 @@ __DATA__
 \let\bibliographystyle\@gobble
 
 \def\citeleft{%
+    \leavevmode
     \startXMLelement{cite-group}%
-    \leavevmode\XMLgeneratedText[%
+    \XMLgeneratedText[%
 }
 
 \def\citeright{%
@@ -2292,8 +2293,8 @@ __DATA__
             \setXMLattribute{specific-use}{cite}%
             \csname b@\@tempa\endcsname
         }%
-        \@ifnotempty{#2}{\citemid#2}%
         \endXMLelement{xref}%
+        \@ifnotempty{#2}{\citemid#2}%
     \endgroup
 }
 

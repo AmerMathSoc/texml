@@ -75,9 +75,9 @@
     </xsl:if -->
 </xsl:template>
 
-<xsl:template match="cite-group">
+<!-- xsl:template match="cite-group">
     <xsl:apply-templates select="@*|node()"/>
-</xsl:template>
+</xsl:template -->
 
 <!-- With the exception of "verbatim" contexts like <raw-citation>, we
   need to surround inline math by <inline-formula> everywhere *except*

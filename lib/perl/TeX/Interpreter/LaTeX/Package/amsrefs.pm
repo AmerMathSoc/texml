@@ -234,6 +234,7 @@ __DATA__
 %% definitions in amsrefs.sty
 
 \def\citeleft{%
+    \leavevmode
     \startXMLelement{cite-group}%
     \XMLgeneratedText[%
 }
@@ -428,8 +429,8 @@ __DATA__
     \setXMLattribute{ref-type}{bibr}%
     \setXMLattribute{specific-use}{cite}%
     #1%
-    \@ifnotempty{#2}{\citemid#2}%
     \endXMLelement{xref}%
+    \@ifnotempty{#2}{\citemid#2}%
 }
 
 \DeclareRobustCommand{\CitePrintUndefined}[1]{%
