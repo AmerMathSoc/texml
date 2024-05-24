@@ -1874,10 +1874,7 @@ __DATA__
     \string\\[\the\@tempdima]
 }
 
-\DeclareSVGEnvironment{tabular}
-\DeclareSVGEnvironment{tabular*}
 \DeclareSVGEnvironment{tabbing}
-%\DeclareSVGEnvironment{table}
 
 \DeclareSVGEnvironment{SVG}
 \DeclareSVGEnvironment{SVG*}
