@@ -265,7 +265,7 @@ __DATA__
 
 \def\default@border@width{thin}
 \def\default@border@style{solid}
-\def\default@border@color{black}
+\def\default@border@color{currentColor}
 
 \def\reset@border@style{%
     \let\current@border@width\default@border@width
