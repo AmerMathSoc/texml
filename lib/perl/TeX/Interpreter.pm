@@ -8103,7 +8103,7 @@ sub line_break {
 
     if (nonempty($qName)) {
         if (nonempty(my $class = $tex->this_xml_par_class())) {
-            $hbox->unshift_node(make_xml_class_node(XML_SET_CLASSES, $class));
+            $hbox->unshift_node(new_xml_class_node(XML_SET_CLASSES, $class));
         }
 
         $hbox->unshift_node(new_xml_open_node($qName));
@@ -11553,7 +11553,7 @@ sub modify_xml_class {
     my $opcode = shift;
     my $value  = shift;
 
-    $tex->tail_append(make_xml_class_node($opcode, $value));
+    $tex->tail_append(new_xml_class_node($opcode, $value));
 
     return;
 }
