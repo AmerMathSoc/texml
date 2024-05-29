@@ -2267,8 +2267,9 @@ __DATA__
 \let\bibliographystyle\@gobble
 
 \def\citeleft{%
+    \leavevmode
     \startXMLelement{cite-group}%
-    \leavevmode\XMLgeneratedText[%
+    \XMLgeneratedText[%
 }
 
 \def\citeright{%
@@ -2282,18 +2283,24 @@ __DATA__
     \begingroup
         \edef\@tempa{\expandafter\@firstofone#1\@empty}%
         \if@filesw\immediate\write\@auxout{\string\citation{\@tempa}}\fi
-        \startXMLelement{xref}%
-        \setXMLattribute{rid}{bibr-\@tempa}%
-        \setXMLattribute{ref-type}{bibr}%
-        \@ifundefined{b@\@tempa}{%
-            \setXMLattribute{specific-use}{unresolved cite}%
-            \texttt{?\@tempa}%
-        }{%
-            \setXMLattribute{specific-use}{cite}%
-            \csname b@\@tempa\endcsname
-        }%
-        \@ifnotempty{#2}{\citemid#2}%
-        \endXMLelement{xref}%
+%        \startXMLelement{cite}%
+            \startXMLelement{xref}%
+            \setXMLattribute{rid}{bibr-\@tempa}%
+            \setXMLattribute{ref-type}{bibr}%
+            \@ifundefined{b@\@tempa}{%
+                \setXMLattribute{specific-use}{unresolved cite}%
+                \texttt{?\@tempa}%
+            }{%
+                \setXMLattribute{specific-use}{cite}%
+                \csname b@\@tempa\endcsname
+            }%
+            \@ifnotempty{#2}{%
+                \startXMLelement{cite-detail}%
+                \citemid#2%
+                \endXMLelement{cite-detail}%
+            }%
+            \endXMLelement{xref}%
+%        \endXMLelement{cite}%
     \endgroup
 }
 

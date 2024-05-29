@@ -234,6 +234,7 @@ __DATA__
 %% definitions in amsrefs.sty
 
 \def\citeleft{%
+    \leavevmode
     \startXMLelement{cite-group}%
     \XMLgeneratedText[%
 }
@@ -423,13 +424,19 @@ __DATA__
 % }
 
 \def\format@jats@cite#1#2{%
-    \startXMLelement{xref}%
-    \setXMLattribute{rid}{bibr-\strip@cite@prefix#1}%
-    \setXMLattribute{ref-type}{bibr}%
-    \setXMLattribute{specific-use}{cite}%
-    #1%
-    \@ifnotempty{#2}{\citemid#2}%
-    \endXMLelement{xref}%
+    % \startXMLelement{cite}%
+        \startXMLelement{xref}%
+        \setXMLattribute{rid}{bibr-\strip@cite@prefix#1}%
+        \setXMLattribute{ref-type}{bibr}%
+        \setXMLattribute{specific-use}{cite}%
+        #1%
+        \@ifnotempty{#2}{%
+            \startXMLelement{cite-detail}%
+            \citemid#2%
+            \endXMLelement{cite-detail}%
+        }%
+        \endXMLelement{xref}%
+    % \endXMLelement{cite}%
 }
 
 \DeclareRobustCommand{\CitePrintUndefined}[1]{%
