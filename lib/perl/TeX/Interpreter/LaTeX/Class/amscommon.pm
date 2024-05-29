@@ -59,8 +59,6 @@ sub install ( $ ) {
 
     $tex->read_package_data();
 
-    $tex->define_csname('@finishtoc' => \&do_finish_toc);
-
     $tex->define_csname(abstract    => \&do_abstract);
     $tex->define_csname(endabstract => \&do_endabstract);
 
@@ -153,56 +151,6 @@ sub do_endabstract( $$ ) {
 ##                                                                  ##
 ######################################################################
 
-sub do_finish_toc {
-    my $tex   = shift;
-    my $token = shift;
-
-    my $type   = $tex->read_undelimited_parameter(1);
-    my $xml_id = $tex->read_undelimited_parameter();
-
-    my $fragment = << "EOF";
-        \\makeatletter
-        \\immediate\\closeout\\tf\@$type
-        \\typeout{Generating TOC $type}%
-        \\gdef\\\@currtoclevel{-1}%
-        \\let\\\@authorlist\\\@empty
-        \\makeatletter
-        \\\@input{\\jobname.$type}%
-        \\\@clear\@tocstack
-        \\makeatother
-EOF
-
-    my $new = $tex->convert_fragment($fragment);
-
-    my $handle = $tex->get_output_handle();
-
-    my $body = $handle->get_dom();
-
-    my $toc_list = $body->findnodes(qq{//*[\@id='$xml_id']});
-
-    my $num_found = $toc_list->size();
-
-    if ($num_found == 0) {
-        $tex->print_err("Unable to finish TOC $type: can't find XML element '$xml_id'");
-
-        $tex->error();
-
-        return;
-    }
-
-    if ($num_found > 1) {
-        $tex->print_err("That's weird.  I found $num_found XML elements with ID '$xml_id'.  I'll use the first one");
-
-        $tex->error();
-    }
-
-    my $toc = $toc_list->get_node(0);
-
-    $toc->appendChild($new);
-
-    return;
-}
-
 1;
 
 __DATA__
@@ -260,6 +208,8 @@ __DATA__
 \ExecuteOptions{leqno,centertags}
 
 \ProcessOptions
+
+\RequirePackage{AMStoc}
 
 \RequirePackage{OLDfont}
 
@@ -1319,13 +1269,6 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\def\@tocwrite#1{\@xp\@tocwriteb\csname toc#1\endcsname{#1}}
-
-\def\@tocwriteb#1#2#3{%
-    \addcontentsline{toc}{#2}%
-        {\protect#1{\csname#2name\endcsname}{\@secnumber}{#3}{\@currentXMLid}}%
-}
-
 \def\l@part         {\@tocline{-1}{0pt}{0pt}{}{}}
 \def\l@chapter      {\@tocline{0}{0pt}{0pt}{}{}}
 \def\l@section      {\@tocline{1}{0pt}{1pc}{}{}}
@@ -1337,152 +1280,12 @@ __DATA__
 \def\l@figure{\@tocline{0}{3pt plus2pt}{0pt}{1.5pc}{}}
 \let\l@table=\l@figure
 
-%% The typical .toc file line is something like
-%%
-%%   \contentsline {chapter}{\tocchapter {Chapter}{I}{Elementary...}{ltxid3}}{1}
-%%
-%% where
-%%
-%%   \contentsline{chapter} -> \l@chapter -> \@tocline{0}{8pt plus1pt}{0pt}{}{}
-
-\gdef\@currtoclevel{-1}
-
-\def\@tocline#1#2#3#4#5#6#7{%
-    \relax
-    \ifnum #1>\c@tocdepth
-        % OMIT
-    \else
-        \def\@toclevel{#1}%
-        \par
-        \begingroup
-            \disable@footnotes
-             \xmlpartag{}%
-             #6\relax
-        \endgroup
-    \fi
-}
-
-% \def\set@toc@entry#1#2#3#4{%
-%     \leavevmode
-%     \startXMLelement{a}%
-%     \setXMLattribute{href}{###4}%
-%     \ams@measure{#2}%
-%     \if@ams@empty % Unnumbered section
-%     \else
-%         \ignorespaces#1 #2%
-%         \begingroup
-%             \ams@measure{#3}%
-%             \if@ams@empty\else.\quad\fi
-%         \endgroup
-%     \fi
-%     #3%
-%     \endXMLelement{a}%
-%     \par
-% }
-
-% #1 = section name (Chapter, section, etc.)
-% #2 = label (I, 1, 2.3, etc.)
-% #3 = title
-% #4 = id
-
-\def\set@toc@entry#1#2#3#4{%
-    \leavevmode
-    \ams@measure{#2}%
-    \if@ams@empty
-        % Unnumbered section
-    \else
-        \startXMLelement{label}%
-        \ignorespaces#1 #2%
-        \endXMLelement{label}%
-    \fi
-    \startXMLelement{title}%
-    #3%
-    \endXMLelement{title}%
-    \ifx\@authorlist\@empty\else
-        \begingroup
-            \let\and\@empty
-            \let\author@name\toc@contrib@group
-            \par
-            \startXMLelement{contrib-group}%
-                \@authorlist
-            \endXMLelement{contrib-group}%
-        \endgroup
-        \global\let\@authorlist\@empty
-    \fi
-    \startXMLelement{nav-pointer}%
-    \setXMLattribute{rid}{#4}%
-    \endXMLelement{nav-pointer}%
-    \par
-}
-
-\def\toc@contrib@group#1{%
-    \startXMLelement{contrib}%
-        \startXMLelement{string-name}%
-            #1\par
-        \endXMLelement{string-name}%
-    \endXMLelement{contrib}%
-}
-
 \providecommand{\setTrue}[1]{}
 
-\def\contentsname{Contents}
 \def\listfigurename{List of Figures}
 \def\listtablename{List of Tables}
 
-\def\tableofcontents{\@starttoc{toc}\contentsname}
-
-\def\@starttoc#1#2{%
-    \@clear@sectionstack
-    \begingroup
-        \setTrue{#1}%
-        \let\@secnumber\@empty % for \@tocwrite and \chaptermark
-        \ifx\contentsname#2 \else
-            \@tocwrite{chapter}{#2}%
-        \fi
-        \typeout{#2}%
-        \startXMLelement{toc}%
-        \addXMLid
-        \par
-        \startXMLelement{title-group}%
-        \label{@starttoc:#1}%
-        \startXMLelement{title}%
-        {\xmlpartag{}#2\par}%
-        \endXMLelement{title}%
-        \endXMLelement{title-group}%
-        % \gdef\@currtoclevel{-1}%
-        % \let\@authorlist\@empty
-        % \makeatletter
-        % \@input{\jobname.#1}%
-        % \@clear@tocstack
-        \endXMLelement{toc}%
-        \if@filesw
-            \@xp\newwrite\csname tf@#1\endcsname
-            \immediate\@xp\openout\csname tf@#1\endcsname \jobname.#1\relax
-            \AtTeXMLend*{\@nx\@finishtoc{#1}{\@currentXMLid}}
-        \fi
-        \global\@nobreakfalse
-    \endgroup
-    \newpage
-}
-
-\newcommand{\tocsection}[4]{%
-    \ifnum\@toclevel=\@currtoclevel
-        \endXMLelement{toc-entry}%
-        \startXMLelement{toc-entry}%
-    \else
-        \ifnum\@toclevel>\@currtoclevel
-            \startXMLelement{toc-entry}%
-            \@push@tocstack{\@toclevel}%
-        \else
-            \@pop@tocstack{\@toclevel}%
-            %\endXMLelement{toc-entry}%
-            \startXMLelement{toc-entry}%
-            \@push@tocstack{\@toclevel}%
-        \fi
-        \global\let\@currtoclevel\@toclevel
-    \fi
-    \set@toc@entry{#1}{#2}{#3}{#4}%
-}
+\let\tocsection\generic@toc@section
 
 \let\tocappendix\tocsection
 \let\tocchapter\tocsection
