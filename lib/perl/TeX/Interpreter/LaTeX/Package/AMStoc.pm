@@ -183,12 +183,12 @@ __DATA__
 
 \def\set@toc@entry#1#2#3#4{%
     \leavevmode
-    \ams@measure{#2}%
+    \ams@measure{#1#2}%
     \if@ams@empty
         % Unlabeled section
     \else
         \startXMLelement{label}%
-        \ignorespaces#1 #2%
+        \ignorespaces#1 #2\unskip
         \endXMLelement{label}%
     \fi
     \startXMLelement{title}%
