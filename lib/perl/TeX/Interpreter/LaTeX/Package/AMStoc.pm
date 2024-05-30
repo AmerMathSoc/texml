@@ -32,17 +32,7 @@ package TeX::Interpreter::LaTeX::Package::AMStoc;
 use strict;
 use warnings;
 
-# use TeX::Utils::Misc;
-# 
-# use TeX::Constants qw(:named_args);
-# 
-# use TeX::Token qw(:catcodes :factories);
-# 
-# use TeX::WEB2C qw(:save_stack_codes :token_types);
-# 
-# use TeX::Command::Executable::Assignment qw(:modifiers);
-# 
-# use TeX::Node::Extension::UnicodeCharNode qw(:factories);
+use TeX::Utils::Misc;
 
 ######################################################################
 ##                                                                  ##
@@ -70,17 +60,39 @@ sub install ( $ ) {
 ##                                                                  ##
 ######################################################################
 
-######################################################################
-##                                                                  ##
-##                           ENVIRONMENTS                           ##
-##                                                                  ##
-######################################################################
+sub do_label_toc_entries {
+    my $tex   = shift;
+    my $token = shift;
 
-######################################################################
-##                                                                  ##
-##                        TABLE OF CONTENTS                         ##
-##                                                                  ##
-######################################################################
+    my $handle = $tex->get_output_handle();
+
+    my $dom = $handle->get_dom();
+
+    my @toc_entries = $dom->findnodes(qq{descendant::toc-entry});
+
+    $tex->print_nl("Labeling TOC <toc-entry>s"
+                   . " (" . scalar @toc_entries . ")");
+
+    for my $entry (@toc_entries) {
+        if (my @nav_ptrs = $entry->findnodes(qq{child::nav-pointer})) {
+            if (nonempty(my $rid = $nav_ptrs[0]->getAttribute('rid'))) {
+                ## Can't use getElementById without DTD validation.
+
+                # my $target = $dom->getElementById($rid);
+
+                my ($target) = $dom->findnodes("/descendant::*[\@id='$rid']");
+
+                if (defined($target)) {
+                    if (nonempty(my $type = $target->getAttribute('specific-use'))) {
+                        $entry->setAttribute('specific-use', $type);
+                    }
+                }                
+            }
+        }
+    }
+
+    return;
+}
 
 sub do_finish_toc {
     my $tex   = shift;
@@ -129,6 +141,8 @@ EOF
 
     $toc->appendChild($new);
 
+    do_label_toc_entries($tex);
+
     return;
 }
 
@@ -137,12 +151,6 @@ EOF
 __DATA__
 
 \ProvidesClass{AMStoc}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%                                                                  %%
-%%                        TABLE OF CONTENTS                         %%
-%%                                                                  %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \def\@tocwrite#1{\@xp\@tocwriteb\csname toc#1\endcsname{#1}}
 
