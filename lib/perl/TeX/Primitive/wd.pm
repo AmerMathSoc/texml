@@ -36,14 +36,22 @@ use base qw(TeX::Primitive::SetBoxDimen);
 
 use TeX::Class;
 
-# sub execute {
-#     my $self = shift;
-# 
-#     my $tex     = shift;
-#     my $cur_tok = shift;
-# 
-#     return;
-# }
+use TeX::Arithmetic qw(unity);
+
+sub read_value {
+    my $self = shift;
+    my $tex = shift;
+
+    my $box_no = $tex->scan_eight_bit_int();
+
+    my $cur_val = 0;
+
+    if (my $box = $tex->box($box_no)) {
+        $cur_val = length("$box");
+    }
+
+    return $cur_val; # * unity;
+}
 
 1;
 
