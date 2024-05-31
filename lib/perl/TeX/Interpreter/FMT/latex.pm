@@ -1896,7 +1896,13 @@ __DATA__
 \newif\if@ams@empty
 
 \def\ams@measure#1{%
-    \if###1##%
+    \begingroup
+        \let\[\(%
+        \let\]\)%
+        \disable@stepcounter
+        \setbox\@tempboxa\hbox{\ignorespaces#1\unskip}%
+    \expandafter\endgroup
+    \ifdim\wd\@tempboxa=\z@
         \@ams@emptytrue
     \else
         \@ams@emptyfalse
@@ -2278,6 +2284,12 @@ __DATA__
 }
 
 \def\citemid{\XMLgeneratedText{,\space}}
+
+%% Changes \@cite@ofmt need to be coordinated with changes to
+%% \format@jats@cite in amsrefs.pm
+
+%% NB: Downstream assumes that no <x> element will appear as a direct
+%% child of this <xref>.
 
 \def\@cite@ofmt#1#2{%
     \begingroup
