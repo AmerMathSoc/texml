@@ -423,6 +423,12 @@ __DATA__
 %     \endXMLelement{xref}%
 % }
 
+%% Changes in \format@jats@cite need to be coordinated with changes to
+%% \@cite@ofmt in latex.pm
+
+%% NB: Downstream assumes that no <x> element will appear as a direct
+%% child of this <xref>.
+
 \def\format@jats@cite#1#2{%
     % \startXMLelement{cite}%
         \startXMLelement{xref}%
