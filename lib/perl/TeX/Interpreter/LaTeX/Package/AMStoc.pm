@@ -191,9 +191,9 @@ __DATA__
 
 \def\set@toc@entry#1#2#3#4{%
     \leavevmode
-    \ams@measure{#1#2}%
+    \ams@measure{#2}%
     \if@ams@empty
-        % Unlabeled section
+        % Unnumbered
     \else
         \startXMLelement{label}%
         \ignorespaces#1 #2\unskip
