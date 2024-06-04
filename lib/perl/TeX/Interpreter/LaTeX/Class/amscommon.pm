@@ -57,6 +57,14 @@ sub install ( $ ) {
 
     $tex->class_load_notification();
 
+    ## TBD: PRD::MSC should probably be incorporated into texml.
+
+    if (eval "require PRD::MSC") {
+        $tex->print_nl("Found PRD::MSC: Enabling full subject class support");
+    } else {
+        $tex->print_nl("Can't find PRD::MSC: MSC titles will be missing");
+    }
+
     $tex->read_package_data();
 
     $tex->define_csname(abstract    => \&do_abstract);
@@ -135,8 +143,9 @@ sub __parse_subjclass {
 }
 
 sub __msc_kwd {
-    my $type = shift;
-    my $code = shift;
+    my $scheme = shift;
+    my $type   = shift;
+    my $code   = shift;
 
     my $tex = << "EOF";
 \\startXMLelement{compound-kwd}
@@ -145,6 +154,22 @@ sub __msc_kwd {
     \\setXMLattribute{content-type}{code}%
     $code%
     \\endXMLelement{compound-kwd-part}\\par
+EOF
+
+    if (defined $scheme) {
+        if (defined(my $class = $scheme->get_class($code))) {
+            if (defined(my $title = $class->get_title())) {
+                $tex .= << "EOF";
+    \\startXMLelement{compound-kwd-part}\\par
+    \\setXMLattribute{content-type}{text}%
+    $title%
+    \\endXMLelement{compound-kwd-part}\\par
+EOF
+            }
+        }
+    }
+
+    $tex .= << "EOF";
 \\endXMLelement{compound-kwd}\\par
 EOF
 
@@ -168,6 +193,8 @@ sub do_subjclass_meta {
 
     return unless nonempty($primaries);
 
+    my $scheme = eval { PRD::MSC->new({ scheme => $schema }) };
+
     my $tex_text = << "EOF";
 \\startXMLelement{kwd-group}
 \\setXMLattribute{vocab}{MSC $schema}
@@ -176,13 +203,13 @@ EOF
 
     if (nonempty($primaries)) {
         for my $primary (split / /, $primaries) {  #/ for emacs
-            $tex_text .= __msc_kwd("primary", $primary);
+            $tex_text .= __msc_kwd($scheme, "primary", $primary);
         }
     }
 
     if (nonempty($secondaries)) {
         for my $secondary (split / /, $secondaries) {   #/  for emacs
-            $tex_text .= __msc_kwd("secondary", $secondary);
+            $tex_text .= __msc_kwd($scheme, "secondary", $secondary);
         }
     }
 
