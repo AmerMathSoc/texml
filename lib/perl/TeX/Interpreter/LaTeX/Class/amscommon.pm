@@ -64,6 +64,8 @@ sub install ( $ ) {
 
     $tex->define_pseudo_macro(MR => \&do_MR);
 
+    $tex->define_pseudo_macro('output@subjclass@meta' => \&do_subjclass_meta);
+
     $tex->define_pseudo_macro(TeXMLisoBgoltimestamp => \&do_iso_Bgol_timestamp);
 
     return;
@@ -100,6 +102,92 @@ sub do_MR {
 MR \\textbf{$mrnum}%
 \\endXMLelement{ext-link}%
 EOF
+
+    return $tex->tokenize($tex_text);
+}
+
+sub __sanitize_msc( $ ) {
+    my $text = shift;
+
+    return unless defined $text;
+
+    # my @classes = ($text =~ m/ \b (\d\S(?:\S|--)\S\S) \b /sgmx);
+
+    my @classes = split /\s*[,;]\s*/, trim($text);
+
+    return join(" ", @classes);
+}
+
+sub __parse_subjclass {
+    my $subjclass = shift;
+
+    $subjclass =~ s/[();,]/ /g;
+
+    $subjclass = trim($subjclass);
+
+    $subjclass =~ s{\.\s*$}{};
+
+    $subjclass =~ s{\A Primary\:? \s* }{}smx;
+
+    my ($primary, $secondary) = split m{\s* Secondary:? \s*}smx, $subjclass;
+
+    return (__sanitize_msc($primary), __sanitize_msc($secondary));
+}
+
+sub __msc_kwd {
+    my $type = shift;
+    my $code = shift;
+
+    my $tex = << "EOF";
+\\startXMLelement{compound-kwd}
+\\setXMLattribute{content-type}{$type}\\par
+    \\startXMLelement{compound-kwd-part}\\par
+    \\setXMLattribute{content-type}{code}%
+    $code%
+    \\endXMLelement{compound-kwd-part}\\par
+\\endXMLelement{compound-kwd}\\par
+EOF
+
+    return $tex;
+}
+
+sub do_subjclass_meta {
+    my $macro = shift;
+
+    my $tex   = shift;
+    my $token = shift;
+
+    my $subjclass = $tex->get_macro_expansion_text('this@subjclass');
+    my $schema    = $tex->get_macro_expansion_text('this@msc@year');
+
+    $schema = '2020' if empty($schema);
+
+    my ($primaries, $secondaries) = __parse_subjclass($subjclass);
+
+    ##* Warn if secondaries but no primaries?
+
+    return unless nonempty($primaries);
+
+    my $tex_text = << "EOF";
+\\startXMLelement{kwd-group}
+\\setXMLattribute{vocab}{MSC $schema}
+\\setXMLattribute{vocab-identifier}{https://mathscinet.ams.org/msc/msc${schema}.html}\\par
+EOF
+
+    if (nonempty($primaries)) {
+        for my $primary (split / /, $primaries) {  #/ for emacs
+            $tex_text .= __msc_kwd("primary", $primary);
+        }
+    }
+
+    if (nonempty($secondaries)) {
+        for my $secondary (split / /, $secondaries) {   #/  for emacs
+            $tex_text .= __msc_kwd("secondary", $secondary);
+        }
+    }
+
+
+    $tex_text .= q{\endXMLelement{kwd-group}} . "\n";
 
     return $tex->tokenize($tex_text);
 }
@@ -520,8 +608,12 @@ __DATA__
 
 \let\subjclass\relax
 
+\let\this@subjclass\@empty
+\let\this@msc@year\@empty
+
 \newcommand*\subjclass[2][2020]{%
-    \def\@subjclass{#2}%
+    \def\this@subjclass{#2}%
+    \def\this@msc@year{#1}%
     \@ifundefined{subjclassname@#1}{%
         \ClassWarning{\@classname}{Unknown edition (#1) of Mathematics
             Subject Classification; using '2020'.}%
@@ -529,8 +621,6 @@ __DATA__
         \@xp\let\@xp\subjclassname\csname subjclassname@#1\endcsname
     }%
 }
-
-\let\@subjclass\@empty
 
 \@namedef{subjclassname@1991}{%
   \textup{1991} Mathematics Subject Classification}
@@ -786,6 +876,7 @@ __DATA__
             \AMS@issue\par
         \fi
         \output@abstract@meta
+        \output@subjclass@meta
         \output@custom@meta@group
         \endXMLelement{article-meta}
 }
@@ -1400,6 +1491,7 @@ __DATA__
     \startXMLelement{sec-meta}\par
         \output@author@meta
         \output@abstract@meta
+        \output@subjclass@meta
     \endXMLelement{sec-meta}\par
     \if@numbered
         \ifx\deferred@section@counter\@empty\else
