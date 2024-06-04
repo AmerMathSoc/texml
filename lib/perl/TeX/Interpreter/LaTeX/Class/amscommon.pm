@@ -530,7 +530,7 @@ __DATA__
     }%
 }
 
-\let\@subjclass=\@empty
+\let\@subjclass\@empty
 
 \@namedef{subjclassname@1991}{%
   \textup{1991} Mathematics Subject Classification}
@@ -548,7 +548,11 @@ __DATA__
 
 % author, editor, translator, contrib
 
-\let\address\relax\let\curraddr\relax\let\email\relax\let\urladdr\relax
+\let\address\relax
+\let\curraddr\relax
+\let\email\relax
+\let\urladdr\relax
+\let\thanks\relax
 
 \def\author@contrib@type{author}%
 
@@ -572,16 +576,11 @@ __DATA__
 
 \let\AMS@authors\@empty
 
-\let\AMS@author@thankses\@empty
-
-\def\thanks#1{%
-    \@ifnotempty{#1}{\g@addto@macro\AMS@author@thankses{\thanks{#1}}}%
-}
-
 \newcommand{\address}[2][] {\g@addto@macro\AMS@authors{\address{#1}{#2}}}
 \newcommand{\curraddr}[2][]{\g@addto@macro\AMS@authors{\curraddr{#1}{#2}}}
 \newcommand{\email}[2][]   {\g@addto@macro\AMS@authors{\email{#1}{#2}}}
 \newcommand{\authorbio}[1] {\g@addto@macro\AMS@authors{\authorbio{#1}}}
+\newcommand{\thanks}[1]    {\g@addto@macro\AMS@authors{\thanks{#1}}}
 
 \def\url@setup{%
     \let\do\@makeother \dospecials
@@ -786,18 +785,7 @@ __DATA__
             \thisxmlpartag{issue}
             \AMS@issue\par
         \fi
-        \ifx\AMS@abstract\@empty\else
-            \startXMLelement{abstract}
-                \ifx\abstractname\@empty\else
-                    \thisxmlpartag{title}
-                    \abstractname\par
-                \fi
-                \begingroup
-                    \xmlpartag{p}%
-                    \AMS@abstract\par
-                \endgroup
-            \endXMLelement{abstract}
-        \fi
+        \output@abstract@meta
         \output@custom@meta@group
         \endXMLelement{article-meta}
 }
@@ -816,6 +804,21 @@ __DATA__
     \fi
 }
 
+\def\output@abstract@meta{%
+    \ifx\AMS@abstract\@empty\else
+        \startXMLelement{abstract}
+            \ifx\abstractname\@empty\else
+                \thisxmlpartag{title}
+                \abstractname\par
+            \fi
+            \begingroup
+                \xmlpartag{p}%
+                \AMS@abstract\par
+            \endgroup
+        \endXMLelement{abstract}
+    \fi
+}
+
 \def\clear@author{%
     \let\this@name\@empty
     \let\this@bio\@empty
@@ -824,6 +827,7 @@ __DATA__
     \let\this@email\@empty
     \let\this@urladdr\@empty
     \let\this@bio\@empty
+    \let\this@thanks\@empty
 }
 
 \clear@author
@@ -836,6 +840,7 @@ __DATA__
     \def\email##1##2{\def\this@email{##2}}%
     \def\urladdr##1##2{\def\this@urladdr{##2}}%
     \def\authorbio##1{\def\this@bio{##1}}%
+    \def\thanks##1{\def\this@thanks{##1}}%
 }
 
 \def\end@author@{%
@@ -847,6 +852,14 @@ __DATA__
             \startXMLelement{string-name}
                 \this@name
             \endXMLelement{string-name}\par
+            \ifx\this@thanks\@empty\else
+                \startXMLelement{author-comment}
+                    \begingroup
+                        \xmlpartag{p}
+                        \this@thanks\par
+                    \endgroup
+                \endXMLelement{author-comment}\par
+            \fi
             \ifx\this@bio\@empty\else
                 \startXMLelement{bio}
                     \this@bio
@@ -1383,17 +1396,10 @@ __DATA__
     \deferSectionCommand\subsubsection
 }{%
     \deferred@section@command
+    \xmlpartag{}%
     \startXMLelement{sec-meta}\par
-    \ifx\AMS@authors\@empty\else
-        \startXMLelement{contrib-group}\par
-        \setXMLattribute{content-type}{authors}\par
-        \def\start@author{\startXMLelement{contrib}\setXMLattribute{contrib-type}{author}\par}
-        \def\end@author{\endXMLelement{contrib}\par}
-        \let\author@name\XXX@author@name
-        \let\authorbio\XXX@authorbio
-        \AMS@authors\end@author\par
-        \endXMLelement{contrib-group}\par
-    \fi
+        \output@author@meta
+        \output@abstract@meta
     \endXMLelement{sec-meta}\par
     \if@numbered
         \ifx\deferred@section@counter\@empty\else
