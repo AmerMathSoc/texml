@@ -393,7 +393,7 @@ sub add_contributors {
         ## 2) The description is nonempty.
 
         my $this_type = $this_contrib->get_type();
-        my $this_description = $this_contrib->get_description() || "";
+        my $this_description = $this_contrib->get_description() || $this_contrib->get_role() || "";
 
         if (! defined $cur_contrib_group
             || $this_type ne $prev_type
@@ -402,10 +402,10 @@ sub add_contributors {
 
             $cur_contrib_group->setAttribute("content-type", "${this_type}s");
 
-            if (nonempty(my $description = $this_contrib->get_description())) {
+            if (nonempty($this_description)) {
                 append_xml_element($cur_contrib_group,
-                                   "author-comment",
-                                   $description);
+                                   "role",
+                                   $this_description);
             }
 
             $prev_type        = $this_type;
@@ -540,11 +540,6 @@ sub add_contributors {
                 #     $uri_element->setAttribute("XXX", "current");
                 # }
             }
-        }
-
-        if (nonempty (my $role = $this_contrib->get_role())) {
-            my $comment = append_xml_element($contrib, "role",
-                                             $role->get_value());
         }
     }
 
