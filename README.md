@@ -142,15 +142,22 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * apt install liblingua-en-numbers-ordinate-perl
 
-At this point, should be able to compile tests/hello.tex, but probably
-not much more.
+* install [STIX Two](https://github.com/stipub/stixfonts/) and [Source Sans](https://github.com/adobe-fonts/source-sans) (either manually or via `apt install tex-live-fonts-extra`)
+
+Create a configuration from the provided template:
+
+* cp ./cfg/texml.cfg.template ./cfg/texml.cfg
+
+### Microsoft Windows 
+
+The above instructions should work in an Ubuntu-based [Windows Subsystem for Linux](https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux).
 
 ## Testing
 
-If you install the STIX Two fonts somewhere where fontconfig can find
-them, you might also be able to compile test/graphics.tex.  (If you
-want to be able to use stix2.sty (or stix.sty), you'll need the Ubuntu
-fonts-stix package (I think).)
+At this point, should be able to compile, e.g., tests/hello.tex.
+
+If you install the fonts (STIX Two and Source Sans) somewhere where fontconfig 
+can find them, you should also be able to compile test/graphics.tex.
 
 If you get that far, try this:
 
