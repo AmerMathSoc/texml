@@ -268,6 +268,7 @@ __DATA__
         % \ifx\@secnumber\@empty \else
         %     \edef\@secnumber{\@secnumber.}%
         % \fi
+        \@ams@inlinefalse
         \start@XML@section{chapter}{0}{%
             \ifnum\c@secnumdepth<\@toclevel \else
                 \ifx\chaptername\@empty\else
@@ -298,6 +299,7 @@ __DATA__
         \def\@toclevel{0}%
         \let\@secnumber\@empty
         \let\footnote\saved@footnote
+        \@ams@inlinefalse
         \start@XML@section{chapter}{0}{}{#2}%
         \let\XML@section@tag\default@XML@section@tag
         \let\footnote\@gobble
@@ -325,6 +327,7 @@ __DATA__
         \def\@secnumber{\thepart}%
     \fi
     \typeout{\partname\space\@secnumber}%
+    \@ams@inlinefalse
     \start@XML@section{part}{-1}{\partname\space\@secnumber}{#2}%
     \@tocwriteb\tocpart{part}{#2}%
     \@afterheading
@@ -334,6 +337,7 @@ __DATA__
     \typeout{#1}%
     \let\@secnumber\@empty
     \def\@toclevel{-1}%
+    \@ams@inlinefalse
     \start@XML@section{part}{-1}{}{#1}%
     \@tocwriteb\tocpart{part}{#1}%
     \@afterheading

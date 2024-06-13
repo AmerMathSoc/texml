@@ -57,22 +57,12 @@ sub install ( $ ) {
 
     $tex->class_load_notification();
 
-    ## TBD: PRD::MSC should probably be incorporated into texml.
-
-    if (eval "require PRD::MSC") {
-        $tex->print_nl("Found PRD::MSC: Enabling full subject class support");
-    } else {
-        $tex->print_nl("Can't find PRD::MSC: MSC titles will be missing");
-    }
-
     $tex->read_package_data();
 
     $tex->define_csname(abstract    => \&do_abstract);
     $tex->define_csname(endabstract => \&do_endabstract);
 
     $tex->define_pseudo_macro(MR => \&do_MR);
-
-    $tex->define_pseudo_macro('output@subjclass@meta' => \&do_subjclass_meta);
 
     $tex->define_pseudo_macro(TeXMLisoBgoltimestamp => \&do_iso_Bgol_timestamp);
 
@@ -110,111 +100,6 @@ sub do_MR {
 MR \\textbf{$mrnum}%
 \\endXMLelement{ext-link}%
 EOF
-
-    return $tex->tokenize($tex_text);
-}
-
-sub __sanitize_msc( $ ) {
-    my $text = shift;
-
-    return unless defined $text;
-
-    # my @classes = ($text =~ m/ \b (\d\S(?:\S|--)\S\S) \b /sgmx);
-
-    my @classes = split /\s*[,;]\s*/, trim($text);
-
-    return join(" ", @classes);
-}
-
-sub __parse_subjclass {
-    my $subjclass = shift;
-
-    $subjclass =~ s/[();,]/ /g;
-
-    $subjclass = trim($subjclass);
-
-    $subjclass =~ s{\.\s*$}{};
-
-    $subjclass =~ s{\A Primary\:? \s* }{}smx;
-
-    my ($primary, $secondary) = split m{\s* Secondary:? \s*}smx, $subjclass;
-
-    return (__sanitize_msc($primary), __sanitize_msc($secondary));
-}
-
-sub __msc_kwd {
-    my $scheme = shift;
-    my $type   = shift;
-    my $code   = shift;
-
-    my $tex = << "EOF";
-\\startXMLelement{compound-kwd}
-\\setXMLattribute{content-type}{$type}\\par
-    \\startXMLelement{compound-kwd-part}\\par
-    \\setXMLattribute{content-type}{code}%
-    $code%
-    \\endXMLelement{compound-kwd-part}\\par
-EOF
-
-    if (defined $scheme) {
-        if (defined(my $class = $scheme->get_class($code))) {
-            if (defined(my $title = $class->get_title())) {
-                $tex .= << "EOF";
-    \\startXMLelement{compound-kwd-part}\\par
-    \\setXMLattribute{content-type}{text}%
-    $title%
-    \\endXMLelement{compound-kwd-part}\\par
-EOF
-            }
-        }
-    }
-
-    $tex .= << "EOF";
-\\endXMLelement{compound-kwd}\\par
-EOF
-
-    return $tex;
-}
-
-sub do_subjclass_meta {
-    my $macro = shift;
-
-    my $tex   = shift;
-    my $token = shift;
-
-    my $subjclass = $tex->get_macro_expansion_text('this@subjclass');
-    my $schema    = $tex->get_macro_expansion_text('this@msc@year');
-
-    $schema = '2020' if empty($schema);
-
-    my ($primaries, $secondaries) = __parse_subjclass($subjclass);
-
-    ##* Warn if secondaries but no primaries?
-
-    return unless nonempty($primaries);
-
-    my $scheme = eval { PRD::MSC->new({ scheme => $schema }) };
-
-    my $tex_text = << "EOF";
-\\startXMLelement{kwd-group}
-\\setXMLattribute{vocab}{MSC $schema}
-\\setXMLattribute{vocab-identifier}{https://mathscinet.ams.org/msc/msc${schema}.html}\\par
-EOF
-
-    if (nonempty($primaries)) {
-        for my $primary (split / /, $primaries) {  #/ for emacs
-            $tex_text .= __msc_kwd($scheme, "primary", $primary);
-        }
-    }
-
-    if (nonempty($secondaries)) {
-        for my $secondary (split / /, $secondaries) {   #/  for emacs
-            $tex_text .= __msc_kwd($scheme, "secondary", $secondary);
-        }
-    }
-
-
-    $tex_text .= q{\endXMLelement{kwd-group}} . "\n";
 
     return $tex->tokenize($tex_text);
 }
@@ -469,11 +354,11 @@ __DATA__
     \csname the#1\endcsname
 }
 
-\def\section      {\@startsection{section}      {1}{}{}{\z@}{}}
-\def\subsection   {\@startsection{subsection}   {2}{}{}{\p@}{}}
-\def\subsubsection{\@startsection{subsubsection}{3}{}{}{\p@}{}}
-\def\paragraph    {\@startsection{paragraph}    {4}{}{}{\p@}{}}
-\def\subparagraph {\@startsection{subparagraph} {5}{}{}{\p@}{}}
+\def\section      {\@startsection{section}{1}{}{}{}{}}
+\def\subsection   {\@startsection{subsection}{2}{}{}{}{}}
+\def\subsubsection{\@startsection{subsubsection}{3}{}{}{}{}}
+\def\paragraph    {\@startsection{paragraph}{4}{}{}{}{}}
+\def\subparagraph {\@startsection{subparagraph}{5}{}{}{}{}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
@@ -635,12 +520,8 @@ __DATA__
 
 \let\subjclass\relax
 
-\let\this@subjclass\@empty
-\let\this@msc@year\@empty
-
 \newcommand*\subjclass[2][2020]{%
-    \def\this@subjclass{#2}%
-    \def\this@msc@year{#1}%
+    \def\@subjclass{#2}%
     \@ifundefined{subjclassname@#1}{%
         \ClassWarning{\@classname}{Unknown edition (#1) of Mathematics
             Subject Classification; using '2020'.}%
@@ -648,6 +529,8 @@ __DATA__
         \@xp\let\@xp\subjclassname\csname subjclassname@#1\endcsname
     }%
 }
+
+\let\@subjclass=\@empty
 
 \@namedef{subjclassname@1991}{%
   \textup{1991} Mathematics Subject Classification}
@@ -669,7 +552,6 @@ __DATA__
 \let\curraddr\relax
 \let\email\relax
 \let\urladdr\relax
-\let\thanks\relax
 
 \def\author@contrib@type{author}%
 
@@ -693,11 +575,16 @@ __DATA__
 
 \let\AMS@authors\@empty
 
+\let\AMS@author@thankses\@empty
+
+\def\thanks#1{%
+    \@ifnotempty{#1}{\g@addto@macro\AMS@author@thankses{\thanks{#1}}}%
+}
+
 \newcommand{\address}[2][] {\g@addto@macro\AMS@authors{\address{#1}{#2}}}
 \newcommand{\curraddr}[2][]{\g@addto@macro\AMS@authors{\curraddr{#1}{#2}}}
 \newcommand{\email}[2][]   {\g@addto@macro\AMS@authors{\email{#1}{#2}}}
 \newcommand{\authorbio}[1] {\g@addto@macro\AMS@authors{\authorbio{#1}}}
-\newcommand{\thanks}[1]    {\g@addto@macro\AMS@authors{\thanks{#1}}}
 
 \def\url@setup{%
     \let\do\@makeother \dospecials
@@ -903,7 +790,6 @@ __DATA__
             \AMS@issue\par
         \fi
         \output@abstract@meta
-        \output@subjclass@meta
         \output@custom@meta@group
         \endXMLelement{article-meta}
 }
@@ -945,7 +831,6 @@ __DATA__
     \let\this@email\@empty
     \let\this@urladdr\@empty
     \let\this@bio\@empty
-    \let\this@thanks\@empty
 }
 
 \clear@author
@@ -958,7 +843,6 @@ __DATA__
     \def\email##1##2{\def\this@email{##2}}%
     \def\urladdr##1##2{\def\this@urladdr{##2}}%
     \def\authorbio##1{\def\this@bio{##1}}%
-    \def\thanks##1{\def\this@thanks{##1}}%
 }
 
 \def\end@author@{%
@@ -968,31 +852,23 @@ __DATA__
         \startXMLelement{contrib}
             \setXMLattribute{contrib-type}{\author@contrib@type}
             \startXMLelement{string-name}
-                \this@name
+                \this@name\par
             \endXMLelement{string-name}\par
-            \ifx\this@thanks\@empty\else
-                \startXMLelement{author-comment}
-                    \begingroup
-                        \xmlpartag{p}
-                        \this@thanks\par
-                    \endgroup
-                \endXMLelement{author-comment}\par
-            \fi
             \ifx\this@bio\@empty\else
                 \startXMLelement{bio}
-                    \this@bio
+                    \this@bio\par
                 \endXMLelement{bio}\par
             \fi
         \endXMLelement{contrib}\par
     \fi
     \ifx\this@address\@empty\else
         \startXMLelement{aff}
-            \this@address
+            \this@address\par
         \endXMLelement{aff}\par
     \fi
     \ifx\this@email\@empty\else
         \startXMLelement{email}
-            \this@email
+            \this@email\par
         \endXMLelement{email}\par
     \fi
     % \endXMLelement{contrib-group}
@@ -1514,11 +1390,9 @@ __DATA__
     \deferSectionCommand\subsubsection
 }{%
     \deferred@section@command
-    \xmlpartag{}%
     \startXMLelement{sec-meta}\par
         \output@author@meta
         \output@abstract@meta
-        \output@subjclass@meta
     \endXMLelement{sec-meta}\par
     \if@numbered
         \ifx\deferred@section@counter\@empty\else

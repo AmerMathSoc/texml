@@ -67,6 +67,7 @@ __DATA__
         \let\footnote\saved@footnote
     %% Add a <label> even for unnumbered appendixes; see, e.g., gsm/228.
     %% Should this be added to all series?
+        \@ams@inlinefalse
         \start@XML@section{chapter}{0}{%
             \ifx\chaptername\appendixname\appendixname\fi
         }{#2}%

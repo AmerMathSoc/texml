@@ -1946,6 +1946,9 @@ __DATA__
 %
 % LEVEL = \@m if *-ed
 
+\newif\if@ams@inline
+\@ams@inlinefalse
+
 \def\@sect#1#2#3#4#5#6[#7]#8{%
     \def\@currentreftype{sec}%
     \set@sec@subreftype{#1}%
@@ -1972,6 +1975,8 @@ __DATA__
             }%
         \fi
     \fi
+    \@tempskipa #5\relax
+    \ifdim\@tempskipa>\z@ \@ams@inlinetrue \else \@ams@inlinefalse \fi
     \start@XML@section{#1}{\@toclevel}{\@svsec}{#8}%
     \ifnum#2>\@m \else \@tocwrite{#1}{#8}\fi
 }
@@ -2015,7 +2020,7 @@ __DATA__
         \endgroup
         \ifx\@tempa\@empty\else
             \startXMLelement{title}%
-            \ignorespaces#4%
+            \ignorespaces#4\if@ams@inline\@addpunct.\fi
             \endXMLelement{title}%
         \fi
         \par

@@ -252,7 +252,7 @@ __DATA__
     \if S#1%
         \if###5##\else
             \refstepcounter@cref[#4]{#5}%
-            \@nameuse{the#4}.\space % ??? Where is the period in amsthm.dtx?
+            \@nameuse{the#4}\XMLgeneratedText.\space % ??? Where is the period in amsthm.dtx?
         \fi
         %
         #3%
@@ -266,8 +266,12 @@ __DATA__
     \fi
     \par
     \if###6##\else
-        \thisxmlpartag{title}%
-        (#6)\par
+        \begingroup
+        \xmlpartag{}%
+        \startXMLelement{title}%
+            \XMLgeneratedText(#6\XMLgeneratedText)\par
+            \endXMLelement{title}\par
+        \endgroup
     \fi
     \@nameuse{th#2}%
     \par
@@ -356,8 +360,12 @@ __DATA__
     \startXMLelement{statement}%
     \setXMLattribute{content-type}{proof \@currenvir}
     \par
-    \thisxmlpartag{title}
-    #1%
+    \begingroup
+        \xmlpartag{}%
+        \startXMLelement{title}%
+        #1\@addpunct{.}%
+        \endXMLelement{title}\par%
+    \endgroup
     \par
 }
 

@@ -54,7 +54,7 @@ __DATA__
 
 \def\@addpunct#1{% This should be fixed in amsgen.sty
     \relax\ifhmode
-        \ifnum\spacefactor>\@m \else#1\fi
+        \ifnum\spacefactor>\@m \else\XMLgeneratedText{#1}\fi
     \fi
 }
 

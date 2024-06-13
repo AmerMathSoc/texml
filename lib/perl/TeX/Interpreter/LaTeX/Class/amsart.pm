@@ -72,7 +72,7 @@ __DATA__
 
 \LoadClass{amscommon}
 
-\def\part{\@startsection{part}{0}{}{}{}{}}
+\def\part{\@startsection{part}{0}{}{}{\z@}{}}
 
 \def\refname{References}
 
