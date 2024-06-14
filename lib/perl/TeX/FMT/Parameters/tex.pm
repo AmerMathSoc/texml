@@ -1,6 +1,6 @@
 package TeX::FMT::Parameters::tex;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -31,8 +31,6 @@ package TeX::FMT::Parameters::tex;
 
 use strict;
 use warnings;
-
-use version; our $VERSION = qv '1.3.0';
 
 use base qw(TeX::FMT::Parameters);
 
@@ -199,7 +197,9 @@ sub BUILD {
         char_given       => 68,
         math_given       => 69,
         last_item        => 70,
+
         max_non_prefixed_command => sub { $_[0]->last_item() },
+
         toks_register     => sub { $_[0]->max_non_prefixed_command() + 1 },
         assign_toks       => sub { $_[0]->max_non_prefixed_command() + 2 },
         assign_int        => sub { $_[0]->max_non_prefixed_command() + 3 },
@@ -215,12 +215,15 @@ sub BUILD {
         set_box_dimen     => sub { $_[0]->max_non_prefixed_command() + 13 },
         set_shape         => sub { $_[0]->max_non_prefixed_command() + 14 },
         def_code          => sub { $_[0]->max_non_prefixed_command() + 15 },
+
         XeTeX_def_code    => sub { $_[0]->def_code() }, # cheat
         def_family        => sub { $_[0]->XeTeX_def_code() + 1 },
         set_font          => sub { $_[0]->XeTeX_def_code() + 2 },
         def_font          => sub { $_[0]->XeTeX_def_code() + 3 },
         register          => sub { $_[0]->XeTeX_def_code() + 4 },
+
         max_internal      => sub { $_[0]->register() },
+
         advance           => sub { $_[0]->XeTeX_def_code() + 5 },
         multiply          => sub { $_[0]->XeTeX_def_code() + 6 },
         divide            => sub { $_[0]->XeTeX_def_code() + 7 },
@@ -232,7 +235,9 @@ sub BUILD {
         set_box           => sub { $_[0]->XeTeX_def_code() + 13 },
         hyph_data         => sub { $_[0]->XeTeX_def_code() + 14 },
         set_interaction   => sub { $_[0]->XeTeX_def_code() + 15 },
+
         max_command       => sub { $_[0]->set_interaction() },
+
         undefined_cs      => sub { $_[0]->max_command() + 1 },
         expand_after      => sub { $_[0]->max_command() + 2 },
         no_expand         => sub { $_[0]->max_command() + 3 },
@@ -253,6 +258,7 @@ sub BUILD {
         shape_ref         => sub { $_[0]->max_command() + 18 },
         box_ref           => sub { $_[0]->max_command() + 19 },
         data              => sub { $_[0]->max_command() + 20 },
+
         ##
         ## SEMANTIC NEST
         ##
@@ -266,6 +272,7 @@ sub BUILD {
         ##
         active_base => 1,
         single_base => sub { $_[0]->active_base() + $_[0]->number_usvs() },
+
         null_cs     => sub { $_[0]->single_base() + $_[0]->number_usvs() },
         ##
         ## Region 2
@@ -283,9 +290,13 @@ sub BUILD {
         end_write           => sub { $_[0]->frozen_control_sequence() + 8 },
         frozen_dont_expand  => sub { $_[0]->frozen_control_sequence() + 9 },
         frozen_special      => sub { $_[0]->frozen_control_sequence() + 10 },
+
         frozen_null_font    => sub { $_[0]->frozen_control_sequence() + 11 },
-        font_id_base        => sub { $_[0]->frozen_null_font() - $_[0]->font_base() },
-        undefined_control_sequence => sub { $_[0]->frozen_null_font + $_[0]->max_font_max() + 1 },
+
+#        font_id_base        => sub { $_[0]->frozen_null_font() - $_[0]->font_base() },
+
+        undefined_control_sequence => sub { $_[0]->frozen_null_font() + $_[0]->max_font_max() + 1 },
+
         ##
         ## Region 3
         ##
@@ -309,7 +320,7 @@ sub BUILD {
         med_mu_skip_code              => 16,
         thick_mu_skip_code            => 17,
         glue_pars                     => 18,
-        skip_base => sub { $_[0]->glue_base() + $_[0]->glue_pars() },
+        skip_base    => sub { $_[0]->glue_base() + $_[0]->glue_pars() },
         mu_skip_base => sub { $_[0]->skip_base() + $_[0]->number_regs() },
         ##
         ## Region 4

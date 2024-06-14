@@ -1,6 +1,6 @@
 package TeX::FMT::Parameters;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -31,8 +31,6 @@ package TeX::FMT::Parameters;
 
 use strict;
 use warnings;
-
-use version; our $VERSION = qv '1.3.2';
 
 use base qw(Exporter);
 
@@ -86,14 +84,31 @@ sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
     my %params = (
+        has_translation_tables => 1,
+        has_etex               => 0,
+        has_mltex              => 1,
+        has_enctex             => 1,
+        
+        is_xetex               => 0,
+
+        fmt_has_hyph_start     => 0,
+
+        fmem_word_length     => 4,
+
+        cs_token_flag        => 0xFFF,
+
         min_quarterword      => 0,
-        max_quarterword      => 0,
-        min_halfword         => -0xfffffff,
+#        max_quarterword      => 0,
+        min_halfword         => -0xFFFFFFF,
         max_halfword         => 0xfffffff,
-        main_memory          => 250000,
+
+        null_ptr             => sub { $_[0]->min_halfword },
+
+#        main_memory          => 250000,
+
         mem_bot              => 0,
-        extra_mem_bot        => 0,
-        extra_mem_top        => 0,
+#        extra_mem_bot        => 0,
+#        extra_mem_top        => 0,
         max_font_max         => 9000,
         font_mem_size        => 100000,
         hash_size            => 15000,
@@ -108,17 +123,18 @@ sub BUILD {
         ##
         ## Derived parameters
         ##
-        mem_top           => sub { $_[0]->mem_bot() + $_[0]->main_memory() - 1 },
-        mem_min           => sub { $_[0]->get_mem_bot() },
-        mem_max           => sub { $_[0]->get_mem_top() },
+#        mem_top           => sub { $_[0]->mem_bot() + $_[0]->main_memory() - 1 },
+        mem_min           => sub { $_[0]->mem_bot() },
+#        mem_max           => sub { $_[0]->get_mem_top() },
         null              => sub { $_[0]->min_halfword() },
         last_text_char    => sub { $_[0]->biggest_char() },
         number_usvs       => sub { $_[0]->biggest_usv() + 1 },
         number_regs       => sub { $_[0]->biggest_reg() + 1 },
         number_math_fonts => sub { 3 * $_[0]->number_math_families() },
-        level_zero        => sub { $_[0]->min_quarterword() },
-        level_one         => sub { $_[0]->level_zero() + 1 },
+#        level_zero        => sub { $_[0]->min_quarterword() },
+#        level_one         => sub { $_[0]->level_zero() + 1 },
         prim_size         => 0,
+#        font_base         => 0,
         );
 
     $parameters_of{$ident} = \%params;
@@ -131,6 +147,14 @@ sub BUILD {
 ##                         CUSTOM ACCESSORS                         ##
 ##                                                                  ##
 ######################################################################
+
+sub has_parameter {
+    my $self = shift;
+
+    my $param_name = shift;
+
+    return exists $parameters_of{ident $self}->{$param_name};
+}
 
 sub get_parameter {
     my $self = shift;

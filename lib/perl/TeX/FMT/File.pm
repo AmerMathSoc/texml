@@ -1,6 +1,6 @@
 package TeX::FMT::File;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,11 +32,11 @@ package TeX::FMT::File;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.1';
-
 use Carp;
 
 use integer;
+
+use Encode qw(decode);
 
 use Fcntl qw(:seek);
 
@@ -50,17 +50,15 @@ use TeX::FMT::Hash;
 use TeX::FMT::Mem;
 use TeX::FMT::MemoryWord;
 
+use TeX::FMT::Parameters;
 use TeX::FMT::Parameters::Utils qw(print_esc);
 
 use TeX::Font qw(:factories);
-
-use TeX::FMT::Parameters;
 
 use base qw(TeX::BinaryFile);
 
 use TeX::Class;
 
-my %fmt_format   :ATTR(:get<fmt_format> :set<fmt_format>);
 my %engine       :ATTR(:get<engine>     :set<engine>);
 
 my %debug_mode_of :BOOLEAN(:name<debug_mode> :get<debug_mode> :default<0>);
@@ -87,9 +85,10 @@ my %eTeX_mode    :ATTR(:get<eTeX_mode>    :set<eTeX_mode> :default(0));
 my %mltex_p      :ATTR(:get<mltex_p>      :set<mltex_p>  :default(0));
 my %enctex_p     :ATTR(:get<enctex_p>     :set<enctex_p> :default(0));
 
-my %pool_ptr     :ATTR(:get<pool_ptr>     :set<pool_ptr>);
-my %str_ptr      :ATTR(:get<str_ptr>      :set<str_ptr>);
-my %strings      :ATTR(:get<strings>      :set<strings>);
+my %string_check     :ATTR(:get<string_pool_checksum>, :set<string_pool_checksum>);
+my %string_pool_size :ATTR(:get<string_pool_size> :set<string_pool_size>);
+my %max_strings      :ATTR(:get<max_strings>      :set<max_strings>);
+my %strings          :ATTR(:get<strings>          :set<strings>);
 
 my %lo_mem_max   :ATTR(:get<lo_mem_max>   :set<lo_mem_max>);
 my %hi_mem_min   :ATTR(:get<hi_mem_min>   :set<hi_mem_min>);
@@ -115,19 +114,20 @@ my %font_names   :ATTR(:get<font_names>   :set<font_names>);
 my %format_ident :ATTR(:get<format_ident> :set<format_ident>);
 my %interaction  :ATTR(:get<interaction_level>  :set<interaction_level>);
 
-my %checksum :ATTR(:get<checksum>, :set<checksum>);
+my %magic_number :ATTR(:get<magic_number>, :set<magic_number>);
 
 my %font_map :ATTR(:get<font_map>);
 
 use constant MEM_WORD_LENGTH => 8;
-use constant FMEM_WORD_LENGTH => 4;
 
 use constant BYTES_PER_INT => 4;
 
-use constant W2TX_CONSTANT => unpack("N", "W2TX"); # 3.141592 + W2C 7.4.5
+use constant W2TX_MAGIC_NUMBER  => unpack("N", "W2TX"); # 3.141592 + W2C 7.4.5
 
-use constant MLTX_CONSTANT => unpack("N", "MLTX");
-use constant ECTX_CONSTANT => unpack("N", "ECTX");
+use constant XETEX_MAGIC_NUMBER => 529205248;
+
+use constant MLTX_MAGIC => unpack("N", "MLTX");
+use constant ECTX_MAGIC => unpack("N", "ECTX");
 
 use constant {
     IMAGE_TYPE_NONE  => 0,
@@ -137,6 +137,8 @@ use constant {
     IMAGE_TYPE_TIF   => 4,
     IMAGE_TYPE_JBIG2 => 5,
 };
+
+sub __debug { } # print STDERR "*** ", @_, "\n" }
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
@@ -152,6 +154,12 @@ sub BUILD {
     return;
 }
 
+sub is_xetex {
+    my $self = shift;
+
+    return $self->get_engine() eq 'xetex';
+}
+
 sub __check( $$$ ) {
     my $name     = shift;
     my $expected = shift;
@@ -159,7 +167,7 @@ sub __check( $$$ ) {
 
     # warn sprintf "Bad $name: Expected %04X, got %04X\n", $expected, $found;
     if ($expected != $found) {
-        warn sprintf "Bad $name: Expected %d, got %d\n", $expected, $found;
+        warn "Bad $name: Expected $expected, got $found\n";
     }
 
     return;
@@ -241,7 +249,7 @@ sub read_fmemory_words {
     $#words = $n - 1;
 
     for my $i (0..$n-1) {
-        $words[$i] = $self->read_bytes(FMEM_WORD_LENGTH);
+        $words[$i] = $self->read_bytes($self->fmem_word_length());
     }
 
     return @words;
@@ -251,6 +259,41 @@ sub read_integer {
     my $self = shift;
 
     return $self->read_signed(BYTES_PER_INT);
+}
+
+sub read_checksum {
+    my $self = shift;
+
+    if ($self->is_xetex()) {
+        return $self->read_signed(8);
+    }
+
+    return $self->read_integer();
+}
+
+sub read_smallnumber {
+    my $self = shift;
+
+    if ($self->is_xetex()) {
+        return $self->read_short();
+    }
+
+    return $self->read_unsigned_char();
+}
+
+sub read_small_numbers {
+    my $self = shift;
+
+    my $n = shift;
+
+    my @ints;
+    $#ints = $n - 1;
+
+    for my $i (0..$n-1) {
+        $ints[$i] = $self->read_smallnumber();
+    }
+
+    return @ints;
 }
 
 sub read_integers {
@@ -283,6 +326,12 @@ sub read_shorts {
     return @shorts;
 }
 
+sub read_short {
+    my $self = shift;
+
+    return $self->read_signed(2);
+}
+
 sub read_unsigned_shorts {
     my $self = shift;
 
@@ -296,6 +345,12 @@ sub read_unsigned_shorts {
     }
 
     return @shorts;
+}
+
+sub read_unsigned_char {
+    my $self = shift;
+
+    return $self->read_unsigned(1);
 }
 
 sub read_unsigned_chars {
@@ -349,7 +404,7 @@ sub load {
         $self->load_pdftex_data();
     }
 
-    $self->finish_load();
+    $self->load_trailer();
 
     return;
 }
@@ -363,9 +418,7 @@ sub load_through_eqtb {
 
     $self->load_mltex_data();
 
-    if ($self->get_fmt_format() == 3) {
-        $self->load_enctex_data();
-    }
+    $self->load_enctex_data();
 
     $self->load_string_pool();
 
@@ -379,30 +432,19 @@ sub load_through_eqtb {
 sub load_header {
     my $self = shift;
 
-    # $LOG->verbose("Loading fmt file\n");
+    my $magic_number = $self->read_integer();
 
-    my $checksum = $self->read_integer();
+    die "Unknown FMT format\n" unless $magic_number == W2TX_MAGIC_NUMBER;
 
-    if ($checksum == W2TX_CONSTANT) {
-        $self->set_fmt_format(3);
+    $self->set_magic_number($magic_number);
 
-        $self->load_format_engine();
-
-        $checksum = $self->read_integer();
-
-        $self->load_translation_tables();
-    } else {
-        $self->set_fmt_format(2);
-
-        $self->set_engine('tex');
-    }
+    my $engine = $self->load_format_engine();
 
     my $params = get_engine_parameters($self->get_engine());
 
     $self->set_params($params);
     $self->get_eqtb()->set_params($params);
-
-    $self->set_checksum($checksum);
+    $self->get_mem()->set_params($params);
 
     return;
 }
@@ -412,19 +454,21 @@ sub load_format_engine {
 
     my $engine = $self->read_string(4);
 
-    $engine =~ s/\000+$//g;
+    $engine =~ s/\000*$//g; ## Shouldn't read_string() do this?
 
-    # $LOG->debug("engine = '$engine'\n");
+    __debug "engine = '$engine'";
 
     $self->set_engine($engine);
 
-    return;
+    return $engine;
 }
 
 sub load_translation_tables {
     my $self = shift;
 
-    # $LOG->verbose("Loading translation\n");
+    __debug "Loading translation tables";
+
+    return unless $self->get_params()->has_translation_tables();
 
     my @xord = unpack("C*", $self->read_bytes(256));
     my @xchr = unpack("C*", $self->read_bytes(256));
@@ -437,30 +481,56 @@ sub load_translation_tables {
     return;
 }
 
+sub load_etex_state {
+    my $self = shift;
+
+    return unless $self->has_etex();
+
+    __debug "Loading eTeX state";
+
+    my $eTeX_mode = $self->read_integer();
+
+    __debug "eTeX_mode = $eTeX_mode";
+
+    $self->set_eTeX_mode($eTeX_mode);
+
+    return;
+}
+
 sub load_constants {
     my $self = shift;
 
-    # $LOG->verbose("Loading constants\n");
+    __debug "Loading constants";
 
     my $params = $self->get_params();
 
+    my $pool_checksum = $self->read_integer();
+
+    $self->set_string_pool_checksum($pool_checksum);
+
+    __debug "string pool checksum = $pool_checksum";
+
+    $self->load_translation_tables();
+
     my $max_halfword = $self->read_integer();
+
+    __debug "max_halfword = $max_halfword";
 
     __check "max_halfword", $params->max_halfword(), $max_halfword;
 
     $self->set_max_halfword($max_halfword);
 
-    $self->set_hash_high($self->read_integer());
+    my $hash_high = $self->read_integer();
 
-    if ($self->get_engine() eq 'pdftex') {
-        my $eTeX_mode = $self->read_integer();
+    __debug "hash_high = $hash_high";
 
-        # $LOG->debug("eTeX_mode = $eTeX_mode\n");
+    $self->set_hash_high($hash_high);
 
-        $self->set_eTeX_mode($eTeX_mode);
-    }
+    $self->load_etex_state();
 
     my $mem_bot = $self->read_integer();
+
+    __debug "mem_bot = $mem_bot";
 
     __check "mem_bot", $params->mem_bot(), $mem_bot;
 
@@ -468,18 +538,28 @@ sub load_constants {
 
     my $mem_top = $self->read_integer();
 
+    __debug "mem_top = $mem_top";
+
     $self->set_mem_top($mem_top);
     $self->get_mem()->set_mem_top($mem_top);
 
-    $self->set_eqtb_size($self->read_integer());
+    my $eqtb_size = $self->read_integer();
+
+    __debug "eqtb_size = $eqtb_size";
+
+    $self->set_eqtb_size($eqtb_size);
 
     my $hash_prime = $self->read_integer();
+
+    __debug "hash_prime = $hash_prime";
 
     __check "hash_prime", $params->hash_prime(), $hash_prime;
 
     $self->set_hash_prime($hash_prime);
 
     my $hyph_prime = $self->read_integer();
+
+    __debug "hyph_prime = $hyph_prime";
 
     __check "hyph_prime", $params->hyph_prime(), $hyph_prime;
 
@@ -491,9 +571,13 @@ sub load_constants {
 sub load_mltex_data {
     my $self = shift;
 
+    return unless $self->has_mltex();
+
     my $mltex_magic = $self->read_integer();
 
-    __check "MLTeX magic", MLTX_CONSTANT, $mltex_magic;
+    __debug "MLTX_MAGIC = $mltex_magic";
+
+    __check "MLTeX magic", MLTX_MAGIC, $mltex_magic;
 
     $self->set_mltex_p($self->read_integer());
 
@@ -503,9 +587,13 @@ sub load_mltex_data {
 sub load_enctex_data {
     my $self = shift;
 
+    return unless $self->has_enctex();
+
     my $magic = $self->read_integer();
 
-    __check "encTeX magic", ECTX_CONSTANT, $magic;
+    __debug "ECTX_MAGIC = $magic";
+
+    __check "encTeX magic", ECTX_MAGIC, $magic;
 
     my $enctex_p = $self->read_integer();
 
@@ -523,29 +611,59 @@ sub load_enctex_data {
 sub load_string_pool {
     my $self = shift;
 
-    # $LOG->verbose("Loading string pool\n");
+    __debug "Loading string pool";
 
-    my $pool_ptr = $self->read_integer();
-    my $str_ptr  = $self->read_integer();
+    my $string_pool_size = $self->read_integer();    # aka pool_ptr
+    my $max_strings      = $self->read_integer();    # aka str_ptr
 
-    $self->set_pool_ptr($pool_ptr);
-    $self->set_str_ptr($str_ptr);
+    __debug "string pool size = $string_pool_size";
+    __debug "max_strings      = $max_strings";
 
-    my @str_start = unpack("N*", $self->read_bytes(BYTES_PER_INT * ($str_ptr + 1)));
+    $self->set_string_pool_size($string_pool_size);
+    $self->set_max_strings($max_strings);
+
+    my $num_strings = $max_strings + 1;
+
+    my $is_xetex = $self->is_xetex();
+
+    if ($is_xetex) {
+        $num_strings -= $self->too_big_char();
+    }
+
+    __debug "num_strings      = $num_strings";
+
+    my @str_start = unpack("N*", $self->read_bytes(BYTES_PER_INT * $num_strings));
+
+    # __debug "str_start = @str_start";
 
     my @strings;
-    $#strings = $str_ptr - 1;
 
-    for my $i (0..$str_ptr - 1) {
-        my $len = $str_start[$i + 1] - $str_start[$i];
+    $#strings = $max_strings;
+
+    my $offset = 0;
+
+    if ($is_xetex) {
+        $offset = $self->too_big_char(); # - 1;
+    }
+
+    for my $i ($offset..$max_strings - 1) {
+        my $len = $str_start[$i + 1 - $offset] - $str_start[$i - $offset];
+
+        $len *= 2 if $is_xetex;
 
         if ($len > 0) {
-            $strings[$i] = $self->read_bytes($len);
+            my $string = $self->read_bytes($len);
+
+            $string = decode('UTF-16', $string) if $is_xetex;
+
+            $strings[$i] = $string
         } else {
             $strings[$i] = '';
         }
 
-        # $LOG->debug("string[$i] = '$strings[$i]'\n");
+        # printf STDERR "%02d%s\n", length($strings[$i]), $strings[$i];
+
+        # __debug "strings[$i]=$strings[$i]"
     }
 
     $self->set_strings(\@strings);
@@ -556,7 +674,7 @@ sub load_string_pool {
 sub load_dynamic_memory {
     my $self = shift;
 
-    # $LOG->verbose("Loading dynamic memory\n");
+    __debug "Loading dynamic memory";
 
     my $params = $self->get_params();
 
@@ -565,12 +683,18 @@ sub load_dynamic_memory {
     my $lo_mem_max = $self->read_integer();
     my $rover      = $self->read_integer();
 
+    __debug "lo_mem_max = $lo_mem_max";
+    __debug "rover = $rover";
+
     $self->set_lo_mem_max($lo_mem_max);
     $self->get_mem()->set_lo_mem_max($lo_mem_max);
+
     $self->set_rover($rover);
 
     if ($self->get_eTeX_mode()) {
-        for my $k ($params->int_val() .. $params->tok_val()) {
+        __debug "Reading eTeX extended arrays";
+
+        for (1..$params->num_sparse_arrays) {
             $self->read_integer();
         }
     }
@@ -586,6 +710,15 @@ sub load_dynamic_memory {
         }
 
         $p = $q + $mem->get_node_size($q);
+
+        if ( 
+            ($p > $lo_mem_max)
+             ||
+ ( $q >= $mem->get_rlink($q) && ($mem->get_rlink($q) != $rover) )
+            ) {
+                 die "load_dynamic_memory: Bad format: p = $p; q = $q\n";
+        }
+
         $q = $mem->get_rlink($q);
     } until ($q == $rover);
 
@@ -613,6 +746,9 @@ sub load_dynamic_memory {
     my $var_used = $self->read_integer();
     my $dyn_used = $self->read_integer();
 
+    __debug "var_used = $var_used";
+    __debug "dyn_used = $dyn_used";
+
     $self->set_var_used($var_used);
     $self->set_dyn_used($dyn_used);
 
@@ -622,7 +758,7 @@ sub load_dynamic_memory {
 sub load_eqtb {
     my $self = shift;
 
-    # $LOG->verbose("Loading eqtb\n");
+    __debug "Loading eqtb";
 
     my $params = $self->get_params();
 
@@ -676,42 +812,56 @@ sub load_eqtb {
     return;
 }
 
-sub load_hash_table {
+sub load_primitive_table {
     my $self = shift;
-
-    # $LOG->verbose("Loading hash table\n");
 
     my $params = $self->get_params();
 
-    if ($params->prim_size() > 0) {
-        # $LOG->verbose("Loading primitives table\n");
+    return unless $params->prim_size() > 0;
 
-        ## Skip over the prim and prim_eqtb tables used to implement
-        ## the \pdfprimitive and \ifpdfprimitive extensions.
+    __debug "Loading primitives table (", $params->prim_size(), ")";
 
-        my @prim;
+    ## Skip over the prim and prim_eqtb tables used to implement
+    ## the \pdfprimitive and \ifpdfprimitive extensions.
 
-        for (my $p = 0; $p <= $params->prim_size(); $p++) {
-            $prim[$p] = $self->read_memory_word();
-        }
+    my @prim;
 
-        my @prim_eqtb;
-
-        for (my $p = 0; $p <= $params->prim_size(); $p++) {
-            $prim_eqtb[$p] = $self->read_memory_word();
-        }
+    for (my $p = 0; $p <= $params->prim_size(); $p++) {
+        $prim[$p] = $self->read_memory_word();
     }
+
+    my @prim_eqtb;
+
+    for (my $p = 0; $p <= $params->prim_size(); $p++) {
+        $prim_eqtb[$p] = $self->read_memory_word();
+    }
+
+    return;
+}
+
+sub load_hash_table {
+    my $self = shift;
+
+    __debug "Loading hash table";
+
+    my $params = $self->get_params();
+
+    $self->load_primitive_table();
 
     my $hash = $self->get_hash();
     my $eqtb = $self->get_eqtb();
 
     my $hash_used = $self->read_integer();
 
+    __debug "hash_used = $hash_used";
+
     $self->set_hash_used($hash_used);
 
     my $ptr = $params->hash_base() - 1;
 
-    # $LOG->verbose("Reading hash region 1\n\n");
+    __debug "Reading hash region 1; ptr = $ptr";
+
+    __debug "csnames from ", $ptr + 1, " to $hash_used";
 
     do {
         my $next_ptr = $self->read_integer();
@@ -727,9 +877,15 @@ sub load_hash_table {
         my $word = $self->read_memory_word();
 
         $hash->set_word($ptr, $word);
+
+# DEBUG: {
+#     my $c = $word->get_rh();
+#     print STDERR $self->get_string($c), "|\n";
+# }
+
     } until $ptr == $hash_used;
 
-    # $LOG->verbose("Reading hash region 2\n\n");
+    __debug "Reading hash region 2; ptr = ", $hash_used + 1;
 
     for my $ptr ($hash_used + 1 .. $params->undefined_control_sequence() - 1) {
         my $word = $self->read_memory_word();
@@ -737,12 +893,14 @@ sub load_hash_table {
         $hash->set_word($ptr, $word);
     }
 
-    # $LOG->verbose("Reading hash region 3\n\n");
+    __debug "Reading hash region 3";
     
     my $hash_high = $self->get_hash_high();
 
     if ($hash_high > 0) {
         my $eqtb_size = $self->get_eqtb_size();
+
+        __debug "    ptr = ", $eqtb_size + 1;
         
         for my $ptr ($eqtb_size + 1 .. $eqtb_size + $hash_high) {
             my $word = $self->read_memory_word();
@@ -753,6 +911,8 @@ sub load_hash_table {
 
     my $cs_count = $self->read_integer();
 
+    __debug "cs_count = $cs_count";
+
     $self->set_cs_count($cs_count);
 
     return;
@@ -761,9 +921,11 @@ sub load_hash_table {
 sub load_font_info {
     my $self = shift;
 
-    # $LOG->verbose("Loading font info\n");
+    __debug "Loading font info";
 
     my $params = $self->get_params();
+
+    my $is_xetex = $self->is_xetex();
 
     my $fmem_ptr = $self->read_integer();
 
@@ -774,17 +936,31 @@ sub load_font_info {
 
     $self->set_fmem_ptr($fmem_ptr);
 
+    __debug "font mem size = $fmem_ptr";
+
     my @font_info = $self->read_fmemory_words($fmem_ptr);
 
     my $font_ptr = $self->read_integer();
 
     $self->set_font_ptr($font_ptr);
 
+    __debug "font max = $font_ptr";
+
     my $num_fonts = $font_ptr + 1;
 
-    my @font_check = $self->read_integers($num_fonts);
+    __debug "Reading font checksums";
+
+    my @font_check;
+
+    for (1..$num_fonts) {
+        push @font_check, $self->read_checksum();
+    }
+
+    __debug "font_check = @font_check";
 
     $self->set_font_checks(\@font_check);
+
+    __debug "Reading font sizes";
 
     my @font_size        = $self->read_integers($num_fonts);
     my @font_dsize       = $self->read_integers($num_fonts);
@@ -792,16 +968,53 @@ sub load_font_info {
     $self->set_font_sizes(\@font_size);
     $self->set_font_dsizes(\@font_dsize);
 
+    __debug "font_size = @font_size";
+    __debug "font_dsize = @font_dsize";
+
+    __debug "Reading font_params";
+
     my @font_params      = $self->read_integers($num_fonts);
+
+    __debug "font_params = @font_params";
+
+    __debug "Reading hyphen_char";
+
     my @hyphen_char      = $self->read_integers($num_fonts);
+
+    __debug "hyphen_char = @hyphen_char";
+
+    __debug "Reading skew_char";
+
     my @skew_char        = $self->read_integers($num_fonts);
+
+    __debug "skew_char = @skew_char";
+
+    __debug "Reading font_name";
+
     my @font_name        = $self->read_integers($num_fonts);
 
     $self->set_font_names(\@font_name);
 
+    __debug "Reading font_area";
+
     my @font_area        = $self->read_integers($num_fonts);
-    my @font_bc          = $self->read_unsigned_chars($num_fonts);
-    my @font_ec          = $self->read_unsigned_chars($num_fonts);
+
+    __debug "Reading font_bc .. font_false_bchar";
+
+    my @font_bc;
+    my @font_ec;
+
+    if ($is_xetex) {
+        @font_bc = $self->read_unsigned_shorts($num_fonts);
+        @font_ec = $self->read_unsigned_shorts($num_fonts);
+    } else {
+        @font_bc = $self->read_unsigned_chars($num_fonts);
+        @font_ec = $self->read_unsigned_chars($num_fonts);
+    }
+
+    __debug "font_bc = @font_bc";
+    __debug "font_ec = @font_ec";
+
     my @char_base        = $self->read_integers($num_fonts);
     my @width_base       = $self->read_integers($num_fonts);
     my @height_base      = $self->read_integers($num_fonts);
@@ -811,10 +1024,17 @@ sub load_font_info {
     my @kern_base        = $self->read_integers($num_fonts);
     my @exten_base       = $self->read_integers($num_fonts);
     my @param_base       = $self->read_integers($num_fonts);
+
     my @font_glue        = $self->read_integers($num_fonts);
     my @bchar_label      = $self->read_integers($num_fonts);
-    my @font_bchar       = $self->read_shorts($num_fonts);
-    my @font_false_bchar = $self->read_shorts($num_fonts);
+
+    if ($is_xetex) {
+        my @font_bchar       = $self->read_integers($num_fonts);
+        my @font_false_bchar = $self->read_integers($num_fonts);
+    } else {
+        my @font_bchar       = $self->read_shorts($num_fonts);
+        my @font_false_bchar = $self->read_shorts($num_fonts);
+    }
 
     return;
 }
@@ -822,17 +1042,24 @@ sub load_font_info {
 sub load_hyphenation_tables {
     my $self = shift;
 
-    # $LOG->verbose("Loading hyphenation tables\n");
+    my $is_xetex = $self->is_xetex();
+
+    __debug "Loading hyphenation tables";
 
     my $params = $self->get_params();
 
     my $hyph_count = $self->read_integer();
     my $hyph_next  = $self->read_integer();
 
+    __debug "hyph_count = $hyph_count";
+    __debug "hyph_next  = $hyph_next";
+
     $self->set_hyph_count($hyph_count);
     $self->set_hyph_next($hyph_next);
 
     my $hyph_prime = $self->get_hyph_prime();
+
+    __debug "hyph_prime  = $hyph_prime";
 
     my $hyph_size = $hyph_next; ## -1 ???
 
@@ -884,27 +1111,46 @@ sub load_hyphenation_tables {
 
     $j = $self->read_integer(); # 'trie size'
 
+    __debug "trie_size = $j";
+
     # my $trie_max = $j;
 
-    if ($self->get_engine() eq 'pdftex') {
+    if ($self->fmt_has_hyph_start()) {
         my $hyph_start = $self->read_integer();
     }
 
     my @trie_trl = $self->read_integers($j + 1);
     my @trie_tro = $self->read_integers($j + 1);
-    my @trie_trc = $self->read_unsigned_chars($j + 1);
+
+    if ($is_xetex) {
+        my @trie_trc = $self->read_unsigned_shorts($j + 1);
+    } else {
+        my @trie_trc = $self->read_unsigned_chars($j + 1);
+    }
+
+    if ($self->is_xetex) {
+        my $max_hyph_char = $self->read_integer();
+    
+        __debug "max_hyph_char = $max_hyph_char";
+    }
 
     $j = $self->read_integer(); # 'trie op size'
 
     # my $trie_op_ptr = $j;
 
-    my @hyf_distance = $self->read_signed_chars($j);
+    my @hyf_distance = $self->read_small_numbers($j);
+    # __debug "hyf_distance = @hyf_distance";
+
     unshift @hyf_distance, undef;
 
-    my @hyf_num = $self->read_signed_chars($j);
+    my @hyf_num = $self->read_small_numbers($j);
+    # __debug "hyf_num = @hyf_num";
+
     unshift @hyf_num, undef;
 
     my @hyf_next = $self->read_unsigned_shorts($j);
+    # __debug "hyf_next = @hyf_next";
+
     unshift @hyf_next, undef;
 
     my @trie_used = ($params->min_quarterword()) x 256;
@@ -985,7 +1231,7 @@ sub load_pdftex_data {
 sub undump_image_meta {
     my $self = shift;
 
-    # $LOG->verbose("Reading image metadata\n");
+    __debug "Reading image metadata";
 
     # my $pdfversion = shift;
     # my $pdfinclusionerrorlevel = shift;
@@ -1017,15 +1263,26 @@ sub undump_image_meta {
     return;
 }
 
-sub finish_load {
+sub load_trailer {
     my $self = shift;
 
-    # $LOG->verbose("Loading trailer\n");
+    __debug "Loading trailer";
 
-    $self->set_interaction_level($self->read_integer());
-    $self->set_format_ident($self->read_integer());
+    my $interaction_level = $self->read_integer();
+
+    __debug "interaction_level = $interaction_level";
+
+    $self->set_interaction_level($interaction_level);
+
+    my $format_ident = $self->read_integer();
+
+    $self->set_format_ident($format_ident);
+
+    __debug "format_ident = $format_ident";
 
     my $magic_constant = $self->read_integer();
+
+    __debug "magic_constant = $magic_constant";
 
     if ($magic_constant != 69069) {
         warn "Invalid file tail: $magic_constant\n";
@@ -1206,6 +1463,8 @@ sub extract_box_register {
 
     my $index = shift;
 
+__debug "*** extract_box_register($index)";
+
     my $params = $self->get_params();
 
     if ($index < 0 || $index > 255) {
@@ -1218,17 +1477,17 @@ sub extract_box_register {
         return;
     }
 
-    return $self->get_mem()->extract_node_list($ptr);
+    my $node_list = $self->get_mem()->extract_node_list($ptr);
 
-    return;
+    return $node_list;
 }
 
 sub debug {
     my $self = shift;
 
-    print "File format: ", $self->get_fmt_format(), "\n";
     print "TeX engine: ", $self->get_engine() || '???', "\n";
-    print "checksum = ", $self->get_checksum(), "\n";
+    print "magic number = ", $self->get_magic_number(), "\n";
+    print "string pool checksum = ", $self->get_string_pool_checksum(), "\n";
 
     # print "mltex_p      = ", $self->get_mltex_p(), "\n";
     # print "enctex_p     = ", $self->get_enctex_p(), "\n";
@@ -1244,8 +1503,8 @@ sub debug {
     print "hyph_next    = ", $self->get_hyph_next(), "\n";
     print "hash_used    = ", $self->get_hash_used(), "\n";
 
-    print "pool_ptr     = ", $self->get_pool_ptr(), "\n";
-    print "str_ptr      = ", $self->get_str_ptr(), "\n";
+    print "string_pool_size = ", $self->get_string_pool_size(), "\n";
+    print "max_strings      = ", $self->get_max_strings(), "\n";
 
     print "lo_mem_max   = ", $self->get_lo_mem_max(), "\n";
     print "hi_mem_min   = ", $self->get_hi_mem_min(), "\n";
@@ -1302,12 +1561,32 @@ sub debug {
     ##      print "\t$i: $xprn[$i]\n";
     ##  }
 
-    print "STRINGS:\n";
+    ## print "STRINGS:\n";
+    ## 
+    ## my @strings = @{ $self->get_strings() };
+    ## 
+    ## for (my $i = 0; $i < @strings; $i++) {
+    ##     print "\t$i: $strings[$i]\n";
+    ## }
 
-    my @strings = @{ $self->get_strings() };
+    return;
+}
 
-    for (my $i = 0; $i < @strings; $i++) {
-        print "\t$i: $strings[$i]\n";
+######################################################################
+##                                                                  ##
+##                         AUTOMETHOD MAGIC                         ##
+##                                                                  ##
+######################################################################
+
+sub AUTOMETHOD {
+    my ($self, $ident, @args) = @_;
+
+    my $subname = $_;   # Requested subroutine name is passed via $_
+
+    my $params = $self->get_params();
+
+    if ($params->has_parameter($subname)) {
+        return sub() { return $params->get_parameter($subname) };
     }
 
     return;

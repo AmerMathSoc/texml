@@ -1,6 +1,6 @@
 package TeX::FMT::Mem;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,11 +32,9 @@ package TeX::FMT::Mem;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.1';
-
 use TeX::Arithmetic qw(scaled_to_string);
 
-use TeX::WEB2C qw(:command_codes :eqtb_codes :math_params :node_params :token_codes :type_bounds);
+use TeX::WEB2C qw(:math_params :node_params);
 
 use TeX::Nodes qw(:factories);
 use TeX::Node::HListNode qw(:factories);
@@ -64,7 +62,9 @@ my %mem_top      :ATTR(:get<mem_top>      :set<mem_top>);
 my %lo_mem_max   :ATTR(:get<lo_mem_max>   :set<lo_mem_max>);
 my %hi_mem_min   :ATTR(:get<hi_mem_min>   :set<hi_mem_min>);
 
-use constant NULL => min_halfword;
+my %params_of :ATTR(:name<params>);
+
+sub NULL { $_[0]->min_halfword };
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
@@ -315,14 +315,14 @@ sub show_token_list {
 
     $param_no = 0;
 
-    for (my $p = $self->get_link($ref_count); $p != NULL; $p = $self->get_link($p)) {
+    for (my $p = $self->get_link($ref_count); $p != $self->NULL; $p = $self->get_link($p)) {
         eval { $self->show_token($p, $fmt) };
 
         if ($@) {
             print "show_token error for token $p:\n";
             print "\t$@\n";
             print "end error\n";
-            print "NULL=" . NULL . "\n";
+            print "NULL=" . $self->NULL . "\n";
         }
     }
 
@@ -336,26 +336,35 @@ sub show_token {
 
     my $info = $self->get_info($p);
 
-    if ($info >= cs_token_flag) {
-        $self->print_cs($info - cs_token_flag, $fmt);
+    if ($info >= $self->cs_token_flag) {
+        $self->print_cs($info - $self->cs_token_flag, $fmt);
     } else {
         use integer;
 
-        my $m = $info / 0400;
-        my $c = $info % 0400;
+        my $m;
+        my $c;
 
-        if ($m < car_ret || $m == sup_mark || $m == sub_mark || $m == spacer
-            || $m == letter || $m == other_char) {
+        if ($self->is_xetex()) {
+            $m = $info / 010000000;
+            $c = $info % 010000000;
+        } else {
+            $m = $info / 0400;
+            $c = $info % 0400;
+        }
+
+        if (   $m < $self->car_ret   || $m == $self->sup_mark
+            || $m == $self->sub_mark || $m == $self->spacer
+            || $m == $self->letter   || $m == $self->other_char) {
             print chr($c);
             return;
         }
 
-        if ($m == mac_param) {
+        if ($m == $self->mac_param) {
             print chr($c) . chr($c);
             return;
         }
 
-        if ($m == out_param) {
+        if ($m == $self->out_param) {
             print "#";
 
             if ($c <= 9) {
@@ -367,17 +376,17 @@ sub show_token {
             return;
         }
 
-        if ($m == match) {
+        if ($m == $self->match) {
             print "#" . ++$param_no;
             return;
         }
 
-        if ($m == end_match) {
+        if ($m == $self->end_match) {
             print "->";
             return;
         }
 
-        print_esc "BAD.";
+        print_esc "BAD.{c=$c;m=$m;info=$info}";
     }
 
     return;
@@ -391,12 +400,12 @@ sub print_cs {
     my $p = shift;
     my $fmt = shift;
 
-    if ($p < active_base) {
+    if ($p < $self->active_base()) {
         print_esc("IMPOSSIBLE ");
-    } elsif ($p < single_base) {
+    } elsif ($p < $self->single_base()) {
         print chr($p);
-    } elsif ($p < null_cs) {
-        my $char = chr($p - single_base);
+    } elsif ($p < $self->null_cs()) {
+        my $char = chr($p - $self->single_base());
         print_esc $char;
         if ($char =~ /[a-z]/i) {
             print " ";
@@ -428,7 +437,7 @@ sub show_node_list {
 
     my $mem_end = $self->get_mem_top();
 
-    while ($p > mem_min) {
+    while ($p > $self->mem_min) {
         if ($p > $mem_end) {
             print "Bad link, display aborted.";
             return;
@@ -440,18 +449,19 @@ sub show_node_list {
 
             for my $type ($self->get_type($p)) {
 
-                if ($type == hlist_node || $type == vlist_node || $type == unset_node) {
+                if ($type == $self->hlist_node || $type == $self->vlist_node
+                    || $type == $self->unset_node) {
                     $self->display_box($p);
                     next;
                 }
 
-                if ($type == math_node) {
+                if ($type == $self->math_node) {
                     $self->display_math_node($p);
                     next;
                 }
 
                 print "Node type $type\n";
-                
+
 
             #     rule_node:                          @<Display rule |p|@>;
             #     ins_node:                           @<Display insertion |p|@>;
@@ -464,9 +474,9 @@ sub show_node_list {
             #     disc_node:                          @<Display discretionary |p|@>;
             #     mark_node:                          @<Display mark |p|@>;
             #     adjust_node:                        @<Display adjustment |p|@>;
-            # 
+            #
             #     @<Cases of |show_node_list| that arise in mlists only@>@;
-            # 
+            #
             #     othercases print("Unknown node type!")
             # endcases
             }
@@ -487,9 +497,9 @@ sub display_box {
 
     my $type = $self->get_type($node);
 
-    if ($type == hlist_node) {
+    if ($type == $self->hlist_node) {
         print_esc("h");
-    } elsif ($type == vlist_node) {
+    } elsif ($type == $self->vlist_node) {
         print_esc("v");
     } else {
         print_esc("unset");
@@ -503,7 +513,7 @@ sub display_box {
     print ")x";
     print scaled_to_string($self->get_width($node));
 
-    if ($type == unset_node) {
+    if ($type == $self->unset_node) {
         print "<special unset node fields>";
         # @<Display special fields of the unset node |p|@>
     } else {
@@ -556,7 +566,7 @@ sub extract_node_list {
 
     my $link = $self->get_link($ptr);
 
-    while ($link > null_ptr) {
+    while ($link > $self->null_ptr) {
         my $node = $self->extract_one_node($link);
 
         $tail->set_link($node);
@@ -605,6 +615,10 @@ $NODE_MAP[left_noad]     = 'extract_noad';
 $NODE_MAP[right_noad]    = 'extract_noad';
 $NODE_MAP[fraction_noad] = 'extract_noad';
 
+my @WHATSIT_MAP;
+
+$WHATSIT_MAP[42] = 'extract_glyph_node';
+
 sub extract_one_node {
     my $self = shift;
 
@@ -614,7 +628,7 @@ sub extract_one_node {
 
     my $mem_end = $self->get_mem_top();
 
-    if ($ptr <= mem_min || $ptr > $mem_end) {
+    if ($ptr <= $self->mem_min || $ptr > $mem_end) {
         croak "Bad link: $ptr";
     }
 
@@ -664,7 +678,7 @@ sub extract_hlist_node {
 
     my $list_ptr = $self->get_list_ptr($ptr);
 
-    if ($list_ptr != null_ptr) {
+    if ($list_ptr != $self->null_ptr) {
         my $contents = $self->extract_node_list($list_ptr);
 
         $node->set_list_ptr($contents);
@@ -689,7 +703,7 @@ sub extract_vlist_node {
 
     my $list_ptr = $self->get_list_ptr($ptr);
 
-    if ($list_ptr != null_ptr) {
+    if ($list_ptr != $self->null_ptr) {
         my $contents = $self->extract_node_list($list_ptr);
 
         $node->set_list_ptr($contents);
@@ -718,7 +732,7 @@ sub extract_unset_node {
 
     my $list_ptr = $self->get_list_ptr($ptr);
 
-    if ($list_ptr != null_ptr) {
+    if ($list_ptr != $self->null_ptr) {
         my $contents = $self->extract_node_list($list_ptr);
 
         $node->set_list_ptr($contents);
@@ -768,7 +782,7 @@ sub extract_glue_node {
     my $glue_ptr   = $self->get_llink($ptr);
     my $leader_ptr = $self->get_rlink($ptr);
 
-    if ($leader_ptr == null_ptr) {
+    if ($leader_ptr == $self->null_ptr) {
         $leader_ptr = undef;
     } else {
         $leader_ptr = $self->extract_node_list($leader_ptr);
@@ -876,9 +890,51 @@ sub extract_whatsit_node {
 
     my $ptr = shift;
 
-    print STDERR "extract_whatsit_node not implemented\n";
+    my $type    = $self->get_type($ptr);
+    my $subtype = $self->get_subtype($ptr);
 
-    return new_whatsit();
+    my $extractor = $WHATSIT_MAP[$subtype] or do {
+        croak "Don't know how to extract whatsit node subtype $subtype";
+    };
+
+    return $self->$extractor($ptr);
+}
+
+sub extract_glyph_node {
+    my $self = shift;
+
+    my $ptr = shift;
+
+    my $width  = $self->get_word($ptr + 1)->get_sc();
+    my $depth  = $self->get_word($ptr + 2)->get_sc();
+    my $height = $self->get_word($ptr + 3)->get_sc();
+
+print STDERR qq{*** extract_glyph_node: width='$width'; height='$height'; depth='$depth'\n};
+
+    my $glyph_info = $self->get_word($ptr + 4);
+
+    my $b0 = $glyph_info->get_b0();
+
+    my $fnt_num     = $glyph_info->get_b1();
+    my $glyph       = $glyph_info->get_b2();
+    my $glyph_count = $glyph_info->get_b3();
+
+print STDERR qq{*** extract_glyph_node: b0='$b0'; b1='$fnt_num'; b2='$glyph'; b3='$glyph_count'\n};
+
+    my $font = $self->get_font($fnt_num);
+
+    my $node = {
+        font        => $font,
+        char_code   => $glyph,
+        glyph_count => $glyph_count,
+        width       => $width,
+        depth       => $depth,
+        height      => $height,
+    };
+
+    my $x = new_glyph_node($node);
+
+    return $x;
 }
 
 sub extract_noad {
@@ -887,6 +943,26 @@ sub extract_noad {
     my $ptr = shift;
 
     print STDERR "Didn't expect to see a noad (type=", $self->get_type($ptr), ")\n";
+
+    return;
+}
+
+######################################################################
+##                                                                  ##
+##                         AUTOMETHOD MAGIC                         ##
+##                                                                  ##
+######################################################################
+
+sub AUTOMETHOD {
+    my ($self, $ident, @args) = @_;
+
+    my $subname = $_;   # Requested subroutine name is passed via $_
+
+    my $params = $self->get_params();
+
+    if ($params->has_parameter($subname)) {
+        return sub() { return $params->get_parameter($subname) };
+    }
 
     return;
 }

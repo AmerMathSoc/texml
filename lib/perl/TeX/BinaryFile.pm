@@ -1,6 +1,6 @@
 package TeX::BinaryFile;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -42,8 +42,9 @@ use Fcntl qw(:seek);
 
 use IO::File;
 
+use IO::Uncompress::Gunzip qw($GunzipError);
+
 use TeX::Utils::Misc;
-# use PTG::Errors;
 
 my %file_name_of  :ATTR(init_arg => 'file_name', :get<file_name>);
 my %filehandle_of :ATTR;
@@ -58,6 +59,10 @@ sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
     $file_position_stack_of{$ident} = [];
+
+    if (exists $arg_ref->{file_name}) {
+        $file_name_of{$ident} = $arg_ref->{file_name};
+    }
 
     return;
 }
@@ -93,7 +98,7 @@ sub open {
     my $file_name = $self->get_file_name();
 
     if (empty $file_name) {
-        die "Can't open $class object without a file name\n";
+        die "Can't create $class object without a file name\n";
     }
 
     my $fh = IO::File->new($file_name, $mode) or do {
@@ -102,6 +107,18 @@ sub open {
 
     $mode_of{ident $self} = $mode;
     $filehandle_of{ident $self} = $fh;
+
+    my @bytes = $self->peek_bytes(2);
+
+    if ($bytes[0] == 0x1f && $bytes[1] == 0x8b) {
+        close($fh);
+
+        $fh = IO::Uncompress::Gunzip->new($file_name) or do {
+            PTG::RunError->throw($GunzipError);
+        };
+
+        $filehandle_of{ident $self} = $fh;
+    }
 
     return 1;
 }
@@ -197,7 +214,7 @@ sub read_bytes {
     }
 
     read($fh, my $buffer, $num_bytes) or do {
-        die construct_error("read_bytes failed at pos " . $self->tell(), $!);
+        die "read_bytes failed at pos " . $self->tell() . ": $!";
     };
 
     return wantarray ? split('', $buffer) : $buffer;
@@ -227,18 +244,20 @@ sub next_byte {
     return unpack("C", $byte);
 }
 
-sub peek_byte {
+sub peek_bytes {
     my $self = shift;
+
+    my $num_bytes = shift || 1;
 
     my $fh = $self->__get_filehandle();
 
-    read($fh, my $buffer, 1) or do {
-        die construct_error("peek_byte failed", $!);
+    read($fh, my $buffer, $num_bytes) or do {
+        die "peek_byte failed: $!";
     };
 
-    $self->seek(-1, SEEK_CUR) or die construct_error("seek error", $!);
+    $self->seek(-$num_bytes, SEEK_CUR) or die "seek error: $!";
 
-    return unpack("C", $buffer);
+    return unpack("C*", $buffer);
 }
 
 sub read_unsigned {
@@ -338,6 +357,7 @@ sub read_string {
 
     my $string_length;
 
+    # TBD: This is weird.
     if ($size == 4) {
         $string_length = $self->read_signed($size);
     } else {

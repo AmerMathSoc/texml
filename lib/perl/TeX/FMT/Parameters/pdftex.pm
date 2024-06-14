@@ -1,6 +1,6 @@
 package TeX::FMT::Parameters::pdftex;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -37,8 +37,6 @@ package TeX::FMT::Parameters::pdftex;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.2';
-
 use base qw(TeX::FMT::Parameters::tex);
 
 use TeX::Class;
@@ -47,6 +45,22 @@ sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
     my %new = (
+        has_translation_tables => 1,
+        has_etex               => 1,
+
+        fmt_has_hyph_start     => 1,
+
+        num_sparse_arrays => 6,
+
+        frozen_primitive => sub { $_[0]->frozen_control_sequence() + 11 },
+
+        frozen_null_font    => sub { $_[0]->frozen_control_sequence() + 12 },
+
+        undefined_control_sequence
+        => sub {
+            $_[0]->frozen_null_font() + $_[0]->max_font_max() + 1
+        },
+
         prim_size        => 2100,
         marks_code       => 5,
         middle_noad => 1,
@@ -139,7 +153,9 @@ sub BUILD {
         etex_convert_base        => 5,
         eTeX_revision_code       => sub { $_[0]->etex_convert_base() },
         etex_convert_codes       => sub { $_[0]->etex_convert_base() + 1 },
-        pdftex_first_expand_code => sub { $_[0]->etex_convert_codes() },
+        expanded_code            => sub { $_[0]->etex_convert_codes },
+
+        pdftex_first_expand_code => sub { $_[0]->expanded_code() + 1},
         pdftex_revision_code     => sub { $_[0]->pdftex_first_expand_code() + 0 },
         pdftex_banner_code       => sub { $_[0]->pdftex_first_expand_code() + 1 },
         pdf_font_name_code       => sub { $_[0]->pdftex_first_expand_code() + 2 },
@@ -173,27 +189,38 @@ sub BUILD {
         ##
         letterspace_font => sub { $_[0]->XeTeX_def_code() + 16 },
         pdf_copy_font    => sub { $_[0]->XeTeX_def_code() + 17 },
+
         max_command      => sub { $_[0]->pdf_copy_font() },
+
         frozen_primitive => sub { $_[0]->frozen_control_sequence() + 11 },
-        frozen_null_font => sub { $_[0]->frozen_control_sequence() + 12 },
+
+        prim_eqt_base    => sub { $_[0]->frozen_primitive() + 1 },
+
         tex_toks => sub { $_[0]->local_base() + 10 },
+
         pdftex_first_loc => sub { $_[0]->tex_toks() },
         pdf_pages_attr_loc => sub { $_[0]->pdftex_first_loc() + 0 },
         pdf_page_attr_loc => sub { $_[0]->pdftex_first_loc() + 1 },
         pdf_page_resources_loc => sub { $_[0]->pdftex_first_loc() + 2 },
         pdf_pk_mode_loc => sub { $_[0]->pdftex_first_loc() + 3 },
         pdf_toks => sub { $_[0]->pdftex_first_loc() + 4 },
+
         etex_toks_base => sub { $_[0]->pdf_toks() },
         every_eof_loc => sub { $_[0]->etex_toks_base() },
         etex_toks => sub { $_[0]->etex_toks_base() + 1 },
+
         toks_base => sub { $_[0]->etex_toks() },
+
         etex_pen_base => sub { $_[0]->toks_base() + $_[0]->number_regs() },
+
         inter_line_penalties_loc    => sub { $_[0]->etex_pen_base() },
         club_penalties_loc          => sub { $_[0]->etex_pen_base() + 1 },
         widow_penalties_loc         => sub { $_[0]->etex_pen_base() + 2 },
         display_widow_penalties_loc => sub { $_[0]->etex_pen_base() + 3 },
         etex_pens                   => sub { $_[0]->etex_pen_base() + 4 },
+
         box_base => sub { $_[0]->etex_pens() },
+
         cur_font_loc => sub { $_[0]->box_base() + $_[0]->number_regs() },
         xord_code_base => sub { $_[0]->cur_font_loc() + 1 },
         xchr_code_base => sub { $_[0]->xord_code_base() + 1 },
@@ -233,6 +260,7 @@ sub BUILD {
         pdf_info_omit_date_code => sub { $_[0]->pdftex_first_integer_code() + 30 },
         pdf_suppress_ptex_info_code => sub { $_[0]->pdftex_first_integer_code() + 31 },
         pdf_int_pars => sub { $_[0]->pdftex_first_integer_code() + 32 },
+
         etex_int_base => sub { $_[0]->pdf_int_pars() },
         tracing_assigns_code => sub { $_[0]->etex_int_base() },
         tracing_groups_code => sub { $_[0]->etex_int_base() + 1 },
@@ -245,6 +273,7 @@ sub BUILD {
         saving_hyph_codes_code => sub { $_[0]->etex_int_base() + 8 },
         eTeX_state_code => sub { $_[0]->etex_int_base() + 9 },
         eTeX_state_base => sub { $_[0]->int_base() + $_[0]->eTeX_state_code },
+
         TeXXeT_code => 0,
         eTeX_states => 1,
         etex_int_pars => sub { $_[0]->eTeX_state_code() + $_[0]->eTeX_states() },
