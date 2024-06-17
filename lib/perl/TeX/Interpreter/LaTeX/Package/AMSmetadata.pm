@@ -546,8 +546,12 @@ sub add_contributors {
     return;
 }
 
-sub append_time_stamp( $ ) {
+sub append_time_stamp {
     my $parent = shift;
+
+    my $tex = shift;
+
+    return unless $tex->if('iftexml@add@timestamp@');
 
     my $time_stamp = iso_8601_timestamp();
 
@@ -564,6 +568,8 @@ sub append_time_stamp( $ ) {
 
 sub add_history {
     my $tex = shift;
+
+    return unless $tex->if('iftexml@add@history@');
 
     my $parent = shift;
     my $gentag = shift;
@@ -596,7 +602,7 @@ sub add_history {
         }
     }
 
-    append_time_stamp($history);
+    append_time_stamp($history, $tex);
 
     return;
 }
