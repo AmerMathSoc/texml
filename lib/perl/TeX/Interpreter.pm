@@ -97,7 +97,32 @@ use TeX::KPSE qw(kpse_lookup);
 use TeX::Utils;
 use TeX::Node::Utils qw(nodes_to_string);
 
-use TeX::WEB2C qw(:all);
+#use TeX::WEB2C qw(:all);
+
+use TeX::WEB2C qw(carriage_return
+                  null_code
+                  var_code
+                  invalid_code
+                  just_open
+                  closed
+                  :box_params
+                  :eqtb_codes
+                  :token_codes
+                  :if_codes
+                  :extras
+                  :selector_codes
+                  :interaction_modes
+                  :history_codes
+                  :command_codes
+                  :type_bounds
+                  :save_stack_codes
+                  :scan_types
+                  :scanner_statuses
+                  :token_types
+                  :lexer_states
+                  :xetex
+                  :node_params
+    );
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
 
@@ -12368,6 +12393,16 @@ sub expand_token_list {
     $tex->end_token_list(); # {conserve stack space}
 
     return $expanded;
+}
+
+sub if {
+    my $tex = shift;
+
+    my $if_name = shift;
+
+    my $eqvt = $tex->get_csname($if_name);
+
+    return defined $eqvt && $eqvt->get_equiv->isa("TeX::Primitive::iftrue");
 }
 
 ######################################################################
