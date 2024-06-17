@@ -1025,43 +1025,59 @@ __DATA__
     \fi
 }
 
-\def\TeXMLlastmodified{%
-    \startXMLelement{date}
-        \setXMLattribute{date-type}{xml-last-modified}
-        \begingroup
-            \edef\@tempa{\TeXMLisoBgoltimestamp}%
-            \setXMLattribute{iso-8601-date}{\@tempa}%
-            \thisxmlpartag{string-date}
-                \@tempa\par
-        \endgroup
-    \endXMLelement{date}
+\newif\iftexml@add@timestamp@
+\texml@add@timestamp@true
+
+\def\noTeXMLtimestamp{%
+    \global\let\TeXMLtimestamp\@empty
+    \texml@add@timestamp@false
 }
 
-\def\noTeXMLlastmodified{\global\let\TeXMLlastmodified\@empty}
+\def\TeXMLtimestamp{%
+    \iftexml@add@timestamp@
+        \startXMLelement{date}
+            \setXMLattribute{date-type}{xml-last-modified}
+            \begingroup
+                \edef\@tempa{\TeXMLisoBgoltimestamp}%
+                \setXMLattribute{iso-8601-date}{\@tempa}%
+                \thisxmlpartag{string-date}
+                    \@tempa\par
+            \endgroup
+        \endXMLelement{date}
+    \fi
+}
+
+\newif\iftexml@add@history@
+\texml@add@history@true
+
+\def\noTeXMLhistory{%
+    \global\let\output@article@history\@empty
+    \texml@add@history@false
+}
 
 \def\output@article@history{%
-    \startXMLelement{history}
-        \ifx\AMS@issue@year\@empty\else
-            \startXMLelement{date}
-                \setXMLattribute{date-type}{issue-date}
-                \ifx\AMS@issue@month\@empty\else
-                    \ifx\AMS@issue@day\@empty\else
-                        \thisxmlpartag{day}
-                        \AMS@issue@day\par
+    \iftexml@add@history@true
+        \startXMLelement{history}
+            \ifx\AMS@issue@year\@empty\else
+                \startXMLelement{date}
+                    \setXMLattribute{date-type}{issue-date}
+                    \ifx\AMS@issue@month\@empty\else
+                        \ifx\AMS@issue@day\@empty\else
+                            \thisxmlpartag{day}
+                            \AMS@issue@day\par
+                        \fi
+                        \thisxmlpartag{month}
+                        \AMS@issue@month\par
                     \fi
-                    \thisxmlpartag{month}
-                    \AMS@issue@month\par
-                \fi
-                \thisxmlpartag{year}%
-                \AMS@issue@year\par
-            \endXMLelement{date}
-        \fi
-        %% TBD: Add received, posted, etc.
-        \TeXMLlastmodified
-    \endXMLelement{history}
+                    \thisxmlpartag{year}%
+                    \AMS@issue@year\par
+                \endXMLelement{date}
+            \fi
+            %% TBD: Add received, posted, etc.
+            \TeXMLtimestamp
+        \endXMLelement{history}
+    \fi
 }
-
-\def\noTeXMLarticlehistory{\global\let\output@article@history\@empty}
 
 \def\output@custom@meta@group{%
     \begingroup
