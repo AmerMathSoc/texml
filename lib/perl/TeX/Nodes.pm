@@ -49,6 +49,7 @@ our %EXPORT_TAGS = (factories => [ qw(new_character
                                       new_penalty
                                       new_unset
                                       new_whatsit
+                                      new_glyph_node
                                       new_open_node
                                       new_close_node
                                       new_write_node
@@ -71,6 +72,7 @@ use TeX::WEB2C qw(:node_params);
 use TeX::Node::AdjustNode;
 use TeX::Node::CharNode;
 use TeX::Node::GlueNode;
+use TeX::Node::GlyphNode;
 use TeX::Node::InsertNode;
 use TeX::Node::KernNode;
 use TeX::Node::LigatureNode;
@@ -162,6 +164,12 @@ sub new_whatsit {
     my $arg_hash = shift;
 
     return TeX::Node::WhatsitNode->new($arg_hash);
+}
+
+sub new_glyph_node {
+    my $arg_hash = shift;
+
+    return TeX::Node::GlyphNode->new($arg_hash);
 }
 
 sub new_write_node {
