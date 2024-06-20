@@ -1056,7 +1056,7 @@ __DATA__
 }
 
 \def\output@article@history{%
-    \iftexml@add@history@true
+    \iftexml@add@history@
         \startXMLelement{history}
             \ifx\AMS@issue@year\@empty\else
                 \startXMLelement{date}
