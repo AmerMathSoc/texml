@@ -1,6 +1,6 @@
 package TeX::Output::XML;
 
-# Copyright (C) 2022, 2023 American Mathematical Society
+# Copyright (C) 2022-2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -593,38 +593,38 @@ sub add_alt_title {
         my $utf8 = xml_to_utf8_string($title);
 
         if (nonempty($utf8)) {
-            $utf8 =~ s{ \x{2060}?\z}{};
+            $utf8 =~ s{ \x{2060}?\z}{}; # U+2060 WORD JOINER
 
-            my $raw = $title->firstChild()->textContent();
+            my $raw = $title =~ s{</?[a-z].*?>}{}igr;
 
             if ($utf8 ne $raw) {
                 my $alt_title = $dom->createElement("alt-title");
-    
+
                 $alt_title->appendText($utf8);
-    
+
                 $parent->insertAfter($alt_title, $title);
             }
         }
     }
-    
+
     for my $title ($parent->findnodes("subtitle")) { # There should be at most one
         my $utf8 = xml_to_utf8_string($title);
-    
+
         if (nonempty($utf8)) {
             $utf8 =~ s{ \x{2060}?\z}{};
-            
-            my $raw = $title->firstChild()->textContent();
+
+            my $raw = $title =~ s{</?[a-z].*?>}{}igr;
 
             if ($utf8 ne $raw) {
                 my $alt_title = $dom->createElement("alt-subtitle");
-                
+
                 $alt_title->appendText($utf8);
-                
+
                 $parent->insertAfter($alt_title, $title);
             }
         }
     }
-    
+
     return;
 }
 
@@ -686,18 +686,18 @@ sub close_document {
 
     if (my @css_rules = $tex->get_css_rules()) {
         my $job_name = $tex->get_job_name();
-    
+
         my $css_file = "$job_name.css";
-    
+
         my $mode = $tex->is_unicode_input() ? ">:utf8" : ">";
-    
+
         open(my $fh, $mode, $css_file) or do {
             $tex->fatal_error("Can't open $css_file: $!");
         };
-    
+
         for my $item (@css_rules) {
             my ($selector, $body) = @{ $item };
-    
+
             if ($selector eq '@import') {
                 print { $fh } qq{$selector "$body"\n};
             } else {
@@ -829,7 +829,7 @@ sub pop_element {
 
     if (@classes) {
         $current_element->setAttribute(class => join " ", uniq @classes);
-    }        
+    }
 
     my $top = $self->pop_element_stack();
 
