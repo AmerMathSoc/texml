@@ -1,6 +1,6 @@
 package TeX::Font;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -133,7 +133,11 @@ sub BUILD {
 
     my $tfm_file = kpse_lookup("$font_name.tfm");
 
-    die "Can't find font $font_name\n" unless defined $tfm_file;
+    if (! defined $tfm_file) {
+        warn "Can't find font $font_name\n";
+
+        return;
+    }
 
     my $tfm = TeX::TFM::File->new({ file_name => $tfm_file });
 
