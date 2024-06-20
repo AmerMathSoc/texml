@@ -355,16 +355,15 @@ sub read_string {
     my $self = shift;
     my $size = shift;
 
-    my $string_length;
-
-    # TBD: This is weird.
-    if ($size == 4) {
-        $string_length = $self->read_signed($size);
-    } else {
-        $string_length = $self->read_unsigned($size);
+    if (! defined $size) {
+        $size = $self->read_signed($size);
     }
 
-    return $self->read_raw_string($string_length);
+    my $raw_string = $self->read_raw_string($size);
+
+    my $string = $raw_string =~ s{\000+$}{}r;
+
+    return $string;
 }
 
 sub write_raw_data {
