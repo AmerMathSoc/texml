@@ -29,8 +29,6 @@ package TeX::FMT::Parameters::xetex;
 # USA
 # email: tech-support@ams.org
 
-## THIS DOESN'T WORK YET.
-
 use strict;
 use warnings;
 
