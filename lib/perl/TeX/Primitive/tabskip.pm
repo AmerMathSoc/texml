@@ -34,7 +34,7 @@ use warnings;
 
 use base qw(TeX::Primitive::Register);
 
-use TeX::WEB2C qw(:scan_types);
+use TeX::Constants qw(:scan_types);
 
 use TeX::Class;
 

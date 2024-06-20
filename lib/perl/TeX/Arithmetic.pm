@@ -70,7 +70,7 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
 
 our @EXPORT;
 
-use TeX::WEB2C qw(:node_params :penalties);
+use TeX::Constants qw(:node_params :penalties);
 
 ######################################################################
 ##                                                                  ##

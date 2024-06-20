@@ -34,7 +34,7 @@ use warnings;
 
 use base qw(TeX::Primitive::BeginIf);
 
-use TeX::WEB2C qw(:command_codes);
+use TeX::Constants qw(:command_codes);
 
 use TeX::Class;
 

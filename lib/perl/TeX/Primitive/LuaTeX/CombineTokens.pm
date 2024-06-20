@@ -45,7 +45,7 @@ my %modifier_of :ATTR(:get<modifier> :init_arg<modifier> :default(0));
 use TeX::Token qw(:catcodes);
 
 use TeX::Constants qw(:booleans);
-use TeX::WEB2C qw(:scan_types);
+use TeX::Constants qw(:scan_types);
 
 use TeX::Primitive::Macro;
 

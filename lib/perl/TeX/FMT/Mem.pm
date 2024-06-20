@@ -34,7 +34,7 @@ use warnings;
 
 use TeX::Arithmetic qw(scaled_to_string);
 
-use TeX::WEB2C qw(:math_params :node_params);
+use TeX::Constants qw(:math_params :node_params);
 
 use TeX::Nodes qw(:factories);
 use TeX::Node::HListNode qw(:factories);

@@ -36,7 +36,7 @@ use base qw(TeX::Primitive::LastItem);
 
 use TeX::Type::GlueSpec qw(make_glue_spec);
 
-use TeX::WEB2C qw(:scan_types);
+use TeX::Constants qw(:scan_types);
 
 use TeX::Class;
 

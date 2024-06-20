@@ -56,7 +56,7 @@ use TeX::Token::Constants;
 
 use TeX::TokenList qw(:factories);
 
-use TeX::WEB2C qw(:token_types);
+use TeX::Constants qw(:token_types);
 
 use File::Basename;
 use File::Spec::Functions qw(catfile);

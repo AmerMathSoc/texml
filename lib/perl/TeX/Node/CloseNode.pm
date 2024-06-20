@@ -36,7 +36,7 @@ use base qw(TeX::Node::FileNode);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:node_params);
+use TeX::Constants qw(:node_params);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;

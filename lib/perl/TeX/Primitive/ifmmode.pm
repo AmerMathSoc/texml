@@ -38,7 +38,7 @@ use TeX::Class;
 
 use TeX::Constants qw(:booleans :tracing_macro_codes);
 
-use TeX::WEB2C qw(:command_codes);
+use TeX::Constants qw(:command_codes);
 
 sub expand {
     my $self = shift;

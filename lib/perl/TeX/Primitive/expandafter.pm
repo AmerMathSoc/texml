@@ -38,7 +38,7 @@ use TeX::Class;
 
 use TeX::TokenList;
 
-use TeX::WEB2C qw(:token_types);
+use TeX::Constants qw(:token_types);
 
 sub expand {
     my $self = shift;

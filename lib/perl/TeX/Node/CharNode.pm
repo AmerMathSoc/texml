@@ -40,7 +40,7 @@ use TeX::Arithmetic qw(scaled_to_string);
 
 use TeX::Utils qw(print_char_code);
 
-use TeX::WEB2C qw(:node_params :type_bounds);
+use TeX::Constants qw(:node_params :type_bounds);
 
 use TeX::Node::HListNode qw(:factories);
 

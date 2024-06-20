@@ -38,7 +38,7 @@ use TeX::Class;
 
 use TeX::Arithmetic qw(:arithmetic);
 
-use TeX::WEB2C qw(:command_codes :scan_types);
+use TeX::Constants qw(:command_codes :scan_types);
 
 my %opcode_of :ATTR(:name<opcode> :default<-1>);
 

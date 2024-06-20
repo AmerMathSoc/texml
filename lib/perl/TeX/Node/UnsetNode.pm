@@ -32,13 +32,13 @@ package TeX::Node::UnsetNode;
 use strict;
 use warnings;
 
-use TeX::WEB2C qw(:node_params);
+use TeX::Constants qw(:node_params);
 
 use base qw(TeX::Node::AbstractNode);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:node_params :type_bounds);
+use TeX::Constants qw(:node_params :type_bounds);
 
 my %height_of     :ATTR(:get<height>     :set<height>     :default(0));
 my %width_of      :ATTR(:get<width>      :set<width>      :default(0));

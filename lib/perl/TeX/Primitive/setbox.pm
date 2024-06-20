@@ -36,7 +36,7 @@ use base qw(TeX::Command::Executable::Assignment);
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
 
-use TeX::WEB2C qw(:box_params);
+use TeX::Constants qw(:box_params);
 
 use TeX::Class;
 

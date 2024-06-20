@@ -36,7 +36,7 @@ use base qw(TeX::Command::Expandable);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:selector_codes);
+use TeX::Constants qw(:selector_codes);
 
 sub expand {
     my $self = shift;

@@ -48,7 +48,7 @@ use TeX::Constants qw(:booleans :tracing_macro_codes);
 
 use TeX::TokenList;
 
-use TeX::WEB2C qw(:token_types);
+use TeX::Constants qw(:token_types);
 
 use TeX::Class;
 

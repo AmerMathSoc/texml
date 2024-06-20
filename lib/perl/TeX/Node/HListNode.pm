@@ -46,7 +46,7 @@ use List::Util qw(any);
 
 use TeX::Arithmetic qw(:string unity);
 
-use TeX::WEB2C qw(:box_params :node_params :type_bounds);
+use TeX::Constants qw(:box_params :node_params :type_bounds);
 
 use base qw(TeX::Node::AbstractNode);
 

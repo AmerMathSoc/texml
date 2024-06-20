@@ -36,7 +36,7 @@ use base qw(TeX::Primitive::LastItem);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:scan_types);
+use TeX::Constants qw(:scan_types);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;

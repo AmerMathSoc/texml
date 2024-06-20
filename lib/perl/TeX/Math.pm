@@ -32,7 +32,7 @@ package TeX::Math;
 use strict;
 use warnings;
 
-use TeX::WEB2C qw(:math_params :math_classes);
+use TeX::Constants qw(:math_params :math_classes);
 
 use base qw(Exporter);
 

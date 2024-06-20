@@ -40,7 +40,7 @@ use TeX::TokenList;
 
 my %token_list_of :ATTR(:name<token_list> :type<TeX::TokenList>);
 
-use TeX::WEB2C qw(:node_params);
+use TeX::Constants qw(:node_params);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;

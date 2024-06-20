@@ -36,7 +36,7 @@ use base qw(TeX::Primitive::copy);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:box_params);
+use TeX::Constants qw(:box_params);
 
 sub execute {
     my $self = shift;

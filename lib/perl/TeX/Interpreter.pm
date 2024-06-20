@@ -97,9 +97,9 @@ use TeX::KPSE qw(kpse_lookup);
 use TeX::Utils;
 use TeX::Node::Utils qw(nodes_to_string);
 
-#use TeX::WEB2C qw(:all);
+#use TeX::Constants qw(:all);
 
-use TeX::WEB2C qw(carriage_return
+use TeX::Constants qw(carriage_return
                   null_code
                   var_code
                   invalid_code
@@ -316,8 +316,7 @@ sub __DEBUG {
 ##                                                                  ##
 ######################################################################
 
-## Most constants that we need (as well as a bunch that we don't) are
-## in TeX::WEB2C.
+## Most constants that we need are in TeX::Constants.
 
 ######################################################################
 ##                                                                  ##
@@ -1229,7 +1228,7 @@ sub box_set {
 ##                                                                  ##
 ######################################################################
 
-## See TeX::WEB2C.
+## See TeX::Constants.
 
 ######################################################################
 ##                                                                  ##
@@ -2442,7 +2441,7 @@ my %cur_boundary_of  :COUNTER(:name<cur_boundary>);
 
     use TeX::Class;
 
-    use TeX::WEB2C qw(:save_stack_codes group_type);
+    use TeX::Constants qw(:save_stack_codes group_type);
 
     my %type_of  :ATTR(:name<type>);
     my %level_of :ATTR(:name<level>);
@@ -3427,7 +3426,7 @@ sub back_input {
     return;
 }
 
-## See %TeX::WEB2C::TOKEN_TYPES
+## See %TeX::Constants::TOKEN_TYPES
 
 my @TOKEN_LIST_TYPE = qw(parameter u_template v_template backed_up
                          inserted macro output everypar afterpar

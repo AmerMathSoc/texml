@@ -39,7 +39,7 @@ use warnings;
 
 use base qw(TeX::Primitive::Parameter);
 
-use TeX::WEB2C qw(:scan_types);
+use TeX::Constants qw(:scan_types);
 
 use TeX::Class;
 

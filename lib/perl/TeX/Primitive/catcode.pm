@@ -35,7 +35,7 @@ use warnings;
 use base qw(TeX::Command::Executable::Readable
             TeX::Command::Executable::Assignment);
 
-use TeX::WEB2C qw(:command_codes :scan_types);
+use TeX::Constants qw(:command_codes :scan_types);
 
 use TeX::Class;
 

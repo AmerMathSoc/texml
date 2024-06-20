@@ -44,7 +44,7 @@ our @EXPORT;
 
 use UNIVERSAL;
 
-use TeX::WEB2C qw(:node_params);
+use TeX::Constants qw(:node_params);
 
 use TeX::Arithmetic qw(:arithmetic);
 

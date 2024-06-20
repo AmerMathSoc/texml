@@ -67,7 +67,7 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{factories} } );
 
 our @EXPORT = ();
 
-use TeX::WEB2C qw(:node_params);
+use TeX::Constants qw(:node_params);
 
 use TeX::Node::AdjustNode;
 use TeX::Node::CharNode;

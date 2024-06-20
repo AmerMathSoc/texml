@@ -36,7 +36,7 @@ use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:save_stack_codes :token_types :lexer_states);
+use TeX::Constants qw(:save_stack_codes :token_types :lexer_states);
 
 sub execute {
     my $self = shift;

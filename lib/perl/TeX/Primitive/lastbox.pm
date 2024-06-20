@@ -38,7 +38,7 @@ use TeX::Class;
 
 use TeX::Node::HListNode qw(new_null_box);
 
-use TeX::WEB2C qw(:command_codes);
+use TeX::Constants qw(:command_codes);
 
 sub scan_box {
     my $self = shift;

@@ -36,7 +36,7 @@ use base qw(TeX::Primitive::MakeBox);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:box_params :command_codes :save_stack_codes :token_types);
+use TeX::Constants qw(:box_params :command_codes :save_stack_codes :token_types);
 
 use TeX::Constants qw(:booleans);
 

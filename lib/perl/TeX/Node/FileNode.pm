@@ -38,7 +38,7 @@ use TeX::Class;
 
 my %fileno_of :COUNTER(:name<fileno>);
 
-use TeX::WEB2C qw(:node_params);
+use TeX::Constants qw(:node_params);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;

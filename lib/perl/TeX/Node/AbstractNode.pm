@@ -34,7 +34,7 @@ use warnings;
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:node_params);
+use TeX::Constants qw(:node_params);
 
 my %link_of    :ATTR(:get<link>    :set<link>);
 my %type_of    :ATTR(:get<type>    :set<type> :default<-1>);

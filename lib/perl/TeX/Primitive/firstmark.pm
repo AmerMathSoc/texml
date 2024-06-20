@@ -36,7 +36,7 @@ use base qw(TeX::Primitive::TopBotMark);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:mark_codes);
+use TeX::Constants qw(:mark_codes);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;

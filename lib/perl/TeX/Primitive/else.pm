@@ -36,7 +36,7 @@ use base qw(TeX::Primitive::EndIf);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:if_codes);
+use TeX::Constants qw(:if_codes);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;

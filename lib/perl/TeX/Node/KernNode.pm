@@ -32,7 +32,7 @@ package TeX::Node::KernNode;
 use strict;
 use warnings;
 
-use TeX::WEB2C qw(:node_params);
+use TeX::Constants qw(:node_params);
 
 use base qw(TeX::Node::AbstractNode);
 
@@ -40,7 +40,7 @@ use TeX::Class;
 
 use TeX::Arithmetic qw(scaled_to_string);
 
-use TeX::WEB2C qw(:node_params);
+use TeX::Constants qw(:node_params);
 
 my %width_of :ATTR(:get<width> :set<width> :init_arg => 'width');
 

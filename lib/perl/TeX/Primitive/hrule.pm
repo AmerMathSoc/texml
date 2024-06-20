@@ -36,7 +36,7 @@ use base qw(TeX::Primitive::Rule);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(ignore_depth);
+use TeX::Constants qw(ignore_depth);
 
 sub execute {
     my $self = shift;

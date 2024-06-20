@@ -38,7 +38,7 @@ use base qw(TeX::Primitive::LastItem);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:command_codes);
+use TeX::Constants qw(:command_codes);
 
 sub read_value {
     my $self = shift;

@@ -36,7 +36,7 @@ use version; our $VERSION = qv '1.0.0';
 
 use base qw(TeX::Command::Expandable);
 
-use TeX::WEB2C qw(:token_types);
+use TeX::Constants qw(:token_types);
 
 my %mark_code_of :COUNTER(:name<mark_code> :default<-1>);
 

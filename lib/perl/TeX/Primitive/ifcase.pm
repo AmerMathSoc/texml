@@ -36,7 +36,7 @@ use base qw(TeX::Primitive::BeginIf);
 
 use TeX::Constants qw(:booleans :tracing_macro_codes);
 
-use TeX::WEB2C qw(:if_codes);
+use TeX::Constants qw(:if_codes);
 
 use TeX::Class;
 

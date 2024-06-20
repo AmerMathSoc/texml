@@ -36,7 +36,7 @@ use base qw(TeX::Primitive::RegisterArithmetic);
 
 use TeX::Class;
 
-use TeX::WEB2C qw(:command_codes);
+use TeX::Constants qw(:command_codes);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;

@@ -40,7 +40,7 @@ use TeX::Class;
 
 use Carp;
 
-use TeX::WEB2C qw(:type_bounds :lexer_states);
+use TeX::Constants qw(:type_bounds :lexer_states);
 
 use TeX::Token qw(:catcodes :factories);
 

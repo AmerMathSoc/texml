@@ -37,7 +37,7 @@ use base qw(TeX::Primitive::BeginIf);
 use TeX::Class;
 
 use TeX::Constants qw(:booleans :tracing_macro_codes);
-use TeX::WEB2C qw(:node_params);
+use TeX::Constants qw(:node_params);
 
 sub expand {
     my $self = shift;

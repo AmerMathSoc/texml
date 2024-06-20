@@ -71,7 +71,7 @@ use TeX::Token::Constants;
 
 use TeX::TokenList;
 
-use TeX::WEB2C qw(:command_codes :scan_types :selector_codes :token_types);
+use TeX::Constants qw(:command_codes :scan_types :selector_codes :token_types);
 
 use TeX::Primitive::Parameter qw(:factories);
 

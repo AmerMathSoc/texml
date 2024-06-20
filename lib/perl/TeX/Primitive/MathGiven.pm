@@ -44,7 +44,7 @@ our @EXPORT = ();
 
 use TeX::Math qw(parse_math_code);
 
-use TeX::WEB2C qw(:scan_types);
+use TeX::Constants qw(:scan_types);
 
 use TeX::Class;
 
