@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::amsthm;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -275,7 +275,7 @@ __DATA__
     \fi
     \@nameuse{th#2}%
     \par
-    \everypar{\setXMLattribute{content-type}{noindent}\everypar{}}%
+    \everypar{}%
     \ignorespaces
 }
 
