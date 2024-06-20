@@ -1840,7 +1840,8 @@ sub __init_eqtb_region_4 {
 ## Simple_Lowercase_Mapping, and Simple_Titlecase_Mapping properties.
 ##
 ## Initialize mathcode and delcode to dummy values, because we don't
-## really care about them.
+## really care about them.  TBD: We probably don't even need to store
+## mathcodes and delcodes at all.
 
 sub initialize_char_codes {
     my $tex = shift;
