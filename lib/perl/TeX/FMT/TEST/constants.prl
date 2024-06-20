@@ -1,0 +1,8617 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/texml/lib/perl);
+
+use TeX::FMT::Parameters;
+
+sub show {
+    my $params = shift;
+    my $param = shift;
+
+    if ($params->has_parameter($param)) {
+        print "    $param = ", $params->get_parameter($param), "\n";
+    } else {
+        print "    $param = N/A\n";
+    }
+
+    return;
+}
+
+for my $engine (qw(tex pdftex)) {
+    my $params = get_engine_parameters($engine);
+
+    print "Engine = $engine\n";
+
+    for my $param (qw(glue_base frozen_control_sequence frozen_dont_expand frozen_null_font undefined_control_sequence glue_base)) {
+        show $params, $param;
+    }
+
+    print "\n";
+
+    next;
+
+    show $params, 'number_usvs';
+
+    show $params, "active_base";
+    show $params, "single_base";
+    show $params, "hash_base";
+
+    show $params, 'frozen_control_sequence';
+    show $params, 'frozen_null_font';
+    show $params, "glue_base";
+    show $params, "skip_base";
+    show $params, "mu_skip_base";
+    show $params, "local_base";
+    show $params, "etoks_base";
+    show $params, "toks_base";
+    show $params, "box_base";
+    show $params, "cat_code_base";
+
+    show $params, "math_code_base";
+
+    show $params, "int_base";
+
+    print "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub process {
+    my $id = shift;
+
+    next unless $id =~ m{^([a-z]+)(\d+)$};
+
+    my ($publ_key, $manid) = ($1, $2);
+
+    my @gentags = glob(qq{/ams/web/journals/$publ_key/2023-*/S*$manid*/S*.xml});
+
+    die "Can't find gentag for $id\n" unless @gentags == 1;
+
+    print "gentag = '$gentags[0]'\n";
+
+    open(my $in, "<:utf8", $gentags[0]) or die;
+
+    open(my $out, ">:utf8", "$id/$id-gentag.xml") or die;
+
+    local $_;
+
+    while (<$in>) {
+        m{<(abstract|bibliography|doctext)>} and do {
+            print { $out } qq{</article>\n};
+
+            last;
+        };
+
+        print { $out } $_;
+    }
+
+    close($out);
+
+    close($in);
+
+    return;
+}
+
+while (my $id = shift) {
+    process($id);
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+{ package MyClass;
+
+  use Class::Std;
+
+  my %foo_of :ATTR( :name<foo> :default<foo>);
+
+  sub BUILD {
+      my ($self, $ident, $arg_ref) = @_;
+
+      print STDERR "Before BUILD: $foo_of{$ident}\n";
+
+      print STDERR "running BUILD\n";
+
+      $foo_of{$ident} = $arg_ref->{foo} || 'quux';
+
+      return;
+  }
+
+}
+
+my $m = MyClass->new( { foo => 'bar' });
+
+print $m->get_foo(), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use lib qw(/work/github/AmerMathSoc/texml-tools/lib/perl);
+
+use PTG::System;
+
+use PTG::GitHub::Client;
+
+my $xml_file = shift;
+
+my $html_log;
+
+PTG::System->run2({ command => [ xml2html => $xml_file ],
+                    stdout  => \$html_log });
+
+print $html_log;
+
+
+
+my $self = PTG::GitHub::Client->new( { repo => 'pseudo-journal' } );
+
+my $issue_id = 40;
+
+
+$self->add_comment($issue_id, $html_log);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub length_of_title {
+    my $file = shift;
+
+    my $title;
+
+    open(my $fh, "<", $file) or return;
+
+    while (<$fh>) {
+        chomp;
+
+        m{<title>} and do {
+            while (<$fh>) {
+                s{<tex>}{} and do {
+                    $title = $_;
+
+                    until ($title =~ s{</tex>}{}) {
+                        $title .= <$fh>;
+                    }
+
+                    last;
+                }
+            }
+
+            last;
+        };
+    }
+
+    close($fh);
+
+    $title =~ s{^\s+|\s+$}{}g;
+    $title =~ s{\s+}{ }g;
+
+    return length($title);
+}
+
+sub max {
+    my ($a, $b) = @_;
+
+    return $a > $b ? $a : $b;
+}
+
+my $max_length = 0;
+
+while (my $gentag = shift) {
+    $max_length = max($max_length, length_of_title($gentag));
+}
+
+print $max_length, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use DBI;
+
+my $dsn = q{DBI:mysql:mathviewer:twebdb.ams.org};
+
+my $dbh = DBI->connect($dsn, 'mathviewer_admin', 'change me');
+
+my $sql = qq{select count(*) from articles};
+
+my $sth = $dbh->prepare($sql);
+
+$sth->execute();
+
+my $h = $sth->fetchrow_hashref();
+
+$sth->finish;
+
+$dbh->disconnect;
+
+while (my ($k, $v) = each %{ $h }) {
+    print "$k => $v\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub x {
+    my %pii;
+
+    @pii{@_} = (1) x @_;
+
+    while (my ($k, $v) = each %pii) {
+        print "$k => $v\n";
+    }
+
+    return;
+}
+
+print "No piis:\n";
+
+x();
+
+print "\n\nSome piis:\n";
+
+x(1, 2, 3, 4);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Temp qw(tempdir);
+
+sub scratch_dir {
+    my $tmp_dir = tempdir("texml-svg-XXXXXX",
+                          DIR => ".",
+                          CLEANUP =>0);
+
+    my $mask = 02777 & ~umask;
+
+    chmod($mask, $tmp_dir);
+
+    return $tmp_dir;
+}
+
+printf qq{umask = %03o\n}, umask;
+
+my $tmp_dir = scratch_dir;
+
+print "Created $tmp_dir\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PRD::MathViewer::DB;
+
+use PRD::MathViewer::Constants qw(:events);
+
+my $mv_db = PRD::MathViewer::DB->new();
+
+# my $num_rows = $mv_db->update_status('bproc', 191, 8);
+# 
+# print "num_rows affected = $num_rows\n";
+
+my $n = $mv_db->insert_event({ publ_key => 'bproc', manid => 191 }, POSTED_HTML);
+
+print "num_rows affected = $n\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Date::Manip::DM5;
+
+my $ts = qq{2023-08-01 00:00:00};
+
+my $date = UnixDate($ts, "%s");
+
+print $ts, "\n";
+
+print $date, "\n";
+
+print join ":", localtime($date), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @now = localtime();
+
+my $today = sprintf qq{%04d-%02d-%02d}, $now[5] + 1900, $now[4] + 1, $now[3];
+
+print $today, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $x = << 'EOF';
+\ref{A} --
+\ref{B}
+
+\ref{A} --\ref{B}
+
+\ref{A}-\eqref{B}
+
+\eqref{A}-\ref{B}
+
+\eqref{A}-\eqref{B}
+EOF
+
+$x =~ s{\\ref   \{([^{}]+)\} \s*-+\s* \\ref\{([^{}]+)   \}}
+       {\\refRange{'$1'}{'$2'}}smxg;
+
+$x =~ s{\\eqref \{([^{}]+)\} \s*-+\s* \\eqref\{([^{}]+) \}}
+       {\\eqrefRange{'$1'}{'$2'}}smxg;
+
+print $x;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use PRD::MathViewer::DB;
+
+my $mv_db = PRD::MathViewer::DB->new();
+
+my $dbh = $mv_db->get_dbh();
+
+my $query = sprintf qq{
+    select
+        publ_key, manid, pii, issue
+    from
+        journal_articles
+    where
+        publ_key = 'mcom'
+};
+
+my $sth = $dbh->prepare($query);
+
+$sth->execute();
+
+while ( my $record = $sth->fetchrow_hashref() ) {
+    my $publ_key = $record->{publ_key};
+    my $manid    = $record->{manid};
+    my $pii      = $record->{pii};
+    my $issue    = $record->{issue};
+
+    print "$publ_key/$manid: $pii ($issue)\n";
+}
+
+$sth->finish();
+
+$dbh->disconnect();
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use version; our $VERSION = qv '0.0.0';
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PRD::MathViewer::DB;
+
+my $mathviewer_db = PRD::MathViewer::DB->new();
+
+my $mss = { publ_key => 'jims', manid => '123', issue => '0000-000-00', pii => "PII" };
+
+$mathviewer_db->insert_manuscript($mss);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $mss = { publ_key => 'jams', manid => '123', issue => '1996-34-9', pii => "PII" };
+
+printf qq{%s/%s => %s/%s (%s)\n}, @{ $mss }{qw(publ_key manid issue pii manid)};
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use version; our $VERSION = qv '0.0.0';
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use Data::Dumper;
+
+use PTG::GitHub::Client;
+use PTG::Git::Client;
+
+for (qw(add XRAB_RE labels_of)) {
+    if (PTG::GitHub::Client->can($_)) {
+        print qq{GitHub can $_\n};
+    } else {
+        print qq{GitHub can NOT $_\n};
+    }
+
+    if (PTG::Git::Client->can($_)) {
+        print qq{Git can $_\n};
+    } else {
+        print qq{Git can NOT $_\n};
+    }
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my %PAGES_PER_YEAR;
+
+my $TOTAL_PAGES;
+
+my %ARTICLES_PER_YEAR;
+
+my $TOTAL_ARTICLES;
+
+while (<>) {
+    m{(\d{4})\s+(\d+)\s+(\d+)} and do {
+        my ($year, $num, $pages) = ($1, $2, $3);
+
+        $PAGES_PER_YEAR{$year} += $pages;
+        $TOTAL_PAGES           += $pages;
+
+        $ARTICLES_PER_YEAR{$year} += $num;
+        $TOTAL_ARTICLES           += $num
+    }
+}
+
+for my $year (sort keys %PAGES_PER_YEAR) {
+    printf qq{%d %-10d %-10d\n}, $year, $ARTICLES_PER_YEAR{$year}, $PAGES_PER_YEAR{$year},
+}
+
+print "\n";
+
+print "Total articles: $TOTAL_ARTICLES\n";
+print "Total pages:    $TOTAL_PAGES\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my %VIEWS;
+
+while (<>) {
+    my ($month, $num) = split /\s+/;
+
+    $VIEWS{$month} += $num;
+}
+
+for my $month (sort keys %VIEWS) {
+    print $month, ",", $VIEWS{$month}, "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $pages = 0;
+my $articles = 0;
+
+while (<>) {
+    next unless m{(\d+)\s*(\d+)\s*(\d+)};
+
+    $articles += $2;
+    $pages    += $3;
+}
+
+print "$articles articles; $pages pages\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $git_status = '## regen-2023-jul-24...origin/regen-2023-jul-24
+M  noti2726/xml/noti2726.xml';
+
+print $git_status, "\n\n";
+
+if ($git_status =~ m{\A## (\S+?)(\.\.\..*?)?$}sm) {
+    print $1, "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Tail;
+
+my $file = File::Tail->new(name => "/var/spool/mail/dmj", tail => -1);
+
+while (defined(my $line = $file->read)) {
+    print $line if $line =~ m{^From };
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PRD::Publications;
+
+my $PUBS = PRD::Publications->new();
+
+my $gentag = $PUBS->journal_gentag_file({ pii => 'S0894-0347-2023-01025-2' });
+
+print "gentag = $gentag\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use APR::Const -compile => qw(:error);
+
+print "APR::Const::EABOVEROOT = ", APR::Const::EABOVEROOT, "\n";
+print "APR::Const::EABSOLUTE = ", APR::Const::EABSOLUTE, "\n";
+print "APR::Const::EACCES = ", APR::Const::EACCES, "\n";
+print "APR::Const::EAGAIN = ", APR::Const::EAGAIN, "\n";
+print "APR::Const::EBADDATE = ", APR::Const::EBADDATE, "\n";
+print "APR::Const::EBADF = ", APR::Const::EBADF, "\n";
+print "APR::Const::EBADIP = ", APR::Const::EBADIP, "\n";
+print "APR::Const::EBADMASK = ", APR::Const::EBADMASK, "\n";
+print "APR::Const::EBADPATH = ", APR::Const::EBADPATH, "\n";
+print "APR::Const::EBUSY = ", APR::Const::EBUSY, "\n";
+print "APR::Const::ECONNABORTED = ", APR::Const::ECONNABORTED, "\n";
+print "APR::Const::ECONNREFUSED = ", APR::Const::ECONNREFUSED, "\n";
+print "APR::Const::ECONNRESET = ", APR::Const::ECONNRESET, "\n";
+print "APR::Const::EDSOOPEN = ", APR::Const::EDSOOPEN, "\n";
+print "APR::Const::EEXIST = ", APR::Const::EEXIST, "\n";
+print "APR::Const::EFTYPE = ", APR::Const::EFTYPE, "\n";
+print "APR::Const::EGENERAL = ", APR::Const::EGENERAL, "\n";
+print "APR::Const::EHOSTUNREACH = ", APR::Const::EHOSTUNREACH, "\n";
+print "APR::Const::EINCOMPLETE = ", APR::Const::EINCOMPLETE, "\n";
+print "APR::Const::EINIT = ", APR::Const::EINIT, "\n";
+print "APR::Const::EINPROGRESS = ", APR::Const::EINPROGRESS, "\n";
+print "APR::Const::EINTR = ", APR::Const::EINTR, "\n";
+print "APR::Const::EINVAL = ", APR::Const::EINVAL, "\n";
+print "APR::Const::EINVALSOCK = ", APR::Const::EINVALSOCK, "\n";
+print "APR::Const::EMFILE = ", APR::Const::EMFILE, "\n";
+print "APR::Const::EMISMATCH = ", APR::Const::EMISMATCH, "\n";
+print "APR::Const::ENAMETOOLONG = ", APR::Const::ENAMETOOLONG, "\n";
+# print "APR::Const::END = ", APR::Const::END, "\n";
+print "APR::Const::ENETUNREACH = ", APR::Const::ENETUNREACH, "\n";
+print "APR::Const::ENFILE = ", APR::Const::ENFILE, "\n";
+print "APR::Const::ENODIR = ", APR::Const::ENODIR, "\n";
+print "APR::Const::ENOENT = ", APR::Const::ENOENT, "\n";
+print "APR::Const::ENOLOCK = ", APR::Const::ENOLOCK, "\n";
+print "APR::Const::ENOMEM = ", APR::Const::ENOMEM, "\n";
+print "APR::Const::ENOPOLL = ", APR::Const::ENOPOLL, "\n";
+print "APR::Const::ENOPOOL = ", APR::Const::ENOPOOL, "\n";
+print "APR::Const::ENOPROC = ", APR::Const::ENOPROC, "\n";
+print "APR::Const::ENOSHMAVAIL = ", APR::Const::ENOSHMAVAIL, "\n";
+print "APR::Const::ENOSOCKET = ", APR::Const::ENOSOCKET, "\n";
+print "APR::Const::ENOSPC = ", APR::Const::ENOSPC, "\n";
+print "APR::Const::ENOSTAT = ", APR::Const::ENOSTAT, "\n";
+print "APR::Const::ENOTDIR = ", APR::Const::ENOTDIR, "\n";
+print "APR::Const::ENOTEMPTY = ", APR::Const::ENOTEMPTY, "\n";
+print "APR::Const::ENOTHDKEY = ", APR::Const::ENOTHDKEY, "\n";
+print "APR::Const::ENOTHREAD = ", APR::Const::ENOTHREAD, "\n";
+print "APR::Const::ENOTIME = ", APR::Const::ENOTIME, "\n";
+print "APR::Const::ENOTIMPL = ", APR::Const::ENOTIMPL, "\n";
+print "APR::Const::ENOTSOCK = ", APR::Const::ENOTSOCK, "\n";
+print "APR::Const::EOF = ", APR::Const::EOF, "\n";
+print "APR::Const::EPATHWILD = ", APR::Const::EPATHWILD, "\n";
+print "APR::Const::EPIPE = ", APR::Const::EPIPE, "\n";
+print "APR::Const::EPROC_UNKNOWN = ", APR::Const::EPROC_UNKNOWN, "\n";
+print "APR::Const::ERELATIVE = ", APR::Const::ERELATIVE, "\n";
+print "APR::Const::ESPIPE = ", APR::Const::ESPIPE, "\n";
+print "APR::Const::ESYMNOTFOUND = ", APR::Const::ESYMNOTFOUND, "\n";
+print "APR::Const::ETIMEDOUT = ", APR::Const::ETIMEDOUT, "\n";
+print "APR::Const::EXDEV = ", APR::Const::EXDEV, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my %h = (a => 1, b => 2, c => 3);
+
+print join("; ", map { "$_=$h{$_}" } keys %h), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @REs = (
+    qr{^/publications/mrsections/},
+    qr{^/mrslisting},
+    qr{^/journals/abs/[^/]+/.*\.pdf$},
+    qr{^/journals/[^/]+/earlyview/[^/]+/.+\.pdf$},
+    qr{^/journals/[^/]+/\d[^/]+/S[^/]+/S.+\.pdf$},
+    qr{^/journals/[^/]+/\d[^/]+/S[^/]+/supp.*?/.+\.pdf$},
+    qr{^/journals/[^/]+/[^/]+/S[^/]+/(home\.html)?$},
+    qr{^/journals/[^/]+/[^/]+/S[^/]+/viewer/(index\.html)?$},
+    qr{^/books/[^/]+/\d[^/]+/.+\.pdf$},
+    qr{^/books/[^/]+/\d[^/]+/\d[^/]+(/(.*\.pdf)?)?$},
+    qr{^/books/[^/]+/\d[^/]+/.+\.epub$},
+    qr{^/books/[^/]+/\d[^/]+?(/(home\.html)?)?$},
+);
+
+while (<>) {
+    for my $re (@REs) {
+        print $re, "\n" if m{$re};
+    }
+}
+
+__END__
+
+while (<>) {
+    if (m{^/books/([^/]+)/(\d[^/]+)(/(home\.html)?)?$}) {
+        print "$1 : $2\n";
+    } else {
+        print "NOPE\n";
+    }
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use JSON;
+
+use Compress::Zlib qw(compress uncompress);
+
+use URI::Escape;
+
+use MIME::Base64;
+
+sub decode_payload {
+    my $payload = shift;
+
+    return unless defined $payload;
+
+    if (my $zlib = decode_base64(uri_unescape($payload))) {
+        if (my $json = uncompress($zlib)) {
+return $json;
+            return decode_json($json);
+        }
+    }
+
+    return;
+}
+
+while (my $b64 = shift) {
+    print decode_payload($b64), "\n\n";
+}
+
+__END__
+
+my $file = shift;
+
+open(my $fh, "<", $file) or die;
+
+local $/ = undef;
+
+my $b64 = <$fh>;
+
+close($fh);
+
+# print uri_escape($b64), "\n";
+
+print decode_payload($b64), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @now = localtime(time);
+
+$now[5] += 1900;
+$now[4] += 1;
+
+my $datetime = sprintf "%02d-%02d-%02d %02d:%02d:%02d", @now[reverse 0..5];
+
+my $date = sprintf "%02d%02d%02d", @now[5, 4, 3];
+
+print $date, "\n";
+print $datetime, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $a = {a => 1,
+         b => 2,
+         c => 3,
+    };
+
+my $b = { %{ $a }, d => 4 };
+
+while (my ($k, $v) = each %{ $b }) {
+    print "$k => $v\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use List::Util qw(any);
+
+sub common_hashkeys {
+    my $a = shift;
+    my $b = shift;
+
+    my %keys;
+
+    map { $keys{$_}++ } keys %{ $a }, keys %{ $b };
+
+    return grep { $keys{$_} > 1 } keys %keys;
+}
+
+my %a = (a => 1,
+         b => 2,
+         c => 3,
+         d => 4,
+         e => 5,
+    );
+
+my %b = (c => 1,
+         d => 2,
+         e => 3,
+         f => 4,
+    );
+
+my @common = common_hashkeys(\%a, \%b);
+
+print "Keys in common: @common\n";
+
+my $a_in_a = any { $_ eq 'a' } keys %a;
+my $a_in_b = any { $_ eq 'a' } keys %b;
+
+print "a_in_a: '$a_in_a'; a_in_b: '$a_in_b'\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+if ( " 3 " > 2) {
+    print "' 3 ' is numerically greater than 2\n";
+} else {
+    print "' 3 ' is numerically less than 2\n";
+}
+
+my $c = " 3 " cmp 2;
+
+print "c = $c\n";
+
+if ($c == -1) {
+    print "' 3 ' is lexigraphically less than 2\n";
+} elsif ($c == 0) {
+    print "' 3 ' is lexigraphically equal to 2\n";
+} else {
+    print "' 3 ' is lexigraphically greater than 2\n";
+}
+
+my $n = "040";
+
+print oct($n) + 0, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $a = qq{/ams/raw/jams/home.html};
+
+(my $b = $a) =~ s{^/ams/raw}{};
+
+my $c = $a =~ s{^/ams/raw}{}r;
+
+my $d = ($a =~ s{^/ams/raw}{}r);
+
+print "a = $a\n";
+print "b = $b\n";
+print "c = $c\n";
+print "d = $d\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $a = {1 => 'a', 2 => 'a'};
+my $b = {          2 => 'b', 3 => 'b'};
+
+my $c = {%{$a}, %{$b}};
+
+while (my ($k, $v) = each %{$c}) {
+    print "$k => $v\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my %a;
+my %b;
+
+for my $key (qw(a b c d e)) {
+    $a{$key} = $key;
+    $b{$key} = $key;
+}
+
+if (keys %a > 0) {
+    print "a has " . keys(%a) . " keys\n";
+}
+
+print "a: ", (join " ", keys %a), "\n";
+print "b: ", (join " ", keys %b), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+while (<>) {
+    print if m{\\begin\{smallmatrix\} *(\d+) *& *(\d+) *\\\\ *(\d+) *& *(\d+) *\\end\{smallmatrix\}};
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Encode;
+
+# my $string = "abc\x{2329}def";
+
+my $string = "KÃ¶the";
+
+my @chars;
+
+# while ($string =~ s{\A (\C)}{}smx) {
+#     push @chars, $1;
+# }
+
+@chars = split //, decode_utf8($string);
+
+binmode \*STDOUT, ":utf8";
+
+print scalar @chars, " chars: ", join(":", @chars), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $active_base = 1;
+my $number_usvs = 0x110000;
+my $single_base = $active_base + $number_usvs;
+
+print $active_base + ord('~'), "\n";
+print $single_base + ord('~'), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PTG::Unicode::Translators qw(:all);
+
+binmode *STDOUT, ":utf8";
+binmode *STDERR, ":utf8";
+
+my $tex = qq{University of Ia\\lfhook{s}i, Romania};
+
+my $utf8 = tex_to_unicode($tex);
+
+print "'$tex' => '$utf8'\n";
+
+my $u2t = unicode_to_tex($utf8);
+
+print $u2t, "\n";
+
+__END__
+
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $string = shift;
+
+sub count_pars {
+    my $string = shift;
+
+    my @pars = $string =~ m{<p>}g;
+
+    print @pars, "\n";
+
+    return scalar @pars;
+}
+
+sub strip_outer_par {
+    my $string = shift;
+
+    my @pars = $string =~ m{<p>}g;
+
+    if (@pars == 1) {
+        $string =~ s{\A \s* <p>(.*)?</p> \s* \z}{$1}smx;
+    }
+
+    return $string;
+}
+
+print strip_outer_par($string), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $string = shift;
+
+sub count_pars {
+    my $string = shift;
+
+    my @pars = $string =~ m{<p>}g;
+
+    print @pars, "\n";
+
+    return scalar @pars;
+}
+
+sub strip_outer_par {
+    my $string = shift;
+
+    my @pars = $string =~ m{<p>}g;
+
+    if (@pars == 1) {
+        $string =~ s{\A \s* <p>(.*)?</p> \s* \z}{$1}smx;
+    }
+
+    return $string;
+}
+
+print strip_outer_par($string), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PRD::Document::Builder;
+
+my $B = PRD::Document::Builder->new();
+
+my $gentag = shift;
+
+my $d = $B->convert($gentag);
+
+print $d->get_thanks(0), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PRD::Apache::Books qw(create_watermarked_pdf);
+
+my $src_pdf = shift;
+
+my $w = create_watermarked_pdf($src_pdf, 'mr');
+
+rename($w, "WATERMARKED.pdf");
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $X = '0066cc';
+
+my @rgb = map { hex } ($X =~ m{..}g);
+
+print scalar @rgb, ": @rgb\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @X = qw(a b);
+
+my %props = ( a => 1, b => 2, c => 3);
+
+print "BEFORE:";
+
+while (my ($k, $v) = each %props) {
+    print " ($k, $v)";
+}
+
+print "\n\n";
+    
+my %deleted;
+
+@deleted{@X} = delete @props{@X};
+
+print "AFTER:";
+
+while (my ($k, $v) = each %props) {
+    print " ($k, $v)";
+}
+
+print "\n\n";
+
+print "DELETED:";    
+
+while (my ($k, $v) = each %deleted) {
+    print " ($k, $v)";
+}
+
+print "\n\n";
+
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/texml/lib/perl);
+
+use TeX::Interpreter;
+
+my $x = SpanRecord->new({ num_rows => 3 });
+
+print $x->num_rows(), "\n";
+
+$x->decr_num_rows();
+
+print "$x", ": ", $x->num_rows(), "\n";
+
+$x->incr_num_rows();
+
+print "$x", ": ", $x->num_rows(), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $hash = { x => 3 };
+
+print --$hash->{x}, "\n";;
+
+print $hash->{x}, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $longest = "";
+
+while (<>) {
+    my (undef, $n) = split /;/;
+
+    print $n, "\n" if length($n) == 88;
+#    $longest = $n if length($n) > length($longest);
+}
+
+print $longest, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/texml/lib/perl);
+
+use TeX::Utils::LibXML;
+
+my $name_element = new_xml_element('name');
+
+my $suffix_element = append_xml_element($name_element, "suffix");
+
+append_xml_element($suffix_element, "x", ", ");
+
+$suffix_element->appendText("Jr.");
+
+print $name_element, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my %a;
+
+print "num entries = ", scalar (keys %a), "\n";
+
+$a{a} = 1;
+
+print "num entries = ", scalar (keys %a), "\n";
+
+$a{b} = 2;
+
+print "num entries = ", scalar (keys %a), "\n";
+
+$a{c} = 3;
+
+print "num entries = ", scalar (keys %a), "\n";
+
+delete $a{a};
+
+print "num entries = ", scalar (keys %a), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Image::JPEG::Size;
+
+my $jpg = Image::JPEG::Size->new();
+
+while (my $jpg_file = shift) {
+    my ($width, $height) = $jpg->file_dimensions($jpg_file);
+
+    print "${jpg_file}: ${width}x${height}\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use version; our $VERSION = qv '0.0.0';
+
+while(<>) {
+    m{\\begin\{itemize\}} and do {
+        my $start = $_;
+
+        my $first = <>;
+
+        if ($first =~ s{^\\item\[\((a|i)\)\]\s*}{\\item }) {
+            my $style = $1 eq 'a' ? 'alph' : $1 eq 'i' ? 'roman' : die "unexpected list style '$1'";
+
+            print qq{\\begin{enumerate}[label=(\\$style*)]\n};
+
+            print $first;
+
+            while (<>) {
+                m{\\end\{itemize\}} and do {
+                    print qq{\\end{enumerate}\n};
+
+                    last;
+                };
+
+                s{\\item\[.*?\]\s*}{\\item };
+
+                print;
+            }
+
+            next;
+        } else {
+            print $start;
+            print $first;
+
+            next;
+        }
+    };
+
+    print;
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+use lib qw(/work/ptg/src/perl/trunk);
+
+use File::Basename;
+
+use LWP::UserAgent;
+use HTTP::Request::Common;
+
+use PRD::StdLogger;
+
+my $LOG = PRD::StdLogger->get_logger();
+
+sub submit_doi_file( $ ) {
+    my $xml_file = shift;
+
+    # if (! $main::OPT{do_transfer}) {
+    #     $LOG->notify("Not transferring files to Crossref\n");
+    # 
+    #     return;
+    # }
+
+    # $LOG->notify("Sending $xml_file to Crossref\n");
+
+    my $servlet = 'https://doi.crossref.org/servlet/deposit';
+
+    my $url = sprintf(qq{%s?operation=%s&login_id=%s&login_passwd=%s&area=%s},
+                      $servlet,
+                      'doMDUpload',
+                      'ams',
+                      'crpw874',
+                      'test');
+
+    my $ua = LWP::UserAgent->new();
+
+    my $request = POST $url,
+        'Content-Type' => 'form-data',
+        Content => [fname => [ $xml_file, basename($xml_file) ]];
+
+die $request->as_string(), "\n";
+
+    my $response = $ua->request(POST $url,
+                                'Content-Type' => 'multipart/form-data',
+                                Content => [ $xml_file, basename($xml_file) ]);
+
+
+
+    if ($response->is_success()) {
+        if (length($response->as_string()) == 0) {
+            $LOG->warn("EMPTY: $url\n");
+        } else {
+            $LOG->verbose("OK: $url\n");
+        }
+    } else {
+        $LOG->warn("FAILED ($url): ", $response->as_string(), "\n");
+    }
+
+    return;
+}
+
+my $xml_file = shift;
+
+submit_doi_file($xml_file);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PTG::Unicode::Translators qw(tex_math_to_unicode);
+
+binmode *STDOUT, ":utf8";
+binmode *STDERR, ":utf8";
+
+my $tex = qq{P\\'erez};
+
+my $utf8 = tex_math_to_unicode($tex);
+
+print "'$tex' => '$utf8'\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use TeX::AMSrefs::BibItem qw(:factories);
+
+my $b = make_bib_item('article', 'xxx');
+
+$b->set_title("Some stuff");
+
+$b->add_author("Jones, David");
+$b->add_author("Doe, John", { inverted => 'yes' });
+
+my $num_authors = $b->num_authors();
+
+print "There are $num_authors authors\n";
+
+print "b = $b\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub t {
+    my $x = shift;
+
+    print defined $x ? $x : "<undef>", ": ";
+
+    print $x ? "TRUE" : "FALSE", "\n";
+
+    return;
+}
+
+
+t();
+
+t("");
+
+t(" ");
+
+t("0");
+
+t(" 0");
+
+t("00");
+
+t(" ");
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+# use lib qw(/ams/texmf/lib/perl);
+
+use lib qw(/work/ptg/texml/lib/perl);
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PRD::Document::MultiFormat;
+
+binmode *STDOUT, ":utf8";
+binmode *STDERR, ":utf8";
+
+my $m = PRD::Document::MultiFormat->new({ tex => qq{P\\'erez} });
+
+my $utf8 = $m->as_unicode();
+
+print "'$m' => '$utf8'\n";
+
+print "\n\nMODULES:\n\n";
+
+while (my ($k, $v) = each %INC) {
+    print "$k => $v\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+######################################################################
+##                                                                  ##
+##                             LOGGING                              ##
+##                                                                  ##
+######################################################################
+
+use TeX::Logger;
+
+my $LOG = TeX::Logger->get_logger();
+
+## Avoid finalization segfault.
+END { undef $LOG };
+
+$LOG->notify("hello, world\n");
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PRD::Document;
+
+my $d = PRD::Document->new();
+
+$d->set(title => "David's folly");
+
+my @atts = $d->attributes();
+
+for my $att (@atts) {
+    my $name = $att->{name};
+    my $type = $att->{type};
+
+    my $verb = eval { $type->can("generate_cached_formats") ? "YES" : "NO" };
+
+    if ($@) {
+        print $name, " => $type (<undef>)\n";
+    } else {
+        print $name, " => $type ($verb)\n";
+    }
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+use lib qw(/work/ptg/src/perl/trunk);
+
+use TeX::Simple::JPTS;
+
+my $tex_string = '$P \subsetneq Q$';
+
+my $jpts_string = tex_to_jpts($tex_string);
+
+print $jpts_string, "\n";;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+binmode \*STDOUT, ":utf8";
+binmode \*STDERR, ":utf8";
+
+my $s;
+
+open(my $fh, ">:utf8", \$s);
+
+print { $fh } "a";
+
+$s .= "\x{01ED}";
+
+print { $fh } "\x{01ED}";
+
+print $s, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+use lib qw(/work/ptg/src/perl/trunk);
+
+use TeX::Simple::JPTS;
+
+my $tex_string = '$P \subsetneq Q$';
+
+my $jpts_string;
+
+my $jpts = TeX::Simple::JPTS->new({ source_string => $tex_string,
+                                    out_file   => \$jpts_string });
+
+$jpts->transform();
+
+print $jpts_string, "\n";;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PRD::HTML2JATS;
+
+my $tex_string = 'P \subsetneq Q';
+
+my $mml = PRD::HTML2JATS::tex2mathml($tex_string);
+
+print $mml;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my %a = ( a => 1, b => 2, c => 3 );
+
+print join(":", @a{qw(a c)}), "\n";
+
+my $b = { a => 1, b => 2, c => 3 };
+
+print join(":", @{$b}{qw(a c)}), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::MMagic;
+use File::MMagic::XS;
+
+my $m = File::MMagic->new();
+my $x = File::MMagic::XS->new();
+
+$m->addSpecials("image/eps", qr/\xc5\xd0\xd3\xc6/);
+$m->addSpecials("image/svg+xml", qr/<\?xml\b/, qr/<svg\b/);
+
+$x->add_magic("0 string <xml
+
+while (my $file = shift) {
+    my $m1 = $m->checktype_filename($file);
+    my $m2 = $x->get_mime($file);
+
+    print "$file => $m1, $m2\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PTG::DB::Client;
+
+my $a = new PTG::DB::Client( { dbhost   => 'dmj',
+                               dbvendor => 'IngresII',
+                               dbname   => 'demodb',
+                             });
+
+my $sth = $a->submit_select_query("select dbmsinfo('username') as username");
+
+my $h = $sth->fetchrow_hashref();
+
+$sth->finish();
+
+print $h->{username}, "\n";
+
+$sth = $a->submit_select_query("select eno from dmj_table");
+
+while (my $h = $sth->fetchrow_hashref()) {
+    print "returned ", $h->{eno}, "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+print " GID = $(\n";
+print "EGID = $)\n";
+print " UID = $<\n";
+print "EUID = $>\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use PTG::Utils;
+
+use File::Copy;
+
+use Roman;
+
+sub process_file( $ ) {
+    my $file = shift;
+
+    my ($out, $tmp_file) = get_temp_file(".tex") or die "temp file error: $!\n";
+
+    open(my $in, "<", $file) or die "Can't open $file: $!\n";
+
+    local $_;
+
+    my $label = "Chapter";
+    my $tex_number;
+
+    while (<$in>) {
+        s{<tex>(?:CHAPTER )?(\d+)\.? }{<tex>} and do {
+            $tex_number = $1;
+        };
+
+        s{<(ascii|html)>(\d+)\.? }{<$1>} and do {
+            my $this_tag = $1;
+            my $this_number = $2;
+
+            if (! defined $tex_number) {
+                die "Found number in <tex> but not in <$this_tag>\n";
+            }
+
+            if ($tex_number ne $this_number) {
+                die "Mismatch between <tex> and <$this_tag>\n";
+            }
+        };
+
+        m{<secno} and do {
+            if (defined $tex_number) {
+                die "Found number in <tex> but there is already a <secno>\n";
+            };
+        };
+
+        m{<copyright>} and do {
+            if (defined $tex_number) {
+                fwrite $out, qq{    <secno label="$label">$tex_number</secno>\n};
+            }
+        };
+
+        fwrite $out, $_;
+    }
+
+    close($in);
+
+    fclose($out);
+
+    copy($tmp_file, $file) or die "Can't overwrite $file: $!\n";
+
+    unlink $tmp_file;
+
+    return;
+}
+
+while (my $file = shift) {
+    process_file($file);
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/home/dmj/lib/perl);
+use lib qw(/ams/texmf/lib/perl);
+
+use BIB::BibTeX::Name;
+
+use PTG::Utils;
+
+use File::Copy;
+
+use Roman;
+
+sub process_file( $ ) {
+    my $file = shift;
+
+    my ($out, $tmp_file) = get_temp_file(".tex") or die "temp file error: $!\n";
+
+    open(my $in, "<", $file) or die "Can't open $file: $!\n";
+
+    local $_;
+
+    my $author;
+
+    while (<$in>) {
+        s{<tex>(.*?): }{<tex>} and do {
+            $author = $1;
+        };
+
+        s{<(ascii|html)>(.*?): }{<$1>} and do {
+            my $this_tag = $1;
+            my $this_author = $2;
+
+            if (! defined $author) {
+                die "Found author in <tex> but not in <$this_tag>\n";
+            }
+
+            if ($author ne $this_author) {
+                die "Mismatch between <tex> and <$this_tag> in $file\n";
+            }
+        };
+
+        m{</title>} and do {
+            fwrite $out, $_;
+
+            if (nonempty $author) {
+                my @names = parse_name_list($author);
+
+                my ($given, $von, $surname, $suffix) = @{ $names[0] };
+
+                my $middle;
+
+                if ($given =~ s{ ([A-Z]\.)$}{}) {
+                    $middle = $1;
+                }
+
+                if (nonempty $von) {
+                    $surname = "$von $surname";
+                };
+
+                fwrite $out, qq{    <author>\n};
+
+                fwrite $out, qq{        <name>\n};
+
+                if (nonempty $surname) {
+                    fwrite $out, qq{            <surname>\n};
+
+                    fwrite $out, qq{                <tex>$surname</tex>\n};
+                    fwrite $out, qq{                <html>$surname</html>\n};
+                    fwrite $out, qq{                <ascii>$surname</ascii>\n};
+
+                    fwrite $out, qq{            </surname>\n};
+                }
+
+                if (nonempty $given) {
+                    fwrite $out, qq{            <given>\n};
+
+                    fwrite $out, qq{                <tex>$given</tex>\n};
+                    fwrite $out, qq{                <html>$given</html>\n};
+                    fwrite $out, qq{                <ascii>$given</ascii>\n};
+
+                    fwrite $out, qq{            </given>\n};
+                }
+
+                if (nonempty $middle) {
+                    fwrite $out, qq{            <middle>\n};
+
+                    fwrite $out, qq{                <tex>$middle</tex>\n};
+                    fwrite $out, qq{                <html>$middle</html>\n};
+                    fwrite $out, qq{                <ascii>$middle</ascii>\n};
+
+                    fwrite $out, qq{            </middle>\n};
+                }
+
+                if (nonempty $suffix) {
+                    fwrite $out, qq{            <suffix>\n};
+
+                    fwrite $out, qq{                <tex>$suffix</tex>\n};
+                    fwrite $out, qq{                <html>$suffix</html>\n};
+                    fwrite $out, qq{                <ascii>$suffix</ascii>\n};
+
+                    fwrite $out, qq{            </suffix>\n};
+                }
+
+                fwrite $out, qq{        </name>\n};
+
+                fwrite $out, qq{    </author>\n};
+            }
+
+            next;
+        };
+
+        fwrite $out, $_;
+    }
+
+    close($in);
+
+    fclose($out);
+
+    copy($tmp_file, $file) or die "Can't overwrite $file: $!\n";
+
+    unlink $tmp_file;
+
+    return;
+}
+
+while (my $file = shift) {
+    process_file($file);
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/home/dmj/lib/perl);
+use lib qw(/ams/texmf/lib/perl);
+
+use BIB::BibTeX::Name;
+
+use PTG::Utils;
+
+use File::Copy;
+
+use Roman;
+
+sub process_file( $ ) {
+    my $file = shift;
+
+    my ($out, $tmp_file) = get_temp_file(".tex") or die "temp file error: $!\n";
+
+    open(my $in, "<", $file) or die "Can't open $file: $!\n";
+
+    local $_;
+
+    my $author;
+
+    while (<$in>) {
+        m{<name>} and do {
+            fwrite $out, $_;
+
+            while (<$in>) {
+                m{<tex>(.*?)</tex>} and do {
+                    my @names = parse_name_list($1);
+
+                    my ($given, $von, $surname, $suffix) = @{ $names[0] };
+
+                    my $middle;
+                    my $honorific;
+
+                    if ($given =~ s{ ([A-Z]\.)$}{}) {
+                        $middle = $1;
+                    }
+
+                    if (nonempty $von) {
+                        $surname = "$von $surname";
+                    };
+
+                    if ($given =~ s{^(Captain) }{}) {
+                        $honorific = $1;
+                    }
+
+                    if (nonempty $surname) {
+                        fwrite $out, qq{            <surname>\n};
+
+                        fwrite $out, qq{                <tex>$surname</tex>\n};
+                        fwrite $out, qq{                <html>$surname</html>\n};
+                        fwrite $out, qq{                <ascii>$surname</ascii>\n};
+
+                        fwrite $out, qq{            </surname>\n};
+                    }
+
+                    if (nonempty $given) {
+                        fwrite $out, qq{            <given>\n};
+
+                        fwrite $out, qq{                <tex>$given</tex>\n};
+                        fwrite $out, qq{                <html>$given</html>\n};
+                        fwrite $out, qq{                <ascii>$given</ascii>\n};
+
+                        fwrite $out, qq{            </given>\n};
+                    }
+
+                    if (nonempty $middle) {
+                        fwrite $out, qq{            <middle>\n};
+
+                        fwrite $out, qq{                <tex>$middle</tex>\n};
+                        fwrite $out, qq{                <html>$middle</html>\n};
+                        fwrite $out, qq{                <ascii>$middle</ascii>\n};
+
+                        fwrite $out, qq{            </middle>\n};
+                    }
+
+                    if (nonempty $suffix) {
+                        fwrite $out, qq{            <suffix>\n};
+
+                        fwrite $out, qq{                <tex>$suffix</tex>\n};
+                        fwrite $out, qq{                <html>$suffix</html>\n};
+                        fwrite $out, qq{                <ascii>$suffix</ascii>\n};
+
+                        fwrite $out, qq{            </suffix>\n};
+                    }
+
+                    if (nonempty $honorific) {
+                        fwrite $out, qq{            <honorific>\n};
+
+                        fwrite $out, qq{                <tex>$honorific</tex>\n};
+                        fwrite $out, qq{                <html>$honorific</html>\n};
+                        fwrite $out, qq{                <ascii>$honorific</ascii>\n};
+
+                        fwrite $out, qq{            </honorific>\n};
+                    }
+
+                    next;
+                };
+
+                last if m{</name>};
+            };
+        };
+
+        fwrite $out, $_;
+    }
+
+    close($in);
+
+    fclose($out);
+
+    copy($tmp_file, $file) or die "Can't overwrite $file: $!\n";
+
+    unlink $tmp_file;
+
+    return;
+}
+
+while (my $file = shift) {
+    process_file($file);
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use PTG::Utils;
+
+use File::Copy;
+
+use Roman;
+
+sub process_file( $ ) {
+    my $file = shift;
+
+    my ($out, $tmp_file) = get_temp_file(".tex") or die "temp file error: $!\n";
+
+    open(my $in, "<", $file) or die "Can't open $file: $!\n";
+
+    local $_;
+
+    my $label = "Chapter";
+    my $number = 0;
+
+    while (<$in>) {
+        m{\\frontmatter} and do {
+            fwrite $out, qq{\\frontmatter \\llap{\\textit{Front matter}:}\n};
+
+            while (<$in>) {
+                m{\\mainmatter} and do {
+                    fwrite $out, qq{\\mainmatter \\llap{\\textit{Main matter}:}\n};
+
+                    last;
+                };
+
+                fwrite $out, $_;
+            }
+
+            next;
+        };
+
+        m{\\backmatter} and do {
+            fwrite $out, qq{\\backmatter \\llap{\\textit{Back matter}:}\n};
+
+            while (<$in>) {
+                fwrite $out, $_;
+            }
+
+            last;
+        };
+
+        m{\A \\title\{\s*\\relax}smx and do {
+            fwrite $out, $_;
+
+            next;
+        };
+
+        m{\A \\title \{ \s* (Appendix|Chapter|Lecture)\b (?: \s+ ([^.]+))?[.:] }smx and do {
+            $label = $1;
+
+            $number = $2 if defined $2;
+
+            fwrite $out, $_;
+
+            next;
+        };
+
+
+        m{\A \\title \{ \s* (.*)}smx and do {
+            if (isroman($number)) {
+                $number = Roman(arabic($number) + 1);
+            } else {
+                $number++;
+            }
+
+            fwrite $out, qq{\\title\{$label $number. $1};
+
+            next;
+        };
+
+        fwrite $out, $_;
+    }
+
+    close($in);
+
+    fclose($out);
+
+    copy($tmp_file, $file) or die "Can't overwrite $file: $!\n";
+
+    return;
+}
+
+while (my $file = shift) {
+    process_file($file);
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PRD::Snapshot;
+
+my $tex_file = shift;
+
+my %snapshot = extract_snapshot($tex_file);
+
+print "Format: ", $snapshot{"TeX format"}, ", v", $snapshot{"TeX format version"}, "\n";
+print "Application: ", $snapshot{"TeX engine"}, ", v", $snapshot{"TeX engine version"}, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use CAM::PDF;
+
+my $pdf_file = shift;
+
+my $doc = CAM::PDF->new($pdf_file);
+
+die "No document '$pdf_file'" unless $doc;
+
+for my $page_no (1..$doc->numPages()) {
+    print "%% Page $page_no\n";
+
+    my @font_names = $doc->getFontNames($page_no);
+
+    for my $font_name (@font_names) {
+        my $font = $doc->getFont($page_no, $font_name);
+
+        next unless defined $font;
+
+        while (my ($k, $v) = each %{ $font }) {
+            print "    $k => $v\n";
+        }
+
+        print "$font_name:\n";
+
+        my $widths = $font->{Widths};
+
+        next unless defined $widths;
+
+        print "Widths:\n";
+
+        my @widths = @{ $widths->{value} };
+
+        for (my $i = 0; $i < @widths; $i++) {
+            print "    $i:\n";
+
+            while (my ($k, $v) = each %{ $widths[$i] }) {
+                print "        $k => $v\n";
+            }
+        }
+    }
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use PRD::CSG;
+
+print translate_csg_path("/Volumes/macfiles/Production/ArtWork/artwork-templates/bull1698/bull1698-GA-tracking-form.pdf"), "\n";
+print translate_csg_path("/ams/production/journals/bull/inprod/bull1698/admin"), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+print "int AMS_STIX2_TOP_KERN[1028] = {\n";
+
+for my $i (0..1027) {
+    printf qq{     0 /* glyph#%d, U+%X */,\n}, 3246 + $i, 0x1D400 + $i;
+}
+
+print "}\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+binmode(*STDOUT, ":utf8");
+binmode(*STDERR, ":utf8");
+
+use PTG::Unicode::Translators qw(tex_math_to_unicode);
+
+sub __to_unicode( $ ) {
+    my $mf = shift;
+
+    my $utf8 = tex_math_to_unicode($mf); # $mf->as_unicode();
+
+    $utf8 =~ s{\^\{([a-z])\}}{<sup>$1</sup>}smxig;
+
+    return $utf8;
+}
+
+my $tex = '$\mathrm{F}_4(2^f)$';
+
+my $utf8 = __to_unicode($tex);
+
+print "Unicode: $utf8\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+use lib qw(/work/ptg/src/texml/trunk/lib/perl);
+
+use TeX::Interpreter::LaTeX::Package::AMSMeta qw(find_gentag_file);
+
+use XML::LibXML;
+
+my $xml_file = shift;
+
+my $dom = XML::LibXML->load_xml(location => $xml_file);
+
+my $gentag_file = find_gentag_file($dom);
+
+print "gentag file = '$gentag_file'\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $file = shift;
+
+binmode *STDOUT, ":utf8";
+
+open(my $fh, "<:encoding(shiftjis)", $file);
+
+while (<$fh>) {
+    print;
+}
+
+close($fh)
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $num_papers = 0;
+
+my %license;
+
+while (my $file = shift) {
+    open(my $fh, "<", $file) or die "Can't open $file: $!\n";
+
+    $num_papers++;
+
+    while (<$fh>) {
+        m{cclicense="(\S+?)"} and do {
+            $license{$1}++;
+        };
+    }
+
+    close($fh);
+}
+
+print "num papers: $num_papers\n";
+
+while (my ($license, $count) = each %license) {
+    print "$license: $count\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub foo { print "surprise!\n" }
+
+if (main->can("foo")) {
+    print "subroutine foo is defined\n";
+    foo();
+} else {
+    print "subroutine foo is NOT defined\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Image::PNG;
+
+while (my $file = shift) {
+    my $png = Image::PNG->new();
+
+    $png->read($file) or do {
+        die "Can't read $file: $!\n";
+    };
+
+    if (defined $png) {
+        print "width($file) = ", $png->width(), "\n";
+        print "height($file) = ", $png->height(), "\n";
+    }
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $paper_id = shift;
+
+chomp(my @branches = qx{git branch --list --no-color '$paper_id*'});
+
+map { s{^\s*}{} } @branches;
+
+for my $branch (@branches) {
+    print "'$branch'\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Mail::Sendmail;
+
+my ($USERNAME, $FULLNAME) = (getpwuid $<)[0, 6];
+
+print "\$USERNAME = $USERNAME\n";
+print "\$FULLNAME = $FULLNAME\n";
+
+my %mail = (To      => 'dmj@ams.org',
+            Cc      => 'mhs@ams.org, sgm@ams.org',
+            From    => "$FULLNAME <$USERNAME\@ams.org>",
+            Message => "Did you get this?"
+            );
+
+sendmail(%mail) or die $Mail::Sendmail::error;
+
+print "OK. Log says:\n", $Mail::Sendmail::log, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @matches = "abcdefghijklmnopqrstuvwxyz" =~ m{([aeiou])}g;
+
+print "@matches\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub fword {
+    my $fword = shift;
+
+    my $int  = $fword >> 14;
+
+    $int -= 4 if $int > 1;
+
+    my $frac = $fword & 0x3FFF;
+
+    my $f = $int + $frac/2**14;
+
+    printf "0x%04x: %d + %d/16384 = %f\n", $fword, $int, $frac, $f;
+
+    return;
+}
+
+for my $hex (0x7fff, 0x7000, 0x0001, 0x0000, 0xffff, 0x8000) {
+    fword($hex);
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+use lib qw(/work/ptg/src/texml/trunk/lib/perl);
+
+use TeX::Interpreter;
+
+my $tex = TeX::Interpreter->new({ fmt => 'latex',
+                                  unicode_input => 1,
+                                  do_svg    => 0,
+                                  debugging => 1 });
+
+$tex->set_catcode(ord '{',  1);
+$tex->set_catcode(ord '}',  2);
+
+#my $fragment = $tex->convert_fragment("a\\startXMLelement{emph}bcd\\endXMLelement{emph}e", 1);
+
+my $fragment = $tex->convert_fragment("\\startXMLelement{emph}a\\endXMLelement{emph}bcde");
+
+my $size = $fragment->size();
+
+print "There are $size nodes\n";
+
+for my $i (1..$size) {
+    print STDERR "node($i) = ", $fragment->get_node($i), "\n";
+}
+
+print $fragment->to_literal(), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PTG::SICI;
+
+print sici_code("0002-9947", 2019, 371, 1, 1, 1), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+my @options = qw(foo bar normal paz);
+
+    print STDERR "*** SUBFIGURE OPTIONS = @options\n";
+
+    @options = grep { ! m{^normal$} } @options;
+
+    print STDERR "*** SUBFIGURE OPTIONS = @options\n";
+
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Mail::Sendmail;
+
+my ($USERNAME, $FULLNAME) = (getpwuid $<)[0, 6];
+
+print "\$USERNAME = $USERNAME\n";
+print "\$FULLNAME = $FULLNAME\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+use PRD::PII qw(make_pii);
+
+my $pii = make_pii(99936, '0002-9947', 1963);
+
+print "pii = $pii\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+my $option = "style=myplain,name=Theorem,numberlike=theoremm";
+
+my %opt = split qr{\s*[=,]\s*}, $option;
+
+while (my ($k, $v) = each %opt) {
+    print "$k => $v\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PTG::SICI;
+
+print sici_code("0002-9947", 2018, 370, 9, 6, 15), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my %common = (a => "afjklj",
+              b => "jkasljfdkj");
+
+my $hash = { %common, u => "unique" };
+
+while (my ($k, $v) = each %{ $hash }) {
+    print "$k => $v\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+use lib qw(/work/ptg/src/texml/trunk/lib/perl);
+
+use TeX::Interpreter;
+
+my $t = TeX::Interpreter->new();
+
+my $string;
+
+$t->process_string($string);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use XML::Twig;
+
+my $twig = XML::Twig->new(
+    twig_handlers => { _all_ => sub { $_[0]->flush } },
+    pretty_print  => 'indented',
+    error_context => 1,
+    keep_encoding => 1);
+
+my $in_file = shift;
+
+my $xml_doc = $twig->safe_parsefile($in_file);
+
+$xml_doc->print();
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use XML::LibXML;
+
+my $xml_file = shift;
+my $xpath    = q{/html/body/table-wrap};
+
+my $xml_doc = XML::LibXML->load_xml(location => $xml_file,
+                                    no_cdata => 1);
+
+my $fragment = $xml_doc->find($xpath);
+
+print $fragment->to_literal(), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use PRD::SpineWidth;
+
+while (my $pages = shift) {
+    my ($spine_width, $total_pages, $num_signatures) = PRD::SpineWidth->spine_width($pages);
+
+    print "$pages : $spine_width in; $num_signatures signatures; $total_pages pp\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use PRD::Utils;
+
+sub bar {
+    $_[0] = 'bar';
+}
+
+my $foo = 'foo';
+
+print "foo = $foo\n";
+
+bar($foo);
+
+print "foo = $foo\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+sub load_it() {
+    eval { require PRD::Publications };
+}
+
+load_it();
+
+while (my($key, $val) = each %INC) {
+    print $key, ' => ', $val, "\n";
+}
+
+print "hello, world\n"
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use TeX::KPSE qw(kpse_lookup);
+
+print STDERR "Looking for article.cls\n";
+
+print kpse_lookup("article.cls"), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+binmode *STDOUT, ":utf8";
+binmode *STDERR, ":utf8";
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use TeX::Interpreter::LaTeX;
+
+use TeX::WEB2C qw(:interaction_modes);
+
+my $tex = TeX::Interpreter::LaTeX->new({ fmt => 'latex',
+                                         nofiles => 1,
+                                         unicode_input => 1,
+                                         interaction_mode => batch_mode,
+                                       });
+
+$tex->initialize_print_selector();
+
+$tex->INITIALIZE();
+
+for my $string (qq{hello, world}, qq{\x{1F63C}Schr\\"odinger}, qq{Schr\\"odinger}) {
+    print STDERR "****************************************\n";
+
+    print STDERR "string  = '$string'\n";
+
+    my $convert_string = $tex->convert_string($string);
+    print STDERR "convert_string: '$convert_string' (", ref($convert_string), ")\n";
+
+    my $token_list = $tex->tokenize($string);
+
+    my $tok = $tex->convert_token_list($token_list);
+    print STDERR "convert_token_list: '$tok' (", ref($tok), ")\n";
+
+    print STDERR "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+# binmode *STDOUT, ":utf8";
+# binmode *STDERR, ":utf8";
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use TeX::Converters::HTML5;
+
+my $html5 = TeX::Converters::HTML5->new({ nofiles => 1, unicode_input => 1 });
+
+$html5->INITIALIZE();
+
+for my $tex (qq{\x{1F63C}Schr\\"odinger}, qq{Schr\\"odinger}) {
+    print "tex  = '$tex'\n";
+
+# my $html = $html5->convert_token_list($token_list);
+
+    my $html = $html5->convert_string($tex);
+
+    print "html  = '$html' (", ref($html), ")\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use XML::LibXML;
+
+# binmode *STDOUT, ":utf8";
+# binmode *STDERR, ":utf8";
+
+my $text = qq{\x{1F63C}Schr\x{00F6}dinger};
+
+my $dom = XML::LibXML::Document->createDocument("1.0", "UTF-8");
+
+my $root = $dom->createElement("body");
+$dom->setDocumentElement($root);
+
+$root->appendText($text);
+
+my $fragment = $dom->createDocumentFragment();
+
+$fragment->appendText($text);
+
+print "WITHOUT :utf8:\n\n";
+
+print "Text: $text\n\n";
+print "DOM: $dom\n\n";
+print "Fragment: $fragment\n";
+
+binmode *STDOUT, ":utf8";
+
+print "\nWITH :utf8:\n\n";
+
+print "Text: $text\n\n";
+print "DOM: $dom\n\n";
+print "Fragment: $fragment\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+binmode *STDOUT, ":utf8";
+binmode *STDERR, ":utf8";
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use TeX::Converters::HTML5;
+
+my $tex = qq{\x{1F63C}Schr\\"odinger};
+
+print "tex  = '$tex'\n";
+
+my $html5 = TeX::Converters::HTML5->new({ nofiles => 1, unicode_input => 1 });
+
+$html5->INITIALIZE();
+
+# my $html = $html5->convert_token_list($token_list);
+
+my $html = $html5->convert_string($tex);
+
+print "html  = '$html' (", ref($html), ")\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use TeX::Output::XML;
+
+print "hello, world\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+binmode(*STDOUT, ":utf8");
+binmode(*STDERR, ":utf8");
+
+use PTG::Unicode::Translators qw(xml_entities_to_unicode unicode_to_tex);
+
+my $xml_encoded = qq{&#x201C;hello, world&#x201D;};
+
+my $unicode = xml_entities_to_unicode($xml_encoded);
+
+my $tex = unicode_to_tex($unicode);
+
+print "XML encoded: $xml_encoded\n";
+print "Unicode:     $unicode\n";
+print "TeX:         $tex\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+binmode(*STDOUT, ":utf8");
+binmode(*STDERR, ":utf8");
+
+my $string = "h\x{00E9}ll\x{014D}, w\x{00F8}rld";
+
+print $string, "\n";
+
+$string =~ s{([^\000-\177])}{ sprintf "<0x%04X>", ord($1) }eg;
+
+print $string, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use PTG::Unicode::Accents qw(apply_accent :names);
+use PTG::Unicode::Translators qw(tex_to_unicode);
+
+binmode(*STDOUT, ":utf8");
+binmode(*STDERR, ":utf8");
+
+print apply_accent(COMBINING_ACUTE, "e"), "\n";
+print "\x{00E9}", "\n";
+print tex_to_unicode(q{\'e}), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use TeX::AMSrefs::BibItem::Entry;
+
+my $x = TeX::AMSrefs::BibItem::Entry->new();
+
+if ($x->isa('Cat')) {
+    print "x is a Cat\n";
+} else {
+    print "Not a Cat\n";
+}
+
+if ($x->isa('TeX::AMSrefs::BibItem::Entry')) {
+    print "x is a Entry\n";
+} else {
+    print "Not an Entry\n";
+}
+
+my $y = "foo";
+
+if ($y->isa('TeX::AMSrefs::BibItem::Entry')) {
+    print "y is a Entry\n";
+} else {
+    print "Not an Entry\n";
+}
+
+my $z;
+
+if (eval { $z->isa('TeX::AMSrefs::BibItem::Entry') }) {
+    print "z is a Entry\n";
+} else {
+    print "Not an Entry\n";
+}
+
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub a() {
+    print "hello, world\n";
+
+    my $host = $ENV{HOST};
+
+    if ($ENV{HOST} eq 'dmj') {
+        sub b() {
+            print "goodbye, $host\n";
+        }
+    } else {
+#        sub b() {
+#            print "goodbye, world\n";
+#        }
+    }
+}
+
+a();
+
+b();
+
+__END__
+
+#!/usr/bin/perl -w
+
+use utf8;
+
+use charnames qw(:full);
+
+use strict;
+use warnings;
+
+my $font = q{/home/dmj/texmf/fonts/opentype/murty/Murty-Hindi-1.01.otf};
+
+sub hb_view( $$ ) {
+    my $input_text  = shift;
+    my $output_file = shift;
+
+    system qq{hb-view --output-format=pdf --output-file=$output_file --font-file=$font $input_text};
+
+    return;
+}
+
+sub hb_shape( $$ ) {
+    my $input_text = shift;
+    my $output_file = shift;
+
+    system qq{hb-shape --verbose --output-file=$output_file --output-format=json --font-file='$font' $input_text};
+
+    return;
+}
+
+# hb_view("\x{0924}\x{0903}\x{0924}\x{093F}", "output1.pdf");
+# hb_shape("\x{0924}\x{0903}\x{0924}\x{093F}", "shape1.txt");
+
+# hb_shape("\N{DEVANAGARI SIGN VISARGA}", "shape2.txt");
+
+hb_shape("\x{DEVANAGARI LETTER TA}\N{DEVANAGARI STRESS SIGN UDATTA}\N{DEVANAGARI SIGN VISARGA}", "shape3.txt");
+
+__END__
+
+system qq{hb-view --output-format=pdf --output-file=output.pdf '$font' \x{0924}\x{0903}\x{0924}\x{093F}};
+
+system qq{hb-shape --verbose --output-format=json '$font' \x{0924}\x{0903}\x{0924}\x{093F}};
+
+# system qq{hb-shape '$font' \x{0924}\x{0903}\x{0924}\x{093F}};
+
+# system qq{hb-view --output-format=pdf --output-file=output2.pdf '$font' \x{0924}\x{093F}};
+
+# system qq{hb-shape --output-format=json '$font' \x{0924}\x{093F}};
+
+# system qq{hb-shape '$font' \x{0924}\x{0951}};
+
+# system qq{hb-shape '$font' \x{0924}\x{0951}\x{0903}};
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+binmode(*STDOUT, ":utf8");
+binmode(*STDERR, ":utf8");
+
+my $file = shift;
+
+open(my $fh, "<:utf8", $file) or die "Can't open $file: $!\n";
+
+local $_;
+
+while (<$fh>) {
+    # s{&\#(\d+);}{ chr($1) }smxeg;
+
+    s{<a href="javascript:popUp\('excerpts/bala/bala-introduction-notes_pop.html\#note-\S+'\)">(Note \d+)</a>}{$1};
+
+    print;
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+# use TeX::Interpreter;
+
+use Unicode::UCD qw(charinfo);
+
+# my $tex = TeX::Interpreter->new();
+
+binmode(*STDOUT, ":utf8");
+binmode(*STDERR, ":utf8");
+
+my $file = shift;
+
+open(my $fh, "<:utf8", $file) or die "Can't open $file: $!\n";
+
+while (my $char = <$fh>) {
+    chomp($char);
+
+    my $usv = ord($char);
+
+    # print "catcode($char) = catcode($usv) = ", $tex->get_catcode($usv), "\n";
+
+    my $charinfo = charinfo($usv);
+
+    print "category($char) = ", $charinfo->{category}, "\n";
+    print "upper($char) = ", $charinfo->{upper}, "\n";
+    print "lower($char) = ", $charinfo->{lower}, "\n";
+
+    print "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use FindBin;
+
+use lib qw(/work/ptg/src/perl/trunk);
+use lib ($FindBin::RealBin);
+
+use MyClass;
+
+my $o = MyClass->new();
+
+my $f = $o->get_aligns();
+
+print "aligns = '$f'\n";
+
+print "# aligns = ", $o->num_aligns(), "\n";
+
+$o->push_align("first");
+
+print "# aligns = ", $o->num_aligns(), "\n";
+
+$o->push_align("second");
+
+print "# aligns = ", $o->num_aligns(), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use TeX::KPSE qw(:all);
+
+# $ENV{SELFAUTOPARENT} = '/usr/local/texlive2007';
+
+print "TEXMFMAIN = ", kpse_var_value('TEXMFMAIN'), "\n";
+
+my $file = shift;
+
+my $loc = kpse_lookup($file) || "<not found>";
+
+print STDERR "$file => $loc\n";
+
+kpse_reset_program_name('prdlatex');
+
+$loc = kpse_lookup($file) || "<not found>";
+
+print STDERR "$file => $loc\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(./bin);
+
+use MyConstants;
+
+print "pi = ", pi, "\n";
+
+print "2 pi = ", twopi, "\n";
+
+print "4 pi = ", fourpi, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $FOO = "0";
+
+# use constant FOO => $FOO;
+
+sub FOO() { return $FOO };
+
+print "FOO = ", FOO, "\n";
+
+$FOO = 4;
+
+print "FOO = ", FOO, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use UNIVERSAL qw(isa);
+
+for my $val ([], {}, undef) {
+    if (isa($val, 'ARRAY')) {
+        print "VALUE is an array ref\n";
+    } else {
+        print $val || '<undef>', " is not an array ref\n";
+    }
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $string = q{\bib{A}{}{} \bib{B}{}{} \bib{C}{}{}};
+
+my @bibs = split qr{(?=\\bib)}, $string;
+
+for my $bib (@bibs) {
+    print $bib, "\n\n";
+};
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Unicode::UCD qw(charinfo);
+
+my $codepoint_as_string = "0x05BA";
+
+my $codepoint = oct($codepoint_as_string);
+
+my $charinfo = charinfo($codepoint);
+
+print $charinfo->{name}, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+while (<>) {
+    while (m{(\\[a-z]+)}ig) {
+        print $1, "\n";
+    };
+
+    while (m{(\\[^a-z])}ig) {
+        print $1, "\n";
+    };
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub polyvalent() {
+    return wantarray ? ( file => "foo.pdf", date => "2011" ) : "foo.pdf";
+}
+
+my $filename = polyvalent();
+
+print "filename = $filename\n";
+
+my %hash = polyvalent();
+
+print "filename = $hash{file}\n";
+print "date = $hash{date}\n";
+                                  
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use PRD::Apache::Books;
+
+use File::Copy;
+
+my $pdf_218 = prepare_ebook_pdf({ publ_key => 'conm',
+                                  volume   => 218 });
+
+copy($pdf_218, "conm218-watermarked.pdf");
+
+my $pdf_238 = prepare_ebook_pdf({ publ_key => 'conm',
+                                  volume   => 238 });
+
+copy($pdf_238, "conm238-watermarked.pdf");
+                                  
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use Encode;
+
+use PTG::Unicode qw(decompose);
+use PTG::Unicode::Translators qw(tex_to_unicode);
+
+use MARC::Charset qw(utf8_to_marc8);
+
+binmode(STDERR, ":utf8");
+binmode(STDOUT, ":utf8");
+
+use Unicode::Normalize;
+
+sub nn( $ ) {
+    my $string = shift;
+
+    return defined $string ? $string : "<null>";
+}
+
+my $tex_string = q{Poincar\`e};
+
+my $ucs = tex_to_unicode($tex_string);
+
+# my $nfd = NFD($ucs);
+
+my $ucs_to_utf8 = encode("utf8", $ucs);
+# my $nfd_to_utf8 = encode("utf8", $nfd);
+
+# my $ucs_to_marc8 = utf8_to_marc8($ucs);
+# my $utf8_to_marc8 = utf8_to_marc8($utf8);
+
+my $ucs_to_marc8 = utf8_to_marc8($ucs_to_utf8);
+# my $nfd_to_marc8 = utf8_to_marc8($nfd_to_utf8);
+
+print "TeX: $tex_string\n\n";
+
+print "UCS: ", $ucs_to_utf8, "\n\n";
+# print "NFD: $nfd_to_utf8\n\n";
+
+# print "UTF8: $utf8\n\n";
+
+print "MARC8 (from ucs): ", nn($ucs_to_marc8), "\n";
+# print "MARC8 (from nfd): ", nn($nfd_to_marc8), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $pdftex_map = '/ams/texmf/archive/texlive2010/texmf-var/fonts/map/pdftex/updmap/pdftex.map';
+
+my $pdftex35_map = '/ams/texmf/archive/texlive2010/texmf/fonts/map/dvips/tetex/pdftex35.map';
+
+my %WANTED;
+
+open(my $fh, "<", $pdftex35_map) or die "Can't open $pdftex35_map: $!\n";
+
+local $_;
+
+while (<$fh>) {
+    next if /^%/;
+
+    my ($name) = split / /;
+
+    $WANTED{$name} = 1;
+}
+
+close($fh);
+
+open($fh, "<", $pdftex_map) or die "Can't open $pdftex_map: $!\n";
+
+local $_;
+
+while (<$fh>) {
+    next if /^%/;
+
+    my ($name, $font_name, @pieces) = split / /;
+
+    print "$font_name => $pieces[-1]\n" if $WANTED{$name} && $pieces[1];
+}
+
+close($fh);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+{
+    package Object;
+
+    use Class::Std;
+
+    my %attr_of :ATTR;
+
+    sub BUILD {
+        my ($self, $ident, $arg_ref) = @_;
+
+        $attr_of{$ident} = [1, 2, 3];
+
+    }
+
+    sub __get_array {
+        my $aref = shift;
+
+        my @array = @{ $aref };
+
+        return wantarray ? @array : \@array;
+    }
+
+    sub get_list {
+        return __get_array($attr_of{ident $_[0]});
+
+        # return $attr_of{ident $_[0]};
+        # 
+        # return \@{ $attr_of{ident $_[0]} };
+
+        my @array = @{ $attr_of{ident $_[0]} };
+
+        return \@array;
+    }
+}
+
+my $o = Object->new();
+
+my @x = $o->get_list();
+
+while (my $x = shift @x) {
+    print "\$x = $x\n";
+}
+
+print "\n";
+
+my $x = $o->get_list();
+
+while (my $y = shift @{ $x }) {
+    print "\$y = $y\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @in = (4, 3, 2, -4, -3, -2);
+
+
+print "Unsorted: @in\n";
+
+
+@in = sort { $a/abs($a) <=> $b/abs($b) } sort { abs($a) <=> abs($b) } @in;
+
+print "Sorted:   @in\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @in = (4, 3, 2, -4, -3, -2);
+
+my @wrong = sort { $a <=> $b } @in;
+
+my @middle = sort { abs($a) <=> abs($b) } @in;
+
+my @out = sort { $a/abs($a) <=> $b/abs($b) } @middle;
+
+my @sorted = sort { $a/abs($a) <=> $b/abs($b) } sort { abs($a) <=> abs($b) } @in;
+
+print "Unsorted: @in\n";
+print "Wrong:    @wrong\n";
+print "Middle:   @middle\n";
+print "Sorted:   @sorted\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl);
+
+use PTG::Utils;
+
+my @list;
+
+while (<>) {
+    chomp;
+
+    push @list, $_;
+}
+
+print collapse_numeric_ranges(@list), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+BEGIN { $fontfile = "'$file'"; }
+
+$fontname = $1 if (not defined $fontname and m{^\s*/FontName\s+/(\S+)});
+
+++$insubrs if m{^/Subrs \d+ array};
+
+$insubrs = 0 if (m{/CharStrings \d+ dict} or m/^\s*end\b/);
+
+if ($insubrs) {
+    $subrnum = $1 if m/^\s*dup\s+(\d+)/;
+
+    $sawreturn = 0 if m/\{/;
+
+    ++$sawreturn if m/^\s+return\b/ ;
+
+    if (m/\}/ and not $sawreturn) {
+        s/^(\s*\})/\treturn\n$1/ or s/\s*\}/\n\treturn$1/ or die "Could not repair font"
+    };
+};
+
+print
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Text::Wrap;
+
+print "Text::Wrap::VERSION = $Text::Wrap::VERSION\n";
+
+my $text = '<ftlink>http://www.ams.org/jourcgi/jour-getitem?pii=S0894-0347-1991-1076513-1</ftlink>';
+
+# print "text=[$text]\n";
+
+local($Text::Wrap::debug) = 1;
+
+local($Text::Wrap::break) = qr/\s/;
+
+my $wrapped = wrap('    ', '    ', $text);
+
+# print "wrapped=[$wrapped]\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Algorithm::CheckDigits;
+
+$isbn = CheckDigits('ISBN');
+
+foreach my $x qw(978-0-8218-4822-4 978-0-8218-4822-7 
+                 978-0-8218-4462-5 978-0-8218-4491-5 978-0-8218-4490-8
+                 978-0-8218-4498-4 978-0-8218-4653-7 978-0-8218-4654-4
+                 978-0-8218-4655-1 978-0-8218-4659-9 978-0-8218-4631-5
+                 978-0-8218-4818-0) {
+    if ($isbn->is_valid($x)) {
+        print "$x: valid\n";
+    } else {
+        print "$x: INVALID\n";
+    }
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use XML::SAX;
+
+# get a list of known parsers
+my $parsers = XML::SAX->parsers();
+
+for my $parser ( @{ $parsers } ) {
+    while (my ($key, $val) = each %{ $parser }) {
+        print "$key => $val\n";
+    }
+
+    print "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Algorithm::CheckDigits;
+
+my $SICI = CheckDigits('sici');
+
+my @TESTS = (
+    '0002-9939(200910)137:10;1-2',
+    '0002-9939(200911)137:11;1-Z',
+    '0002-9939(200912)137:12*;1-F',
+    '0002-9947(200910)361:10;1-R',
+    '0002-9947(200911)361:11;1-6',
+    '0002-9947(200912)361:12*;1-F',
+    '0025-5718(200910)78:268*;1-F',
+    '0033-569X(200909)67:3;1-L',
+    '0077-1554(2008)69;1-O',
+    '0094-9000(2009)78;1-F',
+    '0894-0347(200910)22:4*;1-E',
+    '0898-9583(200906)22:1;1-Q',
+    '1056-3911(200910)18:4*;1-C',
+    '1061-0022(2009)20:5;1-T',
+    );
+
+my $num_tests = @TESTS;
+
+my $size = 1 + int(log($num_tests));
+
+for (my $i = 0; $i < @TESTS; $i++) {
+    printf "%${size}d: ", $i;
+
+    my $ams_sici = $TESTS[$i];
+
+    (my $base = $ams_sici) =~ s/.$//;
+
+    my $new_sici = $SICI->complete($base);
+
+    if ($ams_sici eq $new_sici) {
+        print "success\n";
+    } else {
+        print "failed: '$new_sici' != '$ams_sici'\n";
+    }
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+print "stdout xxx\n";
+print STDERR "stderr xxx\n";
+
+print "stdout yyy\n";
+print STDERR "stderr yyy\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Compress::Zlib;
+
+my $x = inflateInit()
+    or die "Cannot create a inflation stream\n" ;
+
+my $input = '' ;
+binmode STDIN;
+binmode STDOUT;
+
+my ($output, $status) ;
+
+while (read(STDIN, $input, 4096))
+{
+    ($output, $status) = $x->inflate(\$input) ;
+
+    print $output
+        if $status == Z_OK or $status == Z_STREAM_END ;
+
+    last if $status != Z_OK ;
+}
+
+die "inflation failed\n"
+    unless $status == Z_STREAM_END ;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+use File::Spec::Functions;
+
+sub destination_file_path( $$ ) {
+    my $file_path = shift;
+    my $new_dir   = shift;
+
+    my ($name, $path) = fileparse($file_path);
+
+    return canonpath(catfile($path, $new_dir, $name));
+}
+
+my $path = "/work/ptg/texmf/ams/public/amsfonts/trunk/fonts/type1/cm/src/cmb10.pfb";
+
+my $dest_path = destination_file_path($path, "../pfb");
+
+print "$path => $dest_path\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @x = (qw(foo* bar baz*), "hello, world");
+
+while (glob("@x")) {
+    print "[$_]\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Encode;
+
+my $string = shift;
+
+my $new = decode('utf8', $string);
+
+open(my $fh, ">:encoding(iso-8859-1)", 'FOO.TXT');
+
+print {$fh} $new;
+
+close($fh);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+system "touch pl\374cker.txt";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $file = shift;
+
+sysopen(my $fh, $file, 3) or die "Can't open $file: $!\n";
+
+if ($!) {
+    die "Can't open $file: $!\n";
+}
+
+my $buffer;
+
+while (my $num = sysread($fh, $buffer, 1024)) {
+    print STDERR "Read $num bytes\n";
+
+    print $buffer;
+}
+
+close($fh) or die "Can't close $file: $!\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Mail::Sender;
+
+my $sender = eval { new Mail::Sender( { smtp => 'dmj.ams.org', 
+                                        from => 'dmj@ams.org' }) };
+
+if ($@) {
+    die "Could not create Mail::Sender: $@\n";
+}
+
+$sender->MailFile({ to      => 'dmj@ams.org',
+                    subject => 'Here is the file',
+                    msg     => "I'm sending you the list you wanted.",
+                    file    => 'TMP/pump-pirate.jpg',
+                    ctype   => 'image/jpeg'
+                  });
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk/);
+
+use TeX::BinaryFile;
+
+use constant W2TX_CONSTANT => unpack("N", "W2TX"); # 3.141592 + W2C 7.4.5
+
+sub extract_engine( $ ) {
+    my $fmt_file = shift;
+
+    my $fmt = TeX::BinaryFile->new( { file_name => $fmt_file } );
+
+    $fmt->open();
+
+    my $checksum = $fmt->read_signed(4);
+
+    if ($checksum == W2TX_CONSTANT) {
+        (my $engine = $fmt->read_string(4)) =~ s/\000+$//g;
+
+        return $engine;
+    }
+
+    return;    
+}
+
+while (my $file = shift) {
+    print "$file => ", extract_engine($file), "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk/);
+
+use PRD::Snapshot;
+
+my %snapshot = extract_snapshot( shift );
+
+print("Snapshot:\n");
+
+while (my ($key, $val) = each %snapshot) {
+    print("\t$key: $val\n");
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Date::Manip;
+
+sub format_timestamp( $ ) {
+    my $time = shift;
+
+    my ($mday, $mon, $year) = (localtime($time))[3, 4, 5];
+
+    return sprintf "%s/%02d/%02d", $year + 1900, $mon + 1, $mday;
+}
+
+print "Epoch: ", format_timestamp(0), "\n";
+
+while (my $raw_date = <>) {
+    chomp($raw_date);
+
+    my $date = UnixDate($raw_date, '%s');
+
+    print qq{"$raw_date" == }, format_timestamp($date), "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk/);
+
+use TeX::TFM::File;
+
+sub md5sum_tfm( $ ) {
+    my $file = shift;
+
+    my $lf = eval {
+        TeX::TFM::File->new({ file_name => $file} )->read()->get_lf()
+    };
+
+    if ($@) {
+        warn "Couldn't get md5sum of $file: $@\n";
+        return 0;
+    }
+
+    print "$file: $lf\n";
+
+    return;
+}
+
+while (my $file = shift) {
+    md5sum_tfm($file);
+}
+
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday) = localtime();
+
+# Comment: "1024-bit dsa, dmj@axp14.ams.org, Wed Dec 01 2004 14:20:18"
+
+my @day = qw(Sun Mon Tue Wed Thu Fri Sat);
+my @mon = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
+
+my $timestamp = sprintf("%s %s %02d %4d %02d:%02d:%02d",
+                        $day[$wday], $mon[$mon], $mday, 1900 + $year, $hour, $min, $sec);
+
+print $timestamp, "\n";
+
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+our $VERSION = '0.00';
+
+use Archive::Zip;
+
+my $zip_file = '/ams/texmf/old';
+
+use Carp;
+
+Archive::Zip::setErrorHandler(sub { die @_ });
+
+my $archive = eval { Archive::Zip->new($zip_file) } or do {
+    warn "Can't open $zip_file: $@\n";
+    die "bye bye\n";
+};
+
+my $dir = $archive->memberNamed('20040505/');
+
+if (defined $dir) {
+    print "Found ", $dir->fileName(), "\n";
+} else {
+    print "Not found\n";
+}
+
+if (my $member = $archive->memberNamed('20040505/multirow.sty')) {
+    print "Found ", $member->fileName(), "\n";
+} else {
+    print "Not found\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Text::Balanced;
+
+use version; 
+
+# use Data::Dumper;
+
+our $VERSION = '2.00';
+
+my $a = qv '1.99.1';
+my $b = qv '2.00.0';
+
+if ($a le $b) {
+    print "$a le $b\n";
+} else {
+    print "$b le $a\n";
+}
+
+if ($a < $b) {
+    print "$a < $b\n";
+} else {
+    print "$b < $a\n";
+}
+
+print "a = $a; b = $b\n";
+
+# print Dumper($a);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use UNIVERSAL qw(isa);
+
+use lib '/work/ptg/src/perl/trunk';
+
+use PRD::StdLogger;
+
+my $LOG = PRD::StdLogger->get_logger();
+
+$LOG->notify("hello, world\n");
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+package foo::0bar;
+
+use UNIVERSAL qw(isa);
+
+if (isa([], 'UNIVERSAL')) {
+    print "An array ref is a blessed object\n";
+} else {
+    print "An array ref is NOT a blessed object\n";
+}
+
+if (isa(bless([]), 'UNIVERSAL')) {
+    print "An array ref is a blessed object\n";
+} else {
+    print "An array ref is NOT a blessed object\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib '/work/ptg/src/perl/trunk';
+
+BEGIN { $::RD_AUTOSTUB = 1; }
+
+use PTG::TryCatch;
+
+my $code = << 'EOF';
+    print "hello, ",
+        "world", "\n";
+
+    try {
+        my $message = "Initialized repository for $title ($journal)";
+
+        print STDERR "\nMaking @dirs\n";
+
+        my $status = $SVN->mkdir(\@dirs, { message => $message } );
+
+        $LOG->notify("\nCommited revision " . $status->revision() . "\n\n");
+    } catch (PTG::SVN::Error) {
+        $LOG->fatal("(1) svn mkdir failed: \$\@\n");
+
+        exit 1;
+    } catch (PTG::SVN::Error $err) {
+        $LOG->fatal("(2) svn mkdir failed: \$\@\n");
+
+        exit 1;
+    } catch (my PTG::SVN::Error $err) {
+        $LOG->fatal("(3) svn mkdir failed: \$\@\n");
+
+        exit 1;
+    }
+
+    print "goodybe, world\n";
+EOF
+
+print $code;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub find_dir( $ ) {
+    my $dir = shift;
+
+    return glob("/production/ams/prd/{texdone,texhold}/tran/*/$dir");
+}
+
+##  find(sub { push @dirs, $File::Find::name if /359-04/ },
+##       "/production/ams/prd/texdone/tran/");
+
+for (find_dir('359-04')) {
+    print $_, "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Find;
+
+my @dirs;
+
+##  finddepth({ wanted => sub { print $File::Find::name, "\n" },
+##              follow => 1 },
+##            "/production/ams/prd/texdone/tran/");
+
+##  finddepth({ wanted => sub { push @dirs, $File::Find::name if $_ eq '359-04' },
+##              follow => 1 },
+##            "/production/ams/prd/texhold/tran/",
+##            "/production/ams/prd/texdone/tran/");
+
+sub find_dir( $ @ ) {
+    my $dir = shift;
+
+    my @dirs;
+
+    my $wanted = sub {
+        if ($_ eq $dir && -d $_ && glob("$_/*")) {
+            push @dirs, $File::Find::name;
+        }
+    };
+
+    find({ wanted => $wanted, follow => 1 }, @_);
+
+    return @dirs;
+}
+
+##  find(sub { push @dirs, $File::Find::name if /359-04/ },
+##       "/production/ams/prd/texdone/tran/");
+
+for (find_dir('359-04', "/production/ams/prd/texhold/tran/",
+              "/production/ams/prd/texdone/tran/")) {
+    print $_, "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib '/work/ptg/src/perl/trunk';
+
+use File::Spec::Functions;
+use File::Basename;
+
+use PTG::SVN::Client;
+
+my $dir = '/ams/production/journals/bull/';
+
+print "updir($dir) = ", updir($dir), "\n";
+print "basename($dir) = ", basename($dir), "\n";
+print "dirname($dir) = ", dirname($dir), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @a = qw(1 2 3);
+
+for my $a (splice @a, 0, 6) {
+    print "[$a]\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk);
+
+use TeX::Output::CharMapper qw(encode_character);
+
+my $font = 'hlhr8t';
+my $code = 49;
+
+print "encoding($font, $code) = ", encode_character($font, $code), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+our $VERSION = '0.01';
+
+sub test_proc {
+    print "This is test_proc\n";
+
+    return;
+}
+
+test_proc;
+
+if (defined &test_proc) {
+    print "test_proc is defined\n";
+} else {
+    print "test_proc is NOT defined\n";
+}
+
+if (defined &other_proc) {
+    print "other_proc is defined\n";
+} else {
+    print "other_proc is NOT defined\n";
+}
+
+if (! defined &other_proc) {
+    print "other_proc not defined; defining it\n";
+
+    *main::other_proc = sub {
+        print "This is other_proc\n";
+
+        return;
+    }
+}
+
+if (defined &other_proc) {
+    print "other_proc is defined\n";
+} else {
+    print "other_proc is NOT defined\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+our $VERSION = '0.00';
+
+
+my @INT_PARAM = qw(pretolerance tolerance linepenalty hyphenpenalty
+                   exhyphenpenalty clubpenalty widowpenalty
+                   displaywidowpenalty brokenpenalty binoppenalty
+                   relpenalty predisplaypenalty postdisplaypenalty
+                   interlinepenalty doublehyphendemerits
+                   finalhyphendemerits adjdemerits mag delimiterfactor
+                   looseness time day month year showboxbreadth
+                   showboxdepth hbadness vbadness pausing
+                   tracingonline tracingmacros tracingstats
+                   tracingparagraphs tracingpages tracingoutput
+                   tracinglostchars tracingcommands tracingrestores
+                   uchyph outputpenalty maxdeadcycles hangafter
+                   floatingpenalty globaldefs fam escapechar
+                   defaulthyphenchar defaultskewchar endlinechar
+                   newlinechar language lefthyphenmin righthyphenmin
+                   holdinginserts errorcontextlines);
+
+for (my $i = 0; $i < @INT_PARAM; $i++) {
+    print "$i: ", $INT_PARAM[$i], "\n";
+}
+
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub to_signed {
+    my $bytes = shift;
+
+    my @bytes = unpack "C*", $bytes;
+
+    my $val = shift @bytes;
+
+    $val -= 256 if $val >= 128;
+
+    foreach my $byte (@bytes) {
+        $val = ($val * 256) + $byte;
+    }
+
+    return $val;
+}
+
+sub to_unsigned {
+    my $bytes = shift;
+
+    my $val = 0;
+
+    foreach my $byte (unpack("C*", $bytes)) {
+        $val = ($val << 8) + $byte;
+    }
+
+    return $val;
+}
+
+my $min_halfword = -0xFFFFFFF;
+
+print "min_halfword = $min_halfword\n";
+
+my $n = $min_halfword + 1;
+
+my $string = pack "N", $n;
+
+print "packed($n) = $string\n";
+
+print "$n = ", to_signed($string), "\n";
+
+#print "$n = ", to_unsigned($string), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+our $VERSION = '0.00';
+
+my $a = 'title';
+my $b = 'tit le';
+my $c = 'title';
+
+if ($a =~ /^\w+$/) {
+    print "a is a word\n";
+}
+
+if ($b =~ /^\w+$/) {
+    print "b is a word\n";
+}
+
+if ($c =~ /^\w+$/) {
+    print "c is a word\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/trunk/);
+
+use PRD::Name;
+
+my $name = PRD::Name->new({
+    raw => 'Alan M$^{\mathrm {\lowercase {c}}}$Intosh',
+});
+
+print "first: ", $name->get_first(), "\n";
+print "last: ", $name->get_last(), "\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+our $VERSION = '0.00';
+
+use Text::Wrap;
+
+print wrap('', '', "Here is a long chunk of text.  Here is a long chunk of text.  Here is a long chunk of text.  Here is a long chunk of text.  Here is a long chunk of text.  Here is a long chunk of text."), "\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use IO::File;
+
+our $VERSION = '0.00';
+
+use UNIVERSAL qw(isa);
+
+sub foo() { return 1; };
+
+my $bar = 'hello';
+
+my $foo_r = \&foor;
+my $bar_r = \$bar;
+
+my $login = "$ENV{HOME}/.login";
+
+open(my $fh, "<", $login) or die "Can't open $login: $!\n";
+
+my $io = IO::File->new($login, 'r');
+
+print "ref(\$foo_r) = ", ref($foo_r), "\n";
+print "ref(\$bar_r) = ", ref($bar_r), "\n";
+print "ref(\$fh) = ",    ref($fh), "\n";
+print "ref(\$io) = ",    ref($io), "\n";
+
+if ($io->isa("IO::Handle")) {
+    print "\$io is a handle\n";
+}
+
+if (isa($fh, "GLOB")) {
+    print "\$fh is a glob\n";
+} else {
+    print "\$fh is not a glob\n";
+}
+
+if (isa($foo_r, "IO::Handle")) {
+    print "\$foo_r is a handle\n";
+} else {
+    print "\$foo_r is not a handle\n";
+}
+
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+our $VERSION = '0.00';
+
+use Quux;
+
+Quux::print_var();
+
+Quux::change_var("bar");
+
+Quux::print_var();
+
+__END__
+
+
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+our $VERSION = '0.00';
+
+use lib qw(/work/ptg/src/perl/trunk/);
+
+use TeX::LaTeX::Parser;
+
+my %NAMES;
+
+sub cs_handler {
+    my $parser = shift;
+    my $csname = shift;
+
+    $NAMES{$csname}++
+}
+
+my $p = TeX::LaTeX::Parser->new();
+
+$p->set_control_word_handler(\&cs_handler);
+$p->set_control_symbol_handler(\&cs_handler);
+
+my $file = shift;
+
+$p->parse_file($file);
+
+for my $name (sort keys %NAMES) {
+    print "\\$name\n";
+}
+
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $s = "S%A";
+
+print unpack("i", $s), "\n\n";
+
+my $val = hex(57325458);
+
+print $val, "\n";
+print pack "i", $val;
+print "\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+our $VERSION = '0.00';
+
+for (0..255) {
+    printf "%02x: \\the\\catcode%d\n\n", $_, $_;
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+our $VERSION = '0.00';
+
+use POSIX qw( strftime );
+
+print strftime('%z',localtime), "\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+our $VERSION = '0.00';
+
+sub truncate_at($$;$) {
+    my $string = shift;
+    my $terminator = shift;
+
+    my $count = shift || 1;
+
+    my $index = -1;
+
+    for (1..$count) {
+        $index = index($string, $terminator, $index + 1);
+
+        last if $index == -1;
+    }
+
+    return $index == -1 ? $string : substr($string, 0, $index);
+}
+
+print truncate_at("hello, world", "l"), "\n";
+print truncate_at("hello, world", "l", 1), "\n";
+print truncate_at("hello, world", "l", 2), "\n";
+print truncate_at("hello, world", "l", 3), "\n";
+print truncate_at("hello, world", "l", 4), "\n";
+
+print truncate_at("goodbye!", "l"), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+our $VERSION = '0.00';
+
+sub truncate_at($$) {
+    my $string = shift;
+    my $terminator = shift;
+
+    my $index = index($string, $terminator);
+
+    return $index == -1 ? $string : substr($string, 0, $index);
+}
+
+print truncate_at("hello, world", ","), "\n";
+print truncate_at("goodbye!", ","), "\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+while (<>) {
+    print length, "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Copy;
+
+my $src = shift;
+my $dest = shift;
+
+my ($atime, $mtime) = (stat($src))[8, 9];
+
+File::Copy::syscopy($src, $dest);
+
+utime $atime, $mtime, $dest;
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+while (my $file = shift) {
+    print "dirname($file) = ", dirname($file), "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::Utils;
+
+sub program_version() { "Main version" };
+
+PTG::Utils::print_banner;
+
+
+package foo;
+
+sub program_version() { "foo version" };
+
+PTG::Utils::print_banner;
+
+
+package bar::baz;
+
+sub program_version() { "bar::baz version" };
+
+PTG::Utils::print_banner;
+
+
+package main;
+
+#sub program_version() { "Main version" };
+
+PTG::Utils::print_banner;
+
+
+
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::FileUtils;
+
+my $file = shift;
+
+my ($uid, $gid) = file_owner($file);
+
+print "uid = $uid; gid = $gid\n";
+
+my $a_uid = file_owner($file);
+
+print "a_uid = $a_uid\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::FileUtils;
+
+my $file = shift;
+
+my ($uid, $gid) = file_owner($file);
+
+print "uid = $uid; gid = $gid\n";
+
+my $a_uid = file_owner($file);
+
+print "a_uid = $a_uid\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use SVN::Client;
+
+print "\$SVN::Client::COMMIT_ITEM_ADD = $SVN::Client::COMMIT_ITEM_ADD\n";
+print "\$SVN::Client::COMMIT_ITEM_DELETE = $SVN::Client::COMMIT_ITEM_DELETE\n";
+print "\$SVN::Client::COMMIT_ITEM_TEXT_MODS = $SVN::Client::COMMIT_ITEM_TEXT_MODS\n";
+print "\$SVN::Client::COMMIT_ITEM_PROP_MODS = $SVN::Client::COMMIT_ITEM_PROP_MODS\n";
+print "\$SVN::Client::COMMIT_ITEM_IS_COPY = $SVN::Client::COMMIT_ITEM_IS_COPY\n";
+
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PRD::IFL;
+
+my $ifl = PRD::IFL->new({ publication => 'jag', volume => 14, issue => 2 });
+
+# my $ifl = PRD::IFL->new({ publication => 'conm', volname => 'vazquez' });
+
+$ifl->read();
+
+print "IFL file: ", $ifl->get_ifl_file(), "\n";
+print "Publication: ", $ifl->get_publication(), "\n";
+print "Volume: ", $ifl->get_volume(), "\n";
+print "Volname: ", $ifl->get_volname(), "\n";
+print "ISSN: ", $ifl->get_issn(), "\n";
+
+print "Articles:\n";
+
+for my $ms ($ifl->get_manuscripts()) {
+    print "\t", $ms->get_filename(), ": ", $ms->get_title(), "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+# use lib qw(/ams/texmf/lib/perl5/site_perl);
+use lib qw(/work/ptg/src/perl);
+
+use PTG::DVIutils;
+
+while (my $dvi_file = shift) {
+    my %passport = get_dvi_passport($dvi_file);
+
+    print "file: $dvi_file\n";
+    print "path = $passport{path}\n";
+    print "publ = ", $passport{publ} || 'undef', "\n";
+    print "vol  = ", $passport{volume}  || 'undef', "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+while (my $path = shift) {
+    my $base = fileparse $path, qr/\.[^.]*$/;
+
+    print "base=$base\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib '/work/ptg/src/perl';
+use lib '/usr/users/prg/dmj/lib/perl/lib';
+
+use TeX::DVI::File;
+use TeX::DVI::OpCodes;
+
+my $file_name = shift;
+my $new_file = shift;
+
+my $in = TeX::DVI::File->new({ file_name => $file_name } );
+
+$in->open("r") or do {
+    die "Can't open $in: $!\n";
+};
+
+my $out = TeX::DVI::File->new({ file_name => $new_file });
+
+$out->open("w") or do {
+    die "Can't open out: $!\n";
+};
+
+print "Copying $in to $out\n";
+
+##  my $pre = $in->next_op();
+##  
+##  # print "magnification = ", $pre->get_magnification(), "\n";
+##  # print "num =           ", $pre->get_num(), "\n";
+##  # print "den =           ", $pre->get_den(), "\n";
+##  
+##  ##  my $comment = $pre->get_comment();
+##  ##  
+##  ##  my $new_comment = "hello, world";
+##  ##  
+##  ##  print STDERR "Changing comment from '$comment' to '$new_comment'\n";
+##  ##  
+##  ##  $pre->set_comment($new_comment);
+##  
+##  $pre->trace();
+##  $pre->write($out);
+
+while (defined(my $op = $in->next_op())) {
+    $op->trace();
+    $op->write($out);
+}
+
+$in->close();
+
+$out->close() or do {
+    die "Error closing $out: $!\n";
+};
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+while (my $path = shift) {
+    my ($base, $dir) = fileparse $path, qr/\.[^.]*$/;
+
+    print "dir=$dir\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib '/work/ptg/src/perl';
+use lib '/usr/users/prg/dmj/lib/perl/lib';
+
+use TeX::DVI::Op;
+
+my $dvi_file = shift;
+
+open(my $fh, "<", $dvi_file) or die "Can't open $dvi_file: $!\n";
+
+while (my $op = TeX::DVI::Op->get_next_op($fh)) {
+    print $op, "\n";
+}
+
+close($fh);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib '/work/ptg/src/perl';
+
+use TeX::DVI::Op;
+
+my $dvi_file = shift;
+
+open(my $fh, "<", $dvi_file) or die "Can't open $dvi_file: $!\n";
+
+while (my $op = get_next_op($fh)) {
+    print $op, "\n";
+}
+
+close($fh);
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib '/work/ptg/src/perl';
+
+use TeX::DVI::OpCodes;
+
+print "DVI_ID_BYTE = ", DVI_ID_BYTE, "\n";
+print "DVI_FNT_1 = ", DVI_FNT_1, "\n";
+
+print "42 => ", opcode_name(42), "\n";
+
+print "171 => ", opcode_name(171), "\n";
+
+for my $op_code (42, 171, 244, 139, 132) {
+    my $name = opcode_name($op_code);
+    my @proto = opcode_prototype($op_code);
+
+    print "$name ($op_code): @proto\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::Utils;
+
+while (my $path = shift) {
+    print "$path => ", abbreviate_axp_path($path), "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub quote_tex_specials($) {
+    my $string = shift;
+
+    $string =~ s/([\x7F-\x9F\xA2\xA4-\xA6])/ sprintf "\\x%2x", ord($1) /eg;
+
+    $string =~ s/\\/\\protect\\bslash /g;
+
+    $string =~ s/([\$\#%_])/\\protect\\$1/g;
+
+    $string =~ s/\^/\\string^/g;
+
+    $string =~ s/([\xAC\xB1-\xB3\xB5\xB9\xD7\xF7])/\$$1\$/g;
+
+    return $string;
+}
+
+for my $char (127..255) {
+    print $char, ": ", quote_tex_specials(chr($char)), "\n\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $hash = { key => 'value' };
+
+print "hullabaloo $hash->{key} gesundheit\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Error;
+
+throw Error::Simple("boo!");
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub fs_buffer_size($) {
+    my $file = shift;
+
+    return (stat $file)[11];
+}
+
+while (my $file = shift) {
+    print "$file => ", fs_buffer_size($file), "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+print "getgrnam('emacs') = ", scalar getgrnam('emacs'), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $uid = (getpwnam('texmf'))[2];
+my $gid = (getpwnam('texmf'))[3];
+
+print "uid = $uid\n";
+print "gid = $gid\n";
+
+print "1131 = ", scalar getpwuid(1131), "\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+for my $file (@ARGV) {
+    open(my $ifl, "<", $file) or next;
+
+    my $header = substr <$ifl>, 0, 80;
+
+    $header =~ s/\s*$//;
+
+    if ($header !~ /^[BJ] \d+/) {
+        print "$file: $header\n";
+    }
+
+    close($ifl);
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub change_file_extension($$) {
+    my $filename  = shift;
+    my $extension = shift;
+
+    $filename =~ s/(\.[^.]*)?$/\.$extension/;
+
+    return $filename;
+}
+
+while (my $file = shift) {
+    print "$file => ", change_file_extension($file, "pdf"), "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::PSutils;
+
+my $ps_file = shift;
+
+my $pdf_file = pstopdf($ps_file, DEST => "DISTILLER.pdf");
+
+print "\$pdf_file = $pdf_file\n";
+
+#<STDIN>;
+
+exit;
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PRD::Publications;
+
+my $PUBS = PRD::Publications->new();
+
+print "Books:\n";
+
+for my $book ($PUBS->all_books()) {
+    print "    $book\n";
+}
+
+print "\n";
+
+print "Journals:\n";
+
+for my $book ($PUBS->all_journals()) {
+    print "    $book\n";
+}
+
+print "\n";
+
+print "Admin pubs:\n";
+
+for my $book ($PUBS->all_admin_pubs()) {
+    print "    $book\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Tk;
+
+my $MW = new MainWindow(-title => "grid test");
+
+my $frame = $MW->Frame();
+
+$frame->Label(-text => "Name: ")->grid($frame->Entry(-width => 40),
+                                      -sticky => 'nsew');
+
+$frame->Label(-text => "Address")->grid($frame->Entry(),
+                                      -sticky => 'nsew');
+
+$frame->gridColumnconfigure(1, -weight => 1);
+# $MW->gridRowconfigure(1, -weight => 1);
+
+$frame->pack(-expand => 1, -fill => 'x');
+
+print "\$frame->gridPropagate() = ", $frame->gridPropagate(), "\n";
+print "\$MW->gridPropagate() = ", $MW->gridPropagate(), "\n";
+
+print "\$frame->propagate() = ", $frame->packPropagate(), "\n";
+print "\$MW->propagate() = ", $MW->packPropagate(), "\n";
+
+MainLoop;
+
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Tk;
+
+my $MW = new MainWindow(-title => "grid test");
+
+my $parent = $MW->Frame();
+
+$parent->Label(-text => "Name: ")->pack();
+
+$parent->Entry()->pack(-expand => 1, -fill => "x");
+
+$parent->pack(-expand => 1, -fill => "x");
+
+MainLoop;
+
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $tex_file = shift;
+
+my $texcode = "";
+
+local *INFILE;
+
+unless(open(INFILE, $tex_file)) {
+    return(0);
+}
+
+# First, insert the \usepackage{hyperref} line
+while (<INFILE>) {
+    $texcode .= $_;
+}
+close INFILE;
+
+for ($texcode) {
+    next if s/(\\documentstyle\[.*?)\]/$1,upref,hyperref\]/;
+
+    next if s/\\documentstyle\{/\\documentstyle\[upref,hyperref\]\{/;
+
+    s/(\\begin\{document\})/\\usepackage\{hyperref\}\n$1/s;
+}
+
+print $texcode;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use Tk;
+
+# my $MW = new MainWindow(-title => "pubprint");
+
+#MainLoop;
+
+# my $file = $MW->getSaveFile();
+
+my $dir = Tk::chooseDirectory(undef, -initialdir => "/axp14/typ/ps/repro");
+
+print "Chosen dir: $dir\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Term::ANSIColor qw(uncolor color);
+
+print uncolor "01;31", "\n";
+
+print "hello, ";
+
+print color "bold";
+
+print "world\n";
+
+print color 'reset';
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Spec::Functions qw(curdir rel2abs);
+
+sub relative_path($) {
+    my $path = rel2abs(shift);
+
+    while ($path =~ s{[^/]+/\.\.(/|$)}{}) {}
+
+    my $cwd  = rel2abs(curdir);
+
+    $path =~ s{^$cwd/}{};
+
+    return $path;
+}
+
+print "curdir = ", curdir, "\n";
+
+print "curdir = ", rel2abs(curdir), "\n";
+
+for my $path qw(../boots.dvi ../bull1055el.dvi ../PSEDIT/foo/vazquez.dvi
+                ../../../bar.dvi
+                /axp14/prd/texhold/auprep/dimacs/abello2/dvi/abello.dvi) {
+    print "$path => ", relative_path($path), "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Tk;
+
+# my $MW = new MainWindow(-title => "pubprint");
+
+#MainLoop;
+
+# my $file = $MW->getSaveFile();
+
+my @files = Tk::getSaveFile("-multiple");
+
+print "Chosen files:\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl5/site_perl);
+
+use PTG::Config;
+
+my $CONFIG = PTG::Config->new();
+
+my $KPSEWHICH = eval { $CONFIG->executable("psewhich") };
+
+print "\$KPSEWHICH = $KPSEWHICH\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Tk;
+
+sub DEBUG { print STDERR @_ };
+
+undef &Tk::FBox::VerifyFileName;
+
+sub Tk::FBox::VerifyFileName {
+    DEBUG("Entering VerifyFileName\n");
+
+    my($w, $text) = @_;
+#XXX leave this here?
+#    $text =~ s/^\s+//;
+#    $text =~ s/\s+$//;
+    my($flag, $path, $file) = ResolveFile($w->{'selectPath'}, $text,
+					  $w->cget(-defaultextension));
+    my $ent = $w->{'ent'};
+    if ($flag eq 'OK') {
+	if ($file eq '') {
+	    # user has entered an existing (sub)directory
+	    $w->SetPath($path);
+	    $ent->delete(0, 'end');
+	} else {
+	    $w->SetPathSilently($path);
+	    if ($w->cget(-multiple)) {
+		push @{ $w->{'selectFile'} }, $file;
+	    } else {
+		$w->{'selectFile'} = $file;
+	    }
+	    $w->Done;
+	}
+    } elsif ($flag eq 'PATTERN') {
+	$w->SetPath($path);
+	$w->configure(-filter => $file);
+    } elsif ($flag eq 'FILE') {
+	if ($w->cget(-type) eq 'open') {
+	    $w->messageBox(-icon => 'warning',
+			   -type => 'OK',
+			   -message => 'File "' . TclFileJoin($path, $file)
+			   . '" does not exist.');
+	    $ent->selectionRange(0, 'end');
+	    $ent->icursor('end');
+	} elsif ($w->cget(-type) eq 'save') {
+	    $w->SetPathSilently($path);
+	    if ($w->cget(-multiple)) {
+		push @{ $w->{'selectFile'} }, $file;
+	    } else {
+		$w->{'selectFile'} = $file;
+	    }
+	    $w->Done;
+	}
+    } elsif ($flag eq 'PATH') {
+	$w->messageBox(-icon => 'warning',
+		       -type => 'OK',
+		       -message => "Bogus directory, dewd: \'$path\'.");
+	$ent->selectionRange(0, 'end');
+	$ent->icursor('end');
+    } elsif ($flag eq 'CHDIR') {
+	$w->messageBox(-type => 'OK',
+		       -message => "Cannot change to the directory \"$path\".\nPermission denied.",
+		       -icon => 'warning');
+	$ent->selectionRange(0, 'end');
+	$ent->icursor('end');
+    } elsif ($flag eq 'ERROR') {
+	$w->messageBox(-type => 'OK',
+		       -message => "Bogus file name, dewd: \"$path\".",
+		       -icon => 'warning');
+	$ent->selectionRange(0, 'end');
+	$ent->icursor('end');
+    }
+}
+
+# my $MW = new MainWindow(-title => "pubprint");
+
+#MainLoop;
+
+# my $file = $MW->getSaveFile();
+
+my $file = Tk::getSaveFile();
+
+print "Chosen file is $file\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl/);
+
+use Tk;
+
+my $MW = new MainWindow(-title => "pubprint");
+
+#MainLoop;
+
+my $file = $MW->getSaveFile();
+
+print "Chosen file is $file\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub foo() {
+    print "Executing foo\n";
+}
+
+sub bar() {
+    print "Executing bar\n";
+
+    goto \&foo;
+
+    print "This is never printed\n";
+}
+
+bar;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub round($) {
+    my $val = shift;
+
+    return sprintf "%.0f", $val;
+}
+
+for my $val (1.0, .9, .5, .4, 2.0, 1.9, 1.5, 1.4) {
+    print "$val => ", round($val), "\n";
+}
+
+for my $val (1.0, .9, .5, .4, 2.0, 1.9, 1.5, 1.4) {
+    printf "%s => %d\n", $val, $val;
+}
+
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+use PRD::Series;
+
+my $PRD_SERIES = PRD::Series->new();
+
+for my $series ("conm", "dimacs", "nonesuch", undef) {
+    print "$series: ", $PRD_SERIES->document_class($series), "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::PSutils;
+
+my $file = shift;
+
+for my $font (get_document_fonts($file)) {
+    print $font, "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $DVIPS_BEGIN_FONT_DEFS = qr/TeXDict begin (\d+\s){5}(\(\w+\.dvi\))?/;
+
+my $DVIPS_FONT_NAME = qr/(?: [F-Z][a-zA-Z0-9])/x;
+
+my $DVIPS_FONT_DEF = qr{ / ($DVIPS_FONT_NAME) \s+ ([^/]*?) \s* /([\w-]+) \s+ rf }smx;
+
+my %HEADLINE_FONTS;
+
+sub extract_running_head($) {
+    my $headline_file = shift;
+
+    open(my $RHF, $headline_file) or do {
+        die "Could not open input file $headline_file: $!\n";
+    };
+
+    while (<$RHF>) {
+        last if /$DVIPS_BEGIN_FONT_DEFS/;
+    }
+
+    my $font_defs = do { local $/ = "%%EndProlog"; <$RHF>; };
+
+    my $contents = do { local $/ = undef; <$RHF>; };
+
+    close($RHF);
+
+    while ($font_defs =~ m/$DVIPS_FONT_DEF/g) {
+        my ($dvips_name, $font_def, $ps_name) = ($1, $2, $3);
+
+        print "\n============================================================\n\n";
+
+        print "\$dvips_name = [$dvips_name]\n";
+        print "\$font_def = [$font_def]\n";
+        print "\$ps_name = [$ps_name]\n";
+
+        $HEADLINE_FONTS{$ps_name} = "/AMS$dvips_name $font_def /$ps_name rf";
+    }
+}
+
+my $headline_file = shift;
+
+extract_running_head($headline_file);
+
+print "\n============================================================\n\n";
+
+for my $font (keys %HEADLINE_FONTS) {
+    print "$font => $HEADLINE_FONTS{$font}\n\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+use PRD::PII qw(make_pii);
+
+use lib qw(/dsk1/ams_perl_lib);
+use PII; # import pii_make
+
+my $pii_1 = pii_make("1242-0536-23-54321");
+$pii_1 =~ s/\w//;
+
+print "\$pii_1 = $pii_1\n";
+
+my $pii_2 = make_pii("1242-0536-23-54321");
+
+print "\$pii_2 = $pii_2\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::DVIutils;
+
+my $dvi_file = shift;
+
+my @pages = dvi_page_list $dvi_file;
+
+for my $i (0..$#pages) {
+    print "p:[$i/$pages[$i]]\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::DVIutils;
+
+my $base = shift;
+
+my $dvi_file = "$base.dvi";
+
+my $comment = "hello, worl";
+
+# my $comment = get_dvi_comment($dvi_file);
+
+set_dvi_comment($dvi_file, $comment, "$base-ams.dvi");
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::DVIutils;
+
+while (my $file = shift) {
+    my @offsets = get_dvi_page_offsets($file);
+
+    print "$file:\n";
+
+    for (my $i = 0; $i < @offsets; $i++) {
+        print "    $i: $offsets[$i]\n";
+    }
+
+    print "\n" if @ARGV;
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::DVIutils;
+
+while (my $file = shift) {
+    my $comment = dvi_comment($file);
+
+    print "$file: $comment\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl5/site_perl);
+
+use File::Basename;
+use POSIX qw(:signal_h);
+
+use PTG::Utils;
+my $CONFIG = new PTG::Config;
+
+my $KPSEWHICH = $CONFIG->executable("kpsewhich");
+
+sub kpsewhich($;@) {
+    my $file = shift;
+
+    my %option = @_;
+
+    my @options = ("--must-exist") if $option{MUST_EXIST};
+
+    push(@options, "--progname", $option{PROGNAME}) if $option{PROGNAME};
+
+    push(@options, "--format", "'$option{FORMAT}'") if $option{FORMAT};
+
+    my $location;
+
+    open(my $KPSE, "$KPSEWHICH @options $file 2>/dev/null |") or do {
+        warn "Couldn't execute ", basename($KPSEWHICH), ": $!\n";
+        return;
+    };
+
+    while (<$KPSE>) {
+        chomp;
+
+        /$file$/ and do {
+            $location = $_;
+            last;
+        };
+    }
+
+    close($KPSE) or do {
+        my $signal = $? & 127;
+        my $exit_status = $? >> 8;
+
+        unless ($exit_status == 0 && $signal == SIGPIPE) {
+            report_broken_pipe("Could not find file", $KPSEWHICH, $?, $!);
+            return;
+        }
+    };
+
+    return $location;
+}
+
+print "kpsewhich(\"CMBX6.pfa\") = ", kpsewhich("CMBX6.pfa"), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl5/site_perl);
+
+use PTG::DVIPS qw(dvips :debug);
+
+#print "DVIPS_SPECIAL = ", DVIPS_SPECIAL, "\n";
+
+dvips("test.dvi", -o => "test.ps", -d => DVIPS_SPECIAL);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub nonempty(;$) {
+    # my $string = @_ == 1 ? shift : $_;
+
+    my $string = shift || $_;
+
+    print "nonempty($string)\n";
+}
+
+$_ = 'hello';
+
+nonempty;
+
+nonempty("");
+
+nonempty(undef);
+
+nonempty("foo");
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my %xin;
+
+@xin{qw(MYTEX1 MYTEX2 TEX_GRAPHICS)} = (1, 2, 3, 4);
+
+my @paths1 = map { $xin{$_} } qw(MYTEX1 MYTEX2 TEX_GRAPHICS FOO);
+my @paths2 = @xin{qw(MYTEX1 MYTEX2 TEX_GRAPHICS FOO)};
+
+print "\@paths1 = @paths1\n";
+print "\@paths2 = @paths2\n";
+
+print "\$ setup @paths1\n";
+
+print "\$ setup @xin{qw(MYTEX1 MYTEX2 TEX_GRAPHICS FOO)}\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $PREFIX;
+
+sub _nonempty($) {
+    my $string = shift;
+
+    return defined $string && $string !~ /^\s*$/;
+}
+
+sub verbose(@) {
+    my $message = join "", @_;
+
+    if (_nonempty($PREFIX)) {
+        $message =~ s/^(?=[^\n]*\S)/$PREFIX: /gms;
+    }
+
+    print STDERR $message;
+}
+
+verbose "This is \n a message\n";
+
+$PREFIX = "snaplatex";
+
+verbose "This is \n another message\n\nhooha!";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Spec::VMS;
+use File::Spec;
+
+print "VMS: ", File::Spec::VMS->catpath('prd', 'dept.perl.lib', 'foo.txt'), "\n";
+print "Unix: ", File::Spec->catpath('prd', 'dept.perl.lib', 'foo.txt'), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Temp qw(tempdir tempfile);
+
+use File::Spec::Functions;
+
+my $tmproot = catdir($ENV{SCRATCH}, '$5Nlatex$TMP');
+
+my $tmpdir = tempdir("dmj_tmp-XXXXXX",
+                     # DIR => $tmproot,
+                     CLEANUP => 0);
+
+print "\$tmpdir = $tmpdir\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PRD::Utils;
+
+my $file = shift;
+
+print "Purging $file\n";
+
+purge $file;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use constant VMS => ($^O =~ /vms/i);
+
+use lib qw(prd:[dept.perl.lib]);
+
+print "hello, world\n";
+
+print "\n\@INC = @INC\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+while (my $path = shift) {
+    # my $base = fileparse $path, qr/\.[^.]*$/;
+
+    my $base = basename $path, ".tex", ".ltx";
+
+    print "base=$base\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::teTeX;
+
+while (my $var = shift) {
+    print "$var = [", texmf_var($var), "]\n";;
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Getopt::Long qw(:config prefix_pattern=[/-]);
+
+$Getopt::Long::debug = 1;
+
+sub show_opt($$) {
+    my $opt = shift;
+    my $val = shift;
+
+    print "Option($opt) = $val\n";
+}
+
+my $SETGID = 0;
+
+GetOptions("setgid!" => \$SETGID);
+
+print "\$SETGID = $SETGID\n";
+
+print "\$ARGV = @ARGV\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+my $map_file_list = shift;
+my $t1_font_list = shift;
+
+my %known_t1_font;
+my %t1_from_map;
+
+open(my $t1_fonts, "<", $t1_font_list) or die "Couldn't open $t1_font_list: $!\n";
+
+while (<$t1_fonts>) {
+    chomp;
+
+    my ($fontname, $path) = split /: /;
+
+    my $filename = basename $path;
+
+    $known_t1_font{$filename}++;
+}
+
+close($t1_fonts);
+
+open (my $map_files, "<", $map_file_list) or die "Couldn't open $map_file_list: $!\n";
+
+while (my $map_file = <$map_files>) {
+    chomp $map_file;
+
+    next unless $map_file =~ /\S/;
+
+    open(my $MAP, "<", $map_file) or do {
+        print "Can't open $map_file: $!\n";
+        next;
+    };
+
+    while (<$MAP>) {
+        /(\w+\.pf[ab])/ and do {
+            $t1_from_map{$1}++;
+        };
+    }
+
+    close($MAP);
+}
+
+print "Known Type 1 fonts: ", scalar keys %known_t1_font, "\n";
+print "Mapped Type 1 fonts: ", scalar keys %t1_from_map, "\n";
+
+print "\n";
+
+print "Mapped fonts without Type 1 font defs\n\n";
+
+for my $font (sort keys %t1_from_map) {
+    next if defined $known_t1_font{$font};
+
+    print $font, "\n";
+}
+
+print "\n";
+
+print "Type 1 fonts without Map entries\n\n";
+
+for my $font (sort keys %known_t1_font) {
+    next if defined $t1_from_map{$font};
+
+    print $font,"\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+my $maps = shift;
+my $tfms = shift;
+
+my %known_tfm_file;
+my %known_map_entry;
+
+my %missing_tfm_file;
+
+open(my $tfm_files, "<", $tfms) or die "Couldn't open $tfms: $!\n";
+
+while (<$tfm_files>) {
+    chomp;
+
+    my $fontname = basename($_, ".tfm");
+
+    $known_tfm_file{$fontname}++;
+}
+
+close($tfm_files);
+
+open (my $map_files, "<", $maps) or die "Couldn't open $maps: $!\n";
+
+while (my $map_file = <$map_files>) {
+    chomp $map_file;
+
+    next unless $map_file =~ /\S/;
+
+    open(my $MAP, "<", $map_file) or do {
+        print "Can't open $map_file: $!\n";
+        next;
+    };
+
+    while (<$MAP>) {
+        next if /^%/;
+        next if /^\s*$/;
+
+        my ($fontname) = split;
+
+        $known_map_entry{$fontname}++;
+
+        if (! $known_tfm_file{$fontname}) {
+            $missing_tfm_file{$fontname}++;
+        }
+
+    }
+
+    close($MAP);
+}
+
+my @missing_tfm_files = sort keys %missing_tfm_file;
+
+my $TOTAL_MAP_ENTRIES = scalar keys %known_map_entry;
+
+print "Examined $TOTAL_MAP_ENTRIES map entries\n";
+print "Found ", scalar @missing_tfm_files, " missing TFM files\n";
+print "\n\n";
+
+for my $fontname (@missing_tfm_files) {
+    print $fontname, "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+my $maps = shift;
+my $tfms = shift;
+
+my $TOTAL_MAP_ENTRIES;
+my $MISSING_TFM_FILES;
+
+my %known_tfm_file;
+
+open(my $tfm_files, "<", $tfms) or die "Couldn't open $tfms: $!\n";
+
+while (<$tfm_files>) {
+    chomp;
+
+    my $fontname = basename($_, ".tfm");
+
+    $known_tfm_file{$fontname}++;
+}
+
+close($tfm_files);
+
+open (my $map_files, "<", $maps) or die "Couldn't open $maps: $!\n";
+
+while (my $map_file = <$map_files>) {
+    chomp $map_file;
+
+    next unless $map_file =~ /\S/;
+
+    open(my $MAP, "<", $map_file) or do {
+        print "Can't open $map_file: $!\n";
+        next;
+    };
+
+    while (<$MAP>) {
+        next if /^%/;
+        next if /^\s*$/;
+
+        my ($fontname) = split;
+
+        $TOTAL_MAP_ENTRIES++;
+
+        if (! $known_tfm_file{$fontname}) {
+            $MISSING_TFM_FILES++;
+            print "$map_file: $fontname\n";
+        }
+
+    }
+
+    close($MAP);
+}
+
+print "\n\n";
+print "Examined $TOTAL_MAP_ENTRIES map entries\n";
+print "Found $MISSING_TFM_FILES missing TFM files\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+my %font;
+
+while (<>) {
+    chomp;
+
+    my $fontname = basename $_;
+
+    $font{$fontname}++;
+}
+
+for my $font (sort grep { $font{$_} > 1 } keys %font) {
+    print "$font: $font{$font}\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $psfonts = '/ams/texmf/var/dvips/config/psfonts_t1.map';
+my $psnfss  = '/ams/texmf/prd/dvips/misc/psnfss.map';
+
+my %NFSS;
+
+open(my $nfss, "<", $psnfss) or die "Can't open $psnfss: $!\n";
+
+while (<$nfss>) {
+    next if /^%/;
+    next if /^\s*$/;
+
+    my ($fontname) = split;
+
+    $NFSS{$fontname} = 1;
+}
+
+close($nfss);
+
+
+open(my $fonts, "<", $psfonts) or die "Can't open $psfonts: $!\n";
+
+while (<$fonts>) {
+    next if /^%/;
+    next if /^\s*$/;
+
+    my ($fontname) = split;
+
+    delete $NFSS{$fontname};
+}
+
+close($fonts);
+
+for my $font (sort keys %NFSS) {
+    print $font, "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PRD::Journals;
+
+my $j = new PRD::Journals;
+
+my @all = $j->all();
+
+for my $journal (@all) {
+    print "$journal: ", $j->title($journal), "\n";
+
+    print "Copyright holder: ", $j->copyright_holder($journal), "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use POSIX;
+
+my $TODAYS_DATE = strftime "%d-%b-%Y", localtime;
+
+print $TODAYS_DATE, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::Utils;
+
+while (my $file = shift) {
+    print file_mimetype $file, "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::VMS;
+
+while (my $file = shift) {
+    create_new_vms_version $file;
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Cwd qw(abs_path);
+
+sub normalize_prd_path($) {
+    my $path = abs_path shift;
+
+    $path =~ s{^/nfs/axp14/user[a-z]}{/axp14};
+
+    $path =~ s{^/nfs/snort/gra\b}{/ams/gra};
+
+    return $path;
+}
+
+for (@ARGV) {
+    print "abs_path($_) = ", abs_path($_), "\n";
+    print "normalize_prd_path($_) = ", normalize_prd_path($_), "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PRD::Config;
+
+print "PRD_ROOT = ", PRD_ROOT, "\n";
+
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PRD::Utils;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub _access_to_mode($) {
+    my $access = shift;
+
+    my %mode = (R => 4, W => 2, E => 1, D => 0);
+
+    my $mode = 0;
+
+    for my $code (split "", $access) {
+        $mode += $mode{$code};
+    }
+
+    return $mode;
+}
+
+sub _protection_to_mode($) {
+    my $protection = uc shift;
+
+    my @pieces = split ",", $protection;
+
+    my $mode = 0;
+
+    for my $piece (@pieces) {
+        my ($owner, $access) = split ":", $piece;
+
+        next if $piece =~ /^S/;
+
+        my $this_mode = _access_to_mode($access);
+
+        $this_mode *= 8  if $piece =~ /^G/;
+        $this_mode *= 64 if $piece =~ /^O/;
+
+        $mode += $this_mode;
+    }
+
+    return sprintf "0%03o", $mode;
+}
+
+my $access = shift;
+
+my $mode = _protection_to_mode($access);
+
+print "$access = $mode\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my %OPT = (one => 1,
+            two => 2,
+            three => 3,
+            four => 4,
+            five => 5);
+
+sub save_state(@) {
+    my @keys = @_;
+
+    my %state;
+
+    @state{@keys} = @OPT{@keys};
+
+    return %state;
+}
+
+sub restore_state(\%) {
+    my $state = shift;
+
+    @OPT{ keys %{ $state } } = values %{ $state };
+}
+
+sub dump_hash(\%) {
+    my $hash = shift;
+
+    while (my ($key, $val) = each %{ $hash }) {
+        print $key, " = ", $val, "\n";
+    }
+
+    print "\n";
+}
+
+dump_hash %OPT;
+
+my %saved = save_state qw(one three five);
+
+dump_hash %saved;
+
+$OPT{one} = 101;
+
+$OPT{five} = 105;
+
+dump_hash %OPT;
+
+restore_state %saved;
+
+dump_hash %OPT;
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::PSutils;
+
+while (<>) {
+    chomp;
+    print quote_string_for_ps $_, "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $BALANCED_TEXT;
+
+$BALANCED_TEXT = qr{
+    (?> \\\\ | \\[()] | \\ | [^\\()]+ | \( (??{ $BALANCED_TEXT }) \) )*
+}sx;
+
+my $DSC_TEXT = qr{ \S+ | \( $BALANCED_TEXT \) }sx;
+
+while (<>) {
+    print if /^%%Page:\s*($DSC_TEXT)\s+(\d+)/;
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $foo = 'hello, world';
+
+print "Message: \U$foo\E\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+while (<>) {
+    print "$_\n" if s/^=//;
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+use File::Spec;
+
+print File::Spec->catdir("/foo/bar", "quuz/muz"), "\n";
+print File::Spec->catdir("/foo/bar", "/quuz/muz"), "\n";
+
+print "\n";
+
+print "dirname(\"/foo/bar/boo\") = ", dirname("/foo/bar/boo"), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::PDFutils;
+
+while (my $file = shift) {
+    print "$file: ", num_pdf_pages($file), "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Mail::Sendmail;
+
+my %mail = (To      => 'dmjones@dpl.mit.edu',
+            From    => 'dmj@ams.org',
+            Message => "This is a very short message"
+            );
+
+sendmail(%mail) or die $Mail::Sendmail::error;
+
+print "OK. Log says:\n", $Mail::Sendmail::log, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub get_user_name() {
+    return getpwuid($<);
+}
+
+print scalar get_user_name, "\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+#use English;
+
+sub echo {
+    print $ARG, "\n" for @ARG;
+}
+
+echo 1, 2, 3;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Spec;
+
+while (my $path = shift) {
+    my @pieces = File::Spec->splitdir($path);
+
+    print join(":", @pieces), "\n";
+}
+
+__END__
+
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $BALANCED_TEXT;
+
+$BALANCED_TEXT = qr/ (?> \\\\ | \\[{}] | \\ | [^\\{}]+ | \{ (??{ $BALANCED_TEXT }) \} )* /x;
+
+while (<>) {
+    chomp;
+
+    print "INPUT: $_\n";
+
+    if (/^\\author\{($BALANCED_TEXT)\}$/) {
+        print "MATCH: '$1'\n";
+    } else {
+        print "NO MATCH\n";
+    }
+
+    print "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $string = "Jos\\'e Rodr\\'{i}guez";
+
+$string =~ s/(\\[\"\'.=\`^~Huv])\{([ij])\}/$1\{\\$2\}/g;
+
+print $string, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+use PTG::Utils;
+
+while (my $file = shift) {
+    my $mimetype = eval { file_mimetype($file) };
+
+    if ($@) {
+        print STDERR "Caught an error: $@\n";
+        next;
+    };
+
+    print $file, ": ", $mimetype, "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::MMagic;
+
+my $MMAGIC = new File::MMagic;
+
+sub file_mimetype($) {
+    my $filename = shift;
+
+    local *FH;
+
+    open(FH, $filename) or do {
+        warn "Can't open $filename: $!\n";
+        return;
+    };
+
+    my $mimetype = $MMAGIC->checktype_filehandle(*FH);
+
+    close(FH);
+
+    return $mimetype;
+}
+
+while (my $file = shift) {
+    my $mimetype = eval { file_mimetype($file) };
+
+    if ($@) {
+        print STDERR "Caught an error: $@\n";
+        next;
+    };
+
+    print $file, ": ", $mimetype, "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl5/site_perl);
+
+use PTG::Config;
+
+my $CONFIG = new PTG::Config;
+
+my $GS = $CONFIG->executable("gs");
+
+print "GS=$GS\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::DVIutils;
+
+while (my $file = shift) {
+    my $num_pages = num_dvi_pages($file) or next;
+
+    print "$file: $num_pages pp\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::DVIutils;
+
+while (my $file = shift) {
+    my @fonts = dvi_fonts($file);
+
+    print "Fonts used by $file:\n";
+
+    for (@fonts) {
+        print "    $_\n";
+    }
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Temp;
+
+for my $package (sort keys %INC) {
+    my $path = $INC{$package};
+    print "$package => $path\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use IO::File;
+
+sub a($) {
+    my $file = shift;
+
+    my $FH = new IO::File;
+
+    my $numlines = 10;
+
+    open($FH, ">", $file) or do {
+        die "Can't open filea:$!\n";
+        return;
+    };
+
+    while ($numlines--) {
+        print $FH "$numlines\n";
+    }
+
+    close($FH);
+}
+
+foreach my $file (@ARGV) {
+    a $file;
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+for my $file (@ARGV) {
+    my ($dev, $inode) = (stat $file)[0, 1];
+
+    print "$file: dev=$dev, inode=$inode\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::Snapshot;
+
+my %versions = read_archive_index('/work/ptg/release/backup/back_versions.zip');
+
+for my $file (keys %versions) {
+    print $file, "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+my $dir = '/work/ptg/src';
+
+my $cnt = 0;
+
+my %files = map { basename($_) => $cnt++ } glob "$dir/*";
+
+foreach my $file (keys %files) {
+    print "$file [$files{$file}]\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Spec;
+
+print File::Spec->catdir("/ams/printshop", 'holding', 'books', 'surv', 125), "\n";;
+
+print File::Spec->catdir("/foo/bar/", "./"), "\n";
+print File::Spec->catdir("/foo/bar/", "./page.ps"), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+while (my $path = shift) {
+    # my $base = fileparse $path, qr/\.[^.]*$/;
+
+    my $dir = dirname $path;
+
+    print "dir=$dir\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub encode_file_name($) {
+    my $filename = shift;
+
+    $filename =~ s/\\/\\bslash /g;
+
+    $filename =~ s/([\$#%_])/\\$1/g;
+
+    return qq{\\texttt{$filename}};
+}
+
+while (<>) {
+    chomp;
+    print encode_file_name($_), "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+while (<>) {
+    /-> / and do {
+        print dirname($'), "\n";
+    };
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl5/site_perl);
+use PTG::Utils;
+
+my $file = shift;
+
+my $header = file_substring($file, 0, 30);
+
+my ($cookie, $po, $pl, $mo, $ml, $to, $tl) = unpack "H8VVVVVV", $header;
+
+print "po = $po\n";
+print "pl = $pl\n";
+
+print "mo = $mo\n";
+print "ml = $ml\n";
+
+print "to = $to\n";
+print "tl = $tl\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $string = "ÅÐÓÆ   ";
+
+my $hex = unpack "H*", $string;
+
+print "Hex: $hex\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use vars qw($bar);
+
+$bar = 1;
+
+sub printfoo() {
+    #local *bar;
+
+    $bar = 2;
+
+    print "bar is $bar\n";
+}
+
+print "bar is $bar\n";
+
+printfoo;
+
+print "bar is $bar\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Spec;
+
+print File::Spec->catdir("/foo/bar/", "./"), "\n";
+print File::Spec->catdir("/foo/bar/", "./page.ps"), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+if ('\\' =~ /[\(]/) {
+    print "found a match\n";
+} else {
+    print "no match\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @array = (1.34, 1.00, 2.5, 3.445, 4.99);
+
+for (@array) {
+    printf "%.f\n", $_;
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+while (<>) {
+    next if /^%/;
+    next if /^\s*$/;
+
+    print;
+
+    print "Contains $` $& $'" if m/\\\\/;
+
+    while (s/\( ( \\\\ | \\\( | \\\) | [^()\\] )+ \)//xg) {
+        print "DELETING $&\n";
+        print "=> $_";
+    };
+
+    print "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Temp qw(tempfile);
+
+my ($fh, $tmpfile) = tempfile() or do {
+    warn "Can't remove doubled EOLs: no temp file\n";
+    return;
+};
+
+print $tmpfile, "\n";
+
+print $fh "hello, world\n";
+
+close($fh);
+
+local *IN;
+
+open(IN, $tmpfile) or die "Can't open $tmpfile for reading: $!\n";
+
+while (<IN>) {
+    print;
+};
+
+close(IN);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub has_doubled_eols($) {
+    my $file = shift;
+
+    my $eols_doubled = 1;
+
+    local *FILE;
+
+    open(FILE, $file) or do {
+        warn "Can't open $file to check for double EOLs: $!\n";
+        return;
+    };
+
+    my $prev_empty = 1;
+
+    while (<FILE>) {
+        my $length = length($_) - 1;
+        print "length = $length\n";
+        next;
+
+        /^$/ and do {
+            $prev_empty = 1;
+            next;
+        };
+
+        if (! $prev_empty) {
+            $eols_doubled = 0;
+            last;
+        }
+
+        $prev_empty = 0;
+    }
+
+    close(FILE);
+
+    return $eols_doubled;
+}
+
+while (my $file = shift) {
+    my $doubled = has_doubled_eols $file;
+
+    print "$file: ", ($doubled ? "DOUBLED" : "OK"), "\n";
+}
+
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub inode($) {
+    my $file = shift;
+
+    return (stat $file)[1];
+}
+
+while (my $file = shift) {
+    print "$file: ", (inode $file || "UNDEF"), "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Temp qw(tempfile);
+
+use Fcntl qw(:seek :mode);
+
+use IO::Handle;
+
+my $data = tempfile();
+
+print $data "hello, world\n";
+
+$data->flush;
+
+seek($data, 0, SEEK_SET) or die "Can't seek: $!\n";
+
+my $size = -s $data;
+
+print "\$size = $size\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+while (my $file = shift) {
+    my $size = -s $file or do {
+        warn "Can't get size for $file: $!\n";
+        next;
+    };
+
+    print "$file: $size\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Getopt::Long qw(:config no_ignore_case);
+
+GetOptions("showpage!"  => sub { print "showpage: @_\n" },
+           "fatal"     => sub { print "fatal\n" },
+           "help"      => sub { print "help\n" },
+           "version|V" => sub { print "verstion\n" })
+  or print "ERROR\n";
+
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+while (my $path = shift) {
+    my $base = fileparse $path, qr/\.[^.]*$/;
+
+    print "base=$base\n";
+}
+
+
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+##  while (my $path = shift) {
+##      my $base = fileparse $path;
+##  
+##      print "base=$base\n";
+##  }
+
+while (my $path = shift) {
+    my ($base, $dir, $ext) = fileparse $path, qr/\.[^.]*$/;
+
+    $dir =~ s/^\.\///;
+
+    print "base=$base; dir=$dir; ext=$ext\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+while (my $path = shift) {
+    print $path, ": ";
+    $path = dirname $path unless -d $path;
+    print $path, "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $dest = shift;
+
+local *FH;
+
+open(FH, ">$dest") or die "Can't open $dest for writing: $!\n";
+
+print FH "hello, world\n";
+
+if (-f FH) {
+    print "FH is a file\n";
+}
+
+close(FH);
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my %DVIPS_FLAGS = (-A => 1,
+                   -B => 1,
+                   -E => 1,
+                   -E0 => 1,
+                   -K => 1,
+                   -K0 => 1,
+                   -M => 1,
+                   -M0 => 1,
+                   -N => 1,
+                   -N0 => 1,
+                   -R => 1,
+                   -Z => 1,
+                   -Z0 => 1,
+                   -j => 1,
+                   -j0 => 1,
+                   -k => 1,
+                   -k0 => 1,
+                   -q => 1,
+                   -q0 => 1,
+                   -r => 1,
+                   -r0 => 1,
+                   -z => 1,
+                   -z0 => 1);
+
+my %hash1 = ();
+my %hash2;
+my %hash3 = (1, 2, 4, 5);
+
+if (%hash1) {
+    print "hash1 has stuff\n";
+} else {
+    print "hash1 is empty\n";
+}
+
+if (%hash2) {
+    print "hash2 has stuff\n";
+} else {
+    print "hash2 is empty\n";
+}
+
+if (%hash3) {
+    print "hash3 has stuff\n";
+} else {
+    print "hash3 is empty\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+
+use PTG::Errors qw(:all);
+
+error "this is an error\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $some_positive = grep { $_ > 0 } @ARGV;
+
+print "\$some_positive = $some_positive\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+while (<>) {
+    m/foo=(\d+), bar=(\d+)/ and do {
+        my ($foo, $bar) = ($1, $2);
+        print "\$foo=$foo; \$bar=$bar\n";
+    };
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @list;
+
+for (@list) {
+    print "$_\n";
+}
+
+print "\@list=", scalar @list, "\n";
+print "\$#list=", $#list, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+use PTG::Utils qw(file_mimetype);
+
+while (my $file = shift) {
+    print $file, ": ", file_mimetype $file, "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my %count;
+
+while (<>) {
+    for my $word (split ' ', $_) {
+        $count{$word}++;
+    }
+}
+
+for my $word (sort keys %count) {
+    print "$word: ", $count{$word}, "\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub sort_fontnames(@) {
+    my @fontnames = @_;
+
+    return
+      map { $_->[0] }
+        sort { $a->[1] cmp $b->[1] }
+          map { [$_, sprintf "%-16s %08s", m/^(.*?)(\d*)$/] }
+            @fontnames;
+}
+
+my %fonts;
+my @FONTS = qw(msbm10 cmti10 cmbx10 cmr10 cmbx12 cmti8 cmcsc10 msbm8
+               cmsy6 cmmi8 cmr6 cmr8 cmsy10 cmmi10 cmmi7 cmr10 cmr7
+               cmex10 msamx 198 ms19tty8);
+
+@fonts{@FONTS} = 1;
+
+for (sort_fontnames keys %fonts) {
+    print $_, "\n";
+}
+
+for (@FONTS) {
+    print $_, "\n";
+    printf "%-16s %08s\n", m/^(.*?)(\d*)$/;
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub modify_array(\@) {
+    my @local_array;
+    *local_array = shift;
+
+    @local_array = (3, 4, 5);
+}
+
+sub print_array(\@) {
+    my $local_array = shift;
+
+    print "array = qw(", join " ", @{ $local_array }, ")\n";
+}
+
+my @foo = (1, 2);
+
+print_array @foo;
+modify_array @foo;
+print_array @foo;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+if ("\f" eq "\014") {
+    print "\\f is a vertical tab\n";
+} else {
+    print "\\f is NOT a vertical tab\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Cwd qw(abs_path);
+
+use File::Basename;
+
+sub absolute_path($) {
+    my $path = shift;
+
+    my ($basename, $dir, $ext) = fileparse $path, qr{\.[^.]*};
+        
+    my $fullpath = abs_path $dir;
+        
+    (my $absolute_path = $fullpath . "/" . $basename . $ext) =~ s{//}{/}g;
+
+    return $absolute_path;
+}
+
+while (my $path = shift) {
+    print $path, "\n";
+    print absolute_path $path, "\n";
+    print abs_path($path), "\n";
+    print "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my %PUB_LOGO = (conm  =>  "(Contemporary Mathematics)",
+                hmath =>  "(History of Mathematics)",
+                crmp  => << "EOF",
+(Cen) show -0.18 0 rmoveto (tre) show 2.52 0 rmoveto (de) show
+2.52 0 rmoveto (Rec) show -0.18 0 rmoveto (herc) show -0.18 0 rmoveto
+(hes) show 2.64 0 rmoveto (Math) show -0.18 0 rmoveto (\\023) show
+-3.48 0 rmoveto (ematiques) show
+__LOGO_BASE_LINE__ __LOGO_BOX_X__ newline
+(CRM) show 2.46 0 rmoveto (Pro) show 0.18 0 rmoveto (ceedings) show
+2.58 0 rmoveto (and) show 2.52 0 rmoveto (Lecture) show
+2.58 0 rmoveto (Notes)
+EOF
+  test => "(Test Mathematics)");
+
+while (my ($key, $logo) = each %PUB_LOGO) {
+    print "$key => ", length $logo, "\n";
+}
+
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+use File::Spec;
+
+my $dir = "/foo/bar";
+my $file = "font.pfa";
+
+print File::Spec->catdir($dir, $file), "\n";
+
+# print File::Spec->catdir(undef, $file), "\n";
+print File::Spec->catdir("", $file), "\n";
+
+my ($basename, $dir, $ext) = fileparse $file, qr{\.[^.]*};
+
+print "\$basename='$basename'\n";
+print "\$dir='$dir'\n";
+print "\$ext='$ext'\n";
+
+print File::Spec->catdir($dir, $file), "\n";
+
+# print File::Spec->catdir(undef, $file), "\n";
+print File::Spec->catdir("", $file), "\n";
+
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+while (1) {
+    print STDERR "Text: ";
+    chomp(my $text = <>);
+
+    print "text=[$text]\n";
+}
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/work/ptg/src/perl);
+use PTG::PSutils qw(tbcp_encode);
+
+my @codes = (001, 003, 004, 005, 021, 023, 024, 033, 034);
+
+for my $char (map { chr } @codes) {
+    print "$char => ", tbcp_encode($char), "\n";
+}
+
+my @chars = map { chr } @codes;
+my $all = "@chars";
+
+print "all => ", tbcp_encode($all), "\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+{
+    my @codes = (001, 003, 004, 005, 021, 023, 024, 033, 034);
+
+    my $TBCP_rx = join "|", map { chr } @codes;
+
+    my %TBCP = map { chr $_, pack "CC", 1, $_ ^ 0100 } @codes;
+
+    sub tbcp_encode($) {
+        (my $string = shift) =~ s/($TBCP_rx)/$TBCP{$1}/og;
+
+        return $string;
+    }
+}
+
+my @codes = (001, 003, 004, 005, 021, 023, 024, 033, 034);
+
+my %TBCP = map { chr $_, pack "CC", 1, $_ ^ 0100 } @codes;
+
+for my $key (sort keys %TBCP) {
+    print "$key => ", $TBCP{$key}, "\n";
+}
+
+print "\n\n";
+
+for my $char (map { chr } @codes) {
+    print "$char => ", tbcp_encode($char), "\n";
+}
+
+exit;
+# 
+# 
+# my @chars = map { chr oct } 
+# 
+#             $line =~ s{(\001|\003|\004|\005|\021|\023|\024|\033|\034)}{
+#                 my $binarycode = unpack "C", $1 ;
+#                 $binarycode ^= 0100 ;
+#                 $binarycode = pack "CC", 1, $binarycode ;
+#                 $binarycode
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub program_name() {
+    # (my $name = q$RCSfile: $) =~ s{RCSfile: (\S+),v }{$1}g;
+
+    # return basename $name;
+
+    return "tmp.prl";
+}
+
+sub parse_page_ranges(@) {
+    my ($opt_name, $opt_val) = @_;
+
+    my @ranges = split /\s*,\s*/, $opt_val;
+
+    foreach my $range (@ranges) {
+        print "Processing '$range'\n";
+        if ($range !~ /^(\d+:?(\d+)?|:\d+)$/) {
+            my $program_name = program_name();
+            warn "Bad page range: $range. Should be one of #:#, #, :#, #:\n";
+            die "Run $program_name -pagehelp for more help.\n"
+        }
+    }
+
+    return map { ("-pp", $_) } @ranges;
+}
+
+my @ranges = parse_page_ranges("pp", shift);
+
+for my $i (0..$#ranges) {
+    print "$i: $ranges[$i]\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+for my $package (sort keys %INC) {
+    my $path = $INC{$package};
+    print "$package => $path\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $magic = "c5d0d3c6";
+
+print pack "H8", $magic;
+print "\n";
+
+my $stuff = pack "H8VV", $magic, 10, 34;
+
+print unpack "H8", $stuff;
+print "\n";
+
+my ($cookie, $one, $two) = unpack "H8VV", $stuff;
+print "\$cookie=$cookie\n";
+print "\$one=$one\n";
+print "\$two=$two\n";
+
+($cookie, $one, $two) = unpack "H8V2", $stuff;
+print "\$stuff=$stuff\n";
+print "\$cookie=$cookie\n";
+print "\$one=$one\n";
+print "\$two=$two\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl5/site_perl);
+
+use
+
+print "\@INC:\n    ", join("\n    ", @INC), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Temp;
+
+my ($fh, $ps_file) = tempfile("pdfprint-XXXXXX",
+                              DIR => "/tmp",
+                              SUFFIX => ".ps",
+                              UNLINK => 0);
+
+$fh->close;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Getopt::Long qw(:config no_ignore_case);
+
+my $status = GetOptions("v" => sub { print "Saw option $_[0]\n" }) || usage();
+
+print "GetOptions returned $status\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use lib qw(/ams/texmf/lib/perl5);
+use PTG::Config;
+
+my $CONFIG = new PTG::Config;
+
+my $PDFINFO = $CONFIG->param("pdfinfo");
+my $PDFTOPS = $CONFIG->param("pdftops");
+my $LPR     = $CONFIG->param("lpr");
+
+print "\$PDFINFO = $PDFINFO\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $uid = getpwnam("texmf");
+
+print "\$uid=$uid\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Spec;
+
+print File::Spec->catfile(@ARGV), "\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @a = ("foo") if 0;
+my @b = ("bar") if 1;
+
+push @a, "more a" if 1;
+push @b, "more b" if 0;
+
+print "\@a = @a\n";
+print "\@b = @b\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Cwd qw(abs_path);
+
+use lib qw ( /ams/texmf/lib/perl5/site_perl ) ;
+use PTG::Realpath qw ( fileparse getcwd ) ;
+
+print "getcwd=", getcwd(), "\n\n";
+
+for (map { abs_path $_ } @ARGV) {
+    print $_, "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+use Getopt::Long qw(:config no_ignore_case);
+
+my @values;
+
+GetOptions("v=s" => \@values, "<>" => \&process);
+
+sub process {
+    print "process(", join(", ", @_), ")\n";
+    for (@values) {
+        print "    $_\n";
+    }
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my @extra = ("bar", 4, "foo", 5);
+my @more;
+
+my %hash = (foo => 1,
+            bar => 2,
+            foo => 3,
+            @extra,
+            @more);
+
+while (my ($key, $value) = each %hash) {
+    print "$key => $value\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use Cwd qw(abs_path);
+
+use lib qw ( /ams/texmf/lib/perl5/site_perl ) ;
+use PTG::Realpath qw ( fileparse getcwd ) ;
+
+print "getcwd=", getcwd(), "\n\n";
+
+for (@ARGV) {
+    print "$_ -> ", abs_path($_), "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+my ($name, $path, $ext) = fileparse "/home/dmjones/foo.tex", qr/\.[^.]*/;
+
+print "\$name=$name\n\$path=$path\n\$ext=$ext\n";
+
+print "basename=", basename("/home/dmjones/foo.tex", ".dvi"), "\n";;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+my $variable;
+
+if ($variable) {
+    print "\$variable is defined\n";
+} else {
+    print "\$variable is not defined\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+my $foo = <<"EOF";
+hello, world
+goodbye, world
+EOF
+
+    print $foo;
+
+__END__
+#!/usr/bin/perl 
+
+our $A = "aaaaa";
+our $B = "bbbbb";
+
+my $C = "ccccc";
+my $D = "ddddd";
+
+sub test_our() {
+    local *A;
+    local *B;
+
+    print "\$A = $A\n";
+    print "\$B = $B\n";
+}
+
+sub test_my() {
+    local *C;
+    local *D;
+
+    print "\$C = $C\n";
+    print "\$D = $D\n";
+}
+
+test_our;
+test_my;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+use Getopt::Long qw(:config no_ignore_case);
+
+sub handle_origin {
+    for (@_) {
+        print $_, "\n";
+    }
+}
+
+my $foo;
+
+GetOptions("o:s" => \&handle_origin,
+           "O" => \$foo);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+sub read_all($) {
+    my $filename = shift;
+
+    local *DOC;
+
+    open(DOC, $filename) or die "Couldn't open $filename: $!";
+
+    local $/ = undef;
+
+    my $content = <DOC>;
+
+    close(DOC);
+
+    return $content;
+}
+
+local *FILELIST;
+
+open(FILELIST, "find . -name \*,v |") or die "Can't exec find: $!\n";
+
+while (my $rcs_file = <FILELIST>) {
+    chomp $rcs_file;
+
+    next if $rcs_file =~ /\.\/cvsroot\//;
+
+    (my $source_file = $rcs_file) =~ s/,v$//;
+
+    $source_file =~ s#RCS/##;
+
+    my $contents = read_all($rcs_file);
+
+    if ($contents =~ /^locks\s*\n\s*(?:(\S+):(\S+)); strict;$/m) {
+        if (-e $source_file) {
+            print "              $source_file \n" if $1; # eq "bnb";
+        }
+    }
+}
+
+close(FILELIST) or die "Couldn't exec find: $!\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+while (my $file = shift) {
+    print "Filename: $file\n";
+    print "    exists\n" if -e $file;
+    print "    is a regular file\n" if -f $file;
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+sub named_args($@) {
+    my $string = shift;
+
+    my %hash = @_;
+
+    print "\$string = $string\n\n";
+
+    if (%hash) {
+        print "Named args:\n";
+        while (my ($key, $value) = each %hash) {
+            print "    $key => $value\n";
+        }
+    } else {
+        print "No named args\n";
+    }
+}
+
+named_args "Banner heading", DIR => '/tmp', GREETING => 'hello, world';
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+sub named_args($@) {
+    my $string = shift;
+
+    my %hash = @_;
+
+    print "\$string = $string\n\n";
+
+    if (%hash) {
+        print "Named args:\n";
+        while (my ($key, $value) = each %hash) {
+            print "    $key => $value\n";
+        }
+    } else {
+        print "No named args\n";
+    }
+}
+
+named_args "Banner heading", DIR => '/tmp', GREETING => 'hello, world';
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+use File::Temp qw(tempfile);
+
+my $dir = $ENV{TMPDIR} || "/tmp";
+
+my (undef, $ps_file) = tempfile("pdfprint-XXXXXX",
+                              DIR => $dir,
+                              SUFFIX => ".ps");
+
+#$fh->close;
+
+print $ps_file, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+local *FILELIST;
+
+open(FILELIST, "find . -name \*,v |") or die "Can't exec find: $!\n";
+
+while (my $rcs_file = <FILELIST>) {
+    chomp $rcs_file;
+
+    (my $source_file = $rcs_file) =~ s/,v$//;
+
+    $source_file =~ s#RCS/##;
+
+    #print $rcs_file, "\n";
+    print $source_file, "\n";
+
+    #system "chmod a-w $source_file";
+}
+
+close(FILELIST) or die "Couldn't exec find: $!\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+# $Revision: 1.46 $ $Date: 2004/10/26 19:46:55 $
+
+use strict;
+
+sub get_version() {
+    local *SCRIPT;
+
+    open(SCRIPT, $0) or die "Can't open $0: $!\n";
+
+    my $revision;
+
+    while (<SCRIPT>) {
+        /^# \$Revision: (\S+) \$/ and do {
+            $revision = $1;
+        };
+    }
+
+    close(SCRIPT);
+
+    return $revision;
+}
+
+print "I think my version is ", get_version(), "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+sub dump_hash(\%) {
+    my $hashref = shift;
+
+    while (my ($key, $val) = each %{ $hashref }) {
+        print "$key => $val\n";
+    }
+}
+
+sub mod_hash(\%) {
+    my $hash_ref = shift;
+
+    $hash_ref->{key2} = 2;
+}
+
+my %hash = (key1 => 1);
+
+dump_hash %hash;
+
+mod_hash %hash;
+
+dump_hash %hash;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+sub mod_array(\@) {
+    my $array_ref = shift;
+
+    push @{ $array_ref }, 3;
+}
+
+my @array = (1, 2);
+
+print "\@array = @array\n";
+
+mod_array @array;
+
+print "\@array = @array\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+use Getopt::Long;
+
+my $option = 1;
+
+my %option = (one => 1,
+              two => 2);
+
+print "\$option = $option\n";
+print "\$option{one} = $option{one}\n";
+print "\$option{two} = $option{two}\n";
+
+GetOptions('s=i' => \$option,
+           'o=i'    => \$option{one},
+           't=i'    => \$option{two},
+          );
+
+print "\$option = $option\n";
+print "\$option{one} = $option{one}\n";
+print "\$option{two} = $option{two}\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+use integer;
+
+my $NUMPAGES;
+
+my $NUMLINES = 66;
+
+while (<>) {
+    my ($numlines, $file) = m/^\s*(\d+) (\S*)/;
+
+    last if $2 eq 'total';
+
+    $NUMPAGES += ($1 + $NUMLINES)/$NUMLINES;
+}
+
+print "Pages: $NUMPAGES\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+use Text::TeX;
+
+sub n($) {
+    my $txt = shift;
+
+    return defined $txt ? $txt : "";
+}
+
+sub r($) {
+    my $ref = shift;
+
+    (my $type = ref $ref) =~ s/^Text::TeX:://;
+
+    return $type;
+}
+
+sub e($) {
+    (my $text = shift) =~ s/\n/\\n/g;
+
+    return $text;
+}
+
+sub report {
+    my ($eaten,$txt) = @_;
+
+    printf "%04d: ", $.;
+
+    print "Comment: `", $eaten->[1], "'\n" if defined $eaten->[1];
+
+    printf "%16s ", n "@{$txt->{waitfors}} ";
+
+    printf "%20s: `%s'", r $eaten, e n $eaten->[0];
+
+    if (defined $eaten->[3]) {
+        my @arr = @{ $eaten->[3] };
+        foreach (@arr) {
+            print " ", e $_->print;
+        }
+    }
+    print "\n";
+}
+
+my $file = new Text::TeX::OpenFile $ARGV[0],
+    'defaultact' => \&report;
+
+$file->process;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+my @list = qw(While  formail  now  ignores  Resent  headers  when  generating  header
+       replies versions of formail prior to 314 gave  such  headers  a  high
+       precedence  If the old behavior is needed for established applications
+       it can be specified by calling formail with the option in
+       addition to the r and t options  This usage is deprecated and should
+              not be used in new applications);
+
+my @sorted_list =
+    map { $_->[1] }
+    sort { $a->[0] <=> $b->[0] } 
+    map { [length, $_] } @list;
+
+print map { "$_\n"} @sorted_list, "\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+use File::Spec::Link;
+
+while (my $dir = shift) {
+    print "$dir: \n";
+    print File::Spec::Link->resolve($dir), "\n";
+
+    print File::Spec::Link->full_resolve($dir), "\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+use DBI;
+
+use MITP::CFG qw(:DBI);
+
+# $DBI_DRIVER = "dbi:Oracle:mitpdev";
+
+print STDERR "DBI_DRIVER = $DBI_DRIVER
+DBI_USER = $DBI_USER
+DBI_PASSWORD = $DBI_PASSWORD\n";
+
+my $dbh = DBI->connect($DBI_DRIVER, $DBI_USER, $DBI_PASSWORD,
+                       { AutoCommit => 0, RaiseError => 1 });
+
+my $sth = $dbh->prepare("select sysdate from dual");
+
+$sth->execute();
+
+my $row = $sth->fetch;
+
+print "@{ $row }\n";
+
+$sth->finish;
+
+$dbh->disconnect;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+use DBI;
+
+my $DSN = 'DSN=SQLServer';
+
+my $dbh = DBI->connect("dbi:ODBC:$DSN") or die "$DBI::errstr\n";
+
+my $sth = $dbh->prepare("select count(*) from tbl_authors");
+
+$sth->execute();
+
+my $row = $sth->fetch;
+
+print "@{ $row }\n";
+
+$sth->finish;
+
+$dbh->disconnect;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+my $BUFSIZE = 330;
+
+my $file = shift;
+
+open(FH, $file) or die "Can't open $file: $!\n";
+
+my $buffer = "";
+
+while (my $numbytes = read(FH, $buffer, $BUFSIZE)) {
+    print $buffer, "\n";
+}
+
+close(FH);
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+my @list = (0);
+
+print "\@list = (@list) [", scalar @list, "]\n";
+
+splice @list, 10, 1, 1;
+
+print "\@list = (@list) [", scalar @list, "]\n";
+
+splice @list, -1, 1, 3;
+
+print "\@list = (@list) [", scalar @list, "]\n";
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+my $file = shift;
+
+open(FILE, $file) or die "Can't open $file: $!\n";
+
+while (<FILE>) {
+    /\r/ and do {
+        print $file, "\n";
+        last;
+    };
+}
+
+__END__
+
+#!/usr/bin/perl -wpi*~
+
+use Text::MAC;
+
+use strict;
+
+s#cognet/www/library/fulltext#cognet/www/library/books#;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+use Net::Z3950;
+
+
+
+#my $conn = new Net::Z3950::Connection('z3950.loc.gov', 7090, databaseName => 'voyager');
+
+# my $conn = new Net::Z3950::Connection('indexdata.dk', 210, databaseName => 'gils');
+
+#my $conn = new Net::Z3950::Connection('z3950.loc.gov', 7090, databaseName => 'voyager');
+
+my $mgr = new Net::Z3950::Manager(databaseName => 'advance');
+
+$mgr->option(elementSetName => "f");
+$mgr->option(preferredRecordSyntax => Net::Z3950::RecordSyntax::USMARC);
+
+
+my @isbns = qw(0262011654 0262082225 0262161818 0262201151);
+
+foreach my $isbn (@isbns) {
+
+    my $conn = $mgr->connect('library.mit.edu', 210);
+
+    my $rs = $conn->search("\@attr 1=7 $isbn");
+
+    if (my $errcode = $conn->errcode) {
+        print $errcode, ": ", Net::Z3950::errstr($errcode), "\n";
+        print $conn->addinfo(), "\n";
+        print $conn->errop(), "\n";
+        next;
+    }
+
+    print "Found ", $rs->size(), " records:\n";
+    
+##      for (my $i = 1; $i <= $rs->size; $i++) {
+##          my $rec = $rs->record(1);
+##          print $rec->render();
+##      
+##          print "\n\n";
+##      }
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+use ISBN qw(:ALL);
+
+foreach my $isbn (@ARGV) {
+    print $isbn, ": ";
+
+    if (valid_isbn($isbn)) {
+        print " valid\n";
+    } else {
+        print "invalid (checksum =  ", isbn_checksum($isbn), ")\n";
+    }
+}
+
+__END__
+
+
+#!/usr/bin/perl -w
+
+use strict;
+
+my $term = shift;
+
+use Net::Z3950;
+
+my $conn = new Net::Z3950::Connection('indexdata.dk', 210,
+				   databaseName => 'gils');
+
+my $rs = $conn->search($term);
+
+print "found ", $rs->size(), " records:\n";
+
+my $rec = $rs->record(1);
+
+print $rec->render();
+
+
+__END__
+
+#!/usr/bin/perl -wpi*~
+
+use strict;
+
+s/^:ext:dmjones\@dpl.mit.edu://;
+
+__END__
+
+#!/usr/bin/perl -w
+
+use strict;
+
+my $total;
+
+while (<>) {
+    /^(\d+):/ and do {
+        $total += $1;
+    };
+}
+
+print "TOTAL: $total\n";
+
+__END__
+#!/usr/bin/perl -w
+
+use Apache::Registry;
+
+print "hello, world\n";
+
+foreach (my ($key, $value) = each %INC) {
+    print "$key => $value\n";
+}
+
+__END__
+
+#!/usr/bin/perl -w
+
+for my $number (13059 .. 13074) {
+    my $key = key();
+
+    print "set reader_order_id($key) $number\n";
+}
+
+sub key {
+    my $key = "";
+
+    for (1..5) {
+        my $i = int rand 26;
+
+        $key .= chr($i + 65);
+    }
+
+    return $key;
+}
+
+__END__
