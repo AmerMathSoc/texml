@@ -124,6 +124,8 @@ use constant BYTES_PER_INT => 4;
 
 use constant W2TX_MAGIC_NUMBER  => unpack("N", "W2TX"); # 3.141592 + W2C 7.4.5
 
+use constant LUATEX_MAGIC_NUMBER => 907 + 15;
+
 use constant XETEX_MAGIC_NUMBER => 529205248;
 
 use constant MLTX_MAGIC => unpack("N", "MLTX");
@@ -259,6 +261,16 @@ sub read_integer {
     my $self = shift;
 
     return $self->read_signed(BYTES_PER_INT);
+}
+
+sub peek_integer {
+    my $self = shift;
+
+    my $int = $self->read_signed(BYTES_PER_INT);
+
+    $self->seek(-BYTES_PER_INT, SEEK_CUR);
+
+    return $int;
 }
 
 sub read_checksum {
@@ -452,9 +464,15 @@ sub load_header {
 sub load_format_engine {
     my $self = shift;
 
-    my $engine = $self->read_string(4);
+    my $next = $self->read_integer();
 
-    $engine =~ s/\000*$//g; ## Shouldn't read_string() do this?
+    if ($next == LUATEX_MAGIC_NUMBER) {
+        __debug "format id: $next";
+
+        $next = $self->read_integer();
+    }
+
+    my $engine = $self->read_string($next);
 
     __debug "engine = '$engine'";
 
@@ -466,9 +484,9 @@ sub load_format_engine {
 sub load_translation_tables {
     my $self = shift;
 
-    __debug "Loading translation tables";
+    return unless $self->has_translation_tables();
 
-    return unless $self->get_params()->has_translation_tables();
+    __debug "Loading translation tables";
 
     my @xord = unpack("C*", $self->read_bytes(256));
     my @xchr = unpack("C*", $self->read_bytes(256));
@@ -528,20 +546,22 @@ sub load_constants {
 
     $self->load_etex_state();
 
-    my $mem_bot = $self->read_integer();
+    if (! $self->is_luatex()) {
+        my $mem_bot = $self->read_integer();
 
-    __debug "mem_bot = $mem_bot";
+        __debug "mem_bot = $mem_bot";
 
-    __check "mem_bot", $params->mem_bot(), $mem_bot;
+        __check "mem_bot", $params->mem_bot(), $mem_bot;
 
-    $self->set_mem_bot($mem_bot);
+        $self->set_mem_bot($mem_bot);
 
-    my $mem_top = $self->read_integer();
+        my $mem_top = $self->read_integer();
 
-    __debug "mem_top = $mem_top";
+        __debug "mem_top = $mem_top";
 
-    $self->set_mem_top($mem_top);
-    $self->get_mem()->set_mem_top($mem_top);
+        $self->set_mem_top($mem_top);
+        $self->get_mem()->set_mem_top($mem_top);
+    }
 
     my $eqtb_size = $self->read_integer();
 
@@ -557,13 +577,15 @@ sub load_constants {
 
     $self->set_hash_prime($hash_prime);
 
-    my $hyph_prime = $self->read_integer();
+    if (! $self->is_luatex()) {
+        my $hyph_prime = $self->read_integer();
 
-    __debug "hyph_prime = $hyph_prime";
+        __debug "hyph_prime = $hyph_prime";
 
-    __check "hyph_prime", $params->hyph_prime(), $hyph_prime;
+        __check "hyph_prime", $params->hyph_prime(), $hyph_prime;
 
-    $self->set_hyph_prime($hyph_prime);
+        $self->set_hyph_prime($hyph_prime);
+    }
 
     return;
 }
@@ -610,6 +632,8 @@ sub load_enctex_data {
 
 sub load_string_pool {
     my $self = shift;
+
+    return $self->load_luatex_string_pool() if $self->is_luatex;
 
     __debug "Loading string pool";
 
@@ -671,8 +695,38 @@ sub load_string_pool {
     return;
 }
 
+sub load_luatex_string_pool {
+    my $self = shift;
+
+    __debug "Loading LuaTeX string pool";
+
+    #define STRING_OFFSET 0x200000
+
+    my $str_ptr = $self->read_integer();
+
+    __debug "str_ptr = $str_ptr";
+
+    my @string;
+
+    for (my $j = 1; $j < $str_ptr; $j++) {
+        my $len = $self->read_integer();
+
+        if ($len >= 0) {
+            $string[$j] = $self->read_string($len); 
+
+            __debug "string[$j] = '$string[$j]'";
+        }
+    }
+
+    $self->set_strings(\@string);
+
+    return;
+}
+
 sub load_dynamic_memory {
     my $self = shift;
+
+    return $self->load_luatex_node_memory() if $self->is_luatex;
 
     __debug "Loading dynamic memory";
 
@@ -755,6 +809,69 @@ sub load_dynamic_memory {
     return;
 }
 
+sub load_luatex_node_memory {
+    my $self = shift;
+
+    __debug "Loading LuaTeX dynamic memory";
+
+    my $params = $self->get_params();
+
+    my $mem = $self->get_mem();
+
+    # BEGIN undump_mode_mem()
+
+    my $var_mem_max = $self->read_integer();
+
+    my $rover      = $self->read_integer();
+
+    __debug "var_mem_max = $var_mem_max";
+    __debug "rover = $rover";
+
+    for my $ptr (0..$var_mem_max - 1) {
+        my $word = $self->read_memory_word();
+
+        $mem->set_word($ptr, $word);
+    }
+
+    my @varmem_sizes;
+
+    for my $ptr (0..$var_mem_max - 1) {
+        push @varmem_sizes, $self->read_memory_word();
+    }
+
+    my @free_chain;
+
+    for (1..13) { # MAX_CHAIN_SIZE
+        push @free_chain, $self->read_memory_word();
+    }
+
+    my $var_used = $self->read_integer();
+    my $my_prealloc = $self->read_integer();
+
+    # END undump_mode_mem()
+
+    for my $param (qw(temp_token_head hold_token_head omit_template
+                      null_list backup_head garbage)) {
+        $self->read_integer();
+    }
+
+    my $fix_mem_min = $self->read_integer();
+    my $fix_mem_max = $self->read_integer();
+
+    my $fix_mem_end = $self->read_integer();
+    my $avail       = $self->read_integer();
+
+    my @fix_mem;
+
+    while (1..$fix_mem_end - $fix_mem_min + 1) {
+        push @fix_mem, $self->read_memory_word();
+    }
+
+    my $dyn_used = $self->read_integer();
+
+    return;
+}
+
 sub load_eqtb {
     my $self = shift;
 
@@ -807,7 +924,24 @@ sub load_eqtb {
     my $par_loc   = $self->read_integer();
     my $write_loc = $self->read_integer();
 
+    if ($self->is_luatex()) {
+        $self->undump_math_codes();
+        $self->undump_text_codes();
+    }
+
     $self->load_hash_table();
+
+    return;
+}
+
+sub updump_math_codes {
+    my $self = shift;
+
+    return;
+}
+
+sub updump_text_codes {
+    my $self = shift;
 
     return;
 }
@@ -1240,7 +1374,7 @@ sub undump_image_meta {
     my $cur_image   = $self->read_integer();
 
     for (my $img = 0; $img < $cur_image; $img++) {
-        my $img_name = $self->read_string(4);
+        my $img_name = $self->read_string();
 
         my $img_type = $self->read_integer();
         my $img_color = $self->read_integer();
