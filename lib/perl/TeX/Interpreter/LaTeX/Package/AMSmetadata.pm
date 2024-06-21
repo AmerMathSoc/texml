@@ -857,6 +857,18 @@ sub add_custom_meta {
     return;
 }
 
+sub delete_kwd_groups {
+    my $tex = shift;
+
+    my $element = shift;
+
+    for my $group ($element->findnodes("kwd-group")) {
+        $group->unbindNode();
+    }
+
+    return;
+}
+
 sub add_msc_categories {
     my $tex = shift;
 
@@ -1208,6 +1220,8 @@ sub append_article_meta {
 
     copy_xml_node("article-meta/kwd-group", $old_front, $meta);
 
+    delete_kwd_groups($tex, $meta);
+
     add_keywords($tex, $meta, $gentag);
 
     add_msc_categories($tex, $meta, $gentag);
@@ -1436,6 +1450,8 @@ sub create_book_meta( $$ ) {
     if (nonempty(my $edition = $gentag->get_edition())) {
         append_xml_element($meta, 'edition', $edition);
     }
+
+    delete_kwd_groups($tex, $meta);
 
     add_msc_categories($tex, $meta, $gentag);
 
