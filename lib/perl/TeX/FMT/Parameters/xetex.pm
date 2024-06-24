@@ -214,7 +214,7 @@ sub BUILD {
 sub START {
     my ($self, $ident, $arg_ref) = @_;
 
-    $self->load_cmd_data(*TeX::FMT::Parameters::xetex::DATA{IO});
+    $self->load_primitives(*TeX::FMT::Parameters::xetex::DATA{IO});
 
     return;
 }
@@ -223,6 +223,6 @@ sub START {
 
 __DATA__
 
-math_char_num+2    Umathchar
+Umathchar   math_char_num   2
 
 __END__

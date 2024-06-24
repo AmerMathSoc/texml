@@ -213,7 +213,7 @@ sub BUILD {
 sub START {
     my ($self, $ident, $arg_ref) = @_;
 
-    $self->load_cmd_data(*TeX::FMT::Parameters::xetex::DATA{IO});
+    $self->load_primitives(*TeX::FMT::Parameters::xetex::DATA{IO});
 
     return;
 }

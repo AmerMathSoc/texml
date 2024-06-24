@@ -350,7 +350,7 @@ sub BUILD {
 sub START {
     my ($self, $ident, $arg_ref) = @_;
 
-    $self->load_cmd_data(*TeX::FMT::Parameters::pdftex::DATA{IO});
+    $self->load_primitives(*TeX::FMT::Parameters::pdftex::DATA{IO});
 
     return;
 }
@@ -359,242 +359,246 @@ sub START {
 
 __DATA__
 
-letterspace_font    letterspacefont
-pdf_copy_font       pdfcopyfont
+letterspacefont    letterspace_font
+pdfcopyfont        pdf_copy_font
 
-mark+marks_code     marks
+marks         mark    marks_code
 
-xray+show_groups    showgroups
-xray+show_tokens    showtokens
-xray+show_ifs       showifs
+showgroups    xray    show_groups
+showtokens    xray    show_tokens
+showifs       xray    show_ifs
 
-un_vbox+last_box_code pagediscards
-un_vbox+vsplit_code   splitdiscards
+pagediscards  un_vbox last_box_code
+splitdiscards un_vbox vsplit_code
 
-valign+begin_L_code   beginL
-valign+end_L_code     endL
-valign+begin_R_code   beginR
-valign+end_R_code     endR
+beginL    valign    begin_L_code
+endL      valign    end_L_code
+beginR    valign    begin_R_code
+endR      valign    end_R_code
 
-start_par    noindent,indent,quitvmode
+noindent    start_par    0
+indent      start_par    1
+quitvmode   start_par    2
 
-left_right+middle_noad middle
+middle left_right middle_noad
 
-extension+pdf_literal_node              pdfliteral
-extension+pdf_colorstack_node           pdfcolorstack
-extension+pdf_setmatrix_node            pdfsetmatrix
-extension+pdf_save_node                 pdfsave
-extension+pdf_restore_node              pdfrestore
-extension+pdf_obj_code                  pdfobj
-extension+pdf_refobj_node               pdfrefobj
-extension+pdf_xform_code                pdfxform
-extension+pdf_refxform_node             pdfrefxform
-extension+pdf_ximage_code               pdfximage
-extension+pdf_refximage_node            pdfrefximage
-extension+pdf_annot_node                pdfannot
-extension+pdf_start_link_node           pdfstartlink
-extension+pdf_end_link_node             pdfendlink
-extension+pdf_outline_code              pdfoutline
-extension+pdf_dest_node                 pdfdest
-extension+pdf_thread_node               pdfthread
-extension+pdf_start_thread_node         pdfstartthread
-extension+pdf_end_thread_node           pdfendthread
-extension+pdf_save_pos_node             pdfsavepos
-extension+pdf_snap_ref_point_node       pdfsnaprefpoint
-extension+pdf_snapy_node                pdfsnapy
-extension+pdf_snapy_comp_node           pdfsnapycomp
-extension+pdf_info_code                 pdfinfo
-extension+pdf_catalog_code              pdfcatalog
-extension+pdf_names_code                pdfnames
-extension+pdf_include_chars_code        pdfincludechars
-extension+pdf_font_attr_code            pdffontattr
-extension+pdf_map_file_code             pdfmapfile
-extension+pdf_map_line_code             pdfmapline
-extension+pdf_trailer_code              pdftrailer
-extension+reset_timer_code              pdfresettimer
-extension+set_random_seed_code          pdfsetrandomseed
-extension+pdf_font_expand_code          pdffontexpand
-extension+pdf_glyph_to_unicode_code     pdfglyphtounicode
-extension+pdf_nobuiltin_tounicode_code  pdfnobuiltintounicode
+pdfliteral            extension    pdf_literal_node
+pdfcolorstack         extension    pdf_colorstack_node
+pdfsetmatrix          extension    pdf_setmatrix_node
+pdfsave               extension    pdf_save_node
+pdfrestore            extension    pdf_restore_node
+pdfobj                extension    pdf_obj_code
+pdfrefobj             extension    pdf_refobj_node
+pdfxform              extension    pdf_xform_code
+pdfrefxform           extension    pdf_refxform_node
+pdfximage             extension    pdf_ximage_code
+pdfrefximage          extension    pdf_refximage_node
+pdfannot              extension    pdf_annot_node
+pdfstartlink          extension    pdf_start_link_node
+pdfendlink            extension    pdf_end_link_node
+pdfoutline            extension    pdf_outline_code
+pdfdest               extension    pdf_dest_node
+pdfthread             extension    pdf_thread_node
+pdfstartthread        extension    pdf_start_thread_node
+pdfendthread          extension    pdf_end_thread_node
+pdfsavepos            extension    pdf_save_pos_node
+pdfsnaprefpoint       extension    pdf_snap_ref_point_node
+pdfsnapy              extension    pdf_snapy_node
+pdfsnapycomp          extension    pdf_snapy_comp_node
+pdfinfo               extension    pdf_info_code
+pdfcatalog            extension    pdf_catalog_code
+pdfnames              extension    pdf_names_code
+pdfincludechars       extension    pdf_include_chars_code
+pdffontattr           extension    pdf_font_attr_code
+pdfmapfile            extension    pdf_map_file_code
+pdfmapline            extension    pdf_map_line_code
+pdftrailer            extension    pdf_trailer_code
+pdfresettimer         extension    reset_timer_code
+pdfsetrandomseed      extension    set_random_seed_code
+pdffontexpand         extension    pdf_font_expand_code
+pdfglyphtounicode     extension    pdf_glyph_to_unicode_code
+pdfnobuiltintounicode extension    pdf_nobuiltin_tounicode_code
 
-set_page_int      deadcycles,insertpenalties,interactionmode
+deadcycles      set_page_int 0
+insertpenalties set_page_int 1
+interactionmode set_page_int 2
 
-prefix+8 protected
+protected prefix 8
 
-input+2 scantokens
+scantokens input 2
 
-expand_after+1             unless
+unless    expand_after    1
 
-if_test+if_def_code        ifdefined
-if_test+if_cs_code         ifcsname
-if_test+if_font_char_code  iffontchar
-if_test+if_in_csname_code  ifincsname
-if_test+if_pdfabs_num_code ifpdfabsnum
-if_test+if_pdfabs_dim_code ifpdfabsdim
-if_test+if_pdfprimitive_code ifpdfprimitive
+ifdefined      if_test if_def_code
+ifcsname       if_test if_cs_code
+iffontchar     if_test if_font_char_code
+ifincsname     if_test if_in_csname_code
+ifpdfabsnum    if_test if_pdfabs_num_code
+ifpdfabsdim    if_test if_pdfabs_dim_code
+ifpdfprimitive if_test if_pdfprimitive_code
 
-convert+eTeX_revision_code       eTeXrevision
-convert+pdftex_revision_code     pdftexrevision
-convert+pdftex_banner_code       pdftexbanner
-convert+pdf_font_name_code       pdffontname
-convert+pdf_font_objnum_code     pdffontobjnum
-convert+pdf_font_size_code       pdffontsize
-convert+pdf_page_ref_code        pdfpageref
-convert+left_margin_kern_code    leftmarginkern
-convert+right_margin_kern_code   rightmarginkern
-convert+pdf_xform_name_code      pdfxformname
-convert+pdf_escape_string_code   pdfescapestring
-convert+pdf_escape_name_code     pdfescapename
-convert+pdf_escape_hex_code      pdfescapehex
-convert+pdf_unescape_hex_code    pdfunescapehex
-convert+pdf_creation_date_code   pdfcreationdate
-convert+pdf_file_mod_date_code   pdffilemoddate
-convert+pdf_file_size_code       pdffilesize
-convert+pdf_mdfive_sum_code      pdfmdfivesum
-convert+pdf_file_dump_code       pdffiledump
-convert+pdf_match_code           pdfmatch
-convert+pdf_last_match_code      pdflastmatch
-convert+pdf_strcmp_code          pdfstrcmp
-convert+pdf_colorstack_init_code pdfcolorstackinit
-convert+uniform_deviate_code     pdfuniformdeviate
-convert+normal_deviate_code      pdfnormaldeviate
-convert+job_name_code            jobname
-convert+pdf_insert_ht_code       pdfinsertht
-convert+pdf_ximage_bbox_code     pdfximagebbox
+eTeXrevision      convert    eTeX_revision_code
+pdftexrevision    convert    pdftex_revision_code
+pdftexbanner      convert    pdftex_banner_code
+pdffontname       convert    pdf_font_name_code
+pdffontobjnum     convert    pdf_font_objnum_code
+pdffontsize       convert    pdf_font_size_code
+pdfpageref        convert    pdf_page_ref_code
+leftmarginkern    convert    left_margin_kern_code
+rightmarginkern   convert    right_margin_kern_code
+pdfxformname      convert    pdf_xform_name_code
+pdfescapestring   convert    pdf_escape_string_code
+pdfescapename     convert    pdf_escape_name_code
+pdfescapehex      convert    pdf_escape_hex_code
+pdfunescapehex    convert    pdf_unescape_hex_code
+pdfcreationdate   convert    pdf_creation_date_code
+pdffilemoddate    convert    pdf_file_mod_date_code
+pdffilesize       convert    pdf_file_size_code
+pdfmdfivesum      convert    pdf_mdfive_sum_code
+pdffiledump       convert    pdf_file_dump_code
+pdfmatch          convert    pdf_match_code
+pdflastmatch      convert    pdf_last_match_code
+pdfstrcmp         convert    pdf_strcmp_code
+pdfcolorstackinit convert    pdf_colorstack_init_code
+pdfuniformdeviate convert    uniform_deviate_code
+pdfnormaldeviate  convert    normal_deviate_code
+jobname           convert    job_name_code
+pdfinsertht       convert    pdf_insert_ht_code
+pdfximagebbox     convert    pdf_ximage_bbox_code
 
-set_shape+par_shape_loc               parshape
-set_shape+inter_line_penalties_loc    interlinepenalties
-set_shape+club_penalties_loc          clubpenalties
-set_shape+widow_penalties_loc         widowpenalties
-set_shape+display_widow_penalties_loc displaywidowpenalties
+parshape              set_shape par_shape_loc
+interlinepenalties    set_shape inter_line_penalties_loc
+clubpenalties         set_shape club_penalties_loc
+widowpenalties        set_shape widow_penalties_loc
+displaywidowpenalties set_shape display_widow_penalties_loc
 
-the+1           unexpanded
-the+show_tokens detokenize
+unexpanded the    1
+detokenize the show_tokens
 
-top_bot_mark+top_mark_code+marks_code         topmarks
-top_bot_mark+first_mark_code+marks_code       firstmarks
-top_bot_mark+bot_mark_code+marks_code         botmarks
-top_bot_mark+split_first_mark_code+marks_code splitfirstmarks
-top_bot_mark+split_bot_mark_code+marks_code   splitbotmarks
+topmarks        top_bot_mark top_mark_code+marks_code
+firstmarks      top_bot_mark first_mark_code+marks_code
+botmarks        top_bot_mark bot_mark_code+marks_code
+splitfirstmarks top_bot_mark split_first_mark_code+marks_code
+splitbotmarks   top_bot_mark split_bot_mark_code+marks_code
 
-assign_font_int+lp_code_base       lpcode
-assign_font_int+rp_code_base       rpcode
-assign_font_int+ef_code_base       efcode
-assign_font_int+tag_code           tagcode
-assign_font_int+kn_bs_code_base    knbscode
-assign_font_int+st_bs_code_base    stbscode
-assign_font_int+sh_bs_code_base    shbscode
-assign_font_int+kn_bc_code_base    knbccode
-assign_font_int+kn_ac_code_base    knaccode
-assign_font_int+no_lig_code        pdfnoligatures
+lpcode         assign_font_int    lp_code_base
+rpcode         assign_font_int    rp_code_base
+efcode         assign_font_int    ef_code_base
+tagcode        assign_font_int    tag_code
+knbscode       assign_font_int    kn_bs_code_base
+stbscode       assign_font_int    st_bs_code_base
+shbscode       assign_font_int    sh_bs_code_base
+knbccode       assign_font_int    kn_bc_code_base
+knaccode       assign_font_int    kn_ac_code_base
+pdfnoligatures assign_font_int    no_lig_code
 
-last_item+int_val                           lastpenalty
-last_item+dimen_val                         lastkern
-last_item+glue_val                          lastskip
-last_item+input_line_no_code                inputlineno
-last_item+badness_code                      badness
-last_item+pdftex_version_code               pdftexversion
-last_item+pdf_last_obj_code                 pdflastobj
-last_item+pdf_last_xform_code               pdflastxform
-last_item+pdf_last_ximage_code              pdflastximage
-last_item+pdf_last_ximage_pages_code        pdflastximagepages
-last_item+pdf_last_annot_code               pdflastannot
-last_item+pdf_last_x_pos_code               pdflastxpos
-last_item+pdf_last_y_pos_code               pdflastypos
-last_item+pdf_retval_code                   pdfretval
-last_item+pdf_last_ximage_colordepth_code   pdflastximagecolordepth
-last_item+elapsed_time_code                 pdfelapsedtime
-last_item+pdf_shell_escape_code             pdfshellescape
-last_item+random_seed_code                  pdfrandomseed
-last_item+pdf_last_link_code                pdflastlink
-last_item+last_node_type_code               lastnodetype
-last_item+eTeX_version_code                 eTeXversion
-last_item+current_group_level_code          currentgrouplevel
-last_item+current_group_type_code           currentgrouptype
-last_item+current_if_level_code             currentiflevel
-last_item+current_if_type_code              currentiftype
-last_item+current_if_branch_code            currentifbranch
-last_item+font_char_wd_code                 fontcharwd
-last_item+font_char_ht_code                 fontcharht
-last_item+font_char_dp_code                 fontchardp
-last_item+font_char_ic_code                 fontcharic
-last_item+par_shape_length_code             parshapelength
-last_item+par_shape_indent_code             parshapeindent
-last_item+par_shape_dimen_code              parshapedimen
-last_item+eTeX_expr-int_val+int_val         numexpr
-last_item+eTeX_expr-int_val+dimen_val       dimexpr
-last_item+eTeX_expr-int_val+glue_val        glueexpr
-last_item+eTeX_expr-int_val+mu_val          muexpr
-last_item+glue_stretch_order_code           gluestretchorder
-last_item+glue_shrink_order_code            glueshrinkorder
-last_item+glue_stretch_code                 gluestretch
-last_item+glue_shrink_code                  glueshrink
-last_item+mu_to_glue_code                   mutoglue
-last_item+glue_to_mu_code                   gluetomu
+lastpenalty             last_item    int_val
+lastkern                last_item    dimen_val
+lastskip                last_item    glue_val
+inputlineno             last_item    input_line_no_code
+badness                 last_item    badness_code
+pdftexversion           last_item    pdftex_version_code
+pdflastobj              last_item    pdf_last_obj_code
+pdflastxform            last_item    pdf_last_xform_code
+pdflastximage           last_item    pdf_last_ximage_code
+pdflastximagepages      last_item    pdf_last_ximage_pages_code
+pdflastannot            last_item    pdf_last_annot_code
+pdflastxpos             last_item    pdf_last_x_pos_code
+pdflastypos             last_item    pdf_last_y_pos_code
+pdfretval               last_item    pdf_retval_code
+pdflastximagecolordepth last_item    pdf_last_ximage_colordepth_code
+pdfelapsedtime          last_item    elapsed_time_code
+pdfshellescape          last_item    pdf_shell_escape_code
+pdfrandomseed           last_item    random_seed_code
+pdflastlink             last_item    pdf_last_link_code
+lastnodetype            last_item    last_node_type_code
+eTeXversion             last_item    eTeX_version_code
+currentgrouplevel       last_item    current_group_level_code
+currentgrouptype        last_item    current_group_type_code
+currentiflevel          last_item    current_if_level_code
+currentiftype           last_item    current_if_type_code
+currentifbranch         last_item    current_if_branch_code
+fontcharwd              last_item    font_char_wd_code
+fontcharht              last_item    font_char_ht_code
+fontchardp              last_item    font_char_dp_code
+fontcharic              last_item    font_char_ic_code
+parshapelength          last_item    par_shape_length_code
+parshapeindent          last_item    par_shape_indent_code
+parshapedimen           last_item    par_shape_dimen_code
+numexpr                 last_item    eTeX_expr-int_val+int_val
+dimexpr                 last_item    eTeX_expr-int_val+dimen_val
+glueexpr                last_item    eTeX_expr-int_val+glue_val
+muexpr                  last_item    eTeX_expr-int_val+mu_val
+gluestretchorder        last_item    glue_stretch_order_code
+glueshrinkorder         last_item    glue_shrink_order_code
+gluestretch             last_item    glue_stretch_code
+glueshrink              last_item    glue_shrink_code
+mutoglue                last_item    mu_to_glue_code
+gluetomu                last_item    glue_to_mu_code
 
-assign_toks+pdf_pages_attr_loc     pdfpagesattr
-assign_toks+pdf_page_attr_loc      pdfpageattr
-assign_toks+pdf_page_resources_loc pdfpageresources
-assign_toks+pdf_pk_mode_loc        pdfpkmode
-assign_toks+every_eof_loc          everyeof
+pdfpagesattr     assign_toks    pdf_pages_attr_loc
+pdfpageattr      assign_toks    pdf_page_attr_loc
+pdfpageresources assign_toks    pdf_page_resources_loc
+pdfpkmode        assign_toks    pdf_pk_mode_loc
+everyeof         assign_toks    every_eof_loc
 
-assign_int+pdf_output_code           pdfoutput
-assign_int+pdf_compress_level_code   pdfcompresslevel
-assign_int+pdf_objcompresslevel_code pdfobjcompresslevel
-assign_int+pdf_decimal_digits_code   pdfdecimaldigits
-assign_int+pdf_move_chars_code       pdfmovechars
-assign_int+pdf_image_resolution_code pdfimageresolution
-assign_int+pdf_pk_resolution_code    pdfpkresolution
-assign_int+pdf_unique_resname_code   pdfuniqueresname
-assign_int+pdf_option_always_use_pdfpagebox_code pdfoptionalwaysusepdfpagebox
-assign_int+pdf_option_pdf_inclusion_errorlevel_code pdfoptionpdfinclusionerrorlevel
-assign_int+pdf_minor_version_code pdfminorversion
-assign_int+pdf_force_pagebox_code pdfforcepagebox
-assign_int+pdf_pagebox_code pdfpagebox
-assign_int+pdf_inclusion_errorlevel_code pdfinclusionerrorlevel
-assign_int+pdf_gamma_code            pdfgamma
-assign_int+pdf_image_gamma_code      pdfimagegamma
-assign_int+pdf_image_hicolor_code    pdfimagehicolor
-assign_int+pdf_image_apply_gamma_code pdfimageapplygamma
-assign_int+pdf_adjust_spacing_code   pdfadjustspacing
-assign_int+pdf_protrude_chars_code   pdfprotrudechars
-assign_int+pdf_tracing_fonts_code    pdftracingfonts
-assign_int+pdf_adjust_interword_glue_code    pdfadjustinterwordglue
-assign_int+pdf_prepend_kern_code    pdfprependkern
-assign_int+pdf_append_kern_code    pdfappendkern
-assign_int+pdf_gen_tounicode_code    pdfgentounicode
-assign_int+pdf_draftmode_code        pdfdraftmode
-assign_int+pdf_inclusion_copy_font_code   pdfinclusioncopyfonts
-assign_int+pdf_suppress_warning_dup_dest_code  pdfsuppresswarningdupdest
-assign_int+pdf_suppress_warning_dup_map_code   pdfsuppresswarningdupmap
-assign_int+pdf_suppress_warning_page_group_code pdfsuppresswarningpagegroup
-assign_int+pdf_info_omit_date_code              pdfinfoomitdate
-assign_int+pdf_suppress_ptex_info_code          pdfsuppressptexinfo
+pdfoutput                       assign_int pdf_output_code
+pdfcompresslevel                assign_int pdf_compress_level_code
+pdfobjcompresslevel             assign_int pdf_objcompresslevel_code
+pdfdecimaldigits                assign_int pdf_decimal_digits_code
+pdfmovechars                    assign_int pdf_move_chars_code
+pdfimageresolution              assign_int pdf_image_resolution_code
+pdfpkresolution                 assign_int pdf_pk_resolution_code
+pdfuniqueresname                assign_int pdf_unique_resname_code
+pdfoptionalwaysusepdfpagebox    assign_int pdf_option_always_use_pdfpagebox_code
+pdfoptionpdfinclusionerrorlevel assign_int pdf_option_pdf_inclusion_errorlevel_code
+pdfminorversion                 assign_int pdf_minor_version_code
+pdfforcepagebox                 assign_int pdf_force_pagebox_code
+pdfpagebox                      assign_int pdf_pagebox_code
+pdfinclusionerrorlevel          assign_int pdf_inclusion_errorlevel_code
+pdfgamma                        assign_int pdf_gamma_code
+pdfimagegamma                   assign_int pdf_image_gamma_code
+pdfimagehicolor                 assign_int pdf_image_hicolor_code
+pdfimageapplygamma              assign_int pdf_image_apply_gamma_code
+pdfadjustspacing                assign_int pdf_adjust_spacing_code
+pdfprotrudechars                assign_int pdf_protrude_chars_code
+pdftracingfonts                 assign_int pdf_tracing_fonts_code
+pdfadjustinterwordglue          assign_int pdf_adjust_interword_glue_code
+pdfprependkern                  assign_int pdf_prepend_kern_code
+pdfappendkern                   assign_int pdf_append_kern_code
+pdfgentounicode                 assign_int pdf_gen_tounicode_code
+pdfdraftmode                    assign_int pdf_draftmode_code
+pdfinclusioncopyfonts           assign_int pdf_inclusion_copy_font_code
+pdfsuppresswarningdupdest       assign_int pdf_suppress_warning_dup_dest_code
+pdfsuppresswarningdupmap        assign_int pdf_suppress_warning_dup_map_code
+pdfsuppresswarningpagegroup     assign_int pdf_suppress_warning_page_group_code
+pdfinfoomitdate                 assign_int pdf_info_omit_date_code
+pdfsuppressptexinfo             assign_int pdf_suppress_ptex_info_code
 
-assign_int+eTeX_state_code+TeXXeT_code  TeXXeTstate
-assign_int+last_line_fit_code           lastlinefit
-assign_int+saving_hyph_codes_code       savinghyphcodes
-assign_int+saving_vdiscards_code        savingvdiscards
-assign_int+synctex_code                 synctex
-assign_int+tracing_assigns_code         tracingassigns
-assign_int+tracing_groups_code          tracinggroups
-assign_int+tracing_ifs_code             tracingifs
-assign_int+tracing_nesting_code         tracingnesting
-assign_int+tracing_scan_tokens_code     tracingscantokens
-assign_int+pre_display_direction_code   predisplaydirection
+TeXXeTstate         assign_int    eTeX_state_code+TeXXeT_code
+lastlinefit         assign_int    last_line_fit_code
+savinghyphcodes     assign_int    saving_hyph_codes_code
+savingvdiscards     assign_int    saving_vdiscards_code
+synctex             assign_int    synctex_code
+tracingassigns      assign_int    tracing_assigns_code
+tracinggroups       assign_int    tracing_groups_code
+tracingifs          assign_int    tracing_ifs_code
+tracingnesting      assign_int    tracing_nesting_code
+tracingscantokens   assign_int    tracing_scan_tokens_code
+predisplaydirection assign_int    pre_display_direction_code
 
-assign_dimen+pdf_h_origin_code              pdfhorigin
-assign_dimen+pdf_v_origin_code              pdfvorigin
-assign_dimen+pdf_page_width_code            pdfpagewidth
-assign_dimen+pdf_page_height_code           pdfpageheight
-assign_dimen+pdf_link_margin_code           pdflinkmargin
-assign_dimen+pdf_dest_margin_code           pdfdestmargin
-assign_dimen+pdf_thread_margin_code         pdfthreadmargin
-assign_dimen+pdf_first_line_height_code     pdffirstlineheight
-assign_dimen+pdf_last_line_depth_code       pdflastlinedepth
-assign_dimen+pdf_each_line_height_code      pdfeachlineheight
-assign_dimen+pdf_each_line_depth_code       pdfeachlinedepth
-assign_dimen+pdf_ignored_dimen_code         pdfignoreddimen
-assign_dimen+pdf_px_dimen_code              pdfpxdimen
+pdfhorigin         assign_dimen    pdf_h_origin_code
+pdfvorigin         assign_dimen    pdf_v_origin_code
+pdfpagewidth       assign_dimen    pdf_page_width_code
+pdfpageheight      assign_dimen    pdf_page_height_code
+pdflinkmargin      assign_dimen    pdf_link_margin_code
+pdfdestmargin      assign_dimen    pdf_dest_margin_code
+pdfthreadmargin    assign_dimen    pdf_thread_margin_code
+pdffirstlineheight assign_dimen    pdf_first_line_height_code
+pdflastlinedepth   assign_dimen    pdf_last_line_depth_code
+pdfeachlineheight  assign_dimen    pdf_each_line_height_code
+pdfeachlinedepth   assign_dimen    pdf_each_line_depth_code
+pdfignoreddimen    assign_dimen    pdf_ignored_dimen_code
+pdfpxdimen         assign_dimen    pdf_px_dimen_code
 
 __END__

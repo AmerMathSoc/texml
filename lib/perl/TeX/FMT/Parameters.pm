@@ -318,7 +318,7 @@ sub primitive {
     my $cmd_code_name = shift;
     my $equiv_expr    = shift;
 
-    if (! defined $equiv_expr) {
+    if (empty $equiv_expr) {
         $self->add_command_handler($csname, $cmd_code_name, undef);
 
         return;
@@ -364,7 +364,7 @@ sub primitive {
     return;
 }
 
-sub load_cmd_data {
+sub load_primitives {
     my $self = shift;
 
     my $data_handle = shift;
@@ -382,27 +382,9 @@ sub load_cmd_data {
 
         next if m{^#};
 
-        m{\A (\S+?)\+(\S+) \s+ (\S+) \s* \z}smx and do {
-            my $csname   = $3;
-            my $cmd_code = $1;
-            my $equiv    = $2;
+        my ($csname, $cmd_code, $equiv) = split /\s+/, trim($_), 3;
 
-            $self->primitive($csname, $cmd_code, $equiv);
-
-            next;
-        };
-
-        my ($cmd_code, $csnames) = split(/\s+/, $_, 2);
-
-        my @csnames = split /,/, $csnames;
-
-        if (@csnames == 1) {
-            $self->primitive($csnames[0], $cmd_code, undef);
-        } else {
-            for (my $i = 0; $i < @csnames; $i++) {
-                $self->primitive($csnames[$i], $cmd_code, $i) if nonempty $csnames[$i];
-            }
-        }
+        $self->primitive($csname, $cmd_code, $equiv);
     }
 
     seek($data_handle, $position, SEEK_SET);

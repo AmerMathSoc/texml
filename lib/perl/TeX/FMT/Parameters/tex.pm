@@ -53,6 +53,9 @@ sub BUILD {
         ident_val => 4, # font identifier
         tok_val   => 5,
         ##
+        input_line_no_code => 3, # glue_val + 1,
+        badness_code       => 4, # glue_val + 2,
+        ##
         ## MARK TYPES
         ##
         top_mark_code         => 0,
@@ -486,6 +489,53 @@ sub BUILD {
         show_box_code => 1,
         show_the_code => 2,
         show_lists    => 3,
+        ##
+        fil_code     => 0,
+        fill_code    => 1,
+        ss_code      => 2,
+        fil_neg_code => 3,
+        skip_code    => 4,
+        mskip_code   => 5,
+        ##
+        if_char_code  =>  0,
+        if_cat_code   =>  1,
+        if_int_code   =>  2,
+        if_dim_code   =>  3,
+        if_odd_code   =>  4,
+        if_vmode_code =>  5,
+        if_hmode_code =>  6,
+        if_mmode_code =>  7,
+        if_inner_code =>  8,
+        if_void_code  =>  9,
+        if_hbox_code  => 10,
+        if_vbox_code  => 11,
+        ifx_code      => 12,
+        if_eof_code   => 13,
+        if_true_code  => 14,
+        if_false_code => 15,
+        if_case_code  => 16,
+        above_code     => 0,
+        over_code      => 1,
+        atop_code      => 2,
+        delimited_code => 3,
+        normal     => 0,
+        stretching => 1,
+        shrinking  => 2,
+        limits     => 1,
+        no_limits  => 2,
+        batch_mode      => 0,
+        nonstop_mode    => 1,
+        scroll_mode     => 2,
+        error_stop_mode => 3,
+
+        char_def_code      => 0,
+        math_char_def_code => 1,
+        count_def_code     => 2,
+        dimen_def_code     => 3,
+        skip_def_code      => 4,
+        mu_skip_def_code   => 5,
+        toks_def_code      => 6,
+
         );
 
     $self->set_parameters(\%params);
@@ -537,7 +587,7 @@ sub START {
     $self->make_cmd_handler(char_given => sub { ( char => $_[0] ) });
     $self->make_cmd_handler(math_given => sub { ( mathchar => $_[0]) });
 
-    $self->load_cmd_data(*TeX::FMT::Parameters::tex::DATA{IO});
+    $self->load_primitives(*TeX::FMT::Parameters::tex::DATA{IO});
 
     return;
 }
@@ -546,7 +596,7 @@ sub START {
 
 __DATA__
 
-undefined_cs    undefined
+undefined    undefined_cs
 
 call            call
 long_call       long_call
@@ -557,323 +607,406 @@ long_outer_call long_outer_call
 
 # Glue parameters
 
-assign_glue+line_skip_code                lineskip
-assign_glue+baseline_skip_code            baselineskip
-assign_glue+par_skip_code                 parskip
-assign_glue+above_display_skip_code       abovedisplayskip
-assign_glue+below_display_skip_code       belowdisplayskip
-assign_glue+above_display_short_skip_code abovedisplayshortskip
-assign_glue+below_display_short_skip_code belowdisplayshortskip
-assign_glue+left_skip_code                leftskip
-assign_glue+right_skip_code               rightskip
-assign_glue+top_skip_code                 topskip
-assign_glue+split_top_skip_code           splittopskip
-assign_glue+tab_skip_code                 tabskip
-assign_glue+space_skip_code               spaceskip
-assign_glue+xspace_skip_code              xspaceskip
-assign_glue+par_fill_skip_code            parfillskip
-assign_mu_glue+thin_mu_skip_code          thinmuskip
-assign_mu_glue+med_mu_skip_code           medmuskip
-assign_mu_glue+thick_mu_skip_code         thickmuskip
+lineskip              assign_glue    line_skip_code
+baselineskip          assign_glue    baseline_skip_code
+parskip               assign_glue    par_skip_code
+abovedisplayskip      assign_glue    above_display_skip_code
+belowdisplayskip      assign_glue    below_display_skip_code
+abovedisplayshortskip assign_glue    above_display_short_skip_code
+belowdisplayshortskip assign_glue    below_display_short_skip_code
+leftskip              assign_glue    left_skip_code
+rightskip             assign_glue    right_skip_code
+topskip               assign_glue    top_skip_code
+splittopskip          assign_glue    split_top_skip_code
+tabskip               assign_glue    tab_skip_code
+spaceskip             assign_glue    space_skip_code
+xspaceskip            assign_glue    xspace_skip_code
+parfillskip           assign_glue    par_fill_skip_code
 
-assign_toks+output_routine_loc output
-assign_toks+every_par_loc      everypar
-assign_toks+every_math_loc     everymath
-assign_toks+every_display_loc  everydisplay
-assign_toks+every_hbox_loc     everyhbox
-assign_toks+every_vbox_loc     everyvbox
-assign_toks+every_job_loc      everyjob
-assign_toks+every_cr_loc       everycr
-assign_toks+err_help_loc       errhelp
+thinmuskip            assign_mu_glue    thin_mu_skip_code
+medmuskip             assign_mu_glue    med_mu_skip_code
+thickmuskip           assign_mu_glue    thick_mu_skip_code
 
-assign_int+pretolerance_code           pretolerance
-assign_int+tolerance_code              tolerance
-assign_int+line_penalty_code           linepenalty
-assign_int+hyphen_penalty_code         hyphenpenalty
-assign_int+ex_hyphen_penalty_code      exhyphenpenalty
-assign_int+club_penalty_code           clubpenalty
-assign_int+widow_penalty_code          widowpenalty
-assign_int+display_widow_penalty_code  displaywidowpenalty
-assign_int+broken_penalty_code         brokenpenalty
-assign_int+bin_op_penalty_code         binoppenalty
-assign_int+rel_penalty_code            relpenalty
-assign_int+pre_display_penalty_code    predisplaypenalty
-assign_int+post_display_penalty_code   postdisplaypenalty
-assign_int+inter_line_penalty_code     interlinepenalty
-assign_int+double_hyphen_demerits_code doublehyphendemerits
-assign_int+final_hyphen_demerits_code  finalhyphendemerits
-assign_int+adj_demerits_code           adjdemerits
-assign_int+mag_code                    mag
-assign_int+delimiter_factor_code       delimiterfactor
-assign_int+looseness_code              looseness
-assign_int+time_code                   time
-assign_int+day_code                    day
-assign_int+month_code                  month
-assign_int+year_code                   year
-assign_int+show_box_breadth_code       showboxbreadth
-assign_int+show_box_depth_code         showboxdepth
-assign_int+hbadness_code               hbadness
-assign_int+vbadness_code               vbadness
-assign_int+pausing_code                pausing
-assign_int+tracing_online_code         tracingonline
-assign_int+tracing_macros_code         tracingmacros
-assign_int+tracing_stats_code          tracingstats
-assign_int+tracing_paragraphs_code     tracingparagraphs
-assign_int+tracing_pages_code          tracingpages
-assign_int+tracing_output_code         tracingoutput
-assign_int+tracing_lost_chars_code     tracinglostchars
-assign_int+tracing_commands_code       tracingcommands
-assign_int+tracing_restores_code       tracingrestores
-assign_int+uc_hyph_code                uchyph
-assign_int+output_penalty_code         outputpenalty
-assign_int+max_dead_cycles_code        maxdeadcycles
-assign_int+hang_after_code             hangafter
-assign_int+floating_penalty_code       floatingpenalty
-assign_int+global_defs_code            globaldefs
-assign_int+cur_fam_code                fam
-assign_int+escape_char_code            escapechar
-assign_int+default_hyphen_char_code    defaulthyphenchar
-assign_int+default_skew_char_code      defaultskewchar
-assign_int+end_line_char_code          endlinechar
-assign_int+new_line_char_code          newlinechar
-assign_int+language_code               language
-assign_int+left_hyphen_min_code        lefthyphenmin
-assign_int+right_hyphen_min_code       righthyphenmin
-assign_int+holding_inserts_code        holdinginserts
-assign_int+error_context_lines_code    errorcontextlines
+output         assign_toks    output_routine_loc
+everypar       assign_toks    every_par_loc
+everymath      assign_toks    every_math_loc
+everydisplay   assign_toks    every_display_loc
+everyhbox      assign_toks    every_hbox_loc
+everyvbox      assign_toks    every_vbox_loc
+everyjob       assign_toks    every_job_loc
+everycr        assign_toks    every_cr_loc
+errhelp        assign_toks    err_help_loc
 
-assign_int+char_sub_def_min_code         charsubdefmin
-assign_int+char_sub_def_max_code         charsubdefmax
-assign_int+tracing_char_sub_def_code     tracingcharsubdef
+pretolerance         assign_int    pretolerance_code
+tolerance            assign_int    tolerance_code
+linepenalty          assign_int    line_penalty_code
+hyphenpenalty        assign_int    hyphen_penalty_code
+exhyphenpenalty      assign_int    ex_hyphen_penalty_code
+clubpenalty          assign_int    club_penalty_code
+widowpenalty         assign_int    widow_penalty_code
+displaywidowpenalty  assign_int    display_widow_penalty_code
+brokenpenalty        assign_int    broken_penalty_code
+binoppenalty         assign_int    bin_op_penalty_code
+relpenalty           assign_int    rel_penalty_code
+predisplaypenalty    assign_int    pre_display_penalty_code
+postdisplaypenalty   assign_int    post_display_penalty_code
+interlinepenalty     assign_int    inter_line_penalty_code
+doublehyphendemerits assign_int    double_hyphen_demerits_code
+finalhyphendemerits  assign_int    final_hyphen_demerits_code
+adjdemerits          assign_int    adj_demerits_code
+mag                  assign_int    mag_code
+delimiterfactor      assign_int    delimiter_factor_code
+looseness            assign_int    looseness_code
+time                 assign_int    time_code
+day                  assign_int    day_code
+month                assign_int    month_code
+year                 assign_int    year_code
+showboxbreadth       assign_int    show_box_breadth_code
+showboxdepth         assign_int    show_box_depth_code
+hbadness             assign_int    hbadness_code
+vbadness             assign_int    vbadness_code
+pausing              assign_int    pausing_code
+tracingonline        assign_int    tracing_online_code
+tracingmacros        assign_int    tracing_macros_code
+tracingstats         assign_int    tracing_stats_code
+tracingparagraphs    assign_int    tracing_paragraphs_code
+tracingpages         assign_int    tracing_pages_code
+tracingoutput        assign_int    tracing_output_code
+tracinglostchars     assign_int    tracing_lost_chars_code
+tracingcommands      assign_int    tracing_commands_code
+tracingrestores      assign_int    tracing_restores_code
+uchyph               assign_int    uc_hyph_code
+outputpenalty        assign_int    output_penalty_code
+maxdeadcycles        assign_int    max_dead_cycles_code
+hangafter            assign_int    hang_after_code
+floatingpenalty      assign_int    floating_penalty_code
+globaldefs           assign_int    global_defs_code
+fam                  assign_int    cur_fam_code
+escapechar           assign_int    escape_char_code
+defaulthyphenchar    assign_int    default_hyphen_char_code
+defaultskewchar      assign_int    default_skew_char_code
+endlinechar          assign_int    end_line_char_code
+newlinechar          assign_int    new_line_char_code
+language             assign_int    language_code
+lefthyphenmin        assign_int    left_hyphen_min_code
+righthyphenmin       assign_int    right_hyphen_min_code
+holdinginserts       assign_int    holding_inserts_code
+errorcontextlines    assign_int    error_context_lines_code
 
-assign_int+mubyte_in_code                mubytein
-assign_int+mubyte_out_code               mubyteout
-assign_int+mubyte_log_code               mubytelog
-assign_int+spec_out_code                 specialout
-assign_dimen+par_indent_code           parindent
-assign_dimen+math_surround_code        mathsurround
-assign_dimen+line_skip_limit_code      lineskiplimit
-assign_dimen+hsize_code                hsize
-assign_dimen+vsize_code                vsize
-assign_dimen+max_depth_code            maxdepth
-assign_dimen+split_max_depth_code      splitmaxdepth
-assign_dimen+box_max_depth_code        boxmaxdepth
-assign_dimen+hfuzz_code                hfuzz
-assign_dimen+vfuzz_code                vfuzz
-assign_dimen+delimiter_shortfall_code  delimitershortfall
-assign_dimen+null_delimiter_space_code nulldelimiterspace
-assign_dimen+script_space_code         scriptspace
-assign_dimen+pre_display_size_code     predisplaysize
-assign_dimen+display_width_code        displaywidth
-assign_dimen+display_indent_code       displayindent
-assign_dimen+overfull_rule_code        overfullrule
-assign_dimen+hang_indent_code          hangindent
-assign_dimen+h_offset_code             hoffset
-assign_dimen+v_offset_code             voffset
-assign_dimen+emergency_stretch_code    emergencystretch
+charsubdefmin        assign_int    char_sub_def_min_code
+charsubdefmax        assign_int    char_sub_def_max_code
+tracingcharsubdef    assign_int    tracing_char_sub_def_code
 
-ex_space          ex_space
-ital_corr         ital_corr
-accent            accent
-advance           advance
-after_assignment  afterassignment
-after_group       aftergroup
-begin_group       begingroup
-char_num          char
-cs_name           csname
-delim_num         delimiter
-divide            divide
-end_cs_name       endcsname
+mubytein             assign_int    mubyte_in_code
+mubyteout            assign_int    mubyte_out_code
+mubytelog            assign_int    mubyte_log_code
+
+specialout           assign_int    spec_out_code
+
+parindent          assign_dimen    par_indent_code
+mathsurround       assign_dimen    math_surround_code
+lineskiplimit      assign_dimen    line_skip_limit_code
+hsize              assign_dimen    hsize_code
+vsize              assign_dimen    vsize_code
+maxdepth           assign_dimen    max_depth_code
+splitmaxdepth      assign_dimen    split_max_depth_code
+boxmaxdepth        assign_dimen    box_max_depth_code
+hfuzz              assign_dimen    hfuzz_code
+vfuzz              assign_dimen    vfuzz_code
+delimitershortfall assign_dimen    delimiter_shortfall_code
+nulldelimiterspace assign_dimen    null_delimiter_space_code
+scriptspace        assign_dimen    script_space_code
+predisplaysize     assign_dimen    pre_display_size_code
+displaywidth       assign_dimen    display_width_code
+displayindent      assign_dimen    display_indent_code
+overfullrule       assign_dimen    overfull_rule_code
+hangindent         assign_dimen    hang_indent_code
+hoffset            assign_dimen    h_offset_code
+voffset            assign_dimen    v_offset_code
+emergencystretch   assign_dimen    emergency_stretch_code
+
+ex_space        ex_space
+ital_corr       ital_corr
+accent          accent
+advance         advance
+afterassignment after_assignment
+aftergroup      after_group
+begingroup      begin_group
+char            char_num
+csname          cs_name
+delimiter       delim_num
+divide          divide
+endcsname       end_cs_name
 
 # endmubyte
 
-end_group         endgroup
+endgroup       end_group
+expandafter    expand_after
+font           def_font
+fontdimen      assign_font_dimen
+halign         halign
+hrule          hrule
+ignorespaces   ignore_spaces
+insert         insert
+mark           mark
+mathaccent     math_accent
+mathchar       math_char_num
+mathchoice     math_choice
+multiply       multiply
+noalign        no_align
+noboundary     no_boundary
+noexpand       no_expand
+nonscript      non_script
+omit           omit
+parshape       set_shape
+penalty        break_penalty
+prevgraf       set_prev_graf
+radical        radical
+read           read_to_cs
+relax          relax
 
-expand_after      expandafter
-def_font          font
-assign_font_dimen fontdimen
-halign            halign
-hrule             hrule
-ignore_spaces     ignorespaces
-insert            insert
-mark              mark
-math_accent       mathaccent
-math_char_num     mathchar
-math_choice       mathchoice
-multiply          multiply
-no_align          noalign
-no_boundary       noboundary
-no_expand         noexpand
-non_script        nonscript
-omit              omit
-set_shape         parshape
-break_penalty     penalty
-set_prev_graf     prevgraf
-radical           radical
-read_to_cs        read
-relax             relax
+setbox    set_box
+the       the
+toks      toks_register
+vadjust   vadjust
+valign    valign
+vcenter   vcenter
+vrule     vrule
+par       par_end
 
-set_box           setbox
-the               the
-toks_register     toks
-vadjust           vadjust
-valign            valign
-vcenter           vcenter
-vrule             vrule
-par_end           par
+input    input 0
+endinput input 1
 
-input+0             input
-input+1             endinput
+topmark        top_bot_mark 0
+firstmark      top_bot_mark 1
+botmark        top_bot_mark 2
+splitfirstmark top_bot_mark 3
+splitbotmark   top_bot_mark 4
 
-top_bot_mark+0      topmark
-top_bot_mark+1      firstmark
-top_bot_mark+2      botmark
-top_bot_mark+3      splitfirstmark
-top_bot_mark+4      splitbotmark
+count    register    int_val
+dimen    register    dimen_val
+skip     register    glue_val
+muskip   register    mu_val
 
-register+int_val    count
-register+dimen_val  dimen
-register+glue_val   skip
-register+mu_val     muskip
+spacefactor set_aux    hmode
+prevdepth   set_aux    vmode
 
-set_aux+hmode    spacefactor
-set_aux+vmode    prevdepth
+deadcycles      set_page_int 0
+insertpenalties set_page_int 1
 
-set_page_int+0      deadcycles
-set_page_int+1      insertpenalties
+wd    set_box_dimen    width_offset
+dp    set_box_dimen    height_offset
+ht    set_box_dimen    depth_offset
 
-set_box_dimen+width_offset      wd
-set_box_dimen+height_offset     dp
-set_box_dimen+depth_offset      ht
+lastpenalty last_item    int_val
+lastkern    last_item    dimen_val
+lastskip    last_item    glue_val
+inputlineno last_item    input_line_no_code
+badness     last_item    badness_code
 
-last_item    lastpenalty,lastkern,lastskip,inputlineno,badness
+number       convert    number_code
+romannumeral convert    roman_numeral_code
+string       convert    string_code
+meaning      convert    meaning_code
+fontname     convert    font_name_code
+jobname      convert    job_name_code
 
-convert    number,romannumeral,string,meaning,fontname,jobname
+if      if_test    if_char_code
+ifcat   if_test    if_cat_code
+ifnum   if_test    if_int_code
+ifdim   if_test    if_dim_code
+ifodd   if_test    if_odd_code
+ifvmode if_test    if_vmode_code
+ifhmode if_test    if_hmode_code
+ifmmode if_test    if_mmode_code
+ifinner if_test    if_inner_code
+ifvoid  if_test    if_void_code
+ifhbox  if_test    if_hbox_code
+ifvbox  if_test    if_vbox_code
+ifx     if_test    ifx_code
+ifeof   if_test    if_eof_code
+iftrue  if_test    if_true_code
+iffalse if_test    if_false_code
+ifcase  if_test    if_case_code
 
-if_test    if,ifcat,ifnum,ifdim,ifodd,ifvmode,ifhmode,ifmmode,ifinner,ifvoid,ifhbox,ifvbox,ifx,ifeof,iftrue,iffalse,ifcase
-
-fi_or_else+fi_code  fi
-fi_or_else+else_code else
-fi_or_else+or_code or
+fi   fi_or_else fi_code
+else fi_or_else else_code
+or   fi_or_else or_code
 
 # nullfont
 
 # span
-car_ret+cr_code    cr
-car_ret+cr_cr_code crcr
+cr    car_ret    cr_code
+crcr car_ret cr_cr_code
 # endtemplate/endv
-set_page_dimen    pagegoal,pagetotal,pagestretch,pagefilstretch,pagefillstretch,pagefilllstretch,pageshrink,pagedepth
 
-stop    end,dump
+pagegoal          set_page_dimen 0
+pagetotal         set_page_dimen 1
+pagestretch       set_page_dimen 2
+pagefilstretch    set_page_dimen 3
+pagefillstretch   set_page_dimen 4
+pagefilllstretch  set_page_dimen 5
+pageshrink        set_page_dimen 6
+pagedepth         set_page_dimen 7
 
-hskip    hfil,hfill,hss,hfilneg,hskip
+end  stop 0
+dump stop 1
 
-vskip    vfil,vfill,vss,vfilneg,vskip
+hskip   hskip   skip_code
+hfil    hskip   fil_code
+hfill   hskip   fill_code
+hss     hskip   ss_code
+hfilneg hskip   fil_neg_code
+
+vskip   vskip    skip_code
+vfil    vskip    fil_code
+vfill   vskip    fill_code
+vss     vskip    ss_code
+vfilneg vskip    fil_neg_code
 
 mskip mskip
 kern  kern
 mkern mkern
 
-hmove    moveright,moveleft
-vmove    lower,raise
+moveright hmove 0
+moveleft  hmove 1
 
-make_box+box_code         box
-make_box+copy_code        copy
-make_box+last_box_code    lastbox
-make_box+vsplit_code      vsplit
-make_box+vtop_code        vtop
-make_box+vtop_code+vmode  vbox
-make_box+vtop_code+hmode  hbox
+lower    vmove    0
+raise    vmove    1
 
-leader_ship+a_leaders-1  shipout
-leader_ship+a_leaders    leaders
-leader_ship+c_leaders    cleaders
-leader_ship+x_leaders    xleaders
+box     make_box box_code
+copy    make_box copy_code
+lastbox make_box last_box_code
+vsplit  make_box vsplit_code
+vtop    make_box vtop_code
+vbox    make_box vtop_code+vmode
+hbox    make_box vtop_code+hmode
 
-start_par    noindent,indent
+shipout    leader_ship    a_leaders-1
+leaders    leader_ship    a_leaders
+cleaders   leader_ship    c_leaders
+xleaders   leader_ship    x_leaders
 
-remove_item+penalty_node unpenalty
-remove_item+kern_node    unkern
-remove_item+glue_node    unskip
-un_hbox    unhbox,unhcopy
-un_vbox    unvbox,unvcopy
+noindent start_par 0
+indent   start_par 1
 
-discretionary    discretionary,discretionary_hyphen
+unpenalty remove_item    penalty_node
+unkern    remove_item    kern_node
+unskip    remove_item    glue_node
 
-eq_no eqno,leqno
+unhbox    un_hbox    box_code
+unhcopy   un_hbox    copy_code
 
-math_comp+ord_noad   mathord
-math_comp+op_noad    mathop
-math_comp+bin_noad   mathbin
-math_comp+rel_noad   mathrel
-math_comp+open_noad  mathopen
-math_comp+close_noad mathclose
-math_comp+punct_noad mathpunct
-math_comp+inner_noad mathinner
-math_comp+under_noad underline
-math_comp+over_noad  overline
-limit_switch    displaylimits,limits,nolimits
+unvbox    un_vbox    box_code
+unvcopy   un_vbox    copy_code
+
+discretionary        discretionary 0
+discretionary_hyphen discretionary 1
+
+eqno  eq_no 0
+leqno eq_no 1
+
+mathord   math_comp ord_noad
+mathop    math_comp op_noad
+mathbin   math_comp bin_noad
+mathrel   math_comp rel_noad
+mathopen  math_comp open_noad
+mathclose math_comp close_noad
+mathpunct math_comp punct_noad
+mathinner math_comp inner_noad
+underline math_comp under_noad
+overline  math_comp over_noad
+
+displaylimits    limit_switch    normal
+limits           limit_switch    limits
+nolimits         limit_switch    no_limits
 
 # displaystyle
 # textstyle
 # scriptstyle
 # scriptscriptstyle
-above    above,over,atop,abovewithdelims,overwithdelims,atopwithdelims
 
-left_right+left_noad  left
-left_right+right_noad right
-prefix    ,long,outer,,global
+above             above    above_code
+over              above    over_code
+atop              above    atop_code
+abovewithdelims   above    delimited_code+above_code
+overwithdelims    above    delimited_code+over_code
+atopwithdelims    above    delimited_code+atop_code
 
-def    def,gdef,edef,xdef
+left  left_right left_noad
+right left_right right_noad
 
-let    let,futurelet
+long   prefix 1
+outer  prefix 2
+global prefix 4
+
+def     def    0
+gdef    def    1
+edef    def    2
+xdef    def    3
+
+let       let    normal
+futurelet let    normal+1
 
 # mubyte
 # noconvert
 
-shorthand_def    chardef,mathchardef,countdef,dimendef,skipdef,muskipdef,toksdef
+chardef     shorthand_def    char_def_code
+mathchardef shorthand_def    math_char_def_code
+countdef    shorthand_def    count_def_code
+dimendef    shorthand_def    dimen_def_code
+skipdef     shorthand_def    skip_def_code
+muskipdef   shorthand_def    mu_skip_def_code
+toksdef     shorthand_def    toks_def_code
 
 # charsubdef
 
-def_code+cat_code_base  catcode
+catcode def_code cat_code_base
 
 # xordcode
 # xchrcode
 # xprncode
 
-def_code+math_code_base mathcode
-def_code+lc_code_base   lccode
-def_code+uc_code_base   uccode
-def_code+sf_code_base   sfcode
-def_code+del_code_base  delcode
+mathcode  def_code   math_code_base
+lccode    def_code   lc_code_base
+uccode    def_code   uc_code_base
+sfcode    def_code   sf_code_base
+delcode   def_code   del_code_base
 
-def_family+math_font_base                    textfont
-def_family+math_font_base+script_size        scriptfont
-def_family+math_font_base+script_script_size scriptscriptfont
+textfont         def_family    math_font_base
+scriptfont       def_family    math_font_base+script_size
+scriptscriptfont def_family    math_font_base+script_script_size
 
-hyph_data    hyphenation,patterns
+hyphenation hyph_data    0
+patterns    hyph_data    1
 
-assign_font_int    hyphenchar,skewchar
+hyphenchar  assign_font_int    0
+skewchar    assign_font_int    1
 
-set_interaction    batchmode,nonstopmode,scrollmode,errorstopmode
+batchmode     set_interaction batch_mode
+nonstopmode   set_interaction nonstop_mode
+scrollmode    set_interaction scroll_mode
+errorstopmode set_interaction error_stop_mode
 
-in_stream    closein,openin
+closein in_stream    0
+openin  in_stream    1
 
-message    message,errmessage
+message    message    0
+errmessage message    1
 
-case_shift+lc_code_base lowercase
-case_shift+uc_code_base uppercase
+lowercase case_shift lc_code_base
+uppercase case_shift uc_code_base
 
-xray+show_code     show
-xray+show_box_code showbox
-xray+show_the_code showthe
-xray+show_lists    showlists
+show      xray    show_code
+showbox   xray    show_box_code
+showthe   xray    show_the_code
+showlists xray    show_lists
 
-extension+open_node         openout
-extension+write_node        write
-extension+close_node        closeout
-extension+special_node      special
-extension+immediate_code    immediate
-extension+set_language_code setlanguage
+openout     extension    open_node
+write       extension    write_node
+closeout    extension    close_node
+special     extension    special_node
+immediate   extension    immediate_code
+setlanguage extension    set_language_code
 
 __END__
