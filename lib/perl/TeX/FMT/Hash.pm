@@ -32,8 +32,6 @@ package TeX::FMT::Hash;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.1.2';
-
 use TeX::FMT::MemoryWord;
 
 use TeX::Utils::Binary;
@@ -208,8 +206,6 @@ sub csnames {
         #
         #     next;
         # }
-        #
-        # print STDERR "$ptr: ", slow_print($csname), ": $csname\n";
 
         push @csnames, [ $csname, $ptr ];
     }

@@ -228,6 +228,11 @@ sub print_cmd_chr {
 
     my ($type, $subtype) = $self->interpret_cmd_chr($cmd_code, $chr_code);
 
+    if (! defined $type) {
+        warn "*** print_cmd_chr undefined type: cmd_code='$cmd_code'; chr_code='$chr_code'\n";
+        return;
+    }
+
     return $subtype if $type eq 'UNKNOWN';
 
     return $type if $type eq 'undefined';
@@ -276,19 +281,6 @@ sub print_cmd_chr {
     return print_esc($type);
 }
 
-sub make_cmd_handler {
-    my $self = shift;
-
-    my $cmd_code_name = shift;
-    my $handler       = shift;
-
-    my $cmd_code = $self->get_parameter($cmd_code_name);
-
-    $self->set_cmd_handler($cmd_code, $handler);
-
-    return;
-}
-
 sub calc_equiv {
     my $self = shift;
 
@@ -319,26 +311,55 @@ sub calc_equiv {
     return $code;
 }
 
-sub add_eq_type_handler {
+sub primitive {
     my $self = shift;
 
-    my $eq_type = shift;
-    my $equiv   = shift;
-    my $csname  = shift;
+    my $csname        = shift;
+    my $cmd_code_name = shift;
+    my $equiv_expr    = shift;
 
-    my @handler;
+    if (! defined $equiv_expr) {
+        $self->add_command_handler($csname, $cmd_code_name, undef);
 
-    if (defined(my $handler = $self->get_cmd_handler($eq_type))) {
-        if (ref($handler) eq 'ARRAY') {
-            @handler = @{ $handler };
-        } else {
-            @handler = ($handler);
-        }
+        return;
     }
 
-    $handler[$equiv] = $csname;
+    if ($cmd_code_name eq 'assign_toks') {
+        my $equiv = $self->calc_equiv($equiv_expr) - $self->local_base();
 
-    $self->set_cmd_handler($eq_type, \@handler);
+        $self->set_toks_parameter($equiv, $csname);
+
+        return;
+    }
+
+    if ($cmd_code_name eq 'assign_int') {
+        my $equiv = $self->calc_equiv($equiv_expr);
+
+        $self->set_int_parameter($equiv, $csname);
+
+        return;
+    }
+
+    if ($cmd_code_name eq 'assign_dimen') {
+        my $equiv = $self->calc_equiv($equiv_expr);
+
+        $self->set_dimen_parameter($equiv, $csname);
+
+        return;
+    }
+
+    if ($cmd_code_name =~ m{^assign(?:_mu)?_glue}) {
+        my $equiv = $self->calc_equiv($equiv_expr);
+
+        $self->set_skip_parameter($equiv, $csname);
+
+        return;
+    }
+
+    my $cmd_code = $self->get_parameter($cmd_code_name);
+    my $equiv    = $self->calc_equiv($equiv_expr);
+
+    $self->add_command_handler($csname, $cmd_code_name, $equiv);
 
     return;
 }
@@ -359,68 +380,83 @@ sub load_cmd_data {
 
         last if m/__END__/;
 
-        m{\A assign_toks\+(\S+) \s+ (\S+) \z}smx and do {
-            my $code = $self->calc_equiv($1) - $self->local_base();
-
-            $self->set_toks_parameter($code, $2);
-
-            next;
-        };
-
-        m{\A assign_int\+(\S+) \s+ (\S+) \z}smx and do {
-            my $code = $self->calc_equiv($1);
-
-            $self->set_int_parameter($code, $2);
-
-            next;
-        };
-
-        m{\A assign_dimen\+(\S+) \s+ (\S+) \z}smx and do {
-            my $code = $self->calc_equiv($1);
-
-            $self->set_dimen_parameter($code, $2);
-
-            next;
-        };
-
-        m{\A assign(?:_mu)?_glue\+(\S+) \s+ (\S+) \z}smx and do {
-            my $code = $self->calc_equiv($1);
-
-            $self->set_skip_parameter($code, $2);
-
-            next;
-        };
+        next if m{^#};
 
         m{\A (\S+?)\+(\S+) \s+ (\S+) \s* \z}smx and do {
-            my $eq_type = $self->get_parameter($1);
-            my $equiv   = $self->calc_equiv($2);
-            my $csname  = $3;
+            my $csname   = $3;
+            my $cmd_code = $1;
+            my $equiv    = $2;
 
-            $self->add_eq_type_handler($eq_type, $equiv, $csname);
+            $self->primitive($csname, $cmd_code, $equiv);
 
             next;
         };
 
-        my ($param_name, $value) = split(/\s+/, $_, 2);
+        my ($cmd_code, $csnames) = split(/\s+/, $_, 2);
 
-        my @values;
+        my @csnames = split /,/, $csnames;
 
-        for my $val (split /,/, $value) {
-            if ($val =~ m{\A "(.*?)" \z}smx) {
-                push @values, $1;
-            } else {
-                push @values, $val;
-            }
-        }
-
-        if (@values > 1) {
-            $self->make_cmd_handler($param_name, [ @values ]);
+        if (@csnames == 1) {
+            $self->primitive($csnames[0], $cmd_code, undef);
         } else {
-            $self->make_cmd_handler($param_name, $values[0]);
+            for (my $i = 0; $i < @csnames; $i++) {
+                $self->primitive($csnames[$i], $cmd_code, $i) if nonempty $csnames[$i];
+            }
         }
     }
 
     seek($data_handle, $position, SEEK_SET);
+
+    return;
+}
+
+sub add_command_handler {
+    my $self = shift;
+
+    my $csname        = shift;
+    my $cmd_code_name = shift;
+    my $equiv         = shift;
+
+    my $cmd_code = $self->get_parameter($cmd_code_name);
+
+    my $new_handler;
+
+    if (! defined $equiv) {
+        $new_handler = $csname;
+    } else {
+        my @new_handler;
+
+        if (defined(my $old_handler = $self->get_cmd_handler($cmd_code))) {
+            if (ref($old_handler) eq 'ARRAY') {
+                @new_handler = @{ $old_handler };
+            } else {
+                @new_handler = ($old_handler);
+            }
+
+            $new_handler[$equiv] = $csname;
+
+            $new_handler = \@new_handler;
+        } else {
+            $new_handler[$equiv] = $csname;
+
+            $new_handler = \@new_handler;
+        }
+    }
+
+    $self->set_cmd_handler($cmd_code, $new_handler);
+
+    return;
+}
+
+sub make_cmd_handler {
+    my $self = shift;
+
+    my $cmd_code_name = shift;
+    my $handler       = shift;
+
+    my $cmd_code = $self->get_parameter($cmd_code_name);
+
+    $self->set_cmd_handler($cmd_code, $handler);
 
     return;
 }

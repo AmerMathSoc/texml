@@ -1,4 +1,4 @@
-package TeX::FMT::Parameters::tex;
+ package TeX::FMT::Parameters::tex;
 
 # Copyright (C) 2022, 2024 American Mathematical Society
 #
@@ -61,6 +61,12 @@ sub BUILD {
         split_first_mark_code => 3,
         split_bot_mark_code   => 4,
         ##
+        ##
+        ##
+        width_offset  => 1,
+        depth_offset  => 2,
+        height_offset => 3,
+        ##
         ## NODE TYPES
         ##
         hlist_node    => 0,
@@ -85,6 +91,10 @@ sub BUILD {
         close_node    => 2,
         special_node  => 3,
         language_node => 4,
+        ##
+        ##
+        immediate_code    => 4,
+        set_language_code => 5,
         ##
         ## NODE TYPES
         ##
@@ -237,6 +247,11 @@ sub BUILD {
         set_interaction   => sub { $_[0]->XeTeX_def_code() + 15 },
 
         max_command       => sub { $_[0]->set_interaction() },
+
+        if_code   => 1,
+        fi_code   => 2,
+        else_code => 3,
+        or_code   => 4,
 
         undefined_cs      => sub { $_[0]->max_command() + 1 },
         expand_after      => sub { $_[0]->max_command() + 2 },
@@ -466,6 +481,11 @@ sub BUILD {
         a_leaders => 100,
         c_leaders => 101,
         x_leaders => 102,
+        ##
+        show_code     => 0,
+        show_box_code => 1,
+        show_the_code => 2,
+        show_lists    => 3,
         );
 
     $self->set_parameters(\%params);
@@ -526,166 +546,6 @@ sub START {
 
 __DATA__
 
-accent            accent
-advance           advance
-after_assignment  afterassignment
-after_group       aftergroup
-assign_font_dimen fontdimen
-begin_group       begingroup
-break_penalty     penalty
-char_num          char
-cs_name           csname
-def_font          font
-delim_num         delimiter
-divide            divide
-end_cs_name       endcsname
-end_group         endgroup
-ex_space          ex_space
-expand_after      expandafter
-halign            halign
-hrule             hrule
-ignore_spaces     ignorespaces
-insert            insert
-ital_corr         ital_corr
-mark              mark
-math_accent       mathaccent
-math_char_num     mathchar
-math_choice       mathchoice
-multiply          multiply
-no_align          noalign
-no_boundary       noboundary
-no_expand         noexpand
-non_script        nonscript
-omit              omit
-par_end           par
-radical           radical
-read_to_cs        read
-relax             relax
-set_box           setbox
-set_prev_graf     prevgraf
-set_shape         parshape
-the               the
-toks_register     toks
-vadjust           vadjust
-valign            valign
-vcenter           vcenter
-vrule             vrule
-
-set_aux+hmode    spacefactor
-set_aux+vmode    prevdepth
-
-car_ret+cr_code    cr
-car_ret+cr_cr_code crcr
-
-make_box+box_code         box
-make_box+copy_code        copy
-make_box+last_box_code    lastbox
-make_box+vsplit_code      vsplit
-make_box+vtop_code        vtop
-make_box+vtop_code+vmode  vbox
-make_box+vtop_code+hmode  hbox
-
-leader_ship+a_leaders-1  shipout
-leader_ship+a_leaders    leaders
-leader_ship+c_leaders    cleaders
-leader_ship+x_leaders    xleaders
-
-remove_item+penalty_node unpenalty
-remove_item+glue_node    unskip
-remove_item+kern_node    unkern
-
-math_comp+ord_noad   mathord
-math_comp+op_noad    mathop
-math_comp+bin_noad   mathbin
-math_comp+rel_noad   mathrel
-math_comp+open_noad  mathopen
-math_comp+close_noad mathclose
-math_comp+punct_noad mathpunct
-math_comp+inner_noad mathinner
-math_comp+under_noad underline
-math_comp+over_noad  overline
-
-left_right+left_noad  left
-left_right+right_noad right
-
-def_family+math_font_base                    textfont
-def_family+math_font_base+script_size        scriptfont
-def_family+math_font_base+script_script_size scriptscriptfont
-
-def_code+cat_code_base  catcode
-def_code+math_code_base mathcode
-def_code+lc_code_base   lccode
-def_code+uc_code_base   uccode
-def_code+sf_code_base   sfcode
-def_code+del_code_base  delcode
-
-case_shift+lc_code_base lowercase
-case_shift+uc_code_base uppercase
-
-input             input,endinput
-top_bot_mark      topmark,firstmark,botmark,splitfirstmark,splitbotmark
-register          count,dimen,skip,muskip
-set_page_int      deadcycles,insertpenalties
-set_box_dimen     ,wd,dp,ht
-
-last_item    lastpenalty,lastkern,lastskip,inputlineno,badness
-
-convert    number,romannumeral,string,meaning,fontname,jobname
-
-if_test    if,ifcat,ifnum,ifdim,ifodd,ifvmode,ifhmode,ifmmode,ifinner,ifvoid,ifhbox,ifvbox,ifx,ifeof,iftrue,iffalse,ifcase
-
-fi_or_else    ,,fi,else,or
-
-set_page_dimen    pagegoal,pagetotal,pagestretch,pagefilstretch,pagefillstretch,pagefilllstretch,pageshrink,pagedepth
-
-stop    end,dump
-
-hskip    hfil,hfill,hss,hfilneg,hskip
-
-vskip    vfil,vfill,vss,vfilneg,vskip
-
-mskip mskip
-kern  kern
-mkern mkern
-
-hmove    moveright,moveleft
-
-vmove    lower,raise
-
-start_par    noindent,indent
-
-un_hbox    unhbox,unhcopy
-
-un_vbox    unvbox,unvcopy
-
-discretionary    discretionary,discretionary_hyphen
-
-eq_no eqno,leqno
-
-limit_switch    displaylimits,limits,nolimits
-
-above    above,over,atop,abovewithdelims,overwithdelims,atopwithdelims
-
-prefix    ,long,outer,,global
-
-def    def,gdef,edef,xdef
-
-let    let,futurelet
-
-shorthand_def    chardef,mathchardef,countdef,dimendef,skipdef,muskipdef,toksdef
-
-hyph_data    hyphenation,patterns
-
-assign_font_int    hyphenchar,skewchar
-
-set_interaction    batchmode,nonstopmode,scrollmode,errorstopmode
-
-in_stream    closein,openin
-
-message    message,errmessage
-
-xray    show,showbox,showthe,showlists
-
 undefined_cs    undefined
 
 call            call
@@ -693,9 +553,28 @@ long_call       long_call
 outer_call      outer_call
 long_outer_call long_outer_call
 
-end_template outer endtemplate
+# end_template outer endtemplate
 
-extension    openout,write,closeout,special,immediate,setlanguage
+# Glue parameters
+
+assign_glue+line_skip_code                lineskip
+assign_glue+baseline_skip_code            baselineskip
+assign_glue+par_skip_code                 parskip
+assign_glue+above_display_skip_code       abovedisplayskip
+assign_glue+below_display_skip_code       belowdisplayskip
+assign_glue+above_display_short_skip_code abovedisplayshortskip
+assign_glue+below_display_short_skip_code belowdisplayshortskip
+assign_glue+left_skip_code                leftskip
+assign_glue+right_skip_code               rightskip
+assign_glue+top_skip_code                 topskip
+assign_glue+split_top_skip_code           splittopskip
+assign_glue+tab_skip_code                 tabskip
+assign_glue+space_skip_code               spaceskip
+assign_glue+xspace_skip_code              xspaceskip
+assign_glue+par_fill_skip_code            parfillskip
+assign_mu_glue+thin_mu_skip_code          thinmuskip
+assign_mu_glue+med_mu_skip_code           medmuskip
+assign_mu_glue+thick_mu_skip_code         thickmuskip
 
 assign_toks+output_routine_loc output
 assign_toks+every_par_loc      everypar
@@ -766,11 +645,11 @@ assign_int+error_context_lines_code    errorcontextlines
 assign_int+char_sub_def_min_code         charsubdefmin
 assign_int+char_sub_def_max_code         charsubdefmax
 assign_int+tracing_char_sub_def_code     tracingcharsubdef
+
 assign_int+mubyte_in_code                mubytein
 assign_int+mubyte_out_code               mubyteout
 assign_int+mubyte_log_code               mubytelog
 assign_int+spec_out_code                 specialout
-
 assign_dimen+par_indent_code           parindent
 assign_dimen+math_surround_code        mathsurround
 assign_dimen+line_skip_limit_code      lineskiplimit
@@ -793,23 +672,208 @@ assign_dimen+h_offset_code             hoffset
 assign_dimen+v_offset_code             voffset
 assign_dimen+emergency_stretch_code    emergencystretch
 
-assign_glue+line_skip_code                lineskip
-assign_glue+baseline_skip_code            baselineskip
-assign_glue+par_skip_code                 parskip
-assign_glue+above_display_skip_code       abovedisplayskip
-assign_glue+below_display_skip_code       belowdisplayskip
-assign_glue+above_display_short_skip_code abovedisplayshortskip
-assign_glue+below_display_short_skip_code belowdisplayshortskip
-assign_glue+left_skip_code                leftskip
-assign_glue+right_skip_code               rightskip
-assign_glue+top_skip_code                 topskip
-assign_glue+split_top_skip_code           splittopskip
-assign_glue+tab_skip_code                 tabskip
-assign_glue+space_skip_code               spaceskip
-assign_glue+xspace_skip_code              xspaceskip
-assign_glue+par_fill_skip_code            parfillskip
-assign_mu_glue+thin_mu_skip_code          thinmuskip
-assign_mu_glue+med_mu_skip_code           medmuskip
-assign_mu_glue+thick_mu_skip_code         thickmuskip
+ex_space          ex_space
+ital_corr         ital_corr
+accent            accent
+advance           advance
+after_assignment  afterassignment
+after_group       aftergroup
+begin_group       begingroup
+char_num          char
+cs_name           csname
+delim_num         delimiter
+divide            divide
+end_cs_name       endcsname
+
+# endmubyte
+
+end_group         endgroup
+
+expand_after      expandafter
+def_font          font
+assign_font_dimen fontdimen
+halign            halign
+hrule             hrule
+ignore_spaces     ignorespaces
+insert            insert
+mark              mark
+math_accent       mathaccent
+math_char_num     mathchar
+math_choice       mathchoice
+multiply          multiply
+no_align          noalign
+no_boundary       noboundary
+no_expand         noexpand
+non_script        nonscript
+omit              omit
+set_shape         parshape
+break_penalty     penalty
+set_prev_graf     prevgraf
+radical           radical
+read_to_cs        read
+relax             relax
+
+set_box           setbox
+the               the
+toks_register     toks
+vadjust           vadjust
+valign            valign
+vcenter           vcenter
+vrule             vrule
+par_end           par
+
+input+0             input
+input+1             endinput
+
+top_bot_mark+0      topmark
+top_bot_mark+1      firstmark
+top_bot_mark+2      botmark
+top_bot_mark+3      splitfirstmark
+top_bot_mark+4      splitbotmark
+
+register+int_val    count
+register+dimen_val  dimen
+register+glue_val   skip
+register+mu_val     muskip
+
+set_aux+hmode    spacefactor
+set_aux+vmode    prevdepth
+
+set_page_int+0      deadcycles
+set_page_int+1      insertpenalties
+
+set_box_dimen+width_offset      wd
+set_box_dimen+height_offset     dp
+set_box_dimen+depth_offset      ht
+
+last_item    lastpenalty,lastkern,lastskip,inputlineno,badness
+
+convert    number,romannumeral,string,meaning,fontname,jobname
+
+if_test    if,ifcat,ifnum,ifdim,ifodd,ifvmode,ifhmode,ifmmode,ifinner,ifvoid,ifhbox,ifvbox,ifx,ifeof,iftrue,iffalse,ifcase
+
+fi_or_else+fi_code  fi
+fi_or_else+else_code else
+fi_or_else+or_code or
+
+# nullfont
+
+# span
+car_ret+cr_code    cr
+car_ret+cr_cr_code crcr
+# endtemplate/endv
+set_page_dimen    pagegoal,pagetotal,pagestretch,pagefilstretch,pagefillstretch,pagefilllstretch,pageshrink,pagedepth
+
+stop    end,dump
+
+hskip    hfil,hfill,hss,hfilneg,hskip
+
+vskip    vfil,vfill,vss,vfilneg,vskip
+
+mskip mskip
+kern  kern
+mkern mkern
+
+hmove    moveright,moveleft
+vmove    lower,raise
+
+make_box+box_code         box
+make_box+copy_code        copy
+make_box+last_box_code    lastbox
+make_box+vsplit_code      vsplit
+make_box+vtop_code        vtop
+make_box+vtop_code+vmode  vbox
+make_box+vtop_code+hmode  hbox
+
+leader_ship+a_leaders-1  shipout
+leader_ship+a_leaders    leaders
+leader_ship+c_leaders    cleaders
+leader_ship+x_leaders    xleaders
+
+start_par    noindent,indent
+
+remove_item+penalty_node unpenalty
+remove_item+kern_node    unkern
+remove_item+glue_node    unskip
+un_hbox    unhbox,unhcopy
+un_vbox    unvbox,unvcopy
+
+discretionary    discretionary,discretionary_hyphen
+
+eq_no eqno,leqno
+
+math_comp+ord_noad   mathord
+math_comp+op_noad    mathop
+math_comp+bin_noad   mathbin
+math_comp+rel_noad   mathrel
+math_comp+open_noad  mathopen
+math_comp+close_noad mathclose
+math_comp+punct_noad mathpunct
+math_comp+inner_noad mathinner
+math_comp+under_noad underline
+math_comp+over_noad  overline
+limit_switch    displaylimits,limits,nolimits
+
+# displaystyle
+# textstyle
+# scriptstyle
+# scriptscriptstyle
+above    above,over,atop,abovewithdelims,overwithdelims,atopwithdelims
+
+left_right+left_noad  left
+left_right+right_noad right
+prefix    ,long,outer,,global
+
+def    def,gdef,edef,xdef
+
+let    let,futurelet
+
+# mubyte
+# noconvert
+
+shorthand_def    chardef,mathchardef,countdef,dimendef,skipdef,muskipdef,toksdef
+
+# charsubdef
+
+def_code+cat_code_base  catcode
+
+# xordcode
+# xchrcode
+# xprncode
+
+def_code+math_code_base mathcode
+def_code+lc_code_base   lccode
+def_code+uc_code_base   uccode
+def_code+sf_code_base   sfcode
+def_code+del_code_base  delcode
+
+def_family+math_font_base                    textfont
+def_family+math_font_base+script_size        scriptfont
+def_family+math_font_base+script_script_size scriptscriptfont
+
+hyph_data    hyphenation,patterns
+
+assign_font_int    hyphenchar,skewchar
+
+set_interaction    batchmode,nonstopmode,scrollmode,errorstopmode
+
+in_stream    closein,openin
+
+message    message,errmessage
+
+case_shift+lc_code_base lowercase
+case_shift+uc_code_base uppercase
+
+xray+show_code     show
+xray+show_box_code showbox
+xray+show_the_code showthe
+xray+show_lists    showlists
+
+extension+open_node         openout
+extension+write_node        write
+extension+close_node        closeout
+extension+special_node      special
+extension+immediate_code    immediate
+extension+set_language_code setlanguage
 
 __END__

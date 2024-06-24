@@ -471,7 +471,7 @@ set_shape+display_widow_penalties_loc displaywidowpenalties
 the+1           unexpanded
 the+show_tokens detokenize
 
-top_bot_mark+top_mark_code+marks_code         topmarks 
+top_bot_mark+top_mark_code+marks_code         topmarks
 top_bot_mark+first_mark_code+marks_code       firstmarks
 top_bot_mark+bot_mark_code+marks_code         botmarks
 top_bot_mark+split_first_mark_code+marks_code splitfirstmarks

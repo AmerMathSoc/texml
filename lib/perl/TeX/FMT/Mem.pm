@@ -909,8 +909,6 @@ sub extract_glyph_node {
     my $depth  = $self->get_word($ptr + 2)->get_sc();
     my $height = $self->get_word($ptr + 3)->get_sc();
 
-print STDERR qq{*** extract_glyph_node: width='$width'; height='$height'; depth='$depth'\n};
-
     my $glyph_info = $self->get_word($ptr + 4);
 
     my $b0 = $glyph_info->get_b0();
@@ -918,8 +916,6 @@ print STDERR qq{*** extract_glyph_node: width='$width'; height='$height'; depth=
     my $fnt_num     = $glyph_info->get_b1();
     my $glyph       = $glyph_info->get_b2();
     my $glyph_count = $glyph_info->get_b3();
-
-print STDERR qq{*** extract_glyph_node: b0='$b0'; b1='$fnt_num'; b2='$glyph'; b3='$glyph_count'\n};
 
     my $font = $self->get_font($fnt_num);
 
@@ -941,8 +937,6 @@ sub extract_noad {
     my $self = shift;
 
     my $ptr = shift;
-
-    print STDERR "Didn't expect to see a noad (type=", $self->get_type($ptr), ")\n";
 
     return;
 }

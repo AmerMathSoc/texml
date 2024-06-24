@@ -204,6 +204,22 @@ sub BUILD {
     return;
 }
 
+######################################################################
+##                                                                  ##
+##                   PRINT_CMD_CHR INITIALIZATION                   ##
+##                                                                  ##
+######################################################################
+
+sub START {
+    my ($self, $ident, $arg_ref) = @_;
+
+    $self->load_cmd_data(*TeX::FMT::Parameters::xetex::DATA{IO});
+
+    return;
+}
+
 1;
+
+__DATA__
 
 __END__

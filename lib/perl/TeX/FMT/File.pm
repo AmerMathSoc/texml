@@ -1433,7 +1433,9 @@ sub slow_print( $ ) {
 
 sub show_meaning {
     my $self = shift;
-    my $csname = shift;
+
+    my $csname  = shift;
+    my $verbose = shift;
 
     my $params = $self->get_params();
 
@@ -1448,16 +1450,18 @@ sub show_meaning {
     } else {
         # $LOG->verbose(print_esc(slow_print($csname)) . ": **UNDEFINED**\n\n");
 
-        return;
+        # return unless $verbose;
     }
 
-    my $eq_type = $self->get_eqtb()->get_word($eqtb_ptr)->get_eq_type();
+    print print_esc(slow_print($csname)) . ": ";
 
-    # if ($eq_type < $params->call() || $eq_type > $params->long_outer_call()) {
-        print print_esc(slow_print($csname)) . ": ";
+    if (defined $eqtb_ptr) {
+        my $eq_type = $self->get_eqtb()->get_word($eqtb_ptr)->get_eq_type();
 
         $self->show_eqtb_entry($eqtb_ptr);
-    # }
+    } else {
+        print print_esc('undefined'), "\n";
+    }
 
     return;
 }

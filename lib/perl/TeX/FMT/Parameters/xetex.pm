@@ -36,8 +36,6 @@ use base qw(TeX::FMT::Parameters::tex);
 
 use TeX::Class;
 
-my %XeTeX_math_given_of :INT(:name<XeTeX_math_given> :default<70>);
-
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
@@ -143,7 +141,8 @@ sub BUILD {
 
         # Command codes
 
-        last_item => 71,
+        XeTeX_math_given => 70,
+        last_item        => 71,
 
         XeTeX_def_code => sub { $_[0]->def_code() + 1 },
 
@@ -206,6 +205,24 @@ sub BUILD {
     return;
 }
 
+######################################################################
+##                                                                  ##
+##                   PRINT_CMD_CHR INITIALIZATION                   ##
+##                                                                  ##
+######################################################################
+
+sub START {
+    my ($self, $ident, $arg_ref) = @_;
+
+    $self->load_cmd_data(*TeX::FMT::Parameters::xetex::DATA{IO});
+
+    return;
+}
+
 1;
+
+__DATA__
+
+math_char_num+2    Umathchar
 
 __END__
