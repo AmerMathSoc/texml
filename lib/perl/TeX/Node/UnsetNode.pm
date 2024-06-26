@@ -1,6 +1,6 @@
 package TeX::Node::UnsetNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -38,7 +38,7 @@ use base qw(TeX::Node::AbstractNode);
 
 use TeX::Class;
 
-use TeX::Constants qw(:node_params :type_bounds);
+use TeX::Constants qw(:node_params);
 
 my %height_of     :ATTR(:get<height>     :set<height>     :default(0));
 my %width_of      :ATTR(:get<width>      :set<width>      :default(0));
@@ -49,15 +49,6 @@ my %stretch_of    :ATTR(:get<stretch>    :set<stretch>    :default(0.0));
 my %shrink_of     :ATTR(:get<shrink>     :set<shrink>     :default(0.0));
 my %glue_sign_of  :ATTR(:get<glue_sign>  :set<glue_sign>  :default(normal));
 my %glue_order_of :ATTR(:get<glue_order> :set<glue_order> :default(normal));
-
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_type(unset_node);
-    $self->set_subtype(min_quarterword);
-
-    return;
-}
 
 1;
 

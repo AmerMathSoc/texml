@@ -1,6 +1,6 @@
 package TeX::Math;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,7 +32,7 @@ package TeX::Math;
 use strict;
 use warnings;
 
-use TeX::Constants qw(:math_params :math_classes);
+use TeX::Constants qw(:math_classes);
 
 use base qw(Exporter);
 

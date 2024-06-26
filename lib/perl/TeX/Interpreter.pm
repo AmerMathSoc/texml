@@ -106,8 +106,6 @@ use TeX::Constants qw(carriage_return
                   just_open
                   closed
                   :box_params
-                  :eqtb_codes
-                  :token_codes
                   :if_codes
                   :extras
                   :selector_codes
@@ -4695,7 +4693,7 @@ sub scan_math_fam_int {
 
     my $cur_val = $tex->scan_int();
 
-    if ( $cur_val <0 || $cur_val > number_math_families - 1 ) {
+    if ( $cur_val < 0 || $cur_val > number_math_families - 1 ) {
         $tex->print_err("Bad math family");
 
         $tex->set_help("Since I expected to read a number between 0 and 255,",
@@ -10032,13 +10030,13 @@ sub undump_eqtb {
 
     ## REGION 4
 
-    $tex->extract_token_parameter($fmt, 'every_par',     every_par_loc);
-    $tex->extract_token_parameter($fmt, 'every_math',    every_math_loc);
-    $tex->extract_token_parameter($fmt, 'every_display', every_display_loc);
-    $tex->extract_token_parameter($fmt, 'every_hbox',    every_hbox_loc);
-    $tex->extract_token_parameter($fmt, 'every_vbox',    every_vbox_loc);
-    $tex->extract_token_parameter($fmt, 'every_job',     every_job_loc);
-    $tex->extract_token_parameter($fmt, 'every_cr',      every_cr_loc);
+    $tex->extract_token_parameter($fmt, 'every_par',     $fmt->every_par_loc);
+    $tex->extract_token_parameter($fmt, 'every_math',    $fmt->every_math_loc);
+    $tex->extract_token_parameter($fmt, 'every_display', $fmt->every_display_loc);
+    $tex->extract_token_parameter($fmt, 'every_hbox',    $fmt->every_hbox_loc);
+    $tex->extract_token_parameter($fmt, 'every_vbox',    $fmt->every_vbox_loc);
+    $tex->extract_token_parameter($fmt, 'every_job',     $fmt->every_job_loc);
+    $tex->extract_token_parameter($fmt, 'every_cr',      $fmt->every_cr_loc);
 
     for my $index (0..255) {
         $tex->extract_token_register($fmt, $index);
@@ -10159,7 +10157,7 @@ sub extract_token_register {
     my $fmt   = shift;
     my $index = shift;
 
-    my $eqtb_index = toks_base + $index;
+    my $eqtb_index = $fmt->toks_base + $index;
 
     if (defined (my $toks = $tex->extract_toks_list($fmt, $eqtb_index))) {
         my $registers = $toks_registers_of{ident $tex};
@@ -10183,12 +10181,12 @@ sub extract_toks_list {
 
     my $equiv = $eqtb_entry->get_equiv();
 
-    return unless defined $equiv && $equiv != null_ptr;
+    return unless defined $equiv && $equiv != $fmt->null_ptr;
 
     my $toks = new_token_list();
 
     for (my $ptr = $mem->get_link($equiv);
-         $ptr != null_ptr;
+         $ptr != $fmt->null_ptr;
          $ptr = $mem->get_link($ptr)) {
         my $token = $tex->extract_token($fmt, $ptr);
 
@@ -10290,7 +10288,7 @@ sub extract_macro {
     my $param_no = 0;
 
     for (my $ptr = $mem->get_link($ref_cnt_ptr);
-         $ptr != null_ptr;
+         $ptr != $fmt->null_ptr;
          $ptr = $mem->get_link($ptr)) {
         my $token = $tex->extract_token($fmt, $ptr);
 
@@ -10323,8 +10321,8 @@ sub extract_token {
 
     my $info = $fmt->get_mem()->get_info($mem_ptr);
 
-    if ($info >= cs_token_flag) {
-        my $eqtb_ptr = $info - cs_token_flag;
+    if ($info >= $params->cs_token_flag) {
+        my $eqtb_ptr = $info - $params->cs_token_flag;
 
         if ($eqtb_ptr < $params->active_base()) {
             return make_csname_token("IMPOSSIBLE");

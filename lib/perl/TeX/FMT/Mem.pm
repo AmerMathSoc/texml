@@ -34,7 +34,7 @@ use warnings;
 
 use TeX::Arithmetic qw(scaled_to_string);
 
-use TeX::Constants qw(:math_params :node_params);
+use TeX::Constants qw(:node_params);
 
 use TeX::Nodes qw(:factories);
 use TeX::Node::HListNode qw(:factories);
@@ -64,7 +64,7 @@ my %hi_mem_min   :ATTR(:get<hi_mem_min>   :set<hi_mem_min>);
 
 my %params_of :ATTR(:name<params>);
 
-sub NULL { $_[0]->min_halfword };
+sub NULL { $_[0]->null };
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
@@ -107,7 +107,11 @@ sub get_link {
     my $self = shift;
     my $ptr  = shift;
 
-    return $self->get_word($ptr)->get_rh();
+    my $word = $self->get_word($ptr);
+
+    confess "Undefined word at $ptr" unless defined $word;
+
+    return $word->get_rh();
 }
 
 sub get_info {
@@ -307,6 +311,8 @@ sub show_token_list {
     my $fmt = shift;
 
     my $ref_count = shift;
+
+    return if $ref_count == $fmt->null();
 
     # print "show_token_list: ref_count = $ref_count\n";
 
@@ -578,6 +584,49 @@ sub extract_node_list {
 
     return $node_list;
 }
+
+use constant {
+    hlist_node                    => 0,
+    vlist_node                    => 1,
+    rule_node                     => 2,
+    ins_node                      => 3,
+    mark_node                     => 4,
+    adjust_node                   => 5,
+    ligature_node                 => 6,
+    disc_node                     => 7,
+    whatsit_node                  => 8,
+    math_node                     => 9,
+    glue_node                     => 10,
+    kern_node                     => 11,
+    penalty_node                  => 12,
+    unset_node                    => 13,
+    open_node                     => 0,
+    write_node                    => 1,
+    close_node                    => 2,
+    special_node                  => 3,
+    language_node                 => 4,
+};
+
+use constant {
+    ord_noad                      => 16,    # unset_node + 3
+    op_noad                       => 17,    # ord_noad + 1
+    bin_noad                      => 18,    # ord_noad + 2
+    rel_noad                      => 19,    # ord_noad + 3
+    open_noad                     => 20,    # ord_noad + 4
+    close_noad                    => 21,    # ord_noad + 5
+    punct_noad                    => 22,    # ord_noad + 6
+    inner_noad                    => 23,    # ord_noad + 7
+    radical_noad                  => 24,    # inner_noad + 1
+    fraction_noad                 => 25,    # radical_noad + 1
+    under_noad                    => 26,    # fraction_noad + 1
+    over_noad                     => 27,    # under_noad + 1
+    accent_noad                   => 28,    # over_noad + 1
+    vcenter_noad                  => 29,    # accent_noad + 1
+    left_noad                     => 30,    # vcenter_noad + 1
+    right_noad                    => 31,    # left_noad + 1
+    style_node                    => 14,    # unset_node + 1
+    choice_node                   => 15,    # unset_node + 2
+};
 
 my @NODE_MAP;
 

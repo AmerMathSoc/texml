@@ -1,6 +1,6 @@
 package TeX::Node::FileNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -37,16 +37,6 @@ use base qw(TeX::Node::WhatsitNode);
 use TeX::Class;
 
 my %fileno_of :COUNTER(:name<fileno>);
-
-use TeX::Constants qw(:node_params);
-
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_subtype(close_node);
-
-    return;
-}
 
 1;
 

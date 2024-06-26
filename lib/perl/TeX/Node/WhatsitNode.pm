@@ -42,16 +42,6 @@ use base qw(TeX::Node::AbstractNode);
 
 use TeX::Class;
 
-use TeX::Constants qw(:node_params);
-
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_type(whatsit_node);
-
-    return;
-}
-
 1;
 
 __END__

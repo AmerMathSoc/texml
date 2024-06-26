@@ -1,6 +1,6 @@
 package TeX::Constants;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -55,7 +55,7 @@ my %MODULE_CODES = (
     LOAD_FAILED    => 0,
     LOAD_SUCCESS   => 1,
     ALREADY_LOADED => 2,
-);    
+);
 
 install module_codes => %MODULE_CODES;
 
@@ -120,12 +120,9 @@ $EXPORT_TAGS{all} = [ map { @{ $_ } } values %EXPORT_TAGS ];
 ######################################################################
 
 my %TYPE_BOUNDS = (
-    min_quarterword => 0,
-    max_halfword    =>  0xfffffff,
-    null_ptr        => -0xfffffff,
-    first_text_char => 0,
-    last_text_char  => 255,
-    max_dimen       => 07777777777, # 2^{30} - 1
+    first_text_char    => 0,
+    last_text_char     => 255,
+    max_dimen          => 07777777777, # 2^{30} - 1
     first_unicode_char => 0,
     last_unicode_char  => 0x10FFFF,
 );
@@ -172,28 +169,10 @@ my %PENALTIES = (
 install penalties => %PENALTIES;
 
 my %NODE_PARAMS = (
-    hlist_node                    => 0,
-    vlist_node                    => 1,
-    rule_node                     => 2,
-    ins_node                      => 3,
-    mark_node                     => 4,
-    adjust_node                   => 5,
-    ligature_node                 => 6,
-    disc_node                     => 7,
-    whatsit_node                  => 8,
-    math_node                     => 9,
-    glue_node                     => 10,
-    kern_node                     => 11,
-    penalty_node                  => 12,
-    unset_node                    => 13,
-    open_node                     => 0,
-    write_node                    => 1,
-    close_node                    => 2,
-    special_node                  => 3,
-    language_node                 => 4,
     normal                        => 0,
     stretching                    => 1,
     shrinking                     => 2,
+    ##
     fil                           => 1,
     fill                          => 2,
     filll                         => 3,
@@ -223,7 +202,7 @@ my %COMMAND_CODES = (
     advance                       => 90,
     multiply                      => 91,
     divide                        => 92,
-    max_command                   => 100,
+    max_command                   => 100,   ## TBD: engine specific
     long_call                     => 112,   # max_command + 12
     ##
     ## The following aren't really command codes, but I'll leave them
@@ -241,25 +220,6 @@ install command_codes => %COMMAND_CODES;
 
 ######################################################################
 ##                                                                  ##
-##                            EQTB CODES                            ##
-##                                                                  ##
-######################################################################
-
-my %EQTB_CODES = (
-    every_par_loc                 => 25059, # local_base + 2
-    every_math_loc                => 25060, # local_base + 3
-    every_display_loc             => 25061, # local_base + 4
-    every_hbox_loc                => 25062, # local_base + 5
-    every_vbox_loc                => 25063, # local_base + 6
-    every_job_loc                 => 25064, # local_base + 7
-    every_cr_loc                  => 25065, # local_base + 8
-    toks_base                     => 25067, # local_base + 10
-    );
-
-install eqtb_codes => %EQTB_CODES;
-
-######################################################################
-##                                                                  ##
 ##                            SAVE STACK                            ##
 ##                                                                  ##
 ######################################################################
@@ -270,6 +230,9 @@ my %SAVE_STACK_CODES = (
     insert_token        =>  2,
     level_boundary      =>  3,
     bottom_level        =>  0,
+    ##
+    ## Group types
+    ##
     simple_group        =>  1,
     hbox_group          =>  2,
     adjusted_hbox_group =>  3,
@@ -310,18 +273,6 @@ sub group_type( $ ) {
 }
 
 push @{ $EXPORT_TAGS{save_stack_codes} }, qw(group_type);
-
-######################################################################
-##                                                                  ##
-##                           TOKEN CODES                            ##
-##                                                                  ##
-######################################################################
-
-my %TOKEN_CODES = (
-    cs_token_flag     => 07777,
-);
-
-install token_codes => %TOKEN_CODES;
 
 ######################################################################
 ##                                                                  ##
@@ -381,8 +332,6 @@ my %TOKEN_TYPES = (
     );
 
 install token_types => %TOKEN_TYPES;
-
-use constant no_expand_flag                => 257;
 
 my %MARK_CODES = (
     top_mark_code         => 0,
@@ -468,29 +417,6 @@ my %BOX_PARAMS = (
 
 install box_params => %BOX_PARAMS;
 
-my %MATH_PARAMS = (
-    ord_noad                      => 16,    # unset_node + 3
-    op_noad                       => 17,    # ord_noad + 1
-    bin_noad                      => 18,    # ord_noad + 2
-    rel_noad                      => 19,    # ord_noad + 3
-    open_noad                     => 20,    # ord_noad + 4
-    close_noad                    => 21,    # ord_noad + 5
-    punct_noad                    => 22,    # ord_noad + 6
-    inner_noad                    => 23,    # ord_noad + 7
-    radical_noad                  => 24,    # inner_noad + 1
-    fraction_noad                 => 25,    # radical_noad + 1
-    under_noad                    => 26,    # fraction_noad + 1
-    over_noad                     => 27,    # under_noad + 1
-    accent_noad                   => 28,    # over_noad + 1
-    vcenter_noad                  => 29,    # accent_noad + 1
-    left_noad                     => 30,    # vcenter_noad + 1
-    right_noad                    => 31,    # left_noad + 1
-    style_node                    => 14,    # unset_node + 1
-    choice_node                   => 15,    # unset_node + 2
-);
-
-install math_params => %MATH_PARAMS;
-
 ######################################################################
 ##                                                                  ##
 ##                              EXTRAS                              ##
@@ -499,7 +425,7 @@ install math_params => %MATH_PARAMS;
 
 ## These aren't actually defined in WEB2C, but they are useful.
 
-my %EXTRAS = (sp_per_pt      => 2**16);
+my %EXTRAS = (sp_per_pt => 2**16);
 
 install extras => %EXTRAS;
 
@@ -525,7 +451,7 @@ install math_classes => %MATH_CLASSES;
 ######################################################################
 
 my %XETEX_CONSTANTS = (
-    number_math_families => 256,
+    number_math_families => 256, # TBD: engine specific
     );
 
 install xetex => %XETEX_CONSTANTS;

@@ -1,6 +1,6 @@
 package TeX::Node::PenaltyNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -38,18 +38,7 @@ use base qw(TeX::Node::AbstractNode);
 
 use TeX::Class;
 
-use TeX::Constants qw(:node_params);
-
 my %penalty_of :ATTR(:get<penalty> :set<penalty> :init_arg => 'penalty');
-
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_type(penalty_node);
-    $self->set_subtype(0);
-
-    return;
-}
 
 1;
 

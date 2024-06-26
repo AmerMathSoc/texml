@@ -1,6 +1,6 @@
 package TeX::Node::MarkNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,8 +32,6 @@ package TeX::Node::MarkNode;
 use strict;
 use warnings;
 
-use TeX::Constants qw(:node_params);
-
 use base qw(TeX::Node::AbstractNode);
 
 use TeX::Class;
@@ -41,14 +39,6 @@ use TeX::Class;
 use TeX::TokenList;
 
 my %token_list_of :ATTR(:name<token_list> :type<TeX::TokenList>);
-
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_type(mark_node);
-
-    return;
-}
 
 1;
 

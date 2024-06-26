@@ -1,6 +1,6 @@
 package TeX::Node::CharNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -40,7 +40,7 @@ use TeX::Arithmetic qw(scaled_to_string);
 
 use TeX::Utils qw(print_char_code);
 
-use TeX::Constants qw(:node_params :type_bounds);
+use TeX::Constants qw(:type_bounds);
 
 use TeX::Node::HListNode qw(:factories);
 
@@ -49,8 +49,6 @@ my %char_code_of :ATTR(:get<char_code> :set<char_code>);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_type(max_halfword);
 
     $font_of{$ident}      = $arg_ref->{font};
     $char_code_of{$ident} = $arg_ref->{char_code};

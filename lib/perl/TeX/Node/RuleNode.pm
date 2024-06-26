@@ -1,6 +1,6 @@
 package TeX::Node::RuleNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -34,8 +34,6 @@ use warnings;
 
 use TeX::Arithmetic qw(:string);
 
-use TeX::Constants qw(:node_params);
-
 use base qw(TeX::Node::AbstractNode);
 
 use TeX::Class;
@@ -46,8 +44,6 @@ my %depth_of  :ATTR(:get<depth>  :set<depth>);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_type(rule_node);
 
     $width_of{$ident}  = $arg_ref->{width};
     $height_of{$ident} = $arg_ref->{height};

@@ -88,8 +88,7 @@ sub new_null_box {
 sub START {
     my ($self, $ident, $arg_ref) = @_;
 
-    $self->set_type(hlist_node);
-    $self->set_subtype(min_quarterword);
+    $self->set_is_hbox(1);
 
     return;
 }
@@ -347,7 +346,7 @@ sub show_node {
     my $depth  = $self->get_depth();
     my $width  = $self->get_width();
 
-    my $box_type = $self->get_type() == hlist_node ? 'hbox' : 'vbox';
+    my $box_type = $self->is_hbox() ? 'hbox' : 'vbox';
 
     my $node = sprintf '\\%s(%s+%s)x%s', ($box_type,
                                           scaled_to_string($height),

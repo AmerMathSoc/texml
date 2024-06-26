@@ -1,6 +1,6 @@
 package TeX::Node::WriteNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -39,16 +39,6 @@ use TeX::Class;
 use TeX::TokenList;
 
 my %token_list_of :ATTR(:name<token_list> :type<TeX::TokenList>);
-
-use TeX::Constants qw(:node_params);
-
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_subtype(write_node);
-
-    return;
-}
 
 sub is_write_node {
     return 1;

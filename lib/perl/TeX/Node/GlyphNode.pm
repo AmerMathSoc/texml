@@ -51,7 +51,7 @@ use TeX::Utils qw(print_char_code);
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
-    $self->set_subtype(42); # XeTeX!
+    # $self->set_subtype(42); # XeTeX!
 
     return;
 }

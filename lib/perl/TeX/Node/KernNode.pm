@@ -1,6 +1,6 @@
 package TeX::Node::KernNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -40,18 +40,7 @@ use TeX::Class;
 
 use TeX::Arithmetic qw(scaled_to_string);
 
-use TeX::Constants qw(:node_params);
-
 my %width_of :ATTR(:get<width> :set<width> :init_arg => 'width');
-
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_type(kern_node);
-    $self->set_subtype($arg_ref->{subtype} || normal);
-
-    return;
-}
 
 sub is_kern {
     return 1;

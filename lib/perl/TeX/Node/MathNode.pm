@@ -1,6 +1,6 @@
 package TeX::Node::MathNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -41,11 +41,10 @@ use TeX::Class;
 use TeX::Constants qw(:node_params);
 
 my %width_of :ATTR(:get<width> :set<width>  :init_arg => 'width');
+my %subtype_of :ATTR(:get<subtype> :set<subtype> :init_arg => 'subtype');
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_type(math_node);
 
     $self->set_subtype($arg_ref->{subtype});
 

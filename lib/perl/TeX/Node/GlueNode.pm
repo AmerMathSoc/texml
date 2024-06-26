@@ -1,6 +1,6 @@
 package TeX::Node::GlueNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,8 +32,6 @@ package TeX::Node::GlueNode;
 use strict;
 use warnings;
 
-use TeX::Constants qw(:node_params);
-
 use base qw(TeX::Node::AbstractNode);
 
 use TeX::Class;
@@ -54,8 +52,6 @@ my %leader_ptr_of :ATTR(:get<leader_ptr> :set<leader_ptr>);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_type(glue_node);
 
     if (exists $arg_ref->{glue}) {
         my $glue = $arg_ref->{glue};

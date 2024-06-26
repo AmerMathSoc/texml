@@ -41,7 +41,7 @@ use TeX::Class;
 sub START {
     my ($self, $ident, $arg_ref) = @_;
 
-    $self->set_type(vlist_node);
+    $self->set_is_vbox(1);
 
     return;
 }

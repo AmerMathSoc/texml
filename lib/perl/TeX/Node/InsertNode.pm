@@ -1,6 +1,6 @@
 package TeX::Node::InsertNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -48,8 +48,6 @@ my %ins_ptr_of          :ATTR(:get<ins_ptr>          :set<ins_ptr>);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_type(ins_node);
 
     $box_number_of      {$ident} = $arg_ref->{box_number};
     $height_of          {$ident} = $arg_ref->{height};

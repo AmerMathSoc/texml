@@ -1,6 +1,6 @@
 package TeX::Node::AdjustNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -42,8 +42,6 @@ my %adjust_ptr_of :ATTR(:get<adjust_ptr> :set<adjust_ptr>);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_type(adjust_node);
 
     $adjust_ptr_of{$ident} = $arg_ref->{adjust_ptr};
 

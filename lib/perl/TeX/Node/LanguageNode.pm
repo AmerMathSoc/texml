@@ -1,6 +1,6 @@
 package TeX::Node::LanguageNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -38,19 +38,9 @@ use base qw(TeX::Node::WhatsitNode);
 
 use TeX::Class;
 
-use TeX::Constants qw(:node_params);
-
 my %language_of :COUNTER(:name<language> :default<0>);
 
 # We don't use this yet, but here's the skeleton of it.
-
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_subtype(language_node);
-
-    return;
-}
 
 1;
 

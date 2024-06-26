@@ -1,6 +1,6 @@
 package TeX::Node::UTemplateMarker;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -36,19 +36,9 @@ package TeX::Node::UTemplateMarker;
 use strict;
 use warnings;
 
-use TeX::Constants qw(:node_params);
-
 use base qw(TeX::Node::AbstractNode);
 
 use TeX::Class;
-
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_type(whatsit_node);
-
-    return;
-}
 
 sub is_u_template_marker {
     return 1;

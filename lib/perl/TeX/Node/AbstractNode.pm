@@ -1,6 +1,6 @@
 package TeX::Node::AbstractNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -37,17 +37,16 @@ use TeX::Class;
 use TeX::Constants qw(:node_params);
 
 my %link_of    :ATTR(:get<link>    :set<link>);
-my %type_of    :ATTR(:get<type>    :set<type> :default<-1>);
-my %subtype_of :ATTR(:get<subtype> :set<subtype> :default(0));
 
 my %visible_of :BOOLEAN(:name<visible> :default<0>);
+
+my %is_hbox_of :BOOLEAN(:name<is_hbox> :default<0>);
+my %is_vbox_of :BOOLEAN(:name<is_vbox> :default<0>);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
     $link_of{$ident}    = $arg_ref->{link};
-    $type_of{$ident}    = $arg_ref->{type};
-    $subtype_of{$ident} = $arg_ref->{subtype};
 
     return;
 }
@@ -79,19 +78,7 @@ sub is_write_node {
 sub is_box {
     my $self = shift;
 
-    return $self->get_type() <= vlist_node;
-}
-
-sub is_hbox {
-    my $self = shift;
-
-    return $self->get_type() == hlist_node;
-}
-
-sub is_vbox {
-    my $self = shift;
-
-    return $self->get_type() == vlist_node;
+    return $self->is_hbox() || $self->is_vbo();
 }
 
 sub is_u_template_marker {

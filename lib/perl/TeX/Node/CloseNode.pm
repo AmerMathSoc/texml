@@ -1,6 +1,6 @@
 package TeX::Node::CloseNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -35,16 +35,6 @@ use warnings;
 use base qw(TeX::Node::FileNode);
 
 use TeX::Class;
-
-use TeX::Constants qw(:node_params);
-
-sub BUILD {
-    my ($self, $ident, $arg_ref) = @_;
-
-    $self->set_subtype(close_node);
-
-    return;
-}
 
 sub is_close_node {
     return 1;
