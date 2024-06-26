@@ -92,13 +92,13 @@ sub BUILD {
         is_xetex               => 0,
         is_luatex              => 0,
 
+        prim_size              => 0,
+
         fmt_has_hyph_start     => 0,
 
         fmem_word_length       => 4,
 
         cs_token_flag        => 0xFFF,
-
-        prim_size         => 0,
 
         min_quarterword      => 0,
         min_halfword         => -0xFFFFFFF,
@@ -127,6 +127,68 @@ sub BUILD {
         number_usvs       => sub { $_[0]->biggest_usv() + 1 },
         number_regs       => sub { $_[0]->biggest_reg() + 1 },
         number_math_fonts => sub { 3 * $_[0]->number_math_families() },
+
+        ## Shared constants (i.e., these should be the same for all engines).
+
+        ##
+        ## SCAN TYPES
+        ##
+        int_val   => 0,
+        dimen_val => 1,
+        glue_val  => 2,
+        mu_val    => 3,
+        #* ident_val => 4, # font identifier
+        #* tok_val   => 5,
+        input_line_no_code => sub { $_[0]->glue_val + 1 },
+        badness_code       => sub { $_[0]->input_line_no_code + 1 },
+        ## MARK TYPES
+        ##
+        top_mark_code         => 0,
+        first_mark_code       => 1,
+        bot_mark_code         => 2,
+        split_first_mark_code => 3,
+        split_bot_mark_code   => 4,
+        ##
+        ##
+        ##
+        width_offset  => 1,
+        depth_offset  => 2,
+        height_offset => 3,
+        ##
+        ## NODE TYPES
+        ##
+        # hlist_node    => 0,
+        # vlist_node    => 1,
+        # rule_node     => 2,
+        # ins_node      => 3,
+        # mark_node     => 4,
+        # adjust_node   => 5,
+        # ligature_node => 6,
+        # disc_node     => 7,
+        # whatsit_node  => 8,
+        # math_node     => 9,
+        glue_node     => 10,
+        kern_node     => 11,
+        explicit      => 1,
+        acc_kern      => 2,
+        penalty_node  => 12,
+        # unset_node    => 13,
+        ##
+        ## SPECIAL NODE TYPES
+        ##
+        open_node     => 0,
+        write_node    => 1,
+        close_node    => 2,
+        special_node  => 3,
+        # language_node => 4,
+        ##
+        immediate_code    => 4,
+        set_language_code => 5,
+
+        if_code   => 1,
+        fi_code   => 2,
+        else_code => 3,
+        or_code   => 4,
         );
 
     $parameters_of{$ident} = \%params;
@@ -193,7 +255,9 @@ sub interpret_cmd_chr {
     my $handler = $self->get_cmd_handler($cmd_code);
 
     if (! defined $handler) {
-        croak "Unknown command code: $cmd_code";
+        carp "Unknown command code: $cmd_code";
+
+        return;
     }
 
     if (ref($handler) eq 'ARRAY') {
@@ -284,7 +348,7 @@ sub print_cmd_chr {
 sub calc_equiv {
     my $self = shift;
 
-    my $expr = shift;
+    (my $expr = shift) =~ s{ }{}g;
 
     my @tokens = split /([+-])/, $expr;
 

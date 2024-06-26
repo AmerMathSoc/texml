@@ -44,61 +44,6 @@ sub BUILD {
     my %params = (
         $self->get_parameters(),
         ##
-        ## SCAN TYPES
-        ##
-        int_val   => 0,
-        dimen_val => 1,
-        glue_val  => 2,
-        mu_val    => 3,
-        ident_val => 4, # font identifier
-        tok_val   => 5,
-        ##
-        input_line_no_code => 3, # glue_val + 1,
-        badness_code       => 4, # glue_val + 2,
-        ##
-        ## MARK TYPES
-        ##
-        top_mark_code         => 0,
-        first_mark_code       => 1,
-        bot_mark_code         => 2,
-        split_first_mark_code => 3,
-        split_bot_mark_code   => 4,
-        ##
-        ##
-        ##
-        width_offset  => 1,
-        depth_offset  => 2,
-        height_offset => 3,
-        ##
-        ## NODE TYPES
-        ##
-        hlist_node    => 0,
-        vlist_node    => 1,
-        rule_node     => 2,
-        ins_node      => 3,
-        mark_node     => 4,
-        adjust_node   => 5,
-        ligature_node => 6,
-        disc_node     => 7,
-        whatsit_node  => 8,
-        math_node     => 9,
-        glue_node     => 10,
-        kern_node     => 11,
-        penalty_node  => 12,
-        unset_node    => 13,
-        ##
-        ## SPECIAL NODE TYPES
-        ##
-        open_node     => 0,
-        write_node    => 1,
-        close_node    => 2,
-        special_node  => 3,
-        language_node => 4,
-        ##
-        ##
-        immediate_code    => 4,
-        set_language_code => 5,
-        ##
         ## NODE TYPES
         ##
         ord_noad      => 16,    # unset_node + 3
@@ -109,12 +54,12 @@ sub BUILD {
         close_noad    => 21,    # ord_noad + 5
         punct_noad    => 22,    # ord_noad + 6
         inner_noad    => 23,    # ord_noad + 7
-        radical_noad  => 24,    # inner_noad + 1
-        fraction_noad => 25,    # radical_noad + 1
+        #* radical_noad  => 24,    # inner_noad + 1
+        #* fraction_noad => 25,    # radical_noad + 1
         under_noad    => 26,    # fraction_noad + 1
         over_noad     => 27,    # under_noad + 1
-        accent_noad   => 28,    # over_noad + 1
-        vcenter_noad  => 29,    # accent_noad + 1
+        #* accent_noad   => 28,    # over_noad + 1
+        #* vcenter_noad  => 29,    # accent_noad + 1
         left_noad     => 30,    # vcenter_noad + 1
         right_noad    => 31,    # left_noad + 1
         ##
@@ -251,11 +196,6 @@ sub BUILD {
 
         max_command       => sub { $_[0]->set_interaction() },
 
-        if_code   => 1,
-        fi_code   => 2,
-        else_code => 3,
-        or_code   => 4,
-
         undefined_cs      => sub { $_[0]->max_command() + 1 },
         expand_after      => sub { $_[0]->max_command() + 2 },
         no_expand         => sub { $_[0]->max_command() + 3 },
@@ -311,6 +251,9 @@ sub BUILD {
 
         frozen_null_font    => sub { $_[0]->frozen_control_sequence() + 11 },
 
+        font_base           => 0,
+        null_font           => sub { $_[0]->font_base },
+
 #        font_id_base        => sub { $_[0]->frozen_null_font() - $_[0]->font_base() },
 
         undefined_control_sequence => sub { $_[0]->frozen_null_font() + $_[0]->max_font_max() + 1 },
@@ -362,6 +305,7 @@ sub BUILD {
         xprn_code_base     => sub { $_[0]->xchr_code_base() + 1 },
         math_font_base     => sub { $_[0]->xprn_code_base() + 1 },
         cat_code_base      => sub { $_[0]->math_font_base() + $_[0]->number_math_fonts() },
+
         lc_code_base       => sub { $_[0]->cat_code_base() + $_[0]->number_usvs() },
         uc_code_base       => sub { $_[0]->lc_code_base() + $_[0]->number_usvs() },
         sf_code_base       => sub { $_[0]->uc_code_base() + $_[0]->number_usvs() },
@@ -481,6 +425,7 @@ sub BUILD {
         last_box_code => 2,
         vsplit_code   => 3,
         vtop_code     => 4,
+        mu_glue   =>  99,
         a_leaders => 100,
         c_leaders => 101,
         x_leaders => 102,
@@ -536,6 +481,11 @@ sub BUILD {
         mu_skip_def_code   => 5,
         toks_def_code      => 6,
 
+        display_style       => 0,
+        text_style          => 2,
+        script_style        => 4,
+        script_script_style => 6,
+        cramped             => 1,
         );
 
     $self->set_parameters(\%params);
@@ -596,6 +546,10 @@ sub START {
 
 __DATA__
 
+
+
+########################################################################
+
 undefined    undefined_cs
 
 call            call
@@ -604,6 +558,10 @@ outer_call      outer_call
 long_outer_call long_outer_call
 
 # end_template outer endtemplate
+
+endtemplate end_template
+
+dont_expand dont_expand
 
 # Glue parameters
 
@@ -777,11 +735,11 @@ par       par_end
 input    input 0
 endinput input 1
 
-topmark        top_bot_mark 0
-firstmark      top_bot_mark 1
-botmark        top_bot_mark 2
-splitfirstmark top_bot_mark 3
-splitbotmark   top_bot_mark 4
+topmark        top_bot_mark top_mark_code
+firstmark      top_bot_mark first_mark_code
+botmark        top_bot_mark bot_mark_code
+splitfirstmark top_bot_mark split_first_mark_code
+splitbotmark   top_bot_mark split_bot_mark_code
 
 count    register    int_val
 dimen    register    dimen_val
@@ -833,10 +791,10 @@ fi   fi_or_else fi_code
 else fi_or_else else_code
 or   fi_or_else or_code
 
-# nullfont
+nullfont set_font null_font
 
 # span
-cr    car_ret    cr_code
+cr   car_ret    cr_code
 crcr car_ret cr_cr_code
 # endtemplate/endv
 
@@ -864,9 +822,9 @@ vfill   vskip    fill_code
 vss     vskip    ss_code
 vfilneg vskip    fil_neg_code
 
-mskip mskip
-kern  kern
-mkern mkern
+mskip mskip mskip_code
+kern  kern explicit
+mkern mkern mu_glue
 
 moveright hmove 0
 moveleft  hmove 1

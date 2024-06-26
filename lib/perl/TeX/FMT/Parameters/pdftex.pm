@@ -100,43 +100,48 @@ sub BUILD {
         ## EXTENSION CODES
         ##
         pdftex_first_extension_code => 6,
-        pdf_literal_node            => sub { $_[0]->pdftex_first_extension_code() + 0 },
-        pdf_obj_code                => sub { $_[0]->pdftex_first_extension_code() + 1 },
-        pdf_refobj_node             => sub { $_[0]->pdftex_first_extension_code() + 2 },
-        pdf_xform_code              => sub { $_[0]->pdftex_first_extension_code() + 3 },
-        pdf_refxform_node           => sub { $_[0]->pdftex_first_extension_code() + 4 },
-        pdf_ximage_code             => sub { $_[0]->pdftex_first_extension_code() + 5 },
-        pdf_refximage_node          => sub { $_[0]->pdftex_first_extension_code() + 6 },
-        pdf_annot_node              => sub { $_[0]->pdftex_first_extension_code() + 7 },
-        pdf_start_link_node         => sub { $_[0]->pdftex_first_extension_code() + 8 },
-        pdf_end_link_node           => sub { $_[0]->pdftex_first_extension_code() + 9 },
-        pdf_outline_code            => sub { $_[0]->pdftex_first_extension_code() + 10 },
-        pdf_dest_node               => sub { $_[0]->pdftex_first_extension_code() + 11 },
-        pdf_thread_node             => sub { $_[0]->pdftex_first_extension_code() + 12 },
-        pdf_start_thread_node       => sub { $_[0]->pdftex_first_extension_code() + 13 },
-        pdf_end_thread_node         => sub { $_[0]->pdftex_first_extension_code() + 14 },
-        pdf_save_pos_node           => sub { $_[0]->pdftex_first_extension_code() + 15 },
-        pdf_info_code               => sub { $_[0]->pdftex_first_extension_code() + 16 },
-        pdf_catalog_code            => sub { $_[0]->pdftex_first_extension_code() + 17 },
-        pdf_names_code              => sub { $_[0]->pdftex_first_extension_code() + 18 },
-        pdf_font_attr_code          => sub { $_[0]->pdftex_first_extension_code() + 19 },
-        pdf_include_chars_code      => sub { $_[0]->pdftex_first_extension_code() + 20 },
-        pdf_map_file_code           => sub { $_[0]->pdftex_first_extension_code() + 21 },
-        pdf_map_line_code           => sub { $_[0]->pdftex_first_extension_code() + 22 },
-        pdf_trailer_code            => sub { $_[0]->pdftex_first_extension_code() + 23 },
-        reset_timer_code            => sub { $_[0]->pdftex_first_extension_code() + 24 },
-        pdf_font_expand_code        => sub { $_[0]->pdftex_first_extension_code() + 25 },
-        set_random_seed_code        => sub { $_[0]->pdftex_first_extension_code() + 26 },
-        pdf_snap_ref_point_node     => sub { $_[0]->pdftex_first_extension_code() + 27 },
-        pdf_snapy_node              => sub { $_[0]->pdftex_first_extension_code() + 28 },
-        pdf_snapy_comp_node         => sub { $_[0]->pdftex_first_extension_code() + 29 },
-        pdf_glyph_to_unicode_code   => sub { $_[0]->pdftex_first_extension_code() + 30 },
-        pdf_colorstack_node         => sub { $_[0]->pdftex_first_extension_code() + 31 },
-        pdf_setmatrix_node          => sub { $_[0]->pdftex_first_extension_code() + 32 },
-        pdf_save_node               => sub { $_[0]->pdftex_first_extension_code() + 33 },
-        pdf_restore_node            => sub { $_[0]->pdftex_first_extension_code() + 34 },
-        pdf_nobuiltin_tounicode_code=> sub { $_[0]->pdftex_first_extension_code() + 35 },
-        pdftex_last_extension_code  => sub { $_[0]->pdftex_first_extension_code() + 35 },
+
+        pdf_literal_node            => sub { $_[0]->pdftex_first_extension_code +  0 },
+        pdf_obj_code                => sub { $_[0]->pdftex_first_extension_code +  1 },
+        pdf_refobj_node             => sub { $_[0]->pdftex_first_extension_code +  2 },
+        pdf_xform_code              => sub { $_[0]->pdftex_first_extension_code +  3 },
+        pdf_refxform_node           => sub { $_[0]->pdftex_first_extension_code +  4 },
+        pdf_ximage_code             => sub { $_[0]->pdftex_first_extension_code +  5 },
+        pdf_refximage_node          => sub { $_[0]->pdftex_first_extension_code +  6 },
+        pdf_annot_node              => sub { $_[0]->pdftex_first_extension_code +  7 },
+        pdf_start_link_node         => sub { $_[0]->pdftex_first_extension_code +  8 },
+        pdf_end_link_node           => sub { $_[0]->pdftex_first_extension_code +  9 },
+        pdf_outline_code            => sub { $_[0]->pdftex_first_extension_code + 10 },
+        pdf_dest_node               => sub { $_[0]->pdftex_first_extension_code + 11 },
+        pdf_thread_node             => sub { $_[0]->pdftex_first_extension_code + 12 },
+        pdf_start_thread_node       => sub { $_[0]->pdftex_first_extension_code + 13 },
+        pdf_end_thread_node         => sub { $_[0]->pdftex_first_extension_code + 14 },
+        pdf_save_pos_node           => sub { $_[0]->pdftex_first_extension_code + 15 },
+        pdf_info_code               => sub { $_[0]->pdftex_first_extension_code + 16 },
+        pdf_catalog_code            => sub { $_[0]->pdftex_first_extension_code + 17 },
+        pdf_names_code              => sub { $_[0]->pdftex_first_extension_code + 18 },
+        pdf_font_attr_code          => sub { $_[0]->pdftex_first_extension_code + 19 },
+        pdf_include_chars_code      => sub { $_[0]->pdftex_first_extension_code + 20 },
+        pdf_map_file_code           => sub { $_[0]->pdftex_first_extension_code + 21 },
+        pdf_map_line_code           => sub { $_[0]->pdftex_first_extension_code + 22 },
+        pdf_trailer_code            => sub { $_[0]->pdftex_first_extension_code + 23 },
+        pdf_trailer_id_code         => sub { $_[0]->pdftex_first_extension_code + 24 },
+        reset_timer_code            => sub { $_[0]->pdftex_first_extension_code + 25 },
+        pdf_font_expand_code        => sub { $_[0]->pdftex_first_extension_code + 26 },
+        set_random_seed_code        => sub { $_[0]->pdftex_first_extension_code + 27 },
+        pdf_snap_ref_point_node     => sub { $_[0]->pdftex_first_extension_code + 28 },
+        pdf_snapy_node              => sub { $_[0]->pdftex_first_extension_code + 29 },
+        pdf_snapy_comp_node         => sub { $_[0]->pdftex_first_extension_code + 30 },
+        pdf_glyph_to_unicode_code   => sub { $_[0]->pdftex_first_extension_code + 31 },
+        pdf_colorstack_node         => sub { $_[0]->pdftex_first_extension_code + 32 },
+        pdf_setmatrix_node          => sub { $_[0]->pdftex_first_extension_code + 33 },
+        pdf_save_node               => sub { $_[0]->pdftex_first_extension_code + 34 },
+        pdf_restore_node            => sub { $_[0]->pdftex_first_extension_code + 35 },
+        pdf_nobuiltin_tounicode_code=> sub { $_[0]->pdftex_first_extension_code + 36 },
+        pdf_interword_space_on_node => sub { $_[0]->pdftex_first_extension_code + 37 },
+        pdf_interword_space_off_node=> sub { $_[0]->pdftex_first_extension_code + 38 },
+        pdf_fake_space_node         => sub { $_[0]->pdftex_first_extension_code + 39 },
+        pdftex_last_extension_code  => sub { $_[0]->pdftex_first_extension_code + 39 },
         ##
         ## IF CODES
         ##
@@ -152,10 +157,12 @@ sub BUILD {
         ##
         etex_convert_base        => 5,
         eTeX_revision_code       => sub { $_[0]->etex_convert_base() },
-        etex_convert_codes       => sub { $_[0]->etex_convert_base() + 1 },
-        expanded_code            => sub { $_[0]->etex_convert_codes },
 
-        pdftex_first_expand_code => sub { $_[0]->expanded_code() + 1},
+        # etex_convert_codes       => sub { $_[0]->etex_convert_base() + 1 },
+        # expanded_code            => sub { $_[0]->etex_convert_codes },
+
+        pdftex_first_expand_code => sub { $_[0]->eTeX_revision_code() + 1 },
+
         pdftex_revision_code     => sub { $_[0]->pdftex_first_expand_code() + 0 },
         pdftex_banner_code       => sub { $_[0]->pdftex_first_expand_code() + 1 },
         pdf_font_name_code       => sub { $_[0]->pdftex_first_expand_code() + 2 },
@@ -382,42 +389,46 @@ quitvmode   start_par    2
 
 middle left_right middle_noad
 
-pdfliteral            extension    pdf_literal_node
-pdfcolorstack         extension    pdf_colorstack_node
-pdfsetmatrix          extension    pdf_setmatrix_node
-pdfsave               extension    pdf_save_node
-pdfrestore            extension    pdf_restore_node
-pdfobj                extension    pdf_obj_code
-pdfrefobj             extension    pdf_refobj_node
-pdfxform              extension    pdf_xform_code
-pdfrefxform           extension    pdf_refxform_node
-pdfximage             extension    pdf_ximage_code
-pdfrefximage          extension    pdf_refximage_node
-pdfannot              extension    pdf_annot_node
-pdfstartlink          extension    pdf_start_link_node
-pdfendlink            extension    pdf_end_link_node
-pdfoutline            extension    pdf_outline_code
-pdfdest               extension    pdf_dest_node
-pdfthread             extension    pdf_thread_node
-pdfstartthread        extension    pdf_start_thread_node
-pdfendthread          extension    pdf_end_thread_node
-pdfsavepos            extension    pdf_save_pos_node
-pdfsnaprefpoint       extension    pdf_snap_ref_point_node
-pdfsnapy              extension    pdf_snapy_node
-pdfsnapycomp          extension    pdf_snapy_comp_node
-pdfinfo               extension    pdf_info_code
-pdfcatalog            extension    pdf_catalog_code
-pdfnames              extension    pdf_names_code
-pdfincludechars       extension    pdf_include_chars_code
-pdffontattr           extension    pdf_font_attr_code
-pdfmapfile            extension    pdf_map_file_code
-pdfmapline            extension    pdf_map_line_code
-pdftrailer            extension    pdf_trailer_code
-pdfresettimer         extension    reset_timer_code
-pdfsetrandomseed      extension    set_random_seed_code
-pdffontexpand         extension    pdf_font_expand_code
-pdfglyphtounicode     extension    pdf_glyph_to_unicode_code
-pdfnobuiltintounicode extension    pdf_nobuiltin_tounicode_code
+pdfliteral             extension pdf_literal_node
+pdfcolorstack          extension pdf_colorstack_node
+pdfsetmatrix           extension pdf_setmatrix_node
+pdfsave                extension pdf_save_node
+pdfrestore             extension pdf_restore_node
+pdfobj                 extension pdf_obj_code
+pdfrefobj              extension pdf_refobj_node
+pdfxform               extension pdf_xform_code
+pdfrefxform            extension pdf_refxform_node
+pdfximage              extension pdf_ximage_code
+pdfrefximage           extension pdf_refximage_node
+pdfannot               extension pdf_annot_node
+pdfstartlink           extension pdf_start_link_node
+pdfendlink             extension pdf_end_link_node
+pdfoutline             extension pdf_outline_code
+pdfdest                extension pdf_dest_node
+pdfthread              extension pdf_thread_node
+pdfstartthread         extension pdf_start_thread_node
+pdfendthread           extension pdf_end_thread_node
+pdfsavepos             extension pdf_save_pos_node
+pdfsnaprefpoint        extension pdf_snap_ref_point_node
+pdfsnapy               extension pdf_snapy_node
+pdfsnapycomp           extension pdf_snapy_comp_node
+pdfinfo                extension pdf_info_code
+pdfcatalog             extension pdf_catalog_code
+pdfnames               extension pdf_names_code
+pdfincludechars        extension pdf_include_chars_code
+pdffontattr            extension pdf_font_attr_code
+pdfmapfile             extension pdf_map_file_code
+pdfmapline             extension pdf_map_line_code
+pdftrailer             extension pdf_trailer_code
+pdftrailerid           extension pdf_trailer_id_code
+pdfresettimer          extension reset_timer_code
+pdfsetrandomseed       extension set_random_seed_code
+pdffontexpand          extension pdf_font_expand_code
+pdfglyphtounicode      extension pdf_glyph_to_unicode_code
+pdfnobuiltintounicode  extension pdf_nobuiltin_tounicode_code
+pdfinterwordspaceon    extension pdf_interword_space_on_node
+pdfinterwordspaceoff   extension pdf_interword_space_off_node
+pdffakespace           extension pdf_fake_space_node
 
 deadcycles      set_page_int 0
 insertpenalties set_page_int 1
@@ -438,6 +449,9 @@ ifpdfabsdim    if_test if_pdfabs_dim_code
 ifpdfprimitive if_test if_pdfprimitive_code
 
 eTeXrevision      convert    eTeX_revision_code
+
+# expanded          convert    expanded_code
+
 pdftexrevision    convert    pdftex_revision_code
 pdftexbanner      convert    pdftex_banner_code
 pdffontname       convert    pdf_font_name_code
@@ -587,18 +601,18 @@ tracingnesting      assign_int    tracing_nesting_code
 tracingscantokens   assign_int    tracing_scan_tokens_code
 predisplaydirection assign_int    pre_display_direction_code
 
-pdfhorigin         assign_dimen    pdf_h_origin_code
-pdfvorigin         assign_dimen    pdf_v_origin_code
-pdfpagewidth       assign_dimen    pdf_page_width_code
-pdfpageheight      assign_dimen    pdf_page_height_code
-pdflinkmargin      assign_dimen    pdf_link_margin_code
-pdfdestmargin      assign_dimen    pdf_dest_margin_code
-pdfthreadmargin    assign_dimen    pdf_thread_margin_code
-pdffirstlineheight assign_dimen    pdf_first_line_height_code
-pdflastlinedepth   assign_dimen    pdf_last_line_depth_code
-pdfeachlineheight  assign_dimen    pdf_each_line_height_code
-pdfeachlinedepth   assign_dimen    pdf_each_line_depth_code
-pdfignoreddimen    assign_dimen    pdf_ignored_dimen_code
-pdfpxdimen         assign_dimen    pdf_px_dimen_code
+pdfhorigin          assign_dimen    pdf_h_origin_code
+pdfvorigin          assign_dimen    pdf_v_origin_code
+pdfpagewidth        assign_dimen    pdf_page_width_code
+pdfpageheight       assign_dimen    pdf_page_height_code
+pdflinkmargin       assign_dimen    pdf_link_margin_code
+pdfdestmargin       assign_dimen    pdf_dest_margin_code
+pdfthreadmargin     assign_dimen    pdf_thread_margin_code
+pdffirstlineheight  assign_dimen    pdf_first_line_height_code
+pdflastlinedepth    assign_dimen    pdf_last_line_depth_code
+pdfeachlineheight   assign_dimen    pdf_each_line_height_code
+pdfeachlinedepth    assign_dimen    pdf_each_line_depth_code
+pdfignoreddimen     assign_dimen    pdf_ignored_dimen_code
+pdfpxdimen          assign_dimen    pdf_px_dimen_code
 
 __END__
