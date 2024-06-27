@@ -7,6 +7,9 @@ use lib qw(/ams/texmf/texml/lib/perl);
 
 use TeX::FMT::File;
 
+binmode STDOUT, ":utf8";
+binmode STDERR, ":utf8";
+
 my $file = shift || 'plain.fmt';
 
 my $fmt = TeX::FMT::File->new({ file_name => $file });
@@ -17,44 +20,45 @@ $fmt->load();
 
 # $fmt->debug();
 
-$fmt->show_meaning('AA');
+print "engine: ", $fmt->get_engine(), "\n";
+print "active_base: ", $fmt->active_base(), "\n";
+print "undefined_control_sequence: ", $fmt->undefined_control_sequence(), "\n";
+print "null: ", $fmt->null(), "\n";
 
-$fmt->show_meaning("setbox");
+print "\n";
 
-$fmt->show_meaning("the");
+print "del_code_base = ", $fmt->del_code_base, "\n";
 
-exit 0;
+print "\n";
 
-# $fmt->show_meaning("begin");
-# $fmt->show_meaning("bf");
-# $fmt->show_meaning("tenit");
-# $fmt->show_meaning("proclaim");
-# $fmt->show_meaning("beginsection");
-# $fmt->show_meaning("textindent");
-# $fmt->show_meaning("input");
-# $fmt->show_meaning("endinput");
+#exit;
 
-$fmt->show_meaning("hyphenpenalty");
-$fmt->show_meaning("pretolerance");
-$fmt->show_meaning("escapechar");
+my $eqtb   = $fmt->get_eqtb();
+my $hash   = $fmt->get_hash();
 
-my @DIMEN_PARAM = qw(parindent mathsurround lineskiplimit hsize vsize
-                     maxdepth splitmaxdepth boxmaxdepth hfuzz vfuzz
-                     delimitershortfall nulldelimiterspace scriptspace
-                     predisplaysize displaywidth displayindent
-                     overfullrule hangindent hoffset voffset
-                     emergencystretch);
+for my $ptr ($fmt->active_base()..$fmt->undefined_control_sequence()) {
+    my $word = $eqtb->get_word($ptr);
 
-for my $param (@DIMEN_PARAM) {
-    $fmt->show_meaning($param);
+    next if $word->get_type() == $fmt->undefined_cs;
+
+    my $name;
+
+    if ($ptr < $fmt->single_base) {
+        $name = chr($ptr - 1);
+    } elsif ($ptr < $fmt->null_cs()) {
+        $name = "\\" . chr($ptr - $fmt->single_base);
+    } else {
+        my $string_no = $hash->get_text($ptr);
+
+        if (defined $string_no) {
+            $name = $fmt->get_string($string_no);
+        } else {
+            $name = '<undef>';
+        }
+    }
+
+    print $ptr, ": ", $name, ": ";
+    $fmt->show_eqtb_entry($ptr);
 }
-
-# $fmt->show_meaning("sum");
-# 
-# $fmt->show_meaning("mathunder");
-# $fmt->show_meaning("mathover");
-# 
-# $fmt->show_meaning("underline");
-# $fmt->show_meaning("overline");
 
 __END__

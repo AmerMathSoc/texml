@@ -6,22 +6,30 @@ pdftex=pdftex
 
 xetex=xetex
 
-all: fmt initest load
+all: tex pdftex xetex
 
-fmt: tex.fmt etex.fmt xetex.fmt luatex.fmt
+tex: tex.fmt tex.initest tex_load
 
-initest: tex.initest etex.initest xetex.initest luatex.initest
+pdftex: pdftex.fmt pdftex.initest pdftex_load
 
-load: tex_load etex_load xetex_load luatex_load
+xetex: xetex.fmt xetex.initest xetex_load
 
-etex.fmt:
+fmt: tex.fmt pdftex.fmt xetex.fmt luatex.fmt
+
+initest: tex.initest pdftex.initest xetex.initest luatex.initest
+
+load: tex_load pdftex_load xetex_load
+
+pdftex.fmt:
 	pdftex -ini -etex etex.ini
+	mv etex.fmt pdftex.fmt
+	mv etex.log pdftex.log
 
-etex.initest:
-	pdftex -ini -debug-format '&etex' test.tex > etex.initest 2>&1
+pdftex.initest:
+	pdftex -ini -debug-format '&pdftex' test.tex > pdftex.initest 2>&1
 
-etex_load:
-	-./load_fmt etex.fmt > etex.load 2>&1
+pdftex_load:
+	-(./load_fmt pdftex.fmt > pdftex.load) > pdftex.errors 2>&1
 
 luatex.fmt:
 	luatex -ini -etex luatex.ini
@@ -30,7 +38,7 @@ luatex.initest:
 	luatex -ini -debug-format '&luatex' test.tex > luatex.initest 2>&1
 
 luatex_load:
-	-./load_fmt luatex.fmt > luatex.load 2>&1
+	-(./load_fmt luatex.fmt > luatex.load) > luatex.errors 2>&1
 
 tex.fmt:
 	tex -ini tex.ini
@@ -39,7 +47,7 @@ tex.initest:
 	tex -ini -debug-format '&tex' test.tex > tex.initest 2>&1
 
 tex_load:
-	-./load_fmt tex.fmt > tex.load 2>&1
+	-(./load_fmt tex.fmt >| tex.load) >| tex.errors 2>&1
 
 xetex.fmt:
 	xetex -ini -etex xetex.ini
@@ -48,7 +56,7 @@ xetex.initest:
 	xetex -ini -debug-format '&xetex' test.tex > xetex.initest 2>&1
 
 xetex_load:
-	-./load_fmt xetex.fmt > xetex.load 2>&1
+	-(./load_fmt xetex.fmt > xetex.load) > xetex.errors 2>&1
 
 clean:
-	-rm *.fmt *.log 00PDF.* 00XETEX.* texsys.aux *.dvi *.pdf *.initest *.load
+	-rm *.fmt *.log 00PDF.* 00XETEX.* texsys.aux *.dvi *.pdf *.initest *.load *.errors

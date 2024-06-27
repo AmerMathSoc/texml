@@ -357,6 +357,9 @@ sub BUILD {
 sub START {
     my ($self, $ident, $arg_ref) = @_;
 
+    $self->primitive(q{ }, 'ex_space');
+    $self->primitive(q{/}, 'ital_corr');
+
     $self->load_primitives(*TeX::FMT::Parameters::pdftex::DATA{IO});
 
     return;

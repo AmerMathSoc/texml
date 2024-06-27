@@ -189,9 +189,55 @@ sub BUILD {
         fi_code   => 2,
         else_code => 3,
         or_code   => 4,
+
         );
 
     $parameters_of{$ident} = \%params;
+
+    return;
+}
+
+######################################################################
+##                                                                  ##
+##                   PRINT_CMD_CHR INITIALIZATION                   ##
+##                                                                  ##
+######################################################################
+
+sub START {
+    my ($self, $ident, $arg_ref) = @_;
+
+    $self->make_cmd_handler(left_brace  => sub { (left_brace  => $_[0]) });
+    $self->make_cmd_handler(right_brace => sub { (right_brace => $_[0]) });
+    $self->make_cmd_handler(math_shift  => sub { (math_shift  => $_[0]) });
+    $self->make_cmd_handler(mac_param   => sub { (mac_param   => $_[0]) });
+    $self->make_cmd_handler(sup_mark    => sub { (sup_mark    => $_[0]) });
+    $self->make_cmd_handler(sub_mark    => sub { (sub_mark    => $_[0]) });
+    $self->make_cmd_handler(spacer      => sub { (spacer      => $_[0]) });
+    $self->make_cmd_handler(letter      => sub { (letter      => $_[0]) });
+    $self->make_cmd_handler(other_char  => sub { (other_char  => $_[0]) });
+
+    $self->make_cmd_handler(endv => sub { (endv => "end of alignment template") });
+
+    $self->make_cmd_handler(assign_glue =>    \&print_glue_assignment);
+    $self->make_cmd_handler(assign_mu_glue => \&print_glue_assignment);
+    $self->make_cmd_handler(assign_toks =>    \&print_toks_register);
+    $self->make_cmd_handler(assign_int =>     \&print_int_param);
+    $self->make_cmd_handler(assign_dimen =>   \&print_dimen_param);
+    $self->make_cmd_handler(set_font     =>   \&print_font_spec);
+
+    $self->make_cmd_handler(tab_mark => sub {
+        my $chr_code = shift;
+
+        if ($chr_code == $self->span_code()) {
+            return ("span");
+        } else {
+            return (tab_mark => $chr_code);
+        }
+                            });
+
+    $self->make_cmd_handler(math_style => sub { print_style($_[0]) });
+    $self->make_cmd_handler(char_given => sub { ( char => $_[0] ) });
+    $self->make_cmd_handler(math_given => sub { ( mathchar => $_[0]) });
 
     return;
 }
@@ -294,7 +340,7 @@ sub print_cmd_chr {
 
     if (! defined $type) {
         warn "*** print_cmd_chr undefined type: cmd_code='$cmd_code'; chr_code='$chr_code'\n";
-        return;
+        return qq{\\{cmd_code=$cmd_code; chr_code=$chr_code}};
     }
 
     return $subtype if $type eq 'UNKNOWN';
