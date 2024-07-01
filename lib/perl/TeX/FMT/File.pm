@@ -118,13 +118,18 @@ my %magic_number :ATTR(:get<magic_number>, :set<magic_number>);
 
 my %font_map :ATTR(:get<font_map>);
 
-use constant MEM_WORD_LENGTH => 8;
-
-use constant BYTES_PER_INT => 4;
+use constant BYTES_PER_INT    => 4;
+use constant MEM_WORD_LENGTH  => 8;
+use constant SMEM_WORD_LENGTH => 8;
 
 use constant W2TX_MAGIC_NUMBER  => unpack("N", "W2TX"); # 3.141592 + W2C 7.4.5
 
-use constant LUATEX_MAGIC_NUMBER => 907 + 15;
+use constant {
+    LUATEX_MAGIC_NUMBER     => 907 + 15,
+#    LUATEX_STRING_OFFSET    => 0x200000,
+    LUATEX_CHECK_NODE_USAGE => 1,
+    LUATEX_MAX_CHAIN_SIZE   =>  13,
+};
 
 use constant XETEX_MAGIC_NUMBER => 529205248;
 
@@ -140,7 +145,13 @@ use constant {
     IMAGE_TYPE_JBIG2 => 5,
 };
 
-sub __debug { } # print STDERR "*** ", @_, "\n" }
+sub __debug {}# print STDERR "*** ", @_, "\n" }
+
+######################################################################
+##                                                                  ##
+##                           CONSTRUCTOR                            ##
+##                                                                  ##
+######################################################################
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
@@ -156,24 +167,29 @@ sub BUILD {
     return;
 }
 
-sub is_xetex {
-    my $self = shift;
-
-    return $self->get_engine() eq 'xetex';
-}
+######################################################################
+##                                                                  ##
+##                        UTILITY FUNCTIONS                         ##
+##                                                                  ##
+######################################################################
 
 sub __check( $$$ ) {
     my $name     = shift;
     my $expected = shift;
     my $found    = shift;
 
-    # warn sprintf "Bad $name: Expected %04X, got %04X\n", $expected, $found;
     if ($expected != $found) {
         warn "Bad $name: Expected $expected, got $found\n";
     }
 
     return;
 }
+
+######################################################################
+##                                                                  ##
+##                             METHODS                              ##
+##                                                                  ##
+######################################################################
 
 sub get_font {
     my $self = shift;
@@ -221,6 +237,14 @@ sub read_memory_word {
     my $self = shift;
 
     my $record = $self->read_bytes(MEM_WORD_LENGTH);
+
+    return TeX::FMT::MemoryWord->new( { record => $record } );
+}
+
+sub read_smemory_word {
+    my $self = shift;
+
+    my $record = $self->read_bytes(SMEM_WORD_LENGTH);
 
     return TeX::FMT::MemoryWord->new( { record => $record } );
 }
@@ -700,8 +724,6 @@ sub load_luatex_string_pool {
 
     __debug "Loading LuaTeX string pool";
 
-    #define STRING_OFFSET 0x200000
-
     my $str_ptr = $self->read_integer();
 
     __debug "str_ptr = $str_ptr";
@@ -712,7 +734,7 @@ sub load_luatex_string_pool {
         my $len = $self->read_integer();
 
         if ($len >= 0) {
-            $string[$j] = $self->read_string($len); 
+            $string[$j] = $self->read_string($len);
 
             __debug "string[$j] = '$string[$j]'";
         }
@@ -726,7 +748,7 @@ sub load_luatex_string_pool {
 sub load_dynamic_memory {
     my $self = shift;
 
-    return $self->load_luatex_node_memory() if $self->is_luatex;
+    return $self->load_luatex_memory() if $self->is_luatex;
 
     __debug "Loading dynamic memory";
 
@@ -745,11 +767,13 @@ sub load_dynamic_memory {
 
     $self->set_rover($rover);
 
-    if ($self->get_eTeX_mode()) {
-        __debug "Reading eTeX extended arrays";
+    if ($params->has_parameter('num_sparse_arrays')) {
+        if ($params->num_sparse_arrays > 0) {
+            __debug "Reading eTeX sparse arrays";
 
-        for (1..$params->num_sparse_arrays) {
-            $self->read_integer();
+            for (1..$params->num_sparse_arrays) {
+                $self->read_integer();
+            }
         }
     }
 
@@ -765,7 +789,7 @@ sub load_dynamic_memory {
 
         $p = $q + $mem->get_node_size($q);
 
-        if ( 
+        if (
             ($p > $lo_mem_max)
              ||
  ( $q >= $mem->get_rlink($q) && ($mem->get_rlink($q) != $rover) )
@@ -809,20 +833,62 @@ sub load_dynamic_memory {
     return;
 }
 
-sub load_luatex_node_memory {
+sub load_luatex_memory {
     my $self = shift;
 
     __debug "Loading LuaTeX dynamic memory";
+
+    $self->undump_node_mem();
+
+    my $temp_token_head = $self->read_integer();
+    my $hold_token_head = $self->read_integer();
+    my $omit_template   = $self->read_integer();
+    my $null_list       = $self->read_integer();
+    my $backup_head     = $self->read_integer();
+    my $garbage         = $self->read_integer();
+
+    my $fix_mem_min = $self->read_integer();
+    my $fix_mem_max = $self->read_integer();
+
+    __debug "fix_mem_min = $fix_mem_min";
+    __debug "fix_mem_max = $fix_mem_max";
+
+    my @fixmem; # = (0) x ($fix_mem_max + 1);
+
+    my $fix_mem_end = $self->read_integer();
+
+    __debug "fix_mem_end = $fix_mem_end";
+
+    my $avail = $self->read_integer();
+
+    __debug "avail = $avail";
+
+    for (my $i = 0; $i < $fix_mem_end - $fix_mem_min + 1; $i++) {
+        $fixmem[$fix_mem_end + $i] = $self->read_smemory_word();
+    }
+
+    # for (my $i = $fix_mem_min; $i < $fix_mem_end - $fix_mem_min + 1; $i++) {
+    #     $fixmem[$i] = $self->read_smemory_word();
+    # }
+
+    my $dyn_used = $self->read_integer();
+
+    __debug "dyn_used = $dyn_used";
+
+    return;
+}
+
+sub undump_node_mem {
+    my $self = shift;
 
     my $params = $self->get_params();
 
     my $mem = $self->get_mem();
 
-    # BEGIN undump_mode_mem()
+    my $x     = $self->read_integer();
+    my $rover = $self->read_integer();
 
-    my $var_mem_max = $self->read_integer();
-
-    my $rover      = $self->read_integer();
+    my $var_mem_max = $x < 100000 ? 100000 : $x;
 
     __debug "var_mem_max = $var_mem_max";
     __debug "rover = $rover";
@@ -833,41 +899,22 @@ sub load_luatex_node_memory {
         $mem->set_word($ptr, $word);
     }
 
-    my @varmem_sizes;
+    if (LUATEX_CHECK_NODE_USAGE) {
+        my @varmem_sizes;
 
-    for my $ptr (0..$var_mem_max - 1) {
-        push @varmem_sizes, $self->read_memory_word();
+        for my $ptr (0..$x - 1) {
+            push @varmem_sizes, $self->read_memory_word();
+        }
     }
 
     my @free_chain;
 
-    for (1..13) { # MAX_CHAIN_SIZE
+    for (1..LUATEX_MAX_CHAIN_SIZE) {
         push @free_chain, $self->read_memory_word();
     }
 
     my $var_used = $self->read_integer();
     my $my_prealloc = $self->read_integer();
-
-    # END undump_mode_mem()
-
-    for my $param (qw(temp_token_head hold_token_head omit_template
-                      null_list backup_head garbage)) {
-        $self->read_integer();
-    }
-
-    my $fix_mem_min = $self->read_integer();
-    my $fix_mem_max = $self->read_integer();
-
-    my $fix_mem_end = $self->read_integer();
-    my $avail       = $self->read_integer();
-
-    my @fix_mem;
-
-    while (1..$fix_mem_end - $fix_mem_min + 1) {
-        push @fix_mem, $self->read_memory_word();
-    }
-
-    my $dyn_used = $self->read_integer();
 
     return;
 }
@@ -883,15 +930,20 @@ sub load_eqtb {
 
     my $eqtb = $self->get_eqtb();
 
-    my $k = $params->active_base();
+    my $k = $self->is_luatex ? $params->null_cs() : $params->active_base();
 
     do {
         my $x = $self->read_integer();
 
+        __debug "first x = $x";
+        __debug "k = $k";
+
+        die "BAD FMT" if $x < 1 || $k + $x > $eqtb_size + 1;
+
         for my $j ($k .. $k + $x - 1) {
             my $word = $self->read_memory_word();
 
-            # $LOG->debug("load_eqtb: word($j) = $word\n");
+            __debug "load_eqtb: word($j) = $word";
 
             $eqtb->set_word($j, $word);
         }
@@ -900,18 +952,20 @@ sub load_eqtb {
 
         $x = $self->read_integer();
 
+        __debug "second x = $x";
+
+        die "BAD_FMT" if $x < 0 || $k + $x > $eqtb_size + 1;
+
         if ($x > 0) {
             my $last_word = $eqtb->get_word($k - 1);
 
             for my $j ($k .. $k + $x - 1) {
-                # $LOG->debug("load_eqtb: word($j) = $last_word (last_word)\n");
-
                 $eqtb->set_word($j, $last_word);
             }
 
             $k += $x;
         }
-    } until $k > $eqtb_size;
+    } while $k <= $eqtb_size;
 
     my $hash_high = $self->get_hash_high();
 
@@ -934,13 +988,51 @@ sub load_eqtb {
     return;
 }
 
-sub updump_math_codes {
+sub undump_math_codes {
+    my $self = shift;
+
+    # mathcode_head = undump_sa_tree("mathcodes");
+
+    return;
+}
+
+sub undump_text_codes {
+    my $self = shift;
+
+    $self->undumpcatcodes();
+    $self->undumplccodes();
+    $self->undumpuccodes();
+    $self->undumpsfcodes();
+    $self->undumphjcodes();
+
+    return;
+}
+
+sub undumpcatcodes {
     my $self = shift;
 
     return;
 }
 
-sub updump_text_codes {
+sub undumplccodes {
+    my $self = shift;
+
+    return;
+}
+
+sub undumpuccodes {
+    my $self = shift;
+
+    return;
+}
+
+sub undumpsfcodes {
+    my $self = shift;
+
+    return;
+}
+
+sub undumphjcodes {
     my $self = shift;
 
     return;
@@ -1028,14 +1120,14 @@ sub load_hash_table {
     }
 
     __debug "Reading hash region 3";
-    
+
     my $hash_high = $self->get_hash_high();
 
     if ($hash_high > 0) {
         my $eqtb_size = $self->get_eqtb_size();
 
         __debug "    ptr = ", $eqtb_size + 1;
-        
+
         for my $ptr ($eqtb_size + 1 .. $eqtb_size + $hash_high) {
             my $word = $self->read_memory_word();
 
@@ -1264,7 +1356,7 @@ sub load_hyphenation_tables {
 
     if ($self->is_xetex) {
         my $max_hyph_char = $self->read_integer();
-    
+
         __debug "max_hyph_char = $max_hyph_char";
     }
 
@@ -1648,7 +1740,7 @@ sub debug {
     print "hi_mem_min   = ", $self->get_hi_mem_min(), "\n";
 
     print "var_used     = ", $self->get_var_used(), "\n";
-    print "dyn_used     = ", $self->get_dyn_used(), "\n";
+#    print "dyn_used     = ", $self->get_dyn_used(), "\n";
 
     print "fmem_ptr     = ", $self->get_fmem_ptr(), "\n";
     print "font_ptr     = ", $self->get_font_ptr(), "\n";
@@ -1700,9 +1792,9 @@ sub debug {
     ##  }
 
     ## print "STRINGS:\n";
-    ## 
+    ##
     ## my @strings = @{ $self->get_strings() };
-    ## 
+    ##
     ## for (my $i = 0; $i < @strings; $i++) {
     ##     print "\t$i: $strings[$i]\n";
     ## }

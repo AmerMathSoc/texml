@@ -41,119 +41,11 @@ use TeX::Class;
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
-    my %params = (
-        $self->get_parameters(),
-        ##
-        ## NODE TYPES
-        ##
-        ord_noad      => 16,    # unset_node + 3
-        op_noad       => 17,    # ord_noad + 1
-        bin_noad      => 18,    # ord_noad + 2
-        rel_noad      => 19,    # ord_noad + 3
-        open_noad     => 20,    # ord_noad + 4
-        close_noad    => 21,    # ord_noad + 5
-        punct_noad    => 22,    # ord_noad + 6
-        inner_noad    => 23,    # ord_noad + 7
-        #* radical_noad  => 24,    # inner_noad + 1
-        #* fraction_noad => 25,    # radical_noad + 1
-        under_noad    => 26,    # fraction_noad + 1
-        over_noad     => 27,    # under_noad + 1
-        #* accent_noad   => 28,    # over_noad + 1
-        #* vcenter_noad  => 29,    # accent_noad + 1
-        left_noad     => 30,    # vcenter_noad + 1
-        right_noad    => 31,    # left_noad + 1
-        ##
-        ## CONVERT TYPES
-        ##
-        number_code        => 0,
-        roman_numeral_code => 1,
-        string_code        => 2,
-        meaning_code       => 3,
-        font_name_code     => 4,
-        job_name_code      => 5,
+    my %new = (
         ##
         ## COMMAND CODES (CMD/EQ_TYPE/CUR_CMD)
         ##
-        escape           => 0,
-        relax            => 0,
-        left_brace       => 1,
-        right_brace      => 2,
-        math_shift       => 3,
-        tab_mark         => 4,
-        car_ret          => 5,
-        out_param        => 5,
-        mac_param        => 6,
-        sup_mark         => 7,
-        sub_mark         => 8,
-        ignore           => 9,
-        endv             => 9,
-        spacer           => 10,
-        letter           => 11,
-        other_char       => 12,
-        active_char      => 13,
-        par_end          => 13,
-        match            => 13,
-        comment          => 14,
-        end_match        => 14,
-        stop             => 14,
-        invalid_char     => 15,
-        delim_num        => 15,
-        max_char_code    => 15,
-        char_num         => 16,
-        math_char_num    => 17,
-        mark             => 18,
-        xray             => 19,
-        make_box         => 20,
-        hmove            => 21,
-        vmove            => 22,
-        un_hbox          => 23,
-        un_vbox          => 24,
-        remove_item      => 25,
-        hskip            => 26,
-        vskip            => 27,
-        mskip            => 28,
-        kern             => 29,
-        mkern            => 30,
-        leader_ship      => 31,
-        halign           => 32,
-        valign           => 33,
-        no_align         => 34,
-        vrule            => 35,
-        hrule            => 36,
-        insert           => 37,
-        vadjust          => 38,
-        ignore_spaces    => 39,
-        after_assignment => 40,
-        after_group      => 41,
-        break_penalty    => 42,
-        start_par        => 43,
-        ital_corr        => 44,
-        accent           => 45,
-        math_accent      => 46,
-        discretionary    => 47,
-        eq_no            => 48,
-        left_right       => 49,
-        math_comp        => 50,
-        limit_switch     => 51,
-        above            => 52,
-        math_style       => 53,
-        math_choice      => 54,
-        non_script       => 55,
-        vcenter          => 56,
-        case_shift       => 57,
-        message          => 58,
-        extension        => 59,
-        in_stream        => 60,
-        begin_group      => 61,
-        end_group        => 62,
-        omit             => 63,
-        ex_space         => 64,
-        no_boundary      => 65,
-        radical          => 66,
-        end_cs_name      => 67,
-        min_internal     => 68,
-        char_given       => 68,
-        math_given       => 69,
+
         last_item        => 70,
 
         max_non_prefixed_command => sub { $_[0]->last_item() },
@@ -166,6 +58,7 @@ sub BUILD {
         assign_mu_glue    => sub { $_[0]->max_non_prefixed_command() + 6 },
         assign_font_dimen => sub { $_[0]->max_non_prefixed_command() + 7 },
         assign_font_int   => sub { $_[0]->max_non_prefixed_command() + 8 },
+
         set_aux           => sub { $_[0]->max_non_prefixed_command() + 9 },
         set_prev_graf     => sub { $_[0]->max_non_prefixed_command() + 10 },
         set_page_dimen    => sub { $_[0]->max_non_prefixed_command() + 11 },
@@ -420,27 +313,6 @@ sub BUILD {
         text_size          => 0,
         script_size        => sub { $_[0]->number_math_families() },
         script_script_size => sub { 2 * $_[0]->number_math_families() },
-        box_code      => 0,
-        copy_code     => 1,
-        last_box_code => 2,
-        vsplit_code   => 3,
-        vtop_code     => 4,
-        mu_glue   =>  99,
-        a_leaders => 100,
-        c_leaders => 101,
-        x_leaders => 102,
-        ##
-        show_code     => 0,
-        show_box_code => 1,
-        show_the_code => 2,
-        show_lists    => 3,
-        ##
-        fil_code     => 0,
-        fill_code    => 1,
-        ss_code      => 2,
-        fil_neg_code => 3,
-        skip_code    => 4,
-        mskip_code   => 5,
         ##
         if_char_code  =>  0,
         if_cat_code   =>  1,
@@ -459,19 +331,6 @@ sub BUILD {
         if_true_code  => 14,
         if_false_code => 15,
         if_case_code  => 16,
-        above_code     => 0,
-        over_code      => 1,
-        atop_code      => 2,
-        delimited_code => 3,
-        normal     => 0,
-        stretching => 1,
-        shrinking  => 2,
-        limits     => 1,
-        no_limits  => 2,
-        batch_mode      => 0,
-        nonstop_mode    => 1,
-        scroll_mode     => 2,
-        error_stop_mode => 3,
 
         char_def_code      => 0,
         math_char_def_code => 1,
@@ -480,15 +339,11 @@ sub BUILD {
         skip_def_code      => 4,
         mu_skip_def_code   => 5,
         toks_def_code      => 6,
-
-        display_style       => 0,
-        text_style          => 2,
-        script_style        => 4,
-        script_script_style => 6,
-        cramped             => 1,
         );
 
-    $self->set_parameters(\%params);
+    while (my ($param, $value) = each %new) {
+        $self->set_parameter($param, $value);
+    }
 
     return;
 }
@@ -839,10 +694,10 @@ displaylimits    limit_switch    normal
 limits           limit_switch    limits
 nolimits         limit_switch    no_limits
 
-# displaystyle
-# textstyle
-# scriptstyle
-# scriptscriptstyle
+displaystyle      math_style 0
+textstyle         math_style 2
+scriptstyle       math_style 4
+scriptscriptstyle math_style 6
 
 above             above    above_code
 over              above    over_code

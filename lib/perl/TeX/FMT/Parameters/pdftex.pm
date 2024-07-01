@@ -45,25 +45,19 @@ sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
     my %new = (
-        has_translation_tables => 1,
         has_etex               => 1,
+
+        prim_size              => 2100,
+
+        num_sparse_arrays      => 6,
 
         fmt_has_hyph_start     => 1,
 
-        num_sparse_arrays => 6,
-
         frozen_primitive => sub { $_[0]->frozen_control_sequence() + 11 },
+        frozen_null_font => sub { $_[0]->frozen_control_sequence() + 12 },
 
-        frozen_null_font    => sub { $_[0]->frozen_control_sequence() + 12 },
-
-        undefined_control_sequence
-        => sub {
-            $_[0]->frozen_null_font() + $_[0]->max_font_max() + 1
-        },
-
-        prim_size        => 2100,
         marks_code       => 5,
-        middle_noad => 1,
+        middle_noad      => 1,
         ##
         ## font ints
         ##
@@ -82,8 +76,6 @@ sub BUILD {
         show_tokens     => 5,
         show_ifs        => 6,
         ##
-        last_box_code   => 2,
-        vsplit_code     => 3,
         ##
         before       => 0,
         after        => 1,
@@ -193,15 +185,10 @@ sub BUILD {
         job_name_code            => sub { $_[0]->pdftex_convert_codes() },
         ##
         ##
-        ##
         letterspace_font => sub { $_[0]->XeTeX_def_code() + 16 },
         pdf_copy_font    => sub { $_[0]->XeTeX_def_code() + 17 },
 
         max_command      => sub { $_[0]->pdf_copy_font() },
-
-        frozen_primitive => sub { $_[0]->frozen_control_sequence() + 11 },
-
-        prim_eqt_base    => sub { $_[0]->frozen_primitive() + 1 },
 
         tex_toks => sub { $_[0]->local_base() + 10 },
 
@@ -302,9 +289,10 @@ sub BUILD {
         pdf_px_dimen_code => sub { $_[0]->pdftex_first_dimen_code() + 12 },
         pdftex_last_dimen_code => sub { $_[0]->pdftex_first_dimen_code() + 12 },
         dimen_pars => sub { $_[0]->pdftex_last_dimen_code() + 1 },
+
         last_node_type_code => sub { $_[0]->glue_val() + 1 },
         input_line_no_code  => sub { $_[0]->glue_val() + 2 },
-        badness_code        => sub { $_[0]->input_line_no_code() + 1 },
+
         pdftex_first_rint_code      => sub { $_[0]->badness_code() + 1 },
         pdftex_version_code         => sub { $_[0]->pdftex_first_rint_code() + 0 },
         pdf_last_obj_code           => sub { $_[0]->pdftex_first_rint_code() + 1 },
@@ -322,7 +310,9 @@ sub BUILD {
         pdf_last_link_code          => sub { $_[0]->pdftex_first_rint_code() + 13 },
         pdftex_last_item_codes      => sub { $_[0]->pdftex_first_rint_code() + 13 },
         eTeX_int                    => sub { $_[0]->pdftex_last_item_codes() + 1 },
+
         eTeX_version_code           => sub { $_[0]->eTeX_int() },
+
         current_group_level_code    => sub { $_[0]->eTeX_int() + 1 },
         current_group_type_code     => sub { $_[0]->eTeX_int() + 2 },
         current_if_level_code       => sub { $_[0]->eTeX_int() + 3 },

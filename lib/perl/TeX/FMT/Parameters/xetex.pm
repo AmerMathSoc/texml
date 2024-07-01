@@ -39,119 +39,42 @@ use TeX::Class;
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
-    my %params = (
-        $self->get_parameters(),
-        ##
-        ## NODE TYPES
-        ##
-        ord_noad      => 16,    # unset_node + 3
-        op_noad       => 17,    # ord_noad + 1
-        bin_noad      => 18,    # ord_noad + 2
-        rel_noad      => 19,    # ord_noad + 3
-        open_noad     => 20,    # ord_noad + 4
-        close_noad    => 21,    # ord_noad + 5
-        punct_noad    => 22,    # ord_noad + 6
-        inner_noad    => 23,    # ord_noad + 7
-        #* radical_noad  => 24,    # inner_noad + 1
-        #* fraction_noad => 25,    # radical_noad + 1
-        under_noad    => 26,    # fraction_noad + 1
-        over_noad     => 27,    # under_noad + 1
-        #* accent_noad   => 28,    # over_noad + 1
-        #* vcenter_noad  => 29,    # accent_noad + 1
-        left_noad     => 30,    # vcenter_noad + 1
-        right_noad    => 31,    # left_noad + 1
-        ##
-        ## CONVERT TYPES
-        ##
-        number_code        => 0,
-        roman_numeral_code => 1,
-        string_code        => 2,
-        meaning_code       => 3,
-        font_name_code     => 4,
-#        job_name_code      => 5,
+    my %new = (
+        is_xetex               => 1,
+
+        has_translation_tables => 0,
+        has_etex               => 1,
+        has_enctex             => 0,
+
+        prim_size              => 500,
+
+        num_sparse_arrays      => 7,
+
+        fmt_has_hyph_start     => 1,
+
+        fmem_word_length       => 8,
+
+        cs_token_flag          => 0x1FFFFFF,
+
+        min_halfword         => -0xFFFFFFF,
+        max_halfword         =>  0x3FFFFFFF,
+
+        biggest_char => 65535,
+        too_big_char => 65536,
+
+        biggest_usv  => 0x10FFFF,
+
+        special_char => 65537,
+        # number_chars => 65537,
+
+        too_big_usv  => 0x110000,
+
+        number_math_families => 256,
+
         ##
         ## COMMAND CODES (CMD/EQ_TYPE/CUR_CMD)
         ##
-        escape           => 0,
-        relax            => 0,
-        left_brace       => 1,
-        right_brace      => 2,
-        math_shift       => 3,
-        tab_mark         => 4,
-        car_ret          => 5,
-        out_param        => 5,
-        mac_param        => 6,
-        sup_mark         => 7,
-        sub_mark         => 8,
-        ignore           => 9,
-        endv             => 9,
-        spacer           => 10,
-        letter           => 11,
-        other_char       => 12,
-        active_char      => 13,
-        par_end          => 13,
-        match            => 13,
-        comment          => 14,
-        end_match        => 14,
-        stop             => 14,
-        invalid_char     => 15,
-        delim_num        => 15,
-        max_char_code    => 15,
-        char_num         => 16,
-        math_char_num    => 17,
-        mark             => 18,
-        xray             => 19,
-        make_box         => 20,
-        hmove            => 21,
-        vmove            => 22,
-        un_hbox          => 23,
-        un_vbox          => 24,
-        remove_item      => 25,
-        hskip            => 26,
-        vskip            => 27,
-        mskip            => 28,
-        kern             => 29,
-        mkern            => 30,
-        leader_ship      => 31,
-        halign           => 32,
-        valign           => 33,
-        no_align         => 34,
-        vrule            => 35,
-        hrule            => 36,
-        insert           => 37,
-        vadjust          => 38,
-        ignore_spaces    => 39,
-        after_assignment => 40,
-        after_group      => 41,
-        break_penalty    => 42,
-        start_par        => 43,
-        ital_corr        => 44,
-        accent           => 45,
-        math_accent      => 46,
-        discretionary    => 47,
-        eq_no            => 48,
-        left_right       => 49,
-        math_comp        => 50,
-        limit_switch     => 51,
-        above            => 52,
-        math_style       => 53,
-        math_choice      => 54,
-        non_script       => 55,
-        vcenter          => 56,
-        case_shift       => 57,
-        message          => 58,
-        extension        => 59,
-        in_stream        => 60,
-        begin_group      => 61,
-        end_group        => 62,
-        omit             => 63,
-        ex_space         => 64,
-        no_boundary      => 65,
-        radical          => 66,
-        end_cs_name      => 67,
-        min_internal     => 68,
-        char_given       => 68,
-        math_given       => 69,
+
         XeTeX_math_given => 70,
         last_item        => 71,
 
@@ -263,6 +186,7 @@ sub BUILD {
         ## Region 3
         ##
         glue_base => sub { $_[0]->undefined_control_sequence + 1 },
+
         line_skip_code                => 0,
         baseline_skip_code            => 1,
         par_skip_code                 => 2,
@@ -413,8 +337,6 @@ sub BUILD {
 
         etex_int_pars => sub { $_[0]->eTeX_state_code + $_[0]->eTeX_states },
 
-#        int_pars => sub { $_[0]->etex_int_pars },
-
         count_base    => sub { $_[0]->int_base()   + $_[0]->int_pars() },
 
         #del_code_base => sub { $_[0]->count_base() + $_[0]->number_regs() },
@@ -464,27 +386,11 @@ sub BUILD {
         text_size          => 0,
         script_size        => sub { $_[0]->number_math_families() },
         script_script_size => sub { 2 * $_[0]->number_math_families() },
-        box_code      => 0,
-        copy_code     => 1,
-        last_box_code => 2,
-        vsplit_code   => 3,
-        vtop_code     => 4,
+
         mu_glue   =>  99,
         a_leaders => 100,
         c_leaders => 101,
         x_leaders => 102,
-        ##
-        show_code     => 0,
-        show_box_code => 1,
-        show_the_code => 2,
-        show_lists    => 3,
-        ##
-        fil_code     => 0,
-        fill_code    => 1,
-        ss_code      => 2,
-        fil_neg_code => 3,
-        skip_code    => 4,
-        mskip_code   => 5,
         ##
         if_char_code  =>  0,
         if_cat_code   =>  1,
@@ -503,19 +409,6 @@ sub BUILD {
         if_true_code  => 14,
         if_false_code => 15,
         if_case_code  => 16,
-        above_code     => 0,
-        over_code      => 1,
-        atop_code      => 2,
-        delimited_code => 3,
-        normal     => 0,
-        stretching => 1,
-        shrinking  => 2,
-        limits     => 1,
-        no_limits  => 2,
-        batch_mode      => 0,
-        nonstop_mode    => 1,
-        scroll_mode     => 2,
-        error_stop_mode => 3,
 
         char_def_code      => 0,
         math_char_def_code => 1,
@@ -525,43 +418,6 @@ sub BUILD {
         mu_skip_def_code   => 5,
         toks_def_code      => 6,
 
-        display_style       => 0,
-        text_style          => 2,
-        script_style        => 4,
-        script_script_style => 6,
-        cramped             => 1,
-
-        has_translation_tables => 0,
-
-        is_xetex               => 1,
-
-        has_etex               => 1,
-#        has_mltex              => 1,
-        has_enctex             => 0,
-
-        fmt_has_hyph_start     => 1,
-
-        num_sparse_arrays => 7,
-
-        number_math_families => 256,
-
-        # max_quarterword => 0xFFFF,
-        min_halfword    => -0xFFFFFFF,
-        max_halfword    => 0x3FFFFFFF,
-
-        fmem_word_length => 8,
-
-        cs_token_flag        => 0x1FFFFFF,
-
-#        biggest_char => 65535,
-        too_big_char => 65536,
-        special_char => 65537,
-        number_chars => 65537,
-
-        biggest_usv  => 0x10FFFF,
-        too_big_usv  => 0x110000,
-
-        prim_size   => 500,
         marks_code  => 5,
         middle_noad => 1,
 
@@ -751,7 +607,9 @@ sub BUILD {
 
         );
 
-    $self->set_parameters(\%params);
+    while (my ($param, $value) = each %new) {
+        $self->set_parameter($param, $value);
+    }
 
     return;
 }
@@ -1063,73 +921,74 @@ errhelp                    assign_toks err_help_loc
 XeTeXinterchartoks         assign_toks XeTeX_inter_char_loc
 everyeof                   assign_toks every_eof_loc
 
-pretolerance               assign_int int_base + pretolerance_code
-tolerance                  assign_int int_base + tolerance_code
-linepenalty                assign_int int_base + line_penalty_code
-hyphenpenalty              assign_int int_base + hyphen_penalty_code
-exhyphenpenalty            assign_int int_base + ex_hyphen_penalty_code
-clubpenalty                assign_int int_base + club_penalty_code
-widowpenalty               assign_int int_base + widow_penalty_code
-displaywidowpenalty        assign_int int_base + display_widow_penalty_code
-brokenpenalty              assign_int int_base + broken_penalty_code
-binoppenalty               assign_int int_base + bin_op_penalty_code
-relpenalty                 assign_int int_base + rel_penalty_code
-predisplaypenalty          assign_int int_base + pre_display_penalty_code
-postdisplaypenalty         assign_int int_base + post_display_penalty_code
-interlinepenalty           assign_int int_base + inter_line_penalty_code
-doublehyphendemerits       assign_int int_base + double_hyphen_demerits_code
-finalhyphendemerits        assign_int int_base + final_hyphen_demerits_code
-adjdemerits                assign_int int_base + adj_demerits_code
-mag                        assign_int int_base + mag_code
-delimiterfactor            assign_int int_base + delimiter_factor_code
-looseness                  assign_int int_base + looseness_code
-time                       assign_int int_base + time_code
-day                        assign_int int_base + day_code
-month                      assign_int int_base + month_code
-year                       assign_int int_base + year_code
-showboxbreadth             assign_int int_base + show_box_breadth_code
-showboxdepth               assign_int int_base + show_box_depth_code
-hbadness                   assign_int int_base + hbadness_code
-vbadness                   assign_int int_base + vbadness_code
-pausing                    assign_int int_base + pausing_code
-tracingonline              assign_int int_base + tracing_online_code
-tracingmacros              assign_int int_base + tracing_macros_code
-tracingstats               assign_int int_base + tracing_stats_code
-tracingparagraphs          assign_int int_base + tracing_paragraphs_code
-tracingpages               assign_int int_base + tracing_pages_code
-tracingoutput              assign_int int_base + tracing_output_code
-tracinglostchars           assign_int int_base + tracing_lost_chars_code
-tracingcommands            assign_int int_base + tracing_commands_code
-tracingrestores            assign_int int_base + tracing_restores_code
-uchyph                     assign_int int_base + uc_hyph_code
-outputpenalty              assign_int int_base + output_penalty_code
-maxdeadcycles              assign_int int_base + max_dead_cycles_code
-hangafter                  assign_int int_base + hang_after_code
-floatingpenalty            assign_int int_base + floating_penalty_code
-globaldefs                 assign_int int_base + global_defs_code
-fam                        assign_int int_base + cur_fam_code
-escapechar                 assign_int int_base + escape_char_code
-defaulthyphenchar          assign_int int_base + default_hyphen_char_code
-defaultskewchar            assign_int int_base + default_skew_char_code
-endlinechar                assign_int int_base + end_line_char_code
-newlinechar                assign_int int_base + new_line_char_code
-language                   assign_int int_base + language_code
-lefthyphenmin              assign_int int_base + left_hyphen_min_code
-righthyphenmin             assign_int int_base + right_hyphen_min_code
-holdinginserts             assign_int int_base + holding_inserts_code
-errorcontextlines          assign_int int_base + error_context_lines_code
-XeTeXlinebreakpenalty      assign_int int_base + XeTeX_linebreak_penalty_code
-XeTeXprotrudechars         assign_int int_base + XeTeX_protrude_chars_code
-tracingassigns             assign_int int_base + tracing_assigns_code
-tracinggroups              assign_int int_base + tracing_groups_code
-tracingifs                 assign_int int_base + tracing_ifs_code
-tracingscantokens          assign_int int_base + tracing_scan_tokens_code
-tracingnesting             assign_int int_base + tracing_nesting_code
-predisplaydirection        assign_int int_base + pre_display_direction_code
-lastlinefit                assign_int int_base + last_line_fit_code
-savingvdiscards            assign_int int_base + saving_vdiscards_code
-savinghyphcodes            assign_int int_base + saving_hyph_codes_code
-suppressfontnotfounderror  assign_int int_base + suppress_fontnotfound_error_code
+pretolerance               assign_int pretolerance_code
+tolerance                  assign_int tolerance_code
+linepenalty                assign_int line_penalty_code
+hyphenpenalty              assign_int hyphen_penalty_code
+exhyphenpenalty            assign_int ex_hyphen_penalty_code
+clubpenalty                assign_int club_penalty_code
+widowpenalty               assign_int widow_penalty_code
+displaywidowpenalty        assign_int display_widow_penalty_code
+brokenpenalty              assign_int broken_penalty_code
+binoppenalty               assign_int bin_op_penalty_code
+relpenalty                 assign_int rel_penalty_code
+predisplaypenalty          assign_int pre_display_penalty_code
+postdisplaypenalty         assign_int post_display_penalty_code
+interlinepenalty           assign_int inter_line_penalty_code
+doublehyphendemerits       assign_int double_hyphen_demerits_code
+finalhyphendemerits        assign_int final_hyphen_demerits_code
+adjdemerits                assign_int adj_demerits_code
+mag                        assign_int mag_code
+delimiterfactor            assign_int delimiter_factor_code
+looseness                  assign_int looseness_code
+time                       assign_int time_code
+day                        assign_int day_code
+month                      assign_int month_code
+year                       assign_int year_code
+showboxbreadth             assign_int show_box_breadth_code
+showboxdepth               assign_int show_box_depth_code
+hbadness                   assign_int hbadness_code
+vbadness                   assign_int vbadness_code
+pausing                    assign_int pausing_code
+tracingonline              assign_int tracing_online_code
+tracingmacros              assign_int tracing_macros_code
+tracingstats               assign_int tracing_stats_code
+tracingparagraphs          assign_int tracing_paragraphs_code
+tracingpages               assign_int tracing_pages_code
+tracingoutput              assign_int tracing_output_code
+tracinglostchars           assign_int tracing_lost_chars_code
+tracingcommands            assign_int tracing_commands_code
+tracingrestores            assign_int tracing_restores_code
+uchyph                     assign_int uc_hyph_code
+outputpenalty              assign_int output_penalty_code
+maxdeadcycles              assign_int max_dead_cycles_code
+hangafter                  assign_int hang_after_code
+floatingpenalty            assign_int floating_penalty_code
+globaldefs                 assign_int global_defs_code
+fam                        assign_int cur_fam_code
+escapechar                 assign_int escape_char_code
+defaulthyphenchar          assign_int default_hyphen_char_code
+defaultskewchar            assign_int default_skew_char_code
+endlinechar                assign_int end_line_char_code
+newlinechar                assign_int new_line_char_code
+language                   assign_int language_code
+lefthyphenmin              assign_int left_hyphen_min_code
+righthyphenmin             assign_int right_hyphen_min_code
+holdinginserts             assign_int holding_inserts_code
+errorcontextlines          assign_int error_context_lines_code
+XeTeXlinebreakpenalty      assign_int XeTeX_linebreak_penalty_code
+XeTeXprotrudechars         assign_int XeTeX_protrude_chars_code
+tracingassigns             assign_int tracing_assigns_code
+tracinggroups              assign_int tracing_groups_code
+tracingifs                 assign_int tracing_ifs_code
+tracingscantokens          assign_int tracing_scan_tokens_code
+tracingnesting             assign_int tracing_nesting_code
+predisplaydirection        assign_int pre_display_direction_code
+lastlinefit                assign_int last_line_fit_code
+savingvdiscards            assign_int saving_vdiscards_code
+savinghyphcodes            assign_int saving_hyph_codes_code
+suppressfontnotfounderror  assign_int suppress_fontnotfound_error_code
+
 TeXXeTstate                assign_int eTeX_state_base + TeXXeT_code
 XeTeXupwardsmode           assign_int eTeX_state_base + XeTeX_upwards_code
 XeTeXuseglyphmetrics       assign_int eTeX_state_base + XeTeX_use_glyph_metrics_code
@@ -1141,50 +1000,50 @@ XeTeXinterwordspaceshaping assign_int eTeX_state_base + XeTeX_interword_space_sh
 XeTeXgenerateactualtext    assign_int eTeX_state_base + XeTeX_generate_actual_text_code
 XeTeXhyphenatablelength    assign_int eTeX_state_base + XeTeX_hyphenatable_length_code
 
-parindent          assign_dimen dimen_base + par_indent_code
-mathsurround       assign_dimen dimen_base + math_surround_code
-lineskiplimit      assign_dimen dimen_base + line_skip_limit_code
-hsize              assign_dimen dimen_base + hsize_code
-vsize              assign_dimen dimen_base + vsize_code
-maxdepth           assign_dimen dimen_base + max_depth_code
-splitmaxdepth      assign_dimen dimen_base + split_max_depth_code
-boxmaxdepth        assign_dimen dimen_base + box_max_depth_code
-hfuzz              assign_dimen dimen_base + hfuzz_code
-vfuzz              assign_dimen dimen_base + vfuzz_code
-delimitershortfall assign_dimen dimen_base + delimiter_shortfall_code
-nulldelimiterspace assign_dimen dimen_base + null_delimiter_space_code
-scriptspace        assign_dimen dimen_base + script_space_code
-predisplaysize     assign_dimen dimen_base + pre_display_size_code
-displaywidth       assign_dimen dimen_base + display_width_code
-displayindent      assign_dimen dimen_base + display_indent_code
-overfullrule       assign_dimen dimen_base + overfull_rule_code
-hangindent         assign_dimen dimen_base + hang_indent_code
-hoffset            assign_dimen dimen_base + h_offset_code
-voffset            assign_dimen dimen_base + v_offset_code
-emergencystretch   assign_dimen dimen_base + emergency_stretch_code
-pdfpagewidth       assign_dimen dimen_base + pdf_page_width_code
-pdfpageheight      assign_dimen dimen_base + pdf_page_height_code
+parindent          assign_dimen par_indent_code
+mathsurround       assign_dimen math_surround_code
+lineskiplimit      assign_dimen line_skip_limit_code
+hsize              assign_dimen hsize_code
+vsize              assign_dimen vsize_code
+maxdepth           assign_dimen max_depth_code
+splitmaxdepth      assign_dimen split_max_depth_code
+boxmaxdepth        assign_dimen box_max_depth_code
+hfuzz              assign_dimen hfuzz_code
+vfuzz              assign_dimen vfuzz_code
+delimitershortfall assign_dimen delimiter_shortfall_code
+nulldelimiterspace assign_dimen null_delimiter_space_code
+scriptspace        assign_dimen script_space_code
+predisplaysize     assign_dimen pre_display_size_code
+displaywidth       assign_dimen display_width_code
+displayindent      assign_dimen display_indent_code
+overfullrule       assign_dimen overfull_rule_code
+hangindent         assign_dimen hang_indent_code
+hoffset            assign_dimen h_offset_code
+voffset            assign_dimen v_offset_code
+emergencystretch   assign_dimen emergency_stretch_code
+pdfpagewidth       assign_dimen pdf_page_width_code
+pdfpageheight      assign_dimen pdf_page_height_code
 
-lineskip                   assign_glue glue_base + line_skip_code
-baselineskip               assign_glue glue_base + baseline_skip_code
-parskip                    assign_glue glue_base + par_skip_code
-abovedisplayskip           assign_glue glue_base + above_display_skip_code
-belowdisplayskip           assign_glue glue_base + below_display_skip_code
-abovedisplayshortskip      assign_glue glue_base + above_display_short_skip_code
-belowdisplayshortskip      assign_glue glue_base + below_display_short_skip_code
-leftskip                   assign_glue glue_base + left_skip_code
-rightskip                  assign_glue glue_base + right_skip_code
-topskip                    assign_glue glue_base + top_skip_code
-splittopskip               assign_glue glue_base + split_top_skip_code
-tabskip                    assign_glue glue_base + tab_skip_code
-spaceskip                  assign_glue glue_base + space_skip_code
-xspaceskip                 assign_glue glue_base + xspace_skip_code
-parfillskip                assign_glue glue_base + par_fill_skip_code
-XeTeXlinebreakskip         assign_glue glue_base + XeTeX_linebreak_skip_code
+lineskip                   assign_glue line_skip_code
+baselineskip               assign_glue baseline_skip_code
+parskip                    assign_glue par_skip_code
+abovedisplayskip           assign_glue above_display_skip_code
+belowdisplayskip           assign_glue below_display_skip_code
+abovedisplayshortskip      assign_glue above_display_short_skip_code
+belowdisplayshortskip      assign_glue below_display_short_skip_code
+leftskip                   assign_glue left_skip_code
+rightskip                  assign_glue right_skip_code
+topskip                    assign_glue top_skip_code
+splittopskip               assign_glue split_top_skip_code
+tabskip                    assign_glue tab_skip_code
+spaceskip                  assign_glue space_skip_code
+xspaceskip                 assign_glue xspace_skip_code
+parfillskip                assign_glue par_fill_skip_code
+XeTeXlinebreakskip         assign_glue XeTeX_linebreak_skip_code
 
-thinmuskip                 assign_mu_glue glue_base + thin_mu_skip_code
-medmuskip                  assign_mu_glue glue_base + med_mu_skip_code
-thickmuskip                assign_mu_glue glue_base + thick_mu_skip_code
+thinmuskip                 assign_mu_glue thin_mu_skip_code
+medmuskip                  assign_mu_glue med_mu_skip_code
+thickmuskip                assign_mu_glue thick_mu_skip_code
 
 fontdimen          assign_font_dimen
 
@@ -1215,7 +1074,7 @@ wd set_box_dimen width_offset
 ht set_box_dimen height_offset
 dp set_box_dimen depth_offset
 
-parshape           set_shape par_shape_loc
+parshape              set_shape par_shape_loc
 interlinepenalties    set_shape inter_line_penalties_loc
 clubpenalties         set_shape club_penalties_loc
 widowpenalties        set_shape widow_penalties_loc
@@ -1246,10 +1105,10 @@ nullfont set_font null_font
 
 font               def_font
 
-count  register mem_bot + int_val
-dimen  register mem_bot + dimen_val
-skip   register mem_bot + glue_val
-muskip register mem_bot + mu_val
+count  register int_val
+dimen  register dimen_val
+skip   register glue_val
+muskip register mu_val
 
 advance            advance
 

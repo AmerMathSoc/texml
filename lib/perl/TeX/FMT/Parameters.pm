@@ -84,27 +84,28 @@ sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
     my %params = (
+        is_xetex               => 0,
+        is_luatex              => 0,
+
         has_translation_tables => 1,
         has_etex               => 0,
         has_mltex              => 1,
         has_enctex             => 1,
-        
-        is_xetex               => 0,
-        is_luatex              => 0,
 
         prim_size              => 0,
+
+        num_sparse_arrays      => 0,
 
         fmt_has_hyph_start     => 0,
 
         fmem_word_length       => 4,
 
-        cs_token_flag        => 0xFFF,
+        cs_token_flag          => 0xFFF,
 
         min_quarterword      => 0,
-        min_halfword         => -0xFFFFFFF,
-        max_halfword         => 0xfffffff,
 
-        null_ptr             => sub { $_[0]->min_halfword },
+        min_halfword         => -0xFFFFFFF,
+        max_halfword         =>  0xFFFFFFF,
 
         mem_bot              => 0,
         max_font_max         => 9000,
@@ -113,16 +114,19 @@ sub BUILD {
         hash_prime           => 8501,
         hyph_prime           => 607,
         hyph_size            => 659,
+
         first_text_char      => 0,
         biggest_char         => 255,
         biggest_usv          => 255,
         biggest_reg          => 255,
+
         number_math_families => 16,
         ##
         ## Derived parameters
         ##
-        mem_min           => sub { $_[0]->mem_bot() },
+        null_ptr          => sub { $_[0]->min_halfword },
         null              => sub { $_[0]->min_halfword() },
+        mem_min           => sub { $_[0]->mem_bot() },
         last_text_char    => sub { $_[0]->biggest_char() },
         number_usvs       => sub { $_[0]->biggest_usv() + 1 },
         number_regs       => sub { $_[0]->biggest_reg() + 1 },
@@ -173,6 +177,31 @@ sub BUILD {
         acc_kern      => 2,
         penalty_node  => 12,
         # unset_node    => 13,
+        ord_noad      => 16,
+        op_noad       => 17,
+        bin_noad      => 18,
+        rel_noad      => 19,
+        open_noad     => 20,
+        close_noad    => 21,
+        punct_noad    => 22,
+        inner_noad    => 23,
+        #* radical_noad  => 24,
+        #* fraction_noad => 25,
+        under_noad    => 26,
+        over_noad     => 27,
+        #* accent_noad   => 28,
+        #* vcenter_noad  => 29,
+        left_noad     => 30,
+        right_noad    => 31,
+        ## CONVERT TYPES
+        ##
+        number_code        => 0,
+        roman_numeral_code => 1,
+        string_code        => 2,
+        meaning_code       => 3,
+        font_name_code     => 4,
+        job_name_code      => 5,
+        ##
         ##
         ## SPECIAL NODE TYPES
         ##
@@ -189,6 +218,131 @@ sub BUILD {
         fi_code   => 2,
         else_code => 3,
         or_code   => 4,
+
+        box_code      => 0,
+        copy_code     => 1,
+        last_box_code => 2,
+        vsplit_code   => 3,
+        vtop_code     => 4,
+        mu_glue   =>  99,
+        a_leaders => 100,
+        c_leaders => 101,
+        x_leaders => 102,
+        ##
+        show_code     => 0,
+        show_box_code => 1,
+        show_the_code => 2,
+        show_lists    => 3,
+        ##
+        fil_code     => 0,
+        fill_code    => 1,
+        ss_code      => 2,
+        fil_neg_code => 3,
+        skip_code    => 4,
+        mskip_code   => 5,
+        above_code     => 0,
+        over_code      => 1,
+        atop_code      => 2,
+        delimited_code => 3,
+        normal     => 0,
+        stretching => 1,
+        shrinking  => 2,
+        limits     => 1,
+        no_limits  => 2,
+        batch_mode      => 0,
+        nonstop_mode    => 1,
+        scroll_mode     => 2,
+        error_stop_mode => 3,
+
+        display_style       => 0,
+        text_style          => 2,
+        script_style        => 4,
+        script_script_style => 6,
+        cramped             => 1,
+
+        ##
+        ## COMMAND CODES (CMD/EQ_TYPE/CUR_CMD)
+        ##
+        escape           => 0,
+        relax            => 0,
+        left_brace       => 1,
+        right_brace      => 2,
+        math_shift       => 3,
+        tab_mark         => 4,
+        car_ret          => 5,
+        out_param        => 5,
+        mac_param        => 6,
+        sup_mark         => 7,
+        sub_mark         => 8,
+        ignore           => 9,
+        endv             => 9,
+        spacer           => 10,
+        letter           => 11,
+        other_char       => 12,
+        active_char      => 13,
+        par_end          => 13,
+        match            => 13,
+        comment          => 14,
+        end_match        => 14,
+        stop             => 14,
+        invalid_char     => 15,
+        delim_num        => 15,
+        max_char_code    => 15,
+        char_num         => 16,
+        math_char_num    => 17,
+        mark             => 18,
+        xray             => 19,
+        make_box         => 20,
+        hmove            => 21,
+        vmove            => 22,
+        un_hbox          => 23,
+        un_vbox          => 24,
+        remove_item      => 25,
+        hskip            => 26,
+        vskip            => 27,
+        mskip            => 28,
+        kern             => 29,
+        mkern            => 30,
+        leader_ship      => 31,
+        halign           => 32,
+        valign           => 33,
+        no_align         => 34,
+        vrule            => 35,
+        hrule            => 36,
+        insert           => 37,
+        vadjust          => 38,
+        ignore_spaces    => 39,
+        after_assignment => 40,
+        after_group      => 41,
+        break_penalty    => 42,
+        start_par        => 43,
+        ital_corr        => 44,
+        accent           => 45,
+        math_accent      => 46,
+        discretionary    => 47,
+        eq_no            => 48,
+        left_right       => 49,
+        math_comp        => 50,
+        limit_switch     => 51,
+        above            => 52,
+        math_style       => 53,
+        math_choice      => 54,
+        non_script       => 55,
+        vcenter          => 56,
+        case_shift       => 57,
+        message          => 58,
+        extension        => 59,
+        in_stream        => 60,
+        begin_group      => 61,
+        end_group        => 62,
+        omit             => 63,
+        ex_space         => 64,
+        no_boundary      => 65,
+        radical          => 66,
+        end_cs_name      => 67,
+        min_internal     => 68,
+        char_given       => 68,
+        math_given       => 69,
 
         );
 
@@ -218,12 +372,12 @@ sub START {
 
     $self->make_cmd_handler(endv => sub { (endv => "end of alignment template") });
 
-    $self->make_cmd_handler(assign_glue =>    \&print_glue_assignment);
+    $self->make_cmd_handler(assign_glue    => \&print_glue_assignment);
     $self->make_cmd_handler(assign_mu_glue => \&print_glue_assignment);
-    $self->make_cmd_handler(assign_toks =>    \&print_toks_register);
-    $self->make_cmd_handler(assign_int =>     \&print_int_param);
-    $self->make_cmd_handler(assign_dimen =>   \&print_dimen_param);
-    $self->make_cmd_handler(set_font     =>   \&print_font_spec);
+    $self->make_cmd_handler(assign_toks    => \&print_toks_register);
+    $self->make_cmd_handler(assign_int     => \&print_int_param);
+    $self->make_cmd_handler(assign_dimen   => \&print_dimen_param);
+    $self->make_cmd_handler(set_font       => \&print_font_spec);
 
     $self->make_cmd_handler(tab_mark => sub {
         my $chr_code = shift;
@@ -378,6 +532,10 @@ sub print_cmd_chr {
         } else {
             return print_esc('mathchar');
         }
+    }
+
+    if ($type =~ m{^assign_((mu_)?glue|toks|int|dimen|font)}) {
+        return print_esc($subtype);
     }
 
     if ($REGISTER{$type}) {

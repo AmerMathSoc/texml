@@ -14,6 +14,8 @@ pdftex: pdftex.fmt pdftex.initest pdftex_load
 
 xetex: xetex.fmt xetex.initest xetex_load
 
+luatex: luatex.fmt luatex.initest luatex_load
+
 fmt: tex.fmt pdftex.fmt xetex.fmt luatex.fmt
 
 initest: tex.initest pdftex.initest xetex.initest luatex.initest
