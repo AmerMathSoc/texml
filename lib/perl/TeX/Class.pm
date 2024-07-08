@@ -1,6 +1,6 @@
 package TeX::Class;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -993,6 +993,10 @@ sub __declare_HASH( $$$ ) {
                     unless @_ == 3;
 
                 my ($self, $key, $value) = @_;
+
+                if (! defined $key) {
+                    carp "Undefined key in ${package}::${setter}";
+                }
 
                 if ($trace & TRACE_SET) {
                     carp "*** SET: ${package}::set_${name}(\"$key\") = '$value'";
