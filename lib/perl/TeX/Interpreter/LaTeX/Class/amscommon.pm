@@ -1454,6 +1454,7 @@ __DATA__
     \texml@inlist@hack@start
     \startXMLelement{disp-quote}%
     \setXMLattribute{content-type}{\@currenvir}%
+    \xmlpartag{p}%
 }{%
     \par
     \endXMLelement{disp-quote}%
@@ -1469,6 +1470,7 @@ __DATA__
     \texml@inlist@hack@start
     \def\\{\emptyXMLelement{break}}%
     \startXMLelement{verse-group}%
+    \xmlpartag{p}%
 }{%
     \par
     \endXMLelement{verse-group}%
