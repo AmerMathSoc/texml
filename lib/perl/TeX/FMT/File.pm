@@ -69,15 +69,11 @@ my %xord         :ATTR(:get<xord> :set<xord>);
 my %xchr         :ATTR(:get<xchr> :set<xchr>);
 my %xprn         :ATTR(:get<xprn> :set<xprn>);
 
-my %max_halfword :ATTR(:get<max_halfword> :set<max_halfword>);
 my %hash_high    :ATTR(:get<hash_high>    :set<hash_high>);
 my %hash_used    :ATTR(:get<hash_used>    :set<hash_used>);
-my %mem_bot      :ATTR(:get<mem_bot>      :set<mem_bot>);
 my %mem_top      :ATTR(:get<mem_top>      :set<mem_top>);
 my %eqtb_size    :ATTR(:get<eqtb_size>    :set<eqtb_size>);
-my %hash_prime   :ATTR(:get<hash_prime>   :set<hash_prime>);
 
-my %hyph_prime   :ATTR(:get<hyph_prime>   :set<hyph_prime>);
 my %hyph_count   :ATTR(:get<hyph_count>   :set<hyph_count>);
 my %hyph_next    :ATTR(:get<hyph_next>    :set<hyph_next>);
 
@@ -145,8 +141,6 @@ use constant {
     IMAGE_TYPE_JBIG2 => 5,
 };
 
-sub __debug {}# print STDERR "*** ", @_, "\n" }
-
 ######################################################################
 ##                                                                  ##
 ##                           CONSTRUCTOR                            ##
@@ -173,13 +167,15 @@ sub BUILD {
 ##                                                                  ##
 ######################################################################
 
+sub __debug {} # print STDERR "*** ", @_, "\n" }
+
 sub __check( $$$ ) {
     my $name     = shift;
     my $expected = shift;
     my $found    = shift;
 
     if ($expected != $found) {
-        warn "Bad $name: Expected $expected, got $found\n";
+        croak "Bad $name: Expected $expected, got $found\n";
     }
 
     return;
@@ -191,95 +187,7 @@ sub __check( $$$ ) {
 ##                                                                  ##
 ######################################################################
 
-sub get_font {
-    my $self = shift;
-
-    my $fnt_num = shift;
-
-    my $font_map = $self->get_font_map();
-
-    if (! exists $font_map->[$fnt_num]) {
-        my $font_name = $self->get_font_name($fnt_num);
-        my $font_size = $self->get_font_size($fnt_num);
-
-        $font_map->[$fnt_num] = load_font($font_name, $font_size);
-    }
-
-    return $font_map->[$fnt_num];
-}
-
-sub get_string {
-    my $self = shift;
-    my $num  = shift;
-
-    return $self->get_strings()->[$num];
-}
-
-sub list_strings {
-    my $self = shift;
-
-    my @strings = @{ $strings{ident $self} };
-
-    print "\nSTRING POOL:\n\n";
-
-    for (my $i = 0; $i < @strings; $i++) {
-        if (defined $strings[$i]) {
-            print "string($i) = '$strings[$i]'\n";
-        }
-    }
-
-    print "\n";
-
-    return;
-}
-
-sub read_memory_word {
-    my $self = shift;
-
-    my $record = $self->read_bytes(MEM_WORD_LENGTH);
-
-    return TeX::FMT::MemoryWord->new( { record => $record } );
-}
-
-sub read_smemory_word {
-    my $self = shift;
-
-    my $record = $self->read_bytes(SMEM_WORD_LENGTH);
-
-    return TeX::FMT::MemoryWord->new( { record => $record } );
-}
-
-sub read_memory_words {
-    my $self = shift;
-
-    my $n = shift;
-
-    my @words;
-
-    $#words = $n - 1;
-
-    for my $i (0..$n-1) {
-        $words[$i] = $self->read_memory_word();
-    }
-
-    return @words;
-}
-
-sub read_fmemory_words {
-    my $self = shift;
-
-    my $n = shift;
-
-    my @words;
-
-    $#words = $n - 1;
-
-    for my $i (0..$n-1) {
-        $words[$i] = $self->read_bytes($self->fmem_word_length());
-    }
-
-    return @words;
-}
+## Arguably these should be in TeX::BinaryFile, but they are only used here.
 
 sub read_integer {
     my $self = shift;
@@ -287,14 +195,19 @@ sub read_integer {
     return $self->read_signed(BYTES_PER_INT);
 }
 
-sub peek_integer {
+sub read_integers {
     my $self = shift;
 
-    my $int = $self->read_signed(BYTES_PER_INT);
+    my $n = shift;
 
-    $self->seek(-BYTES_PER_INT, SEEK_CUR);
+    my @ints;
+    $#ints = $n - 1;
 
-    return $int;
+    for my $i (0..$n-1) {
+        $ints[$i] = $self->read_integer();
+    }
+
+    return @ints;
 }
 
 sub read_checksum {
@@ -327,21 +240,6 @@ sub read_small_numbers {
 
     for my $i (0..$n-1) {
         $ints[$i] = $self->read_smallnumber();
-    }
-
-    return @ints;
-}
-
-sub read_integers {
-    my $self = shift;
-
-    my $n = shift;
-
-    my @ints;
-    $#ints = $n - 1;
-
-    for my $i (0..$n-1) {
-        $ints[$i] = $self->read_integer();
     }
 
     return @ints;
@@ -404,28 +302,372 @@ sub read_unsigned_chars {
     return @chars;
 }
 
-sub read_signed_chars {
+sub read_memory_word {
+    my $self = shift;
+
+    my $record = $self->read_bytes(MEM_WORD_LENGTH);
+
+    return TeX::FMT::MemoryWord->new( { record => $record } );
+}
+
+sub read_smemory_word {
+    my $self = shift;
+
+    my $record = $self->read_bytes(SMEM_WORD_LENGTH);
+
+    return TeX::FMT::MemoryWord->new( { record => $record } );
+}
+
+sub read_fmemory_words {
     my $self = shift;
 
     my $n = shift;
 
-    my @chars;
-    $#chars = $n - 1;
+    my @words;
+
+    $#words = $n - 1;
 
     for my $i (0..$n-1) {
-        $chars[$i] = $self->read_signed(1);
+        $words[$i] = $self->read_bytes($self->fmem_word_length());
     }
 
-    return @chars;
+    return @words;
 }
 
-sub read_hh {
+######################################################################
+##                                                                  ##
+##                            ACCESSORS                             ##
+##                                                                  ##
+######################################################################
+
+sub get_font {
     my $self = shift;
 
-    my $record = $self->read_bytes(BYTES_PER_INT);
+    my $fnt_num = shift;
 
-    return TeX::FMT::MemoryWord->new( { record => $record } );
+    my $font_map = $self->get_font_map();
+
+    if (! exists $font_map->[$fnt_num]) {
+        my $font_name = $self->get_font_name($fnt_num);
+        my $font_size = $self->get_font_size($fnt_num);
+
+        $font_map->[$fnt_num] = load_font($font_name, $font_size);
+    }
+
+    return $font_map->[$fnt_num];
 }
+
+sub get_string {
+    my $self = shift;
+    my $num  = shift;
+
+    return $self->get_strings()->[$num];
+}
+
+sub list_strings {
+    my $self = shift;
+
+    my @strings = @{ $strings{ident $self} };
+
+    print "\nSTRING POOL:\n\n";
+
+    for (my $i = 0; $i < @strings; $i++) {
+        if (defined $strings[$i]) {
+            print "string($i) = '$strings[$i]'\n";
+        }
+    }
+
+    print "\n";
+
+    return;
+}
+
+sub slow_print( $ ) {
+    my $string = shift;
+
+    return join '', map { print_char_code(ord($_)) } split //, $string;
+}
+
+sub show_meaning {
+    my $self = shift;
+
+    my $csname  = shift;
+    my $verbose = shift;
+
+    my $params = $self->get_params();
+
+    my $hash = $self->get_hash();
+
+    my $eqtb_ptr;
+
+    if (length($csname) == 1) {
+        $eqtb_ptr = $params->single_base() + ord($csname);
+    } elsif ($eqtb_ptr = $hash->lookup($csname)) {
+        ## no-op
+    } else {
+        # $LOG->verbose(print_esc(slow_print($csname)) . ": **UNDEFINED**\n\n");
+
+        # return unless $verbose;
+    }
+
+    print print_esc(slow_print($csname)) . ": ";
+
+    if (defined $eqtb_ptr) {
+        my $eq_type = $self->get_eqtb()->get_word($eqtb_ptr)->get_eq_type();
+
+        $self->show_eqtb_entry($eqtb_ptr);
+    } else {
+        print print_esc('undefined'), "\n";
+    }
+
+    return;
+}
+
+sub show_active_char {
+    my $self = shift;
+    my $eqtb_ptr = shift;
+
+    print print_char_code($eqtb_ptr - 1) . ": ";
+
+    $self->show_eqtb_entry($eqtb_ptr);
+
+    return;
+}
+
+sub show_eqtb_entry {
+    my $self = shift;
+
+    my $params = $self->get_params();
+
+    my $eqtb_ptr = shift;
+
+    my $eqtb = $self->get_eqtb();
+    my $mem  = $self->get_mem();
+
+    my $entry = $eqtb->get_word($eqtb_ptr);
+
+    my $eq_type  = $entry->get_eq_type();
+    my $eq_level = $entry->get_eq_level();
+    my $equiv    = $entry->get_equiv();
+
+    if ($eq_type == $params->set_font()) {
+        $self->show_font_def($equiv);
+    } else {
+        my $meaning = $params->print_cmd_chr($eq_type, $equiv);
+
+        if (! defined $meaning) {
+            print "UNKNOWN: eq_type=$eq_type, equiv=$equiv";
+        } else {
+            print $meaning;
+        }
+
+        if ($params->call() <= $eq_type && $eq_type <= $params->long_outer_call()) {
+            print ":";
+            $mem->show_token_list($self, $equiv);
+        } else {
+            #$LOG->notify(" (primitive)");
+        }
+    }
+
+    print "\n\n";
+
+    return;
+}
+
+sub get_font_name {
+    my $self = shift;
+
+    my $fnt_num = shift;
+
+    return $self->get_string($self->get_font_names()->[$fnt_num]);
+}
+
+sub get_font_size {
+    my $self = shift;
+
+    my $fnt_num = shift;
+
+    return $self->get_font_sizes()->[$fnt_num];
+}
+
+sub get_font_dsize {
+    my $self = shift;
+
+    my $fnt_num = shift;
+
+    return $self->get_font_dsizes()->[$fnt_num];
+}
+
+sub show_font_def {
+    my $self = shift;
+    my $fnt_num = shift;
+
+    print "select font ";
+
+    print slow_print($self->get_string($self->get_font_names()->[$fnt_num]));
+
+    my $size  = $self->get_font_size($fnt_num);
+    my $dsize = $self->get_font_dsize($fnt_num);
+
+    if ($size != $dsize) {
+        print " at ", scaled_to_string($size), "pt";
+    }
+
+    return;
+}
+
+sub get_equiv {
+    my $self = shift;
+    my $ptr = shift;
+
+    return $self->get_eqtb()->get_equiv($ptr);
+}
+
+sub show_node_list {
+    my $self = shift;
+    my $ptr = shift;
+
+    return $self->get_mem()->show_node_list($ptr);
+}
+
+sub show_box {
+    my $self = shift;
+
+    my $index = shift;
+
+    if ($index < 0 || $index > 255) {
+        croak "Invalid box register: $index";
+    }
+
+    my $params = $self->get_params();
+
+    my $ptr = $self->get_equiv($params->box_base() + $index);
+
+    if ($ptr == $params->null()) {
+        print "\\box${index}=void\n";
+    } else {
+        print "\\box${index}=";
+        $self->show_node_list($ptr);
+    }
+
+    return;
+}
+
+sub extract_box_register {
+    my $self = shift;
+
+    my $index = shift;
+
+__debug "*** extract_box_register($index)";
+
+    my $params = $self->get_params();
+
+    if ($index < 0 || $index > 255) {
+        croak "Invalid box register: $index";
+    }
+
+    my $ptr = $self->get_equiv($params->box_base() + $index);
+
+    if ($ptr == $params->null()) {
+        return;
+    }
+
+    my $node_list = $self->get_mem()->extract_node_list($ptr);
+
+    return $node_list;
+}
+
+sub debug {
+    my $self = shift;
+
+    print "TeX engine: ", $self->get_engine() || '???', "\n";
+    print "magic number = ", $self->get_magic_number(), "\n";
+    print "string pool checksum = ", $self->get_string_pool_checksum(), "\n";
+
+    # print "mltex_p      = ", $self->get_mltex_p(), "\n";
+    # print "enctex_p     = ", $self->get_enctex_p(), "\n";
+
+    print "hash_high    = ", $self->get_hash_high(), "\n";
+    print "mem_top      = ", $self->get_mem_top(), "\n";
+    print "eqtb_size    = ", $self->get_eqtb_size(), "\n";
+    print "hyph_count   = ", $self->get_hyph_count(), "\n";
+    print "hyph_next    = ", $self->get_hyph_next(), "\n";
+    print "hash_used    = ", $self->get_hash_used(), "\n";
+
+    print "string_pool_size = ", $self->get_string_pool_size(), "\n";
+    print "max_strings      = ", $self->get_max_strings(), "\n";
+
+    print "lo_mem_max   = ", $self->get_lo_mem_max(), "\n";
+    print "hi_mem_min   = ", $self->get_hi_mem_min(), "\n";
+
+    print "var_used     = ", $self->get_var_used(), "\n";
+#    print "dyn_used     = ", $self->get_dyn_used(), "\n";
+
+    print "fmem_ptr     = ", $self->get_fmem_ptr(), "\n";
+    print "font_ptr     = ", $self->get_font_ptr(), "\n";
+
+    print "cs_count     = ", $self->get_cs_count(), "\n";
+
+    print "rover        = ", $self->get_rover(), "\n";
+    print "avail        = ", $self->get_avail(), "\n";
+
+    my $str_number = $self->get_format_ident();
+
+    print "format_ident = ", $self->get_string($str_number), "\n";
+    print "interaction  = ", $self->get_interaction_level(), "\n";
+
+    # eval { $self->show_meaning("rlap") };
+    #
+    # if ($@) {
+    #     print "show_meaning error: $@\n";
+    # }
+    #
+    # eval { $self->show_meaning("sum") };
+    #
+    # if ($@) {
+    #     print "show_meaning error: $@\n";
+    # }
+
+    ##  print "XORD:\n";
+    ##
+    ##  my @xord = @{ $self->get_xord() };
+    ##
+    ##  for (my $i = 0; $i < @xord; $i++) {
+    ##      print "\t$i: $xord[$i]\n";
+    ##  }
+
+    ##  print "XCHR:\n";
+    ##
+    ##  my @xchr = @{ $self->get_xchr() };
+    ##
+    ##  for (my $i = 0; $i < @xchr; $i++) {
+    ##      print "\t$i: $xchr[$i]\n";
+    ##  }
+
+    ##  print "XPRN:\n";
+    ##
+    ##  my @xprn = @{ $self->get_xprn() };
+    ##
+    ##  for (my $i = 0; $i < @xprn; $i++) {
+    ##      print "\t$i: $xprn[$i]\n";
+    ##  }
+
+    ## print "STRINGS:\n";
+    ##
+    ## my @strings = @{ $self->get_strings() };
+    ##
+    ## for (my $i = 0; $i < @strings; $i++) {
+    ##     print "\t$i: $strings[$i]\n";
+    ## }
+
+    return;
+}
+
+######################################################################
+##                                                                  ##
+##                       READING THE FMT FILE                       ##
+##                                                                  ##
+######################################################################
 
 sub load {
     my $self = shift;
@@ -560,8 +802,6 @@ sub load_constants {
 
     __check "max_halfword", $params->max_halfword(), $max_halfword;
 
-    $self->set_max_halfword($max_halfword);
-
     my $hash_high = $self->read_integer();
 
     __debug "hash_high = $hash_high";
@@ -576,8 +816,6 @@ sub load_constants {
         __debug "mem_bot = $mem_bot";
 
         __check "mem_bot", $params->mem_bot(), $mem_bot;
-
-        $self->set_mem_bot($mem_bot);
 
         my $mem_top = $self->read_integer();
 
@@ -599,16 +837,12 @@ sub load_constants {
 
     __check "hash_prime", $params->hash_prime(), $hash_prime;
 
-    $self->set_hash_prime($hash_prime);
-
     if (! $self->is_luatex()) {
         my $hyph_prime = $self->read_integer();
 
         __debug "hyph_prime = $hyph_prime";
 
         __check "hyph_prime", $params->hyph_prime(), $hyph_prime;
-
-        $self->set_hyph_prime($hyph_prime);
     }
 
     return;
@@ -719,32 +953,6 @@ sub load_string_pool {
     return;
 }
 
-sub load_luatex_string_pool {
-    my $self = shift;
-
-    __debug "Loading LuaTeX string pool";
-
-    my $str_ptr = $self->read_integer();
-
-    __debug "str_ptr = $str_ptr";
-
-    my @string;
-
-    for (my $j = 1; $j < $str_ptr; $j++) {
-        my $len = $self->read_integer();
-
-        if ($len >= 0) {
-            $string[$j] = $self->read_string($len);
-
-            __debug "string[$j] = '$string[$j]'";
-        }
-    }
-
-    $self->set_strings(\@string);
-
-    return;
-}
-
 sub load_dynamic_memory {
     my $self = shift;
 
@@ -777,7 +985,7 @@ sub load_dynamic_memory {
         }
     }
 
-    my $p = $self->get_mem_bot();
+    my $p = $self->mem_bot();
     my $q = $rover;
 
     do {
@@ -829,92 +1037,6 @@ sub load_dynamic_memory {
 
     $self->set_var_used($var_used);
     $self->set_dyn_used($dyn_used);
-
-    return;
-}
-
-sub load_luatex_memory {
-    my $self = shift;
-
-    __debug "Loading LuaTeX dynamic memory";
-
-    $self->undump_node_mem();
-
-    my $temp_token_head = $self->read_integer();
-    my $hold_token_head = $self->read_integer();
-    my $omit_template   = $self->read_integer();
-    my $null_list       = $self->read_integer();
-    my $backup_head     = $self->read_integer();
-    my $garbage         = $self->read_integer();
-
-    my $fix_mem_min = $self->read_integer();
-    my $fix_mem_max = $self->read_integer();
-
-    __debug "fix_mem_min = $fix_mem_min";
-    __debug "fix_mem_max = $fix_mem_max";
-
-    my @fixmem; # = (0) x ($fix_mem_max + 1);
-
-    my $fix_mem_end = $self->read_integer();
-
-    __debug "fix_mem_end = $fix_mem_end";
-
-    my $avail = $self->read_integer();
-
-    __debug "avail = $avail";
-
-    for (my $i = 0; $i < $fix_mem_end - $fix_mem_min + 1; $i++) {
-        $fixmem[$fix_mem_end + $i] = $self->read_smemory_word();
-    }
-
-    # for (my $i = $fix_mem_min; $i < $fix_mem_end - $fix_mem_min + 1; $i++) {
-    #     $fixmem[$i] = $self->read_smemory_word();
-    # }
-
-    my $dyn_used = $self->read_integer();
-
-    __debug "dyn_used = $dyn_used";
-
-    return;
-}
-
-sub undump_node_mem {
-    my $self = shift;
-
-    my $params = $self->get_params();
-
-    my $mem = $self->get_mem();
-
-    my $x     = $self->read_integer();
-    my $rover = $self->read_integer();
-
-    my $var_mem_max = $x < 100000 ? 100000 : $x;
-
-    __debug "var_mem_max = $var_mem_max";
-    __debug "rover = $rover";
-
-    for my $ptr (0..$var_mem_max - 1) {
-        my $word = $self->read_memory_word();
-
-        $mem->set_word($ptr, $word);
-    }
-
-    if (LUATEX_CHECK_NODE_USAGE) {
-        my @varmem_sizes;
-
-        for my $ptr (0..$x - 1) {
-            push @varmem_sizes, $self->read_memory_word();
-        }
-    }
-
-    my @free_chain;
-
-    for (1..LUATEX_MAX_CHAIN_SIZE) {
-        push @free_chain, $self->read_memory_word();
-    }
-
-    my $var_used = $self->read_integer();
-    my $my_prealloc = $self->read_integer();
 
     return;
 }
@@ -1283,7 +1405,7 @@ sub load_hyphenation_tables {
     $self->set_hyph_count($hyph_count);
     $self->set_hyph_next($hyph_next);
 
-    my $hyph_prime = $self->get_hyph_prime();
+    my $hyph_prime = $self->hyph_prime();
 
     __debug "hyph_prime  = $hyph_prime";
 
@@ -1400,6 +1522,40 @@ sub load_hyphenation_tables {
     return;
 }
 
+sub load_trailer {
+    my $self = shift;
+
+    __debug "Loading trailer";
+
+    my $interaction_level = $self->read_integer();
+
+    __debug "interaction_level = $interaction_level";
+
+    $self->set_interaction_level($interaction_level);
+
+    my $format_ident = $self->read_integer();
+
+    $self->set_format_ident($format_ident);
+
+    __debug "format_ident = $format_ident";
+
+    my $magic_constant = $self->read_integer();
+
+    __debug "magic_constant = $magic_constant";
+
+    if ($magic_constant != 69069) {
+        warn "Invalid file tail: $magic_constant\n";
+    }
+
+    return;
+}
+
+######################################################################
+##                                                                  ##
+##                         PDFTEX FMT FILES                         ##
+##                                                                  ##
+######################################################################
+
 sub load_pdftex_data {
     my $self = shift;
 
@@ -1489,315 +1645,120 @@ sub undump_image_meta {
     return;
 }
 
-sub load_trailer {
+######################################################################
+##                                                                  ##
+##                         LUATEX FMT FILES                         ##
+##                                                                  ##
+######################################################################
+
+sub load_luatex_string_pool {
     my $self = shift;
 
-    __debug "Loading trailer";
+    __debug "Loading LuaTeX string pool";
 
-    my $interaction_level = $self->read_integer();
+    my $str_ptr = $self->read_integer();
 
-    __debug "interaction_level = $interaction_level";
+    __debug "str_ptr = $str_ptr";
 
-    $self->set_interaction_level($interaction_level);
+    my @string;
 
-    my $format_ident = $self->read_integer();
+    for (my $j = 1; $j < $str_ptr; $j++) {
+        my $len = $self->read_integer();
 
-    $self->set_format_ident($format_ident);
+        if ($len >= 0) {
+            $string[$j] = $self->read_string($len);
 
-    __debug "format_ident = $format_ident";
-
-    my $magic_constant = $self->read_integer();
-
-    __debug "magic_constant = $magic_constant";
-
-    if ($magic_constant != 69069) {
-        warn "Invalid file tail: $magic_constant\n";
-    }
-
-    return;
-}
-
-sub slow_print( $ ) {
-    my $string = shift;
-
-    return join '', map { print_char_code(ord($_)) } split //, $string;
-}
-
-sub show_meaning {
-    my $self = shift;
-
-    my $csname  = shift;
-    my $verbose = shift;
-
-    my $params = $self->get_params();
-
-    my $hash = $self->get_hash();
-
-    my $eqtb_ptr;
-
-    if (length($csname) == 1) {
-        $eqtb_ptr = $params->single_base() + ord($csname);
-    } elsif ($eqtb_ptr = $hash->lookup($csname)) {
-        ## no-op
-    } else {
-        # $LOG->verbose(print_esc(slow_print($csname)) . ": **UNDEFINED**\n\n");
-
-        # return unless $verbose;
-    }
-
-    print print_esc(slow_print($csname)) . ": ";
-
-    if (defined $eqtb_ptr) {
-        my $eq_type = $self->get_eqtb()->get_word($eqtb_ptr)->get_eq_type();
-
-        $self->show_eqtb_entry($eqtb_ptr);
-    } else {
-        print print_esc('undefined'), "\n";
-    }
-
-    return;
-}
-
-sub show_active_char {
-    my $self = shift;
-    my $eqtb_ptr = shift;
-
-    print print_char_code($eqtb_ptr - 1) . ": ";
-
-    $self->show_eqtb_entry($eqtb_ptr);
-
-    return;
-}
-
-sub show_eqtb_entry {
-    my $self = shift;
-
-    my $params = $self->get_params();
-
-    my $eqtb_ptr = shift;
-
-    my $eqtb = $self->get_eqtb();
-    my $mem  = $self->get_mem();
-
-    my $entry = $eqtb->get_word($eqtb_ptr);
-
-    my $eq_type  = $entry->get_eq_type();
-    my $eq_level = $entry->get_eq_level();
-    my $equiv    = $entry->get_equiv();
-
-    if ($eq_type == $params->set_font()) {
-        $self->show_font_def($equiv);
-    } else {
-        my $meaning = $params->print_cmd_chr($eq_type, $equiv);
-
-        if (! defined $meaning) {
-            print "UNKNOWN: eq_type=$eq_type, equiv=$equiv";
-        } else {
-            print $meaning;
-        }
-
-        if ($params->call() <= $eq_type && $eq_type <= $params->long_outer_call()) {
-            print ":";
-            $mem->show_token_list($self, $equiv);
-        } else {
-            #$LOG->notify(" (primitive)");
+            __debug "string[$j] = '$string[$j]'";
         }
     }
 
-    print "\n\n";
+    $self->set_strings(\@string);
 
     return;
 }
 
-sub get_font_name {
+sub load_luatex_memory {
     my $self = shift;
 
-    my $fnt_num = shift;
+    __debug "Loading LuaTeX dynamic memory";
 
-    return $self->get_string($self->get_font_names()->[$fnt_num]);
-}
+    $self->undump_node_mem();
 
-sub get_font_size {
-    my $self = shift;
+    my $temp_token_head = $self->read_integer();
+    my $hold_token_head = $self->read_integer();
+    my $omit_template   = $self->read_integer();
+    my $null_list       = $self->read_integer();
+    my $backup_head     = $self->read_integer();
+    my $garbage         = $self->read_integer();
 
-    my $fnt_num = shift;
+    my $fix_mem_min = $self->read_integer();
+    my $fix_mem_max = $self->read_integer();
 
-    return $self->get_font_sizes()->[$fnt_num];
-}
+    __debug "fix_mem_min = $fix_mem_min";
+    __debug "fix_mem_max = $fix_mem_max";
 
-sub get_font_dsize {
-    my $self = shift;
+    my @fixmem; # = (0) x ($fix_mem_max + 1);
 
-    my $fnt_num = shift;
+    my $fix_mem_end = $self->read_integer();
 
-    return $self->get_font_dsizes()->[$fnt_num];
-}
+    __debug "fix_mem_end = $fix_mem_end";
 
-sub show_font_def {
-    my $self = shift;
-    my $fnt_num = shift;
+    my $avail = $self->read_integer();
 
-    print "select font ";
+    __debug "avail = $avail";
 
-    print slow_print($self->get_string($self->get_font_names()->[$fnt_num]));
-
-    my $size  = $self->get_font_size($fnt_num);
-    my $dsize = $self->get_font_dsize($fnt_num);
-
-    if ($size != $dsize) {
-        print " at ", scaled_to_string($size), "pt";
+    for (my $i = 0; $i < $fix_mem_end - $fix_mem_min + 1; $i++) {
+        $fixmem[$fix_mem_end + $i] = $self->read_smemory_word();
     }
+
+    # for (my $i = $fix_mem_min; $i < $fix_mem_end - $fix_mem_min + 1; $i++) {
+    #     $fixmem[$i] = $self->read_smemory_word();
+    # }
+
+    my $dyn_used = $self->read_integer();
+
+    __debug "dyn_used = $dyn_used";
 
     return;
 }
 
-sub get_equiv {
+sub undump_node_mem {
     my $self = shift;
-    my $ptr = shift;
-
-    return $self->get_eqtb()->get_equiv($ptr);
-}
-
-sub show_node_list {
-    my $self = shift;
-    my $ptr = shift;
-
-    return $self->get_mem()->show_node_list($ptr);
-}
-
-sub show_box {
-    my $self = shift;
-
-    my $index = shift;
-
-    if ($index < 0 || $index > 255) {
-        croak "Invalid box register: $index";
-    }
 
     my $params = $self->get_params();
 
-    my $ptr = $self->get_equiv($params->box_base() + $index);
+    my $mem = $self->get_mem();
 
-    if ($ptr == $params->null()) {
-        print "\\box${index}=void\n";
-    } else {
-        print "\\box${index}=";
-        $self->show_node_list($ptr);
+    my $x     = $self->read_integer();
+    my $rover = $self->read_integer();
+
+    my $var_mem_max = $x < 100000 ? 100000 : $x;
+
+    __debug "var_mem_max = $var_mem_max";
+    __debug "rover = $rover";
+
+    for my $ptr (0..$var_mem_max - 1) {
+        my $word = $self->read_memory_word();
+
+        $mem->set_word($ptr, $word);
     }
 
-    return;
-}
+    if (LUATEX_CHECK_NODE_USAGE) {
+        my @varmem_sizes;
 
-sub extract_box_register {
-    my $self = shift;
-
-    my $index = shift;
-
-__debug "*** extract_box_register($index)";
-
-    my $params = $self->get_params();
-
-    if ($index < 0 || $index > 255) {
-        croak "Invalid box register: $index";
+        for my $ptr (0..$x - 1) {
+            push @varmem_sizes, $self->read_memory_word();
+        }
     }
 
-    my $ptr = $self->get_equiv($params->box_base() + $index);
+    my @free_chain;
 
-    if ($ptr == $params->null()) {
-        return;
+    for (1..LUATEX_MAX_CHAIN_SIZE) {
+        push @free_chain, $self->read_memory_word();
     }
 
-    my $node_list = $self->get_mem()->extract_node_list($ptr);
-
-    return $node_list;
-}
-
-sub debug {
-    my $self = shift;
-
-    print "TeX engine: ", $self->get_engine() || '???', "\n";
-    print "magic number = ", $self->get_magic_number(), "\n";
-    print "string pool checksum = ", $self->get_string_pool_checksum(), "\n";
-
-    # print "mltex_p      = ", $self->get_mltex_p(), "\n";
-    # print "enctex_p     = ", $self->get_enctex_p(), "\n";
-
-    print "max_halfword = ", $self->get_max_halfword(), "\n";
-    print "hash_high    = ", $self->get_hash_high(), "\n";
-    print "mem_bot      = ", $self->get_mem_bot(), "\n";
-    print "mem_top      = ", $self->get_mem_top(), "\n";
-    print "eqtb_size    = ", $self->get_eqtb_size(), "\n";
-    print "hash_prime   = ", $self->get_hash_prime(), "\n";
-    print "hyph_prime   = ", $self->get_hyph_prime(), "\n";
-    print "hyph_count   = ", $self->get_hyph_count(), "\n";
-    print "hyph_next    = ", $self->get_hyph_next(), "\n";
-    print "hash_used    = ", $self->get_hash_used(), "\n";
-
-    print "string_pool_size = ", $self->get_string_pool_size(), "\n";
-    print "max_strings      = ", $self->get_max_strings(), "\n";
-
-    print "lo_mem_max   = ", $self->get_lo_mem_max(), "\n";
-    print "hi_mem_min   = ", $self->get_hi_mem_min(), "\n";
-
-    print "var_used     = ", $self->get_var_used(), "\n";
-#    print "dyn_used     = ", $self->get_dyn_used(), "\n";
-
-    print "fmem_ptr     = ", $self->get_fmem_ptr(), "\n";
-    print "font_ptr     = ", $self->get_font_ptr(), "\n";
-
-    print "cs_count     = ", $self->get_cs_count(), "\n";
-
-    print "rover        = ", $self->get_rover(), "\n";
-    print "avail        = ", $self->get_avail(), "\n";
-
-    my $str_number = $self->get_format_ident();
-
-    print "format_ident = ", $self->get_string($str_number), "\n";
-    print "interaction  = ", $self->get_interaction_level(), "\n";
-
-    # eval { $self->show_meaning("rlap") };
-    #
-    # if ($@) {
-    #     print "show_meaning error: $@\n";
-    # }
-    #
-    # eval { $self->show_meaning("sum") };
-    #
-    # if ($@) {
-    #     print "show_meaning error: $@\n";
-    # }
-
-    ##  print "XORD:\n";
-    ##
-    ##  my @xord = @{ $self->get_xord() };
-    ##
-    ##  for (my $i = 0; $i < @xord; $i++) {
-    ##      print "\t$i: $xord[$i]\n";
-    ##  }
-
-    ##  print "XCHR:\n";
-    ##
-    ##  my @xchr = @{ $self->get_xchr() };
-    ##
-    ##  for (my $i = 0; $i < @xchr; $i++) {
-    ##      print "\t$i: $xchr[$i]\n";
-    ##  }
-
-    ##  print "XPRN:\n";
-    ##
-    ##  my @xprn = @{ $self->get_xprn() };
-    ##
-    ##  for (my $i = 0; $i < @xprn; $i++) {
-    ##      print "\t$i: $xprn[$i]\n";
-    ##  }
-
-    ## print "STRINGS:\n";
-    ##
-    ## my @strings = @{ $self->get_strings() };
-    ##
-    ## for (my $i = 0; $i < @strings; $i++) {
-    ##     print "\t$i: $strings[$i]\n";
-    ## }
+    my $var_used = $self->read_integer();
+    my $my_prealloc = $self->read_integer();
 
     return;
 }
