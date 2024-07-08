@@ -1899,6 +1899,7 @@ __DATA__
     \begingroup
         \let\[\(%
         \let\]\)%
+        \let\label\@gobble
         \disable@stepcounter
         \setbox\@tempboxa\hbox{\ignorespaces#1\unskip}%
     \expandafter\endgroup
