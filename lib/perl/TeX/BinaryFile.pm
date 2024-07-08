@@ -108,16 +108,18 @@ sub open {
     $mode_of{ident $self} = $mode;
     $filehandle_of{ident $self} = $fh;
 
-    my @bytes = $self->peek_bytes(2);
+    if ($mode eq 'r') {
+        my @bytes = $self->peek_bytes(2);
 
-    if ($bytes[0] == 0x1f && $bytes[1] == 0x8b) {
-        close($fh);
+        if ($bytes[0] == 0x1f && $bytes[1] == 0x8b) {
+            close($fh);
 
-        $fh = IO::Uncompress::Gunzip->new($file_name) or do {
-            PTG::RunError->throw($GunzipError);
-        };
+            $fh = IO::Uncompress::Gunzip->new($file_name) or do {
+                PTG::RunError->throw($GunzipError);
+            };
 
-        $filehandle_of{ident $self} = $fh;
+            $filehandle_of{ident $self} = $fh;
+        }
     }
 
     return 1;
@@ -220,28 +222,18 @@ sub read_bytes {
     return wantarray ? split('', $buffer) : $buffer;
 }
 
-sub read_bytes_to {
-    my $self = shift;
-
-    my $limit = shift;
-
-    my $num_raw_bytes = $limit - $self->tell();
-
-    if ($num_raw_bytes < 0) {
-        die "Can't read backwards!\n";
-    } elsif ($num_raw_bytes == 0) {
-        return '';
-    }
-
-    return $self->read_bytes($num_raw_bytes);
-}
-
 sub next_byte {
     my $self = shift;
 
     my $byte = $self->read_bytes(1);
 
     return unpack("C", $byte);
+}
+
+sub peek_byte {
+    my $self = shift;
+
+    return $self->peek_bytes(1);
 }
 
 sub peek_bytes {
@@ -275,24 +267,6 @@ sub read_unsigned {
     return $val;
 }
 
-sub read_unsigned_byte {
-    my $self = shift;
-
-    return $self->read_unsigned(1);
-}
-
-sub read_unsigned_pair {
-    my $self = shift;
-
-    return $self->read_unsigned(2);
-}
-
-sub read_unsigned_quad {
-    my $self = shift;
-
-    return $self->read_unsigned(4);
-}
-
 sub read_signed {
     my $self = shift;
     my $num_bytes = shift || 1;
@@ -312,24 +286,6 @@ sub read_signed {
     }
 
     return $val;
-}
-
-sub read_signed_byte {
-    my $self = shift;
-
-    return $self->read_signed(1);
-}
-
-sub read_signed_pair {
-    my $self = shift;
-
-    return $self->read_signed(2);
-}
-
-sub read_signed_quad {
-    my $self = shift;
-
-    return $self->read_signed(4);
 }
 
 sub read_pointer {
@@ -364,43 +320,6 @@ sub read_string {
     my $string = $raw_string =~ s{\000+$}{}r;
 
     return $string;
-}
-
-sub write_raw_data {
-    my $self = shift;
-    my $string = shift;
-
-    my $fh = $self->__get_filehandle();
-
-    $fh->print($string);
-
-    return length $string;
-}
-
-sub write_dvi_bytes {
-    my $self = shift;
-    my @bytes = @_;
-
-    my $string = pack "C*", @bytes;
-
-    $self->write_raw_data($string);
-
-    return scalar @bytes;
-}
-
-sub write_dvi_pointer {
-    my $self   = shift;
-    my $location = shift;
-
-    my $dvi_ptr = pack "N", $location;
-
-    if (length($dvi_ptr) != DVI_POINTER_LENGTH) {
-        die "Invalid DVI pointer: $location\n";
-    }
-
-    $self->write_raw_data($dvi_ptr);
-
-    return length $dvi_ptr;
 }
 
 1;
