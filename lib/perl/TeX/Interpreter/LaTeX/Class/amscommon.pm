@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Class::amscommon;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -1451,11 +1451,13 @@ __DATA__
 \newenvironment{quotation}{%
     \par
     \everypar{}%
+    \texml@inlist@hack@start
     \startXMLelement{disp-quote}%
     \setXMLattribute{content-type}{\@currenvir}%
 }{%
     \par
     \endXMLelement{disp-quote}%
+    \texml@inlist@hack@end
 }
 
 \let\quote\quotation
@@ -1464,11 +1466,13 @@ __DATA__
 \newenvironment{verse}{%
     \par
     \everypar{}%
+    \texml@inlist@hack@start
     \def\\{\emptyXMLelement{break}}%
     \startXMLelement{verse-group}%
 }{%
     \par
     \endXMLelement{verse-group}%
+    \texml@inlist@hack@end
 }
 
 \newcommand{\attrib}[1]{%
