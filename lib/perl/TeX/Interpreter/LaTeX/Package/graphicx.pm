@@ -49,6 +49,16 @@ __DATA__
 
 \ProvidesPackage{graphicx}
 
+\@ifpackagewith{graphicx}{demo}{%
+    \GenericError{%
+        (texml)\@spaces\@spaces\@spaces\@spaces
+    }{%
+        Error: Don't use demo option with graphicx%
+    }{%
+        Just don't.%
+    }{blah}%
+}{}
+
 \RequirePackage{graphics}
 
 \long\def\setkeys#1#2{}
