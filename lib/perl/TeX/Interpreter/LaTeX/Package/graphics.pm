@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::graphics;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -98,6 +98,16 @@ sub do_include_graphics {
 __DATA__
 
 \ProvidesPackage{graphics}
+
+\@ifpackagewith{graphics}{demo}{%
+    \GenericError{%
+        (texml)\@spaces\@spaces\@spaces\@spaces
+    }{%
+        Error: Don't use demo option with graphics%
+    }{%
+        Just don't.%
+    }{blah}%
+}{}
 
 \def\resizebox#1#2#3{#3}
 
