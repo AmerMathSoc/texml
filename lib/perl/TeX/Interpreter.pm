@@ -9434,6 +9434,10 @@ sub __math_to_text {
         return (new_unicode_string("\x{2009}"));
     }
 
+    if ($text eq q{\_}) {
+        return (new_unicode_string("\x{005F}"));
+    }
+
     ## NB: Leave $1$, etc., alone, to avoid font inconsistencies.
 
     if ($text =~ m{\A ( \[ | \] | [().,:;!?] ) \z}smx) {
