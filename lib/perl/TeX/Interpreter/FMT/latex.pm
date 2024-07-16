@@ -1209,6 +1209,7 @@ __DATA__
 }
 
 \@declarestyledcommand\textsl\mathsl{oblique}
+\@declarestyledcommand\textbfit\mathbfit{bold-italic}
 %\@declarestyledcommand\textup{font-style: normal}
 % \@declarestyledcommand\textsc{font-variant: small-caps}
 
