@@ -83,6 +83,7 @@ __DATA__
     \startXMLelement{\jats@figure@element}%
     \set@float@fps@attribute{#1}%
     \addXMLid
+    \setXMLattribute{content-type}{algorithm}%
 }{%
     \endXMLelement{\jats@figure@element}%
     \par
