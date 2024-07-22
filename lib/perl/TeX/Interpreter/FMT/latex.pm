@@ -1213,6 +1213,9 @@ __DATA__
 %\@declarestyledcommand\textup{font-style: normal}
 % \@declarestyledcommand\textsc{font-variant: small-caps}
 
+\@declarestyledcommand\textbfsf\mathbfsf{bold-sans}% text/72 (matsuura)
+
+
 \def\@declarefontcommand#1#2#3{%
     \DeclareRobustCommand#1[1]{%
         \ifmmode
