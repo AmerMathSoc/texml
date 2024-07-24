@@ -2643,6 +2643,8 @@ __DATA__
 
 \DeclareMathJaxMacro\newline
 
+\DeclareMathJaxMacro\framebox
+
 \DeclareMathJaxMacro*\ %
 \DeclareMathJaxMacro*\!
 
