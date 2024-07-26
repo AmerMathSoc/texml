@@ -8127,6 +8127,8 @@ sub line_break {
     if (nonempty($qName)) {
         if (nonempty(my $class = $tex->this_xml_par_class())) {
             $hbox->unshift_node(new_xml_class_node(XML_SET_CLASSES, $class));
+
+            $tex->set_this_xml_par_class("");
         }
 
         $hbox->unshift_node(new_xml_open_node($qName));
@@ -8986,6 +8988,10 @@ sub new_graf {
     }
 
     $tex->begin_token_list($tex->get_toks_list('every_par'), every_par_text);
+
+    if ($unindented) {
+        $tex->set_this_xml_par_class("noindent");
+    }
 
     if ($tex->get_nest_ptr() == 1) {
         $tex->build_page(); # {put |par_skip| glue on current page}
