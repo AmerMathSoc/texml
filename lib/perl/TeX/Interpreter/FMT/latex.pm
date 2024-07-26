@@ -451,7 +451,31 @@ sub do_resolve_xrefs {
 
                         $num_xrefs++;
                     }
-                } else {
+                } elsif ($ref_cmd eq 'nameref') {
+                    my $r = $tex->get_macro_expansion_text("r\@$ref_key");
+
+                    $xref->setAttribute('specific-use' => 'undefined');
+
+                    if (defined $r) {
+                        my ($xml_id, $ref_type) = parse_ref_record($r);
+
+                        if (nonempty($xml_id)) {
+                            $xref->setAttribute(rid => $xml_id);
+                            $xref->setAttribute('specific-use' => $ref_cmd);
+                            $xref->setAttribute('ref-type' => $ref_type);
+                            $xref->removeAttribute('ref-key');
+
+                            my ($title) = $body->findnodes(qq{//*[\@id="$xml_id"]/title});
+
+                            for my $node ($title->childNodes()) {
+                                $xref->appendChild($node);
+                            }
+                        }
+
+                        $num_xrefs++;
+                    }
+                }
+                else {
                     my $new_node = $tex->convert_fragment(qq{\\${ref_cmd}{$ref_key}});
 
                     my $flag = $new_node->firstChild()->getAttribute("specific-use");
@@ -1345,6 +1369,15 @@ __DATA__
     \expandafter\@setref {#1} \ref
 }
 
+\DeclareRobustCommand\nameref{%
+    \begingroup
+        \maybe@st@rred\@nameref
+}
+
+\def\@nameref#1{%
+    \expandafter\@setref {#1} \nameref
+}
+
 \long\def\texml@get@pageref#1#2#3#4{\@latex@warning{Use of \string\pageref}}
 
 \DeclareRobustCommand\pageref{%
@@ -1954,6 +1987,8 @@ __DATA__
 \newif\if@ams@inline
 \@ams@inlinefalse
 
+\let\@secnumpunct\@empty
+
 \def\@sect#1#2#3#4#5#6[#7]#8{%
     \def\@currentreftype{sec}%
     \set@sec@subreftype{#1}%
@@ -1970,6 +2005,13 @@ __DATA__
             \expandafter\let\expandafter\@secnumber\csname the#1\endcsname
             \refstepcounter{#1}%
             \typeout{#1\space\@secnumber}%
+            \edef\@secnumpunct{%
+                \ifdim\@tempskipa>\z@ % not a run-in section heading
+                    \if@ams@empty\else\XMLgeneratedText.\fi
+                \else
+                    \XMLgeneratedText.%
+                \fi
+            }%
             \protected@edef\@svsec{%
                 \ifnum#2<\@m
                     \@ifundefined{#1name}{}{%
@@ -1995,6 +2037,13 @@ __DATA__
 
 \def\XML@section@tag{sec}
 
+% \XML@section@specific@use is an ugly hack introduced to solve a
+% problem for amstext/65 (katznels).  A better approach might be to
+% define a replacement for \@startsection that uses key-value pairs to
+% make it easier to extend.
+
+\let\XML@section@specific@use\@empty
+
 \def\start@XML@section#1#2#3#4{
     \par
     \stepXMLid
@@ -2007,7 +2056,12 @@ __DATA__
         \fi
         \setXMLattribute{id}{\@currentXMLid}%
         \setXMLattribute{disp-level}{#2}%
-        \setXMLattribute{specific-use}{#1}%
+        \setXMLattribute{specific-use}{#1%
+            \ifx\XML@section@specific@use\@empty\else
+                \space\XML@section@specific@use
+            \fi
+        }%
+        \glet\XML@section@specific@use\@empty
         \ifinXMLelement{statement}\else
             \@push@sectionstack{#2}{\XML@section@tag}%
         \fi
