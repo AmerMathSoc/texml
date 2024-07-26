@@ -107,6 +107,8 @@ __DATA__
 % #3 = caption
 % #4 = figure
 
+\let\subfloat@content@type{}
+
 \long\def\sf@@@subfloat#1[#2][#3]#4{%
         \leavevmode
             \ifnum\strcmp{#1}{subfigure}=0
@@ -115,6 +117,10 @@ __DATA__
                 \startXMLelement{table-wrap}%
             \fi
             \addXMLid
+            \ifx\subfloat@content@type\@empty\else
+                \setXMLattribute{content-type}{\subfloat@content@type}%
+                \let\subfloat@content@type\@empty
+            \fi
             \sf@subcaption{#1}{#2}{#3}%
             #4%
             \ifnum\strcmp{#1}{subfigure}=0
