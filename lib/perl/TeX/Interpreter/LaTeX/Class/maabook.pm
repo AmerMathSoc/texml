@@ -66,6 +66,8 @@ __DATA__
 
 \RequirePackage{amsthm}
 
+\@AMS@tocusesnames@false
+
 \renewcommand\thesection{\thechapter.\arabic{section}}
 
 \def\makehalftitle{}
