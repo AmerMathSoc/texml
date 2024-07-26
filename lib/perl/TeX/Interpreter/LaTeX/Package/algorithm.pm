@@ -89,6 +89,15 @@ __DATA__
     \par
 }
 
+\AtBeginDocument{%
+    \@ifpackageloaded{subfig}{%
+        \def\subalgorithm{%
+            \def\subfloat@content@type{algorithm}%
+            \subfloat
+        }%
+    }{}
+}
+
 \endinput
 
 __END__
