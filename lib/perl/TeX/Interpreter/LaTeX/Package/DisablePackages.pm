@@ -80,6 +80,7 @@ __DATA__
 \DisablePackage{morefloats}
 \DisablePackage{ogonek}
 \DisablePackage{old-arrows}
+\DisablePackage{pgfmath}
 \DisablePackage{pict2e}
 \DisablePackage{pictexwd}
 \DisablePackage{pspicture}
