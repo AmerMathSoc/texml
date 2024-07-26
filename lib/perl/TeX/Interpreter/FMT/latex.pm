@@ -468,7 +468,7 @@ sub do_resolve_xrefs {
                             my ($title) = $body->findnodes(qq{//*[\@id="$xml_id"]/title});
 
                             for my $node ($title->childNodes()) {
-                                $xref->appendChild($node);
+                                $xref->appendChild($node->cloneNode(1));
                             }
                         }
 
