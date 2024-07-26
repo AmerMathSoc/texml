@@ -665,7 +665,7 @@ sub finalize_document {
 
     $self->normalize_tables();
 
-    $self->normalize_app_group();
+    ## $self->normalize_app_group();
 
     $self->normalize_disp_level();
 
