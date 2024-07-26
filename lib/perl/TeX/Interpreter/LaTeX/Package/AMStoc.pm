@@ -189,6 +189,9 @@ __DATA__
 % #3 = title
 % #4 = id
 
+\newif\if@AMS@tocusesnames@
+\@AMS@tocusesnames@true
+
 \def\set@toc@entry#1#2#3#4{%
     \leavevmode
     \ams@measure{#2}%
@@ -196,7 +199,7 @@ __DATA__
         % Unnumbered
     \else
         \startXMLelement{label}%
-        \ignorespaces#1 #2\unskip
+        \ignorespaces\if@AMS@tocusesnames@#1 \fi#2\unskip
         \endXMLelement{label}%
     \fi
     \startXMLelement{title}%
