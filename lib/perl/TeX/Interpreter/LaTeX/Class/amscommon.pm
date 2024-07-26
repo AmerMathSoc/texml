@@ -376,6 +376,12 @@ __DATA__
 \DeclareRobustCommand{\huge}{}
 \DeclareRobustCommand{\Huge}{}
 
+\DeclareMathJaxMacro\large
+\DeclareMathJaxMacro\Large
+\DeclareMathJaxMacro\LARGE
+\DeclareMathJaxMacro\huge
+\DeclareMathJaxMacro\Huge
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
 %%                         CONDITIONAL TEXT                         %%
@@ -467,6 +473,7 @@ __DATA__
 
 \def\@seccntformat#1{%
     \csname the#1\endcsname
+    \protect\@secnumpunct
 }
 
 \def\section      {\@startsection{section}      {1}{}{}{\z@}{}}
