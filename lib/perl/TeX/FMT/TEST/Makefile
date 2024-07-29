@@ -22,6 +22,11 @@ initest: tex.initest pdftex.initest xetex.initest luatex.initest
 
 load: tex_load pdftex_load xetex_load
 
+test: tex_load pdftex_load xetex_load
+	diff tex.load    tex.load.ref
+	diff pdftex.load pdftex.load.ref
+	diff xetex.load  xetex.load.ref
+
 pdftex.fmt:
 	pdftex -ini -etex etex.ini
 	mv etex.fmt pdftex.fmt
