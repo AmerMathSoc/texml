@@ -107,7 +107,7 @@ __DATA__
 % #3 = caption
 % #4 = figure
 
-\let\subfloat@content@type{}
+\let\subfloat@content@type\@empty
 
 \long\def\sf@@@subfloat#1[#2][#3]#4{%
         \leavevmode
