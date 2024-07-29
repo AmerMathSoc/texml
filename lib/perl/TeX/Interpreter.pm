@@ -3159,6 +3159,12 @@ sub print_cmd_chr {
         return;
     }
 
+    if (ref($cur_cmd) eq 'CODE') {
+        $tex->print("<Perl code>");
+
+        return;
+    }
+
     $cur_cmd->print_cmd_chr($tex);
 
     return;
