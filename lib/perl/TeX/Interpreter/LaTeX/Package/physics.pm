@@ -58,6 +58,22 @@ __DATA__
 
 \def\bra#1{\left\langle#1\right|}
 
+\DeclareMathOperator{\trace}{tr} % Trace of a matrix
+\let\tr\trace
+\DeclareMathOperator{\Trace}{Tr} % Trace of a matrix (alternate)
+\let\Tr\Trace
+\DeclareMathOperator{\rank}{rank} % Rank of a matrix
+\DeclareMathOperator{\erf}{erf} % Gauss error function
+\DeclareMathOperator{\Residue}{Res} % Residue
+
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+
+\let\Re\relax
+\DeclareMathOperator{\Re}{Re}
+\let\Im\relax
+\DeclareMathOperator{\Im}{Im}
+
 \endinput
 
 __END__
