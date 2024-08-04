@@ -156,6 +156,7 @@ use TeX::Primitive::Prefix;
 use TeX::Primitive::Register;
 use TeX::Primitive::SetFont;
 use TeX::Primitive::def;
+use TeX::Primitive::parshape qw(:factories);
 
 use TeX::Primitive::LuaTeX::CombineTokens;
 
@@ -1407,6 +1408,7 @@ sub tail_append {
     if (defined $cur_list) {
         for my $node (@_) {
             $cur_list->append_node($node);
+#$tex->print_nl("Adding node '" . $node->show_node() . "'") if defined $node;
         }
     } else {
         # $tex->DEBUG("Can't append nodes '@_' to null list");
@@ -1480,6 +1482,9 @@ my %muskip_registers_of  :HASH(:name<muskip_register>);
 ## Region 4: halfword quantities
 
 my %halfword_quantities_of :HASH(:name<halfword_quantity>);
+
+my %par_shape_of :ATTR(:name<par_shape>);
+
 my %toks_registers_of      :HASH(:name<toks_register>);
 my %box_registers_of       :HASH(:name<box_register>);
 my %math_font_nums_of      :HASH(:name<math_font_num>);
@@ -1799,8 +1804,16 @@ sub __init_eqtb_region_4 {
 
     $node_registers_of{$ident} = \%node_register;
 
+    PAR_SHAPE: {
+        $par_shape_of{$ident} = make_eqvt([], level_one);
+
+        my $ps = make_parshape_parameter(parshape => \$par_shape_of{$ident});
+
+        $tex->set_primitive(parshape => $ps);
+        $tex->define_csname(parshape => $ps);
+    }
+
     my %halfwords = (
-        par_shape_loc => make_eqvt(undef, level_one),
         cur_font_loc  => make_eqvt(undef, level_one),
         );
 
@@ -8818,7 +8831,7 @@ sub normal_paragraph {
     $tex->set_this_xml_par_tag("");
     $tex->set_this_xml_par_class("");
 
-    #* if par_shape_ptr <> null then eq_define(par_shape_loc, shape_ref, null);
+    $tex->eq_define(\$par_shape_of{ident $tex}, []);
 
     return;
 }
@@ -10489,7 +10502,7 @@ sub __list_primitives {
                          mathop mathopen mathord mathpunct mathrel
                          mkern moveleft moveright mskip noboundary
                          nolimits nonscript over overline
-                         overwithdelims parshape radical scriptfont
+                         overwithdelims radical scriptfont
                          scriptscriptfont scriptscriptstyle
                          scriptstyle shipout show showbox showlists
                          special textfont textstyle underline unkern
