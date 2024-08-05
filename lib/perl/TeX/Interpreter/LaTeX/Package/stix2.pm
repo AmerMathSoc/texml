@@ -44,12 +44,6 @@ sub install ( $ ) {
     return;
 }
 
-######################################################################
-##                                                                  ##
-##                           ENVIRONMENTS                           ##
-##                                                                  ##
-######################################################################
-
 1;
 
 __DATA__
@@ -57,12 +51,6 @@ __DATA__
 \ProvidesPackage{stix2}
 
 \RequirePackage{unicode-math}
-
-\DeclareMathPassThrough{varsubsetneq}
-\DeclareMathPassThrough{varsupsetneq}
-\DeclareMathPassThrough{varsubsetneqq}
-\DeclareMathPassThrough{varsupsetneqq}
-\DeclareMathPassThrough{varkappa}
 
 \endinput
 
