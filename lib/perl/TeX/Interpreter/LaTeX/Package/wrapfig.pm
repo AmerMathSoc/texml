@@ -56,6 +56,22 @@ __DATA__
 
 \ProvidesPackage{wrapfig}
 
+\newcommand{\wrapfigure}[2][]{%
+    \@wrapfigure
+}
+
+\newcommand{\@wrapfigure}[2][]{%
+    \figure[H]%
+}
+
+\let\endwrapfigure\endfigure
+
+\endinput
+
+__END__
+
+\ProvidesPackage{wrapfig}
+
 % Ignore optional args for now: \begin{wrapfigure}[12]{r}[34pt]{5cm}
 
 % \newenvironment{wrapfigure}[2]{%
