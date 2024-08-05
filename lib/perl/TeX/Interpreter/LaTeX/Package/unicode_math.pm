@@ -60,12 +60,15 @@ __DATA__
 %% that stix2 is always loaded to avoid conflicts with amsmath.sty,
 %% which means we can't easily optionally load stix2.pm.
 
+%% The next 4 should actually produce the StyleSet 11 variants.
 \DeclareMathPassThrough{varsubsetneq}
 \DeclareMathPassThrough{varsupsetneq}
 \DeclareMathPassThrough{varsubsetneqq}
 \DeclareMathPassThrough{varsupsetneqq}
+
 \DeclareMathPassThrough{varkappa}
 
+\let\shortparallel\relax
 \DeclareMathPassThrough{shortparallel}
 \def\doteqdot{\Doteq}
 
