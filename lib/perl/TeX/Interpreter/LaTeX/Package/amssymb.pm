@@ -96,7 +96,6 @@ __DATA__
 \DeclareSVGMathChar\ntriangleright\mathrel
 \DeclareMathPassThrough{restriction}
 \DeclareSVGMathChar\shortmid\mathrel
-\DeclareSVGMathChar\shortparallel\mathrel
 % \DeclareSVGMathChar\smallfrown\mathrel
 \def\smallfrown{\frown}
 \DeclareSVGMathChar\smallsmile\mathrel
@@ -104,13 +103,6 @@ __DATA__
 \DeclareSVGMathChar\thicksim\mathrel
 
 \DeclareSVGMathChar\varpropto\mathrel
-
-%% The next 4 should actually produce the StyleSet 11 variants.
-
-\def\varsubsetneqq{\subsetneqq}
-\def\varsupsetneqq{\supsetneqq}
-\def\varsubsetneq{\subsetneq}
-\def\varsupsetneq{\supsetneq}
 
 \endinput
 
