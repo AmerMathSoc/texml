@@ -56,6 +56,19 @@ __DATA__
 
 \RequirePackage{fontspec}
 
+%% These are from stix2 and not unicode_math, but we want to pretend
+%% that stix2 is always loaded to avoid conflicts with amsmath.sty,
+%% which means we can't easily optionally load stix2.pm.
+
+\DeclareMathPassThrough{varsubsetneq}
+\DeclareMathPassThrough{varsupsetneq}
+\DeclareMathPassThrough{varsubsetneqq}
+\DeclareMathPassThrough{varsupsetneqq}
+\DeclareMathPassThrough{varkappa}
+
+\DeclareMathPassThrough{shortparallel}
+\def\doteqdot{\Doteq}
+
 \endinput
 
 __END__
