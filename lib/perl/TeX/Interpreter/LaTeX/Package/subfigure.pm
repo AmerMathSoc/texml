@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::subfigure;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -64,8 +64,8 @@ __DATA__
 \def\jats@figure@element{fig-group}
 \def\jats@table@element{table-wrap-group}
 
-\def\thesubfigure{\alph{subfigure}}
-\def\thesubtable{\alph{subtable}}
+\def\thesubfigure{\XMLgeneratedText(\alph{subfigure}\XMLgeneratedText)}
+\def\thesubtable{\XMLgeneratedText(\alph{subtable}\XMLgeneratedText)}
 
 \def\subfigure{%
   \bgroup
@@ -112,7 +112,7 @@ __DATA__
         \protected@edef\@tempa{\zap@space#1 \@empty}% Is this \edef safe?
         \ifx\@tempa\@empty\else
             \startXMLelement{label}%
-            #1%
+            \@tempa
             \endXMLelement{label}%
         \fi
     \endgroup

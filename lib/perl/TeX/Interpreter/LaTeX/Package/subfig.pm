@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::subfig;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -140,6 +140,11 @@ __DATA__
 
 % \def\subfigurename{Subfigure}
 
+% TODO: Implement other subcaption formats from caption3? (empty,
+%       simple, brace, autodot)
+
+\def\subfig@caption@fmt#1{\XMLgeneratedText(#1\XMLgeneratedText)}
+
 % #1 = sub\@captype
 % #2 = list-entry (ignored)
 % #3 = caption
@@ -161,7 +166,7 @@ __DATA__
             \ifx\@tempa\@empty\else
                 \startXMLelement{label}%
                     % \caption@lfmt{\@nameuse{#1name}}%
-                    \@tempa
+                    \subfig@caption@fmt{\@tempa}%
                 \endXMLelement{label}%
             \fi
         % \fi

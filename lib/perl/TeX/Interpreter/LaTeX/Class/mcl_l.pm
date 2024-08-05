@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Class::mcl_l;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -84,7 +84,7 @@ __DATA__
     \setXMLattribute{content-type}{\@currenvir}%
     \refstepcounter{problem}%
     \thisxmlpartag{label}%
-    Problem \theproblem#1\par
+    Problem \theproblem#1\@addpunct.\par
     \ignorespaces
 }{%
     \par
@@ -97,7 +97,7 @@ __DATA__
     \setXMLattribute{content-type}{\@currenvir}%
     \refstepcounter{solution}%
     \thisxmlpartag{label}%
-    Solution \thesolution\par
+    Solution \thesolution\@addpunct.\par
     \ignorespaces
 }{%
     \par
@@ -109,7 +109,7 @@ __DATA__
     \startXMLelement{statement}%
     \setXMLattribute{content-type}{\@currenvir}%
     \thisxmlpartag{label}%
-    Remark\par
+    Remark\@addpunct.\par
     \ignorespaces
 }{%
     \par

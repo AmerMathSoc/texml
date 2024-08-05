@@ -471,11 +471,6 @@ __DATA__
 %    \begin{macrocode}
 % \def\specialsection{\@startsection{section}{1}{}{}{}{}}
 
-\def\@seccntformat#1{%
-    \csname the#1\endcsname
-    \protect\@secnumpunct
-}
-
 \def\section      {\@startsection{section}      {1}{}{}{\z@}{}}
 \def\subsection   {\@startsection{subsection}   {2}{}{}{\p@}{}}
 \def\subsubsection{\@startsection{subsubsection}{3}{}{}{\p@}{}}
@@ -815,6 +810,7 @@ __DATA__
     \output@article@notes
     \mainmatter
     \let\maketitle\@empty
+    \glet\AMS@authors\@empty
 }
 
 \def\output@journal@meta{%
@@ -934,7 +930,7 @@ __DATA__
         \startXMLelement{abstract}
             \ifx\abstractname\@empty\else
                 \thisxmlpartag{title}
-                \abstractname\par
+                \abstractname\@addpunct.\par
             \fi
             \begingroup
                 \xmlpartag{p}%
@@ -1192,6 +1188,8 @@ __DATA__
 \DeclareRobustCommand{\toclinebreak}{\@ifstar{\unskip\xspace}{\unskip\xspace}}
 \DeclareRobustCommand{\tochyphenbreak}{\@ifstar{\ignorespaces}{}}
 
+\newcommand\ftnorhref[2]{\href{#1}{#2}}
+
 \def\disable@footnotes{%
     \let\footnote\@gobble@opt
     \let\footnotemark\@gobbleopt
@@ -1356,12 +1354,25 @@ __DATA__
 
 \newcommand\CMP[1]{CMP #1}
 
-\newenvironment{thebibliography}[1]{%
-    \if@backmatter
-        \@clear@sectionstack
+\newif\if@sec@bibliographies@
+\@sec@bibliographies@false
+
+\def\sec@bibliography@level{1}
+
+\newcommand{\bib@backmatter}{%
+    \if@sec@bibliographies@
+        \@pop@sectionstack{\sec@bibliography@level}%
     \else
-        \backmatter
+        \if@backmatter
+            \@clear@sectionstack
+        \else
+            \backmatter
+        \fi
     \fi
+}
+
+\newenvironment{thebibliography}[1]{%
+    \bib@backmatter
     %% I'm not sure what to do with \bibintro or if it should even be
     %% here to begin with, so I'm going to disable it for now.
     % \ifx\@empty\bibintro \else
@@ -1404,6 +1415,7 @@ __DATA__
 \newfloat{figure}{}{lof}
 \def\figurename{Figure}
 \floatname{figure}{\figurename}
+\def\fnum@figure{\figurename\space\thefigure\XMLgeneratedText.}
 \def\jats@figure@element{fig}
 
 \SaveEnvironmentDefinition{figure}
@@ -1412,6 +1424,7 @@ __DATA__
 \newfloat{table}{}{lot}
 \def\tablename{Table}
 \floatname{table}{\tablename}
+\def\fnum@table{\tablename\space\thetable\XMLgeneratedText.}
 \def\jats@table@element{table-wrap}
 
 \SaveEnvironmentDefinition{table}
@@ -1519,23 +1532,14 @@ __DATA__
 }
 
 \def\@@deferSectionCommand[#1]#2{%
-    \def\deferred@section@title{#2}%
+    \begingroup
+        \let\label\@gobble
+        \protected@xdef\deferred@section@title{\zap@space #2 \@empty}%
+    \endgroup
 }
 
-\def\XXX@author@name#1{\thisxmlpartag{string-name}#1\par}
-\def\XXX@authorbio#1{\thisxmlpartag{bio}#1\par}
-
-% \def\XXX@authorbio#1{%
-%     \startXMLelement{bio}
-%     #1\par
-%     \endXMLelement{bio}
-% }
-
 \newenvironment{sectionWithMetadata}{%
-    \let\deferred@section@command\@empty
-    \let\deferred@section@counter\@empty
-    \let\deferred@section@title\@empty
-    \let\AMS@authors\@empty
+    \clear@deferred@section
     \deferSectionCommand\part
     \deferSectionCommand\chapter
     \deferSectionCommand\section
@@ -1543,29 +1547,6 @@ __DATA__
     \deferSectionCommand\subsubsection
 }{%
     \deferred@section@command
-    \xmlpartag{}%
-    \startXMLelement{sec-meta}\par
-        \output@author@meta
-        \output@abstract@meta
-        \output@subjclass@meta
-    \endXMLelement{sec-meta}\par
-    \if@numbered
-        \ifx\deferred@section@counter\@empty\else
-            \refstepcounter{\deferred@section@counter}%
-        \fi
-        \let\@templabel\@empty
-        \@ifundefined{\deferred@section@counter name}{}{%
-            \protected@edef\@templabel{\csname \deferred@section@counter name\endcsname}%
-            \ifx\@templabel\@empty\else
-                \protected@edef\@templabel{\@templabel\space}%
-            \fi
-        }%
-        \protected@edef\@templabel{\@templabel\@nameuse{the\deferred@section@counter}}
-        \thisxmlpartag{label}\@templabel\par
-    \fi
-    \ifx\deferred@section@title\@empty\else
-        \thisxmlpartag{title}\deferred@section@title\par
-    \fi
     \global\everypar{}%
 }
 

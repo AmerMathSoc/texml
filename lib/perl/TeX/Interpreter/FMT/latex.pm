@@ -893,7 +893,7 @@ __DATA__
 
 \def\XMLelement#1#2{\startXMLelement{#1}#2\endXMLelement{#1}}
 
-\def\XMLgeneratedText{\XMLelement{x}}
+\def\XMLgeneratedText#1{\ifinXMLelement{x}#1\else\XMLelement{x}{#1}\fi}
 
 \def\JATStyledContent#1#2{%
     \leavevmode
@@ -1625,7 +1625,7 @@ __DATA__
 
 % Move to laTeXML.ltx?
 
-\renewenvironment{list}[2]{%
+\newenvironment{list}[2]{%
     \@@par
     \ifnum \@listdepth >5\relax
         \@toodeep
@@ -2028,10 +2028,10 @@ __DATA__
     \ifnum#2>\@m \else \@tocwrite{#1}{#8}\fi
 }
 
-% #1 = section type  (part, chapter, section, subsection, etc.)
-% #2 = section level (-1,   0,       1,       2,          etc.)
-% #3 = section label (including punctuation)
-% #4 = section title
+\def\@seccntformat#1{%
+    \csname the#1\endcsname
+    \protect\@secnumpunct
+}
 
 %% TODO: Add sec-type for things like acknowledgements?
 
@@ -2044,7 +2044,22 @@ __DATA__
 
 \let\XML@section@specific@use\@empty
 
+% See amscommon.pm for \clear@deferred@section and \deferred@section@...
+
+\def\clear@deferred@section{%
+    \glet\AMS@authors\@empty
+    \glet\deferred@section@command\@empty
+    \glet\deferred@section@counter\@empty
+    \glet\deferred@section@title\@empty
+}
+
+\clear@deferred@section
+
 \def\start@XML@section#1#2#3#4{
+% #1 = section type  (part, chapter, section, subsection, etc.)
+% #2 = section level (-1,   0,       1,       2,          etc.)
+% #3 = section label (including punctuation)
+% #4 = section title
     \par
     \stepXMLid
     \begingroup
@@ -2067,6 +2082,13 @@ __DATA__
         \fi
         \par
         \xmlpartag{}%
+        \ifx\AMS@authors\@empty\else
+            \startXMLelement{sec-meta}\par
+                \output@author@meta
+                \output@abstract@meta
+                \output@subjclass@meta
+            \endXMLelement{sec-meta}\par
+        \fi
         \edef\@tempa{\zap@space#3 \@empty}% Is this \edef safe?
         \ifx\@tempa\@empty\else
             \startXMLelement{label}%
@@ -2077,6 +2099,9 @@ __DATA__
             \let\label\@gobble
             \protected@xdef\@tempa{\zap@space#4 \@empty}%
         \endgroup
+        \ifx\@tempa\@empty
+            \let\@tempa\deferred@section@title
+        \fi
         \ifx\@tempa\@empty\else
             \startXMLelement{title}%
             \ignorespaces#4\if@ams@inline\@addpunct.\fi
@@ -2087,6 +2112,7 @@ __DATA__
             \endXMLelement{\XML@section@tag heading}%
         \fi
     \endgroup
+    \clear@deferred@section
 }
 
 \PreserveMacroDefinition\@sect

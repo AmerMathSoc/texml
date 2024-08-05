@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::subcaption;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -55,7 +55,7 @@ __DATA__
 \def\jats@table@element{table-wrap-group}
 
 \newcounter{subfigure}
-\def\thesubfigure{\alph{subfigure}}
+\def\thesubfigure{\XMLgeneratedText(\alph{subfigure}\XMLgeneratedText)}
 
 \newenvironment{subfigure}[2][]{%
     \par
@@ -79,7 +79,7 @@ __DATA__
 \newcommand*\subcaption@label{\caption@withoptargs\subcaption@@label}
 
 \newcounter{subtable}
-\def\thesubtable{\alph{subtable}}
+\def\thesubtable{\XMLgeneratedText(\alph{subtable}\XMLgeneratedText)}
 
 \newenvironment{subtable}[2][]{%
     \par

@@ -261,7 +261,7 @@ __DATA__
         %
         \if###5##\else
             \refstepcounter@cref[#4]{#5}%
-            \space\@nameuse{the#4}%
+            \space\@nameuse{the#4}\XMLgeneratedText.%
         \fi
     \fi
     \par

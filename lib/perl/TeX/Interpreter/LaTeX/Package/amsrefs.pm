@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::amsrefs;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -284,11 +284,7 @@ __DATA__
 }
 
 \renewcommand\@biblist[1][]{%
-    \if@backmatter
-        \@clear@sectionstack
-    \else
-        \backmatter
-    \fi
+    \bib@backmatter
     \stepcounter{bib@env}
     \biblistfont
     \let\@bibitem\amsrefs@bibitem

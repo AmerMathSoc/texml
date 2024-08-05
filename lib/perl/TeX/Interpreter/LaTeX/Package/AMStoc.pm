@@ -192,6 +192,11 @@ __DATA__
 \newif\if@AMS@tocusesnames@
 \@AMS@tocusesnames@true
 
+\def\format@toc@label#1#2{%
+    \ignorespaces\if@AMS@tocusesnames@#1 \fi
+    #2\unskip\@addpunct.%
+}
+
 \def\set@toc@entry#1#2#3#4{%
     \leavevmode
     \ams@measure{#2}%
@@ -199,7 +204,7 @@ __DATA__
         % Unnumbered
     \else
         \startXMLelement{label}%
-        \ignorespaces\if@AMS@tocusesnames@#1 \fi#2\unskip
+        \format@toc@label{#1}{#2}%
         \endXMLelement{label}%
     \fi
     \startXMLelement{title}%
