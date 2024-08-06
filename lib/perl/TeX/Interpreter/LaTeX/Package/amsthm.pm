@@ -40,19 +40,6 @@ use TeX::Command::Executable::Assignment qw(:modifiers);
 
 use TeX::Token qw(:catcodes);
 
-my %FONT_STYLE = (
-    rmfamily => { "font-family" => "serif" },
-    sffamily => { "font-family" => "sans-serif" },
-    ttfamily => { "font-family" => "monospace" },
-    bfseries => { "font-weight" => "bold" },
-    mdseries => { "font-weight" => "normal" },
-    upshape  => { "font-style" => "normal" },
-    slshape  => { "font-style" => "oblique" },
-    scshape  => { "font-variant" => "small-caps" },
-    itshape  => { "font-style" => "italic" },
-    em       => { "font-style" => "italic" },
-    );
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -62,8 +49,7 @@ sub install ( $ ) {
 
     $tex->read_package_data();
 
-    $tex->define_pseudo_macro(newtheorem      => \&do_newtheorem);
-    $tex->define_pseudo_macro(newtheoremstyle => \&do_newtheoremstyle);
+    $tex->define_pseudo_macro(newtheorem => \&do_newtheorem);
 
     return;
 }
@@ -154,40 +140,6 @@ sub do_newtheorem {
     return $tokenized;
 }
 
-sub do_newtheoremstyle {
-    my $self = shift;
-
-    my $tex   = shift;
-    my $token = shift;
-
-    my $style_name  = $tex->read_undelimited_parameter(EXPANDED);
-
-    my $above_space = $tex->read_undelimited_parameter();
-    my $below_space = $tex->read_undelimited_parameter();
-    my $body_font   = $tex->read_undelimited_parameter();
-    my $indent      = $tex->read_undelimited_parameter();
-    my $head_font   = $tex->read_undelimited_parameter();
-    my $head_punct  = $tex->read_undelimited_parameter();
-    my $head_sep    = $tex->read_undelimited_parameter();
-    my $head_spec   = $tex->read_undelimited_parameter();
-
-    my %body_style = ( "font-style" => "normal" );
-
-    for my $token (@{ $body_font }) {
-        if ($token == CATCODE_CSNAME) {
-            my $csname = $token->get_csname();
-
-            if (defined (my $style = $FONT_STYLE{$csname})) {
-                %body_style = (%body_style, %{ $style });
-            }
-        }
-    }
-
-    my $body_style = join "; ", map { "$_: $body_style{$_}" } keys %body_style;
-
-    return $tex->tokenize(qq{\\expandafter\\def\\csname th\@${style_name}\\endcsname{\\csname thm\@headpunct\\endcsname{$head_punct}}});
-}
-
 ######################################################################
 ##                                                                  ##
 ##                           ENVIRONMENTS                           ##
@@ -216,6 +168,10 @@ __DATA__
 \def\th@definition{\thm@headpunct{.}}
 \def\th@remark{\thm@headpunct{.}}
 
+\newcommand{\newtheoremstyle}[9]{%
+    \expandafter\def\csname th@#1\endcsname{\thm@headpunct{#7}}%
+}
+
 \def\refstepcounter@cref[#1]#2{%
     \refstepcounter{#2}%
 }
@@ -241,6 +197,7 @@ __DATA__
     \addXMLid
     \def\@currentreftype{statement}%
     \edef\@currentrefsubtype{\@currenvir}%
+    \@nameuse{th@#2}%
     %%
     %% Inside lists, \xmlpartag is turned off, so we need to make
     %% sure to turn it back on.  Cf. car-brown2.  TBD: Can we
@@ -252,7 +209,7 @@ __DATA__
     \if S#1%
         \if###5##\else
             \refstepcounter@cref[#4]{#5}%
-            \@nameuse{the#4}\XMLgeneratedText.\space % ??? Where is the period in amsthm.dtx?
+            \@nameuse{the#4}%
         \fi
         %
         #3%
@@ -261,19 +218,20 @@ __DATA__
         %
         \if###5##\else
             \refstepcounter@cref[#4]{#5}%
-            \space\@nameuse{the#4}\XMLgeneratedText.%
+            \space\@nameuse{the#4}%
         \fi
     \fi
+    \if###6##\XMLgeneratedText{\the\thm@headpunct}\fi
     \par
     \if###6##\else
         \begingroup
         \xmlpartag{}%
         \startXMLelement{title}%
-            \XMLgeneratedText(#6\XMLgeneratedText)\par
+            \XMLgeneratedText(#6\XMLgeneratedText)%
+            \XMLgeneratedText{\the\thm@headpunct}\par
             \endXMLelement{title}\par
         \endgroup
     \fi
-    \@nameuse{th#2}%
     \par
     \everypar{}%
     \ignorespaces
