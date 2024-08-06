@@ -63,6 +63,19 @@ __DATA__
 \let\makehalftitle\@empty
 \let\chap@maketitle\@empty
 
+%% For our epubs, we want dedications to appear immediately before the
+%% table of contents, regardless of where they were in the book.  By
+%% adding \makededication here, that will be automatic if we use
+%% \dedicatory.  Similarly, we want to insert our DRM statement after
+%% the TOC.
+
+\def\tableofcontents{%
+    \makededication
+    \@starttoc{toc}\contentsname
+    \insertAMSDRMstatement
+    \glet\AMS@authors\@empty
+}
+
 \let\c@xcb=\c@section
 \let\p@xcb=\p@section
 \let\l@xcb=\l@section
