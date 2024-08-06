@@ -54,8 +54,6 @@ __DATA__
 
 \seriesinfo{gsm}{}{}
 
-\def\tableofcontents{\@starttoc{toc}\contentsname\insertAMSDRMstatement}
-
 \def\format@toc@label#1#2{%
     \ignorespaces\if@AMS@tocusesnames@#1 \fi
     \ifnum\@toclevel=1\XMLelement{x}{\S}\fi
