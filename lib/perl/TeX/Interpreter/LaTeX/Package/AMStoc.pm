@@ -237,7 +237,10 @@ __DATA__
 
 \def\contentsname{Contents}
 
-\def\tableofcontents{\@starttoc{toc}\contentsname}
+\def\tableofcontents{%
+    \@starttoc{toc}\contentsname
+    \glet\AMS@authors\@empty
+}
 
 \def\@starttoc#1#2{%
     \@clear@sectionstack
