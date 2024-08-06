@@ -2432,7 +2432,7 @@ __DATA__
 \def\@biblabel#1#2{%
     \typeout{Processing \string\@biblabel{#1}{#2}}%
     \setXMLattribute{id}{bibr-#2}%
-    \startXMLelement{label}[#1]\endXMLelement{label}%
+    \startXMLelement{label}\XMLgeneratedText[#1\XMLgeneratedText]\endXMLelement{label}%
 }
 
 \PreserveMacroDefinition\@biblabel
