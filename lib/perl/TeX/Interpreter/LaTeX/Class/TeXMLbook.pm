@@ -372,6 +372,7 @@ __DATA__
         \AMS@dedication
         \end{dedication}
     \fi
+    \glet\AMS@dedication\@empty
 }
 
 \def\refname{Bibliography}
