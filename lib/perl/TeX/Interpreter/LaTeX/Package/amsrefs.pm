@@ -364,7 +364,7 @@ __DATA__
 %% If the formatting of the label changes, it should also change in
 %% do_modify_bib_label().
 %%
-    \startXMLelement{label}[\thebib]\endXMLelement{label}%
+    \startXMLelement{label}\XMLgeneratedText[\thebib\XMLgeneratedText]\endXMLelement{label}%
     \ifx\current@raw@bib\@empty\else
         \begingroup
             \noligs=1
