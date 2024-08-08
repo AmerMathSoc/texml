@@ -65,7 +65,7 @@ __DATA__
 
 \def\algorithmname{Algorithm}
 
-\providecommand{\fnum@algorithm}{\fname@algorithm}
+\def\fnum@algorithm{\fname@algorithm\space\thealgorithm\XMLgeneratedText.}
 
 \let\algorithm\relax
 \let\endalgorithm\relax
