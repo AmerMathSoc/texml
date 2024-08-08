@@ -44,6 +44,15 @@ sub is_write_node {
     return 1;
 }
 
+sub show_node {
+    my $self = shift;
+
+    my $fileno = $self->fileno();
+    my $tokens = $self->get_token_list();
+
+    return sprintf "write(%d, %s)", $fileno, $tokens;
+}
+
 1;
 
 __END__

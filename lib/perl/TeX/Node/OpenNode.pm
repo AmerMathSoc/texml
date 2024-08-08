@@ -40,6 +40,12 @@ use TeX::Class;
 
 my %filename_of :ATTR(:name<filename>);
 
+sub show_node {
+    my $self = shift;
+
+    return sprintf "open(%s)", $self->get_filename();
+}
+
 1;
 
 __END__

@@ -40,6 +40,12 @@ sub is_close_node {
     return 1;
 }
 
+sub show_node {
+    my $self = shift;
+
+    return sprintf "close(%d)", $self->fileno();
+}
+
 1;
 
 __END__

@@ -147,10 +147,17 @@ sub append {
     return;
 }
 
-sub show_node {
+sub to_string {
     my $self = shift;
 
     return ref($self);
+}
+
+
+sub show_node {
+    my $self = shift;
+
+    return $self->to_string();
 }
 
 1;

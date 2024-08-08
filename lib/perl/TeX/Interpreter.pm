@@ -1405,10 +1405,25 @@ sub tail_append {
 
     my $cur_list = $tex->get_cur_list();
 
+    if ($tex->tracing_nodes()) {
+        $tex->begin_diagnostic();
+
+        for my $node (@_) {
+            Carp::cluck "Undefined node!" unless defined $node;
+
+            my $x = defined $node ? $node->show_node() : '<undef>';
+
+            my $depth = "." x $tex->num_semantic_nests();
+
+            $tex->print_nl("Appending node $depth $x");
+        }
+
+        $tex->end_diagnostic(false);
+    }
+
     if (defined $cur_list) {
         for my $node (@_) {
             $cur_list->append_node($node);
-#$tex->print_nl("Adding node '" . $node->show_node() . "'") if defined $node;
         }
     } else {
         # $tex->DEBUG("Can't append nodes '@_' to null list");
@@ -2114,7 +2129,7 @@ sub __assign_int_commands { # command code = assign_int(_cmd); Region 5
 
     # texml extensions
 
-    push @params, qw(tracing_input
+    push @params, qw(tracing_input tracing_nodes
                      TeXML_debug_output TeXML_SVG_mag);
 
     return @params;
@@ -8842,6 +8857,8 @@ sub box_end {
     my $box_context = shift || 0; ##* TODO: why is this sometimes null?
 
     my $cur_box = $tex->get_cur_box();
+
+    return unless defined $cur_box;
 
     # $tex->DEBUG("box_context = $box_context; cur_box = $cur_box");
 

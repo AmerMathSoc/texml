@@ -76,7 +76,9 @@ sub show_node {
     my $font = $self->get_font();
     my $char = $self->get_char_code();
 
-    return sprintf "%s %s", $font, print_char_code($char);
+#    return sprintf "%s %s", $font, print_char_code($char);
+
+    return sprintf "<character> %s", print_char_code($char);
 }
 
 1;
