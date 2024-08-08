@@ -106,6 +106,8 @@ __DATA__
 }
 
 \def\@setcref#1#2#3{%
+    \TeXML@init@ref@group
+    \start@xref@group
     \startXMLelement{xref}%
     \if@TeXMLend
         \@ifundefined{r@#1@cref}{%
@@ -140,6 +142,7 @@ __DATA__
         \setXMLattribute{specific-use}{unresolved #2}%
     \fi
     \endXMLelement{xref}%
+    \end@xref@group
 }
 
 % AMSTHM

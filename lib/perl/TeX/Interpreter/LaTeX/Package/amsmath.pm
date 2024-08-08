@@ -81,12 +81,16 @@ __DATA__
 \DeclareRobustCommand{\eqref}[1]{%
     \global\@namedef{MT_r_#1}{#1}%
     \leavevmode
+    \ifinXMLelement{xref-group}%
+        \let\end@xref@group\@empty
+    \else
+        \startXMLelement{xref-group}%
+        \def\end@xref@group{\endXMLelement{xref-group}}%
+    \fi
     \XMLgeneratedText(%
     \ref{#1}%
-    % \begingroup
-    %     \st@rredfalse
-    %     \expandafter\@setref {#1} \eqref
     \XMLgeneratedText)%
+    \end@xref@group
 }
 
 \def\subequation@start{%

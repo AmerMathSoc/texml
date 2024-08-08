@@ -172,6 +172,8 @@ __DATA__
 
 \def\@sethyperref#1#2#3#4#5{%
     \leavevmode
+    \TeXML@init@ref@group
+    \start@xref@group
     \startXMLelement{xref}%
     \if@TeXMLend
         \@ifundefined{r@#3}{%
@@ -200,6 +202,7 @@ __DATA__
     \fi
     #5%
     \endXMLelement{xref}%
+    \end@xref@group
 }
 
 % \hypertarget{name}{text}
