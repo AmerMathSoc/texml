@@ -59,6 +59,8 @@ use TeX::Utils::LibXML;
 my $PUBS;
 my $BUILDER;
 
+use constant ALI_NS => 'http://www.niso.org/schemas/ali/1.0/';
+
 ######################################################################
 ##                                                                  ##
 ##                            UTILITIES                             ##
@@ -637,7 +639,74 @@ sub add_permissions {
             $owner = $tex->convert_fragment($owner);
 
             append_xml_element($permissions, "copyright-holder", $owner);
+
+            add_license($tex, $permissions, $gentag);
+
+            add_free_to_read($tex, $permissions, $gentag);
         }
+    }
+
+    return;
+}
+
+sub add_free_to_read {
+    my $tex = shift;
+
+    my $permissions = shift;
+    my $doc    = shift;
+
+    my $publ_key = $doc->get_publ_key();
+
+    if (defined (my $issue_date = $doc->get_issuedate())) {
+        my $year = $issue_date->get_year();
+
+        if ($PUBS->is_free($publ_key, $year)) {
+            append_xml_element($permissions, 'ali:free_to_read', undef,
+                               { 'xmlns:ali' => "http://www.niso.org/schemas/ali/1.0/" });
+        } elsif (defined(my $start_date = $PUBS->free_as_of($publ_key, $year))) {
+            append_xml_element($permissions, 'ali:free_to_read', undef,
+                               { 'xmlns:ali' => "http://www.niso.org/schemas/ali/1.0/",
+                                     'start-date' => $start_date });
+        }
+    }
+
+    return;
+}
+
+# CC BY       #1 : \href{https://creativecommons.org/licenses/by/#1/}
+# CC BY NC    #1 : \href{https://creativecommons.org/licenses/by-nc/#1/}
+# CC BY ND    #1 : \href{https://creativecommons.org/licenses/by-nd/#1/}
+# CC BY NC ND #1 : \href{https://creativecommons.org/licenses/by-nc-nd/#1/}
+
+sub __cc_license_url {
+    my $copyright = shift;
+
+    if ($copyright =~ m{(CC\s+BY(?:\s+(NC))?(?:\s+(ND))?\s+(\d+\.\d+))}) {
+        my $nc = $2;
+        my $nd = $3;
+        my $version = $4;
+
+        my $license = lc join("-", "by", grep { defined } ($nc, $nd));
+
+        return qq{https://creativecommons.org/licenses/$license/$version};
+
+        # return qq{$1: nc=$nc; nd=$nd; version=$version};
+    }
+
+    return;
+}
+
+sub add_license {
+    my $tex = shift;
+
+    my $permissions = shift;
+    my $doc         = shift;
+
+    my $owner = $doc->get_copyright->get_owner();
+
+    if (nonempty(my $url = __cc_license_url($owner))) {
+        append_xml_element($permissions, license => undef,
+                           { 'xlink:href' => $url});
     }
 
     return;
@@ -1413,11 +1482,11 @@ sub create_book_meta( $$ ) {
     # if (defined(my $publication = $gentag->get_publication())) {
     #     for my $issn ($publication->get_issns()) {
     #         my %atts;
-    # 
+    #
     #         if (defined(my $type = $issn->get_type())) {
     #             $atts{"publication-format"} = $type;
     #         }
-    # 
+    #
     #         append_xml_element($meta, "issn", $issn->get_value(), \%atts);
     #     }
     # }
