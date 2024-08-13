@@ -705,8 +705,11 @@ sub add_license {
     my $owner = $doc->get_copyright->get_owner();
 
     if (nonempty(my $url = __cc_license_url($owner))) {
-        append_xml_element($permissions, license => undef,
-                           { 'xlink:href' => $url});
+        my $license = append_xml_element($permissions, license => undef,
+                                         { 'license-type' => 'open-access' });
+
+        append_xml_element($license, 'ali:license_ref', $url,
+                           { 'xmlns:ali' => ALI_NS })
     }
 
     return;
