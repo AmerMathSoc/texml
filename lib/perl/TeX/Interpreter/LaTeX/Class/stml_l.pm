@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Class::stml_l;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -53,6 +53,12 @@ __DATA__
 \LoadClass{amsbook}
 
 \seriesinfo{stml}{}{}
+
+\def\format@toc@label#1#2{%
+    \ignorespaces\if@AMS@tocusesnames@#1 \fi
+    \ifnum\@toclevel=1\XMLelement{x}{\S}\fi
+    #2\unskip\@addpunct.%
+}
 
 \endinput
 
