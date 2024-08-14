@@ -1507,49 +1507,6 @@ __DATA__
 }
 \let\aufm\attrib
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%                                                                  %%
-%%                      SECTIONS WITH METADATA                      %%
-%%                                                                  %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\newif\if@numbered
-
-\def\deferSectionCommand#1{%
-    \expandafter\let\csname orig_\string#1\endcsname#1%
-    \def#1{\maybe@st@rred{\@deferSectionCommand#1}}%
-}
-
-\def\@deferSectionCommand#1{%
-    \ifst@rred
-        \@numberedfalse
-    \else
-        \@numberedtrue
-    \fi
-    \def\deferred@section@command{\@nameuse{orig_\string#1}*{}}%
-    \edef\deferred@section@counter{\expandafter\@gobble\string#1}%
-    \@ifnextchar[{\@@deferSectionCommand}{\@@deferSectionCommand[]}%
-}
-
-\def\@@deferSectionCommand[#1]#2{%
-    \begingroup
-        \let\label\@gobble
-        \protected@xdef\deferred@section@title{\zap@space #2 \@empty}%
-    \endgroup
-}
-
-\newenvironment{sectionWithMetadata}{%
-    \clear@deferred@section
-    \deferSectionCommand\part
-    \deferSectionCommand\chapter
-    \deferSectionCommand\section
-    \deferSectionCommand\subsection
-    \deferSectionCommand\subsubsection
-}{%
-    \deferred@section@command
-    \global\everypar{}%
-}
-
 \endinput
 
 __END__

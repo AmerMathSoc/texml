@@ -1,6 +1,6 @@
 package TeX::Interpreter::FMT::latex;
 
-# Copyright (C) 2022, 2023 American Mathematical Society
+# Copyright (C) 2022-2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -1241,7 +1241,6 @@ __DATA__
 
 \@declarestyledcommand\textbfsf\mathbfsf{bold-sans}% text/72 (matsuura)
 
-
 \def\@declarefontcommand#1#2#3{%
     \DeclareRobustCommand#1[1]{%
         \ifmmode
@@ -2010,6 +2009,9 @@ __DATA__
     \set@sec@subreftype{#1}%
     \ams@measure{#8}%
     \edef\@toclevel{\number#2}%
+    \if@texml@deferredsection@
+        \if@numbered \st@rredfalse \else \st@rredtrue\fi
+    \fi
     \ifst@rred
         \let\@secnumber\@empty
         \let\@svsec\@empty
@@ -2062,11 +2064,18 @@ __DATA__
 
 % See amscommon.pm for \clear@deferred@section and \deferred@section@...
 
+\newif\if@numbered
+
+\newif\if@texml@deferredsection@
+\@texml@deferredsection@false
+
 \def\clear@deferred@section{%
     \glet\AMS@authors\@empty
     \glet\deferred@section@command\@empty
     \glet\deferred@section@counter\@empty
     \glet\deferred@section@title\@empty
+    \global\@texml@deferredsection@false
+    \@numberedfalse
 }
 
 \clear@deferred@section
@@ -2113,14 +2122,14 @@ __DATA__
         \fi
         \begingroup
             \let\label\@gobble
-            \protected@xdef\@tempa{\zap@space#4 \@empty}%
+            \protected@xdef\@tempa{#4}%
         \endgroup
         \ifx\@tempa\@empty
             \let\@tempa\deferred@section@title
         \fi
         \ifx\@tempa\@empty\else
             \startXMLelement{title}%
-            \ignorespaces#4\if@ams@inline\@addpunct.\fi
+            \ignorespaces\@tempa\if@ams@inline\@addpunct.\fi
             \endXMLelement{title}%
         \fi
         \par
@@ -2132,6 +2141,48 @@ __DATA__
 }
 
 \PreserveMacroDefinition\@sect
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                      SECTIONS WITH METADATA                      %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\deferSectionCommand#1{%
+    \expandafter\let\csname orig_\string#1\endcsname#1%
+    \def#1{\maybe@st@rred{\@deferSectionCommand#1}}%
+}
+
+\def\@deferSectionCommand#1{%
+    \@texml@deferredsection@true
+    \ifst@rred
+        \@numberedfalse
+    \else
+        \@numberedtrue
+    \fi
+    \def\deferred@section@command{\@nameuse{orig_\string#1}*{}}%
+    \edef\deferred@section@counter{\expandafter\@gobble\string#1}%
+    \@ifnextchar[{\@@deferSectionCommand}{\@@deferSectionCommand[]}%
+}
+
+\def\@@deferSectionCommand[#1]#2{%
+    \begingroup
+        \let\label\@gobble
+        \protected@xdef\deferred@section@title{#2}%
+    \endgroup
+}
+
+\newenvironment{sectionWithMetadata}{%
+    \clear@deferred@section
+    \deferSectionCommand\part
+    \deferSectionCommand\chapter
+    \deferSectionCommand\section
+    \deferSectionCommand\subsection
+    \deferSectionCommand\subsubsection
+}{%
+    \deferred@section@command
+    \global\everypar{}%
+}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
