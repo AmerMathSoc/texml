@@ -433,15 +433,18 @@ __DATA__
 \UCSchardef\;"2005 % FOUR-PER-EM SPACE
 \UCSchardef\:"2004 % THREE-PER-EM SPACE
 
+% For some reason, MathJax doesn't know about \medspace and
+% \thickspace, so replace them by \: and \;
+
 \DeclareMathJaxMacro*\,
 \DeclareMathJaxMacro\thinspace
 \DeclareMathJaxMacro*\!
 \DeclareMathJaxMacro\negthinspace
 \DeclareMathJaxMacro*\:
-\DeclareMathJaxMacro\medspace
+\let\medspace\:
 \DeclareMathJaxMacro\negmedspace
 \DeclareMathJaxMacro*\;
-\DeclareMathJaxMacro\thickspace
+\let\thickspace\;
 \DeclareMathJaxMacro\negthickspace
 
 \DeclareMathPassThrough{lvert}
