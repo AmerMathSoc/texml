@@ -250,7 +250,7 @@ sub do_add_ams_metadata {
 
     $tex->define_simple_macro(tsup => qq{\\XMLelement{sup}});
 
-    if ($doctype eq 'article') {
+    if ($doctype eq 'article' || $doctype eq 'bookrev') {
         eval {
             my $old_front = find_unique_node($dom, "/article/front");
 
@@ -376,10 +376,20 @@ sub add_contributors {
     my $parent = shift;
     my $gentag = shift;
 
-    my @all = ($gentag->get_authors(),
-               $gentag->get_editors(),
-               $gentag->get_translators(),
-               $gentag->get_contributors());
+    my $doctype = $gentag->get_doctype();
+
+    my @all;
+
+    if ($doctype eq 'bookrev') {
+        my $review = $gentag->get_review(0);
+
+        @all = $review->get_reviewers();
+    } else {
+        @all = ($gentag->get_authors(),
+                $gentag->get_editors(),
+                $gentag->get_translators(),
+                $gentag->get_contributors());
+    }
 
     my $prev_type;
     my $prev_description = "";
@@ -1142,6 +1152,8 @@ sub add_article_citation {
     my $parent = shift;
     my $gentag = shift;
 
+    my $doctype = $gentag->get_doctype();
+
     my $publication = $gentag->get_publication();
 
     my $record = "\n\\bib{";
@@ -1156,7 +1168,15 @@ sub add_article_citation {
 
     $record .= "}{article}{\n";
 
-    for my $author ($gentag->get_authors()) {
+    my @authors;
+
+    if ($doctype eq 'bookrev') {
+        @authors = $gentag->get_review(0)->get_reviewers();
+    } else {
+        @authors = $gentag->get_authors();
+    }
+
+    for my $author (@authors) {
         my $name = $author->get_name();
 
         $record .= "  author={" . $name->inverted() . "}";
@@ -1168,7 +1188,15 @@ sub add_article_citation {
         $record .= ",\n"
     }
 
-    $record .= sprintf qq{  title={%s},\n}, $gentag->get_title()->get_tex();
+    my $title;
+
+    if ($doctype eq 'bookrev') {
+        $title = 'Book Review';
+    } else {
+        $title = $gentag->get_title()->get_tex();
+    }
+
+    $record .= sprintf qq{  title={%s},\n}, $title;
 
     $record .= sprintf qq{  journal={%s},\n}, $publication->get_abbrev_title();
 
