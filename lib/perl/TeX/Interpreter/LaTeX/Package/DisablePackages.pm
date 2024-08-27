@@ -76,7 +76,6 @@ __DATA__
 \DisablePackage{lmodern}
 \DisablePackage{makeidx}
 \DisablePackage{mathalfa}
-\DisablePackage{mathbbol}
 \DisablePackage{morefloats}
 \DisablePackage{ogonek}
 \DisablePackage{old-arrows}
