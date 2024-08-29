@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::amscyr;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,6 +32,11 @@ package TeX::Interpreter::LaTeX::Package::amscyr;
 use strict;
 use warnings;
 
+use TeX::Token qw(:catcodes :factories);
+use TeX::TokenList qw(:factories);
+
+use TeX::Output::FontMapper;
+
 sub install ( $ ) {
     my $class = shift;
 
@@ -39,9 +44,48 @@ sub install ( $ ) {
 
     $tex->package_load_notification();
 
+    $tex->define_pseudo_macro('texml@translit@ot@two' => \&do_translit_ot2);
+
     $tex->read_package_data();
 
     return;
+}
+
+sub do_translit_ot2 {
+    my $self = shift;
+
+    my $tex   = shift;
+    my $token = shift;
+
+    my $token_list = new_token_list;
+
+    my $arg = $tex->read_undelimited_parameter();
+
+    ## This is barely acceptable.  We don't handle ligatures, although
+    ## note the definitions of \dz, etc., below.  It also chokes on
+    ## things like \textcyr{\char"1E }.  In order to handle this sort
+    ## of thing properly, we will probably need to postpone it until
+    ## the output stage.
+
+    my $enc = TeX::Output::FontMapper::get_encoding('OT2');
+
+    for my $token ($arg->get_tokens()) {
+        if ($token == CATCODE_LETTER || $token == CATCODE_OTHER) {
+            my $char_code = ord($token->get_char());
+
+            if (defined(my $new_char_code = $enc->[$char_code])) {
+                $new_char_code =~ s{<0x(.*?)>}{hex($1)}e;
+
+                $token_list->push(make_character_token(chr($new_char_code), $token->get_catcode()));
+            } else {
+                $token_list->push($token);
+            }
+        } else {
+            $token_list->push($token);
+        }
+    }
+
+    return $token_list;
 }
 
 1;
@@ -50,12 +94,28 @@ __DATA__
 
 \ProvidesPackage{amscyr}
 
-\def\mitBe{\mathit{\char"0411 }}
+\let\textcyr\texml@translit@ot@two
 
-\def\cyrCh{\mathrm{\char"0427}}
-\def\Sha{\mathrm{\char"0428}}
-\def\Shcha{\mathrm{\char"0429}}
-\def\De{\mathrm{\char"0434}}
+\def\mathcyr#1{\mathrm{\texml@translit@ot@two{#1}}}
+
+\protected@edef\mitBe{\protect\mathit{\Uchar"0411 }}
+\protected@edef\cyrCh{\protect\mathrm{\Uchar"0427}}
+\protected@edef\Sha{\protect\mathrm{\Uchar"0428}}
+\protected@edef\Shcha{\protect\mathrm{\Uchar"0429}}
+\protected@edef\De{\protect\mathrm{\Uchar"0434}}
+
+\protected@edef\cprime{\Uchar"044C }
+\protected@edef\Cprime{\Uchar"042C }
+\protected@edef\cdprime{\Uchar"044A }
+\protected@edef\Cdprime{\Uchar"042A }
+
+\newcommand{\dbar}{dj}
+\newcommand{\Dbar}{Dj}
+
+\protected@edef\dz{\Uchar"0455 }
+\protected@edef\Dz{\Uchar"0405 }
+\protected@edef\dzh{\Uchar"045F }
+\protected@edef\Dzh{\Uchar"040F }
 
 \endinput
 
