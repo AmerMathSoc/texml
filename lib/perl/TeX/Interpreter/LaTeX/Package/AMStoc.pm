@@ -86,7 +86,11 @@ sub do_label_toc_entries {
                     if (nonempty(my $type = $target->getAttribute('specific-use'))) {
                         $entry->setAttribute('specific-use', $type);
                     }
-                }                
+
+                    if (nonempty(my $style = $target->getAttribute('style'))) {
+                        $entry->setAttribute('style', $style);
+                    }
+                }
             }
         }
     }

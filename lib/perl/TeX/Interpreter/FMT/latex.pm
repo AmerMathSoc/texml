@@ -1964,6 +1964,10 @@ __DATA__
 
 \PreserveMacroDefinition\ams@measure
 
+% \@startsect{NAME}{LEVEL}{INDENT}{BEFORESKIP}{AFTERSKIP}{STYLE}
+%
+% LEVEL = \@m if *-ed
+
 \def\@startsection#1#2#3#4#5#6{%
     \everypar{}%
     \leavevmode
@@ -2055,12 +2059,12 @@ __DATA__
 
 \def\XML@section@tag{sec}
 
-% \XML@section@specific@use is an ugly hack introduced to solve a
+% \XML@section@specific@style is an ugly hack introduced to solve a
 % problem for amstext/65 (katznels).  A better approach might be to
 % define a replacement for \@startsection that uses key-value pairs to
 % make it easier to extend.
 
-\let\XML@section@specific@use\@empty
+\let\XML@section@specific@style\@empty
 
 % See amscommon.pm for \clear@deferred@section and \deferred@section@...
 
@@ -2096,12 +2100,11 @@ __DATA__
         \fi
         \setXMLattribute{id}{\@currentXMLid}%
         \setXMLattribute{disp-level}{#2}%
-        \setXMLattribute{specific-use}{#1%
-            \ifx\XML@section@specific@use\@empty\else
-                \space\XML@section@specific@use
-            \fi
-        }%
-        \glet\XML@section@specific@use\@empty
+        \setXMLattribute{specific-use}{#1}%
+        \ifx\XML@section@specific@style\@empty\else
+            \setXMLattribute{style}{\XML@section@specific@style}%
+        \fi
+        \glet\XML@section@specific@style\@empty
         \ifinXMLelement{statement}\else
             \@push@sectionstack{#2}{\XML@section@tag}%
         \fi
@@ -2121,7 +2124,7 @@ __DATA__
             \endXMLelement{label}%
         \fi
         \begingroup
-            \let\label\@gobble
+            \let\label\relax
             \protected@xdef\@tempa{#4}%
         \endgroup
         \ifx\@tempa\@empty

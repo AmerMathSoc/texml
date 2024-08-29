@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Class::amsbook;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -88,7 +88,8 @@ __DATA__
   \settowidth{\leftmargini}{\labelenumi\hskip\labelsep}%
   \setcounter{enumii}{4}% letter d
   \settowidth{\leftmarginii}{\labelenumii\hskip\labelsep}%
-  \@startsection{xcb}% counter name; ignored because of the
+  \def\XML@section@specific@style{xcb}%
+  \@startsection{section}% counter name; ignored because of the
                                 % * below
   {1}% sectioning level
   {\z@}% indent to the left of the section title
