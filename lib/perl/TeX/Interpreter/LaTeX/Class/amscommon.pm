@@ -471,6 +471,9 @@ __DATA__
 %    \begin{macrocode}
 % \def\specialsection{\@startsection{section}{1}{}{}{}{}}
 
+% \z@ = display heading
+% \p@ = inline heading
+
 \def\section      {\@startsection{section}      {1}{}{}{\z@}{}}
 \def\subsection   {\@startsection{subsection}   {2}{}{}{\p@}{}}
 \def\subsubsection{\@startsection{subsubsection}{3}{}{}{\p@}{}}
