@@ -2125,6 +2125,7 @@ __DATA__
         \fi
         \begingroup
             \let\label\relax
+            \let\footnote\relax
             \protected@xdef\@tempa{#4}%
         \endgroup
         \ifx\@tempa\@empty
