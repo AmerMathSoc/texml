@@ -80,6 +80,13 @@ sub do_url_formatstring {
     my $url_for_link = $url_for_display->clone();
 
     if ($url_for_link !~ m{^((ftp|https?)://|mailto:)}) {
+        ## I would really like to use https here, but there's always
+        ## the chance that we're dealing with an old server that
+        ## doesn't support https.
+        ##
+        ## Of course, we could also be dealing with a paranoid server
+        ## that doesn't support http...
+
         $url_for_link->unshift($tex->tokenize('http://'));
     }
 
