@@ -9160,9 +9160,11 @@ sub make_accent {
 
         $tex->initialize_char_codes($char_code);
 
-        $tex->tail_append(new_unicode_character($char_code));
+        $tex->append_char($char_code);
 
-        $tex->adjust_space_factor($char_code); # NB: Always 1000 in tex.web
+        # NB: In ur-TeX, make_accent always sets the space_factor to
+        # 1000 here, but append_char will use the actual space_factor
+        # of the accented character.
     }
 
     return;
