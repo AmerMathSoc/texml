@@ -37,6 +37,7 @@ use TeX::Arithmetic qw(scaled_to_string);
 use TeX::Constants qw(:node_params);
 
 use TeX::Nodes qw(:factories);
+use TeX::Node::CharNode qw(:factories);
 use TeX::Node::HListNode qw(:factories);
 
 use TeX::Type::GlueSpec qw(:factories);
@@ -468,7 +469,6 @@ sub show_node_list {
 
                 print "Node type $type\n";
 
-
             #     rule_node:                          @<Display rule |p|@>;
             #     ins_node:                           @<Display insertion |p|@>;
             #     whatsit_node:                       @<Display the whatsit node |p|@>;
@@ -707,7 +707,7 @@ sub extract_char_node {
 
     my $font = $self->get_font($fnt_num);
 
-    return new_character($font, $char);
+    return new_character($char, undef, $font);
 }
 
 sub extract_hlist_node {
@@ -723,7 +723,6 @@ sub extract_hlist_node {
         glue_set   => $self->get_glue_set($ptr),
         glue_sign  => $self->get_glue_sign($ptr),
         glue_order => $self->get_glue_order($ptr) });
-
 
     my $list_ptr = $self->get_list_ptr($ptr);
 

@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::OLDfont;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -36,7 +36,7 @@ use TeX::Token qw(:catcodes :factories);
 
 use TeX::Utils::Misc;
 
-use TeX::Node::Extension::UnicodeCharNode qw(:factories);
+use TeX::Node::CharNode qw(new_character);
 
 use TeX::Constants qw(:save_stack_codes :token_types);
 
@@ -63,7 +63,7 @@ sub install ( $ ) {
 }
 
 use constant RIGHT_BRACE_TOKEN => make_character_token("}", CATCODE_LETTER);
-use constant RIGHT_BRACE_CHAR  => new_unicode_character(ord("}"));
+use constant RIGHT_BRACE_CHAR  => new_character(ord("}"));
 
 sub make_font_declaration( $;$ ) {
     my $qName = shift;

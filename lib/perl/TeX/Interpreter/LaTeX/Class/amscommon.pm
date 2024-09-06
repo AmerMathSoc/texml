@@ -42,8 +42,6 @@ use TeX::Constants qw(:save_stack_codes :token_types);
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
 
-use TeX::Node::Extension::UnicodeCharNode qw(:factories);
-
 ######################################################################
 ##                                                                  ##
 ##                             METHODS                              ##
@@ -212,7 +210,6 @@ EOF
             $tex_text .= __msc_kwd($scheme, "secondary", $secondary);
         }
     }
-
 
     $tex_text .= q{\endXMLelement{kwd-group}} . "\n";
 

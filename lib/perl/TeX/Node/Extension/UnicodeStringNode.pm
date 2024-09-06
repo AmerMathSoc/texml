@@ -1,6 +1,6 @@
 package TeX::Node::Extension::UnicodeStringNode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,12 +29,8 @@ package TeX::Node::Extension::UnicodeStringNode;
 # USA
 # email: tech-support@ams.org
 
-## This should be unified with UnicodeCharNode and CharNode.
-
 use strict;
 use warnings;
-
-use version; our $VERSION = qv '1.0.0';
 
 use base qw(TeX::Node::CharNode Exporter);
 

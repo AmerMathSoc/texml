@@ -135,6 +135,7 @@ use TeX::TokenList qw(:factories);
 use TeX::Type::GlueSpec qw(:factories);
 
 use TeX::Nodes qw(:factories);
+use TeX::Node::CharNode qw(:factories);
 
 use TeX::Node::HListNode qw(new_null_box);
 use TeX::Node::XmlComment;
@@ -145,7 +146,6 @@ use TeX::Node::XmlImportNode;
 use TeX::Node::MathOpenNode;
 use TeX::Node::MathCloseNode;
 
-use TeX::Node::Extension::UnicodeCharNode qw(:factories);
 use TeX::Node::Extension::UnicodeStringNode qw(:factories);
 
 use TeX::Primitive::CharGiven;
@@ -8611,12 +8611,14 @@ sub append_char {
 
     my $encoding = shift || $tex->get_encoding();
 
-    $tex->tail_append(new_unicode_character($char_code, $encoding));
+    my $char_node = new_character($char_code, $encoding);
+
+    $tex->tail_append($char_node);
 
     return;
 }
 
-my $UNICODE_SPACE_CHAR = new_character(DEFAULT_CHARACTER_ENCODING, ord(' '));
+my $UNICODE_SPACE_CHAR = new_character(ord(' '), DEFAULT_CHARACTER_ENCODING);
 
 sub append_normal_space {
     my $tex = shift;

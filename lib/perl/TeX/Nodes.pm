@@ -1,6 +1,6 @@
 package TeX::Nodes;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -34,8 +34,7 @@ use warnings;
 
 use base qw(Exporter);
 
-our %EXPORT_TAGS = (factories => [ qw(new_character
-                                      new_null_vbox
+our %EXPORT_TAGS = (factories => [ qw(new_null_vbox
                                       new_rule
                                       new_ins
                                       new_mark
@@ -92,13 +91,6 @@ use TeX::Node::XmlCloseNode;
 use TeX::Node::XmlClassNode;
 use TeX::Node::XmlCSSpropNode;
 use TeX::Node::UTemplateMarker;
-
-sub new_character {
-    my $font = shift;
-    my $char = shift;
-
-    return TeX::Node::CharNode->new({ font => $font, char_code => $char });
-}
 
 ######################################################################
 ##                                                                  ##

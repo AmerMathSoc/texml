@@ -32,26 +32,32 @@ package TeX::Node::CharNode;
 use strict;
 use warnings;
 
-use base qw(TeX::Node::AbstractNode);
+use base qw(TeX::Node::AbstractNode Exporter);
+
+our %EXPORT_TAGS = (factories => [ qw(new_character) ] );
+
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{factories} } );
+
+our @EXPORT = ();
 
 use TeX::Class;
 
-use TeX::Arithmetic qw(scaled_to_string);
+use TeX::Output::FontMapper qw(decode_character);
 
-use TeX::Utils qw(print_char_code);
-
-use TeX::Constants qw(:type_bounds);
+use TeX::Interpreter::Constants;
 
 use TeX::Node::HListNode qw(:factories);
 
-my %font_of      :ATTR(:get<font>      :set<font>);
-my %char_code_of :ATTR(:get<char_code> :set<char_code>);
+use TeX::Utils qw(print_char_code);
+
+my %CACHE;
+
+my %font_of      :ATTR(:name<font>);
+my %char_code_of :ATTR(:name<char_code>);
+my %encoding_of  :ATTR(:name<encoding>);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
-
-    $font_of{$ident}      = $arg_ref->{font};
-    $char_code_of{$ident} = $arg_ref->{char_code};
 
     $self->set_visible(1);
 
@@ -60,6 +66,29 @@ sub BUILD {
 
 sub is_char_node {
     return 1;
+}
+
+sub new_character {
+    my $char_code = shift;
+    my $encoding  = shift || DEFAULT_CHARACTER_ENCODING;
+    my $font      = shift;
+
+    my $cached = $CACHE{$encoding}->{$char_code};
+
+    return $cached if defined $cached;
+
+    my $ucs_code = $char_code;
+
+    if ($char_code < 256 && $encoding ne DEFAULT_CHARACTER_ENCODING) {
+        $ucs_code = decode_character($encoding, $char_code);
+    }
+
+    $cached = __PACKAGE__->new({ encoding => $encoding,
+                                 char_code => $ucs_code,
+                                 font      => $font, # cf. TeX::FMT::MEM
+                               });
+
+    return $CACHE{$encoding}->{$char_code} = $cached;
 }
 
 sub to_string :STRINGIFY {
