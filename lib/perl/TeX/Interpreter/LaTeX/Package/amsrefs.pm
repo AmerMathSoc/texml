@@ -40,6 +40,8 @@ use TeX::Command::Executable::Assignment qw(MODIFIER_GLOBAL);
 
 use TeX::Token qw(:catcodes);
 
+use TeX::Utils::LibXML;
+
 sub install ( $ ) {
     my $class = shift;
 
@@ -87,20 +89,18 @@ sub do_modify_bib_label {
 
     my $bibkey = trim($tex->read_undelimited_parameter(EXPANDED));
 
-    my $handle = $tex->get_output_handle();
+    my $dom = $tex->get_output_handle()->get_dom();
 
-    my $dom = $handle->get_dom();
+    ## Find the unique <ref> element for this bibkey.
 
     my @ref_nodes = $dom->findnodes(qq{descendant::ref[attribute::id="bibr-$bibkey"]});
 
-    if (@ref_nodes == 0) {
-        $tex->print_err("Couldn't find a <ref> node for '$bibkey'");
-
-        $tex->error();
-
-        return;
-    } elsif (@ref_nodes > 1) {
-        $tex->print_err("Found too many <ref> nodes for '$bibkey'");
+    if (@ref_nodes != 1) {
+        if (@ref_nodes == 0) {
+            $tex->print_err("Couldn't find a <ref> node for '$bibkey'");
+        } else {
+            $tex->print_err("Found too many <ref> nodes for '$bibkey'");
+        }
 
         $tex->error();
 
@@ -109,37 +109,49 @@ sub do_modify_bib_label {
 
     my $ref_node = $ref_nodes[0];
 
+    ## Find the unique <label> element inside the <ref> element.
+
     my @label_nodes = $ref_node->getChildrenByTagName('label');
-    
-    if (@label_nodes == 0) {
-        $tex->print_err("Couldn't find a <label> node for '$bibkey'");
-    
+
+    if (@label_nodes != 1) {
+        if (@label_nodes == 0) {
+            $tex->print_err("Couldn't find a <label> node for '$bibkey'");
+        } else {
+            $tex->print_err("Found too many <label> nodes for '$bibkey'");
+        }
+
         $tex->error();
-    
-        return;
-    } elsif (@label_nodes > 1) {
-        $tex->print_err("Found too many <label> nodes for '$bibkey'");
-    
-        $tex->error();
-    
+
         return;
     }
 
     my $label_node = $label_nodes[0];
 
-    (my $old_label = $label_node->firstChild()) =~ s{^\[(\S+?)\]$}{$1};
+    ## Strip the <label> tags and generated text, leaving the raw label.
+
+    my $old_label = $label_node =~ s{</?label>}{}gr =~ s{<x>.*?</x>}{}gr;
+
+    ## Calculate the new suffix to be appended to the label.
 
     $tex->begingroup();
+
     $tex->set_catcode(ord('@'), CATCODE_LETTER);
+
     my $suffix = $tex->convert_fragment(q{\@suffix@format1});
-    $tex->endgroup();
 
     my $new_label = $old_label . $suffix;
 
-    $label_node->removeChild($label_node->firstChild());
+    ## And format the new label
 
-    ## TODO: Assumes standard \BibLabel formatting
-    $label_node->appendText(qq{[$new_label]});
+    my $new_label_node = $tex->convert_fragment(qq{\\amsrefs\@fmt\@biblabel{$new_label}});
+
+    $tex->endgroup();
+
+    ## Now replace the old label element by the new label element.
+
+    $label_node->replaceNode($new_label_node);
+
+    ## And update the b@CITEKEY data packet.
 
     my $b = qq{b\@$bibkey};
 
@@ -148,6 +160,18 @@ sub do_modify_bib_label {
     $citesel =~ s{\{\Q$old_label\E\}}{\{$new_label\}};
 
     $tex->define_simple_macro($b, $citesel, MODIFIER_GLOBAL);
+
+    ## If there were any \cite's *after* the bibliography, they will
+    ## already have been resolved, so we need to seek them out and
+    ## update them.
+
+    my @xrefs = $dom->findnodes(qq{descendant::xref[attribute::rid="bibr-$bibkey"]});
+
+    for my $xref (@xrefs) {
+        $xref->removeChildNodes();
+
+        $xref->appendText($new_label);
+    }
 
     return;
 }
@@ -358,13 +382,17 @@ __DATA__
     \@tempb{#3}%
 }
 
+\newcommand{\amsrefs@fmt@biblabel}[1]{%
+    \startXMLelement{label}\XMLgeneratedText[#1\XMLgeneratedText]\endXMLelement{label}%
+}
+
 \def\BibLabel{%
     \setXMLattribute{id}{bibr-\CurrentBib}%
 %%
 %% If the formatting of the label changes, it should also change in
 %% do_modify_bib_label().
 %%
-    \startXMLelement{label}\XMLgeneratedText[\thebib\XMLgeneratedText]\endXMLelement{label}%
+    \amsrefs@fmt@biblabel\thebib
     \ifx\current@raw@bib\@empty\else
         \begingroup
             \noligs=1
@@ -410,7 +438,7 @@ __DATA__
 }
 
 % \def\ar@hyperlink{\format@cite}
-% 
+%
 % \def\format@cite#1{%
 %     \startXMLelement{xref}%
 %     \setXMLattribute{rid}{\strip@cite@prefix#1}%
