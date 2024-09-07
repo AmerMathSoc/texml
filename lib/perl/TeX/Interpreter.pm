@@ -8611,7 +8611,9 @@ sub append_char {
 
     my $encoding = shift || $tex->get_encoding();
 
-    my $char_node = new_character($char_code, $encoding);
+    my $do_ligs = ! $tex->is_mmode();
+
+    my $char_node = new_character($char_code, $encoding, $do_ligs);
 
     $tex->tail_append($char_node);
 

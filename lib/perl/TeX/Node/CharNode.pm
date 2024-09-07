@@ -55,6 +55,7 @@ my %CACHE;
 my %font_of      :ATTR(:name<font>);
 my %char_code_of :ATTR(:name<char_code>);
 my %encoding_of  :ATTR(:name<encoding>);
+my %do_ligs_of   :BOOLEAN(:name<do_ligs>);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
@@ -71,9 +72,10 @@ sub is_char_node {
 sub new_character {
     my $char_code = shift;
     my $encoding  = shift || DEFAULT_CHARACTER_ENCODING;
+    my $do_ligs   = shift ? 1 : 0;
     my $font      = shift;
 
-    my $cached = $CACHE{$encoding}->{$char_code};
+    my $cached = $CACHE{$encoding}->{$char_code}->{$do_ligs};
 
     return $cached if defined $cached;
 
@@ -83,12 +85,13 @@ sub new_character {
         $ucs_code = decode_character($encoding, $char_code);
     }
 
-    $cached = __PACKAGE__->new({ encoding => $encoding,
-                                 char_code => $ucs_code,
+    $cached = __PACKAGE__->new({ char_code => $ucs_code,
+                                 encoding  => $encoding,
+                                 do_ligs   => $do_ligs,
                                  font      => $font, # cf. TeX::FMT::MEM
                                });
 
-    return $CACHE{$encoding}->{$char_code} = $cached;
+    return $CACHE{$encoding}->{$char_code}->{$do_ligs} = $cached;
 }
 
 sub to_string :STRINGIFY {
@@ -102,12 +105,12 @@ sub to_string :STRINGIFY {
 sub show_node {
     my $self = shift;
 
-    my $font = $self->get_font();
     my $char = $self->get_char_code();
+    # my $encoding = $self->get_encoding();
+    my $do_ligs = $self->do_ligs();
 
-#    return sprintf "%s %s", $font, print_char_code($char);
-
-    return sprintf "<character> %s", print_char_code($char);
+    return sprintf "<character ligs=%d>%s</character>", $do_ligs ? 1 : 0,
+        print_char_code($char);
 }
 
 1;
