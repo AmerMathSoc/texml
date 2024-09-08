@@ -1228,7 +1228,7 @@ sub add_article_citation {
     }
 
     if (my @ranges = $gentag->get_page_ranges()) {
-        $record .= sprintf qq{  pages={%s},\n}, $ranges[0];
+        $record .= sprintf qq{  pages={%s},\n}, $ranges[0] =~ s{-+}{--}r;
     }
 
     my $issn = $publication->get_issn_by_type("print") ||
