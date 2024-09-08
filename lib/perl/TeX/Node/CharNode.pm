@@ -44,7 +44,7 @@ use TeX::Class;
 
 use TeX::Output::FontMapper qw(decode_character);
 
-use TeX::Interpreter::Constants;
+use TeX::Constants qw(UCS);
 
 use TeX::Node::HListNode qw(:factories);
 
@@ -54,8 +54,7 @@ my %CACHE;
 
 my %font_of      :ATTR(:name<font>);
 my %char_code_of :ATTR(:name<char_code>);
-my %encoding_of  :ATTR(:name<encoding>);
-my %do_ligs_of   :BOOLEAN(:name<do_ligs>);
+my %encoding_of  :ATTR(:name<encoding> :default<UCS>);
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
@@ -71,27 +70,25 @@ sub is_char_node {
 
 sub new_character {
     my $char_code = shift;
-    my $encoding  = shift || DEFAULT_CHARACTER_ENCODING;
-    my $do_ligs   = shift ? 1 : 0;
+    my $encoding  = shift || UCS;
     my $font      = shift;
 
-    my $cached = $CACHE{$encoding}->{$char_code}->{$do_ligs};
+    my $cached = $CACHE{$encoding}->{$char_code};
 
     return $cached if defined $cached;
 
     my $ucs_code = $char_code;
 
-    if ($char_code < 256 && $encoding ne DEFAULT_CHARACTER_ENCODING) {
+    if ($char_code < 256 && $encoding ne UCS) {
         $ucs_code = decode_character($encoding, $char_code);
     }
 
     $cached = __PACKAGE__->new({ char_code => $ucs_code,
                                  encoding  => $encoding,
-                                 do_ligs   => $do_ligs,
                                  font      => $font, # cf. TeX::FMT::MEM
                                });
 
-    return $CACHE{$encoding}->{$char_code}->{$do_ligs} = $cached;
+    return $CACHE{$encoding}->{$char_code} = $cached;
 }
 
 sub to_string :STRINGIFY {
@@ -106,10 +103,9 @@ sub show_node {
     my $self = shift;
 
     my $char = $self->get_char_code();
-    # my $encoding = $self->get_encoding();
-    my $do_ligs = $self->do_ligs();
+    my $encoding = $self->get_encoding();
 
-    return sprintf "<character ligs=%d>%s</character>", $do_ligs ? 1 : 0,
+    return sprintf "<character enc='%s'>%s</character>", $encoding,
         print_char_code($char);
 }
 

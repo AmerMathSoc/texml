@@ -1,6 +1,6 @@
 package TeX::Output::FontMapper;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -45,7 +45,7 @@ our @EXPORT = qw(encode_character font_spec);
 use File::Spec::Functions;
 use File::Basename;
 
-use TeX::Interpreter::Constants;
+use TeX::Constants qw(UCS);
 
 my %CHAR_MAP;
 my %ENCODING_OF;
@@ -85,7 +85,7 @@ sub font_spec( $ ) {
 sub load_character_map( $ ) {
     my $encoding = shift;
 
-    return if $encoding eq DEFAULT_CHARACTER_ENCODING;
+    return if $encoding eq UCS;
 
     ## FIXME
     use Carp;
@@ -159,7 +159,7 @@ sub encode_character($$) {
     my $font = shift;
     my $char_code = shift;
 
-    # return $char_code; # if $encoding eq DEFAULT_CHARACTER_ENCODING;
+    # return $char_code; # if $encoding eq UCS;
 
     my $map = get_font_encoding($font);
 
@@ -180,7 +180,7 @@ sub decode_character( $$ ) {
     my $encoding  = shift;
     my $char_code = shift;
 
-    return $char_code if $encoding eq DEFAULT_CHARACTER_ENCODING;
+    return $char_code if $encoding eq UCS;
 
     my $map = get_encoding($encoding);
 

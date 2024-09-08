@@ -88,8 +88,6 @@ use TeX::Utils::Misc;
 
 use TeX::Arithmetic qw(:arithmetic :string);
 
-use TeX::Constants qw(:all);
-
 use TeX::FMT::File;
 
 use TeX::KPSE qw(kpse_lookup);
@@ -97,34 +95,36 @@ use TeX::KPSE qw(kpse_lookup);
 use TeX::Utils;
 use TeX::Node::Utils qw(nodes_to_string);
 
-#use TeX::Constants qw(:all);
-
 use TeX::Constants qw(carriage_return
-                  null_code
-                  var_code
-                  invalid_code
-                  just_open
-                  closed
-                  :box_params
-                  :if_codes
-                  :extras
-                  :selector_codes
-                  :interaction_modes
-                  :history_codes
-                  :command_codes
-                  :type_bounds
-                  :save_stack_codes
-                  :scan_types
-                  :scanner_statuses
-                  :token_types
-                  :lexer_states
-                  :xetex
-                  :node_params
+                      null_code
+                      var_code
+                      invalid_code
+                      just_open
+                      closed
+                      UCS
+                      :align_states
+                      :booleans
+                      :box_params
+                      :file_types
+                      :if_codes
+                      :extras
+                      :module_codes
+                      :selector_codes
+                      :interaction_modes
+                      :history_codes
+                      :command_codes
+                      :type_bounds
+                      :save_stack_codes
+                      :scan_types
+                      :scanner_statuses
+                      :token_types
+                      :lexer_states
+                      :tracing_macro_codes
+                      :xetex
+                      :node_params
     );
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
-
-use TeX::Interpreter::Constants;
 
 use TeX::Token qw(:catcodes :constants :factories);
 
@@ -248,7 +248,7 @@ sub START {
 
     $tex->init_prim();
 
-    $tex->set_encoding("T1");
+    $tex->set_encoding("T1", MODIFIER_GLOBAL);
 
     return;
 }
@@ -8273,21 +8273,6 @@ sub fire_up {
 ##                                                                  ##
 ######################################################################
 
-##*FIXME: Hard-coded CMR ligatures.
-
-my %CMR_LIGATURE = ( "-"        => { "-" => "\x{2013}" },
-                     "\x{2013}" => { "-" => "\x{2014}" },
-                     "!"        => { "`" => "\x{00A1}" },
-                     "?"        => { "`" => "\x{00BF}" },
-                     '`'        => "\x{2018}",
-                     "'"        => "\x{2019}",
-                     "\x{2018}" => { "`" => "\x{201C}" },
-                     "\x{2019}" => { "'" => "\x{201D}" },
-                     # "`"        => { "`" => "\x{201C}" },
-                     # "'"        => { "'" => "\x{201D}" },
-                     '"'        => "\x{201D}",
-    );
-
 sub main_control {
     my $tex = shift;
 
@@ -8332,7 +8317,7 @@ sub main_control {
                 next;
             }
 
-            my $char = $tex->maybe_do_ligature($cur_tok);
+            my $char = $cur_tok->get_char();
 
             $tex->append_char(ord($char));
 
@@ -8490,50 +8475,6 @@ sub adjust_space_factor {
     return;
 }
 
-sub maybe_do_ligature( $ ) { ## TBD: Ugh.
-    my $tex = shift;
-
-    my $token = shift;
-
-    my $char = $token->get_char();
-
-    return $char if $tex->noligs();
-
-    return $char if $tex->is_mmode();
-
-    while(1) {
-        my $lig_spec = $CMR_LIGATURE{$char};
-
-        last unless defined $lig_spec;
-
-        if (! ref $lig_spec) {
-            $char = $lig_spec;
-
-            next;
-        }
-
-        my $next_token = $tex->get_x_token();
-
-        last unless defined $next_token;
-
-        if ($next_token == CATCODE_LETTER || $next_token == CATCODE_OTHER) {
-            my $next_char = $next_token->get_char();
-
-            if (defined(my $ligature = $lig_spec->{$next_char})) {
-                $char = $ligature;
-
-                next;
-            }
-        }
-
-        $tex->back_input($next_token);
-
-        last;
-    }
-
-    return $char;
-}
-
 sub insert_dollar_sign {
     my $tex = shift;
 
@@ -8611,16 +8552,14 @@ sub append_char {
 
     my $encoding = shift || $tex->get_encoding();
 
-    my $do_ligs = ! $tex->is_mmode();
-
-    my $char_node = new_character($char_code, $encoding, $do_ligs);
+    my $char_node = new_character($char_code, $encoding);
 
     $tex->tail_append($char_node);
 
     return;
 }
 
-my $UNICODE_SPACE_CHAR = new_character(ord(' '), DEFAULT_CHARACTER_ENCODING);
+my $UNICODE_SPACE_CHAR = new_character(ord(' '));
 
 sub append_normal_space {
     my $tex = shift;
@@ -9271,6 +9210,8 @@ sub enter_ordinary_math_mode {
 
     $tex->set_cur_fam(-1);
 
+    $tex->set_encoding('UCS');
+
     $tex->begin_token_list($tex->get_toks_list('every_math'), every_math_text);
 
     return;
@@ -9304,6 +9245,8 @@ sub enter_display_math_mode {
     my $s = 0;
 
     $tex->push_math(math_shift_group);
+
+    $tex->set_encoding('UCS');
 
     $tex->set_cur_mode(mmode);
 
@@ -11920,8 +11863,9 @@ sub set_encoding {
     my $tex = shift;
 
     my $new_encoding = shift;
+    my $modifier     = shift;
 
-    $tex->eq_define(\$cur_enc_of{ident $tex}, $new_encoding);
+    $tex->define_simple_macro('f@encoding', $new_encoding, $modifier);
 
     return;
 }
@@ -11929,9 +11873,7 @@ sub set_encoding {
 sub get_encoding {
     my $tex = shift;
 
-    my $eqvt = $cur_enc_of{ident $tex};
-
-    return $eqvt->get_equiv()->get_value();
+    return $tex->expansion_of('f@encoding');
 }
 
 sub find_box_register {

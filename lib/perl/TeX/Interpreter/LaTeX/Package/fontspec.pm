@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::fontspec;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -78,7 +78,7 @@ __DATA__
 
 \ProvidesPackage{fontspec}
 
-\fontencoding{UTF-32}
+% \fontencoding{UCS}
 
 \let\setmainfont\relax
 \newcommand{\setmainfont}[2][]{}

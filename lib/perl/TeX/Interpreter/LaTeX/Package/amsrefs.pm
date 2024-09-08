@@ -395,11 +395,11 @@ __DATA__
     \amsrefs@fmt@biblabel\thebib
     \ifx\current@raw@bib\@empty\else
         \begingroup
-            \noligs=1
             \let\@bibdef\copy@bibdef
             \let\bbl@write\raw@bbl@write
             \startXMLelement{raw-citation}%
             \setXMLattribute{type}{amsrefs}%
+            \fontencoding{UCS}%
             \current@raw@bib
             \endXMLelement{raw-citation}%
         \endgroup

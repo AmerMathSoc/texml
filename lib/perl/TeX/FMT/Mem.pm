@@ -707,7 +707,7 @@ sub extract_char_node {
 
     my $font = $self->get_font($fnt_num);
 
-    return new_character($char, undef, undef, $font);
+    return new_character($char, undef, $font);
 }
 
 sub extract_hlist_node {

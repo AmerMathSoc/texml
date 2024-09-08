@@ -78,7 +78,6 @@ sub install ( $ ) {
 
     ## Override definition of \leavevmode from latex.fmt
     $tex->define_csname(leavevmode => $tex->load_primitive('leavevmode'));
-    $tex->define_csname(fontencoding => $tex->load_primitive('fontencoding'));
 
     $tex->define_csname('@push@sectionstack'  => \&do_push_section_stack);
     $tex->define_pseudo_macro('@pop@sectionstack'    => \&do_pop_section_stack);
@@ -846,6 +845,8 @@ sub do_register_refkey {
 __DATA__
 
 \setXSLfile{jats}
+
+\def\f@encoding{T1}
 
 \AtTeXMLend{\TeXML@resolveXMLxrefs}
 \AtTeXMLend{\TeXML@resolverefgroups}

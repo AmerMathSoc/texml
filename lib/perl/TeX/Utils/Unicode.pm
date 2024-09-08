@@ -1,6 +1,6 @@
 package TeX::Utils::Unicode;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,8 +32,6 @@ package TeX::Utils::Unicode;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.1';
-
 use base qw(Exporter);
 
 our %EXPORT_TAGS = (all => [ qw(
@@ -46,9 +44,7 @@ our @EXPORT = ( @{ $EXPORT_TAGS{all} } );
 
 use TeX::Utils::Unicode::Diacritics qw(apply_accent);
 
-use TeX::Constants qw(:named_args);
-
-use TeX::Interpreter::Constants qw(DEFAULT_CHARACTER_ENCODING);
+use TeX::Constants qw(:named_args UCS);
 
 use TeX::Output::FontMapper qw(decode_character);
 
@@ -95,9 +91,9 @@ sub make_accenter( @ ) {
 
             if (defined($char_code)) {
                 if ($char_code < 256) {
-                    $enc ||= $tex->get_encoding() || DEFAULT_CHARACTER_ENCODING;
+                    $enc ||= $tex->get_encoding() || UCS;
 
-                    if ($enc ne DEFAULT_CHARACTER_ENCODING) {
+                    if ($enc ne UCS) {
                         $char_code = decode_character($enc, $char_code);
                     }
                 }

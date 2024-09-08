@@ -1,6 +1,6 @@
 package TeX::Primitive::UCSchardef;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -38,7 +38,7 @@ use TeX::Class;
 
 use TeX::Interpreter qw(FROZEN_RELAX);
 
-use TeX::Interpreter::Constants qw(DEFAULT_CHARACTER_ENCODING);
+use TeX::Constants qw(UCS);
 
 use TeX::Primitive::CharGiven;
 
@@ -62,7 +62,7 @@ sub execute {
 
     my $command = TeX::Primitive::CharGiven->new({ name => "char",
                                                    value => $char_code,
-                                                   encoding => DEFAULT_CHARACTER_ENCODING,
+                                                   encoding => UCS,
                                                  });
 
     $tex->define($r_token, $command, $modifier);

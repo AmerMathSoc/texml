@@ -51,6 +51,8 @@ sub install($\%) {
     return;
 }
 
+use constant UCS => 'UCS';
+
 my %MODULE_CODES = (
     LOAD_FAILED    => 0,
     LOAD_SUCCESS   => 1,
@@ -462,7 +464,7 @@ install xetex => %XETEX_CONSTANTS;
 ##                                                                  ##
 ######################################################################
 
-my @EXPORT_MISC = qw(carriage_return invalid_code null_code split_first_mark_code var_code);
+my @EXPORT_MISC = qw(carriage_return invalid_code null_code split_first_mark_code var_code UCS);
 
 $EXPORT_TAGS{all} = [ @EXPORT_MISC, map { @{ $_ } } values %EXPORT_TAGS ];
 

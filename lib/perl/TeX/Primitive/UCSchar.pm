@@ -1,6 +1,6 @@
 package TeX::Primitive::UCSchar;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -36,7 +36,7 @@ use base qw(TeX::Command::Executable);
 
 use TeX::Class;
 
-use TeX::Interpreter::Constants qw(DEFAULT_CHARACTER_ENCODING);
+use TeX::Constants qw(UCS);
 
 sub execute {
     my $self = shift;
@@ -54,7 +54,7 @@ sub execute {
 
     my $char_code = $tex->scan_char_num();
 
-    $tex->append_char($char_code, DEFAULT_CHARACTER_ENCODING);
+    $tex->append_char($char_code, UCS);
 
     return;
 }

@@ -973,6 +973,19 @@ sub set_css_property {
 ##                                                                  ##
 ######################################################################
 
+my %CMR_LIGATURE = ( "-"        => { "-" => "\x{2013}" },
+                     "\x{2013}" => { "-" => "\x{2014}" },
+                     "!"        => { "`" => "\x{00A1}" },
+                     "?"        => { "`" => "\x{00BF}" },
+                     '`'        => "\x{2018}",
+                     "'"        => "\x{2019}",
+                     "\x{2018}" => { "`" => "\x{201C}" },
+                     "\x{2019}" => { "'" => "\x{201D}" },
+                     '"'        => "\x{201D}",
+    );
+
+my %ENCODING = (T1 => \%CMR_LIGATURE);
+
 sub hlist_out {
     my $self = shift;
 
@@ -980,7 +993,9 @@ sub hlist_out {
 
     my $tex = $self->get_tex_engine();
 
-    for my $node ($box->get_nodes()) {
+    my @nodes = $box->get_nodes();
+
+    while (defined(my $node = shift @nodes)) {
         if ($node->isa('TeX::Token')) { ## Extension
             $self->append_text($node);
 
@@ -1023,6 +1038,36 @@ sub hlist_out {
 
         if ($node->is_char_node()) {
             my $char = __new_utf8_string(chr($node->get_char_code()));
+
+            my $this_enc = $node->get_encoding();
+
+            my $enc = $ENCODING{$this_enc} || {};
+
+            while (1) {
+                my $lig_spec = $enc->{$char};
+
+                last unless defined $lig_spec;
+
+                if (! ref $lig_spec) {
+                    $char = $lig_spec;
+
+                    next;
+                }
+
+                my $next_node = $nodes[0];
+
+                last unless defined $next_node && $next_node->is_char_node();
+
+                last unless $next_node->get_encoding() eq $this_enc;
+
+                my $next_char = __new_utf8_string(chr($next_node->get_char_code()));
+
+                last unless defined (my $ligature = $lig_spec->{$next_char});
+
+                shift @nodes;
+
+                $char = __new_utf8_string($ligature);
+            }
 
             $self->append_text($char);
 
@@ -1107,7 +1152,9 @@ sub vlist_out {
 
     my $tex = $self->get_tex_engine();
 
-    for my $node ($box->get_nodes()) {
+    my @nodes = $box->get_nodes();
+
+    while (defined(my $node = shift @nodes)) {
         if ($node->isa('TeX::Token')) { ## Extension
             $self->append_text($node);
 
