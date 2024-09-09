@@ -35,7 +35,7 @@ use warnings;
 use TeX::Token qw(:catcodes :factories);
 use TeX::TokenList qw(:factories);
 
-use TeX::Output::FontMapper;
+use TeX::Output::Encoding;
 
 sub install ( $ ) {
     my $class = shift;
@@ -67,7 +67,7 @@ sub do_translit_ot2 {
     ## of thing properly, we will probably need to postpone it until
     ## the output stage.
 
-    my $enc = TeX::Output::FontMapper::get_encoding('OT2');
+    my $enc = TeX::Output::Encoding::get_encoding('OT2');
 
     for my $token ($arg->get_tokens()) {
         if ($token == CATCODE_LETTER || $token == CATCODE_OTHER) {

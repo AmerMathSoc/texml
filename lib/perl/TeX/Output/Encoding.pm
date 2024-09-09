@@ -1,4 +1,4 @@
-package TeX::Output::FontMapper;
+package TeX::Output::Encoding;
 
 # Copyright (C) 2022, 2024 American Mathematical Society
 #
@@ -51,7 +51,7 @@ my %CHAR_MAP;
 my %ENCODING_OF;
 my %FONT_MAP;
 
-my $MAP_DIR = catdir(dirname($INC{"TeX/Output/FontMapper.pm"}), "encodings");
+my $MAP_DIR = catdir(dirname($INC{"TeX/Output/Encoding.pm"}), "encodings");
 
 my $UNKNOWN_CHARACTER = "<0xFFFD>";
 

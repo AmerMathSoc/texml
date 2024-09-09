@@ -160,7 +160,7 @@ use TeX::Primitive::parshape qw(:factories);
 
 use TeX::Primitive::LuaTeX::CombineTokens;
 
-use TeX::Output::FontMapper qw(decode_character);
+use TeX::Output::Encoding qw(decode_character);
 
 use Unicode::UCD qw(charinfo);
 

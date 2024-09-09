@@ -42,7 +42,7 @@ our @EXPORT = ();
 
 use TeX::Class;
 
-use TeX::Output::FontMapper qw(decode_character);
+use TeX::Output::Encoding qw(decode_character);
 
 use TeX::Constants qw(UCS);
 

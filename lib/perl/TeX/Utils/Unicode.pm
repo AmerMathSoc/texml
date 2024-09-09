@@ -46,7 +46,7 @@ use TeX::Utils::Unicode::Diacritics qw(apply_accent);
 
 use TeX::Constants qw(:named_args UCS);
 
-use TeX::Output::FontMapper qw(decode_character);
+use TeX::Output::Encoding qw(decode_character);
 
 use TeX::Token qw(:catcodes);
 
