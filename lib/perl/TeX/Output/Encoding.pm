@@ -104,7 +104,7 @@ sub load_character_map {
             my $start_code = oct("${1}0");
 
             for my $i (0..7) {
-                if ($ucs_codepoint =~ s/^( <0x[[:xdigit:]]{4}> | \\. | . )//msx) {
+                if ($ucs_codepoint =~ s{^( <0x[[:xdigit:]]{4}> | \\. | . )}{}msx) {
                     $map[$start_code + $i] = $1;
                 }
             }
@@ -144,9 +144,7 @@ sub decode_character {
 
     my $unicode = $map->[$char_code];
 
-    if (! defined $unicode) {
-        croak "Unknown character in $encoding: $char_code";
-    }
+    return $char_code unless defined $unicode;
 
     if ($unicode =~ s/\A < (.*?) > \z/$1/smx) {
         $unicode = oct($unicode) if $unicode =~ /^0/;

@@ -846,7 +846,7 @@ __DATA__
 
 \setXSLfile{jats}
 
-\def\f@encoding{T1}
+\fontencoding{OT1}
 
 \AtTeXMLend{\TeXML@resolveXMLxrefs}
 \AtTeXMLend{\TeXML@resolverefgroups}

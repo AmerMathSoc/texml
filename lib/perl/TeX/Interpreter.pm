@@ -248,7 +248,7 @@ sub START {
 
     $tex->init_prim();
 
-    $tex->set_encoding("T1", MODIFIER_GLOBAL);
+    $tex->set_encoding("OT1", MODIFIER_GLOBAL);
 
     return;
 }

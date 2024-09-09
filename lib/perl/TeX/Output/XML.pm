@@ -984,7 +984,7 @@ my %CMR_LIGATURE = ( "-"        => { "-" => "\x{2013}" },
                      '"'        => "\x{201D}",
     );
 
-my %ENCODING = (T1 => \%CMR_LIGATURE);
+my %ENCODING = (OT1 => \%CMR_LIGATURE);
 
 sub hlist_out {
     my $self = shift;
