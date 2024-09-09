@@ -1,6 +1,6 @@
 package TeX::Output::Encoding;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+# Copyright (C) 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,15 +32,15 @@ package TeX::Output::Encoding;
 use strict;
 use warnings;
 
-use Carp;
-
 use base qw(Exporter);
 
-our %EXPORT_TAGS = (all => [ qw(encode_character decode_character font_spec) ]);
+our %EXPORT_TAGS = (all => [ qw(decode_character) ]);
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
-our @EXPORT = qw(encode_character font_spec);
+our @EXPORT = qw(decode_character);
+
+use Carp;
 
 use File::Spec::Functions;
 use File::Basename;
@@ -48,86 +48,71 @@ use File::Basename;
 use TeX::Constants qw(UCS);
 
 my %CHAR_MAP;
-my %ENCODING_OF;
-my %FONT_MAP;
 
 my $MAP_DIR = catdir(dirname($INC{"TeX/Output/Encoding.pm"}), "encodings");
 
 my $UNKNOWN_CHARACTER = "<0xFFFD>";
 
-#INIT {
-    my $map_file = catfile($MAP_DIR, "fontmap.txt");
-
-    open(my $map, "<", $map_file) or die "Can't open $map_file: $!\n";
-
-    while (<$map>) {
-        chomp;
-
-        next if /^\s*$/;
-
-        next if /^%/;
-
-        my ($tex_name, $encoding, $spec) = split / +/, $_, 3;
-
-        $FONT_MAP{$tex_name} = [ split /,\s*/, $spec ];
-        $ENCODING_OF{$tex_name} = $encoding;
-    }
-
-    close($map);
-#}
-
-sub font_spec( $ ) {
-    my $tex_name = shift;
-
-    return $FONT_MAP{$tex_name};
-}
-
-sub load_character_map( $ ) {
+sub load_character_map {
     my $encoding = shift;
+
+    CORE::state $octal = qr{'\d\d[\dx]};
+    CORE::state $hex   = qr{"[[:xdigit:]][[:xdigit:]]}i;
+
+    CORE::state $eight_bits = qr{^($octal|$hex)$}; # more or less
 
     return if $encoding eq UCS;
 
-    ## FIXME
-    use Carp;
-
-    if ($encoding eq '\\encodingdefault ') {
-        croak "Bad encoding '$encoding'";
-    }
-
-    my $map_file = "$MAP_DIR/$encoding.aitt";
+    my $map_file = "$MAP_DIR/$encoding.enc";
 
     my @map;
 
     open(my $map, "<", $map_file) or die "Can't open $map_file: $!\n";
 
+    local $_;
+
     while (<$map>) {
         chomp;
 
         next if /^\s*$/;
 
-        my ($code, $encoding) = split /: /;
+        my ($code, $ucs_codepoint) = split /: /;
 
-        croak "Invalid code ($code)" unless $code =~ /^\'\d\d[x\d]$/;
+        croak "Invalid code ($code)" unless $code =~ m{$eight_bits};
 
-        if ($code =~ /^\'(\d+)$/) {
-            my $char_code = oct($1);
+        if ($code =~ s{^\'}{}) {
+            my $char_code = oct($code);
 
-            if ($encoding ne $UNKNOWN_CHARACTER) {
-                $map[$char_code] = $encoding;
+            if ($ucs_codepoint ne $UNKNOWN_CHARACTER) {
+                $map[$char_code] = $ucs_codepoint;
             }
 
             next;
         }
 
-        $code =~ /(\d+)/;
+        if ($code =~ s{^\"}{}) {
+            my $char_code = hex($code);
 
-        my $start_code = oct("${1}0");
-
-        for my $i (0..7) {
-            if ($encoding =~ s/^( <0x.{4}> | \\. | . )//msx) {
-                $map[$start_code + $i] = $1;
+            if ($ucs_codepoint ne $UNKNOWN_CHARACTER) {
+                $map[$char_code] = $ucs_codepoint;
             }
+
+            next;
         }
+
+        if ($code =~ /^'(\d{2})x$/) {
+            my $start_code = oct("${1}0");
+
+            for my $i (0..7) {
+                if ($ucs_codepoint =~ s/^( <0x[[:xdigit:]]{4}> | \\. | . )//msx) {
+                    $map[$start_code + $i] = $1;
+                }
+            }
+
+            next;
+        }
+
+        die "You should not have gotten here."
     }
 
     close($map);
@@ -135,17 +120,7 @@ sub load_character_map( $ ) {
     return \@map;
 }
 
-sub get_font_encoding( $ ) {
-    my $font = shift;
-
-    my $encoding = $ENCODING_OF{$font};
-
-    croak "Unknown font $font" unless defined $encoding;
-
-    return get_encoding($encoding);
-}
-
-sub get_encoding( $ ) {
+sub get_encoding {
     my $encoding = shift;
 
     if (exists $CHAR_MAP{$encoding}) {
@@ -155,28 +130,7 @@ sub get_encoding( $ ) {
     return $CHAR_MAP{$encoding} = load_character_map($encoding)
 }
 
-sub encode_character($$) {
-    my $font = shift;
-    my $char_code = shift;
-
-    # return $char_code; # if $encoding eq UCS;
-
-    my $map = get_font_encoding($font);
-
-    if (! defined $map) {
-        croak "Unknown font: $font";
-    }
-
-    my $encoding = $map->[$char_code];
-
-    if (! defined $encoding) {
-        croak "Unknown character in $font: $char_code";
-    }
-
-    return $encoding;
-}
-
-sub decode_character( $$ ) {
+sub decode_character {
     my $encoding  = shift;
     my $char_code = shift;
 
