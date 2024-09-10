@@ -230,7 +230,9 @@ sub BUILD {
     my @scaled_params = (undef);
 
     if ($np > 0) {
-        push @scaled_params, $tfm->get_param(1);
+        my ($pseudo_size, $alpha, $beta) = calculate_scale_params(unity);
+
+        push @scaled_params, scale($tfm->get_param(1), $pseudo_size, $alpha, $beta);
     }
 
     for my $i (2..$np) {
