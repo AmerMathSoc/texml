@@ -35,7 +35,7 @@ package PTG::Unicode::Accents;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.0.0';
+use version; our $VERSION = qv '2.1.1';
 
 use base qw(Exporter);
 
@@ -99,7 +99,8 @@ our %EXPORT_TAGS = (
                   COMBINING_CIRCUMFLEX_BELOW
                   COMBINING_BREVE_BELOW
                   COMBINING_TILDE_BELOW
-                  COMBINING_MACRON_BELOW) ],
+                  COMBINING_MACRON_BELOW
+                  COMBINING_TIE) ],
 );
 
 $EXPORT_TAGS{all} = [ map { @{ $_ } } values %EXPORT_TAGS ];
@@ -146,6 +147,7 @@ use constant {
     COMBINING_BREVE_BELOW          => "COMBINING_BREVE_BELOW",
     COMBINING_TILDE_BELOW          => "COMBINING_TILDE_BELOW",
     COMBINING_MACRON_BELOW         => "COMBINING_MACRON_BELOW",
+    COMBINING_TIE                  => "COMBINING_TIE",
 };
 
 my %NAME_OF_ACCENT = (0x0300 => COMBINING_GRAVE,
@@ -174,7 +176,9 @@ my %NAME_OF_ACCENT = (0x0300 => COMBINING_GRAVE,
                       0x032D => COMBINING_CIRCUMFLEX_BELOW,
                       0x032E => COMBINING_BREVE_BELOW,
                       0x0330 => COMBINING_TILDE_BELOW,
-                      0x0331 => COMBINING_MACRON_BELOW);
+                      0x0331 => COMBINING_MACRON_BELOW,
+                      0x0361 => COMBINING_TIE, # COMBINING DOUBLE INVERTED BREVE
+);
 
 ######################################################################
 ##                                                                  ##
@@ -1140,6 +1144,50 @@ my %MACRON_BELOW_MAP = (      ## U+0331 COMBINING MACRON BELOW
     z          => "\x{1E95}",
     );
 
+my %TIE_MAP;
+
+######################################################################
+##                                                                  ##
+##                         COMBINING FORMS                          ##
+##                                                                  ##
+######################################################################
+
+my %COMBINING_FORM = (COMBINING_GRAVE => 0x0300,
+                      COMBINING_ACUTE => 0x0301,
+                      COMBINING_CIRCUMFLEX => 0x0302,
+                      COMBINING_TILDE => 0x0303,
+                      COMBINING_MACRON => 0x0304,
+                      COMBINING_BREVE => 0x0306,
+                      COMBINING_DOT_ABOVE => 0x0307,
+                      COMBINING_DIAERESIS => 0x0308,
+                      COMBINING_HOOK_ABOVE => 0x0309,
+                      COMBINING_RING_ABOVE => 0x030A,
+                      COMBINING_DOUBLE_ACUTE => 0x030B,
+                      COMBINING_CARON => 0x030C,
+                      COMBINING_DOUBLE_GRAVE => 0x030F,
+                      COMBINING_INVERTED_BREVE => 0x0311,
+                      COMBINING_COMMA_ABOVE => 0x0313,
+                      COMBINING_REVERSED_COMMA_ABOVE => 0x0314,
+                      COMBINING_HORN => 0x031B,
+                      COMBINING_DOT_BELOW => 0x0323,
+                      COMBINING_DIAERESIS_BELOW => 0x0324,
+                      COMBINING_RING_BELOW => 0x0325,
+                      COMBINING_COMMA_BELOW => 0x0326,
+                      COMBINING_CEDILLA => 0x0327,
+                      COMBINING_OGONEK => 0x0328,
+                      COMBINING_CIRCUMFLEX_BELOW => 0x032D,
+                      COMBINING_BREVE_BELOW => 0x032E,
+                      COMBINING_TILDE_BELOW => 0x0330,
+                      COMBINING_MACRON_BELOW => 0x0331,
+                      COMBINING_TIE          => 0x0361,
+    );
+
+sub unicode_accent_combining_form {
+    my $accent_name = shift;
+
+    return chr($COMBINING_FORM{$accent_name});
+}
+
 ######################################################################
 ##                                                                  ##
 ##                           MAP OF MAPS                            ##
@@ -1174,6 +1222,7 @@ my %MAP_FOR = (
     COMBINING_BREVE_BELOW()          => \%BREVE_BELOW_MAP,
     COMBINING_TILDE_BELOW()          => \%TILDE_BELOW_MAP,
     COMBINING_MACRON_BELOW()         => \%MACRON_BELOW_MAP,
+    COMBINING_TIE()                  => \%TIE_MAP,
     );
 
 ######################################################################
@@ -1195,6 +1244,7 @@ my %SPACING_FORM = (
     COMBINING_DOUBLE_ACUTE()         => "\x{02DD}",
     COMBINING_CEDILLA()              => "\x{00B8}",
     COMBINING_OGONEK()               => "\x{02DB}",
+    COMBINING_CARON()                => "\x{2228}", # LOGICAL OR (MEH)
     );
 
 ######################################################################
@@ -1213,40 +1263,50 @@ sub apply_accent( $$ ) {
 
     my $accent_name;
 
+    my $accented_char = $base;
+    my $error;
+
     if ($accent =~ /^\d+$/) {
         $accent_name = $NAME_OF_ACCENT{$accent};
 
         if (! defined $accent_name) {
-            carp sprintf "Unknown accent U+%04X", $accent;
-
-            return;
+            $error = sprintf "Unknown accent U+%04X", $accent;
         }
     } else {
         $accent_name = $accent;
+
+        if (! defined $accent_name) {
+            $error = "null accent";
+        }
     }
 
-    if (! exists $MAP_FOR{$accent_name}) {
-        carp "Unknown accent $accent_name";
+    if (defined $accent_name) {
+        if (empty($base)) {
+            if (defined (my $spacing_form = $SPACING_FORM{$accent_name})) {
+                $accented_char = $spacing_form;
+            } else {
+                $error = "no spacing form known for $accent_name";
 
-        return;
+                $accented_char = $base;
+            }
+        } else {
+            my $map = $MAP_FOR{$accent_name};
+
+            if (! defined $map) {
+                $error = "unrecognized accent $accent_name";
+            } else {
+                my $combined = $map->{$base};
+
+                if (! defined $combined) {
+                    $accented_char = $base . unicode_accent_combining_form($accent_name);
+                } else {
+                    $accented_char = $combined;
+                }
+            }
+        }
     }
 
-    if (empty($base)) {
-        return $SPACING_FORM{$accent_name} || $base;
-    }
-
-    my $map = $MAP_FOR{$accent_name};
-
-    if (! exists $map->{$base}) {
-        ## Should we issue a warning when dropping an accent?  I
-        ## suppose it should be under user control.
-
-        # carp "Can't add $accent_name to '$base'";
-
-        return $base;
-    }
-
-    return $map->{$base};
+    return wantarray ? ($accented_char, $error) : $accented_char;
 }
 
 ## Convenience methods for individual accents.
@@ -1411,6 +1471,12 @@ sub apply_macron_below( $ ) {
     my $base = shift;
 
     return apply_accent COMBINING_MACRON_BELOW, $base;
+}
+
+sub apply_tie( $ ) {
+    my $base = shift;
+
+    return apply_accent COMBINING_TIE, $base;
 }
 
 1;
