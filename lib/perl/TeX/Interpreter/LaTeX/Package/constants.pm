@@ -76,7 +76,13 @@ sub do_resolve_constants {
 
                 my $tex_fragment = qq{\\Cr{$key}};
 
+                $tex->begingroup();
+
+                $tex->set_encoding("UCS");
+
                 my $label = $tex->convert_fragment($tex_fragment);
+
+                $tex->endgroup();
 
                 if (nonempty($label) && $label->hasChildNodes()) {
                     my $parent = $xref->parentNode();

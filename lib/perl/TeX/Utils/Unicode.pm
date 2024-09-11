@@ -94,7 +94,7 @@ sub make_accenter( @ ) {
                     $enc ||= $tex->get_encoding() || UCS;
 
                     if ($enc ne UCS) {
-                        $char_code = decode_character($enc, $char_code);
+                        $char = decode_character($enc, $char_code);
                     }
                 }
 

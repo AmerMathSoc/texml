@@ -9081,7 +9081,7 @@ sub make_accent {
 
     my $base_char = $tex->get_x_token(); #*
 
-    my ($combined, $error) = apply_accent($unicode_accent, $base_char);
+    my ($combined, $error) = apply_accent(ord($unicode_accent), $base_char);
 
     if (defined $error) {
         $tex->print_err(sprintf(qq{Error processing \\accent"%04X (%s)},

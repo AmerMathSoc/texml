@@ -35,8 +35,6 @@ use warnings;
 use TeX::Token qw(:catcodes :factories);
 use TeX::TokenList qw(:factories);
 
-use TeX::Output::Encoding;
-
 sub install ( $ ) {
     my $class = shift;
 
@@ -44,48 +42,9 @@ sub install ( $ ) {
 
     $tex->package_load_notification();
 
-    $tex->define_pseudo_macro('texml@translit@ot@two' => \&do_translit_ot2);
-
     $tex->read_package_data();
 
     return;
-}
-
-sub do_translit_ot2 {
-    my $self = shift;
-
-    my $tex   = shift;
-    my $token = shift;
-
-    my $token_list = new_token_list;
-
-    my $arg = $tex->read_undelimited_parameter();
-
-    ## This is barely acceptable.  We don't handle ligatures, although
-    ## note the definitions of \dz, etc., below.  It also chokes on
-    ## things like \textcyr{\char"1E }.  In order to handle this sort
-    ## of thing properly, we will probably need to postpone it until
-    ## the output stage.
-
-    my $enc = TeX::Output::Encoding::get_encoding('OT2');
-
-    for my $token ($arg->get_tokens()) {
-        if ($token == CATCODE_LETTER || $token == CATCODE_OTHER) {
-            my $char_code = ord($token->get_char());
-
-            if (defined(my $new_char_code = $enc->[$char_code])) {
-                $new_char_code =~ s{<0x(.*?)>}{hex($1)}e;
-
-                $token_list->push(make_character_token(chr($new_char_code), $token->get_catcode()));
-            } else {
-                $token_list->push($token);
-            }
-        } else {
-            $token_list->push($token);
-        }
-    }
-
-    return $token_list;
 }
 
 1;
@@ -94,15 +53,27 @@ __DATA__
 
 \ProvidesPackage{amscyr}
 
-\let\textcyr\texml@translit@ot@two
+\def\mathcyr#1{\begingroup\fontencoding{OT2}#1\endgroup}
 
-\def\mathcyr#1{\mathrm{\texml@translit@ot@two{#1}}}
+% \@declarefontcommand[OT2]\textcyr\mathcyr{cyrillic}
+
+\DeclareRobustCommand\textcyr[1]{%
+    \begingroup
+        \fontencoding{OT2}%
+        \ifmmode
+            \string\mathcyr{#1}%
+        \else
+            \leavevmode
+            #1%
+        \fi
+    \endgroup
+}
 
 \protected@edef\mitBe{\protect\mathit{\Uchar"0411 }}
-\protected@edef\cyrCh{\protect\mathrm{\Uchar"0427}}
-\protected@edef\Sha{\protect\mathrm{\Uchar"0428}}
-\protected@edef\Shcha{\protect\mathrm{\Uchar"0429}}
-\protected@edef\De{\protect\mathrm{\Uchar"0434}}
+\protected@edef\cyrCh{\protect\mathrm{\Uchar"0427 }}
+\protected@edef\Sha{\protect\mathrm{\Uchar"0428 }}
+\protected@edef\Shcha{\protect\mathrm{\Uchar"0429 }}
+\protected@edef\De{\protect\mathrm{\Uchar"0434 }}
 
 \protected@edef\cprime{\Uchar"044C }
 \protected@edef\Cprime{\Uchar"042C }

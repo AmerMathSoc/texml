@@ -54,7 +54,7 @@ sub install ( $ ) {
     $tex->define_csname(bf => make_font_declaration("bold"));
     $tex->define_csname(sc => make_font_declaration("sc"));
     $tex->define_csname(rm => make_font_declaration("roman"));
-    $tex->define_csname(tt => make_font_declaration("monospace"));
+    $tex->define_csname(tt => make_font_declaration("monospace", undef, 'OT1tt'));
     $tex->define_csname(sf => make_font_declaration("sans-serif"));
 
     $tex->define_csname(sl => make_font_declaration("styled-content", "oblique") );
@@ -65,9 +65,10 @@ sub install ( $ ) {
 use constant RIGHT_BRACE_TOKEN => make_character_token("}", CATCODE_LETTER);
 use constant RIGHT_BRACE_CHAR  => new_character(ord("}"));
 
-sub make_font_declaration( $;$ ) {
+sub make_font_declaration {
     my $qName = shift;
     my $style = shift;
+    my $encoding = shift;
 
     return sub {
         my $tex   = shift;
@@ -76,6 +77,10 @@ sub make_font_declaration( $;$ ) {
         my $cur_group = $tex->cur_group();
 
         my $name = $token->get_csname();
+
+        if (defined $encoding) {
+            $tex->set_encoding($encoding);
+        }
 
         if ($tex->is_mmode()) {
             my $csname = "math" . ($name eq 'em' ? "it" : $name);

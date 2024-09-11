@@ -172,6 +172,7 @@ __DATA__
 %% TBD: Might need to remove spaces
 
 \def\Url{%      % # & _ ~ $ ^
+        \fontencoding{UCS}%
         \Url@movingtest
         \ifmmode\@inmatherr$\fi %$
         \let\do\@makeother \dospecials % verbatim catcodes

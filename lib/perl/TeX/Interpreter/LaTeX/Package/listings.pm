@@ -91,6 +91,7 @@ __DATA__
     \par
     \xmlpartag{}%
     \everypar{}%
+    \fontencoding{UCS}%
     \startXMLelement{pre}%
     \setXMLattribute{specific-use}{#1}%
     \UnicodeLineFeed
@@ -102,6 +103,7 @@ __DATA__
 \newcommand{\lstlisting}[1][]{%
     \@lstlisting{#1}
     \frenchspacing
+    \fontencoding{UCS}%
     \@vobeyspaces
     \@xlstlisting
 }

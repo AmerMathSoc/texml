@@ -34,11 +34,11 @@ use warnings;
 
 use base qw(Exporter);
 
-our %EXPORT_TAGS = (all => [ qw(decode_character) ]);
+our @EXPORT = qw(get_encoding decode_character);
 
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+our %EXPORT_TAGS = (all => [ @EXPORT ]);
 
-our @EXPORT = qw(decode_character);
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
 
 use Carp;
 
@@ -46,17 +46,18 @@ use File::Spec::Functions;
 use File::Basename;
 
 use TeX::Constants qw(UCS);
+use TeX::Utils::Misc;
 
-my %CHAR_MAP;
+use Exception::Class qw(TeX::Output::Encoding::Error);
+
+my %ENCODING;
 
 my $MAP_DIR = catdir(dirname($INC{"TeX/Output/Encoding.pm"}), "encodings");
 
-my $UNKNOWN_CHARACTER = "<0xFFFD>";
-
-sub load_character_map {
+sub load_encoding {
     my $encoding = shift;
 
-    CORE::state $octal = qr{'\d\d[\dx]};
+    CORE::state $octal = qr{'[0-3][0-7][0-7]};
     CORE::state $hex   = qr{"[[:xdigit:]][[:xdigit:]]}i;
 
     CORE::state $eight_bits = qr{^($octal|$hex)$}; # more or less
@@ -65,69 +66,63 @@ sub load_character_map {
 
     my $map_file = "$MAP_DIR/$encoding.enc";
 
-    my @map;
+    my %map;
 
-    open(my $map, "<", $map_file) or die "Can't open $map_file: $!\n";
+    open(my $map, "<:utf8", $map_file) or do {
+        TeX::Output::Encoding::Error->throw("Encoding scheme `$encoding' unknown");
+    };
 
     local $_;
 
     while (<$map>) {
-        chomp;
+        ($_) = split /;;/;
+
+        $_ = trim($_);
 
         next if /^\s*$/;
 
-        my ($code, $ucs_codepoint) = split /: /;
+        m{^lig (.) (.) (.)(:? (|))?} and do {
+            my $end = defined $4 ? 1 : 0;
 
-        croak "Invalid code ($code)" unless $code =~ m{$eight_bits};
-
-        if ($code =~ s{^\'}{}) {
-            my $char_code = oct($code);
-
-            if ($ucs_codepoint ne $UNKNOWN_CHARACTER) {
-                $map[$char_code] = $ucs_codepoint;
-            }
+            $map{"${1}_lig"}->{$2} = [$3, $end];
 
             next;
+        };
+
+        next if m{^lig};
+
+        my ($char_code, $ucs_codepoint) = split /\s*:\s*/, $_, 2;
+
+        if ($char_code !~ m{$eight_bits}) {
+            print STDERR "! Invalid char code ($char_code) on line $. of $map_file\n";
         }
 
-        if ($code =~ s{^\"}{}) {
-            my $char_code = hex($code);
-
-            if ($ucs_codepoint ne $UNKNOWN_CHARACTER) {
-                $map[$char_code] = $ucs_codepoint;
-            }
-
-            next;
+        if ($char_code =~ s{^\'}{}) {
+            $char_code = oct($char_code);
+        } elsif ($char_code =~ s{^\"}{}) {
+            $char_code = hex($char_code);
         }
 
-        if ($code =~ /^'(\d{2})x$/) {
-            my $start_code = oct("${1}0");
-
-            for my $i (0..7) {
-                if ($ucs_codepoint =~ s{^( <0x[[:xdigit:]]{4}> | \\. | . )}{}msx) {
-                    $map[$start_code + $i] = $1;
-                }
-            }
-
-            next;
+        if ($ucs_codepoint =~ s{^U\+}{}) {
+            $ucs_codepoint = hex($ucs_codepoint);
+        } else {
+            $ucs_codepoint = ord($ucs_codepoint); # literal character
         }
 
-        die "You should not have gotten here."
+        if ($char_code != $ucs_codepoint) {
+            $map{chr($char_code)} = chr($ucs_codepoint);
+        }
     }
 
     close($map);
 
-    return \@map;
+    return \%map;
 }
 
 sub get_encoding {
     my $encoding = shift;
 
-    if (exists $CHAR_MAP{$encoding}) {
-        return $CHAR_MAP{$encoding};
-    }
-
-    return $CHAR_MAP{$encoding} = load_character_map($encoding)
+    return $ENCODING{$encoding} ||= load_encoding($encoding);
 }
 
 sub decode_character {
@@ -138,23 +133,15 @@ sub decode_character {
 
     my $map = get_encoding($encoding);
 
+    my $literal_char = chr($char_code);
+
     if (! defined $map) {
-        croak "Unknown encoding: $encoding";
+        print STDERR "! Unknown encoding: $encoding\n";
+
+        return $literal_char;
     }
 
-    my $unicode = $map->[$char_code];
-
-    return $char_code unless defined $unicode;
-
-    if ($unicode =~ s/\A < (.*?) > \z/$1/smx) {
-        $unicode = oct($unicode) if $unicode =~ /^0/;
-    } else {
-        $unicode =~ s/\A \\(.) \z/$1/smx;
-
-        $unicode = ord($unicode);
-    }
-
-    return $unicode;
+    return $map->{$literal_char} // $literal_char;
 }
 
 1;

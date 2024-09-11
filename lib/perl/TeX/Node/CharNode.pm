@@ -42,8 +42,6 @@ our @EXPORT = ();
 
 use TeX::Class;
 
-use TeX::Output::Encoding qw(decode_character);
-
 use TeX::Constants qw(UCS);
 
 use TeX::Node::HListNode qw(:factories);
@@ -78,10 +76,6 @@ sub new_character {
     return $cached if defined $cached;
 
     my $ucs_code = $char_code;
-
-    if ($char_code < 256 && $encoding ne UCS) {
-        $ucs_code = decode_character($encoding, $char_code);
-    }
 
     $cached = __PACKAGE__->new({ char_code => $ucs_code,
                                  encoding  => $encoding,

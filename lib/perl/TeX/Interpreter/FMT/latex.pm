@@ -1242,16 +1242,19 @@ __DATA__
 
 \@declarestyledcommand\textbfsf\mathbfsf{bold-sans}% text/72 (matsuura)
 
-\def\@declarefontcommand#1#2#3{%
-    \DeclareRobustCommand#1[1]{%
+\newcommand{\@declarefontcommand}[4][]{%
+    \DeclareRobustCommand#2[1]{%
+        \begingroup
+        \if#####1####\else\fontencoding{#1}\fi
         \ifmmode
-            \string#2{##1}%
+            \string#3{##1}%
         \else
             \leavevmode
-            \startXMLelement{#3}%
+            \startXMLelement{#4}%
             ##1%
-            \endXMLelement{#3}%
+            \endXMLelement{#4}%
         \fi
+        \endgroup
     }%
 }
 
@@ -1265,7 +1268,7 @@ __DATA__
 \@declarefontcommand\textnormal\mathrm{roman}
 \@declarefontcommand\textsc\mathsc{sc}
 \@declarefontcommand\textbf\mathbf{bold}
-\@declarefontcommand\texttt\mathtt{monospace}
+\@declarefontcommand[OT1tt]\texttt\mathtt{monospace}
 \@declarefontcommand\textit\mathit{italic}
 \@declarefontcommand\textsf\mathsf{sans-serif}
 
@@ -1570,6 +1573,7 @@ __DATA__
     \par
     \xmlpartag{}%
     \everypar{}%
+    \fontencoding{OT1tt}%
     \startXMLelement{pre}%
     \let\do\@makeother \dospecials
     \noligs=1

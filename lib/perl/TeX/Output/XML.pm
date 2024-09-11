@@ -36,6 +36,8 @@ use FindBin;
 
 use List::Util qw(min uniq);
 
+use TeX::Output::Encoding;
+
 use TeX::Utils::XML;
 
 use TeX::Class;
@@ -797,8 +799,6 @@ sub pop_element {
         return;
     }
 
-    use Carp;
-
     my $current_name = $current_element->nodeName();
 
     if ($current_name ne $qName) {
@@ -973,19 +973,6 @@ sub set_css_property {
 ##                                                                  ##
 ######################################################################
 
-my %CMR_LIGATURE = ( "-"        => { "-" => "\x{2013}" },
-                     "\x{2013}" => { "-" => "\x{2014}" },
-                     "!"        => { "`" => "\x{00A1}" },
-                     "?"        => { "`" => "\x{00BF}" },
-                     '`'        => "\x{2018}",
-                     "'"        => "\x{2019}",
-                     "\x{2018}" => { "`" => "\x{201C}" },
-                     "\x{2019}" => { "'" => "\x{201D}" },
-                     '"'        => "\x{201D}",
-    );
-
-my %ENCODING = (OT1 => \%CMR_LIGATURE);
-
 sub hlist_out {
     my $self = shift;
 
@@ -1037,22 +1024,27 @@ sub hlist_out {
         }
 
         if ($node->is_char_node()) {
-            my $char = __new_utf8_string(chr($node->get_char_code()));
+            my $this_char = __new_utf8_string(chr($node->get_char_code()));
 
             my $this_enc = $node->get_encoding();
 
-            my $enc = $ENCODING{$this_enc} || {};
+            my $enc = eval { get_encoding($this_enc) };
+
+            if ($@) {
+                $tex->print_err($@);
+                $tex->error();
+
+                next;
+            }
 
             while (1) {
-                my $lig_spec = $enc->{$char};
-
-                last unless defined $lig_spec;
-
-                if (! ref $lig_spec) {
-                    $char = $lig_spec;
-
-                    next;
+                if (defined(my $substitution = $enc->{$this_char})) {
+                    $this_char = $substitution;
                 }
+
+                my $ligatures = $enc->{"${this_char}_lig"};
+
+                last unless defined $ligatures;
 
                 my $next_node = $nodes[0];
 
@@ -1062,14 +1054,18 @@ sub hlist_out {
 
                 my $next_char = __new_utf8_string(chr($next_node->get_char_code()));
 
-                last unless defined (my $ligature = $lig_spec->{$next_char});
+                last unless defined (my $ligature = $ligatures->{$next_char});
+
+                my ($lig_char, $end) = @{ $ligature };
 
                 shift @nodes;
 
-                $char = __new_utf8_string($ligature);
+                $this_char = __new_utf8_string($lig_char);
+
+                last if $end;
             }
 
-            $self->append_text($char);
+            $self->append_text($this_char);
 
             next;
         }

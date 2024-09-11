@@ -116,7 +116,7 @@ __DATA__
         \startXMLelement{ext-link}%
         \setXMLattribute{xlink:href}{\boxtostring\@tempboxa}%
         % The extra braces around the arg are to handle things like \tt.
-        {#3}%
+        {\fontencoding{UCS}#3}%
         \endXMLelement{ext-link}%
     \endgroup
 }
