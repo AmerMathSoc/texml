@@ -974,12 +974,12 @@ __DATA__
                 \this@name
             \endXMLelement{string-name}\par
             \ifx\this@thanks\@empty\else
-                \startXMLelement{author-comment}
+                \startXMLelement{role}
                     \begingroup
                         \xmlpartag{p}
                         \this@thanks\par
                     \endgroup
-                \endXMLelement{author-comment}\par
+                \endXMLelement{role}\par
             \fi
             \ifx\this@bio\@empty\else
                 \startXMLelement{bio}
