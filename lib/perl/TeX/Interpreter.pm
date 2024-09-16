@@ -8417,17 +8417,29 @@ sub main_control {
         }
 
         if ($cur_cat == CATCODE_SUPERSCRIPT) {
-            $tex->append_char(ord($cur_tok->get_char()));
+            $tex->sub_sup($cur_tok);
 
             next;
         }
 
         if ($cur_cat == CATCODE_SUBSCRIPT) {
-            $tex->append_char(ord($cur_tok->get_char()));
+            $tex->sub_sup($cur_tok);
 
             next;
         }
     }
+
+    return;
+}
+
+sub sub_sup {
+    my $tex = shift;
+
+    my $cur_tok = shift;
+
+    $tex->append_char(ord($cur_tok->get_char()));
+
+    # $tex->scan_math();
 
     return;
 }
@@ -8543,6 +8555,9 @@ sub its_all_over {
 
     return 1;
 }
+
+## Maybe append_char() should take a character, not a char_code?  Most
+## of the uses of it are of the form append_char(ord(...)).
 
 sub append_char {
     my $tex = shift;
@@ -9265,6 +9280,12 @@ sub enter_display_math_mode {
 
     return;
 }
+
+# sub scan_math {
+#     my $tex = shift;
+#
+#     return;
+# }
 
 sub scan_delimiter {
     my $tex = shift;
@@ -10640,8 +10661,6 @@ sub TeX {
     $tex->initialize_output_routines();
 
     $tex->fix_date_and_time();
-
-    # $tex->compute_magic_offset();
 
     $tex->initialize_print_selector();
 
