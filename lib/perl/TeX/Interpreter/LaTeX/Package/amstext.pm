@@ -56,9 +56,9 @@ __DATA__
 
 \def\text#1{%
     \ifmmode
-        \startXMLelement{text}%
+        {\startXMLelement{text}%
         \hbox{#1}%
-        \endXMLelement{text}%
+        \endXMLelement{text}}%
     \else
         #1%
     \fi
