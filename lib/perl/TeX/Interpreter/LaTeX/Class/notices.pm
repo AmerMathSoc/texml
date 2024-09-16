@@ -436,7 +436,7 @@ __DATA__
     \endXMLelement{sec-meta}\par
     \if@numbered
         \refstepcounter{section}
-        \thisxmlpartag{label}\thesection\par
+        \thisxmlpartag{label}\thesection\@addpunct.\par
     \fi
     \thisxmlpartag{title}#1\par
 }
