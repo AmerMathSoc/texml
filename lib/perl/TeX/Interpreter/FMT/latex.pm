@@ -2436,8 +2436,6 @@ __DATA__
 %%                    the contents of the node by \b@K and resets
 %%                    @specific-use = 'cite'.
 
-\let\bibliographystyle\@gobble
-
 \def\citeleft{%
     \leavevmode
     \startXMLelement{cite-group}%
