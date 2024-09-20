@@ -81,10 +81,21 @@ sub load_encoding {
 
         next if /^\s*$/;
 
-        m{^lig (.) (.) (.)(:? (|))?} and do {
-            my $end = defined $4 ? 1 : 0;
+        # In a lig specification, the first character is in the output
+        # encoding (i.e., Unicode); the second character is in the
+        # input encoding; and the third character is in the output
+        # encoding.
 
-            $map{"${1}_lig"}->{$2} = [$3, $end];
+        m{^lig (.) (.) =: (.)} and do {
+            $map{"${1}_lig"}->{$2} = [$3, 0];
+
+            next;
+        };
+
+        m{^lig (.) (.) := (.)} and do {
+            my $final = defined $4 ? 1 : 0;
+
+            $map{"${1}_lig"}->{$2} = [$3, 1];
 
             next;
         };

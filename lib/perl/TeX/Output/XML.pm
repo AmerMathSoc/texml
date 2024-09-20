@@ -1039,6 +1039,8 @@ sub hlist_out {
 
             while (1) {
                 if (defined(my $substitution = $enc->{$this_char})) {
+                    ## print STDERR qq{*** hlist_out: ($this_enc) Replacing "$this_char" by "$substitution"\n};
+
                     $this_char = $substitution;
                 }
 
@@ -1056,13 +1058,15 @@ sub hlist_out {
 
                 last unless defined (my $ligature = $ligatures->{$next_char});
 
-                my ($lig_char, $end) = @{ $ligature };
+                my ($lig_char, $final) = @{ $ligature };
 
                 shift @nodes;
 
+                ## print STDERR qq{*** hlist_out: ($this_enc) Replacing "$this_char" + "$next_char" by "$lig_char"\n};
+
                 $this_char = __new_utf8_string($lig_char);
 
-                last if $end;
+                last if $final;
             }
 
             $self->append_text($this_char);
