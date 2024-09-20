@@ -1957,6 +1957,7 @@ __DATA__
         \let\[\(%
         \let\]\)%
         \let\label\@gobble
+        \let\index\@gobble
         \disable@stepcounter
         \setbox\@tempboxa\hbox{\ignorespaces#1\unskip}%
     \expandafter\endgroup
@@ -2131,6 +2132,7 @@ __DATA__
         \begingroup
             \let\label\relax
             \let\footnote\relax
+            \let\index\relax
             \protected@xdef\@tempa{#4}%
         \endgroup
         \ifx\@tempa\@empty
