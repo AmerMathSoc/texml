@@ -34,11 +34,12 @@ use warnings;
 
 use base qw(Exporter);
 
-our @EXPORT = qw(get_encoding decode_character);
+our %EXPORT_TAGS = ( functions => [ qw(decode_character get_encoding) ],
+                     constants => [ qw(LIG_CONTINUE LIG_STOP LIG_KEEP_RIGHT) ]);
 
-our %EXPORT_TAGS = (all => [ @EXPORT ]);
+our @EXPORT = @{ $EXPORT_TAGS{functions} };
 
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{functions} }, @{ $EXPORT_TAGS{constants} } );
 
 use Carp;
 
@@ -49,6 +50,12 @@ use TeX::Constants qw(UCS);
 use TeX::Utils::Misc;
 
 use Exception::Class qw(TeX::Output::Encoding::Error);
+
+use constant {
+    LIG_CONTINUE   => 0,
+    LIG_STOP       => 1,
+    LIG_KEEP_RIGHT => 2,
+};
 
 my %ENCODING;
 
@@ -74,6 +81,12 @@ sub load_encoding {
 
     local $_;
 
+    my %flag = ( '=:'  => LIG_CONTINUE,
+                 ':='  => LIG_STOP,
+                 '=:|' => LIG_KEEP_RIGHT);
+
+    my $char_re = qr{(?:U\+[0-9a-z]+|.)}i;
+
     while (<$map>) {
         ($_) = split /;;/;
 
@@ -86,16 +99,17 @@ sub load_encoding {
         # input encoding; and the third character is in the output
         # encoding.
 
-        m{^lig (.) (.) =: (.)} and do {
-            $map{"${1}_lig"}->{$2} = [$3, 0];
+        m{^lig ($char_re) ($char_re) (=:|:=|=:\|) ($char_re)} and do {
+            my $char = $1;
+            my $next = $2;
+            my $op   = $3;
+            my $lig  = $4;
 
-            next;
-        };
+            $char =~ s{U\+(.+)}{ chr(hex($1)) }e;
+            $next =~ s{U\+(.+)}{ chr(hex($1)) }e;
+            $lig  =~ s{U\+(.+)}{ chr(hex($1)) }e;
 
-        m{^lig (.) (.) := (.)} and do {
-            my $final = defined $4 ? 1 : 0;
-
-            $map{"${1}_lig"}->{$2} = [$3, 1];
+            $map{"${char}_lig"}->{$next} = [$lig, $flag{$op}];
 
             next;
         };
