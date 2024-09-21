@@ -36,7 +36,7 @@ use FindBin;
 
 use List::Util qw(min uniq);
 
-use TeX::Output::Encoding;
+use TeX::Output::Encoding qw(:functions :constants);
 
 use TeX::Utils::XML;
 
@@ -1058,7 +1058,7 @@ sub hlist_out {
 
                 last unless defined (my $ligature = $ligatures->{$next_char});
 
-                my ($lig_char, $final) = @{ $ligature };
+                my ($lig_char, $flag) = @{ $ligature };
 
                 shift @nodes;
 
@@ -1066,7 +1066,15 @@ sub hlist_out {
 
                 $this_char = __new_utf8_string($lig_char);
 
-                last if $final;
+                if ($flag == LIG_KEEP_RIGHT) {
+                    $self->append_text($this_char);
+
+                    $this_char = $next_char;
+
+                    next;
+                }
+
+                last if $flag == LIG_STOP;
             }
 
             $self->append_text($this_char);
