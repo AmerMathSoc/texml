@@ -1192,15 +1192,15 @@ sub vlist_out {
         }
 
         if ($node->is_char_node()) {
-            # Strictly speaking, this shouldn't happen...
+            # This should no longer happen.
 
-            # $tex->confusion("vlistout");
+            $tex->confusion("vlistout: character '$node' in vmode");
 
-            # ...but it does.
+            # # ...but it does.
 
-            my $char = __new_utf8_string(chr($node->get_char_code()));
+            # my $char = __new_utf8_string(chr($node->get_char_code()));
 
-            $self->append_text($char);
+            # $self->append_text($char);
 
             next;
         }
