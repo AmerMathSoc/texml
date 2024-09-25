@@ -41,6 +41,7 @@ use TeX::Class;
 sub START {
     my ($self, $ident, $arg_ref) = @_;
 
+    $self->set_is_hbox(0);
     $self->set_is_vbox(1);
 
     return;
