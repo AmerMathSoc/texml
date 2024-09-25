@@ -8292,7 +8292,9 @@ sub main_control {
         #         $token = qq{'$cur_tok'};
         #     }
         #
-        #     $tex->print("main_control: $token ($catcode)");
+        #     my $mode = $tex->get_cur_mode();
+        #
+        #     $tex->print("main_control: $token ($catcode); mode=$mode");
         #
         #     $tex->end_diagnostic(false);
         # }
@@ -8605,6 +8607,11 @@ sub handle_right_brace {
         if ($tex->is_mmode()) {
             $tex->append_char(ord('}'));
         }
+        # else {
+        #     if ($tex->is_hmode()) {
+        #         $tex->append_char(0x200C, UCS);
+        #     }
+        # }
     }
     elsif ($cur_group == bottom_level) {
         $tex->print_err("Too many }'s");
@@ -8823,10 +8830,18 @@ sub box_end {
     if ($box_context < box_flag) {
         # @<Append box |cur_box| to the current list, shifted by |box_context|@>
 
+        my $bare_hbox = $cur_box->is_hbox() && $tex->is_vmode();
+
+        $tex->new_graf(1) if $bare_hbox;
+
         $tex->tail_append($cur_box);
 
-        if ($tex->is_hmode()) {
-            $tex->set_spacefactor(1000);
+        if ($bare_hbox) {
+            $tex->end_par();
+        } else {
+            if ($tex->is_hmode()) {
+                $tex->set_spacefactor(1000);
+            }
         }
     }
     elsif ($box_context < ship_out_flag) {
@@ -8919,9 +8934,11 @@ sub package {
 
     my $cur_box;
 
+    my $is_hbox = $tex->is_hmode();
+
     my $head = $tex->pop_nest();
 
-    if ($tex->is_hmode()) {
+    if ($is_hbox) {
         $cur_box = $tex->hpack($head, $width, $spec_code);
     } else {
         $cur_box = $tex->vpackage($head, $width, $spec_code, $d);
