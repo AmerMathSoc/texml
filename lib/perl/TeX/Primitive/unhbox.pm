@@ -52,7 +52,7 @@ sub execute {
         return;
     }
 
-    $tex->unpackage(box_code);
+    $tex->unpackage(box_code, $cur_tok);
 
     return;
 }

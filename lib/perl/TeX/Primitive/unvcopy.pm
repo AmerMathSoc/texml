@@ -56,7 +56,7 @@ sub execute {
         return;
     }
 
-    $tex->unpackage(copy_code);
+    $tex->unpackage(copy_code, $cur_tok);
 
     return;
 }

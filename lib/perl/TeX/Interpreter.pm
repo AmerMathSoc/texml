@@ -9071,6 +9071,8 @@ sub unpackage {
 
     my $box_code = shift;
 
+    my $box_command = shift;
+
     my $index = $tex->scan_eight_bit_int();
 
     my $box = $tex->box($index);
@@ -9082,7 +9084,14 @@ sub unpackage {
     if (    $mode == mmode
          || ( $mode == vmode && ! $box->is_vbox())
          || ( $mode == hmode && ! $box->is_hbox()) ) {
-        $tex->print_err("Incompatible list can't be unboxed");
+
+        my $m = $mode == mmode ? 'mmode' : 
+                $mode == vmode ? 'vmode' :
+                $mode == hmode ? 'hmode' : '<unknown>';
+
+        my $b = $box->is_hbox() ? 'hbox' : $box->is_vbox ? 'vbox' : '<unknown>';
+
+        $tex->print_err("Incompatible list can't be unboxed ($box_command $b in $m)");
 
         $tex->set_help("Sorry, Pandora. (You sneaky devil.)",
                        "I refuse to unbox an \\hbox in vertical mode or vice versa.",
@@ -9114,7 +9123,7 @@ sub make_accent {
 
     $tex->do_assignments();
 
-    my $base_char = $tex->get_x_token(); #*
+    my $base_char = $tex->get_token();
 
     # $tex->__DEBUG(sprintf "apply_accent(%s, %s)", $unicode_accent, $base_char);
 
