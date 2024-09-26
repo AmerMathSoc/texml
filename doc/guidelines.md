@@ -4,3 +4,5 @@
   float package's `H` location specifier can be helpful here.
 
 * Every table must be inside a `table` environment.
+
+* Do not use the `center` environment.
