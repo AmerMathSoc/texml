@@ -9107,11 +9107,16 @@ sub make_accent {
 
     my $accent_code = $tex->scan_char_num();
 
+    # my $enc = $tex->get_encoding();
+    # $tex->__DEBUG(sprintf "decode_character($enc, %02X)", $accent_code);
+
     my $unicode_accent = decode_character($tex->get_encoding(), $accent_code);
 
     $tex->do_assignments();
 
     my $base_char = $tex->get_x_token(); #*
+
+    # $tex->__DEBUG(sprintf "apply_accent(%s, %s)", $unicode_accent, $base_char);
 
     my ($combined, $error) = apply_accent(ord($unicode_accent), $base_char);
 
@@ -9785,27 +9790,27 @@ sub scan_font_size {
 sub do_assignments {
     my $tex = shift;
 
-    my $cur_tok = $tex->get_next_non_blank_non_relax_non_call_token();
+    while (my $cur_tok = $tex->get_next_non_blank_non_relax_non_call_token()) {
+        if (! $cur_tok->is_definable()) {
+            $tex->back_input($cur_tok);
 
-    if (! $cur_tok->is_definable()) {
-        $tex->back_input($cur_tok);
+            return;
+        }
 
-        return;
+        my $cur_cmd = $tex->get_meaning($cur_tok);
+
+        if (! eval { $cur_cmd->isa("TeX::Command::Prefixed") }) {
+            $tex->back_input($cur_tok);
+
+            last;
+        }
+
+        $tex->set_set_box_allowed(0);
+
+        $tex->prefixed_command($cur_cmd, $cur_tok);
+
+        $tex->set_set_box_allowed(1);
     }
-
-    my $cur_cmd = $tex->get_meaning($cur_tok);
-
-    if (! eval { $cur_cmd->isa("TeX::Command::Prefixed") }) {
-        $tex->back_input($cur_tok);
-
-        return;
-    }
-
-    $tex->set_set_box_allowed(0);
-
-    $tex->prefixed_command($cur_cmd, $cur_tok);
-
-    $tex->set_set_box_allowed(1);
 
     return;
 }
