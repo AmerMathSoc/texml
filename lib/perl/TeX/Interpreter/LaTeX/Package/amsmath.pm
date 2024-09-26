@@ -319,6 +319,7 @@ __DATA__
         \fi
         \startXMLelement{tag}%
         \setXMLattribute{parens}{#1}%
+          \xmlpartag{}%
           \output@raw@tag@{#2}%
         \endXMLelement{tag}%
         \ifx\df@label\@empty\else
