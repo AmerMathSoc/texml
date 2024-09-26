@@ -118,9 +118,9 @@ __DATA__
         \startXMLelement{table}%
             \addTBLRid
             \setCSSproperty{border-collapse}{collapse}%
-            \unhbox\ifvoid\LT@firsthead\LT@head\else\LT@firsthead\fi
-            \unhbox\z@
-            \unhbox\ifvoid\LT@lastfoot\LT@foot\else\LT@lastfoot\fi
+            \unvbox\ifvoid\LT@firsthead\LT@head\else\LT@firsthead\fi
+            \unvbox\z@
+            \unvbox\ifvoid\LT@lastfoot\LT@foot\else\LT@lastfoot\fi
             \par
         \endXMLelement{table}%
     \endgroup
