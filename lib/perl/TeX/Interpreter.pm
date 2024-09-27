@@ -9085,7 +9085,7 @@ sub unpackage {
          || ( $mode == vmode && ! $box->is_vbox())
          || ( $mode == hmode && ! $box->is_hbox()) ) {
 
-        my $m = $mode == mmode ? 'mmode' : 
+        my $m = $mode == mmode ? 'mmode' :
                 $mode == vmode ? 'vmode' :
                 $mode == hmode ? 'hmode' : '<unknown>';
 
@@ -9111,21 +9111,53 @@ sub unpackage {
     return;
 }
 
+sub get_next_character {
+    my $tex = shift;
+
+    my $next = $tex->get_next();
+
+    if ($next == CATCODE_LETTER || $next == CATCODE_OTHER) {
+        return $next;
+    }
+
+    my $cur_cmd = $tex->get_meaning($next);
+
+    if (eval { $cur_cmd->isa('TeX::Primitive::CharGiven') }) {
+        my $char_code = $cur_cmd->get_value();
+        my $char_enc  = $cur_cmd->get_encoding() || $tex->get_encoding();
+
+        return decode_character($char_enc, $char_code);
+    }
+
+    if (eval { $cur_cmd->isa('TeX::Primitive::char') }) {
+        my $char_code = $tex->scan_char_num();
+
+        return decode_character($tex->get_encoding(), $char_code);
+    }
+
+    if (eval { $cur_cmd->isa('TeX::Primitive::UCSchar') }) {
+        return chr($tex->scan_char_num());
+    }
+
+    $tex->back_input($next);
+
+    return;
+}
+
 sub make_accent {
     my $tex = shift;
 
     my $accent_code = $tex->scan_char_num();
 
-    # my $enc = $tex->get_encoding();
-    # $tex->__DEBUG(sprintf "decode_character($enc, %02X)", $accent_code);
-
     my $unicode_accent = decode_character($tex->get_encoding(), $accent_code);
 
     $tex->do_assignments();
 
-    my $base_char = $tex->get_next();
+    my $base_char = $tex->get_next_character();
 
-    # $tex->__DEBUG(sprintf "apply_accent(%s, %s)", $unicode_accent, $base_char);
+    ## apply_accent will handle the case of an undefined base_char by
+    ## replacing the combining accent by its spacing version, which is
+    ## what we want, so we don't have to do anything special here
 
     my ($combined, $error) = apply_accent(ord($unicode_accent), $base_char);
 
@@ -9149,11 +9181,12 @@ sub make_accent {
 
         $tex->initialize_char_codes($char_code);
 
-        $tex->append_char($char_code);
+        $tex->append_char($char_code, UCS);
 
         # NB: In ur-TeX, make_accent always sets the space_factor to
         # 1000 here, but append_char will use the actual space_factor
-        # of the accented character.
+        # of the accented character.  This is in line with LaTeX's
+        # \add@accent command.
     }
 
     return;
