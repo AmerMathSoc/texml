@@ -144,7 +144,8 @@ sub new_xml_element {
 ######################################################################
 
 ## This is ridiculous, but without the explicit use of utf8::upgrade,
-## non-8-bit characters sometimes aren't handled correctly.
+## non-8-bit characters sometimes aren't handled correctly.  What am I
+## missing?
 
 use utf8;
 
@@ -973,6 +974,72 @@ sub set_css_property {
 ##                                                                  ##
 ######################################################################
 
+sub output_char {
+    my $self = shift;
+
+    my $node  = shift;
+    my $nodes = shift;
+
+    my $tex = $self->get_tex_engine();
+
+    my $focus = __new_utf8_string(chr($node->get_char_code()));
+
+    my $this_enc = $node->get_encoding();
+
+    my $enc = eval { get_encoding($this_enc) };
+
+    if ($@) {
+        $tex->print_err($@);
+        $tex->error();
+
+        next;
+    }
+
+    while (1) {
+        if (defined(my $substitution = $enc->{$focus})) {
+            # print STDERR qq{*** hlist_out: ($this_enc) Replacing "$focus" by "$substitution"\n};
+
+            $focus = __new_utf8_string($substitution);
+        }
+
+        my $ligatures = $enc->{"${focus}_lig"};
+
+        last unless defined $ligatures;
+
+        my $next_node = $nodes->[0];
+
+        last unless defined $next_node && $next_node->is_char_node();
+
+        last unless $next_node->get_encoding() eq $this_enc;
+
+        my $next_char = __new_utf8_string(chr($next_node->get_char_code()));
+
+        last unless defined (my $ligature = $ligatures->{$next_char});
+
+        my ($lig_char, $flag) = @{ $ligature };
+
+        shift @{ $nodes };
+
+        # print STDERR qq{*** hlist_out: ($this_enc) Replacing "$focus" + "$next_char" by "$lig_char"\n};
+
+        $focus = __new_utf8_string($lig_char);
+
+        if ($flag == LIG_KEEP_RIGHT) {
+            $self->append_text($focus);
+
+            $focus = $next_char;
+
+            next;
+        }
+
+        last if $flag == LIG_STOP;
+    }
+
+    $self->append_text($focus);
+
+    return;
+}
+
 sub hlist_out {
     my $self = shift;
 
@@ -1024,60 +1091,7 @@ sub hlist_out {
         }
 
         if ($node->is_char_node()) {
-            my $this_char = __new_utf8_string(chr($node->get_char_code()));
-
-            my $this_enc = $node->get_encoding();
-
-            my $enc = eval { get_encoding($this_enc) };
-
-            if ($@) {
-                $tex->print_err($@);
-                $tex->error();
-
-                next;
-            }
-
-            while (1) {
-                if (defined(my $substitution = $enc->{$this_char})) {
-                    ## print STDERR qq{*** hlist_out: ($this_enc) Replacing "$this_char" by "$substitution"\n};
-
-                    $this_char = $substitution;
-                }
-
-                my $ligatures = $enc->{"${this_char}_lig"};
-
-                last unless defined $ligatures;
-
-                my $next_node = $nodes[0];
-
-                last unless defined $next_node && $next_node->is_char_node();
-
-                last unless $next_node->get_encoding() eq $this_enc;
-
-                my $next_char = __new_utf8_string(chr($next_node->get_char_code()));
-
-                last unless defined (my $ligature = $ligatures->{$next_char});
-
-                my ($lig_char, $flag) = @{ $ligature };
-
-                shift @nodes;
-
-                ## print STDERR qq{*** hlist_out: ($this_enc) Replacing "$this_char" + "$next_char" by "$lig_char"\n};
-
-                $this_char = __new_utf8_string($lig_char);
-
-                if ($flag == LIG_KEEP_RIGHT) {
-                    $self->append_text($this_char);
-
-                    $this_char = $next_char;
-
-                    next;
-                }
-
-                last if $flag == LIG_STOP;
-            }
-
-            $self->append_text($this_char);
+            $self->output_char($node, \@nodes);
 
             next;
         }
