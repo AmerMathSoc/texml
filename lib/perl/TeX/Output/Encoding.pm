@@ -154,11 +154,11 @@ sub decode_character {
     my $encoding  = shift;
     my $char_code = shift;
 
-    return $char_code if $encoding eq UCS;
+    my $literal_char = chr($char_code);
+
+    return $literal_char if $encoding eq UCS;
 
     my $map = get_encoding($encoding);
-
-    my $literal_char = chr($char_code);
 
     if (! defined $map) {
         print STDERR "! Unknown encoding: $encoding\n";
