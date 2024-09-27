@@ -82,7 +82,7 @@ sub load_encoding {
     local $_;
 
     my %flag = ( '=:'  => LIG_CONTINUE,
-                 ':='  => LIG_STOP,
+                 '=:>' => LIG_STOP,
                  '=:|' => LIG_KEEP_RIGHT);
 
     my $char_re = qr{(?:U\+[0-9a-z]+|.)}i;
@@ -99,7 +99,7 @@ sub load_encoding {
         # input encoding; and the third character is in the output
         # encoding.
 
-        m{^lig ($char_re) ($char_re) (=:|:=|=:\|) ($char_re)} and do {
+        m{^lig ($char_re) ($char_re) (=:|=:[>|]) ($char_re)} and do {
             my $char = $1;
             my $next = $2;
             my $op   = $3;
@@ -172,3 +172,24 @@ sub decode_character {
 1;
 
 __END__
+
+THE METAFONT RULES
+
+[.] indicates focus
+
+lig a b  =:    X    ; [a]bc... => [X]c...
+
+lig a b  =:|   X    ; [a]bc... => [X]bc...
+lig a b |=:    X    ; [a]bc... => [a]Xc...
+lig a b |=:|   X    ; [a]bc... => [a]Xbc...
+
+lib a b  =:|>  X    ; [a]bc... => X[b]c...
+lib a b |=:>   X    ; [a]bc... => a[X]c...
+lib a b |=:|>  X    ; [a]bc... => a[X]bc...
+
+lib a b |=:|>> X    ; [a]bc... => aX[b]c...
+
+NEW RULE
+
+lig a b  =:>   X    ; [a]bc... => X[c]...
+
