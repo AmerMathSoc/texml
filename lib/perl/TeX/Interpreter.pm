@@ -9123,7 +9123,7 @@ sub make_accent {
 
     $tex->do_assignments();
 
-    my $base_char = $tex->get_token();
+    my $base_char = $tex->get_next();
 
     # $tex->__DEBUG(sprintf "apply_accent(%s, %s)", $unicode_accent, $base_char);
 
