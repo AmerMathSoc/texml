@@ -67,6 +67,8 @@ __DATA__
 \newbox\LT@foot
 \newbox\LT@lastfoot
 
+\let\LTcapwidth\@tempdima
+
 \def\longtable{%
     \par
     \figure[H]%
