@@ -9175,18 +9175,21 @@ sub make_accent {
 
         $tex->error();
     } else {
-        my $char_code = ord($combined);
+        for my $char (split '', $combined) {
+            my $char_code = ord($char);
 
-        ## This might be the first time we've encountered this composite character.
+            ## This might be the first time we've encountered this composite character.
 
-        $tex->initialize_char_codes($char_code);
+            $tex->initialize_char_codes($char_code);
 
-        $tex->append_char($char_code, UCS);
+            $tex->append_char($char_code, UCS);
+        }
 
         # NB: In ur-TeX, make_accent always sets the space_factor to
         # 1000 here, but append_char will use the actual space_factor
         # of the accented character.  This is in line with LaTeX's
-        # \add@accent command.
+        # \add@accent command.  Combining accents have sfcode 0, so
+        # they won't change the sfcode of the base character.
     }
 
     return;
