@@ -75,9 +75,7 @@ sub new_character {
 
     return $cached if defined $cached;
 
-    my $ucs_code = $char_code;
-
-    $cached = __PACKAGE__->new({ char_code => $ucs_code,
+    $cached = __PACKAGE__->new({ char_code => $char_code,
                                  encoding  => $encoding,
                                  font      => $font, # cf. TeX::FMT::MEM
                                });
