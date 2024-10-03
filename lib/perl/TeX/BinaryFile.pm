@@ -38,6 +38,8 @@ use Carp;
 
 use TeX::Class;
 
+use Exception::Class qw(TeX::BinaryFile::RunError);
+
 use Fcntl qw(:seek);
 
 use IO::File;
@@ -115,7 +117,7 @@ sub open {
             close($fh);
 
             $fh = IO::Uncompress::Gunzip->new($file_name) or do {
-                PTG::RunError->throw($GunzipError);
+                TeX::BinaryFile::RunError->throw($GunzipError);
             };
 
             $filehandle_of{ident $self} = $fh;
