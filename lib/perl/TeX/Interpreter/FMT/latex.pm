@@ -1269,7 +1269,7 @@ __DATA__
 \@declarefontcommand\textsc\mathsc{sc}
 \@declarefontcommand\textbf\mathbf{bold}
 \@declarefontcommand[OT1tt]\texttt\mathtt{monospace}
-\@declarefontcommand\textit\mathit{italic}
+\@declarefontcommand[OT1ti]\textit\mathit{italic}
 \@declarefontcommand\textsf\mathsf{sans-serif}
 
 \@declarefontcommand\underline\underline{underline}
