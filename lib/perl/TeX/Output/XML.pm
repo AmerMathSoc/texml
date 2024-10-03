@@ -36,7 +36,9 @@ use FindBin;
 
 use List::Util qw(min uniq);
 
-use TeX::Output::Encoding qw(:functions :constants);
+use TeX::Node::CharNode qw(:factories);
+
+use TeX::Output::Encoding qw(:functions);
 
 use TeX::Utils::XML;
 
@@ -974,17 +976,31 @@ sub set_css_property {
 ##                                                                  ##
 ######################################################################
 
+sub output_char_node {
+    my $self = shift;
+
+    my $char_code = shift;
+    my $subs      = shift;
+
+    if (defined $subs->[$char_code]) {
+        $char_code = $subs->[$char_code];
+    }
+
+    $self->append_text(__new_utf8_string(chr($char_code)));
+
+    return;
+}
+
 sub output_char {
     my $self = shift;
 
-    my $node  = shift;
+    my $cur_node = shift;
+
     my $nodes = shift;
 
     my $tex = $self->get_tex_engine();
 
-    my $focus = __new_utf8_string(chr($node->get_char_code()));
-
-    my $this_enc = $node->get_encoding();
+    my $this_enc = $cur_node->get_encoding();
 
     my $enc = eval { get_encoding($this_enc) };
 
@@ -995,47 +1011,74 @@ sub output_char {
         next;
     }
 
+    my $ligtable = $enc->{ligs};
+
     while (1) {
-        if (defined(my $substitution = $enc->{$focus})) {
-            # print STDERR qq{*** hlist_out: ($this_enc) Replacing "$focus" by "$substitution"\n};
+        last unless $cur_node->is_char_node();
 
-            $focus = __new_utf8_string($substitution);
-        }
+        my $cur_code = $cur_node->get_char_code();
+        my $cur_enc  = $cur_node->get_encoding();
 
-        my $ligatures = $enc->{"${focus}_lig"};
+        my $ligatures = $ligtable->[$cur_code];
 
-        last unless defined $ligatures;
+        my $continue = defined $ligatures;
 
         my $next_node = $nodes->[0];
 
-        last unless defined $next_node && $next_node->is_char_node();
+        $continue &&= defined $next_node && $next_node->is_char_node();
 
-        last unless $next_node->get_encoding() eq $this_enc;
+        $continue &&= $next_node->get_encoding() eq $this_enc;
 
-        my $next_char = __new_utf8_string(chr($next_node->get_char_code()));
+        my $ligature;
 
-        last unless defined (my $ligature = $ligatures->{$next_char});
+        if ($continue) {
+            my $next_char = $next_node->get_char_code();
 
-        my ($lig_char, $flag) = @{ $ligature };
+            $ligature = $ligatures->[$next_char];
+
+            $continue &&= defined $ligature;
+        }
+
+        if (! $continue) {
+            $self->output_char_node($cur_code, $enc->{decode});
+
+            last;
+        }
+
+        my ($lig_char, $op) = @{ $ligature };
 
         shift @{ $nodes };
 
-        # print STDERR qq{*** hlist_out: ($this_enc) Replacing "$focus" + "$next_char" by "$lig_char"\n};
+        # See discussion of lig_kern_command op_byte values in see
+        # section 545 of tex.web.
 
-        $focus = __new_utf8_string($lig_char);
+        # $op = 4 * $SKIP + 2 * $KEEP_LEFT + $KEEP_RIGHT
 
-        if ($flag == LIG_KEEP_RIGHT) {
-            $self->append_text($focus);
+        my $KEEP_RIGHT = $op % 2;
+        my $KEEP_LEFT  = ($op >> 1) % 2;
+        my $SKIP       = $op >> 2;
 
-            $focus = $next_char;
-
-            next;
+        if ($KEEP_RIGHT) {
+            unshift @{ $nodes }, $next_node;
         }
 
-        last if $flag == LIG_STOP;
-    }
+        unshift @{ $nodes }, new_character($lig_char, $this_enc);
 
-    $self->append_text($focus);
+        if ($KEEP_LEFT) {
+            unshift @{ $nodes }, $cur_node;
+        }
+
+        while ($SKIP-- > 0) {
+            my $node = shift @{ $nodes };
+
+            $self->output_char_node($node->get_char_code(), $enc->{decode});
+        }
+
+        last unless $nodes->[0]->is_char_node();
+        last unless $nodes->[0]->get_encoding() eq $this_enc;
+
+        $cur_node = shift @{ $nodes };
+    }
 
     return;
 }

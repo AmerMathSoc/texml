@@ -34,13 +34,13 @@ use warnings;
 
 use base qw(Exporter);
 
-our %EXPORT_TAGS = (all => [ qw(
-    make_accenter
-) ]);
+our %EXPORT_TAGS = (all => [ qw(make_accenter) ]);
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
 
 our @EXPORT = ( @{ $EXPORT_TAGS{all} } );
+
+use TeX::Output::Encoding qw(encode_character);
 
 use TeX::Utils::Unicode::Diacritics qw(apply_accent);
 
@@ -56,81 +56,63 @@ sub make_accenter( @ ) {
     my @accents = @_;
 
     return sub {
-        my $macro = shift;
-
         my $tex   = shift;
         my $token = shift;
 
-        my $arg = $tex->read_undelimited_parameter();
+        if ($tex->is_vmode()) {
+            $tex->back_input($token);
 
-        $tex->begingroup();
+            $tex->new_graf();
 
-        $tex->ins_list($arg);
-
-        my $next = $tex->get_x_token();
-
-        my $char;
-
-        my $catcode = $next->get_catcode();
-
-        if ($catcode == CATCODE_LETTER || $catcode == CATCODE_OTHER) {
-            $char = $next->get_char();
-        } elsif ($catcode == CATCODE_CSNAME) {
-            my $cur_cmd = $tex->get_meaning($next);
-
-            my $char_code;
-            my $enc;
-
-            if ($cur_cmd->isa("TeX::Primitive::CharGiven")) {
-                $char_code = $cur_cmd->get_value();
-
-                $enc = $cur_cmd->get_encoding();
-            } elsif ($cur_cmd->isa("TeX::Primitive::char")) {
-                $char_code = $tex->scan_char_num();
-            }
-
-            if (defined($char_code)) {
-                if ($char_code < 256) {
-                    $enc ||= $tex->get_encoding() || UCS;
-
-                    if ($enc ne UCS) {
-                        $char = decode_character($enc, $char_code);
-                    }
-                }
-
-                $char = chr($char_code);
-            }
+            return;
         }
 
-        for my $accent (@accents) {
-            ($char, my $error) = apply_accent($accent, $char);
+        my $raw_base = $tex->read_undelimited_parameter();
 
-            if (! defined $char) {
+        $tex->back_list($raw_base);
+
+        my ($base, $enc) = $tex->get_next_character();
+
+        # my $enc  = $tex->get_encoding();
+
+        # my $base = decode_character($enc, ord($raw_base));
+
+        my $accented_char;
+
+        for my $accent (@accents) {
+            ($accented_char, my $error) = apply_accent($accent, $base);
+
+            if (! defined $accented_char) {
                 $error ||= "unknown error";
             }
 
             if (defined $error) {
-                $tex->print_err("Can't compose accent '$accent' with $arg ($error)");
+                $tex->print_err("Can't compose accent '$accent' with $base ($error)");
 
                 $tex->error();
             }
+
+            $base = $accented_char;
         }
 
-        my $token_list;
+        if (defined $accented_char) {
+            for my $char (split '', $accented_char) {
+                my $char_code = ord($char);
 
-        if (! defined $char) {
-            $tex->print_err("Can't apply $token to $arg");
+                ## This might be the first time we've encountered this
+                ## composite character.
+
+                $tex->initialize_char_codes($char_code);
+
+                $tex->append_char(ord(encode_character($enc, $char_code)), $enc);
+            }
+        } else {
+            $tex->print_err("Can't apply $token to $base");
 
             $tex->error();
-
-            $token_list = new_token_list();
-        } else {
-            $token_list = $tex->str_toks($char);
         }
 
-        $tex->endgroup();
-
-        return $token_list;
+        return;
     };
 }
 

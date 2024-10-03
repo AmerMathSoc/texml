@@ -34,12 +34,12 @@ use warnings;
 
 use base qw(Exporter);
 
-our %EXPORT_TAGS = ( functions => [ qw(decode_character get_encoding) ],
-                     constants => [ qw(LIG_CONTINUE LIG_STOP LIG_KEEP_RIGHT) ]);
+our %EXPORT_TAGS = ( functions => [ qw(decode_character encode_character
+                                       get_encoding) ] );
 
 our @EXPORT = @{ $EXPORT_TAGS{functions} };
 
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{functions} }, @{ $EXPORT_TAGS{constants} } );
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{functions} } );
 
 use Carp;
 
@@ -51,41 +51,59 @@ use TeX::Utils::Misc;
 
 use Exception::Class qw(TeX::Output::Encoding::Error);
 
-use constant {
-    LIG_CONTINUE   => 0,
-    LIG_STOP       => 1,
-    LIG_KEEP_RIGHT => 2,
-};
-
 my %ENCODING;
 
 my $MAP_DIR = catdir(dirname($INC{"TeX/Output/Encoding.pm"}), "encodings");
 
+sub __char_code {
+    my $code_or_char = shift;
+
+    if ($code_or_char =~ s{(?:U\+|")(.+)}{ hex($1) }e) {
+        return $code_or_char;
+    };
+
+    return ord($code_or_char);
+}
+
 sub load_encoding {
     my $encoding = shift;
+
+    return if $encoding eq UCS;
 
     CORE::state $octal = qr{'[0-3][0-7][0-7]};
     CORE::state $hex   = qr{"[[:xdigit:]][[:xdigit:]]}i;
 
     CORE::state $eight_bits = qr{^($octal|$hex)$}; # more or less
 
-    return if $encoding eq UCS;
-
     my $map_file = "$MAP_DIR/$encoding.enc";
 
     my %map;
+
+    my @decode;
+    my @ligs;
+    my @encode;
 
     open(my $map, "<:utf8", $map_file) or do {
         TeX::Output::Encoding::Error->throw("Encoding scheme `$encoding' unknown");
     };
 
+    # Map the operators to their TFM lig_kern_command op_byte codes.
+    # See section 545 of tex.web.
+
+    my %op = (  '=:'    =>  0,
+                '=:|'   =>  1,
+                '=:|>'  =>  5,
+               '|=:'    =>  2,
+               '|=:>'   =>  6,
+               '|=:|'   =>  3,
+               '|=:|>'  =>  7,
+               '|=:|>>' => 11,
+                '=:>'   =>  4,
+        );
+
+    my $char_re = qr{(?:U\+[0-9a-z]+|"[0-9a-z]+|.)}i;
+
     local $_;
-
-    my %flag = ( '=:'  => LIG_CONTINUE,
-                 '=:>' => LIG_STOP,
-                 '=:|' => LIG_KEEP_RIGHT);
-
-    my $char_re = qr{(?:U\+[0-9a-z]+|.)}i;
 
     while (<$map>) {
         ($_) = split /;;/;
@@ -94,22 +112,26 @@ sub load_encoding {
 
         next if /^\s*$/;
 
-        # In a lig specification, the first character is in the output
-        # encoding (i.e., Unicode); the second character is in the
-        # input encoding; and the third character is in the output
-        # encoding.
+        m{^lig ($char_re) ($char_re) (\|?=:\|?>*) ($char_re)} and do {
+            my $focus = $1;
+            my $next  = $2;
+            my $op    = $3;
+            my $lig   = $4;
 
-        m{^lig ($char_re) ($char_re) (=:|=:[>|]) ($char_re)} and do {
-            my $char = $1;
-            my $next = $2;
-            my $op   = $3;
-            my $lig  = $4;
+            $focus = __char_code($focus);
+            $next  = __char_code($next);
+            $lig   = __char_code($lig);
 
-            $char =~ s{U\+(.+)}{ chr(hex($1)) }e;
-            $next =~ s{U\+(.+)}{ chr(hex($1)) }e;
-            $lig  =~ s{U\+(.+)}{ chr(hex($1)) }e;
+            # In a lig specification, the focus character is in the
+            # output encoding (i.e., Unicode); the 'next' character is
+            # in the input encoding; and the lig character is in the
+            # output encoding, so we need to back-code the focus and
+            # lig characters.
 
-            $map{"${char}_lig"}->{$next} = [$lig, $flag{$op}];
+            $focus = $encode[$focus] // $focus;
+            $lig   = $encode[$lig]   // $lig;
+
+            $ligs[$focus]->[$next] = [$lig, $op{$op}];
 
             next;
         };
@@ -135,13 +157,14 @@ sub load_encoding {
         }
 
         if ($char_code != $ucs_codepoint) {
-            $map{chr($char_code)} = chr($ucs_codepoint);
+            $decode[$char_code]     = $ucs_codepoint;
+            $encode[$ucs_codepoint] = $char_code;
         }
     }
 
     close($map);
 
-    return \%map;
+    return { ligs => \@ligs, decode => \@decode, encode => \@encode };
 }
 
 sub get_encoding {
@@ -158,7 +181,7 @@ sub decode_character {
 
     return $literal_char if $encoding eq UCS;
 
-    my $map = get_encoding($encoding);
+    my $map = eval { get_encoding($encoding) };
 
     if (! defined $map) {
         print STDERR "! Unknown encoding: $encoding\n";
@@ -166,7 +189,36 @@ sub decode_character {
         return $literal_char;
     }
 
-    return $map->{$literal_char} // $literal_char;
+    my $enc = $map->{decode};
+
+    return chr($enc->[$char_code] // $char_code);
+}
+
+sub encode_character {
+    my $encoding  = shift;
+    my $char_code = shift;
+
+    use Carp;
+
+    if (! defined $encoding) {
+        Carp::confess qq{*** encode_character: encoding='$encoding'; char_code='$char_code'\n};
+    }
+
+    my $literal_char = chr($char_code);
+
+    return $literal_char if $encoding eq UCS;
+
+    my $map = eval { get_encoding($encoding) };
+
+    if (! defined $map) {
+        print STDERR "! Unknown encoding: $encoding\n";
+
+        return $literal_char;
+    }
+
+    my $enc = $map->{encode};
+
+    return chr($enc->[$char_code] // $char_code);
 }
 
 1;
@@ -177,19 +229,18 @@ THE METAFONT RULES
 
 [.] indicates focus
 
-lig a b  =:    X    ; [a]bc... => [X]c...
+lig a b  =:    X    ; [a]bc... => [X] c...          op=0
 
-lig a b  =:|   X    ; [a]bc... => [X]bc...
-lig a b |=:    X    ; [a]bc... => [a]Xc...
-lig a b |=:|   X    ; [a]bc... => [a]Xbc...
+lig a b  =:|   X    ; [a]bc... => [X]  b  c...      op=1
+lib a b  =:|>  X    ; [a]bc... =>  X  [b] c...      op=5
 
-lib a b  =:|>  X    ; [a]bc... => X[b]c...
-lib a b |=:>   X    ; [a]bc... => a[X]c...
-lib a b |=:|>  X    ; [a]bc... => a[X]bc...
+lig a b |=:    X    ; [a]bc... => [a]  X  c...      op=2
+lib a b |=:>   X    ; [a]bc... =>  a  [X] c...      op=6
 
-lib a b |=:|>> X    ; [a]bc... => aX[b]c...
+lig a b |=:|   X    ; [a]bc... => [a]  X   b  c...  op=3
+lib a b |=:|>  X    ; [a]bc... =>  a  [X]  b  c...  op=7
+lib a b |=:|>> X    ; [a]bc... =>  a   X  [b] c...  op=11
 
 NEW RULE
 
-lig a b  =:>   X    ; [a]bc... => X[c]...
-
+lig a b  =:>   X    ; [a]bc... => X[c]...           op=4
