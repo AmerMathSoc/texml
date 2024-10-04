@@ -34,7 +34,7 @@ use warnings;
 
 use base qw(Exporter);
 
-use TeX::Utils::Misc;
+use TeX::Utils::Misc qw(empty);
 
 our %EXPORT_TAGS = (
     names => [ qw(COMBINING_GRAVE
@@ -1350,7 +1350,7 @@ my %SPACING_FORM = (
 ##                                                                  ##
 ######################################################################
 
-sub apply_accent( $$ ) {
+sub apply_accent  {
     my $accent = shift;
     my $base = shift;
 

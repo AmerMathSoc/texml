@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::mathscinet;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -34,7 +34,7 @@ use warnings;
 
 use TeX::Utils::Unicode::Diacritics qw(:names);
 
-use TeX::Utils::Unicode qw(make_accenter);
+use TeX::Interpreter::LaTeX::Package::Diacritics qw(make_accenter);
 
 sub install ( $ ) {
     my $class = shift;
@@ -43,10 +43,10 @@ sub install ( $ ) {
 
     $tex->package_load_notification();
 
-    $tex->define_pseudo_macro(utilde => make_accenter(COMBINING_TILDE_BELOW));
-    $tex->define_pseudo_macro(uarc   => make_accenter(COMBINING_BREVE_BELOW));
-    $tex->define_pseudo_macro(lfhook => make_accenter(COMBINING_COMMA_BELOW));
-    $tex->define_pseudo_macro(dudot  => make_accenter(COMBINING_DIAERESIS_BELOW));
+    $tex->define_csname(utilde => make_accenter(COMBINING_TILDE_BELOW));
+    $tex->define_csname(uarc   => make_accenter(COMBINING_BREVE_BELOW));
+    $tex->define_csname(lfhook => make_accenter(COMBINING_COMMA_BELOW));
+    $tex->define_csname(dudot  => make_accenter(COMBINING_DIAERESIS_BELOW));
 
     $tex->read_package_data();
 
