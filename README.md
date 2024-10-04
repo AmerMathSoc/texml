@@ -177,6 +177,8 @@ The following packages are not part of `texml` per se
 * TeX::Lexer
 * TeX::Parser
 * TeX::Parser::LaTeX
+* TeX::Unicode::Accents
+* TeX::Unicode::Translators
 
 They are an independent implementation of a much simpler TeX parser
 that is used by PTG::Unicode::Translators, which is used for
