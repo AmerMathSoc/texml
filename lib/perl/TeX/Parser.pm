@@ -1,6 +1,6 @@
 package TeX::Parser;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,18 +32,36 @@ package TeX::Parser;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.0.0';
+use version; our $VERSION = qv '2.12.0';
 
 use base qw(TeX::Lexer);
 
+######################################################################
+##                                                                  ##
+##                         PACKAGE IMPORTS                          ##
+##                                                                  ##
+######################################################################
+
+use Carp qw(shortmess);
+
+use File::Basename;
+
 use TeX::Class;
 
-use Carp;
+use Scalar::Util qw(blessed reftype);
+
+use TeX::Utils::Misc;
+
+use TeX::Parser::Macro qw(:factories);
 
 use TeX::Token qw(:catcodes :factories);
-use TeX::TokenList;
+use TeX::TokenList qw(:factories);
 
-use UNIVERSAL;
+######################################################################
+##                                                                  ##
+##                            ATTRIBUTES                            ##
+##                                                                  ##
+######################################################################
 
 my %handler_stack    :ARRAY(:name<handler_stack>);
 my %catcode_handlers :ATTR;
@@ -52,11 +70,39 @@ my %default_handler  :ATTR;
 
 my %math_nesting_of :COUNTER(:name<math_nesting>);
 
+my %execute_input_of :BOOLEAN(:name<execute_input> :get<execute_input> :default<0>);
+
+my %execute_defs_of  :BOOLEAN(:name<execute_defs> :get<execute_defs> :default<0>);
+my %expand_macros_of :BOOLEAN(:name<expand_macros> :get<expand_macros> :default<0>);
+
+my %buffer_output_of :BOOLEAN(:name<buffer_output> :get<buffer_output> :default<0>);
+
+my %output_buffer_of :ATTR();
+
+my %output_buffer_stack :ARRAY(:name<output_stack>);
+
+######################################################################
+##                                                                  ##
+##                            CONSTANTS                             ##
+##                                                                  ##
+######################################################################
+
+use constant {
+    PAR_TOKEN => make_csname_token('par'),
+    FI_TOKEN  => make_csname_token('fi')
+};
+
+######################################################################
+##                                                                  ##
+##                            UTILITIES                             ##
+##                                                                  ##
+######################################################################
+
 sub SHOUT { print STDERR @_; }
 
 sub __report_token($$) {
-    my $parser = shift;
-    my $token  = shift;
+    my $self  = shift;
+    my $token = shift;
 
     # return;
 
@@ -76,14 +122,16 @@ sub __report_token($$) {
         $string = $token;
     }
 
-    my $line = $parser->get_line_no();
+    my $line = $self->get_line_no();
 
     print STDERR "Line $line ($caller1): token = $string called from $caller2\n";
 }
 
 sub null_handler($$) {
-    my $parser = shift;
-    my $input  = shift;
+    my $self  = shift;
+    my $token = shift;
+
+    $self->add_to_buffer($token);
 
     return;
 }
@@ -95,21 +143,24 @@ sub __capture_text_into( $ ) {
         my $parser = shift;
         my $text   = shift;
 
-        ${ $text_r } .= $text; # ->to_string();
+        ${ $text_r } .= $text if defined $text; # ->to_string();
 
         return;
     };
 }
 
-sub __make_handler( $ ) {
+sub __make_handler {
+    my $self    = shift;
     my $handler = shift;
 
     if (ref($handler) eq 'CODE') {
         return $handler;
+    } elsif (blessed($handler) && $handler->isa('TeX::Parser::Macro')) {
+        return $handler;
     } elsif (ref($handler) eq 'SCALAR') {
         return __capture_text_into($handler);
     } else {
-        croak "Invalid handler: neither a code ref or a scalar ref";
+        $self->warn(shortmess "Invalid handler: neither a code ref or a scalar ref");
     }
 }
 
@@ -119,35 +170,40 @@ sub __make_handler( $ ) {
 ##                                                                  ##
 ######################################################################
 
-sub BUILD {
+sub START {
     my ($self, $ident, $arg_ref) = @_;
 
     $self->clear_handlers();
+
+    $self->set_handler(def => \&do_def);
+
+    $self->set_handler(input => \&do_input);
 
     return;
 }
 
 { no warnings qw(redefine);
-sub clone {
-    my $self = shift;
 
-    my $class = ref $self;
+  sub clone {
+      my $self = shift;
 
-    my $clone = $class->new({ encoding      => $self->get_encoding(),
-                              end_line_char => $self->get_end_line_char(),
-                            });
+      my $class = ref $self;
 
-    my $parent_ident = ident $self;
-    my $clone_ident  = ident $clone;
+      my $clone = $class->new({ encoding      => $self->get_encoding(),
+                                end_line_char => $self->get_end_line_char(),
+                              });
 
-    $handlers{$clone_ident}         = { %{ $handlers{$parent_ident} } };
-    $catcode_handlers{$clone_ident} = [ @{ $catcode_handlers{$parent_ident} } ];
-    $default_handler{$clone_ident}  = $default_handler{$parent_ident};
+      my $parent_ident = ident $self;
+      my $clone_ident  = ident $clone;
 
-    $clone->copy_catcodes($self);
+      $handlers{$clone_ident}         = { %{ $handlers{$parent_ident} } };
+      $catcode_handlers{$clone_ident} = [ @{ $catcode_handlers{$parent_ident} } ];
+      $default_handler{$clone_ident}  = $default_handler{$parent_ident};
 
-    return $clone;
-}
+      $clone->copy_catcodes($self);
+
+      return $clone;
+  }
 }
 
 ######################################################################
@@ -160,15 +216,29 @@ sub __set_catcode_handler {
     my $self = shift;
 
     my $catcode = shift;
-    my $handler = __make_handler(shift);
+    my $handler = $self->__make_handler(shift);
 
     return $catcode_handlers{ident $self}->[$catcode] = $handler;
+}
+
+sub delete_catcode_handler {
+    my $self = shift;
+
+    my $catcode = shift;
+
+    delete $catcode_handlers{ident $self}->[$catcode];
+
+    return;
 }
 
 sub __get_raw_catcode_handler {
     my $self = shift;
 
-    my $catcode = UNIVERSAL::isa($_[0], "TeX::Token") ? $_[0]->get_catcode() : $_[0];
+    my $catcode = shift;
+
+    if (blessed($catcode) && $catcode->isa("TeX::Token")) {
+        $catcode = $catcode->get_catcode();
+    }
 
     return $catcode_handlers{ident $self}->[$catcode];
 }
@@ -425,9 +495,17 @@ sub default_handler {
 sub set_default_handler {
     my $self = shift;
 
-    my $handler = __make_handler(shift);
+    my $handler = $self->__make_handler(shift);
 
     return $default_handler{ident $self} = $handler;
+}
+
+sub delete_default_handler {
+    my $self = shift;
+
+    undef $default_handler{ident $self};
+
+    return;
 }
 
 sub get_default_handler {
@@ -443,7 +521,7 @@ sub get_default_handler {
 sub set_text_handlers {
     my $self = shift;
 
-    my $handler = __make_handler(shift);
+    my $handler = $self->__make_handler(shift);
 
     my $ident = ident $self;
 
@@ -456,15 +534,107 @@ sub set_text_handlers {
 
 ######################################################################
 ##                                                                  ##
+##                          OUTPUT BUFFER                           ##
+##                                                                  ##
+######################################################################
+
+sub add_to_buffer {
+    my $self  = shift;
+    my $token = shift;
+
+    if ($self->buffer_output()) {
+        $output_buffer_of{ident $self} .= $token;
+    }
+
+    return;
+}
+
+sub output_buffer {
+    my $self = shift;
+
+    return $output_buffer_of{ident $self};
+}
+
+sub clear_output_buffer {
+    my $self = shift;
+
+    my $ident = ident $self;
+
+    my $output = $output_buffer_of{$ident};
+
+    $output_buffer_of{$ident} = "";
+
+    return $output;
+}
+
+sub push_output_buffer {
+    my $self = shift;
+
+    my $buffering = shift;
+
+    my $saved_buffering = $self->buffer_output();
+    my $saved_contents  = $self->clear_output_buffer();
+
+    $self->push_output_stack([ $saved_buffering, $saved_contents ]);
+
+    $self->set_buffer_output($buffering);
+
+    return;
+}
+
+sub pop_output_buffer {
+    my $self = shift;
+
+    if ($self->num_output_stacks() < 1) {
+        $self->warn(shortmess "Invalid attempt to pop output buffer");
+
+        return;
+    }
+
+    my $contents = $self->clear_output_buffer();
+
+    my ($saved_status, $saved_contents) = @{ $self->pop_output_stack() };
+
+    $self->set_buffer_output($saved_status);
+    $output_buffer_of{ident $self} = $saved_contents;
+
+    return $contents;
+}
+
+sub par {
+    my $self = shift;
+
+    my $par_handler = $self->get_handler('par');
+
+    if (defined $par_handler) {
+        $par_handler->($self, PAR_TOKEN);
+    }
+
+    return;
+}
+
+######################################################################
+##                                                                  ##
 ##                   CUSTOM CONTROL NAME HANDLERS                   ##
 ##                                                                  ##
 ######################################################################
+
+sub let {
+    my $self = shift;
+
+    my $alias = shift;
+    my $target = shift;
+
+    $self->set_raw_handler($alias => $self->get_raw_handler($target));
+
+    return;
+}
 
 sub set_handler {
     my $self = shift;
 
     my $csname  = shift;
-    my $handler = __make_handler(shift);
+    my $handler = $self->__make_handler(shift);
 
     return $handlers{ident $self}->{$csname} = $handler;
 }
@@ -474,8 +644,14 @@ sub get_handler {
 
     my $name = shift;
 
-    return $self->get_raw_handler($name)
+    my $handler = $self->get_raw_handler($name)
         || $self->__get_catcode_handler(CATCODE_CSNAME);
+
+    if (blessed($handler) && $handler->can('expand')) {
+        return sub { $handler->expand(@_) };
+    }
+
+    return $handler;
 }
 
 sub delete_handler {
@@ -496,6 +672,17 @@ sub get_raw_handler {
     return $handlers{ident $self}->{$name};
 }
 
+sub set_raw_handler {
+    my $self = shift;
+
+    my $name = shift;
+    my $handler = shift;
+
+    $handlers{ident $self}->{$name} = $handler;
+
+    return;
+}
+
 ######################################################################
 ##                                                                  ##
 ##                         STACK MANAGEMENT                         ##
@@ -505,8 +692,20 @@ sub get_raw_handler {
 sub clear_handlers {
     my $self = shift;
 
+    my $arg_ref = shift || {};
+
+    my $keep_set;
+
+    if (defined(my $keep = $arg_ref->{keep})) {
+        $keep_set = $self->make_handler_set(@{ $keep });
+    }
+
     $handlers{ident $self}         = {};
     $catcode_handlers{ident $self} = [];
+
+    if (defined $keep_set) {
+        $self->restore_handler_set($keep_set);
+    }
 
     return;
 }
@@ -517,7 +716,7 @@ sub save_handlers {
     my $ident = ident $self;
 
     $self->push_handler_stack([ $default_handler{$ident},
-                                { %{ $handlers{$ident} } }, 
+                                { %{ $handlers{$ident} } },
                                 [ @{ $catcode_handlers{$ident} } ] ]);
 
     return;
@@ -530,13 +729,39 @@ sub restore_handlers {
 
     my $frame = $self->pop_handler_stack();
 
-    croak "Tried to pop empty handler stack" unless defined $frame;
+    $self->warn("Tried to pop empty handler stack") unless defined $frame;
 
     my ($default_handler, $handlers, $catcode_handlers) = @{ $frame };
 
     $handlers{$ident}         = $handlers;
     $catcode_handlers{$ident} = $catcode_handlers;
     $default_handler{$ident}  = $default_handler;
+
+    return;
+}
+
+sub make_handler_set {
+    my $self = shift;
+
+    my %set;
+
+    for my $csname (@_) {
+        my $handler = $self->get_raw_handler($csname);
+
+        $set{$csname} = $handler;
+    }
+
+    return \%set;
+}
+
+sub restore_handler_set {
+    my $self = shift;
+
+    my $set = shift;
+
+    while (my ($csname, $handler) = each %{ $set }) {
+        $self->set_raw_handler($csname, $handler);
+    }
 
     return;
 }
@@ -553,7 +778,7 @@ sub insert_tokens {
     local $_;
 
     for (reverse @_) {
-        if (UNIVERSAL::isa($_, "TeX::TokenList")) {
+        if (blessed($_) && $_->isa("TeX::TokenList")) {
             $self->unget_tokens($_->get_tokens());
         } else {
             $self->unget_tokens($_);
@@ -577,6 +802,8 @@ sub parse {
 
         $handler->($self, $token);
     }
+
+    $self->par();
 
     return;
 }
@@ -620,7 +847,7 @@ sub require_token {
 
     $self->unget_tokens($next);
 
-    return;        
+    return;
 }
 
 sub is_digit {
@@ -692,9 +919,11 @@ sub scan_one_optional_space {
 
     if (! $self->is_space_token($token)) {
         $self->unget_tokens($token);
+
+        return;
     }
 
-    return;
+    return $token;
 }
 
 sub scan_optional_equals {
@@ -822,7 +1051,7 @@ sub read_alphabetic_constant {
     my $token = $self->get_x_token();
 
     if (! defined($token)) {
-        croak "End of input while looking for alphabetic constant";
+        $self->warn("End of input while looking for alphabetic constant");
     }
 
     if ($token == CATCODE_CSNAME) {
@@ -831,7 +1060,7 @@ sub read_alphabetic_constant {
         if (length($char) != 1) {
             my $line = $self->get_line_no();
 
-            die "Improper alphabetic constant \\$char on line $line";
+            $self->warn("Improper alphabetic constant \\$char");
         }
 
         return ord($char);
@@ -846,11 +1075,11 @@ sub read_literal_integer {
     my $next_token = $self->get_x_token();
 
     if (! defined($next_token)) {
-        croak "End of input while reading integer literal";
+        $self->warn("End of input while reading integer literal");
     }
 
     if ($next_token == CATCODE_CSNAME) {
-        croak "Can't handle <internal integer> ($next_token) yet";
+        $self->warn("Can't handle <internal integer> ($next_token) yet");
     }
 
     if ($next_token == octal_token) {
@@ -872,7 +1101,7 @@ sub read_literal_integer {
 
     my $line = $self->get_line_no();
 
-    die "Invalid integer: '$next_token' on line $line\n";
+    $self->warn("Invalid integer: '$next_token'");
 }
 
 sub read_unsigned_number {
@@ -885,7 +1114,7 @@ sub read_unsigned_number {
     if ($next_token->is_character()) {
         return $self->read_literal_integer();
     } else {
-        croak "TeX::Parser can only understand literal integers";
+        $self->warn("TeX::Parser can only understand literal integers");
     }
 
     #* or <coerced integer>
@@ -904,7 +1133,21 @@ sub read_number {
 sub get_x_token {
     my $self = shift;
 
-    return $self->get_next_token();
+    my $next = $self->get_next_token();
+
+    return unless defined $next;
+
+    if ($next == CATCODE_CSNAME) {
+        my $raw_handler = $self->get_raw_handler($next->get_csname());
+
+        if (blessed($raw_handler) && $raw_handler->can('expand')) {
+            $raw_handler->expand($self, $next);
+
+            return $self->get_x_token();
+        }
+    }
+
+    return $next;
 }
 
 sub get_maybe_expanded_token {
@@ -919,6 +1162,64 @@ sub get_maybe_expanded_token {
     return $self->get_next_token();
 }
 
+sub peek_x_token {
+    my $self = shift;
+
+    my $next = $self->get_x_token();
+
+    $self->unget_tokens($next);
+
+    return $next;
+}
+
+sub peek_nonspace_token {
+    my $self = shift;
+
+    my $saved = new_token_list;
+
+    my $next;
+
+    while (my $token = $self->get_next_token()) {
+        $saved->push($token);
+
+        next if $self->is_space_token($token);
+
+        next if $token == CATCODE_END_OF_LINE;
+
+        $next = $token;
+
+        last;
+    }
+
+    $self->unget_tokens($saved->get_tokens());
+
+    return $next;
+}
+
+sub peek_x_nonspace_token {
+    my $self = shift;
+
+    my $saved = new_token_list;
+
+    my $next;
+
+    while (my $x_token = $self->get_x_token()) {
+        $saved->push($x_token);
+
+        next if $self->is_space_token($x_token);
+
+        next if $x_token == CATCODE_END_OF_LINE;
+
+        $next = $x_token;
+
+        last;
+    }
+
+    $self->unget_tokens($saved->get_tokens());
+
+    return $next;
+}
+
 ##  Assumes the { has already been consumed.  Leaves the closing } to
 ##  be read again.
 
@@ -929,7 +1230,7 @@ sub read_balanced_text {
 
     my $expanded = shift || 0;
 
-    my $balanced = TeX::TokenList->new();
+    my $balanced = new_token_list;
 
     my $level = 0;
 
@@ -948,15 +1249,13 @@ sub read_balanced_text {
 
         if ($token == CATCODE_PARAMETER) {
             if (! $def) {
-                my $line = $self->get_line_no();
-
-                die "Not a definition: You can't use the macro parameter $token here on line $line\n";
+                $self->warn("Not a definition: You can't use the macro parameter $token here");
             }
 
             my $next = $self->get_maybe_expanded_token();
 
             if (! defined($next)) {
-                croak "End of input while reading balanced text";
+                $self->warn("End of input while reading balanced text");
             }
 
             if ($next == CATCODE_PARAMETER) {
@@ -965,9 +1264,7 @@ sub read_balanced_text {
             } elsif ($next == CATCODE_OTHER && $next =~ /[1-9]/) {
                 $balanced->push(make_param_ref_token($next->get_datum()));
             } else {
-                my $line = $self->get_line_no();
-
-                die "You can't the macro parameter $token before $next on line $line\n";
+                $self->warn("You can't the macro parameter $token before $next");
             }
 
             next;
@@ -990,19 +1287,14 @@ sub read_parameter_text {
         last if $token == CATCODE_BEGIN_GROUP;
 
         if ($token == CATCODE_END_GROUP) {
-            die ("Illegal end of group $token in parameter text ",
-                 "on line ",
-                 $self->get_line_no(),
-                 " of ",
-                 $self->get_file_name(),
-                 "\n");
+            $self->warn("Illegal end of group $token in parameter text");
         }
 
         if ($token == CATCODE_PARAMETER) {
             my $next_token = $self->get_next_token();
 
             if (! defined($next_token)) {
-                croak "End of input while reading parameter text";
+                $self->warn("End of input while reading parameter text");
             }
 
             if ($next_token == CATCODE_OTHER) {
@@ -1012,12 +1304,7 @@ sub read_parameter_text {
                     if ($char == ++$max_arg) {
                         push @parameter_text, make_param_ref_token($char);
                     } else {
-                        die("Parameter numbers must be consecutive ",
-                            "on line ",
-                            $self->get_line_no(),
-                            " of ",
-                            $self->get_file_name(),
-                            "\n");
+                        $self->warn("Parameter numbers must be consecutive");
                     }
                 } else {
                     push @parameter_text, $next_token;
@@ -1035,7 +1322,7 @@ sub read_parameter_text {
         push @parameter_text, $token;
     }
 
-    return TeX::TokenList->new({ tokens => \@parameter_text });
+    return new_token_list(@parameter_text);
 }
 
 sub read_replacement_text {
@@ -1061,10 +1348,18 @@ sub read_macro_parameters {
 
     my @parameter_text;
 
-    if (@_ == 1 && ref($_[0]) eq 'ARRAY') {
-        @parameter_text = @{ $_[0] };
-    } else {
-        @parameter_text = @_;
+    while (my $arg = shift) {
+        if (reftype($arg) eq 'ARRAY') {
+            push @parameter_text, @{ $arg};
+        } elsif (blessed($arg) && $arg->isa('TeX::TokenList')) {
+            push @parameter_text, $arg->get_tokens();
+        } elsif (blessed($arg) && $arg->isa('TeX::Token')) {
+            push @parameter_text, $arg;
+        } else {
+            my $tl = $self->__parameterize($self->tokenize($arg));
+
+            push @parameter_text, $tl->get_tokens();
+        }
     }
 
     my @parameters = (undef);
@@ -1092,15 +1387,24 @@ sub read_macro_parameters {
     return @parameters;
 }
 
+sub read_expanded_parameter {
+    my $self = shift;
+
+    return $self->read_undelimited_parameter(undef, 1);
+}
+
 sub read_undelimited_parameter {
     my $self = shift;
 
-    my $as_def = shift;
+    my $as_def   = shift; # This is probably deprecated;
+    my $expanded = shift;
 
     my $token = $self->get_next_token();
 
     if (! defined($token)) {
-        croak "End of input while reading undelimited parameter";
+        $self->warn(shortmess "End of input while reading undelimited parameter");
+
+        return;
     }
 
     while ($token == CATCODE_SPACE) {
@@ -1108,17 +1412,19 @@ sub read_undelimited_parameter {
     }
 
     if (! defined($token)) {
-        croak "End of input while reading undelimited parameter";
+        $self->warn(shortmess "End of input while reading undelimited parameter");
+
+        return;
     }
 
     my $token_list;
 
     if ($token == CATCODE_BEGIN_GROUP) {
-        $token_list = $self->read_balanced_text($as_def);
+        $token_list = $self->read_balanced_text($as_def, $expanded);
 
         $self->consume_next_token();
     } else {
-        $token_list = TeX::TokenList->new({ tokens => [ $token ] });
+        $token_list = new_token_list($token);
     }
 
     return $token_list;
@@ -1128,7 +1434,7 @@ sub read_delimited_parameter {
     my $self  = shift;
     my $limit = shift;
 
-    my $parameter = TeX::TokenList->new();
+    my $parameter = new_token_list;
 
     while (my $token = $self->get_next_token()) {
         last if $token == $limit;
@@ -1139,7 +1445,7 @@ sub read_delimited_parameter {
             my $closing_brace = $self->get_next_token();
 
             if (! defined($closing_brace)) {
-                croak "End of input: expected '}'";
+                $self->warn("End of input: expected '}'");
             }
 
             if ($parameter->length() == 0) {
@@ -1177,7 +1483,7 @@ sub looks_like_assignment {
 
     my $result = 0;
 
-    my $saved = TeX::TokenList->new();
+    my $saved = new_token_list;
 
     $tex->skip_optional_spaces();
 
@@ -1219,7 +1525,7 @@ sub looks_like_assignment {
 sub scan_file_name {
     my $tex = shift;
 
-    my $name = TeX::TokenList->new();
+    my $name = new_token_list;
 
     ## TeX expands tokens while reading filenames, but TeX::Parser
     ## doesn't implement expansion, so we're limited to scanning
@@ -1249,7 +1555,7 @@ sub scan_file_name {
         last if $catcode == CATCODE_END_OF_LINE;
 
         ## We can't expand macros, so we treat a control sequence as
-        ## the end of the filename.  
+        ## the end of the filename.
 
         last if $catcode == CATCODE_CSNAME;
 
@@ -1274,7 +1580,7 @@ sub scan_keyword {
 
     my $s = shift;
 
-    my $scanned = TeX::TokenList->new();
+    my $scanned = new_token_list;
 
     my $match = 1;
 
@@ -1352,7 +1658,7 @@ sub scan_dimen {
 
     $tex->scan_one_optional_space();
 
-    if ($sign < 0) { 
+    if ($sign < 0) {
         $cur_val = "-" . $cur_val;
     }
 
@@ -1365,6 +1671,267 @@ sub scan_glue {
     my $tex = shift;
 
     return $tex->scan_dimen();
+}
+
+######################################################################
+##                                                                  ##
+##                           DEFINITIONS                            ##
+##                                                                  ##
+######################################################################
+
+## This should probably be built into tokenize();
+
+sub __parameterize {
+    my $self = shift;
+
+    my $in = shift;
+
+    my $out = new_token_list();
+
+    my @tokens = $in->get_tokens();
+
+    while (my $token = shift @tokens) {
+        if ($token == CATCODE_PARAMETER) {
+            my $next = shift @tokens;
+
+            if ($next == CATCODE_PARAMETER) {
+                $out->push(next);
+                $out->push(next);
+            } elsif ($next == CATCODE_OTHER && $next =~ /[1-9]/) {
+                $out->push(make_param_ref_token($next->get_datum()));
+            } else {
+                $self->warn("You can't the macro parameter $token before $next");
+            }
+        } else {
+            $out->push($token);
+        }
+    }
+
+    return $out;
+}
+
+sub define_macro {
+    my $tex = shift;
+
+    my $csname     = shift;
+    my $param_text = shift;
+    my $macro_text = shift;
+    my $opt_arg    = shift;
+
+    unless (blessed $param_text && $param_text->isa("TeX::TokenList")) {
+        my $tl = $tex->tokenize($param_text);
+
+        $param_text = $tex->__parameterize($tl);
+    }
+
+    if (blessed($macro_text)) {
+        if ($macro_text->isa("TeX::Token")) {
+            $macro_text = new_token_list($macro_text);
+        } elsif (! $macro_text->isa("TeX::TokenList")) {
+            die "wut?";
+        }
+    } else {
+        my $tl = $tex->tokenize($macro_text);
+
+        $macro_text = $tex->__parameterize($tl);
+    }
+
+    if ($macro_text->contains(FI_TOKEN)) {
+        $tex->verbose("\\$csname looks like it contains a conditional; skipping it\n");
+
+        return;
+    }
+
+    if (defined $opt_arg) {
+        unless (blessed $opt_arg && $opt_arg->isa("TeX::TokenList")) {
+            $opt_arg = $tex->tokenize($opt_arg);
+        }
+    }
+
+    my $macro = make_macro($param_text, $macro_text, $opt_arg);
+
+    $tex->set_handler($csname, $macro);
+
+    return;
+}
+
+sub do_def {
+    my $tex   = shift;
+    my $token = shift;
+
+    if (! $tex->execute_defs()) {
+        $tex->csname_handler($token);
+
+        return;
+    }
+
+    my $expanded = ($token->get_csname() =~ m{^[ex]def$});
+
+    my $control_sequence = $tex->read_undelimited_parameter();
+
+    if ($control_sequence->length() != 1) {
+        my $line_no = $tex->get_line_no();
+
+        $tex->warn("Malformed ${token}{$control_sequence}");
+
+        return;
+    }
+
+    my $param_text = $tex->read_parameter_text();
+    my $macro_text = $tex->read_replacement_text($expanded);
+
+    ## TBD Check that this is either a csname or an active character.
+
+    my $csname = $control_sequence->index(0)->get_csname();
+
+    $tex->define_macro($csname, $param_text, $macro_text);
+
+    return;
+}
+
+######################################################################
+##                                                                  ##
+##                            FILE INPUT                            ##
+##                                                                  ##
+######################################################################
+
+sub do_input($$) {
+    my $self = shift;
+    my $csname = shift;
+
+    my $file_name = $self->scan_file_name();
+
+    if ($self->execute_input()) {
+        $self->__process_included_file($file_name);
+    }
+
+    return;
+}
+
+my %SKIPPED_FILE = (pstricks => 1,
+                    pictex   => 1,
+                    xy => 1,
+                    xyv2 => 1,
+                    cyracc => 1);
+
+sub __skip_file :PROTECTED {
+    my $self = shift;
+
+    my $filename = shift;
+
+    return 1 if $filename =~ m{^/};
+
+    (my $basename = basename($filename)) =~ s{\.[^.]+$}{};
+
+    return 1 if $SKIPPED_FILE{$basename};
+
+    return 1 if $filename =~ m{\.(pstex|eps)_t$};
+
+    return;
+}
+
+sub __process_included_file {
+    my $self = shift;
+
+    my $token_list = shift;
+
+    my $file_name = $token_list->to_string();
+
+    if (empty $file_name) {
+        $self->warn("Null filename");
+
+        return;
+    }
+
+    ## Don't try to read the pstricks or xy packages.  This is ugly,
+    ## but it avoids problems with authors write "\input pstricks" or
+    ## "\input xy" instead of "\usepackage{pstricks}" or
+    ## "\usepackage{xy}".
+
+    if ( $self->__skip_file($file_name)) {
+        # $self->warn("Skipping file $file_name\n");
+
+        return;
+    }
+
+    ## GRRR.  TeX::KPSE is only available inside the AMS, so only load
+    ## it if it's actually needed.  It will only be needed if
+    ## execute_input is true and either \input or \include is
+    ## encountered.
+
+    require TeX::KPSE;
+
+    my $path = TeX::KPSE::kpse_lookup($file_name);
+
+    return if $path =~ m{^/};
+
+    if (empty $path) {
+        $path = TeX::KPSE::kpse_lookup("$file_name.tex");
+    }
+
+    if (! defined $path) {
+        $self->warn("Can't find file $file_name");
+
+        return;
+    }
+
+    $self->push_input();
+
+    $self->bind_to_file($path);
+
+    $self->parse();
+
+    $self->pop_input();
+
+    return;
+}
+
+######################################################################
+##                                                                  ##
+##                             MODULES                              ##
+##                                                                  ##
+######################################################################
+
+my %module_list_of :HASH(:name<module_list>);
+
+use constant {
+    LOAD_FAILED    => 0,
+    LOAD_SUCCESS   => 1,
+    ALREADY_LOADED => 2,
+};
+
+sub load_module {
+    my $tex = shift;
+
+    my @options = @_;
+
+    my $module = shift;
+
+    (my $module_file = $module) =~ s{::}{/}g;
+
+    $module_file .= ".pm";
+
+    if (! exists $INC{$module_file}) {
+        eval { require $module_file };
+
+        if ($@) {
+            if ($@ !~ m/^Can\'t locate \Q$module_file\E/) {
+                $tex->warn($@);
+            }
+
+            return LOAD_FAILED;
+        }
+    }
+
+    # $tex->warn("Installing macro class $module_file");
+
+    eval { $module->install($tex, @options) };
+
+    if ($@) {
+        $tex->warn("Can't install macro class $module_file: $@");
+    }
+
+    return LOAD_SUCCESS;
 }
 
 ######################################################################
@@ -1393,6 +1960,35 @@ sub parse_string( $ ) {
     $self->parse();
 
     return;
+}
+
+## Should this return a token list instead of a string?
+
+sub expand_string {
+    my $self = shift;
+
+    my $tex_string = shift;
+
+    my $sub_parser = $self->clone();
+
+    $sub_parser->delete_handler('par');
+
+    $sub_parser->bind_to_string($tex_string);
+
+    $sub_parser->set_handler(par => sub {});
+
+    ## If we stop using the default_handler to collect output into a
+    ## string, we can probably do without the following line.
+
+    $sub_parser->set_default_handler(\&null_handler);
+
+    $sub_parser->set_buffer_output(1);
+
+    $sub_parser->clear_output_buffer();
+
+    $sub_parser->parse();
+
+    return $sub_parser->output_buffer();
 }
 
 1;

@@ -1,6 +1,6 @@
 package TeX::Lexer;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,13 +32,30 @@ package TeX::Lexer;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '2.0.1';
+use version; our $VERSION = qv '1.27.0';
+
+######################################################################
+##                                                                  ##
+##                             LOGGING                              ##
+##                                                                  ##
+######################################################################
+
+use TeX::Logger;
+
+my $LOG = TeX::Logger->get_logger();
+
+## Avoid finalization segfault.
+END { undef $LOG };
+
+######################################################################
+##                                                                  ##
+##                         PACKAGE IMPORTS                          ##
+##                                                                  ##
+######################################################################
 
 use UNIVERSAL;
 
 use TeX::Class;
-
-use Carp;
 
 use TeX::Constants qw(:type_bounds :lexer_states);
 
@@ -57,7 +74,12 @@ my %char_buffer_of   :ATTR;
 
 my %token_buffer_of  :ATTR;
 my %cur_token_of     :ATTR(:name<cur_token>);
+
 my %prev_token_of    :ATTR(:name<prev_token>);
+my %prev_nonspace_of :ATTR(:name<prev_nonspace>);
+
+my %saved_token_of   :ATTR(:name<saved_token>);
+my %saved_nonspace_of :ATTR(:name<saved_nonspace>);
 
 my %line_no_of       :ATTR(:get<line_no> :set<line_no> :default(-1));
 my %char_no_of       :ATTR(:name<char_no> :default(-1));
@@ -66,7 +88,7 @@ my %file_handle_of   :ATTR();
 
 my %state_of :ATTR(:name<state> :default(-1));
 
-my %end_line_char_of :ATTR(:name<end_line_char> :default<13>);
+my %end_line_char_of :ATTR(:name<end_line_char> :set<*custom*> :default<13>);
 
 ## filtering controls the processing of CATCODE_IGNORED and
 ## CATCODE_INVALID characters.  When true, they are filtered out of
@@ -74,19 +96,27 @@ my %end_line_char_of :ATTR(:name<end_line_char> :default<13>);
 
 my %filtering_of     :BOOLEAN(:name<filtering>     :default(1));
 
-## verbatim controls the processing of CATCODE_END_OF_LINE,
+## verbatim_XXX control the processing of CATCODE_END_OF_LINE,
 ## CATCODE_SPACE and CATCODE_COMMENT characters.  When true, each such
 ## character is preserved and turned into a token of the corresponding
 ## catcode.  When false, they are processed according to TeX's usual
 ## rules.
 
-# my %verbatim_of :BOOLEAN(:name<verbatim>      :default(0));
-
 my %verbatim_eol_of     :BOOLEAN(:name<verbatim_eol>     :default(0));
 my %verbatim_space_of   :BOOLEAN(:name<verbatim_space>   :default(0));
 my %verbatim_comment_of :BOOLEAN(:name<verbatim_comment> :default(0));
 
+my %verbatim_stack_of :ATTR;
+
 my %encoding_of :ATTR(:name<encoding> :default<>);
+
+######################################################################
+##                                                                  ##
+##                            CONSTANTS                             ##
+##                                                                  ##
+######################################################################
+
+use constant PAR_TOKEN => make_csname_token('par');
 
 ######################################################################
 ##                                                                  ##
@@ -244,14 +274,83 @@ sub reading_unicode {
     return $enc eq 'utf8' || $enc eq 'utf-8';
 }
 
-sub set_verbatim {
+sub set_end_line_char {
     my $self = shift;
 
-    my $value = shift;
+    my $ident = ident $self;
 
-    $self->set_verbatim_eol($value);
-    $self->set_verbatim_space($value);
-    $self->set_verbatim_comment($value);
+    ## TBD Should the catcode of the previous eol be reset?
+
+    my $eol_char = shift;
+
+    if ($eol_char > -1) {
+        $self->set_catcode($eol_char, CATCODE_END_OF_LINE);
+    }
+
+    $end_line_char_of{$ident} = $eol_char;
+
+    return;
+}
+
+######################################################################
+##                                                                  ##
+##                              ERRORS                              ##
+##                                                                  ##
+######################################################################
+
+sub annotate_msg {
+    my $self = shift;
+
+    my $msg  = join('', @_);
+
+    chomp($msg);
+
+    $msg =~ s{\.\z}{};
+
+    my $line_no = $self->get_line_no();
+    my $input   = $self->get_file_name();
+
+    $msg .= " [$input, line $line_no]\n";
+
+    return $msg;
+}
+
+sub debug {
+    my $self = shift;
+
+    my $msg = $self->annotate_msg(@_);
+
+    $LOG->debug("****** $msg");
+
+    return;
+}
+
+sub notify {
+    my $self = shift;
+
+    my $msg = $self->annotate_msg(@_);
+
+    $LOG->notify($msg);
+
+    return;
+}
+
+sub verbose {
+    my $self = shift;
+
+    my $msg = $self->annotate_msg(@_);
+
+    $LOG->verbose("*** $msg");
+
+    return;
+}
+
+sub warn {
+    my $self = shift;
+
+    my $msg = $self->annotate_msg(@_);
+
+    $LOG->warn("Warning: $msg");
 
     return;
 }
@@ -298,6 +397,46 @@ sub pop_input {
     return;
 }
 
+sub set_verbatim {
+    my $self = shift;
+
+    my $value = shift;
+
+    $self->set_verbatim_eol($value);
+    $self->set_verbatim_space($value);
+    $self->set_verbatim_comment($value);
+
+    return;
+}
+
+sub push_verbatim {
+    my $self = shift;
+
+    my $ident = ident $self;
+
+    push @{ $verbatim_stack_of{$ident} }, {
+        eol     => $verbatim_eol_of{$ident},
+        space   => $verbatim_space_of{$ident},
+        comment => $verbatim_comment_of{$ident},
+    };
+
+    return;
+}
+
+sub pop_verbatim {
+    my $self = shift;
+
+    my $ident = ident $self;
+
+    my $saved_state = pop @{ $verbatim_stack_of{$ident} };
+
+    $self->set_verbatim_eol    ($saved_state->{eol});
+    $self->set_verbatim_space  ($saved_state->{space});
+    $self->set_verbatim_comment($saved_state->{comment});
+
+    return;
+}
+
 sub save_catcodes {
     my $self = shift;
 
@@ -316,7 +455,7 @@ sub restore_catcodes {
 
     my $saved = pop @{ $catcode_stack{$ident} };
 
-    die "Tried to pop empty catcode stack" unless defined $saved;
+    $self->warn("Tried to pop empty catcode stack") unless defined $saved;
 
     my ($catcodes, $extended_catcodes) = @{ $saved };
 
@@ -347,7 +486,7 @@ sub get_catcode {
     my $char_code = shift;
 
     if ($char_code < first_text_char) {
-        carp "Invalid character code for get_catcode";
+        $self->warn("Invalid character code for get_catcode");
 
         return;
     }
@@ -366,7 +505,7 @@ sub get_catcode {
 
             return $catcodes->{$char_code};
         } else {
-            carp "Invalid character code for get_catcode";
+            $self->warn("Invalid character code for get_catcode");
 
             return;
         }
@@ -381,12 +520,14 @@ sub set_catcode {
     my $catcode   = shift;
 
     if ($catcode < CATCODE_ESCAPE || $catcode > CATCODE_INVALID) {
-        carp "Invalid category code $catcode";
+        $self->warn("Invalid category code $catcode");
+
         return;
     }
 
     if ($char_code < first_text_char) {
-        carp "Invalid character code for set_catcode";
+        $self->warn("Invalid character code ($char_code) for set_catcode");
+
         return;
     }
 
@@ -396,7 +537,8 @@ sub set_catcode {
         if ($self->reading_unicode()) {
             $extended_catcodes_of{$ident}->{$char_code} = $catcode;
         } else {
-            carp "Invalid character code for set_catcode";
+            $self->warn("Invalid character code ($char_code) for set_catcode");
+
             return;
         }
     }
@@ -571,7 +713,9 @@ sub get_next_char {
     my $catcode = $self->get_catcode(ord($char));
 
     if ($catcode == CATCODE_SUPERSCRIPT) {
-        if ($char eq $self->__peek_next_raw()) {
+        my $next_char = $self->__peek_next_raw();
+
+        if (defined $next_char && $char eq $next_char) {
             $self->__get_next_raw();
 
             my $enc = $self->__get_next_raw();
@@ -622,6 +766,7 @@ sub unget_tokens {
 
     $self->set_cur_token(undef);
     $self->set_prev_token(undef);
+    $self->set_prev_nonspace(undef);
 
     return;
 }
@@ -667,8 +812,7 @@ sub __read_next_token {
         }
 
         if ($catcode == CATCODE_INVALID && $self->is_filtering()) {
-            warn("Invalid character ", __output_char($char),
-                 " on line ",          $self->get_line_no(), "\n");
+            $self->warn("Invalid character ", __output_char($char));
 
             next;
         }
@@ -681,6 +825,34 @@ sub __read_next_token {
     return;
 }
 
+sub save_prev_token {
+    my $self = shift;
+
+    my $token = $self->get_prev_token();
+
+    $self->set_saved_token($token);
+
+    my $nonspace = $self->get_prev_nonspace();
+
+    $self->set_saved_nonspace($nonspace);
+
+    return;
+}
+
+sub restore_prev_token {
+    my $self = shift;
+
+    my $token = $self->get_saved_token();
+
+    $self->set_cur_token($token);
+
+    my $nonspace = $self->get_saved_nonspace();
+
+    $self->set_prev_nonspace($nonspace);
+
+    return;
+}
+
 sub get_next_token {
     my $self = shift;
 
@@ -689,6 +861,10 @@ sub get_next_token {
     my $next_token = $self->__read_next_token();
 
     $self->set_prev_token($cur_token);
+
+    if (defined $cur_token && $cur_token != CATCODE_SPACE) {
+        $self->set_prev_nonspace($cur_token);
+    }
 
     $self->set_cur_token($next_token);
 
@@ -766,13 +942,13 @@ sub __do_end_of_line {
     my $state = $self->get_state();
 
     if ($state == new_line) {
-        return make_csname_token('par');
+        return PAR_TOKEN;
     } elsif ($state == mid_line) {
         return $self->__do_space(' ');
     } elsif ($state == skip_blanks) { # no-op
         return;
     } else {
-        die "Invalid lexer state: $state";
+        $self->warn("Invalid lexer state: $state");
     }
 }
 
@@ -793,7 +969,7 @@ sub __do_space {
 
         return make_character_token(' ', CATCODE_SPACE);
     } else {
-        die "Invalid lexer state '$state'";
+        $self->warn("Invalid lexer state '$state'");
     }
 }
 
@@ -853,7 +1029,9 @@ sub __open_input {
         open($fh, $mode, $file_arg) or do {
             my $file_name = $self->get_file_name();
 
-            die "Can't open $file_name for input: $!\n";
+            $self->warn("Can't open $file_name for input: $!\n");
+
+            return;
         };
     }
 
