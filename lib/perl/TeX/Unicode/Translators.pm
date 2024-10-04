@@ -1,6 +1,6 @@
-package PTG::Unicode::Translators;
+package TeX::Unicode::Translators;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -59,8 +59,8 @@ use Encode;
 
 use TeX::Utils::Misc;
 
-use PTG::Unicode qw(ascii_base decompose);
-use PTG::Unicode::Accents qw(apply_accent :names);
+use TeX::Unicode qw(ascii_base decompose);
+use TeX::Unicode::Accents qw(apply_accent :names);
 
 use TeX::Parser::LaTeX;
 

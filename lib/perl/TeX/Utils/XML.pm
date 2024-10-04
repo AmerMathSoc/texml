@@ -1,6 +1,6 @@
 package TeX::Utils::XML;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,8 +32,6 @@ package TeX::Utils::XML;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.0.0';
-
 use base qw(Exporter);
 
 our %EXPORT_TAGS = (all => [ qw(xml_to_utf8_string) ]);
@@ -46,7 +44,7 @@ use XML::LibXML qw(:libxml);
 
 use TeX::Utils::Misc qw(nonempty);
 
-use PTG::Unicode::Translators qw(tex_math_to_unicode);
+use TeX::Unicode::Translators qw(tex_math_to_unicode);
 
 sub xml_to_utf8_string( $ );
 sub xml_to_utf8_string( $ ) {

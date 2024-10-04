@@ -1,6 +1,6 @@
-package PTG::Unicode::Accents;
+package TeX::Unicode::Accents;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +29,7 @@ package PTG::Unicode::Accents;
 # USA
 # email: tech-support@ams.org
 
-## This should really be called PTG::Unicode::Diacritics, with related
+## This should really be called TeX::Unicode::Diacritics, with related
 ## naming changes below, but "accents" is easier to type.
 
 use strict;
