@@ -159,8 +159,6 @@ use TeX::Primitive::parshape qw(:factories);
 
 use TeX::Primitive::LuaTeX::CombineTokens;
 
-use TeX::Output::Encoding qw(decode_character encode_character);
-
 use Unicode::UCD qw(charinfo);
 
 ######################################################################
@@ -843,6 +841,20 @@ sub jump_out {
     my $tex = shift;
 
     $tex->end_of_TEX();
+
+    return;
+}
+
+sub error_message {
+    my $tex = shift;
+
+    my $msg = shift;
+
+    $tex->print_nl("");
+
+    $tex->print($msg);
+
+    $tex->error();
 
     return;
 }
@@ -9153,7 +9165,7 @@ sub get_next_character {
     }
 
     if (defined $char_code)  {
-        my $char = decode_character($enc, $char_code);
+        my $char = $tex->decode_character($enc, $char_code);
 
         return wantarray ? ($char, $enc) : $char;
     }
@@ -9168,7 +9180,7 @@ sub make_accent {
 
     my $accent_code = $tex->scan_char_num();
 
-    my $unicode_accent = decode_character($tex->get_encoding(), $accent_code);
+    my $unicode_accent = $tex->decode_character($tex->get_encoding(), $accent_code);
 
     $tex->do_assignments();
 
@@ -9203,7 +9215,7 @@ sub make_accent {
 
             $tex->initialize_char_codes($char_code);
 
-            $tex->append_char(ord(encode_character($base_enc, $char_code)), $base_enc);
+            $tex->append_char(ord($tex->encode_character($base_enc, $char_code)), $base_enc);
         }
 
         # NB: In ur-TeX, make_accent always sets the space_factor to
@@ -12502,6 +12514,212 @@ sub if {
     my $eqvt = $tex->get_csname($if_name);
 
     return defined $eqvt && $eqvt->get_equiv->isa("TeX::Primitive::iftrue");
+}
+
+######################################################################
+##                                                                  ##
+##                          FONT ENCODINGS                          ##
+##                                                                  ##
+######################################################################
+
+# Metafont ligtable ligature operations (cf. section 545 of tex.web.)
+
+# [.] indicates focus
+#
+# lig a b  =:    X    ; [a]bc... => [X] c...          op=0
+#
+# lig a b  =:|   X    ; [a]bc... => [X]  b  c...      op=1
+# lib a b  =:|>  X    ; [a]bc... =>  X  [b] c...      op=5
+#
+# lig a b |=:    X    ; [a]bc... => [a]  X  c...      op=2
+# lib a b |=:>   X    ; [a]bc... =>  a  [X] c...      op=6
+#
+# lig a b |=:|   X    ; [a]bc... => [a]  X   b  c...  op=3
+# lib a b |=:|>  X    ; [a]bc... =>  a  [X]  b  c...  op=7
+# lib a b |=:|>> X    ; [a]bc... =>  a   X  [b] c...  op=11
+#
+# NEW RULE
+#
+# lig a b  =:>   X    ; [a]bc... => X[c]...           op=4
+
+sub __char_code {
+    my $code_or_char = shift;
+
+    if ($code_or_char =~ s{(?:U\+|")(.+)}{ hex($1) }e) {
+        return $code_or_char;
+    };
+
+    return ord($code_or_char);
+}
+
+sub get_font_encoding {
+    my $tex = shift;
+
+    my $encoding = shift;
+
+    if (empty($encoding)) {
+        $tex->error_message("Null font encoding");
+
+        return;
+    }
+
+    state %FONT_ENCODING;
+
+    return $FONT_ENCODING{$encoding} ||= $tex->load_encoding($encoding);
+}
+
+sub load_encoding {
+    my $tex = shift;
+
+    my $encoding = shift;
+
+    return if $encoding eq UCS;
+
+    state $map_dir = catdir(dirname($INC{"TeX/Interpreter.pm"}), "encodings");
+
+    state $octal = qr{'[0-3][0-7][0-7]};
+    state $hex   = qr{"[[:xdigit:]][[:xdigit:]]}i;
+
+    state $eight_bits = qr{^($octal|$hex)$}; # more or less
+
+    my $map_file = "$map_dir/$encoding.enc";
+
+    my %map;
+
+    my @decode;
+    my @ligs;
+    my @encode;
+
+    open(my $map, "<:utf8", $map_file) or do {
+        $tex->error_message("Encoding scheme `$encoding' unknown");
+
+        return;
+    };
+
+    # Map the operators to their TFM lig_kern_command op_byte codes.
+
+    my %op = (  '=:'    =>  0,
+                '=:|'   =>  1,
+                '=:|>'  =>  5,
+               '|=:'    =>  2,
+               '|=:>'   =>  6,
+               '|=:|'   =>  3,
+               '|=:|>'  =>  7,
+               '|=:|>>' => 11,
+                '=:>'   =>  4,
+        );
+
+    my $char_re = qr{(?:U\+[0-9a-z]+|"[0-9a-z]+|.)}i;
+
+    local $_;
+    local $.;
+
+    while (<$map>) {
+        ($_) = split /;;/;
+
+        $_ = trim($_);
+
+        next if /^\s*$/;
+
+        m{^lig ($char_re) ($char_re) (\|?=:\|?>*) ($char_re)} and do {
+            my $focus = $1;
+            my $next  = $2;
+            my $op    = $3;
+            my $lig   = $4;
+
+            $focus = __char_code($focus);
+            $next  = __char_code($next);
+            $lig   = __char_code($lig);
+
+            # In a lig specification, the focus character is in the
+            # output encoding (i.e., Unicode); the 'next' character is
+            # in the input encoding; and the lig character is in the
+            # output encoding, so we need to back-code the focus and
+            # lig characters.
+
+            $focus = $encode[$focus] // $focus;
+            $lig   = $encode[$lig]   // $lig;
+
+            $ligs[$focus]->[$next] = [$lig, $op{$op}];
+
+            next;
+        };
+
+        next if m{^lig};
+
+        my ($char_code, $ucs_codepoint) = split /\s*:\s*/, $_, 2;
+
+        if ($char_code !~ m{$eight_bits}) {
+            $tex->error_message("Invalid char code ($char_code) on line $. of $map_file");
+        }
+
+        if ($char_code =~ s{^\'}{}) {
+            $char_code = oct($char_code);
+        } elsif ($char_code =~ s{^\"}{}) {
+            $char_code = hex($char_code);
+        }
+
+        if ($ucs_codepoint =~ s{^U\+}{}) {
+            $ucs_codepoint = hex($ucs_codepoint);
+        } else {
+            $ucs_codepoint = ord($ucs_codepoint); # literal character
+        }
+
+        if ($char_code != $ucs_codepoint) {
+            $decode[$char_code]     = $ucs_codepoint;
+            $encode[$ucs_codepoint] = $char_code;
+        }
+    }
+
+    close($map);
+
+    return { ligs => \@ligs, decode => \@decode, encode => \@encode };
+}
+
+sub decode_character {
+    my $tex = shift;
+
+    my $encoding  = shift;
+    my $char_code = shift;
+
+    my $literal_char = chr($char_code);
+
+    return $literal_char if $encoding eq UCS;
+
+    my $map = eval { $tex->get_font_encoding($encoding) };
+
+    if (! defined $map) {
+        $tex->error_message("Unknown encoding: $encoding");
+
+        return $literal_char;
+    }
+
+    my $enc = $map->{decode};
+
+    return chr($enc->[$char_code] // $char_code);
+}
+
+sub encode_character {
+    my $tex = shift;
+
+    my $encoding  = shift;
+    my $char_code = shift;
+
+    my $literal_char = chr($char_code);
+
+    return $literal_char if $encoding eq UCS;
+
+    my $map = eval { $tex->get_font_encoding($encoding) };
+
+    if (! defined $map) {
+        $tex->error_message("Unknown encoding: $encoding");
+
+        return $literal_char;
+    }
+
+    my $enc = $map->{encode};
+
+    return chr($enc->[$char_code] // $char_code);
 }
 
 ######################################################################

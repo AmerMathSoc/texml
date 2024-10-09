@@ -40,8 +40,6 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
 
 our @EXPORT = ( @{ $EXPORT_TAGS{all} } );
 
-use TeX::Output::Encoding qw(decode_character encode_character);
-
 use TeX::Constants qw(:named_args :unicode_accents UCS);
 
 use TeX::Token qw(:catcodes);
@@ -87,10 +85,6 @@ sub make_accenter( @ ) {
 
         my ($base, $enc) = $tex->get_next_character();
 
-        # my $enc  = $tex->get_encoding();
-
-        # my $base = decode_character($enc, ord($raw_base));
-
         my $accented_char;
 
         for my $accent (@accents) {
@@ -118,7 +112,7 @@ sub make_accenter( @ ) {
 
                 $tex->initialize_char_codes($char_code);
 
-                $tex->append_char(ord(encode_character($enc, $char_code)), $enc);
+                $tex->append_char(ord($tex->encode_character($enc, $char_code)), $enc);
             }
         } else {
             $tex->print_err("Can't apply $token to $base");

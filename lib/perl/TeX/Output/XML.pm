@@ -38,8 +38,6 @@ use List::Util qw(min uniq);
 
 use TeX::Node::CharNode qw(:factories);
 
-use TeX::Output::Encoding qw(:functions);
-
 use TeX::Utils::XML;
 
 use TeX::Class;
@@ -1002,7 +1000,7 @@ sub output_char {
 
     my $this_enc = $cur_node->get_encoding();
 
-    my $enc = eval { get_encoding($this_enc) };
+    my $enc = eval { $tex->get_font_encoding($this_enc) };
 
     if ($@) {
         $tex->print_err($@);
