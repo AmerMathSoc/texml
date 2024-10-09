@@ -36,19 +36,6 @@ use version; our $VERSION = qv '1.27.0';
 
 ######################################################################
 ##                                                                  ##
-##                             LOGGING                              ##
-##                                                                  ##
-######################################################################
-
-use TeX::Logger;
-
-my $LOG = TeX::Logger->get_logger();
-
-## Avoid finalization segfault.
-END { undef $LOG };
-
-######################################################################
-##                                                                  ##
 ##                         PACKAGE IMPORTS                          ##
 ##                                                                  ##
 ######################################################################
@@ -320,7 +307,7 @@ sub debug {
 
     my $msg = $self->annotate_msg(@_);
 
-    $LOG->debug("****** $msg");
+    print STDERR "****** $msg";
 
     return;
 }
@@ -330,7 +317,7 @@ sub notify {
 
     my $msg = $self->annotate_msg(@_);
 
-    $LOG->notify($msg);
+    print STDERR $msg;
 
     return;
 }
@@ -340,7 +327,7 @@ sub verbose {
 
     my $msg = $self->annotate_msg(@_);
 
-    $LOG->verbose("*** $msg");
+    print STDERR "*** $msg";
 
     return;
 }
@@ -350,7 +337,7 @@ sub warn {
 
     my $msg = $self->annotate_msg(@_);
 
-    $LOG->warn("Warning: $msg");
+    print STDERR "Warning: $msg";
 
     return;
 }
