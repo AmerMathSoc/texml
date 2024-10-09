@@ -399,7 +399,7 @@ __DATA__
             \let\bbl@write\raw@bbl@write
             \startXMLelement{raw-citation}%
             \setXMLattribute{type}{amsrefs}%
-            \fontencoding{UCS}%
+            \fontencoding{UCS}\selectfont
             \current@raw@bib
             \endXMLelement{raw-citation}%
         \endgroup

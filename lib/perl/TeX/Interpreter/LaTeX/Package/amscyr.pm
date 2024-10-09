@@ -53,13 +53,13 @@ __DATA__
 
 \ProvidesPackage{amscyr}
 
-\def\mathcyr#1{\begingroup\fontencoding{OT2}#1\endgroup}
+\def\mathcyr#1{\begingroup\fontencoding{OT2}\selectfont#1\endgroup}
 
 % \@declarefontcommand[OT2]\textcyr\mathcyr{cyrillic}
 
 \DeclareRobustCommand\textcyr[1]{%
     \begingroup
-        \fontencoding{OT2}%
+        \fontencoding{OT2}\selectfont
         \ifmmode
             \string\mathcyr{#1}%
         \else

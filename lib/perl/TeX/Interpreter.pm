@@ -11978,23 +11978,6 @@ sub is_defined {
 ##                                                                  ##
 ######################################################################
 
-sub set_encoding {
-    my $tex = shift;
-
-    my $new_encoding = shift;
-    my $modifier     = shift;
-
-    $tex->define_simple_macro('f@encoding', $new_encoding, $modifier);
-
-    return;
-}
-
-sub get_encoding {
-    my $tex = shift;
-
-    return $tex->expansion_of('f@encoding');
-}
-
 sub find_box_register {
     my $tex = shift;
 
@@ -12521,6 +12504,25 @@ sub if {
 ##                          FONT ENCODINGS                          ##
 ##                                                                  ##
 ######################################################################
+
+sub set_encoding {
+    my $tex = shift;
+
+    my $new_encoding = shift;
+    my $modifier     = shift;
+
+    # This might not be sufficient if we implement more of \selectfont.
+
+    $tex->define_simple_macro('cf@encoding', $new_encoding, $modifier);
+
+    return;
+}
+
+sub get_encoding {
+    my $tex = shift;
+
+    return $tex->expansion_of('cf@encoding');
+}
 
 # Metafont ligtable ligature operations (cf. section 545 of tex.web.)
 

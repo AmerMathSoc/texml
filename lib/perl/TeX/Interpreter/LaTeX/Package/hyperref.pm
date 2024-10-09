@@ -110,13 +110,13 @@ __DATA__
     \begingroup
         % Redefining ~ will have to do until we can implement catcode hacking.
         \def~{\string~}%
-        \setbox\@tempboxa\hbox{#2}%
+        \setbox\@tempboxa\hbox{\fontencoding{UCS}\selectfont#2}%
         \TeXML@NormalizeURL\@tempboxa
         \leavevmode
         \startXMLelement{ext-link}%
         \setXMLattribute{xlink:href}{\boxtostring\@tempboxa}%
         % The extra braces around the arg are to handle things like \tt.
-        {\fontencoding{UCS}#3}%
+        {\fontencoding{UCS}\selectfont#3}%
         \endXMLelement{ext-link}%
     \endgroup
 }

@@ -846,7 +846,7 @@ __DATA__
 
 \setXSLfile{jats}
 
-\fontencoding{OT1}
+\fontencoding{OT1}\selectfont
 
 \AtTeXMLend{\TeXML@resolveXMLxrefs}
 \AtTeXMLend{\TeXML@resolverefgroups}
@@ -1245,7 +1245,7 @@ __DATA__
 \newcommand{\@declarefontcommand}[4][]{%
     \DeclareRobustCommand#2[1]{%
         \begingroup
-        \if#####1####\else\fontencoding{#1}\fi
+        \if#####1####\else\fontencoding{#1}\selectfont\fi
         \ifmmode
             \string#3{##1}%
         \else
@@ -1573,7 +1573,7 @@ __DATA__
     \par
     \xmlpartag{}%
     \everypar{}%
-    \fontencoding{OT1tt}%
+    \fontencoding{OT1tt}\selectfont
     \startXMLelement{pre}%
     \let\do\@makeother \dospecials
     \noligs=1

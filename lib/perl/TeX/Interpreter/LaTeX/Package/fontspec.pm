@@ -78,8 +78,6 @@ __DATA__
 
 \ProvidesPackage{fontspec}
 
-% \fontencoding{UCS}
-
 \let\setmainfont\relax
 \newcommand{\setmainfont}[2][]{}
 
