@@ -1,6 +1,6 @@
 package TeX::Parser::LaTeX;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -30,36 +30,31 @@ package TeX::Parser::LaTeX;
 # email: tech-support@ams.org
 
 use strict;
+use warnings;
 
-use version; our $VERSION = qv '2.0.0';
+use version; our $VERSION = qv '1.11.1';
+
+######################################################################
+##                                                                  ##
+##                         CLASS ATTRIBUTES                         ##
+##                                                                  ##
+######################################################################
 
 use base qw(TeX::Parser);
 
-use Carp;
-
 use TeX::Class;
 
-use TeX::KPSE  qw(kpse_lookup);
+######################################################################
+##                                                                  ##
+##                         PACKAGE IMPORTS                          ##
+##                                                                  ##
+######################################################################
+
+use TeX::Utils::Misc;
+
 use TeX::Token qw(:catcodes :factories);
-
-######################################################################
-##                                                                  ##
-##                            CONSTANTS                             ##
-##                                                                  ##
-######################################################################
-
-use constant {
-    BEGIN_OPT => make_character_token('[', CATCODE_OTHER),
-    END_OPT   => make_character_token(']', CATCODE_OTHER),
-};
-
-use constant {
-    OPT_ARG   => [ BEGIN_OPT, make_param_ref_token(1), END_OPT],
-};
-
-use constant {
-    STAR => make_character_token('*', CATCODE_OTHER),
-};
+use TeX::Token::Constants qw(:all);
+use TeX::TokenList qw(:factories);
 
 ######################################################################
 ##                                                                  ##
@@ -67,25 +62,55 @@ use constant {
 ##                                                                  ##
 ######################################################################
 
-sub BUILD {
+sub START {
     my ($self, $ident, $arg_ref) = @_;
 
     for my $char_code (0..8, 11, 14..31) {
         $self->set_catcode($char_code, CATCODE_INVALID);
     }
 
-    $self->set_handler('@firstofone'  => \&do_at_firstofone);
-    $self->set_handler('@firstoftwo'  => \&do_at_firstoftwo);
-    $self->set_handler('@gobble'      => \&do_at_gobble);
-    $self->set_handler('@gobbletwo'   => \&do_at_gobbletwo);
-    $self->set_handler('@secondoftwo' => \&do_at_secondoftwo);
+    $self->define_macro('@empty' => '', '');
+
+    $self->define_macro('@firstofone'  => '#1',   '#1');
+    $self->define_macro('@firstoftwo'  => '#1#2', '#1');
+    $self->define_macro('@secondoftwo' => '#1#2', '#2');
+
+    $self->define_macro('@gobble'    => '#1',   '');
+    $self->define_macro('@gobbletwo' => '#1#2', '');
+
+    $self->let('@iden' => '@firstofone');
+
+    $self->set_handler('@gobbleopt'  => \&do_at_gobble_opt);    # [#1]
+    $self->set_handler('@gobble@opt' => \&do_at_gobble_at_opt); # [#1]#2
+
+    $self->define_macro(enlargethispage => '@gobble');
+
+    $self->define_macro(protect => '@empty');
+
+    $self->define_macro(space => undef, make_character_token(' ', CATCODE_SPACE));
+
+    $self->set_handler(makeatletter => \&do_makeatletter);
+    $self->set_handler(makeatother  => \&do_makeatother);
 
     $self->set_handler(begin => \&do_begin);
     $self->set_handler(end   => \&do_end);
-    # $self->set_handler(include => \&do_include);
-    # $self->set_handler(input   => \&do_input);
 
-    $self->let('@iden' => '@firstofone');
+    $self->set_handler(include => \&do_include);
+    $self->set_handler(input   => \&do_input);
+
+    if ($arg_ref->{execute_defs}) {
+        $self->set_handler(usepackage => \&do_usepackage);
+
+        $self->set_handler(newcommand     => \&do_newcommand);
+        $self->set_handler(renewcommand   => \&do_newcommand);
+        $self->set_handler(providecommand => \&do_newcommand);
+
+        $self->set_handler(DeclareRobustCommand => \&do_newcommand);
+        $self->set_handler(DeclareMathOperator  => \&do_newcommand);
+
+        $self->set_handler(newenvironment   => \&do_newenvironment);
+        $self->set_handler(renewenvironment => \&do_newenvironment);
+    }
 
     return;
 }
@@ -120,64 +145,70 @@ sub scan_optional_argument {
     return;
 }
 
-sub let {
-    my $self = shift;
+sub scan_url {
+    my $parser = shift;
 
-    my $alias = shift;
-    my $target = shift;
+    $parser->save_catcodes();
 
-    $self->set_handler($alias => $self->get_handler($target));
+    $parser->set_catcode(ord('\\'), CATCODE_OTHER);
+    $parser->set_catcode(ord('$'), CATCODE_OTHER);
+    $parser->set_catcode(ord('&'), CATCODE_OTHER);
+    $parser->set_catcode(ord('#'), CATCODE_OTHER);
+    $parser->set_catcode(ord('^'), CATCODE_OTHER);
+    $parser->set_catcode(ord('_'), CATCODE_OTHER);
+    $parser->set_catcode(ord('%'), CATCODE_OTHER);
+    $parser->set_catcode(ord('~'), CATCODE_OTHER);
+
+    my $url = $parser->read_expanded_parameter();
+
+    $parser->restore_catcodes();
+
+    return $url;
+}
+
+######################################################################
+##                                                                  ##
+##                             HANDLERS                             ##
+##                                                                  ##
+######################################################################
+
+sub do_at_gobble_opt { # [#1] =>
+    my $parser = shift;
+    my $csname = shift;
+
+    $parser->scan_optional_argument();
 
     return;
 }
 
-sub do_at_firstofone {
-    my $self = shift;
+sub do_at_gobble_at_opt { # [#1]#2 =>
+    my $parser = shift;
+    my $csname = shift;
 
-    my $arg = $self->read_undelimited_parameter();
-
-    $self->insert_tokens($arg);
-
-    return;
-}
-
-sub do_at_firstoftwo {
-    my $self = shift;
-
-    my $arg = $self->read_undelimited_parameter();
-
-    $self->read_undelimited_parameter();
-
-    $self->insert_tokens($arg);
+    $parser->scan_optional_argument();
+    $parser->read_undelimited_parameter();
 
     return;
 }
 
-sub do_at_secondoftwo {
-    my $self = shift;
+sub do_makeatletter( $$ ) {
+    my $parser = shift;
+    my $csname = shift;
 
-    $self->read_undelimited_parameter();
+    $parser->default_handler($csname);
 
-    my $arg = $self->read_undelimited_parameter();
-
-    $self->insert_tokens($arg);
-
-    return;
-}
-
-sub do_at_gobble {
-    my $self = shift;
-
-    $self->read_undelimited_parameter();
+    $parser->set_catcode(ord '@', CATCODE_LETTER);
 
     return;
 }
 
-sub do_at_gobbletwo {
-    my $self = shift;
+sub do_makeatother( $$ ) {
+    my $parser = shift;
+    my $csname = shift;
 
-    $self->read_undelimited_parameter();
-    $self->read_undelimited_parameter();
+    $parser->default_handler($csname);
+
+    $parser->set_catcode(ord '@', CATCODE_OTHER);
 
     return;
 }
@@ -191,7 +222,7 @@ sub do_begin( $$ ) {
     if (defined $envname) {
         $parser->insert_tokens(make_csname_token($envname));
     } else {
-        croak("Missing argument for \\$csname");
+        $parser->warn("Missing argument for \\$csname");
     }
 
     return;
@@ -206,64 +237,138 @@ sub do_end( $$ ) {
     if (defined $envname) {
         $parser->insert_tokens(make_csname_token("end$envname"));
     } else {
-        croak("Missing argument for \\$csname");
+        $parser->warn("Missing argument for \\$csname");
     }
 
     return;
 }
 
-sub __process_included_file {
+sub do_usepackage {
     my $parser = shift;
+    my $token  = shift;
 
-    my $token_list = shift;
+    my $options = $parser->scan_optional_argument();
 
-    my $file_name = $token_list->to_string();
+    my $package_list = $parser->read_undelimited_parameter();
 
-    if (empty $file_name) {
-        my $line = $parser->get_line_no();
+    $package_list =~ s{\s}{}g;
 
-        carp("Null filename on line $line.");
-
-        return;
+    for my $pkg (split /,/, $package_list) {
+        $parser->load_module("TeX::Package::$pkg");
     }
-
-    my $basename = basename($file_name);
-
-    ## Don't try to read the pstricks or xy packages.  This is ugly,
-    ## but it avoids problems with authors write "\input pstricks" or
-    ## "\input xy" instead of "\usepackage{pstricks}" or
-    ## "\usepackage{xy}".
-
-    if ( $basename =~ /^pstricks(\.tex)?/ || $basename =~ /^xy(\.tex)?/ ) {
-        # $LOG->notify("Skipping file $file_name\n");
-
-        return;
-    }
-
-    my $path = kpse_lookup($file_name);
-
-    if (empty $path) {
-        $path = kpse_lookup("$file_name.tex");
-    }
-
-    if (! defined $path) {
-        my $line = $parser->get_line_no();
-
-        carp("Can't find file $file_name on line $line.");
-
-        return;
-    }
-
-    $parser->push_input();
-
-    $parser->bind_to_file($path);
-
-    $parser->parse();
-
-    $parser->pop_input();
 
     return;
 }
+
+sub do_newcommand {
+    my $parser = shift;
+    my $token  = shift;
+
+    my $is_starred = $parser->is_starred();
+
+    my $control_sequence = $parser->read_undelimited_parameter();
+
+    if ($control_sequence->length() != 1) {
+        $parser->warn("Malformed ${token}{$control_sequence}");
+
+        # return;
+    }
+
+    my $definend = $control_sequence->index(0);
+
+    ## TBD: Default optional argument could have macros in it.
+
+    my $num_args = $parser->scan_optional_argument() || 0;
+
+    my $opt_arg  = $parser->scan_optional_argument();
+
+    if (defined $opt_arg) {
+        $num_args = $num_args - 1;
+    }
+
+    my $param_text = new_token_list();
+
+    for my $i (1..$num_args) {
+        $param_text->push(make_param_ref_token($i));
+    }
+
+    $parser->skip_optional_spaces();
+
+    my $next = $parser->get_next_token();
+
+    my $macro_text;
+
+    if ($next == BEGIN_GROUP) {
+        $macro_text = $parser->read_replacement_text();
+    } else {
+        $macro_text = new_token_list->push($next);
+    }
+
+    $parser->define_macro($definend->get_csname(),
+                          $param_text,
+                          $macro_text,
+                          $opt_arg);
+
+    return;
+}
+
+sub do_newenvironment {
+    my $parser = shift;
+    my $token  = shift;
+
+    my $is_starred = $parser->is_starred();
+
+    my $envname = $parser->read_undelimited_parameter();
+
+    ## TBD: Default optional argument could have macros in it.
+
+    my $num_args = $parser->scan_optional_argument() || 0;
+
+    my $opt_arg  = $parser->scan_optional_argument();
+
+    if (defined $opt_arg) {
+        $num_args = $num_args - 1;
+    }
+
+    my $param_text = new_token_list();
+
+    for my $i (1..$num_args) {
+        $param_text->push(make_param_ref_token($i));
+    }
+
+    $parser->skip_optional_spaces();
+
+    my $next = $parser->get_next_token();
+
+    my $begin_text;
+
+    if ($next == BEGIN_GROUP) {
+        $begin_text = $parser->read_replacement_text();
+    } else {
+        $begin_text = new_token_list->push($next);
+    }
+
+    $next = $parser->get_next_token();
+
+    my $end_text;
+
+    if ($next == BEGIN_GROUP) {
+        $end_text = $parser->read_replacement_text();
+    } else {
+        $end_text = new_token_list->push($next);
+    }
+
+    $parser->define_macro($envname, $param_text, $begin_text, $opt_arg);
+    $parser->define_macro("end$envname", new_token_list(), $end_text);
+
+    return;
+}
+
+######################################################################
+##                                                                  ##
+##                       \INPUT AND \INCLUDE                        ##
+##                                                                  ##
+######################################################################
 
 sub do_include($$) {
     my $parser = shift;
@@ -271,7 +376,9 @@ sub do_include($$) {
 
     my $file_name = $parser->read_undelimited_parameter();
 
-    $parser->__process_included_file($file_name);
+    if ($parser->execute_input()) {
+        $parser->__process_included_file($file_name);
+    }
 
     return;
 }
@@ -290,7 +397,9 @@ sub do_input($$) {
         $file_name = $parser->scan_file_name();
     }
 
-    $parser->__process_included_file($file_name);
+    if ($parser->execute_input()) {
+        $parser->__process_included_file($file_name);
+    }
 
     return;
 }
