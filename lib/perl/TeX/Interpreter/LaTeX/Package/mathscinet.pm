@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Package::mathscinet;
 use strict;
 use warnings;
 
-use TeX::Utils::Unicode::Diacritics qw(:names);
+use TeX::Constants qw(:unicode_accents);
 
 use TeX::Interpreter::LaTeX::Package::Diacritics qw(make_accenter);
 

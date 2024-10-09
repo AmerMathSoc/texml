@@ -460,6 +460,46 @@ install xetex => %XETEX_CONSTANTS;
 
 ######################################################################
 ##                                                                  ##
+##                             UNICODE                              ##
+##                                                                  ##
+######################################################################
+
+my %UNICODE_ACCENTS = (
+    COMBINING_GRAVE                => "COMBINING_GRAVE",
+    COMBINING_ACUTE                => "COMBINING_ACUTE",
+    COMBINING_CIRCUMFLEX           => "COMBINING_CIRCUMFLEX",
+    COMBINING_TILDE                => "COMBINING_TILDE",
+    COMBINING_MACRON               => "COMBINING_MACRON",
+    COMBINING_BREVE                => "COMBINING_BREVE",
+    COMBINING_DOT_ABOVE            => "COMBINING_DOT_ABOVE",
+    COMBINING_DIAERESIS            => "COMBINING_DIAERESIS",
+    COMBINING_HOOK_ABOVE           => "COMBINING_HOOK_ABOVE",
+    COMBINING_RING_ABOVE           => "COMBINING_RING_ABOVE",
+    COMBINING_DOUBLE_ACUTE         => "COMBINING_DOUBLE_ACUTE",
+    COMBINING_CARON                => "COMBINING_CARON",
+    COMBINING_DOUBLE_GRAVE         => "COMBINING_DOUBLE_GRAVE",
+    COMBINING_INVERTED_BREVE       => "COMBINING_INVERTED_BREVE",
+    COMBINING_COMMA_ABOVE          => "COMBINING_COMMA_ABOVE",
+    COMBINING_REVERSED_COMMA_ABOVE => "COMBINING_REVERSED_COMMA_ABOVE",
+    COMBINING_HORN                 => "COMBINING_HORN",
+    COMBINING_DOT_BELOW            => "COMBINING_DOT_BELOW",
+    COMBINING_DIAERESIS_BELOW      => "COMBINING_DIAERESIS_BELOW",
+    COMBINING_RING_BELOW           => "COMBINING_RING_BELOW",
+    COMBINING_COMMA_BELOW          => "COMBINING_COMMA_BELOW",
+    COMBINING_CEDILLA              => "COMBINING_CEDILLA",
+    COMBINING_OGONEK               => "COMBINING_OGONEK",
+    COMBINING_CIRCUMFLEX_BELOW     => "COMBINING_CIRCUMFLEX_BELOW",
+    COMBINING_BREVE_BELOW          => "COMBINING_BREVE_BELOW",
+    COMBINING_TILDE_BELOW          => "COMBINING_TILDE_BELOW",
+    COMBINING_MACRON_BELOW         => "COMBINING_MACRON_BELOW",
+    COMBINING_PERISPOMENI          => "COMBINING GREEK PERISPOMENI",
+    COMBINING_YPOGEGRAMMENI        => "COMBINING GREEK YPOGEGRAMMENI",
+);
+
+install unicode_accents => %UNICODE_ACCENTS;
+
+######################################################################
+##                                                                  ##
 ##                             EXPORTS                              ##
 ##                                                                  ##
 ######################################################################

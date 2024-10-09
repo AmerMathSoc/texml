@@ -40,11 +40,9 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
 
 our @EXPORT = ( @{ $EXPORT_TAGS{all} } );
 
-use TeX::Utils::Unicode::Diacritics qw(apply_accent :names);
-
 use TeX::Output::Encoding qw(decode_character encode_character);
 
-use TeX::Constants qw(:named_args UCS);
+use TeX::Constants qw(:named_args :unicode_accents UCS);
 
 use TeX::Token qw(:catcodes);
 
@@ -96,7 +94,7 @@ sub make_accenter( @ ) {
         my $accented_char;
 
         for my $accent (@accents) {
-            ($accented_char, my $error) = apply_accent($accent, $base);
+            ($accented_char, my $error) = $tex->apply_accent($accent, $base);
 
             if (! defined $accented_char) {
                 $error ||= "unknown error";
