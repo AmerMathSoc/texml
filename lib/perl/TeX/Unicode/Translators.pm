@@ -133,6 +133,7 @@ END {
 }
 
 use constant {
+    MATH_ROMAN_OFFSET                  => 0x00041, # bold
     MATH_BOLD_OFFSET                   => 0x1D400, # bold
     MATH_ITALIC_OFFSET                 => 0x1D434, # italic
     MATH_BOLD_ITALIC_OFFSET            => 0x1D468, # bold italic
@@ -997,6 +998,7 @@ my %UNICODE_MATH_CHAR_SUBSTITUTION = (
 
 sub __create_parser {
     my $parser = TeX::Parser::LaTeX->new( { encoding => 'utf8',
+                                            expand_macros => 1,
                                             # end_line_char => -1,
                                           });
 
@@ -1139,8 +1141,6 @@ sub __create_parser {
     $parser->let(mathord   => '@firstofone');
     $parser->let(mathpunct => '@firstofone');
     $parser->let(mathrel   => '@firstofone');
-
-    $parser->let(mathit   => '@firstofone');
 
     $parser->let(lowercase => '@firstofone');
     $parser->let(textviet  => '@firstofone');
@@ -1684,6 +1684,9 @@ sub do_math_shift_on {
 
     $parser->set_space_handler(sub {});
 
+    $parser->let(mathit   => '@firstofone');
+
+    $parser->set_handler(mathrm => make_math_style_handler(MATH_ROMAN_OFFSET));
     $parser->set_handler(mathbold => make_math_style_handler(MATH_BOLD_OFFSET));
     $parser->set_handler(mathbf   => make_math_style_handler(MATH_BOLD_OFFSET));
     $parser->set_handler(mathfrak => make_math_style_handler(MATH_FRAKTUR_OFFSET));
@@ -1701,7 +1704,6 @@ sub do_math_shift_on {
     $parser->let(Bbb  => 'mathbb');
     $parser->let(ssf  => 'mathsf');
 
-    $parser->let(mathrm       => '@firstofone');
     $parser->let(boldsymbol   => '@firstofone');
     $parser->let(operatorname => '@firstofone');
 
