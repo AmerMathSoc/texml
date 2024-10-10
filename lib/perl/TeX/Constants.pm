@@ -327,6 +327,7 @@ my %TOKEN_TYPES = (
     every_display_text => 10,
     every_hbox_text    => 11,
     every_vbox_text    => 12,
+    every_job_text     => 13,
     every_cr_text      => 14,
     mark_text          => 15,
     write_text         => 16,
