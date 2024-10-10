@@ -3494,6 +3494,8 @@ sub begin_token_list {
 
     croak unless defined $token_list && ref($token_list);
 
+    return unless $token_list->length();
+
     my $copy = TeX::TokenList->new({ tokens => [ $token_list->get_tokens() ] });
 
     my $token_type = shift;
@@ -8297,6 +8299,8 @@ sub fire_up {
 sub main_control {
     my $tex = shift;
 
+    $tex->begin_token_list($tex->get_toks_list('every_job'), every_job_text);
+
     while (my $cur_tok = $tex->get_x_token()) {
         # if ($tex->tracing_macros() & TRACING_MAIN_TOKS) {
         #     $tex->begin_diagnostic();
@@ -8330,6 +8334,9 @@ sub main_control {
         }
 
         my $cur_cat = $cur_tok->get_catcode();
+
+        ## TODO: handle char_given (\chardef), char_num (\char),
+        ## no_boundary (\noboundary) here.
 
         if ($cur_cat == CATCODE_LETTER || $cur_cat == CATCODE_OTHER) {
             if ($tex->is_vmode()) {
