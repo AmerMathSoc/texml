@@ -54,18 +54,15 @@ sub execute {
     my $tex     = shift;
     my $cur_tok = shift;
 
-    if ($tex->is_vmode()) {
-        $tex->back_input($cur_tok);
+    $tex->back_input($cur_tok);
 
+    if ($tex->is_vmode()) {
         $tex->new_graf();
 
         return;
     }
 
-    my $char_code = $self->get_value();
-    my $encoding  = $self->get_encoding();
-
-    $tex->append_char($char_code, $encoding);
+    $tex->scan_word();
 
     return;
 }
@@ -80,7 +77,7 @@ sub print_cmd_chr {
     my $char_code = $self->get_value();
 
     $tex->print_hex($char_code);
-    
+
     return;
 }
 

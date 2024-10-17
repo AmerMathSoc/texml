@@ -44,17 +44,15 @@ sub execute {
     my $tex     = shift;
     my $cur_tok = shift;
 
-    if ($tex->is_vmode()) {
-        $tex->back_input($cur_tok);
+    $tex->back_input($cur_tok);
 
+    if ($tex->is_vmode()) {
         $tex->new_graf();
 
         return;
     }
 
-    my $char_code = $tex->scan_char_num();
-
-    $tex->append_char($char_code, UCS);
+    $tex->scan_word();
 
     return;
 }

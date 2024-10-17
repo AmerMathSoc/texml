@@ -42,6 +42,8 @@ use TeX::Utils::XML;
 
 use TeX::Class;
 
+use TeX::Constants qw(UCS);
+
 use TeX::Utils::Misc;
 
 use TeX::KPSE qw(kpse_lookup);
@@ -974,113 +976,6 @@ sub set_css_property {
 ##                                                                  ##
 ######################################################################
 
-sub output_char_node {
-    my $self = shift;
-
-    my $char_code = shift;
-    my $subs      = shift;
-
-    if (defined $subs->[$char_code]) {
-        $char_code = $subs->[$char_code];
-    }
-
-    $self->append_text(__new_utf8_string(chr($char_code)));
-
-    return;
-}
-
-sub output_char {
-    my $self = shift;
-
-    my $cur_node = shift;
-
-    my $nodes = shift;
-
-    my $tex = $self->get_tex_engine();
-
-    my $this_enc = $cur_node->get_encoding();
-
-    my $enc = eval { $tex->get_font_encoding($this_enc) };
-
-    if ($@) {
-        $tex->print_err($@);
-        $tex->error();
-
-        next;
-    }
-
-    my $ligtable = $enc->{ligs};
-
-    while (1) {
-        last unless $cur_node->is_char_node();
-
-        my $cur_code = $cur_node->get_char_code();
-        my $cur_enc  = $cur_node->get_encoding();
-
-        my $ligatures = $ligtable->[$cur_code];
-
-        my $continue = defined $ligatures;
-
-        my $next_node = $nodes->[0];
-
-        $continue &&= defined $next_node && $next_node->is_char_node();
-
-        $continue &&= $next_node->get_encoding() eq $this_enc;
-
-        my $ligature;
-
-        if ($continue) {
-            my $next_char = $next_node->get_char_code();
-
-            $ligature = $ligatures->[$next_char];
-
-            $continue &&= defined $ligature;
-        }
-
-        if (! $continue) {
-            $self->output_char_node($cur_code, $enc->{decode});
-
-            last;
-        }
-
-        my ($lig_char, $op) = @{ $ligature };
-
-        shift @{ $nodes };
-
-        # See discussion of lig_kern_command op_byte values in see
-        # section 545 of tex.web.
-
-        # $op = 4 * $SKIP + 2 * $KEEP_LEFT + $KEEP_RIGHT
-
-        my $KEEP_RIGHT = $op % 2;
-        my $KEEP_LEFT  = ($op >> 1) % 2;
-        my $SKIP       = $op >> 2;
-
-        if ($KEEP_RIGHT) {
-            unshift @{ $nodes }, $next_node;
-        }
-
-        unshift @{ $nodes }, new_character($lig_char, $this_enc);
-
-        if ($KEEP_LEFT) {
-            unshift @{ $nodes }, $cur_node;
-        }
-
-        while ($SKIP-- > 0) {
-            my $node = shift @{ $nodes };
-
-            $self->output_char_node($node->get_char_code(), $enc->{decode});
-        }
-
-        last unless $nodes->[0]->is_char_node();
-        last unless $nodes->[0]->get_encoding() eq $this_enc;
-
-        $cur_node = shift @{ $nodes };
-    }
-
-    return;
-}
-
 sub hlist_out {
     my $self = shift;
 
@@ -1132,7 +1027,15 @@ sub hlist_out {
         }
 
         if ($node->is_char_node()) {
-            $self->output_char($node, \@nodes);
+            my $enc = $node->get_encoding();
+
+            my $char_code = $node->get_char_code();
+
+            if ($enc ne UCS) {
+                $char_code = $tex->decode_character($char_code, $enc);
+            }
+
+            $self->append_text(__new_utf8_string(chr($char_code)));
 
             next;
         }

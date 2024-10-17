@@ -8339,17 +8339,15 @@ sub main_control {
         ## no_boundary (\noboundary) here.
 
         if ($cur_cat == CATCODE_LETTER || $cur_cat == CATCODE_OTHER) {
-            if ($tex->is_vmode()) {
-                $tex->back_input($cur_tok);
+            $tex->back_input($cur_tok);
 
+            if ($tex->is_vmode()) {
                 $tex->new_graf();
 
                 next;
             }
 
-            my $char = $cur_tok->get_char();
-
-            $tex->append_char(ord($char));
+            $tex->scan_word();
 
             next;
         }
@@ -8457,6 +8455,99 @@ sub main_control {
 
             next;
         }
+    }
+
+    return;
+}
+
+sub scan_word {
+    my $tex = shift;
+
+    state $gen = 0; $gen++;
+
+    my ($left_code, $encoding) = $tex->get_next_character();
+
+    return unless defined $left_code; ## Shouldn't happen
+
+    my $enc = eval { $tex->get_font_encoding($encoding) };
+
+    if ($@) {
+        $tex->print_err($@);
+        $tex->error();
+
+        return;
+    }
+
+    my $ligtable = $enc->{ligs};
+    my $decode   = $enc->{decode};
+
+    my @buffer = ($left_code);
+
+    while (my ($next_code, $next_enc) = $tex->get_next_character()) {
+        if ($next_enc eq $encoding) {
+            push @buffer, $next_code;
+
+            next;
+        }
+
+        my $token = make_character_token(chr($next_code),
+                                         $tex->get_catcode($next_code));
+
+        $tex->back_input($token);
+
+        last;
+    }
+
+    while (@buffer > 1) {
+        my $left_code  = shift @buffer;
+        my $right_code = shift @buffer;
+
+        my $ligatures = $ligtable->[$left_code];
+
+        my $ligature;
+
+        if (defined $ligatures) {
+            $ligature = $ligatures->[$right_code];
+        }
+
+        if (! defined $ligature) {
+            $tex->append_char($decode->[$left_code] || $left_code, UCS);
+
+            unshift @buffer, $right_code;
+
+            next;
+        }
+
+        my ($lig_char, $op) = @{ $ligature };
+
+        # See discussion of lig_kern_command op_byte values in sec
+        # section 545 of tex.web.
+
+        # $op = 4 * $SKIP + 2 * $KEEP_LEFT + $KEEP_RIGHT
+
+        my $KEEP_RIGHT = $op % 2;
+        my $KEEP_LEFT  = ($op >> 1) % 2;
+        my $SKIP       = $op >> 2;
+
+        if ($KEEP_RIGHT) {
+            unshift @buffer, $right_code;
+        }
+
+        unshift @buffer, $lig_char;
+
+        if ($KEEP_LEFT) {
+            unshift @buffer, $left_code;
+        }
+
+        while ($SKIP-- > 0) {
+            my $code = shift @buffer;
+
+            $tex->append_char($decode->[$code] || $code, UCS);
+        }
+    }
+
+    for my $code (@buffer) {
+        $tex->append_char($decode->[$code] || $code, UCS);
     }
 
     return;
@@ -9142,12 +9233,13 @@ sub unpackage {
 sub get_next_character {
     my $tex = shift;
 
-    my $next = $tex->get_next();
+    my $decode = shift;
 
-    my $cur_enc = $tex->get_encoding();
+    my $enc = my $cur_enc = $tex->get_encoding();
 
-    my $enc = $cur_enc;
     my $char_code;
+
+    my $next = $tex->get_x_token();
 
     if ($next == CATCODE_LETTER || $next == CATCODE_OTHER) {
         $char_code = ord($next->get_char());
@@ -9172,9 +9264,12 @@ sub get_next_character {
     }
 
     if (defined $char_code)  {
-        my $char = $tex->decode_character($enc, $char_code);
+        if ($decode) {
+            $char_code = $tex->decode_character($char_code, $enc);
+            $enc = UCS;
+        }
 
-        return wantarray ? ($char, $enc) : $char;
+        return wantarray ? ($char_code, $enc) : $char_code;
     }
 
     $tex->back_input($next);
@@ -9187,11 +9282,16 @@ sub make_accent {
 
     my $accent_code = $tex->scan_char_num();
 
-    my $unicode_accent = $tex->decode_character($tex->get_encoding(), $accent_code);
+    my $unicode_accent = $tex->decode_character($accent_code,
+                                                $tex->get_encoding());
+
+    $tex->__DEBUG(sprintf qq{unicode_accent="%02X; encoding=%s}, $unicode_accent, $tex->get_encoding);
 
     $tex->do_assignments();
 
-    my ($base_char, $base_enc) = $tex->get_next_character();
+    my ($base_char_code, $base_enc) = $tex->get_next_character(1);
+
+    $tex->__DEBUG(sprintf qq{base_char_code="%02X; base_enc=%s}, $base_char_code, $base_enc);
 
     $base_enc ||= $tex->get_encoding();
 
@@ -9199,7 +9299,9 @@ sub make_accent {
     ## replacing the combining accent by its spacing version, which is
     ## what we want, so we don't have to do anything special here
 
-    my ($combined, $error) = $tex->apply_accent(ord($unicode_accent), $base_char);
+    my $base_char = defined $base_char_code ? chr($base_char_code) : undef;
+
+    my ($combined, $error) = $tex->apply_accent($unicode_accent, $base_char);
 
     if (defined $error) {
         $tex->print_err(sprintf(qq{Error processing \\accent"%04X (%s)},
@@ -9210,19 +9312,20 @@ sub make_accent {
     }
 
     if (! defined $combined) {
-        $tex->print_err(sprintf(qq{Can't apply \\accent"%04X to $base_char},
-                                $accent_code));
+        $tex->print_err(sprintf(qq{Can't apply \\accent"%04X to %s},
+                                $accent_code, chr($base_char_code)));
 
         $tex->error();
     } else {
         for my $char (split '', $combined) {
             my $char_code = ord($char);
 
-            ## This might be the first time we've encountered this composite character.
+            ## This might be the first time we've encountered this
+            ## composite character.
 
             $tex->initialize_char_codes($char_code);
 
-            $tex->append_char(ord($tex->encode_character($base_enc, $char_code)), $base_enc);
+            $tex->append_char($tex->encode_character($char_code, $base_enc));
         }
 
         # NB: In ur-TeX, make_accent always sets the space_factor to
@@ -12688,47 +12791,51 @@ sub load_encoding {
 sub decode_character {
     my $tex = shift;
 
-    my $encoding  = shift;
     my $char_code = shift;
+    my $encoding  = shift;
 
-    my $literal_char = chr($char_code);
-
-    return $literal_char if $encoding eq UCS;
+    return $char_code if $encoding eq UCS;
 
     my $map = eval { $tex->get_font_encoding($encoding) };
 
     if (! defined $map) {
         $tex->error_message("Unknown encoding: $encoding");
 
-        return $literal_char;
+        return $char_code;
     }
 
     my $enc = $map->{decode};
 
-    return chr($enc->[$char_code] // $char_code);
+    return $enc->[$char_code] // $char_code;
 }
 
 sub encode_character {
     my $tex = shift;
 
-    my $encoding  = shift;
-    my $char_code = shift;
+    my $usv = shift;
+    my $enc = shift || $tex->get_encoding();
 
-    my $literal_char = chr($char_code);
+    return $usv if $enc eq UCS;
 
-    return $literal_char if $encoding eq UCS;
-
-    my $map = eval { $tex->get_font_encoding($encoding) };
+    my $map = eval { $tex->get_font_encoding($enc) };
 
     if (! defined $map) {
-        $tex->error_message("Unknown encoding: $encoding");
+        $tex->error_message("Unknown encoding: $enc");
 
-        return $literal_char;
+        return $usv;
     }
 
-    my $enc = $map->{encode};
+    my $encode = $map->{encode};
 
-    return chr($enc->[$char_code] // $char_code);
+    my $output_code = $usv;
+    my $output_enc  = UCS;
+
+    if (exists $encode->[$usv]) {
+        $output_code = $encode->[$usv];
+        $output_enc  = $enc;
+    }
+
+    return wantarray ? ($output_code, $output_enc) : $output_code;
 }
 
 ######################################################################
