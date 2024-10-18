@@ -8460,10 +8460,29 @@ sub main_control {
     return;
 }
 
-sub scan_word {
+sub back_character {
     my $tex = shift;
 
-    state $gen = 0; $gen++;
+    my $char_code = shift;
+    my $encoding  = shift;
+
+    ## This preserves the encoding of the character, which ensures
+    ## that characters created with \UCSchar or \UCSchardef don't get
+    ## re-interpreted in the current encoding.
+
+    my $char = TeX::Primitive::CharGiven->new({ name     => "char",
+                                                value    => $char_code,
+                                                encoding => $encoding });
+
+    my $token = make_anonymous_token($char);
+
+    $tex->back_input($token);
+
+    return;
+}
+
+sub scan_word {
+    my $tex = shift;
 
     my ($left_code, $encoding) = $tex->get_next_character();
 
@@ -8490,10 +8509,7 @@ sub scan_word {
             next;
         }
 
-        my $token = make_character_token(chr($next_code),
-                                         $tex->get_catcode($next_code));
-
-        $tex->back_input($token);
+        $tex->back_character($next_code, $next_enc);
 
         last;
     }
@@ -12687,12 +12703,12 @@ sub load_encoding {
 
     return if $encoding eq UCS;
 
-    state $map_dir = catdir(dirname($INC{"TeX/Interpreter.pm"}), "encodings");
+    my $map_dir = catdir(dirname($INC{"TeX/Interpreter.pm"}), "encodings");
 
-    state $octal = qr{'[0-3][0-7][0-7]};
-    state $hex   = qr{"[[:xdigit:]][[:xdigit:]]}i;
+    my $octal = qr{'[0-3][0-7][0-7]};
+    my $hex   = qr{"[[:xdigit:]][[:xdigit:]]}i;
 
-    state $eight_bits = qr{^($octal|$hex)$}; # more or less
+    my $eight_bits = qr{^($octal|$hex)$}; # more or less
 
     my $map_file = "$map_dir/$encoding.enc";
 
