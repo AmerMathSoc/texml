@@ -90,7 +90,7 @@ sub make_accenter( @ ) {
 
         my ($base_code, $enc) = $tex->get_next_character(1);
 
-        my $base_char = chr($base_code);
+        my $base_char = defined $base_code ? chr($base_code) : undef;
 
         my $accented_char;
 
