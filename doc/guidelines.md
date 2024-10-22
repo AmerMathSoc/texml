@@ -6,3 +6,6 @@
 * Every table must be inside a `table` environment.
 
 * Do not use the `center` environment.
+
+* Make sure every url is correctly encoding using `\url`, `\href`, or
+  some similar macro.
