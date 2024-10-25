@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <!--
-    Copyright (C) 2022 American Mathematical Society
+    Copyright (C) 2022, 2024 American Mathematical Society
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -48,15 +48,6 @@
     <article xmlns:xlink="http://www.w3.org/1999/xlink">
         <xsl:apply-templates select="@*|node()"/>
     </article>
-</xsl:template>
-
-<!-- The first <sec> element in an <app-group> needs to be replaced by
-  <app>.  It's easier to do that here than to further complicate \@sect. -->
-
-<xsl:template match="app-group/sec">
-    <app>
-        <xsl:apply-templates select="@*|node()"/>
-    </app>
 </xsl:template>
 
 </xsl:stylesheet>

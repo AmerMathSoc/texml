@@ -2098,6 +2098,11 @@ __DATA__
     \par
     \stepXMLid
     \begingroup
+        \ifinXMLelement{app-group}%
+            \ifnum#2=1
+                \def\XML@section@tag{app}%
+            \fi
+        \fi
         \ifinXMLelement{statement}%
             \startXMLelement{\XML@section@tag heading}%
         \else
