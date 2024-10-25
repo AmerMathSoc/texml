@@ -389,14 +389,10 @@ sub normalize_texml_cases {
     for my $case ($dom->findnodes("/descendant::texml_cases")) {
         my $parent = $case->parentNode;
 
-        print STDERR qq{*** texml_cases = '$case'\n};
-
         my @rows = $case->findnodes("tr");
 
         for (my $r = 0; $r < @rows; $r++) {
             my $row = $rows[$r];
-
-            print STDERR qq{***     row = '$row'\n};
 
             my @col = $row->findnodes("td");
 
@@ -411,24 +407,18 @@ sub normalize_texml_cases {
             }
 
             if (defined $col[2]) { # tag
-                print STDERR qq{***         col[2] = '$col[2]'\n};
-
                 for my $child ($col[2]->childNodes) {
                     $parent->insertBefore($child, $case);
                 }
             }
 
             if (defined $col[0]) {
-                print STDERR qq{***         col[0] = '$col[0]'\n};
-
                 for my $child ($col[0]->childNodes) {
                     $parent->insertBefore($child, $case);
                 }
             }
 
             if (defined $col[1]) {
-                print STDERR qq{***         col[1] = '$col[1]'\n};
-
                 for my $child ($col[1]->childNodes) {
                     $parent->insertBefore($child, $case);
                 }
