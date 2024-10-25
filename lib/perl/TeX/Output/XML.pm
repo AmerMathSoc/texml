@@ -377,6 +377,70 @@ sub normalize_figures {
     return;
 }
 
+## TODO: There should probably be some sort of hook mechanism so
+## something like normalize_texml_cases(), which is specific to a
+## single package, can be defined as part of that package.
+
+sub normalize_texml_cases {
+    my $self = shift;
+
+    my $dom = $self->get_dom();
+
+    for my $case ($dom->findnodes("/descendant::texml_cases")) {
+        my $parent = $case->parentNode;
+
+        print STDERR qq{*** texml_cases = '$case'\n};
+
+        my @rows = $case->findnodes("tr");
+
+        for (my $r = 0; $r < @rows; $r++) {
+            my $row = $rows[$r];
+
+            print STDERR qq{***     row = '$row'\n};
+
+            my @col = $row->findnodes("td");
+
+            # next unless @col;
+
+            if (defined $col[-2] && $r < $#rows) {
+                $col[-2]->appendText("\\\\");
+            }
+
+            if (defined $col[1]) {
+                $col[0]->appendText("&");
+            }
+
+            if (defined $col[2]) { # tag
+                print STDERR qq{***         col[2] = '$col[2]'\n};
+
+                for my $child ($col[2]->childNodes) {
+                    $parent->insertBefore($child, $case);
+                }
+            }
+
+            if (defined $col[0]) {
+                print STDERR qq{***         col[0] = '$col[0]'\n};
+
+                for my $child ($col[0]->childNodes) {
+                    $parent->insertBefore($child, $case);
+                }
+            }
+
+            if (defined $col[1]) {
+                print STDERR qq{***         col[1] = '$col[1]'\n};
+
+                for my $child ($col[1]->childNodes) {
+                    $parent->insertBefore($child, $case);
+                }
+            }
+        }
+
+        $parent->removeChild($case);
+    }
+
+    return;
+}
+
 sub normalize_statements {
     my $self = shift;
 
@@ -663,6 +727,8 @@ sub finalize_document {
     $self->normalize_ids();
 
     $self->normalize_figures();
+
+    $self->normalize_texml_cases();
 
     $self->normalize_statements();
 

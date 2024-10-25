@@ -328,8 +328,8 @@ use constant BANNER => 'This is AMS texml <https://github.com/AmerMathSoc/texml>
 ##                                                                  ##
 ######################################################################
 
-## We character-set handling to Perl's I/O layers (see a_open_in and
-## a_open_out), so we don't need xchr and xord.
+## We delegate charset handling to Perl's I/O layers (see a_open_in
+## and a_open_out), so we don't need xchr and xord.
 
 ######################################################################
 ##                                                                  ##
