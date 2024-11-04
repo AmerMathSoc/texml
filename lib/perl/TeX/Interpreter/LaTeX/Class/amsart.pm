@@ -78,8 +78,8 @@ __DATA__
 
 %% Note that the real doctype is set by jats.xsl.  *gloom*
 
-\setXMLdoctype{-//NLM//DTD JATS (Z39.96) Journal Archiving and Interchange DTD with MathML3 v1.3d2 20201130//EN}
-              {JATS-archivearticle1-3d2-mathml3.dtd}
+\setXMLdoctype{-//AMS TEXML//DTD MODIFIED JATS (Z39.96) Journal Archiving and Interchange DTD with MathML3 v1.3d2 20201130//EN}
+              {texml-jats-1-3d2.dtd}
 
 \setcounter{tocdepth}{2}
 
