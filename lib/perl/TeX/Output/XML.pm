@@ -219,6 +219,8 @@ sub open_document {
 
     my $root_node = $dom->createElement($xml_root);
 
+    $root_node->setNamespace("http://www.w3.org/1999/xlink", "xlink", 0);
+
     $dom->setDocumentElement($root_node);
 
     $self->set_current_element(new_xml_element($root_node));
@@ -711,8 +713,37 @@ sub add_section_alt_titles {
     return;
 }
 
+sub delete_empty_paragraphs {
+    my $self = shift;
+
+    my $dom = $self->get_dom();
+
+    my $tex = $self->get_tex_engine();
+
+    # Delete empty p tags.  Ideally texml wouldn't generate these, but
+    # getting rid of all of them could be tricky.
+    # Cf. TeX::Interpreter::__is_empty_par()
+
+    # Question: Should we remove '@*'?  I.e., should we remove empty
+    # paragraphs even if they have attributes? Ditto comments.  At
+    # present we don't generate those, but there might be good reasons
+    # to do so in the future.
+
+    for my $p ($dom->findnodes(qq{/descendant::p[not(@*|*|comment()|processing-instruction()) and normalize-space()='']})) {
+        $tex->print_err(qq{Deleting empty paragraph: $p});
+
+        # $tex->error();
+
+        $p->unbindNode();
+    }
+
+    return;
+}
+
 sub finalize_document {
     my $self = shift;
+
+    $self->delete_empty_paragraphs();
 
     $self->normalize_ids();
 
