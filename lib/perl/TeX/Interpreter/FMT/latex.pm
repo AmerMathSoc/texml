@@ -844,8 +844,6 @@ sub do_register_refkey {
 
 __DATA__
 
-\setXSLfile{jats}
-
 \fontencoding{OT1}\selectfont
 
 \AtTeXMLend{\TeXML@resolveXMLxrefs}

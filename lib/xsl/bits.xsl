@@ -38,18 +38,13 @@
 
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
 
-<xsl:import href="nlm.xsl"/>
-
 <xsl:output method="xml"
             encoding ="utf-8"
             doctype-public="-//NLM//DTD BITS Book Interchange DTD v1.0 20131225//EN"
             doctype-system="BITS-book1.dtd"/>
 
 <xsl:template match="book">
-    <book xmlns:xlink="http://www.w3.org/1999/xlink"
-          xmlns:mml="http://www.w3.org/1998/Math/MathML"
-          xmlns:xi="http://www.w3.org/2001/XInclude"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <book xmlns:xlink="http://www.w3.org/1999/xlink">
         <xsl:copy-of select="front-matter/book-meta"/>
         <xsl:apply-templates/>
     </book>
@@ -126,6 +121,14 @@
             <xsl:apply-templates select="@*|node()"/>
         </ref-list>
     </sec>
+</xsl:template>
+
+<!-- Default template: copy other content verbatim -->
+
+<xsl:template match="@*|node()">
+    <xsl:copy>
+        <xsl:apply-templates select="@*|node()"/>
+    </xsl:copy>
 </xsl:template>
 
 </xsl:stylesheet>
