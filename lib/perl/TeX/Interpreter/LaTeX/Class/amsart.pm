@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Class::amsart;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -62,7 +62,7 @@ __DATA__
 
 \ProvidesClass{amsart}
 
-\DeclareOption*{\PassOptionsToClass{\CurrentOption}{amscommon}}
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsclass}}
 
 \ProcessOptions
 
@@ -70,13 +70,11 @@ __DATA__
 \newcounter{figure}
 \newcounter{table}
 
-\LoadClass{amscommon}
+\LoadClass{amsclass}
 
 \def\part{\@startsection{part}{0}{}{}{\z@}{}}
 
 \def\refname{References}
-
-%% Note that the real doctype is set by jats.xsl.  *gloom*
 
 \setXMLdoctype{-//AMS TEXML//DTD MODIFIED JATS (Z39.96) Journal Archiving and Interchange DTD with MathML3 v1.3d2 20201130//EN}
               {texml-jats-1-3d2.dtd}

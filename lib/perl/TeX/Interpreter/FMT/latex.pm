@@ -2070,7 +2070,7 @@ __DATA__
 
 \let\XML@section@specific@style\@empty
 
-% See amscommon.pm for \clear@deferred@section and \deferred@section@...
+% See amsclass.pm for \clear@deferred@section and \deferred@section@...
 
 \newif\if@numbered
 
@@ -2336,7 +2336,7 @@ __DATA__
     }%
 }
 
-% cf. amscommon.pm
+% cf. amsclass.pm
 
 \def\footnote{%
     \stepcounter{xmlid}%

@@ -409,7 +409,7 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Deprecated.  See sectionWithMetadata in amscommon.pm
+% Deprecated.  See sectionWithMetadata in amsclass.pm
 
 % \secmeta: a (not-so-)temporary solution(, apparently)
 

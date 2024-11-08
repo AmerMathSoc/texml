@@ -1,4 +1,6 @@
-package TeX::Interpreter::LaTeX::Class::amscommon;
+package TeX::Interpreter::LaTeX::Class::amsclass;
+
+## Code that is common so the AMS classes (amsart, amsbook, amsproc).
 
 # Copyright (C) 2022, 2024 American Mathematical Society
 #
@@ -267,7 +269,7 @@ sub do_endabstract( $$ ) {
 
 __DATA__
 
-\ProvidesClass{amscommon}
+\ProvidesClass{amsclass}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
@@ -485,22 +487,48 @@ __DATA__
 
 \let\AMS@abstract\@empty
 
+% publkey is the in-house abbreviation for the journal or book series,
+% e.g. "jams" or "gsm".
+
+\let\AMS@publkey\@empty
+
+% publname is the full title of the journal or book series,
+% e.g. "Journal of the American Mathematical Society" or "Graduate
+% Studies in Mathematics".
+
 \let\AMS@publname\@empty
+
+\let\AMS@volumeid\@empty
+\let\AMS@manid\@empty
+
 \let\AMS@pissn\@empty
 \let\AMS@eissn\@empty
 
-\let\AMS@volume\@empty
+\let\AMS@volumeno\@empty
+
 \let\AMS@issue\@empty
 \let\AMS@issue@year\@empty
 \let\AMS@issue@month\@empty
 \def\AMS@issue@day{1}
 
 \def\issueinfo#1#2#3#4{%
-    \gdef\AMS@volume{#1}%
+    \gdef\AMS@volumeno{#1}%
     \xdef\AMS@issue{\number0#2}%
     \gdef\AMS@issue@month{}%
     \@ifnotempty{#3}{\xdef\AMS@issue@month{\TEXML@month@int{#3}}}%
     \gdef\AMS@issue@year{#4}%
+}
+
+\def\publinfo#1#2#3{%
+    \gdef\AMS@publkey{#1}%
+    \gdef\AMS@volumeid{#2}%
+    \gdef\AMS@manid{#3}%
+}
+
+\def\seriesinfo#1#2#3{%
+    \gdef\AMS@publkey{#1}%
+    \gdef\AMS@volumeid{#2}%
+    \gdef\AMS@volumeno{#3}%
 }
 
 \def\TEXML@month@int#1{\@nameuse{TeXML@month@#1}}
@@ -518,24 +546,6 @@ __DATA__
 \@namedef{TeXML@month@November}{11}
 \@namedef{TeXML@month@December}{12}
 \@namedef{TeXML@month@June/July}{13}% Notices
-
-\def\publinfo#1#2#3{%
-    \gdef\AMS@publkey{#1}%
-    \gdef\AMS@volumeid{#2}%
-    \gdef\AMS@manid{#3}%
-}
-
-\let\AMS@publkey\@empty
-\let\AMS@volumeid\@empty
-\let\AMS@manid\@empty
-
-\def\seriesinfo#1#2#3{%
-    \gdef\AMS@publkey{#1}%
-    \gdef\AMS@volumeid{#2}%
-    \gdef\AMS@volumeno{#3}%
-}
-
-\let\AMS@volumeno\@empty
 
 \renewcommand*{\title}[2][]{%
     \gdef\AMS@short@title{#1}%
@@ -897,9 +907,9 @@ __DATA__
         \fi
         \output@author@meta
         \output@article@history
-        \ifx\AMS@volume\@empty\else
+        \ifx\AMS@volumeno\@empty\else
             \thisxmlpartag{volume}
-            \AMS@volume\par
+            \AMS@volumeno\par
         \fi
         \ifx\AMS@issue\@empty\else
             \thisxmlpartag{issue}

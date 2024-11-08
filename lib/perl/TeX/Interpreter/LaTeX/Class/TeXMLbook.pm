@@ -70,7 +70,7 @@ __DATA__
 \newcounter{figure}[chapter]
 \newcounter{table}[chapter]
 
-\LoadClass{amscommon}
+\LoadClass{amsclass}
 
 \def\bibname{Bibliography}
 
