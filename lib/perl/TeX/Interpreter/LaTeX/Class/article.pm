@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Class::article;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -62,10 +62,8 @@ __DATA__
 
 \ProvidesClass{article}
 
-%% Note that the real doctype is set by jats.xsl.  *gloom*
-
-\setXMLdoctype{-//NLM//DTD JATS (Z39.96) Journal Archiving and Interchange DTD with MathML3 v1.3d2 20201130//EN}
-              {JATS-archivearticle1-3d2-mathml3.dtd}
+\setXMLdoctype{-//AMS TEXML//DTD MODIFIED JATS (Z39.96) Journal Archiving and Interchange DTD with MathML3 v1.3d2 20201130//EN}
+              {texml-jats-1-3d2.dtd}
 
 \setcounter{tocdepth}{2}
 
