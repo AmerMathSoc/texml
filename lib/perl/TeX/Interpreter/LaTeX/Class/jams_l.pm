@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Class::jams_l;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -56,7 +56,7 @@ __DATA__
 
 \LoadClass{amsart}[1996/10/24]
 
-\publinfo{jams}{}{}
+\gdef\AMS@publkey{jams}
 
 \def\AMS@publname{Journal of the American Mathematical Society}
 

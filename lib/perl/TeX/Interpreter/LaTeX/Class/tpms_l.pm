@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Class::tpms_l;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -56,7 +56,7 @@ __DATA__
 
 \LoadClass{amsart}[1996/10/24]
 
-\publinfo{tpms}{}{}
+\gdef\AMS@publkey{tpms}
 
 \def\AMS@publname{Theory of Probability and Mathematical Statistics}
 

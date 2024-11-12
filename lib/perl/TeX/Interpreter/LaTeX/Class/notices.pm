@@ -52,7 +52,7 @@ __DATA__
 
 \LoadClass{amsart}
 
-\publinfo{noti}{}{}
+\gdef\AMS@publkey{noti}
 
 \def\AMS@publname{Notices of the American Mathematical Society}
 
