@@ -706,7 +706,7 @@ sub add_section_alt_titles {
 
     my $dom = $self->get_dom();
 
-    for my $section ($dom->findnodes("/descendant::sec")) {
+    for my $section ($dom->findnodes("/descendant::sec|/descendant::app")) {
         add_alt_title($section, $dom);
     }
 
