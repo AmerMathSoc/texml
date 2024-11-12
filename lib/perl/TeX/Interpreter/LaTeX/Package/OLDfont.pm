@@ -109,9 +109,7 @@ sub make_font_declaration {
                 return;
             }
 
-            $tex->leavevmode();
-
-            my $start = qq{\\startinlineXMLelement{$qName}};
+            my $start = qq{\\leavevmode\\startinlineXMLelement{$qName}};
 
             if ($name eq 'em') {
                 $start .= qq{\\setXMLattribute{toggle}{yes}};
