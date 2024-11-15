@@ -122,15 +122,6 @@ __DATA__
     \gdef\AMS@volumeno{#3}%
 }
 
-% \publinfo is deprecated; Use \issueinfo for journal articles and
-% \seriesinfo for book volumes.
-
-\def\publinfo#1#2#3{%
-    \gdef\AMS@publkey{#1}%
-    \gdef\AMS@volumeid{#2}%
-    \gdef\AMS@manid{#3}%
-}
-
 \def\init@bits@meta{%
     \par
     \ifx\AMS@publkey\@empty\else

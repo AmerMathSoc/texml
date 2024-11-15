@@ -519,6 +519,15 @@ __DATA__
 \let\AMS@pissn\@empty
 \let\AMS@eissn\@empty
 
+% \publinfo is semi-deprecated; Use \issueinfo for journal articles
+% and \seriesinfo for book volumes.
+
+\def\publinfo#1#2#3{%
+    \gdef\AMS@publkey{#1}%
+    \gdef\AMS@volumeid{#2}%
+    \gdef\AMS@manid{#3}%
+}
+
 \def\TEXML@month@int#1{\@nameuse{TeXML@month@#1}}
 
 \@namedef{TeXML@month@January}{1}
