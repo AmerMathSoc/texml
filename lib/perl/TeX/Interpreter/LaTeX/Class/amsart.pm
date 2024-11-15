@@ -316,11 +316,12 @@ __DATA__
 
 \def\clear@author{%
     \let\this@name\@empty
-    \let\this@bio\@empty
     \let\this@address\@empty
-    \let\this@curraddress\@empty
+    \let\this@curaddress\@empty
     \let\this@email\@empty
     \let\this@urladdr\@empty
+    \let\this@orcid\@empty
+    \let\this@mrauthid\@empty
     \let\this@bio\@empty
     \let\this@thanks\@empty
 }
@@ -331,22 +332,34 @@ __DATA__
     \clear@author
     \def\author@name{\def\this@name}%
     \def\address##1##2{\def\this@address{##2}}%
-    \def\curaddress##1##2{\def\this@curaddress{##2}}%
+    \def\curraddr##1##2{\def\this@curaddress{##2}}%
     \def\email##1##2{\def\this@email{##2}}%
     \def\urladdr##1##2{\def\this@urladdr{##2}}%
+    \def\orcid##1##2{\def\this@orcid{##2}}%
+    \def\MRauthid##1##2{\def\this@mrauthid{##2}}%
     \def\authorbio##1{\def\this@bio{##1}}%
     \def\thanks##1{\def\this@thanks{##1}}%
 }
 
 \def\end@author@{%
-    % \startXMLelement{contrib-group}
-    % \setXMLattribute{content-type}{authors}
     \ifx\this@name\@empty\else
         \startXMLelement{contrib}
-            \setXMLattribute{contrib-type}{\author@contrib@type}
+        \setXMLattribute{contrib-type}{\author@contrib@type}
             \startXMLelement{string-name}
                 \this@name
             \endXMLelement{string-name}\par
+            \ifx\this@orcid\@empty\else
+                \startXMLelement{contrib-id}
+                    \setXMLattribute{contrib-id-type}{orcid}
+                    \this@orcid
+                \endXMLelement{contrib-id}\par
+            \fi
+            \ifx\this@mrauthid\@empty\else
+                \startXMLelement{contrib-id}
+                    \setXMLattribute{contrib-id-type}{mrauth}
+                    \this@mrauthid
+                \endXMLelement{contrib-id}\par
+            \fi
             \ifx\this@thanks\@empty\else
                 \startXMLelement{role}
                     \begingroup
@@ -360,19 +373,29 @@ __DATA__
                     \this@bio
                 \endXMLelement{bio}\par
             \fi
+            \ifx\this@address\@empty\else
+                \startXMLelement{aff}
+                    \this@address
+                \endXMLelement{aff}\par
+            \fi
+            \ifx\this@curaddress\@empty\else
+                \startXMLelement{aff}
+                    \setXMLattribute{specific-use}{current}
+                    \this@curaddress
+                \endXMLelement{aff}\par
+            \fi
+            \ifx\this@email\@empty\else
+                \startXMLelement{email}
+                    \this@email
+                \endXMLelement{email}\par
+            \fi
+            \ifx\this@urladdr\@empty\else
+                \startXMLelement{uri}
+                    \this@urladdr
+                \endXMLelement{uri}\par
+            \fi
         \endXMLelement{contrib}\par
     \fi
-    \ifx\this@address\@empty\else
-        \startXMLelement{aff}
-            \this@address
-        \endXMLelement{aff}\par
-    \fi
-    \ifx\this@email\@empty\else
-        \startXMLelement{email}
-            \this@email
-        \endXMLelement{email}\par
-    \fi
-    % \endXMLelement{contrib-group}
 }
 
 \def\output@article@notes{% Notices stuff

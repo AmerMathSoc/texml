@@ -622,6 +622,8 @@ __DATA__
 \let\email\relax
 \let\urladdr\relax
 \let\thanks\relax
+\let\orcid\relax
+\let\MRauthid\relax
 
 \def\author@contrib@type{author}%
 
@@ -646,6 +648,8 @@ __DATA__
 \let\AMS@authors\@empty
 
 \newcommand{\address}[2][] {\g@addto@macro\AMS@authors{\address{#1}{#2}}}
+\newcommand{\orcid}[2][]   {\g@addto@macro\AMS@authors{\orcid{#1}{#2}}}
+\newcommand{\MRauthid}[2][]{\g@addto@macro\AMS@authors{\MRauthid{#1}{#2}}}
 \newcommand{\curraddr}[2][]{\g@addto@macro\AMS@authors{\curraddr{#1}{#2}}}
 \newcommand{\email}[2][]   {\g@addto@macro\AMS@authors{\email{#1}{#2}}}
 \newcommand{\authorbio}[1] {\g@addto@macro\AMS@authors{\authorbio{#1}}}
@@ -668,7 +672,7 @@ __DATA__
 }
 
 \newcommand{\url@addr}[2]{%
-        \edef\@tempa{\@nx\g@addto@macro\@nx\addresses{\@nx\urladdr{#1}{#2}}}%
+        \edef\@tempa{\@nx\g@addto@macro\@nx\AMS@authors{\@nx\urladdr{#1}{#2}}}%
     \expandafter
     \endgroup
     \@tempa
@@ -677,8 +681,6 @@ __DATA__
 % Ignore \orcid in the LaTeX file for now since we get the ORCID id
 % and other metadata from the gentag file.  We should provide some
 % sort of support for it later, though.
-
-\let\orcid\@gobble
 
 \def\editor#1{%
     \ifx\AMS@editorlist\@empty
