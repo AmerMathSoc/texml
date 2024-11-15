@@ -33,15 +33,15 @@
 
 <!-- Input: texml output -->
 
-<!-- Output: -//NLM//DTD BITS Book Interchange DTD v1.0 20131225//EN -->
+<!-- Output: -//NLM//DTD BITS Book Interchange DTD v2.1 20180401//EN -->
 <!-- (more or less) -->
 
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
 
 <xsl:output method="xml"
             encoding ="utf-8"
-            doctype-public="-//NLM//DTD BITS Book Interchange DTD v1.0 20131225//EN"
-            doctype-system="BITS-book1.dtd"/>
+            doctype-public="-//NLM//DTD BITS Book Interchange DTD v2.1 20180401//EN"
+            doctype-system="BITS-book2.dtd"/>
 
 <xsl:template match="book">
     <book xmlns:xlink="http://www.w3.org/1999/xlink">
