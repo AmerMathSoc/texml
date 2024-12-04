@@ -204,6 +204,9 @@ my %fmt_file_of :ATTR(:name<fmt_file>);
 
 my %interaction_mode_of :ATTR(:name<interaction_mode> :default<error_stop_mode>);
 
+my %termination_status_of  :COUNTER(:name<termination_status> :default<0>);
+my %termination_message_of :ATTR(:name<termination_message>);
+
 my %cur_font_of :ATTR(:name<cur_font> :default(-1));
 my %cur_lang_of :ATTR(:name<cur_lang> :set<*custom*> :default(0)); #*
 my %cur_enc_of  :ATTR;
@@ -213,8 +216,6 @@ my %cur_page_of :ARRAY(:name<cur_page>);
 my %debug_of :BOOLEAN(:name<debug> :default<0>);
 
 my %nofiles_of :BOOLEAN(:name<nofiles> :get<nofiles> :default<false>);
-
-my %newlines_per_par_of :COUNTER(:name<newlines_per_par> :default<2>);
 
 my %unicode_input_of :BOOLEAN(:name<unicode_input> :default<false>);
 my %unicode_output_of :BOOLEAN(:name<unicode_output> :default<true>);
@@ -840,9 +841,7 @@ sub initialize_print_selector {
 sub jump_out {
     my $tex = shift;
 
-    $tex->end_of_TEX();
-
-    return;
+    return $tex->end_of_TEX();
 }
 
 sub error_message {
@@ -978,15 +977,19 @@ sub succumb {
 sub fatal_error {
     my $tex = shift;
 
-    my $s = shift;
+    my $message = shift;
+    my $status = @_ ? shift : 1;
+
+    $tex->set_termination_status($status);
+    $tex->set_termination_message($message);
 
     $tex->normalize_selector();
 
     $tex->print_err("Emergency stop");
 
-    $tex->print_err($s);
+    $tex->print_err($message);
 
-    $tex->set_help($s);
+    $tex->set_help($message);
 
     $tex->succumb();
 
@@ -2452,7 +2455,9 @@ sub load_primitive( $;$ ) {
             }
         }
 
-        die "Could not load primitive '$class_name'\n" unless defined $primitive;
+        if (! defined $primitive) {
+            $tex->fatal_error("Could not load primitive '$class_name'");
+        }
     }
 
     return $primitive;
@@ -4024,7 +4029,7 @@ sub finish_line {
     } elsif ($state == skip_blanks) {
         # no-op
     } else {
-        die "Invalid lexer state: $state";
+        $tex->fatal_error("Invalid lexer state: $state");
     }
 
     return $cur_tok;
@@ -4046,7 +4051,7 @@ sub process_space {
 
         return SPACE_TOKEN;
     } else {
-        die "Invalid lexer state '$state'";
+        $tex->fatal_error("Invalid lexer state '$state'");
     }
 }
 
@@ -6389,7 +6394,7 @@ sub load_output_module {
     my $class = shift;
 
     if (! eval "require $class") {
-        die "Could not load output class '$class': $@\n";
+        $tex->fatal_error("Could not load output class '$class': $@");
     }
 
     return;
@@ -6446,7 +6451,9 @@ sub ensure_output_open {
     ## Might want to do something more elaborate here.  Otherwise,
     ## delete the following
 
-    if ($@) { die $@ };
+    if ($@) {
+        $tex->fatal_error($@);
+    };
 
     $tex->set_output_handle($handle);
 
@@ -6483,7 +6490,7 @@ sub open_log_file {
     ## NEEDS IMPROVEMENT
 
     my $fh = $tex->a_open_out($log_name) or do {
-        die "Can't open log file $log_name: $!\n";
+        $tex->fatal_error("Can't open log file $log_name: $!");
 
         # @<Try to get a different log file name@>;
     };
@@ -6712,7 +6719,9 @@ sub push_output {
     ## Might want to do something more elaborate here.  Otherwise,
     ## delete the following
 
-    if ($@) { die $@ };
+    if ($@) {
+        $tex->fatal_error("Unable to initialize output: $@");
+    };
 
     $tex->set_output_handle($handle);
     $tex->set_output_module($output_module);
@@ -6854,10 +6863,20 @@ sub finish_output_file {
 
     my $dom = $fh->close_document();
 
-    if (nonempty(my $output_file_name = $tex->get_output_file_name())) {
-        if ($output_file_name ne DEV_NULL) {
-            my $state = $dom->toFile($output_file_name, 1) if defined $dom;
+    if (defined $dom) {
+        if (nonempty(my $output_file_name = $tex->get_output_file_name())) {
+            if ($output_file_name ne DEV_NULL) {
+                eval { $dom->toFile($output_file_name, 1) };
+
+                if ($@) {
+                    $tex->set_termination_message("Could not create $output_file_name: $@");
+                    $tex->set_termination_status(1);
+                }
+            }
         }
+    } else {
+        $tex->set_termination_message("No DOM was created!");
+        $tex->set_termination_status(1);
     }
 
     $tex->delete_output_handle();
@@ -10898,9 +10917,7 @@ sub TeX {
 
     $tex->final_cleanup();       # { prepare for death }
 
-    $tex->end_of_TEX();
-
-    return;
+    return $tex->end_of_TEX();
 }
 
 sub end_of_TEX {
@@ -10908,9 +10925,7 @@ sub end_of_TEX {
 
     $tex->close_files_and_terminate();
 
-    # exit;
-
-    return;
+    return $tex->termination_status();
 }
 
 sub close_files_and_terminate {

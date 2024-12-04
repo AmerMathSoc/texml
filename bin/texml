@@ -32,7 +32,7 @@
 use strict;
 use warnings;
 
-use version; our $VERSION = qv '1.3.5';
+use version; our $VERSION = qv '1.4.0';
 
 binmode STDERR, ":utf8";
 binmode STDOUT, ":utf8";
@@ -112,7 +112,7 @@ our %OPT = (debug        => 0,
 ##                                                                  ##
 ######################################################################
 
-sub usage() {
+sub usage {
     my $usage = << "EOF";
 Usage: $PROGRAM_NAME [options] filename
 
@@ -128,7 +128,7 @@ EOF
     exit 0;
 }
 
-sub init_config() {
+sub init_config {
     return if defined $CFG;
 
     $CFG = TeXML::CFG->get_cfg( { cfg_file => $OPT{cfg_file} } );
@@ -136,7 +136,7 @@ sub init_config() {
     return;
 }
 
-sub list_cfg() {
+sub list_cfg {
     if (! defined $CFG) {
         print "No config file loaded\n";
 
@@ -152,7 +152,7 @@ sub list_cfg() {
     exit 0;
 }
 
-sub use_xetex( $ ) {
+sub use_xetex {
     my $tex_file = shift;
 
     open(my $fh, "<", $tex_file) or do {
@@ -221,7 +221,7 @@ sub xml_pp {
     return;
 }
 
-sub process_file( $ ) {
+sub process_file {
     my $tex_file = shift;
 
     my $use_xetex = $OPT{use_xetex} || use_xetex($tex_file);
@@ -246,42 +246,38 @@ sub process_file( $ ) {
     #     $ENV{TEXINPUTS} = ".:$dirname//:";
     # }
 
-    my $convert = TeX::Interpreter::LaTeX->new({ fmt => 'latex',
-                                                 unicode_input => $OPT{utf8},
-                                                 do_svg    => $OPT{do_svg},
-                                                 use_xetex => $use_xetex,
-                                                 debug     => $OPT{debug},
-                                                 profiling => $OPT{profiling},
-                                                 job_name  => $OPT{job_name},
- });
+    my $TeX = TeX::Interpreter::LaTeX->new({ fmt => 'latex',
+                                             unicode_input => $OPT{utf8},
+                                             do_svg    => $OPT{do_svg},
+                                             use_xetex => $use_xetex,
+                                             debug     => $OPT{debug},
+                                             profiling => $OPT{profiling},
+                                             job_name  => $OPT{job_name},
+                                           });
 
-    $convert->set_use_mathjax(1);
+    $TeX->set_use_mathjax(1);
 
-    eval { $convert->TeX($tex_file) };
+    my $status = eval { $TeX->TeX($tex_file) };
 
-    if ($@) {
-        print STDERR "$@\n";
+    if ($@ || $status) {
+        my $msg = $@ || $TeX->get_termination_message();
+
+        print STDERR "No XML was generated: $msg\n";
+
+        ## This is insurance in case something kills us without
+        ## setting a termination status.
+
+        $status ||= 1;
+
+        exit $status;
     }
 
     if ($OPT{pretty_print}) {
-        my $xml_file = $convert->get_output_file_name();
-
-        # Preserve spaces inside the name/suffix element so
-        # <suffix><x>, </x>Jr.</suffix> doesn't get turned into
-        #
-        #     <suffix>
-        #         <x>, </x>Jr.</suffix>
-        #
-        # Surprisingly, this is the only place this problem has popped
-        # up so far.
+        my $xml_file = $TeX->get_output_file_name();
 
         print "\nPretty-printing $xml_file\n";
 
-        eval { xml_pp($xml_file) };
-
-        if ($@) {
-            print "Could not pretty-print file: $@\n";
-        }
+        xml_pp($xml_file);
     }
 
     return;
@@ -313,7 +309,7 @@ if ($OPT{list_cfg}) {
     list_cfg();
 }
 
-usage() unless @ARGV;
+usage() unless @ARGV == 1;
 
 my $extra_lib = $CFG->val($PROGRAM_NAME, 'extra_lib');
 
@@ -331,14 +327,12 @@ if ($OPT{debug}) {
     $ENV{TMPDIR} = getcwd();
 }
 
-while (my $tex_file = shift @ARGV) {
-    do { warn "Can't find $tex_file\n"; next; } unless -e $tex_file;
+my $tex_file = shift @ARGV;
 
-    do { warn "Can't read $tex_file\n"; next; } unless -r $tex_file;
+die "Can't find $tex_file\n" unless -e $tex_file;
 
-    process_file($tex_file);
+die "Can't read $tex_file\n" unless -r $tex_file;
 
-    print "\n" if @ARGV;
-}
+process_file($tex_file);
 
 __END__
