@@ -73,14 +73,6 @@ sub make_accenter( @ ) {
         my $tex   = shift;
         my $token = shift;
 
-        if ($tex->is_vmode()) {
-            $tex->back_input($token);
-
-            $tex->new_graf();
-
-            return;
-        }
-
         ## The next line removes braces around the argument.  E.g., it
         ## turns \~{a} into \~a.  This is needed because
         ## get_next_character() doesn't remove braces and is
@@ -91,6 +83,8 @@ sub make_accenter( @ ) {
         my ($base_code, $enc) = $tex->get_next_character(1);
 
         my $base_char = defined $base_code ? chr($base_code) : undef;
+
+        my $arg1 = defined $base_char ? $base_char : '<undef>';
 
         my $accented_char;
 
@@ -136,6 +130,8 @@ sub make_accenter( @ ) {
 
             $tex->error();
         }
+
+        $self->trace_anonymous_macro($tex, $token, '#1', $chars, $arg1);
 
         return $chars;
     };
