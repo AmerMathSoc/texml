@@ -186,12 +186,6 @@ __DATA__
 
 \LoadRawMacros
 
-% In texml, all text accents are already full expandable.  For reasons
-% that are unclear to me, \auto@protect'ing them causes texml great
-% consternation.  So, we disable that.
-
-\let\amsrefs@textaccents\@empty
-
 \let\DeclareNameAccent\@empty
 
 \@ifpackagewith{amsrefs}{non-sorted-cites}{%
