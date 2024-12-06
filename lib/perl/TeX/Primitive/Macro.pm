@@ -106,10 +106,13 @@ sub macro_call {
         $tex->print_nl("");
 
         $tex->show_token_list($cur_tok, -1, 1);
+
         if (defined $param_text) {
             $tex->token_show($param_text);
         }
+
         $tex->print("->");
+
         $tex->token_show($macro_text);
 
         for (my $i = 1; $i < @args; $i++) {
@@ -228,21 +231,46 @@ sub make_anonymous_macro( $ ) {
 
         my $token_list = $code->($self, $tex, $cur_tok);
 
-        if ($tex->tracing_macros() & TRACING_MACRO_MACRO) {
-            $tex->begin_diagnostic();
-
-            $tex->print_nl("");
-
-            $tex->show_token_list($cur_tok, -1, 1);
-            $tex->print("->");
-            $tex->token_show($token_list);
-            $tex->end_diagnostic(true);
-        }
-
         $tex->begin_token_list($token_list, macro) if defined $token_list;
     };
 
     return $macro;
+}
+
+sub trace_anonymous_macro {
+    my $self = shift;
+
+    my $tex = shift;
+
+    my $cur_tok = shift;
+    my $param_text = shift;
+    my $expansion  = shift;
+    my @args = (undef, @_);
+
+    if ($tex->tracing_macros() & TRACING_MACRO_MACRO) {
+        $tex->begin_diagnostic();
+
+        $tex->print_nl("");
+
+        $tex->show_token_list($cur_tok, -1, 1);
+
+        if (defined $param_text) {
+            $tex->print($param_text); # a string, not a token list
+        }
+
+        $tex->print("(anonymous_macro)->");
+
+        $tex->token_show($expansion);
+
+        for (my $i = 1; $i < @args; $i++) {
+            $tex->print_nl("#$i<-");
+            $tex->print($args[$i]);
+        }
+
+        $tex->end_diagnostic(true);
+    }
+
+    return;
 }
 
 1;
