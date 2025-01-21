@@ -81,7 +81,7 @@ __DATA__
 \newenvironment{algorithmic}[1][0]{
     \par
     \xmlpartag{}%
-    \def\\{\emptyXMLelement{br}}%
+    \def\\{\emptyXMLelement{break}}%
     \c@ALG@frequency=#1\relax
     \ifnum\c@ALG@frequency=\z@
         \ALG@numberedfalse
