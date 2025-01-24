@@ -152,6 +152,27 @@ Create a configuration from the provided template:
 
 The above instructions should work in an Ubuntu-based [Windows Subsystem for Linux](https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux).
 
+### MacOS
+
+- Install [mactex 2024](https://www.tug.org/mactex/mactex-download.html)
+- Install Xcode Command Line Tools. 
+  - `$ xcode-select --install` and follow the steps for the installation process
+- Install [homebrew](https://brew.sh/)
+- `$ brew install libpng`
+- `$ brew install jpeg-turbo`
+- `$ brew install pdf2svg`
+- `$ cpan`  (and configure local::lib
+- `$ cpan File::MMagic::XS`
+- `$ cpan Config::IniFiles`
+- `$ cpan XML::Twig`
+- `$ cpan Image::PNG`
+- `$ cpan Image::JPEG::Size`
+- `$ cpan Lingua::EN::Numbers::Ordinate`
+- install [STIX Two](https://github.com/stipub/stixfonts/) and [Source Sans](https://github.com/adobe-fonts/source-sans)
+- `$ git clone https://github.com/AmerMathSoc/texml.git`
+- `$ cd texml`
+- `$ cp ./cfg/texml.cfg.template ./cfg/texml.cfg`
+
 ## Testing
 
 At this point, should be able to compile, e.g., tests/hello.tex.
