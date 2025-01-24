@@ -113,6 +113,8 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 * apt install texlive texlive-extra-utils texlive-xetex
 
 * apt install texlive-bibtex-extra [amsrefs]
+ 
+* apt install texlive-fonts-extra [bbm]
 
 * apt install libexception-class-perl
 
