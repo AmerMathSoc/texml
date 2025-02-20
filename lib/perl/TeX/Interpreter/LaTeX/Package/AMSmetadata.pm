@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::AMSmetadata;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -276,6 +276,10 @@ sub do_add_ams_metadata {
             my $meta = create_book_meta($tex, $gentag);
 
             $root->insertBefore($meta, $front_matter);
+
+            if (defined (my $old_cmeta = find_unique_node($root, "/book/collection-meta"))) {
+                $old_cmeta->unbindNode();
+            }
 
             my $cmeta = create_collection_meta($tex, $gentag);
 
@@ -744,7 +748,7 @@ sub add_self_uris {
 
     append_xml_element($parent, "self-uri", $uri,
                        { "content-type" => "abstract",
-                         "xlink:href"   => $uri });
+                             "xlink:href"   => $uri });
 
     my $doctype = $gentag->get_doctype();
 
@@ -1253,6 +1257,24 @@ sub add_article_citation {
     return;
 }
 
+my sub copy_abstract {
+    my $front = shift;
+    my $meta  = shift;
+    my $gentag = shift;
+
+    for my $abstract ($front->findnodes("article-meta/abstract")) {
+        if (defined (my $gentag_abstract = $gentag->get_abstract())) {
+            if (nonempty(my $language = $gentag_abstract->get_language())) {
+                $abstract->setAttribute('xml:lang' => $language);
+            }
+        }
+
+        $meta->appendChild($abstract);
+    }
+
+    return;
+}
+
 sub append_article_meta {
     my $tex = shift;
 
@@ -1316,7 +1338,7 @@ sub append_article_meta {
 
     add_related_articles($tex, $meta, $gentag);
 
-    copy_xml_node("article-meta/abstract", $old_front, $meta);
+    copy_abstract($old_front, $meta, $gentag);
 
     copy_xml_node("article-meta/kwd-group", $old_front, $meta);
 
