@@ -113,6 +113,8 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 * apt install texlive texlive-extra-utils texlive-xetex
 
 * apt install texlive-bibtex-extra [amsrefs]
+ 
+* apt install texlive-fonts-extra [bbm]
 
 * apt install libexception-class-perl
 
@@ -151,6 +153,27 @@ Create a configuration from the provided template:
 ### Microsoft Windows 
 
 The above instructions should work in an Ubuntu-based [Windows Subsystem for Linux](https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux).
+
+### MacOS
+
+- Install [mactex 2024](https://www.tug.org/mactex/mactex-download.html)
+- Install Xcode Command Line Tools. 
+  - `$ xcode-select --install` and follow the steps for the installation process
+- Install [homebrew](https://brew.sh/)
+- `$ brew install libpng`
+- `$ brew install jpeg-turbo`
+- `$ brew install pdf2svg`
+- `$ cpan`  (and configure local::lib
+- `$ cpan File::MMagic::XS`
+- `$ cpan Config::IniFiles`
+- `$ cpan XML::Twig`
+- `$ cpan Image::PNG`
+- `$ cpan Image::JPEG::Size`
+- `$ cpan Lingua::EN::Numbers::Ordinate`
+- install [STIX Two](https://github.com/stipub/stixfonts/) and [Source Sans](https://github.com/adobe-fonts/source-sans)
+- `$ git clone https://github.com/AmerMathSoc/texml.git`
+- `$ cd texml`
+- `$ cp ./cfg/texml.cfg.template ./cfg/texml.cfg`
 
 ## Testing
 
