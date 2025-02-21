@@ -961,6 +961,8 @@ __DATA__
 
 \def\DeclareSVGMathChar#1#2{\newcommand{#1}{#2{\TeXMLSVGmathchoice{#1}}}}
 
+\def\DeclareSVGChar#1{\newcommand{#1}{\TeXMLCreateSVG{#1}}}
+
 % * = preserve line breaks (for verbatim-type environments)
 
 \def\DeclareSVGEnvironment{%
