@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::MnSymbol;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -68,6 +68,8 @@ __DATA__
 \def\rrangle{\rAngle}
 
 \def\strokedint{\fint}
+
+\def\dashedrightarrow{\rightdasharrow}
 
 \endinput
 
