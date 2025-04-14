@@ -43,33 +43,6 @@
             doctype-public="-//NLM//DTD BITS Book Interchange DTD v2.1 20180401//EN"
             doctype-system="BITS-book2.dtd"/>
 
-<xsl:template match="book">
-    <book xmlns:xlink="http://www.w3.org/1999/xlink">
-        <xsl:copy-of select="front-matter/book-meta"/>
-        <xsl:apply-templates/>
-    </book>
-</xsl:template>
-
-<xsl:template match="front-matter/book-meta">
-    <front-matter-part>
-        <book-part-meta>
-            <xsl:apply-templates/>
-        </book-part-meta>
-    </front-matter-part>
-</xsl:template>
-
-<xsl:template match="front-matter/book-meta/book-title-group">
-    <title-group>
-        <xsl:apply-templates/>
-    </title-group>
-</xsl:template>
-
-<xsl:template match="front-matter/book-meta/book-title-group/book-title">
-    <title>
-        <xsl:apply-templates/>
-    </title>
-</xsl:template>
-
 <xsl:template match="front-matter/preface/title"/>
 
 <xsl:template match="front-matter/preface">

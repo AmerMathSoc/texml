@@ -74,8 +74,8 @@ __DATA__
 
 \def\bibname{Bibliography}
 
-\setXMLdoctype{-//NLM//DTD BITS Book Interchange DTD v1.0 20131225//EN}
-              {BITS-book1.dtd}
+\setXMLdoctype{-//NLM//DTD BITS Book Interchange DTD v2.1 20180401//EN}
+              {BITS-book2.dtd}
 
 \setXMLroot{book}
 
@@ -124,37 +124,68 @@ __DATA__
 
 \def\init@bits@meta{%
     \par
+    \begingroup
+        \xmlpartag{}%
+        \output@collection@meta
+        \output@book@meta
+    \endgroup
+    \glet\init@bits@meta\@empty
+}
+
+\def\output@collection@meta{%
     \ifx\AMS@publkey\@empty\else
-        \begingroup
-            \xmlpartag{}%
-            % Add just enough to allow texml to find the gentag file.
-            \startXMLelement{book-meta}%
-                \startXMLelement{book-id}%
-                    \setXMLattribute{book-id-type}{publisher}%
-                    \AMS@publkey\par
-                \endXMLelement{book-id}%
-                \ifx\AMS@volumeid\@empty\else
-                    \startXMLelement{book-id}%
-                        \setXMLattribute{book-id-type}{volume_id}%
-                        \AMS@volumeid\par
-                    \endXMLelement{book-id}%
-                \fi
-                \ifx\AMS@volumeno\@empty
-                    \ifx\AMS@manid\@empty\else
-                        \startXMLelement{book-volume-number}%
-                            \AMS@manid\par
-                        \endXMLelement{book-volume-number}%
-                    \fi
-                \else
-                    \startXMLelement{book-volume-number}%
-                        \AMS@volumeno\par
-                    \endXMLelement{book-volume-number}%
-                \fi
-            \endXMLelement{book-meta}%
-            \par        
-        \endgroup
+        \startXMLelement{collection-meta}
+            \setXMLattribute{collection-type}{book series}
+            \startXMLelement{collection-id}
+                \setXMLattribute{collection-id-type}{publisher}
+                \AMS@publkey
+            \endXMLelement{collection-id}\par
+        \endXMLelement{collection-meta}
     \fi
-    \global\let\init@bits@meta\@empty
+}
+
+\def\output@book@meta{%
+    \ifx\AMS@publkey\@empty\else
+        % Add just enough to allow texml to find the gentag file.
+        \startXMLelement{book-meta}%
+            \startXMLelement{book-id}%
+                \setXMLattribute{book-id-type}{publisher}%
+                \AMS@publkey\par
+            \endXMLelement{book-id}\par
+            \ifx\AMS@volumeid\@empty\else
+                \startXMLelement{book-id}%
+                    \setXMLattribute{book-id-type}{volume_id}%
+                    \AMS@volumeid\par
+                \endXMLelement{book-id}\par
+            \fi
+            \ifx\AMS@DOI\@empty\else
+                \startXMLelement{book-id}%
+                    \setXMLattribute{book-id-type}{doi}%
+                    \setXMLattribute{assigning-authority}{crossref}%
+                    \AMS@DOI\par
+                \endXMLelement{book-id}\par
+            \fi
+            \ifx\AMS@lccn\@empty\else
+                \startXMLelement{book-id}%
+                    \setXMLattribute{book-id-type}{lccn}%
+                    \setXMLattribute{assigning-authority}{Library of Congress}%
+                    \AMS@lccn\par
+                \endXMLelement{book-id}\par
+            \fi
+            \ifx\AMS@volumeno\@empty
+                \ifx\AMS@manid\@empty\else
+                    \startXMLelement{book-volume-number}%
+                        \AMS@manid\par
+                    \endXMLelement{book-volume-number}\par
+                \fi
+            \else
+                \startXMLelement{book-volume-number}%
+                    \AMS@volumeno\par
+                \endXMLelement{book-volume-number}\par
+            \fi
+        \endXMLelement{book-meta}%
+        \par        
+    \fi
 }
 
 \def\@end@BITS@section{%

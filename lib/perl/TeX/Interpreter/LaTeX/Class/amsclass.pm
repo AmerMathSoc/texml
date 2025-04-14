@@ -485,6 +485,13 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\newif\iftexml@add@history@
+\texml@add@history@true
+
+\def\noTeXMLhistory{%
+    \texml@add@history@false
+}
+
 \def\abstractname{Abstract}
 \let\AMS@abstract\@empty
 
@@ -557,6 +564,9 @@ __DATA__
 
 \def\DOI{\gdef\AMS@DOI}
 \let\AMS@DOI\@empty
+
+\def\LCCN{\gdef\AMS@lccn}
+\let\AMS@lccn\@empty
 
 \def\curraddrname{{\itshape Current address}}
 \def\emailaddrname{{\itshape Email address}}

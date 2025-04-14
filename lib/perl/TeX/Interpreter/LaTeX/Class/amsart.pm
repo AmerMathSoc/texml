@@ -199,19 +199,19 @@ __DATA__
                 \startXMLelement{journal-title}
                     \AMS@publname
                 \endXMLelement{journal-title}\par
-                \ifx\AMS@pissn\@empty\else
-                    \startXMLelement{issn}
-                        \setXMLattribute{publication-format}{print}
-                        \AMS@pissn
-                    \endXMLelement{issn}\par
-                \fi
-                \ifx\AMS@eissn\@empty\else
-                    \startXMLelement{issn}
-                        \setXMLattribute{publication-format}{electronic}
-                        \AMS@eissn
-                    \endXMLelement{issn}\par
-                \fi
             \endXMLelement{journal-title-group}
+            \ifx\AMS@pissn\@empty\else
+                \startXMLelement{issn}
+                    \setXMLattribute{publication-format}{print}
+                    \AMS@pissn
+                \endXMLelement{issn}\par
+            \fi
+            \ifx\AMS@eissn\@empty\else
+                \startXMLelement{issn}
+                    \setXMLattribute{publication-format}{electronic}
+                    \AMS@eissn
+                \endXMLelement{issn}\par
+            \fi
             \output@article@publisher
         \fi
         \endXMLelement{journal-meta}\par
@@ -423,13 +423,6 @@ __DATA__
             \@titlegraphicnote\par
         \endXMLelement{notes}
     \fi
-}
-
-\newif\iftexml@add@history@
-\texml@add@history@true
-
-\def\noTeXMLhistory{%
-    \texml@add@history@false
 }
 
 \def\output@article@history{%
