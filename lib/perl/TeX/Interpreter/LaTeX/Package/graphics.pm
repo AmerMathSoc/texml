@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::graphics;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -37,9 +37,13 @@ use TeX::Constants qw(:named_args);
 
 use TeX::Token qw(:catcodes);
 
+use TeX::TokenList qw(:factories);
+
+use TeX::Token::Constants qw(BEGIN_GROUP END_GROUP);
+
 use TeX::KPSE qw(kpse_lookup);
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -48,49 +52,57 @@ sub install ( $ ) {
 
     $tex->read_package_data();
 
-    $tex->define_pseudo_macro('includegraphics' => \&do_include_graphics);
+    $tex->define_pseudo_macro('Gin@setfile' => \&do_gin_setfile);
 
     return;
 }
 
-sub do_include_graphics {
+sub do_gin_setfile {
     my $self = shift;
 
     my $tex   = shift;
     my $token = shift;
 
-    my $opt = $tex->scan_delimited_parameter(CATCODE_BEGIN_GROUP);
+    my $type     = $tex->read_undelimited_parameter();
+    my $ext      = $tex->read_undelimited_parameter();
+    my $filename = $tex->read_undelimited_parameter(EXPANDED);
 
-    my $filename = $tex->read_balanced_text(undef, EXPANDED);
+    my $path = kpse_lookup($filename);
 
-    $tex->get_next();
+    if (! defined $path) {
+        $tex->print_err("Can't find graphic file '$filename'");
+        $tex->error();
+
+        return;
+
+    }
+
+    $path =~ s{\A\./}{};
 
     my $expansion;
 
     my ($basename, $dir, $suffix) = fileparse($filename, qr{\.[^.]*});
 
-    for my $ext ('.svg', "$suffix.svg",
-                 '.png', "$suffix.png",
-                 '.jpg', "$suffix.jpg",
-                 '.jpeg', "$suffix.jpeg") {
-        if (defined (my $path = kpse_lookup("$basename$ext"))) {
-            $path =~ s{\A\./}{};
+    $suffix =~ s{^\.}{};
+    $suffix = lc($suffix);
 
-            if ($path =~ m{\.svg$}) {
-                $expansion = qq{\\TeXMLImportSVG{$path}};
-            } else {
-                $expansion = qq{\\TeXMLImportGraphic{$path}};
-            }
+    if ($suffix eq 'svg') {
+        $expansion = $tex->tokenize(qq{\\TeXMLImportSVG{$path}});
+    } elsif ($suffix =~ m{^(png|jpg|jpeg)$}i) {
+        $expansion = $tex->tokenize(qq{\\TeXMLImportGraphic{$path}});
+    } else {
+        $expansion = new_token_list;
 
-            last;
-        }
+        $expansion->push($tex->tokenize(q{\TeXMLCreateSVG}));
+
+        $expansion->push(BEGIN_GROUP);
+
+        $expansion->push($tex->get_macro_expansion_text(q{texml@includegraphics}));
+
+        $expansion->push(END_GROUP);
     }
 
-    if (! defined $expansion) {
-        $expansion = qq{\\TeXMLCreateSVG{\\includegraphics${opt}{${filename}}}};
-    }
-
-    return $tex->tokenize($expansion);
+    return $expansion
 }
 
 1;
@@ -98,6 +110,16 @@ sub do_include_graphics {
 __DATA__
 
 \ProvidesPackage{graphics}
+
+\LoadRawMacros
+
+\def\Gin@extensions{% order here is like dvipdfmx.def, except for PS
+  .svg,%
+  .pdf,.PDF,.eps,.EPS,.mps,.MPS,.ps,.PS,%
+  .png,.PNG,.jpg,.JPG,.jpeg,.JPEG,.jp2,.JP2,.jpf,.JPF,.bmp,.BMP,%
+  .pict,.PICT,.psd,.PSD,.mac,.MAC,.TGA,.tga,%
+  .gif,.GIF,.tif,.TIF,.tiff,.TIFF,%
+}
 
 \@ifpackagewith{graphics}{demo}{%
     \GenericError{%
@@ -109,22 +131,28 @@ __DATA__
     }{blah}%
 }{}
 
-\def\resizebox#1#2#3{#3}
+\let\LTX@includegraphics\includegraphics
 
-%\def\includegraphics#1#{\@includegraphics{#1}}
+\let\texml@includegraphics\@empty
 
-\@ifpackagewith{graphics}{demo}{%
-    \def\@includegraphics#1#2{%
-        % \TeXMLCreateSVG{\includegraphics#1{#2}}%
-    }%
-}{%
-    \def\@includegraphics#1#2{%
-        \TeXMLCreateSVG{\includegraphics#1{#2}}%
-    }%
+\def\g@save@includegraphics{%
+    \g@addto@macro\texml@includegraphics
 }
 
-\newcommand{\graphicspath}[1]{}
-\let\DeclareGraphicsExtensions\@gobble
+\def\includegraphics#1#{%
+    \begingroup
+        \def\texml@includegraphics{\includegraphics#1}%
+        \@includegraphics
+}
+
+\def\@includegraphics#1{%
+        \g@save@includegraphics{{#1}}%
+        \let\includegraphics\LTX@includegraphics
+        \texml@includegraphics
+    \endgroup
+}
+
+\def\resizebox#1#2#3{#3}
 
 \def\scalebox#1{\@ifnextchar[{\@scalebox{#1}}{\@scalebox{#1}[]}}
 

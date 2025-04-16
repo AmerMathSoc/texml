@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::graphicx;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -49,21 +49,9 @@ __DATA__
 
 \ProvidesPackage{graphicx}
 
-\@ifpackagewith{graphicx}{demo}{%
-    \GenericError{%
-        (texml)\@spaces\@spaces\@spaces\@spaces
-    }{%
-        Error: Don't use demo option with graphicx%
-    }{%
-        Just don't.%
-    }{blah}%
-}{}
+\LoadRawMacros
 
-\RequirePackage{graphics}
-
-\long\def\setkeys#1#2{}
-
-\newcommand{\rotatebox}[3][]{%
+\renewcommand{\rotatebox}[3][]{%
     \TeXMLCreateSVG{\rotatebox[#1]{#2}{#3}}%
 }
 
