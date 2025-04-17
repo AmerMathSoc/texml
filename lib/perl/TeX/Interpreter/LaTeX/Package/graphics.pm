@@ -1,5 +1,7 @@
 package TeX::Interpreter::LaTeX::Package::graphics;
 
+use 5.26.0;
+
 # Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,9 +31,11 @@ package TeX::Interpreter::LaTeX::Package::graphics;
 # USA
 # email: tech-support@ams.org
 
-use strict;
+use warnings;
 
 use File::Basename qw(fileparse);
+
+use TeX::Arithmetic qw(sprint_scaled);
 
 use TeX::Constants qw(:named_args);
 
@@ -40,6 +44,8 @@ use TeX::Token qw(:catcodes);
 use TeX::TokenList qw(:factories);
 
 use TeX::Token::Constants qw(BEGIN_GROUP END_GROUP);
+
+use Image::Info qw(image_info);
 
 use TeX::KPSE qw(kpse_lookup);
 
@@ -52,57 +58,98 @@ sub install {
 
     $tex->read_package_data();
 
-    $tex->define_pseudo_macro('Gin@setfile' => \&do_gin_setfile);
+    $tex->define_pseudo_macro('Gread@image' => \&do_Gread_image);
+
+    $tex->define_pseudo_macro('Gin@round' => \&do_Gin_round_dimen);
 
     return;
 }
 
-sub do_gin_setfile {
+sub do_Gin_round_dimen {
+    my $self = shift;
+
+    my $tex     = shift;
+    my $cur_tok = shift;
+
+    my $token = $tex->get_x_token();
+
+    my $meaning = $tex->get_meaning($token);
+
+    my $value = $meaning->read_value($tex, $cur_tok);
+
+    my $pt = sprintf "%.2f", sprint_scaled($value);
+
+    $pt =~ s{\.0+$}{};
+
+    return $tex->tokenize("${pt}pt");
+}
+
+# I don't need to use lexical subroutines here, but I want to play
+# with them.
+
+my sub image_bbox {
+    my $img_file = shift;
+
+    state sub pt_to_bp {
+        my $pt = shift;
+
+        $pt =~ s{pt$}{};
+
+        my $bp = ($pt * 72) / 72.27;
+
+        return $bp;
+    }
+
+    my $info = image_info($img_file);
+
+    if (my $error = $info->{error}) {
+        return (0, 0, 0, 0, undef, $error);
+    }
+
+    return (0, 0, pt_to_bp($info->{width}), pt_to_bp($info->{height}),
+            $info->{file_media_type})
+}
+
+sub do_Gread_image {
     my $self = shift;
 
     my $tex   = shift;
     my $token = shift;
 
-    my $type     = $tex->read_undelimited_parameter();
-    my $ext      = $tex->read_undelimited_parameter();
-    my $filename = $tex->read_undelimited_parameter(EXPANDED);
+    my $file = $tex->read_undelimited_parameter(EXPANDED);
 
-    my $path = kpse_lookup($filename);
+    my $path = kpse_lookup($file);
 
     if (! defined $path) {
-        $tex->print_err("Can't find graphic file '$filename'");
+        $tex->print_err("Can't find graphic file '$file'");
         $tex->error();
 
         return;
-
-    }
+    };
 
     $path =~ s{\A\./}{};
 
-    my $expansion;
+    $tex->define_simple_macro('Gin@fullpath' => $path);
 
-    my ($basename, $dir, $suffix) = fileparse($filename, qr{\.[^.]*});
+    my ($llx, $lly, $urx, $ury, $media_type, $error) = image_bbox($path);
 
-    $suffix =~ s{^\.}{};
-    $suffix = lc($suffix);
+    if (defined $error) {
+        $tex->print_err("Can't parse image file '$path': $error");
 
-    if ($suffix eq 'svg') {
-        $expansion = $tex->tokenize(qq{\\TeXMLImportSVG{$path}});
-    } elsif ($suffix =~ m{^(png|jpg|jpeg)$}i) {
-        $expansion = $tex->tokenize(qq{\\TeXMLImportGraphic{$path}});
-    } else {
-        $expansion = new_token_list;
+        $tex->error();
 
-        $expansion->push($tex->tokenize(q{\TeXMLCreateSVG}));
-
-        $expansion->push(BEGIN_GROUP);
-
-        $expansion->push($tex->get_macro_expansion_text(q{texml@includegraphics}));
-
-        $expansion->push(END_GROUP);
+        return;
     }
 
-    return $expansion
+    $tex->define_simple_macro('Gin@media@type' => $media_type);
+
+    $tex->define_simple_macro('Gin@llx', $llx);
+    $tex->define_simple_macro('Gin@lly', $lly);
+
+    $tex->define_simple_macro('Gin@urx', $urx);
+    $tex->define_simple_macro('Gin@ury', $ury);
+
+    return;
 }
 
 1;
@@ -110,16 +157,6 @@ sub do_gin_setfile {
 __DATA__
 
 \ProvidesPackage{graphics}
-
-\LoadRawMacros
-
-\def\Gin@extensions{% order here is like dvipdfmx.def, except for PS
-  .svg,%
-  .pdf,.PDF,.eps,.EPS,.mps,.MPS,.ps,.PS,%
-  .png,.PNG,.jpg,.JPG,.jpeg,.JPEG,.jp2,.JP2,.jpf,.JPF,.bmp,.BMP,%
-  .pict,.PICT,.psd,.PSD,.mac,.MAC,.TGA,.tga,%
-  .gif,.GIF,.tif,.TIF,.tiff,.TIFF,%
-}
 
 \@ifpackagewith{graphics}{demo}{%
     \GenericError{%
@@ -130,6 +167,57 @@ __DATA__
         Just don't.%
     }{blah}%
 }{}
+
+\def\Gin@driver{texml.def}
+
+\LoadRawMacros
+
+\newdimen\Gin@nat@width
+\newdimen\Gin@nat@height
+
+\def\Gin@extensions{%
+    .svg,%
+    .pdf,.PDF,.eps,.EPS,.mps,.MPS,.ps,.PS,%
+    .png,.PNG,%
+    .jpg,.JPG,.jpeg,.JPEG,%
+    .gif,.GIF,%
+}
+
+\@namedef{Gin@rule@.svg}#1{{image}{.svg}{#1}}
+
+\@namedef{Gin@rule@.jpg}#1{{image}{.jpg}{#1}}
+\@namedef{Gin@rule@.JPG}#1{{image}{.JPG}{#1}}
+\@namedef{Gin@rule@.jpeg}#1{{image}{.jpeg}{#1}}
+\@namedef{Gin@rule@.JPEG}#1{{image}{.JPEG}{#1}}
+\@namedef{Gin@rule@.png}#1{{image}{.png}{#1}}
+\@namedef{Gin@rule@.PNG}#1{{image}{.PNG}{#1}}
+\@namedef{Gin@rule@.gif}#1{{image}{.gif}{#1}}
+\@namedef{Gin@rule@.GIF}#1{{image}{.GIF}{#1}}
+
+\@namedef{Gin@rule@.mps}#1{{eps}{.mps}{#1}}
+\@namedef{Gin@rule@.MPS}#1{{eps}{.MPS}{#1}}
+\@namedef{Gin@rule@.pdf}#1{{eps}{.pdf}{#1}}
+\@namedef{Gin@rule@.PDF}#1{{eps}{.PDF}{#1}}
+\@namedef{Gin@rule@.eps}#1{{eps}{.eps}{#1}}
+\@namedef{Gin@rule@.EPS}#1{{eps}{.EPS}{#1}}
+
+\let\Gin@media@type\@empty
+\let\Gin@fullpath\@empty
+
+\def\Ginclude@image#1{%
+    \startXMLelement{\jats@graphics@element}%
+        \setXMLattribute{xlink:href}{\Gin@fullpath}%
+        \setXMLattribute{mimetype}{\Gin@media@type}%
+        \setXMLattribute{width}{\Gin@round\Gin@req@width}%
+        \setXMLattribute{height}{\Gin@round\Gin@req@height}%
+    \endXMLelement{\jats@graphics@element}%
+}
+
+\let\Gread@eps\@gobble
+
+\def\Ginclude@eps#1{%
+    \expandafter\TeXMLCreateSVG\expandafter{\texml@includegraphics}%
+}
 
 \let\LTX@includegraphics\includegraphics
 
