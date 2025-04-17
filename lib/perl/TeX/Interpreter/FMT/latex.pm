@@ -1,6 +1,8 @@
 package TeX::Interpreter::FMT::latex;
 
-# Copyright (C) 2022-2024 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022-2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,20 +31,16 @@ package TeX::Interpreter::FMT::latex;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 # The distinction between TeX::Interpreter::FMT::latex and
 # TeX::Interpreter::LaTeX is obscure bordering on obtuse.
 
-use Image::PNG;
-use Image::JPEG::Size;
-
 use List::Util qw(all);
 
 use TeX::Utils::LibXML;
 
-use TeX::Utils::Misc qw(empty file_mimetype empty nonempty pluralize trim);
+use TeX::Utils::Misc qw(nonempty pluralize trim);
 
 use TeX::Constants qw(:named_args);
 
@@ -95,8 +93,6 @@ sub install ( $ ) {
     $tex->define_csname('TeXML@sortXMLcites' => \&do_sort_cites);
 
     $tex->define_csname('TeXML@setliststyle' => \&do_set_list_style);
-
-    $tex->define_csname('TeXML@add@graphic@attributes' => \&do_graphic_attibutes);
 
     $tex->define_csname('TeXML@register@refkey' => \&do_register_refkey);
 
@@ -635,7 +631,7 @@ sub do_resolve_xref_groups {
     return;
 }
 
-sub __extract_cite_label( $ ) {
+my sub __extract_cite_label {
     my $xref_node = shift;
 
     my $label = $xref_node->firstChild();
@@ -747,70 +743,6 @@ sub do_counter_style {
     my $arg = $tex->read_undelimited_parameter();
 
     $tex->conv_toks($token);
-
-    return;
-}
-
-sub __get_graphic_dimens( $$ ) {
-    my $file = shift;
-    my $mime_type = shift;
-
-    if ($mime_type eq 'image/svg+xml') {
-        my $parser = XML::LibXML->new();
-        $parser->set_option(huge => 1);
-
-        my $doc = eval { $parser->load_xml(location => $file) };
-
-        if (! defined $doc) {
-            warn "Can't parse SVG file to read dimensions\n";
-
-            return;
-        }
-
-        my $root = $doc->documentElement();
-
-        my $width  = $root->getAttribute("width");
-        my $height = $root->getAttribute("height");
-
-        return ($width, $height);
-    }
-
-    if ($mime_type eq 'image/jpeg') {
-        my $jpg_util = Image::JPEG::Size->new();
-
-        return $jpg_util->file_dimensions($file);
-    }
-
-    if ($mime_type eq 'image/png') {
-        my $png = Image::PNG->new();
-
-        return unless $png->read($file);
-        # or do {
-        #     die "Can't read $file: $!\n";
-        # };
-
-        return ($png->width(), $png->height());
-    }
-
-    return;
-}
-
-sub do_graphic_attibutes {
-    my $tex   = shift;
-    my $token = shift;
-
-    my $file = $tex->read_undelimited_parameter();
-
-    my $mime_type = file_mimetype($file);
-
-    if (nonempty($mime_type)) {
-        $tex->set_xml_attribute(mimetype => $mime_type);
-    }
-
-    if (my ($width, $height) = __get_graphic_dimens($file, $mime_type)) {
-        $tex->set_xml_attribute(width => $width);
-        $tex->set_xml_attribute(height => $height);
-    }
 
     return;
 }
@@ -995,15 +927,6 @@ __DATA__
 }
 
 \def\jats@graphics@element{inline-graphic}
-
-%% Note that the optional argument is currently ignored.
-
-\newcommand{\TeXMLImportGraphic}[2][]{%
-    \startXMLelement{\jats@graphics@element}%
-    \setXMLattribute{xlink:href}{#2}%
-    \TeXML@add@graphic@attributes{#2}%
-    \endXMLelement{\jats@graphics@element}%
-}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
