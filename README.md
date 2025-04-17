@@ -120,8 +120,6 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * apt install libconfig-inifiles-perl
 
-* apt install libfile-mmagic-xs-perl
-
 * apt install libxml-libxml-perl [XML::LibXML]
 
 * apt install libxml-libxslt-perl [XML::LibXSLT]
@@ -136,9 +134,7 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * apt install make
 
-* cpan Image::PNG
-
-* cpan Image::JPEG::Size
+* apt install libimage-info-perl
 
 * apt install pdf2svg
 
