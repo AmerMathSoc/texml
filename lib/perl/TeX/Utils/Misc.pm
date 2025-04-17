@@ -1,6 +1,8 @@
 package TeX::Utils::Misc;
 
-# Copyright (C) 2022 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,7 @@ package TeX::Utils::Misc;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
-
-use version; our $VERSION = qv '1.2.0';
 
 use UNIVERSAL;
 
@@ -43,7 +42,6 @@ our %EXPORT_TAGS = (all => [ qw(concat
                                 nonempty
                                 trim
                                 pluralize
-                                file_mimetype
                                 file_mtime
                                 iso_8601_timestamp
                                 string_to_chars
@@ -119,32 +117,6 @@ sub pluralize( $$;$ ){
     my $plural   = shift || "${singular}s";
 
     return $cnt == 1 ? $singular : $plural;
-}
-
-sub file_mimetype($) {
-    my $filename = shift;
-
-    ## MMAGIC::checktype_filename returns "x-system/x-unix" if the
-    ## file has execute bits set, so we bypass it by opening the file
-    ## ourselves and calling checktype_filehandle to force MMagic to
-    ## look at the contents of the file.
-
-    return unless nonempty $filename;
-
-    # Hack until I figure out how add_magic works.
-
-    return "image/svg+xml" if $filename =~ m{\.svg\z}i;
-
-    open(my $FH, "<", $filename) or do {
-        warn "Can't open $filename: $!\n";
-        return;
-    };
-
-    my $mimetype = $MMAGIC->fhmagic($FH);
-
-    close($FH);
-
-    return $mimetype;
 }
 
 sub file_mtime( $ ) {
