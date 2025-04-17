@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX;
 
-# Copyright (C) 2022 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,7 @@ package TeX::Interpreter::LaTeX;
 # USA
 # email: tech-support@ams.org
 
-use strict;
+use warnings;
 
 use base qw(TeX::Interpreter Exporter);
 
@@ -74,8 +76,6 @@ use TeX::TokenList;
 use TeX::Constants qw(:command_codes :scan_types :selector_codes :token_types);
 
 use TeX::Primitive::Parameter qw(:factories);
-
-# use TeX::KPSE qw(kpse_lookup);
 
 use TeX::Utils::SVG;
 
@@ -128,7 +128,6 @@ sub INITIALIZE :CUMULATIVE(BASE FIRST) {
     $tex->define_pseudo_macro('@opt@gobble' => \&do_opt_gobble);
 
     $tex->define_pseudo_macro('TeXMLCreateSVG' => \&do_texml_create_svg);
-    $tex->define_pseudo_macro('TeXMLImportSVG' => \&do_texml_import_svg);
 
     $tex->define_csname(LoadRawMacros => \&do_load_raw_macros);
 
@@ -262,6 +261,7 @@ sub write_out {
 my %FILTERED_OUT = (
     'mathcolor.ltx' => 1,
     'color.cfg'     => 1,
+    'graphics.cfg'  => 1,
 );
 
 ## TODO: Move this into TeX::Interpreter::start_input().  Or just get rid of it?
@@ -401,6 +401,9 @@ sub scan_environment_body {
 ##                                                                  ##
 ######################################################################
 
+## TBD: This should be in a separate module, probably unified with
+## TeX::Utils::SVG.
+
 use constant SVG_DIR => "Images";
 
 sub do_texml_create_svg {
@@ -416,7 +419,7 @@ sub do_texml_create_svg {
 
     my $is_mmode = ! $tex->is_mmode();
 
-    my $opt = $tex->scan_optional_argument();
+    my $opt = $tex->scan_optional_argument(); ## NOT CURRENTLY USED
 
     my $tex_fragment = $tex->read_undelimited_parameter();
 
@@ -495,42 +498,9 @@ sub do_texml_create_svg {
         }
     }
 
-    my $expansion;
-
     return unless nonempty($out_file) && -e $out_file;
 
-    if (nonempty($opt)) {
-        $expansion = qq{\\TeXMLImportGraphic[$opt]{$out_file}};
-    } else {
-        $expansion = qq{\\TeXMLImportGraphic{$out_file}};
-    }
-
-    return $tex->tokenize($expansion);
-}
-
-sub do_texml_import_svg {
-    my $self = shift;
-
-    my $tex   = shift;
-    my $token = shift;
-
-    my $svg_path = $tex->read_undelimited_parameter();
-
-    if (empty($svg_path)) {
-        $tex->print_err("LaTeX error: No SVG file given");
-
-        $tex->error();
-
-        return;
-    } elsif (! -e $svg_path) {
-        $tex->print_err("LaTeX error: Can't find $svg_path");
-
-        $tex->error();
-
-        return;
-    }
-
-    my $expansion = qq{\\TeXMLImportGraphic{$svg_path}};
+    my $expansion = qq{\\includegraphics{$out_file}};
 
     return $tex->tokenize($expansion);
 }
