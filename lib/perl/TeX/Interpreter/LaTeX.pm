@@ -49,8 +49,6 @@ use File::Spec::Functions qw(catdir);
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
 
-use TeX::KPSE qw(kpse_lookup);
-
 use TeX::Interpreter qw(make_eqvt);
 
 use File::Basename;
@@ -90,8 +88,6 @@ my %document_class_of :ATTR(:name<document_class>);
 my %refkeys_of  :HASH(:name<refkey>);
 my %cur_ref_of :ATTR(:name<cur_ref>);
 
-# my %document_bibcites_of :HASH(:name<document_bibcite>);
-
 ######################################################################
 ##                                                                  ##
 ##                     PRIVATE CLASS CONSTANTS                      ##
@@ -123,13 +119,9 @@ sub INITIALIZE :CUMULATIVE(BASE FIRST) {
         $tex->set_file_name($tex_file);
     }
 
-    $tex->define_csname('@filtered@input' => \&do_filtered_input);
-
     $tex->define_pseudo_macro('@opt@gobble' => \&do_opt_gobble);
 
     $tex->define_pseudo_macro('TeXMLCreateSVG' => \&do_texml_create_svg);
-
-    $tex->define_csname(LoadRawMacros => \&do_load_raw_macros);
 
     return;
 }
@@ -165,31 +157,6 @@ sub scan_optional_argument {
 
         return $args[1];
     }
-
-    return;
-}
-
-sub do_load_raw_macros {
-    my $tex = shift;
-
-    my $basename = $tex->expansion_of('@currname');
-    my $file_ext = $tex->expansion_of('@currext');
-
-    my $file_name = qq{$basename.$file_ext};
-
-    my $path = kpse_lookup($file_name);
-
-    if (empty($path) && $file_name =~ s{_}{-}g) {
-        $path = kpse_lookup($file_name);
-    }
-
-    if (empty($path)) {
-        $tex->print_err("I can't find file `$file_name'.");
-
-        return;
-    }
-
-    $tex->process_file($path);
 
     return;
 }
@@ -241,50 +208,6 @@ sub write_out {
     $tex->print_ln();
 
     $tex->set_selector($old_setting);
-
-    return;
-}
-
-######################################################################
-##                                                                  ##
-##                            UTILITIES                             ##
-##                                                                  ##
-######################################################################
-
-## do_filtered_input() intercepts files that might need special handling:
-##
-##    Misc. graphics       : Convert to SVG
-##
-##    %FILTERED_OUT        : Alternatively, we could distribute our own
-##                           sanitized versions of these.
-
-my %FILTERED_OUT = (
-    'mathcolor.ltx' => 1,
-    'color.cfg'     => 1,
-    'graphics.cfg'  => 1,
-);
-
-## TODO: Move this into TeX::Interpreter::start_input().  Or just get rid of it?
-
-sub do_filtered_input {
-    my $tex   = shift;
-    my $token = shift;
-
-    my $file_name = $tex->scan_file_name();
-
-    return if $FILTERED_OUT{$file_name};
-
-    if ($file_name =~ m{\.(eps_tex|pstex_t) \z}smx) {
-        # Inkscape (and others?) graphics wrappers
-
-        my $replacement = $tex->tokenize(qq{\\TeXMLCreateSVG{\\input{$file_name}}});
-
-        $tex->begin_token_list($replacement, macro);
-
-        return;
-    }
-
-    $tex->process_file($file_name);
 
     return;
 }

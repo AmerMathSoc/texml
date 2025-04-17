@@ -38,9 +38,11 @@ use warnings;
 
 use List::Util qw(all);
 
+use TeX::KPSE qw(kpse_lookup);
+
 use TeX::Utils::LibXML;
 
-use TeX::Utils::Misc qw(nonempty pluralize trim);
+use TeX::Utils::Misc qw(empty nonempty pluralize trim);
 
 use TeX::Constants qw(:named_args);
 
@@ -72,10 +74,7 @@ sub install ( $ ) {
 
     $tex->define_pseudo_macro(LoadIfModuleExists => \&do_load_if_module_exists);
 
-    $tex->read_package_data();
-
-    ## Override definition of \leavevmode from latex.fmt
-    $tex->define_csname(leavevmode => $tex->load_primitive('leavevmode'));
+    $tex->define_csname(LoadRawMacros => \&do_load_raw_macros);
 
     $tex->define_csname('@push@sectionstack'  => \&do_push_section_stack);
     $tex->define_pseudo_macro('@pop@sectionstack'    => \&do_pop_section_stack);
@@ -96,6 +95,13 @@ sub install ( $ ) {
 
     $tex->define_csname('TeXML@register@refkey' => \&do_register_refkey);
 
+    $tex->define_csname('@filtered@input' => \&do_filtered_input);
+
+    $tex->read_package_data();
+
+    ## Override definition of \leavevmode from latex.fmt
+    $tex->define_csname(leavevmode => $tex->load_primitive('leavevmode'));
+
     $tex->define_pseudo_macro(documentclass => \&do_documentclass);
 
     return;
@@ -106,6 +112,44 @@ sub install ( $ ) {
 ##                             COMMANDS                             ##
 ##                                                                  ##
 ######################################################################
+
+## do_filtered_input() intercepts files that might need special handling:
+##
+##    Misc. graphics       : Convert to SVG
+##
+##    %FILTERED_OUT        : Alternatively, we could distribute our own
+##                           sanitized versions of these.
+
+my %FILTERED_OUT = (
+    'mathcolor.ltx' => 1,
+    'color.cfg'     => 1,
+    'graphics.cfg'  => 1,
+);
+
+## TODO: Move this into TeX::Interpreter::start_input().  Or just get rid of it?
+
+sub do_filtered_input {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $file_name = $tex->scan_file_name();
+
+    return if $FILTERED_OUT{$file_name};
+
+    if ($file_name =~ m{\.(eps_tex|pstex_t) \z}smx) {
+        # Inkscape (and others?) graphics wrappers
+
+        my $replacement = $tex->tokenize(qq{\\TeXMLCreateSVG{\\input{$file_name}}});
+
+        $tex->begin_token_list($replacement, macro);
+
+        return;
+    }
+
+    $tex->process_file($file_name);
+
+    return;
+}
 
 ## There's some redundancy between this and
 ## TeX::Interpreter::load_module() and related methods that should be
@@ -162,6 +206,31 @@ sub do_load_if_module_exists {
     }
 
     return new_token_list(make_csname_token($expansion));
+}
+
+sub do_load_raw_macros {
+    my $tex = shift;
+
+    my $basename = $tex->expansion_of('@currname');
+    my $file_ext = $tex->expansion_of('@currext');
+
+    my $file_name = qq{$basename.$file_ext};
+
+    my $path = kpse_lookup($file_name);
+
+    if (empty($path) && $file_name =~ s{_}{-}g) {
+        $path = kpse_lookup($file_name);
+    }
+
+    if (empty($path)) {
+        $tex->print_err("I can't find file `$file_name'.");
+
+        return;
+    }
+
+    $tex->process_file($path);
+
+    return;
 }
 
 sub do_documentclass {
@@ -2929,6 +2998,7 @@ __DATA__
 \RequirePackage{DisablePackages}
 \RequirePackage{HTMLtable}
 \RequirePackage{Diacritics}
+\RequirePackage{graphicx}
 
 \endinput
 
