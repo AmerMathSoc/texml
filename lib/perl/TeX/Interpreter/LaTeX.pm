@@ -43,17 +43,9 @@ our @EXPORT;
 
 use List::Util qw(uniq);
 
-use Digest::MD5 qw(md5_hex);
-
-use File::Spec::Functions qw(catdir);
-
 use TeX::Command::Executable::Assignment qw(:modifiers);
 
 use TeX::Interpreter qw(make_eqvt);
-
-use File::Basename;
-
-use File::Copy;
 
 use File::Spec::Functions qw(rel2abs);
 
@@ -74,8 +66,6 @@ use TeX::TokenList;
 use TeX::Constants qw(:command_codes :scan_types :selector_codes :token_types);
 
 use TeX::Primitive::Parameter qw(:factories);
-
-use TeX::Utils::SVG;
 
 ######################################################################
 ##                                                                  ##
@@ -120,8 +110,6 @@ sub INITIALIZE :CUMULATIVE(BASE FIRST) {
     }
 
     $tex->define_pseudo_macro('@opt@gobble' => \&do_opt_gobble);
-
-    $tex->define_pseudo_macro('TeXMLCreateSVG' => \&do_texml_create_svg);
 
     return;
 }
@@ -316,116 +304,6 @@ sub scan_environment_body {
     }
 
     return $body;
-}
-
-######################################################################
-##                                                                  ##
-##                           SVG CREATION                           ##
-##                                                                  ##
-######################################################################
-
-## TBD: This should be in a separate module, probably unified with
-## TeX::Utils::SVG.
-
-use constant SVG_DIR => "Images";
-
-sub do_texml_create_svg {
-    my $self = shift;
-
-    my $tex   = shift;
-    my $token = shift;
-
-    ## Ignore explicit *'s and just check for math mode.
-    ## URG: This might fail for $\text{\includegraphics{...}}$
-
-    my $starred = $tex->is_starred();
-
-    my $is_mmode = ! $tex->is_mmode();
-
-    my $opt = $tex->scan_optional_argument(); ## NOT CURRENTLY USED
-
-    my $tex_fragment = $tex->read_undelimited_parameter();
-
-    my $scale_factor = 1;
-
-    if ($tex_fragment =~ m{\\includegraphics}) {
-        my $svg_mag = $tex->TeXML_SVG_mag();
-
-        $scale_factor = $svg_mag/1000;
-    }
-
-    if (defined(my $pinlabel = $tex->get_csname("thelabellist"))) {
-        if (defined(my $equiv = $pinlabel->get_equiv())) {
-            my $token_list = $equiv->macro_call($tex);
-
-            if (defined $token_list && $token_list->length()) {
-                $tex_fragment->unshift($token_list);
-            }
-
-            $tex->let_csname('thelabellist', '@empty', MODIFIER_GLOBAL);
-        }
-    }
-
-    my $md5_sum = md5_hex($tex_fragment->to_string());
-
-    my $id = "img$md5_sum";
-
-    if (! -e SVG_DIR) {
-        mkdir SVG_DIR or do {
-            $tex->print_err("Unable to create " . SVG_DIR . " directory");
-
-            $tex->error();
-
-            return;
-        };
-    }
-
-    my $out_file = catdir(SVG_DIR, "$id.svg");
-
-    my $regenerate = $tex->do_svg();
-
-    if (-e $out_file) {
-        my $tex_file = $tex->get_file_name();
-
-        my $m_in  = file_mtime($tex_file);
-        my $m_out = file_mtime($out_file);
-
-        if (defined $m_in && defined $m_out && $m_in < $m_out) {
-            $tex->print_nl("Found up-to-date $out_file.  Not regenerating.");
-
-            $regenerate = 0;
-        }
-    }
-
-    if ($regenerate) {
-        my $svg = $tex->get_svg_agent();
-
-        if ($scale_factor != 1) {
-            $tex_fragment = qq{\\scalebox{$scale_factor}{$tex_fragment}};
-        }
-
-        my $svg_file = $svg->convert_tex($tex_fragment, $id, $tex, $starred);
-
-        if (empty($svg_file)) {
-            $tex->start_xml_element("MISSING_SVG_GRAPHIC");
-            $tex->end_xml_element("MISSING_SVG_GRAPHIC");
-
-            return;
-        } else {
-            copy($svg_file, $out_file) or do {
-                $tex->fatal_error("Couldn't copy $svg_file to $out_file: $!");
-            };
-
-            $tex->print_nl("Wrote SVG file $out_file");
-            $tex->print_ln();
-        }
-    }
-
-    return unless nonempty($out_file) && -e $out_file;
-
-    my $expansion = qq{\\includegraphics{$out_file}};
-
-    return $tex->tokenize($expansion);
 }
 
 ######################################################################

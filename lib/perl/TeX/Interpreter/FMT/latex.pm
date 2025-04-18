@@ -2998,7 +2998,7 @@ __DATA__
 \RequirePackage{DisablePackages}
 \RequirePackage{HTMLtable}
 \RequirePackage{Diacritics}
-\RequirePackage{graphicx}
+\RequirePackage{TeXMLCreateSVG}
 
 \endinput
 
