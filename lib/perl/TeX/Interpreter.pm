@@ -14151,7 +14151,7 @@ my %svg_agent_of :ATTR(:name<svg_agent>);
 sub __list_svg_extensions {
     my $tex = shift;
 
-    return qw(TeXMLGenerateSVG);
+    return;
 }
 
 sub install_svg_extensions {
