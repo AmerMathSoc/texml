@@ -1,5 +1,7 @@
 package TeX::Interpreter;
 
+use v5.26.0;
+
 # Copyright (C) 2022-2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,7 +31,7 @@ package TeX::Interpreter;
 # USA
 # email: tech-support@ams.org
 
-use v5.26;
+use warnings;
 
 our $TRACING = 1;
 
@@ -44,9 +46,6 @@ sub TRACE {
 
     return;
 }
-
-use strict;
-use warnings;
 
 use base qw(Exporter);
 
@@ -82,6 +81,7 @@ use File::Spec::Functions;
 
 use List::Util qw(none uniq);
 
+use TeX::Utils::SVG;
 use TeX::Utils::Misc;
 
 use TeX::Arithmetic qw(:arithmetic :string);
