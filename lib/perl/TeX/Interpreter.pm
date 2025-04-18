@@ -10850,8 +10850,6 @@ sub init_prim {
 
     $tex->install_xml_extensions();
 
-    $tex->install_svg_extensions();
-
     ## Provide aliases for pdfTeX names
 
     my $ifabsnum = TeX::Primitive::ifnum->new({ abs => 1 });
@@ -14147,26 +14145,6 @@ my %do_svg_of :BOOLEAN(:name<do_svg> :default<1>);
 my %use_xetex_of :BOOLEAN(:name<use_xetex> :default<0>);
 
 my %svg_agent_of :ATTR(:name<svg_agent>);
-
-sub __list_svg_extensions {
-    my $tex = shift;
-
-    return;
-}
-
-sub install_svg_extensions {
-    my $tex = shift;
-
-    for my $extension ($tex->__list_svg_extensions()) {
-        $tex->define_csname($extension => $tex->load_extension($extension));
-    }
-
-    for my $ext (qw(TeXMLlastSVGfile TeXMLlastSVGwidth TeXMLlastSVGheight)) {
-        $tex->define_simple_macro($ext => "");
-    }
-
-    return;
-}
 
 ######################################################################
 ##                                                                  ##
