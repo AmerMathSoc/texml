@@ -2,7 +2,7 @@ package TeX::Interpreter;
 
 use v5.26.0;
 
-# Copyright (C) 2022-2024 American Mathematical Society
+# Copyright (C) 2022-2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -10589,7 +10589,9 @@ sub extract_token {
             return make_csname_token("IMPOSSIBLE");
         }
         elsif ($eqtb_ptr < $params->single_base()) {
-            return make_character_token(chr($eqtb_ptr), CATCODE_ACTIVE);
+            my $char_code = $eqtb_ptr - $params->active_base();
+
+            return make_character_token(chr($char_code), CATCODE_ACTIVE);
         }
         elsif ($eqtb_ptr < $params->null_cs()) {
             return make_csname_token(chr($eqtb_ptr - $params->single_base()));
