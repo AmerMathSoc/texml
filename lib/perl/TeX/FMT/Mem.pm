@@ -1,5 +1,7 @@
 package TeX::FMT::Mem;
 
+use v5.26.0;
+
 # Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,7 +31,6 @@ package TeX::FMT::Mem;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use TeX::Arithmetic qw(scaled_to_string);
@@ -410,7 +411,7 @@ sub print_cs {
     if ($p < $self->active_base()) {
         print_esc("IMPOSSIBLE ");
     } elsif ($p < $self->single_base()) {
-        print chr($p);
+        print chr($p - $self->active_base());
     } elsif ($p < $self->null_cs()) {
         my $char = chr($p - $self->single_base());
         print_esc $char;
