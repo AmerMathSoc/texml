@@ -45,15 +45,7 @@ use List::Util qw(uniq);
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
 
-use TeX::Interpreter qw(make_eqvt);
-
-use File::Spec::Functions qw(rel2abs);
-
-use TeX::Class;
-
-use TeX::Utils::Misc;
-
-use TeX::Node::Utils qw(nodes_to_string);
+use TeX::Utils::Misc qw(nonempty);
 
 use TeX::Constants qw(:booleans :named_args :module_codes);
 
@@ -61,17 +53,17 @@ use TeX::Token qw(:catcodes :factories);
 
 use TeX::Token::Constants;
 
-use TeX::TokenList;
+use TeX::TokenList qw(:factories);
 
 use TeX::Constants qw(:command_codes :scan_types :selector_codes :token_types);
-
-use TeX::Primitive::Parameter qw(:factories);
 
 ######################################################################
 ##                                                                  ##
 ##                            ATTRIBUTES                            ##
 ##                                                                  ##
 ######################################################################
+
+use TeX::Class;
 
 my %document_class_of :ATTR(:name<document_class>);
 
@@ -283,7 +275,7 @@ sub scan_environment_body {
 
     my $envname = shift;
 
-    my $body = TeX::TokenList->new();;
+    my $body = new_token_list();
 
     while (my $token = $tex->get_next()) {
         if ($token == $END_TOKEN) {
