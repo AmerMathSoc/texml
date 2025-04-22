@@ -134,7 +134,7 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * apt install make
 
-* apt install libimage-info-perl
+* apt install libimage-info-perl [Image::Info]
 
 * apt install pdf2svg
 
@@ -160,11 +160,9 @@ The above instructions should work in an Ubuntu-based [Windows Subsystem for Lin
 - `$ brew install jpeg-turbo`
 - `$ brew install pdf2svg`
 - `$ cpan`  (and configure local::lib
-- `$ cpan File::MMagic::XS`
 - `$ cpan Config::IniFiles`
 - `$ cpan XML::Twig`
-- `$ cpan Image::PNG`
-- `$ cpan Image::JPEG::Size`
+- `$ cpan Image::Info`
 - `$ cpan Lingua::EN::Numbers::Ordinate`
 - install [STIX Two](https://github.com/stipub/stixfonts/) and [Source Sans](https://github.com/adobe-fonts/source-sans)
 - `$ git clone https://github.com/AmerMathSoc/texml.git`
