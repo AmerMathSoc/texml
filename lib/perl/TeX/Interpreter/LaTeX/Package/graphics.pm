@@ -213,7 +213,13 @@ __DATA__
     \endXMLelement{\jats@graphics@element}%
 }
 
-\let\Gread@eps\@gobble
+\def\Gread@eps#1{%
+    %  These values don't matter, except that urx and ury need to be non-zero
+    \def\Gin@llx{0}%
+    \def\Gin@lly{0}%
+    \def\Gin@urx{1}%
+    \def\Gin@ury{1}%
+}
 
 \def\Ginclude@eps#1{%
     \expandafter\TeXMLCreateSVG\expandafter{\texml@includegraphics}%
