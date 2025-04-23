@@ -172,6 +172,8 @@ __DATA__
 
 \LoadRawMacros
 
+\let\Gin@alt\@empty
+
 \newdimen\Gin@nat@width
 \newdimen\Gin@nat@height
 
@@ -210,6 +212,11 @@ __DATA__
         \setXMLattribute{mimetype}{\Gin@media@type}%
         \setXMLattribute{width}{\Gin@round\Gin@req@width}%
         \setXMLattribute{height}{\Gin@round\Gin@req@height}%
+        \ifx\Gin@alt\@empty\else
+            \startXMLelement{alt-text}%
+                \Gin@alt
+            \endXMLelement{alt-text}%
+        \fi
     \endXMLelement{\jats@graphics@element}%
 }
 

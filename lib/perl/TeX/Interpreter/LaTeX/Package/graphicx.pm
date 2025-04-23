@@ -1,5 +1,7 @@
 package TeX::Interpreter::LaTeX::Package::graphicx;
 
+use 5.26.0;
+
 # Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,7 +31,7 @@ package TeX::Interpreter::LaTeX::Package::graphicx;
 # USA
 # email: tech-support@ams.org
 
-use strict;
+use warnings;
 
 sub install ( $ ) {
     my $class = shift;
@@ -50,6 +52,8 @@ __DATA__
 \ProvidesPackage{graphicx}
 
 \LoadRawMacros
+
+\define@key{Gin}{alt}{\def\Gin@alt{#1}}
 
 \renewcommand{\rotatebox}[3][]{%
     \TeXMLCreateSVG{\rotatebox[#1]{#2}{#3}}%
