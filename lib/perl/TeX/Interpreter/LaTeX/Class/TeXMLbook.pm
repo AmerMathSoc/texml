@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Class::TeXMLbook;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Interpreter::LaTeX::Class::TeXMLbook;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
@@ -39,7 +40,7 @@ use TeX::Utils::Misc;
 
 # TeXMLbook is the common base for amsbook and maabook.
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -182,9 +183,14 @@ __DATA__
                 \startXMLelement{book-volume-number}%
                     \AMS@volumeno\par
                 \endXMLelement{book-volume-number}\par
+                \ifx\AMS@issue\@empty\else
+                    \startXMLelement{book-volume-issue}%
+                        \AMS@issue\par
+                    \endXMLelement{book-volume-issue}\par
+                \fi
             \fi
         \endXMLelement{book-meta}%
-        \par        
+        \par
     \fi
 }
 
