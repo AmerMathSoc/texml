@@ -1,5 +1,7 @@
 package TeX::Interpreter::LaTeX::Package::AMSmetadata;
 
+use 5.26.0;
+
 # Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,8 +31,9 @@ package TeX::Interpreter::LaTeX::Package::AMSmetadata;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
+
+use utf8;
 
 use base qw(Exporter);
 
@@ -132,6 +135,10 @@ sub find_gentag_file( $ ) {
 
         my $publ_key = $book_meta->findvalue(q{book-id[@book-id-type="publisher"]});
         my $volume   = $book_meta->findvalue(q{book-volume-number});
+
+        if ($publ_key eq 'memo') {
+            $volume = $book_meta->findvalue(q{book-volume-issue});
+        }
 
         if (empty($publ_key) || empty($volume)) {
             TeX::RunError->throw("Missing publ_key or volume\n");
@@ -258,7 +265,7 @@ sub do_add_ams_metadata {
 
             $old_front->replaceNode($new_front);
         };
-    } elsif ($doctype eq 'monograph') {
+    } elsif ($doctype eq 'monograph' || $doctype eq 'memoirs') {
         eval {
             ## There might not be an existing book-meta element, so we
             ## can't just replace it.
@@ -758,7 +765,7 @@ sub add_self_uris {
         my $pii = $gentag->get_pii();
 
         $pdf_uri = caturl($uri, "$pii.pdf");
-    } elsif ($doctype eq 'monograph') {
+    } elsif ($doctype eq 'monograph' || $doctype eq 'memoirs') {
         my $volume = $gentag->get_volume();
 
         if ($doctype eq 'memoirs') {
@@ -769,6 +776,7 @@ sub add_self_uris {
 
         $pdf_uri = caturl($uri, $pdf_filename);
     } else {
+        TeX::RunError->throw("Unknown document type '$doctype'");
     }
 
     append_xml_element($parent, "self-uri", $pdf_uri,
@@ -1527,6 +1535,10 @@ sub create_book_meta( $$ ) {
     }
 
     append_xml_element($meta, 'book-volume-number', $volume_no);
+
+    if ($publ_key eq 'memo') {
+        append_xml_element($meta, 'book-volume-issue', $gentag->get_number());
+    }
 
     if (nonempty(my $volume_id = $gentag->get_volume_id())) {
         append_xml_element($meta, 'book-volume-id' => $volume_id);
