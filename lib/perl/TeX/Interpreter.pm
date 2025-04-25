@@ -12640,6 +12640,24 @@ sub if {
     return defined $eqvt && $eqvt->get_equiv->isa("TeX::Primitive::iftrue");
 }
 
+# sub the_box {
+#     my $tex = shift;
+#
+#     my $index = shift;
+#
+#     if ($index !~ m{^\d+}) {
+#         my $eqvt = $tex->get_csname($index);
+#
+#         return unless defined $eqvt;
+#
+#         $index = $eqvt->get_equiv()->read_value($tex);
+#     }
+#
+#     my $box_ref = $tex->find_box_register($index);
+#
+#     return $box_ref->$*->get_equiv();
+# }
+
 ######################################################################
 ##                                                                  ##
 ##                          FONT ENCODINGS                          ##
