@@ -768,6 +768,21 @@ __DATA__
     \fi
 }
 
+\def\output@abstract@meta{%
+    \ifx\AMS@abstract\@empty\else
+        \startXMLelement{abstract}
+            \ifx\abstractname\@empty\else
+                \thisxmlpartag{title}
+                \abstractname\@addpunct.\par
+            \fi
+            \begingroup
+                \xmlpartag{p}%
+                \AMS@abstract\par
+            \endgroup
+        \endXMLelement{abstract}
+    \fi
+}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
 %%                               MISC                               %%

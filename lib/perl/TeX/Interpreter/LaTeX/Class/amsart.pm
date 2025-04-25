@@ -299,21 +299,6 @@ __DATA__
     \fi
 }
 
-\def\output@abstract@meta{%
-    \ifx\AMS@abstract\@empty\else
-        \startXMLelement{abstract}
-            \ifx\abstractname\@empty\else
-                \thisxmlpartag{title}
-                \abstractname\@addpunct.\par
-            \fi
-            \begingroup
-                \xmlpartag{p}%
-                \AMS@abstract\par
-            \endgroup
-        \endXMLelement{abstract}
-    \fi
-}
-
 \def\clear@author{%
     \let\this@name\@empty
     \let\this@address\@empty
