@@ -70,7 +70,7 @@ use constant ALI_NS => 'http://www.niso.org/schemas/ali/1.0/';
 ##                                                                  ##
 ######################################################################
 
-sub __to_unicode( $ ) {
+my sub __to_unicode {
     my $mf = shift;
 
     my $utf8 = $mf->as_unicode();
@@ -88,7 +88,7 @@ sub __to_unicode( $ ) {
 ##                                                                  ##
 ######################################################################
 
-sub find_gentag_file( $ ) {
+sub find_gentag_file {
     my $dom = shift;
 
     my $document_element = $dom->documentElement();
@@ -267,30 +267,18 @@ sub do_add_ams_metadata {
         };
     } elsif ($doctype eq 'monograph' || $doctype eq 'memoirs') {
         eval {
-            ## There might not be an existing book-meta element, so we
-            ## can't just replace it.
+            my $old_meta = find_unique_node($dom, '/book/book-meta');
 
-            my $root = $dom->documentElement();
-
-            my $book = find_unique_node($dom, q{/book});
-
-            if (defined(my $meta = find_unique_node($dom, q{/book/book-meta}))) {
-                $book->removeChild($meta);
-            }
-
-            my $front_matter = find_unique_node($root, '/book/front-matter');
-
-            my $meta = create_book_meta($tex, $gentag);
-
-            $root->insertBefore($meta, $front_matter);
-
-            if (defined (my $old_cmeta = find_unique_node($root, "/book/collection-meta"))) {
-                $old_cmeta->unbindNode();
-            }
+            my $old_cmeta = find_unique_node($dom, "/book/collection-meta");
 
             my $cmeta = create_collection_meta($tex, $gentag);
 
-            $root->insertBefore($cmeta, $meta);
+            $old_cmeta->replaceNode($cmeta);
+
+            my $new_meta = create_book_meta($tex, $gentag, $old_meta);
+
+            $old_meta->replaceNode($new_meta);
+
         };
     } else {
         $@ = "Unknown doctype '$doctype'";
@@ -315,7 +303,7 @@ sub do_add_ams_metadata {
 ##                                                                  ##
 ######################################################################
 
-sub add_xml_lang( $ ) {
+sub add_xml_lang {
     my $tex = shift;
     my $dom = shift;
     my $gentag = shift;
@@ -699,7 +687,7 @@ sub add_free_to_read {
 # CC BY ND    #1 : \href{https://creativecommons.org/licenses/by-nd/#1/}
 # CC BY NC ND #1 : \href{https://creativecommons.org/licenses/by-nc-nd/#1/}
 
-sub __cc_license_url {
+my sub __cc_license_url {
     my $copyright = shift;
 
     if ($copyright =~ m{(CC\s+BY(?:\s+(NC))?(?:\s+(ND))?\s+(\d+\.\d+))}) {
@@ -1270,7 +1258,9 @@ my sub copy_abstract {
     my $meta  = shift;
     my $gentag = shift;
 
-    for my $abstract ($front->findnodes("article-meta/abstract")) {
+    my $parent = shift;
+
+    for my $abstract ($front->findnodes($parent)) {
         if (defined (my $gentag_abstract = $gentag->get_abstract())) {
             if (nonempty(my $language = $gentag_abstract->get_language())) {
                 $abstract->setAttribute('xml:lang' => $language);
@@ -1346,7 +1336,7 @@ sub append_article_meta {
 
     add_related_articles($tex, $meta, $gentag);
 
-    copy_abstract($old_front, $meta, $gentag);
+    copy_abstract($old_front, $meta, $gentag, 'article-meta/abstract');
 
     copy_xml_node("article-meta/kwd-group", $old_front, $meta);
 
@@ -1400,7 +1390,7 @@ sub append_article_notes {
     return;
 }
 
-sub create_new_journal_front( $$ ) {
+sub create_new_journal_front {
     my $tex = shift;
 
     my $gentag    = shift;
@@ -1423,7 +1413,7 @@ sub create_new_journal_front( $$ ) {
 ##                                                                  ##
 ######################################################################
 
-sub create_collection_meta( $$ ) {
+sub create_collection_meta {
     my $tex    = shift;
     my $gentag = shift;
 
@@ -1486,9 +1476,23 @@ sub create_collection_meta( $$ ) {
     return $meta;
 }
 
-sub create_book_meta( $$ ) {
+sub copy_element {
+    my $src  = shift;
+    my $dest = shift;
+
+    my $src_name = shift;
+
+    for my $element ($src->findnodes($src_name)) {
+        $dest->appendChild($element);
+    }
+
+    return;
+}
+
+sub create_book_meta {
     my $tex    = shift;
     my $gentag = shift;
+    my $old_meta = shift;
 
     my $meta = new_xml_element('book-meta');
 
@@ -1580,6 +1584,10 @@ sub create_book_meta( $$ ) {
     add_permissions($tex, $meta, $gentag);
 
     add_self_uris($tex, $meta, $gentag);
+
+    copy_abstract($old_meta, $meta, $gentag, 'abstract');
+
+    copy_element($old_meta, $meta, 'funding-group');
 
     if (nonempty(my $edition = $gentag->get_edition())) {
         append_xml_element($meta, 'edition', $edition);
