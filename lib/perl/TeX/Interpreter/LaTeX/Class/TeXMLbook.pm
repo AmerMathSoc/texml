@@ -117,6 +117,30 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\let\AMS@issue@empty
+
+\let\AMS@thanks\@empty
+
+\renewcommand{\thanks}[1]{%
+    \g@addto@macro\AMS@thanks{#1\par}%
+    % \setbox\AMS@thanks\vbox{%
+    %     \unvbox\AMS@thanks\par
+    %     \xmlpartag{funding-statement}%
+    %     #1\par
+    % }%
+}
+
+\def\output@funding@meta{%
+    \ifx\AMS@thanks\@empty\else
+        \startXMLelement{funding-group}
+        \begingroup
+            \xmlpartag{funding-statement}%
+            \AMS@thanks
+        \endgroup
+        \endXMLelement{funding-group}\par
+    \fi
+}
+
 \def\seriesinfo#1#2#3{%
     \gdef\AMS@publkey{#1}%
     \gdef\AMS@volumeid{#2}%
@@ -143,6 +167,7 @@ __DATA__
             \endXMLelement{collection-id}\par
         \endXMLelement{collection-meta}
     \fi
+    \glet\output@collection@meta\@empty
 }
 
 \def\output@book@meta{%
@@ -189,9 +214,12 @@ __DATA__
                     \endXMLelement{book-volume-issue}\par
                 \fi
             \fi
+            \output@abstract@meta
+            \output@funding@meta
         \endXMLelement{book-meta}%
         \par
     \fi
+    \glet\output@book@meta\@empty
 }
 
 \def\@end@BITS@section{%
