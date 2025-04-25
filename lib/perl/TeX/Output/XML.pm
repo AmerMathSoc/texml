@@ -1,6 +1,8 @@
 package TeX::Output::XML;
 
-# Copyright (C) 2022-2024 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022-2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,8 +31,9 @@ package TeX::Output::XML;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
+
+use utf8;
 
 use FindBin;
 
@@ -149,9 +152,7 @@ sub new_xml_element {
 ## non-8-bit characters sometimes aren't handled correctly.  What am I
 ## missing?
 
-use utf8;
-
-sub __new_utf8_string( ;$ ) {
+my sub __new_utf8_string { # Not needed with v5.26?
     my $string = shift;
 
     utf8::upgrade($string);
@@ -743,6 +744,8 @@ sub delete_empty_paragraphs {
 sub finalize_document {
     my $self = shift;
 
+    # $self->check_first_element();
+
     $self->delete_empty_paragraphs();
 
     $self->normalize_ids();
@@ -766,6 +769,46 @@ sub finalize_document {
 
     return;
 }
+
+# check_first_element() isn't ready for use because it's hard to
+# decide exactly what the constraint is.  Most of our test files
+# correctly start with <p> elements.
+
+# sub check_first_element {
+#     my $self = shift;
+# 
+#     my $tex = $self->get_tex_engine();
+# 
+#     my $dom = $self->get_dom();
+# 
+#     my $root = $dom->documentElement();
+#     
+#     my $first = $root->firstChild;
+# 
+#     while (defined $first) {
+#         if ($first->nodeName() eq '#text' && empty($first->textContent())) {
+#             $first = $first->nextSibling();
+#         }
+# 
+#         last;
+#     }
+# 
+#     if (! defined $first) {
+#         $tex->print_err("Can't find any children of the root XML element");
+# 
+#         $tex->error();
+#     }
+# 
+#     my $first_element = $first->nodeName();
+# 
+#     if ($first_element ne "collection-meta" && $first_element ne "front") {
+#         $tex->print_err("I found weird content at the top of the file: '$first'");
+# 
+#         $tex->error();
+#     }
+# 
+#     return;
+# }
 
 sub close_document {
     my $self = shift;
