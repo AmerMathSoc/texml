@@ -53,6 +53,16 @@ __DATA__
 
 \LoadClass{amsbook}
 
+\let\init@bits@meta@orig\init@bits@meta
+\let\frontmatter@orig\frontmatter
+
+\let\init@bits@meta\@empty
+
+\def\frontmatter{%
+    \init@bits@meta@orig
+    \frontmatter@orig
+}
+
 \seriesinfo{memo}{}{}
 
 \let\AMS@issue\@empty
@@ -71,10 +81,16 @@ __DATA__
 \let\AMS@dateposted\@empty
 \def\dateposted{\gdef\AMS@dateposted}
 
-\def\format@toc@label#1#2{%
-    \ignorespaces\if@AMS@tocusesnames@#1 \fi
-    \ifnum\@toclevel=1\XMLelement{x}{\S}\fi
-    #2\unskip\@addpunct.%
+\let\AMS@datereceived\@empty
+\def\datereceived{\gdef\AMS@datereceived}
+
+\let\@datesrevised\@empty
+\def\daterevised#1{%
+    \ifx\@empty\@datesrevised
+        \gdef\@datesrevised{#1}%
+    \else
+        \g@addto@macro\@datesrevised{\and#1}%
+    \fi
 }
 
 \endinput
