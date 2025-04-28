@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Class::amsclass;
 
 ## Code that is common so the AMS classes (amsart, amsbook, amsproc).
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -780,6 +780,20 @@ __DATA__
                 \AMS@abstract\par
             \endgroup
         \endXMLelement{abstract}
+    \fi
+}
+
+\def\output@keyword@meta{%
+    \ifx\AMS@keywords\@empty\else
+        \begingroup
+            \xmlpartag{kwd}%
+            \startXMLelement{kwd-group}%
+                \setXMLattribute{kwd-group-type}{author}%
+                \@for\@tempa:=\AMS@keywords\do{%
+                    \@tempa\par
+                }%
+            \endXMLelement{kwd-group}%
+        \endgroup
     \fi
 }
 
