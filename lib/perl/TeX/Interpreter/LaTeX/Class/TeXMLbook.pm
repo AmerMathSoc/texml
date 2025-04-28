@@ -215,6 +215,8 @@ __DATA__
                 \fi
             \fi
             \output@abstract@meta
+            \output@keyword@meta
+            \output@subjclass@meta
             \output@funding@meta
         \endXMLelement{book-meta}%
         \par
