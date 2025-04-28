@@ -53,6 +53,8 @@ __DATA__
 
 \LoadClass{amsbook}
 
+\seriesinfo{memo}{}{}
+
 \let\init@bits@meta@orig\init@bits@meta
 \let\frontmatter@orig\frontmatter
 
@@ -63,7 +65,7 @@ __DATA__
     \frontmatter@orig
 }
 
-\seriesinfo{memo}{}{}
+\let\dedicatory\@gobble
 
 \let\AMS@issue\@empty
 \let\AMS@issue@year\@empty
