@@ -1476,7 +1476,7 @@ sub create_collection_meta {
     return $meta;
 }
 
-sub copy_element {
+my sub copy_element {
     my $src  = shift;
     my $dest = shift;
 
@@ -1534,8 +1534,14 @@ sub create_book_meta {
 
     add_history($tex, $meta, $gentag);
 
-    if (nonempty(my $pubdate = $gentag->get_pubdate())) {
-        append_date($tex, $meta, $pubdate, undef, undef, 'pub-date');
+    if ($publ_key eq 'memo') {
+        if (nonempty(my $pubdate = $gentag->get_postdate())) {
+            append_date($tex, $meta, $pubdate, undef, undef, 'pub-date');
+        }
+    } else {
+        if (nonempty(my $pubdate = $gentag->get_pubdate())) {
+            append_date($tex, $meta, $pubdate, undef, undef, 'pub-date');
+        }
     }
 
     append_xml_element($meta, 'book-volume-number', $volume_no);
@@ -1587,13 +1593,15 @@ sub create_book_meta {
 
     copy_abstract($old_meta, $meta, $gentag, 'abstract');
 
+    copy_element($old_meta, $meta, 'kwd-group');
+
     copy_element($old_meta, $meta, 'funding-group');
 
     if (nonempty(my $edition = $gentag->get_edition())) {
         append_xml_element($meta, 'edition', $edition);
     }
 
-    delete_kwd_groups($tex, $meta);
+    # delete_kwd_groups($tex, $meta);
 
     add_msc_categories($tex, $meta, $gentag);
 
