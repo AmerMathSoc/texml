@@ -137,7 +137,7 @@ sub find_gentag_file {
         my $volume   = $book_meta->findvalue(q{book-volume-number});
 
         if ($publ_key eq 'memo') {
-            $volume = $book_meta->findvalue(q{book-volume-issue});
+            $volume = $book_meta->findvalue(q{book-issue-number});
         }
 
         if (empty($publ_key) || empty($volume)) {
@@ -577,7 +577,7 @@ sub append_time_stamp {
     return;
 }
 
-sub add_history {
+my sub add_history {
     my $tex = shift;
 
     return unless $tex->if('iftexml@add@history@');
@@ -1482,11 +1482,13 @@ my sub copy_element {
 
     my $src_name = shift;
 
-    for my $element ($src->findnodes($src_name)) {
+    my $element;
+
+    for $element ($src->findnodes($src_name)) {
         $dest->appendChild($element);
     }
 
-    return;
+    return $element;
 }
 
 sub create_book_meta {
@@ -1532,7 +1534,13 @@ sub create_book_meta {
 
     add_contributors($tex, $meta, $gentag);
 
-    add_history($tex, $meta, $gentag);
+    my $history = copy_element($old_meta, $meta, 'history');
+
+    if (defined $history) {
+        add_history($tex, $meta, $gentag);
+    }
+
+    # append_time_stamp($history, $tex);
 
     if ($publ_key eq 'memo') {
         if (nonempty(my $pubdate = $gentag->get_postdate())) {
@@ -1547,7 +1555,11 @@ sub create_book_meta {
     append_xml_element($meta, 'book-volume-number', $volume_no);
 
     if ($publ_key eq 'memo') {
-        append_xml_element($meta, 'book-volume-issue', $gentag->get_number());
+        append_xml_element($meta, 'book-issue-number', $gentag->get_number());
+
+        if (nonempty(my $note = $gentag->get_issuenote())) {
+            append_xml_element($meta, 'book-issue-note', $note);
+        }
     }
 
     if (nonempty(my $volume_id = $gentag->get_volume_id())) {
