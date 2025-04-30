@@ -535,7 +535,9 @@ __DATA__
     \gdef\AMS@manid{#3}%
 }
 
-\def\TEXML@month@int#1{\@nameuse{TeXML@month@#1}}
+\def\TEXML@month@int#1{%
+    \@ifundefined{TeXML@month@#1}{}{\@nameuse{TeXML@month@#1}}%
+}
 
 \@namedef{TeXML@month@January}{1}
 \@namedef{TeXML@month@February}{2}
@@ -550,6 +552,47 @@ __DATA__
 \@namedef{TeXML@month@November}{11}
 \@namedef{TeXML@month@December}{12}
 \@namedef{TeXML@month@June/July}{13}% Notices
+
+% Issue number, year, month and day of a journal issue or Memoirs.
+
+\def\issueinfo#1#2#3#4{%
+    \gdef\AMS@volumeno{#1}%
+    \xdef\AMS@issue{\number0#2}%
+    \gdef\AMS@issue@month{}%
+    \@ifnotempty{#3}{\xdef\AMS@issue@month{\TEXML@month@int{#3}}}%
+    \gdef\AMS@issue@year{#4}%
+}
+
+\let\AMS@issue\@empty
+\let\AMS@issue@year\@empty
+\let\AMS@issue@month\@empty
+\def\AMS@issue@day{1}
+
+\let\AMS@datereceived\@empty
+
+\def\datereceived{\gdef\AMS@datereceived}
+
+\let\@datesrevised\@empty
+
+\def\daterevised#1{%
+    \ifx\@empty\@datesrevised
+        \gdef\@datesrevised{{#1}}%
+    \else
+        \g@addto@macro\@datesrevised{,{#1}}%
+    \fi
+}
+
+\let\AMS@dateaccepted\@empty
+
+\def\dateaccepted{\gdef\AMS@dateaccepted}
+
+\let\AMS@datepreposted\@empty
+
+\def\datepreposted{\gdef\AMS@datepreposted}
+
+\let\AMS@dateposted\@empty
+
+\def\dateposted{\gdef\AMS@dateposted}
 
 \global\let\AMS@short@title\@empty
 \global\let\AMS@title\@empty
@@ -765,6 +808,171 @@ __DATA__
                     \@tempa\par
             \endgroup
         \endXMLelement{date}
+    \fi
+}
+
+\def\clear@texml@date{%
+    \let\texml@month\@empty
+    \let\texml@day\@empty
+    \let\texml@year\@empty
+}
+
+\clear@texml@date
+
+\def\texml@parse@date#1 #2, #3 #4\@nil{%
+    \xdef\texml@month{\TEXML@month@int{#1}}
+    \def\texml@day{#2}%
+    \def\texml@year{#3}%
+}
+
+\def\output@history@date#1#2{%
+    \begingroup
+        \edef\@tempa{#2}%
+        \ifx\@tempa\@empty\else
+        \clear@texml@date
+        % For now, just assume the date is valid.
+        \expandafter\texml@parse@date#2 ., . .\@nil        
+        \startXMLelement{date}\par
+            \thisxmlpartag{day}\texml@day\par
+            \thisxmlpartag{month}\texml@month\par
+            \thisxmlpartag{year}\texml@year\par
+            \setXMLattribute{date-type}{#1}%
+            \ifnum\texml@day < 10 \edef\texml@day{0\texml@day}\fi
+            \ifnum\texml@month < 10 \edef\texml@month{0\texml@month}\fi
+            \setXMLattribute{iso-8601-date}{\texml@year-\texml@month-\texml@day}%
+        \endXMLelement{date}\par
+        \fi
+    \endgroup
+}
+
+\def\output@history@meta{%
+    \iftexml@add@history@
+        \startXMLelement{history}%
+            \ifx\AMS@issue@year\@empty\else
+                \startXMLelement{date}%
+                    \setXMLattribute{date-type}{issue-date}%
+                    \ifx\AMS@issue@month\@empty\else
+                        \ifx\AMS@issue@day\@empty\else
+                            \thisxmlpartag{day}%
+                            \AMS@issue@day\par
+                        \fi
+                        \thisxmlpartag{month}%
+                        \AMS@issue@month\par
+                    \fi
+                    \thisxmlpartag{year}%
+                    \AMS@issue@year\par
+                    \setXMLattribute{iso-8601-date}{\AMS@issue@year-\AMS@issue@month-\AMS@issue@day}%
+                \endXMLelement{date}%
+            \fi
+            \output@history@date{received}\AMS@datereceived
+            \@for\@date:=\@datesrevised\do{%
+                \output@history@date{rev-recd}\@date
+            }%
+            \output@history@date{accepted}\AMS@dateaccepted
+            \output@history@date{accepted}\AMS@dateaccepted
+            \output@history@date{preprint}\AMS@datepreposted
+            \output@history@date{published}\AMS@dateposted
+            %% TBD: Add received, posted, etc.
+            \TeXMLtimestamp
+        \endXMLelement{history}%
+    \fi
+}
+
+\def\clear@author{%
+    \let\this@name\@empty
+    \let\this@address\@empty
+    \let\this@curaddress\@empty
+    \let\this@email\@empty
+    \let\this@urladdr\@empty
+    \let\this@orcid\@empty
+    \let\this@mrauthid\@empty
+    \let\this@bio\@empty
+    \let\this@thanks\@empty
+}
+
+\clear@author
+
+\def\start@author@{%
+    \clear@author
+    \def\author@name{\def\this@name}%
+    \def\address##1##2{\def\this@address{##2}}%
+    \def\curraddr##1##2{\def\this@curaddress{##2}}%
+    \def\email##1##2{\def\this@email{##2}}%
+    \def\urladdr##1##2{\def\this@urladdr{##2}}%
+    \def\orcid##1##2{\def\this@orcid{##2}}%
+    \def\MRauthid##1##2{\def\this@mrauthid{##2}}%
+    \def\authorbio##1{\def\this@bio{##1}}%
+    \def\thanks##1{\def\this@thanks{##1}}%
+}
+
+\def\end@author@{%
+    \ifx\this@name\@empty\else
+        \startXMLelement{contrib}
+        \setXMLattribute{contrib-type}{\author@contrib@type}
+            \startXMLelement{string-name}
+                \this@name
+            \endXMLelement{string-name}\par
+            \ifx\this@orcid\@empty\else
+                \startXMLelement{contrib-id}
+                    \setXMLattribute{contrib-id-type}{orcid}
+                    \this@orcid
+                \endXMLelement{contrib-id}\par
+            \fi
+            \ifx\this@mrauthid\@empty\else
+                \startXMLelement{contrib-id}
+                    \setXMLattribute{contrib-id-type}{mrauth}
+                    \this@mrauthid
+                \endXMLelement{contrib-id}\par
+            \fi
+            \ifx\this@thanks\@empty\else
+                \startXMLelement{role}
+                    \begingroup
+                        \xmlpartag{p}
+                        \this@thanks\par
+                    \endgroup
+                \endXMLelement{role}\par
+            \fi
+            \ifx\this@bio\@empty\else
+                \startXMLelement{bio}
+                    \this@bio
+                \endXMLelement{bio}\par
+            \fi
+            \ifx\this@address\@empty\else
+                \startXMLelement{aff}
+                    \this@address
+                \endXMLelement{aff}\par
+            \fi
+            \ifx\this@curaddress\@empty\else
+                \startXMLelement{aff}
+                    \setXMLattribute{specific-use}{current}
+                    \this@curaddress
+                \endXMLelement{aff}\par
+            \fi
+            \ifx\this@email\@empty\else
+                \startXMLelement{email}
+                    \this@email
+                \endXMLelement{email}\par
+            \fi
+            \ifx\this@urladdr\@empty\else
+                \startXMLelement{uri}
+                    \this@urladdr
+                \endXMLelement{uri}\par
+            \fi
+        \endXMLelement{contrib}\par
+    \fi
+}
+
+\def\output@author@meta{%
+    \ifx\AMS@authors\@empty\else
+        \begingroup
+            \let\start@author\start@author@
+            \let\end@author\end@author@
+            \startXMLelement{contrib-group}
+            \setXMLattribute{content-type}{authors}
+                \AMS@authors
+                \end@author\par
+            \endXMLelement{contrib-group}
+        \endgroup
     \fi
 }
 

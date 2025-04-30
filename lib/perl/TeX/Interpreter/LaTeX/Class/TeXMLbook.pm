@@ -198,6 +198,20 @@ __DATA__
                     \AMS@lccn\par
                 \endXMLelement{book-id}\par
             \fi
+            \ifx\AMS@title\@empty\else
+                \startXMLelement{title-group}
+                    \startXMLelement{article-title}
+                        \AMS@title
+                    \endXMLelement{article-title}\par
+                    \ifx\AMS@subtitle\@empty\else
+                        \startXMLelement{subtitle}
+                            \AMS@subtitle
+                        \endXMLelement{subtitle}
+                    \fi
+                \endXMLelement{title-group}\par
+            \fi
+            \output@author@meta
+            \output@history@meta
             \ifx\AMS@volumeno\@empty
                 \ifx\AMS@manid\@empty\else
                     \startXMLelement{book-volume-number}%
@@ -209,9 +223,9 @@ __DATA__
                     \AMS@volumeno\par
                 \endXMLelement{book-volume-number}\par
                 \ifx\AMS@issue\@empty\else
-                    \startXMLelement{book-volume-issue}%
+                    \startXMLelement{book-issue-number}%
                         \AMS@issue\par
-                    \endXMLelement{book-volume-issue}\par
+                    \endXMLelement{book-issue-number}\par
                 \fi
             \fi
             \output@abstract@meta

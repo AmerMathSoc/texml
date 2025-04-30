@@ -87,21 +87,6 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Issue number, year, month and day of a journal issue.
-
-\let\AMS@issue\@empty
-\let\AMS@issue@year\@empty
-\let\AMS@issue@month\@empty
-\def\AMS@issue@day{1}
-
-\def\issueinfo#1#2#3#4{%
-    \gdef\AMS@volumeno{#1}%
-    \xdef\AMS@issue{\number0#2}%
-    \gdef\AMS@issue@month{}%
-    \@ifnotempty{#3}{\xdef\AMS@issue@month{\TEXML@month@int{#3}}}%
-    \gdef\AMS@issue@year{#4}%
-}
-
 \def\pagespan#1#2{%
     \gdef\AMS@start@page{#1}%
     \gdef\AMS@end@page{#2}%
@@ -113,28 +98,6 @@ __DATA__
 }
 
 \pagespan{0}{0}
-
-\let\AMS@dateposted\@empty
-\let\AMS@datepreposted\@empty
-\let\AMS@datereceived\@empty
-\let\@datesrevised\@empty
-\let\AMS@dateaccepted\@empty
-
-\def\dateposted{\gdef\AMS@dateposted}
-
-\def\datepreposted{\gdef\AMS@datepreposted}
-
-\def\datereceived{\gdef\AMS@datereceived}
-
-\def\daterevised#1{%
-    \ifx\@empty\@datesrevised
-        \gdef\@datesrevised{#1}%
-    \else
-        \g@addto@macro\@datesrevised{\and#1}%
-    \fi
-}
-
-\def\dateaccepted{\gdef\AMS@dateaccepted}
 
 \let\AMS@PII\@empty
 
@@ -270,7 +233,7 @@ __DATA__
             \endXMLelement{title-group}\par
         \fi
         \output@author@meta
-        \output@article@history
+        \output@history@meta
         \ifx\AMS@volumeno\@empty\else
             \thisxmlpartag{volume}
             \AMS@volumeno\par
@@ -283,104 +246,6 @@ __DATA__
         \output@subjclass@meta
         \output@custom@meta@group
         \endXMLelement{article-meta}
-}
-
-\def\output@author@meta{%
-    \ifx\AMS@authors\@empty\else
-        \begingroup
-            \let\start@author\start@author@
-            \let\end@author\end@author@
-            \startXMLelement{contrib-group}
-            \setXMLattribute{content-type}{authors}
-                \AMS@authors
-                \end@author\par
-            \endXMLelement{contrib-group}
-        \endgroup
-    \fi
-}
-
-\def\clear@author{%
-    \let\this@name\@empty
-    \let\this@address\@empty
-    \let\this@curaddress\@empty
-    \let\this@email\@empty
-    \let\this@urladdr\@empty
-    \let\this@orcid\@empty
-    \let\this@mrauthid\@empty
-    \let\this@bio\@empty
-    \let\this@thanks\@empty
-}
-
-\clear@author
-
-\def\start@author@{%
-    \clear@author
-    \def\author@name{\def\this@name}%
-    \def\address##1##2{\def\this@address{##2}}%
-    \def\curraddr##1##2{\def\this@curaddress{##2}}%
-    \def\email##1##2{\def\this@email{##2}}%
-    \def\urladdr##1##2{\def\this@urladdr{##2}}%
-    \def\orcid##1##2{\def\this@orcid{##2}}%
-    \def\MRauthid##1##2{\def\this@mrauthid{##2}}%
-    \def\authorbio##1{\def\this@bio{##1}}%
-    \def\thanks##1{\def\this@thanks{##1}}%
-}
-
-\def\end@author@{%
-    \ifx\this@name\@empty\else
-        \startXMLelement{contrib}
-        \setXMLattribute{contrib-type}{\author@contrib@type}
-            \startXMLelement{string-name}
-                \this@name
-            \endXMLelement{string-name}\par
-            \ifx\this@orcid\@empty\else
-                \startXMLelement{contrib-id}
-                    \setXMLattribute{contrib-id-type}{orcid}
-                    \this@orcid
-                \endXMLelement{contrib-id}\par
-            \fi
-            \ifx\this@mrauthid\@empty\else
-                \startXMLelement{contrib-id}
-                    \setXMLattribute{contrib-id-type}{mrauth}
-                    \this@mrauthid
-                \endXMLelement{contrib-id}\par
-            \fi
-            \ifx\this@thanks\@empty\else
-                \startXMLelement{role}
-                    \begingroup
-                        \xmlpartag{p}
-                        \this@thanks\par
-                    \endgroup
-                \endXMLelement{role}\par
-            \fi
-            \ifx\this@bio\@empty\else
-                \startXMLelement{bio}
-                    \this@bio
-                \endXMLelement{bio}\par
-            \fi
-            \ifx\this@address\@empty\else
-                \startXMLelement{aff}
-                    \this@address
-                \endXMLelement{aff}\par
-            \fi
-            \ifx\this@curaddress\@empty\else
-                \startXMLelement{aff}
-                    \setXMLattribute{specific-use}{current}
-                    \this@curaddress
-                \endXMLelement{aff}\par
-            \fi
-            \ifx\this@email\@empty\else
-                \startXMLelement{email}
-                    \this@email
-                \endXMLelement{email}\par
-            \fi
-            \ifx\this@urladdr\@empty\else
-                \startXMLelement{uri}
-                    \this@urladdr
-                \endXMLelement{uri}\par
-            \fi
-        \endXMLelement{contrib}\par
-    \fi
 }
 
 \def\output@article@notes{% Notices stuff
