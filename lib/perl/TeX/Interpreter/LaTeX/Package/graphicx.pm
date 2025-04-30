@@ -55,6 +55,40 @@ __DATA__
 
 \define@key{Gin}{alt}{\def\Gin@alt{#1}}
 
+% Disable processing of the following keys -- leaving only width,
+% height, and scale -- to keep them from causing problems.  EPS, MPS,
+% or PDF files will be converted to SVGs, which will then be
+% reimported without needings any of these attributes.
+
+% When importing other graphics, there's really nothing useful texml
+% can do with these keys.  Arguably, if we do encounter one of these
+% keys, we should pass the whole thing to \TeXMLCreateSVG, but let's
+% defer implementing that for now.
+
+\define@key{Gin}{bb}{}
+\define@key{Gin}{bbllx}{}
+\define@key{Gin}{bblly}{}
+\define@key{Gin}{bburx}{}
+\define@key{Gin}{bbury}{}
+\define@key{Gin}{hiresbb}{}
+\define@key{Gin}{viewport}{}
+\define@key{Gin}{trim}{}
+\define@key{Gin}{angle}{}
+\define@key{Gin}{origin}{}
+\define@key{Gin}{totalheight}{}
+\define@key{Gin}{keepaspectratio}{}
+\define@key{Gin}{draft}{}
+\define@key{Gin}{clip}{}
+\define@key{Gin}{type}{}
+\define@key{Gin}{ext}{}
+\define@key{Gin}{read}{}
+\define@key{Gin}{command}{}
+\define@key{Gin}{decodearray}{}
+\define@key{Gin}{quiet}{}
+\define@key{Gin}{page}{}
+\define@key{Gin}{interpolate}{}
+\define@key{Gin}{pagebox}{}
+
 \renewcommand{\rotatebox}[3][]{%
     \TeXMLCreateSVG{\rotatebox[#1]{#2}{#3}}%
 }
