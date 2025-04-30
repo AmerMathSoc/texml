@@ -1,6 +1,6 @@
 package TeX::Utils::SVG;
 
-# Copyright (C) 2022 American Mathematical Society
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -398,6 +398,8 @@ sub convert_tex {
     # }
 
     print { $fh } qq{\\usepackage{fullpage}\n\n};
+
+    print { $fh } qq{\\makeatletter\\providecommand{\\KV\@Gin\@alt}[1]{}\\makeatother\n\n};
 
     print { $fh } qq{\\begin{document}\n\n};
 
