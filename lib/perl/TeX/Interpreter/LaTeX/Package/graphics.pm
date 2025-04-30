@@ -270,7 +270,7 @@ __DATA__
 \def\@includegraphics@final#1{%
         \g@save@includegraphics{{#1}}%
         \let\includegraphics\LTX@includegraphics
-        [{\tt\meaning\texml@includegraphics}]\par
+        \texml@includegraphics
     \endgroup
 }
 
