@@ -72,29 +72,6 @@ __DATA__
 \let\AMS@issue@month\@empty
 \def\AMS@issue@day{1}
 
-\def\issueinfo#1#2#3#4{%
-    \gdef\AMS@volumeno{#1}%
-    \xdef\AMS@issue{\number0#2}%
-    \gdef\AMS@issue@month{}%
-    \@ifnotempty{#3}{\xdef\AMS@issue@month{\TEXML@month@int{#3}}}%
-    \gdef\AMS@issue@year{#4}%
-}
-
-\let\AMS@dateposted\@empty
-\def\dateposted{\gdef\AMS@dateposted}
-
-\let\AMS@datereceived\@empty
-\def\datereceived{\gdef\AMS@datereceived}
-
-\let\@datesrevised\@empty
-\def\daterevised#1{%
-    \ifx\@empty\@datesrevised
-        \gdef\@datesrevised{#1}%
-    \else
-        \g@addto@macro\@datesrevised{\and#1}%
-    \fi
-}
-
 \endinput
 
 __END__
