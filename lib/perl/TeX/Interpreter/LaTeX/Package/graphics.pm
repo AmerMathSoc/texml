@@ -240,16 +240,37 @@ __DATA__
     \g@addto@macro\texml@includegraphics
 }
 
-\def\includegraphics#1#{%
+% \includegraphics =>
+%     \Ginclude@graphics =>
+%     \Gin@setfile =>
+%         Gread@TYPE
+%         Gin@viewport@code
+%         Gin@req@sizes
+%         Ginclude@TYPE
+
+\def\includegraphics{%
     \begingroup
-        \def\texml@includegraphics{\includegraphics#1}%
+        \def\texml@includegraphics{\includegraphics}%
+        \@ifstar
+            {\g@save@includegraphics{*}\@includegraphics}%
+            \@includegraphics
+}
+
+\def\@includegraphics{%
+        \@ifnextchar[%]
+            \@includegraphics@opt
+            \@includegraphics@final
+}
+
+\def\@includegraphics@opt[#1]{%
+        \g@save@includegraphics{[#1]}%
         \@includegraphics
 }
 
-\def\@includegraphics#1{%
+\def\@includegraphics@final#1{%
         \g@save@includegraphics{{#1}}%
         \let\includegraphics\LTX@includegraphics
-        \texml@includegraphics
+        [{\tt\meaning\texml@includegraphics}]\par
     \endgroup
 }
 
