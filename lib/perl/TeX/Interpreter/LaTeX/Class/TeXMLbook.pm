@@ -103,9 +103,9 @@ __DATA__
     \glet\AMS@authors\@empty
 }
 
-\AtBeginDocument{%
-    \init@bits@meta
-}
+% \AtBeginDocument{%
+%     \init@bits@meta
+% }
 
 \AtEndDocument{%
     \@end@BITS@section
@@ -301,6 +301,7 @@ __DATA__
 
 \def\frontmatter{%
     \if@frontmatter\else
+        \init@bits@meta
         \@end@BITS@section
         \global\@frontmattertrue
         \global\@mainmatterfalse
@@ -344,18 +345,20 @@ __DATA__
 \newif\ifappendix
 
 \def\appendix{%
-    \par
-    \backmatter
-    \appendixtrue
-    \startXMLelement{book-app-group}%
-    \addXMLid
-    \@push@sectionstack{-1}{book-app-group}%
-    \c@chapter\z@
-    \c@section\z@
-    \c@subsection\z@
-    \let\chaptername\appendixname
-    \def\thechapter{\@Alph\c@chapter}%
-    \def\@chapterefsubtype{appendix}%
+    \ifappendix\else
+        \par
+        \backmatter
+        \appendixtrue
+        \startXMLelement{book-app-group}%
+        \addXMLid
+        \@push@sectionstack{-1}{book-app-group}%
+        \c@chapter\z@
+        \c@section\z@
+        \c@subsection\z@
+        \let\chaptername\appendixname
+        \def\thechapter{\@Alph\c@chapter}%
+        \def\@chapterefsubtype{appendix}%
+    \fi
 }
 
 \let\default@XML@section@tag\XML@section@tag
