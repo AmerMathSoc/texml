@@ -121,6 +121,8 @@ __DATA__
 
 \let\AMS@thanks\@empty
 
+\let\AMS@series@url\@empty
+
 \renewcommand{\thanks}[1]{%
     \g@addto@macro\AMS@thanks{#1\par}%
     % \setbox\AMS@thanks\vbox{%
@@ -165,6 +167,43 @@ __DATA__
                 \setXMLattribute{collection-id-type}{publisher}
                 \AMS@publkey
             \endXMLelement{collection-id}\par
+            \ifx\AMS@publname\@empty\else
+                \startXMLelement{title-group}
+                    {\xmlpartag{title}\AMS@publname\par}%
+                \endXMLelement{title-group}\par
+            \fi
+            \ifx\AMS@volumeno\@empty\else
+                \startXMLelement{volume-in-collection}
+                    \XMLelement{volume-number}\AMS@volumeno
+                \endXMLelement{volume-in-collection}\par
+            \fi
+            \ifx\AMS@pissn\@empty\else
+                \startXMLelement{issn}%
+                    \setXMLattribute{publication-format}{print}%
+                    \AMS@pissn
+                \endXMLelement{issn}\par
+            \fi
+            \ifx\AMS@eissn\@empty\else
+                \startXMLelement{issn}%
+                    \setXMLattribute{publication-format}{electronic}%
+                    \AMS@eissn
+                \endXMLelement{issn}\par
+            \fi
+            \output@publisher@meta
+            \ifx\AMS@series@url\@empty\else
+                \startXMLelement{self-uri}%
+                    \setXMLattribute{xlink:href}{\AMS@series@url}%
+                    \AMS@series@url
+                \endXMLelement{self-uri}\par
+            \fi
+            \ifx\AMS@copublisher\@empty\else
+                \startXMLelement{custom-meta-group}%
+                    \startXMLelement{custom-meta}%
+                        \XMLelement{meta-name}{subseries}%
+                        \XMLelement{meta-name}\AMS@copublisher
+                    \endXMLelement{custom-meta}\par
+                \endXMLelement{custom-meta-group}\par
+            \fi
         \endXMLelement{collection-meta}
     \fi
     \glet\output@collection@meta\@empty

@@ -2,6 +2,8 @@ package TeX::Interpreter::LaTeX::Class::amsclass;
 
 ## Code that is common so the AMS classes (amsart, amsbook, amsproc).
 
+use 5.26.0;
+
 # Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -31,7 +33,6 @@ package TeX::Interpreter::LaTeX::Class::amsclass;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use TeX::Utils::Misc;
@@ -50,7 +51,7 @@ use TeX::Command::Executable::Assignment qw(:modifiers);
 ##                                                                  ##
 ######################################################################
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -114,7 +115,7 @@ EOF
     return $tex->tokenize($tex_text);
 }
 
-sub __sanitize_msc( $ ) {
+my sub __sanitize_msc {
     my $text = shift;
 
     return unless defined $text;
@@ -126,7 +127,7 @@ sub __sanitize_msc( $ ) {
     return join(" ", @classes);
 }
 
-sub __parse_subjclass {
+my sub __parse_subjclass {
     my $subjclass = shift;
 
     $subjclass =~ s/[();,]/ /g;
@@ -142,7 +143,7 @@ sub __parse_subjclass {
     return (__sanitize_msc($primary), __sanitize_msc($secondary));
 }
 
-sub __msc_kwd {
+my sub __msc_kwd {
     my $scheme = shift;
     my $type   = shift;
     my $code   = shift;
@@ -237,7 +238,7 @@ sub do_iso_Bgol_timestamp {
 
 # We could do this at the macro level using boxes.
 
-sub do_abstract( $$ ) {
+sub do_abstract {
     my $tex   = shift;
     my $token = shift;
 
@@ -248,7 +249,7 @@ sub do_abstract( $$ ) {
     return;
 }
 
-sub do_endabstract( $$ ) {
+sub do_endabstract {
     my $tex   = shift;
     my $token = shift;
 
@@ -506,6 +507,9 @@ __DATA__
 
 \let\AMS@publname\@empty
 
+\let\AMS@series@editor\@empty
+\let\AMS@series@editor@title\@empty
+
 % volumeno is the journal or book volume number
 
 \let\AMS@volumeno\@empty
@@ -687,6 +691,46 @@ __DATA__
 \let\orcid\relax
 \let\MRauthid\relax
 
+\let\start@publisher\relax
+\let\end@publisher\relax
+\let\publisher@name\relax
+
+\let\AMS@publishers\@empty
+
+\newcommand{\publisherName}[1]{%
+    \ifx\@empty\AMS@publishers
+        \gdef\AMS@publishers{\start@publisher\publisher@name{#1}}%
+    \else
+        \g@addto@macro\AMS@publishers{\end@publisher\start@publisher\publisher@name{#1}}%
+    \fi
+}
+
+\newcommand{\publisherAddress}[1]{\g@addto@macro\AMS@publishers{\address{#1}}}
+
+\def\clear@publisher{%
+    \let\this@name\@empty
+    \let\this@address\@empty
+}
+
+\clear@publisher
+
+\def\start@publisher@{%
+    \clear@publisher
+    \def\publisher@name{\def\this@name}%
+    \def\address{\def\this@address}%
+}
+
+\def\end@publisher@{%
+    \ifx\this@name\@empty\else
+        \startXMLelement{publisher}
+            \XMLelement{publisher-name}{\this@name}%
+            \ifx\this@address\@empty\else
+                \XMLelement{publisher-loc}{\this@address}%
+            \fi
+        \endXMLelement{publisher}\par
+    \fi
+}
+
 \def\author@contrib@type{author}%
 
 \let\@authorname\relax
@@ -699,6 +743,8 @@ __DATA__
 
 % Ignore the optional shortauthor argument
 
+\let\AMS@authors\@empty
+
 \newcommand{\author}[2][]{%
     \ifx\@empty\AMS@authors
         \gdef\AMS@authors{\start@author\author@name{#2}}%
@@ -706,8 +752,6 @@ __DATA__
         \g@addto@macro\AMS@authors{\end@author\start@author\author@name{#2}}%
     \fi
 }
-
-\let\AMS@authors\@empty
 
 \newcommand{\address}[2][] {\g@addto@macro\AMS@authors{\address{#1}{#2}}}
 \newcommand{\orcid}[2][]   {\g@addto@macro\AMS@authors{\orcid{#1}{#2}}}
@@ -972,6 +1016,17 @@ __DATA__
                 \AMS@authors
                 \end@author\par
             \endXMLelement{contrib-group}
+        \endgroup
+    \fi
+}
+
+\def\output@publisher@meta{%
+    \ifx\AMS@publishers\@empty\else
+        \begingroup
+            \let\start@publisher\start@publisher@
+            \let\end@publisher\end@publisher@
+            \AMS@publishers
+            \end@publisher\par
         \endgroup
     \fi
 }
