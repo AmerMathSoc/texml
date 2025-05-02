@@ -90,8 +90,7 @@ my %tex_engine_of :ATTR(:name<tex_engine> :type<TeX::Interpreter>);
 
 my %dom_of :ATTR(:name<dom> :type<XML::LibXML::Document>);
 
-# my %current_element_of :ATTR(:name<current_element> :type<XML::LibXML::Node>);
-# my %element_stack_of   :ARRAY(:name<element_stack>  :type<XML::LibXML::Node>);
+my %hooks_of :ARRAY(:name<hook>);
 
 my %current_element_of :ATTR(:name<current_element> :type<TeX::Output::XML::Element>);
 my %element_stack_of   :ARRAY(:name<element_stack>  :type<TeX::Output::XML::Element>);
@@ -105,8 +104,7 @@ my %xml_id_counter_of :COUNTER(:name<xml_id_counter>);
 ##                                                                  ##
 ######################################################################
 
-{   package TeX::Output::XML::Element;
-
+package TeX::Output::XML::Element {
     use TeX::Class;
 
     my %node_of :ATTR(:name<node> :type<XML::LibXML::Node>);
@@ -741,10 +739,20 @@ sub delete_empty_paragraphs {
     return;
 }
 
+sub run_hooks {
+    my $self = shift;
+
+    for my $hook ($self->get_hooks()) {
+        $hook->($self);
+    }
+
+    return;
+}
+
 sub finalize_document {
     my $self = shift;
 
-    # $self->check_first_element();
+    $self->run_hooks();
 
     $self->delete_empty_paragraphs();
 
@@ -770,43 +778,43 @@ sub finalize_document {
     return;
 }
 
-# check_first_element() isn't ready for use because it's hard to
+# check_first_elements() isn't ready for use because it's hard to
 # decide exactly what the constraint is.  Most of our test files
 # correctly start with <p> elements.
 
 # sub check_first_element {
 #     my $self = shift;
-# 
+#
 #     my $tex = $self->get_tex_engine();
-# 
+#
 #     my $dom = $self->get_dom();
-# 
+#
 #     my $root = $dom->documentElement();
-#     
+#
 #     my $first = $root->firstChild;
-# 
+#
 #     while (defined $first) {
 #         if ($first->nodeName() eq '#text' && empty($first->textContent())) {
 #             $first = $first->nextSibling();
 #         }
-# 
+#
 #         last;
 #     }
-# 
+#
 #     if (! defined $first) {
 #         $tex->print_err("Can't find any children of the root XML element");
-# 
+#
 #         $tex->error();
 #     }
-# 
+#
 #     my $first_element = $first->nodeName();
-# 
+#
 #     if ($first_element ne "collection-meta" && $first_element ne "front") {
 #         $tex->print_err("I found weird content at the top of the file: '$first'");
-# 
+#
 #         $tex->error();
 #     }
-# 
+#
 #     return;
 # }
 
