@@ -715,7 +715,7 @@ sub print {
 
 ## This should probably be eliminated.
 
-sub slow_print( $ ) {
+sub slow_print {
     my $tex = shift;
 
     my $string = shift;
@@ -1258,9 +1258,7 @@ sub get_nest_ptr {
     return $#{ $semantic_nest_of{ident $tex} };
 }
 
-{
-    package ListStateRecord;
-
+package ListStateRecord {
     use TeX::Class;
 
     my %mode_of         :ATTR(:name<mode>);
@@ -1572,9 +1570,7 @@ use constant FROZEN_DONT_EXPAND_TOKEN
 use constant FROZEN_CR_TOKEN
     => make_csname_token("cr");
 
-{
-    package EQVT;
-
+package EQVT {
     use TeX::Class;
 
     my %level_of :COUNTER(:name<level>);
@@ -1587,9 +1583,7 @@ use constant FROZEN_CR_TOKEN
     }
 }
 
-{
-    package EQVT::Data;
-
+package EQVT::Data {
     use TeX::Class;
 
     my %value_of :ATTR(:name<value>);
@@ -2488,9 +2482,7 @@ my %cur_level_of     :COUNTER(:name<cur_level>);
 my %cur_group_of     :COUNTER(:name<cur_group>);
 my %cur_boundary_of  :COUNTER(:name<cur_boundary>);
 
-{
-    package SaveRecord;
-
+package SaveRecord {
     use TeX::Class;
 
     use TeX::Constants qw(:save_stack_codes group_type);
@@ -3230,9 +3222,7 @@ sub print_cmd_chr {
 ##                                                                  ##
 ######################################################################
 
-{
-    package InStateRecord;
-
+package InStateRecord {
     use TeX::Class;
 
     use TeX::Constants qw(:file_types);
@@ -6069,9 +6059,7 @@ my %if_limit_of   :COUNTER(:name<if_limit>  :default<normal>);
 my %if_line_of    :COUNTER(:name<if_line>   :default<0>);
 my %skip_line_of  :COUNTER(:name<skip_line> :default<0>);
 
-{
-    package CondStateRecord;
-
+package CondStateRecord {
     use TeX::Class;
 
     my %if_limit_of   :COUNTER(:name<if_limit>);
@@ -6234,7 +6222,7 @@ sub conditional {
     return;
 }
 
-sub get_x_token_or_active_char( $ ) {
+sub get_x_token_or_active_char {
     my $tex = shift;
 
     my $token = $tex->get_x_token();
@@ -6367,9 +6355,9 @@ my %initialized_of :BOOLEAN(:name<initialized> :default<false>);
 
 my %use_mathjax_of :BOOLEAN(:name<use_mathjax> :default<false>);
 
-{
-    package OutputRecord;
+my %output_hooks_of :ARRAY(:name<output_hook>);
 
+package OutputRecord {
     use TeX::Class;
 
     my %handle_of    :ATTR(:name<handle>);
@@ -6386,6 +6374,26 @@ my %use_mathjax_of :BOOLEAN(:name<use_mathjax> :default<false>);
                        $self->get_file_name() || '<undef>',
                        $self->get_ext() || '<undef>');
     }
+}
+
+sub add_output_hook {
+    my $tex = shift;
+
+    my $hook = shift;
+
+    ## We defer creating the output handle as long as possible so
+    ## that, for example, we can use \setXMLroot and \setXMLdoctype.
+    ## But we want to be able to register hooks much earlier, so we
+    ## stash them in the TeX::Interpreter object until
+    ## ensure_output_open().
+
+    if (defined(my $handle = $tex->get_output_handle())) {
+        $handle->push_hook($hook);
+    } else {
+        $tex->push_output_hook($hook);
+    }
+
+    return;
 }
 
 sub load_output_module {
@@ -6445,6 +6453,10 @@ sub ensure_output_open {
     my $output_module = $tex->get_output_module();
 
     my $handle = $output_module->new({ tex_engine => $tex });
+
+    for my $hook ($tex->get_output_hooks()) {
+        $handle->push_hook($hook);
+    }
 
     eval { $handle->open_document() };
 
@@ -7003,9 +7015,7 @@ sub vpackage {
 my %align_stack_of   :ARRAY(:name<align_stack>  :type<Alignment>);
 my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
 
-{
-    package SpanRecord;
-
+package SpanRecord {
     use TeX::Class;
 
     ## Tag each SpanRecord with a unique id for use by
@@ -7061,9 +7071,7 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
     }
 }
 
-{
-    package Alignment;
-
+package Alignment {
     use TeX::Constants qw(:booleans);
 
     use TeX::Class;
@@ -7295,9 +7303,7 @@ my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
     };
 }
 
-{
-    package AlignRecord;
-
+package AlignRecord {
     use TeX::Class;
 
     my %u_part_of :ATTR(:name<u_part> :type<TeX::TokenList>);
@@ -11088,7 +11094,7 @@ sub process_string {
     return;
 }
 
-sub read_package_data( $ ) {
+sub read_package_data {
     my $tex = shift;
 
     my $package = caller;
