@@ -55,22 +55,14 @@ __DATA__
 
 \seriesinfo{memo}{}{}
 
-\let\init@bits@meta@orig\init@bits@meta
-\let\frontmatter@orig\frontmatter
+\def\AMS@publname{Memoirs of the American Mathematical Society}
 
-\let\init@bits@meta\@empty
+\def\AMS@pissn{0065-9266}
+\def\AMS@eissn{1947-6221}
 
-\def\frontmatter{%
-    \init@bits@meta@orig
-    \frontmatter@orig
-}
+\def\AMS@series@url{https://www.ams.org/memo/}
 
 \let\dedicatory\@gobble
-
-\let\AMS@issue\@empty
-\let\AMS@issue@year\@empty
-\let\AMS@issue@month\@empty
-\def\AMS@issue@day{1}
 
 \endinput
 
