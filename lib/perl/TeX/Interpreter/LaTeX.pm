@@ -359,7 +359,7 @@ sub scan_environment_body {
 
 ## Gobble an optional argument.
 
-sub do_opt_gobble( $$ ) {
+sub do_opt_gobble {
     my $self = shift;
 
     my $tex   = shift;
@@ -1114,6 +1114,7 @@ __DATA__
 \AtTeXMLend{\TeXML@resolverefgroups}
 
 \def\TeXMLNoResolveXrefs{\let\TeXML@resolveXMLxrefs\@empty}
+\def\TeXMLNoResolveXrefgroups{\let\TeXML@resolverefgroups\@empty}
 
 % \AtTeXMLend{\TeXML@resolveXMLcites}
 
