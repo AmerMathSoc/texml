@@ -269,12 +269,6 @@ sub do_add_ams_metadata {
         eval {
             my $old_meta = find_unique_node($dom, '/book/book-meta');
 
-            my $old_cmeta = find_unique_node($dom, "/book/collection-meta");
-
-            my $cmeta = create_collection_meta($tex, $gentag);
-
-            $old_cmeta->replaceNode($cmeta);
-
             my $new_meta = create_book_meta($tex, $gentag, $old_meta);
 
             $old_meta->replaceNode($new_meta);
@@ -1412,69 +1406,6 @@ sub create_new_journal_front {
 ##                          BOOK METADATA                           ##
 ##                                                                  ##
 ######################################################################
-
-sub create_collection_meta {
-    my $tex    = shift;
-    my $gentag = shift;
-
-    my $meta = new_xml_element('collection-meta');
-
-    $meta->setAttribute('collection-type' => "book series");
-
-    my $publ_key  = $gentag->get_publ_key();
-    my $volume_no = $gentag->get_volume();
-    my $volume_id = $gentag->get_volume_id();
-
-    append_xml_element($meta, 'collection-id', $publ_key,
-                       { 'collection-id-type' => 'publisher' });
-
-    if (nonempty(my $title = $PUBS->title($publ_key))) {
-        my $title_group = new_child_element($meta, 'title-group');
-
-        append_xml_element($title_group, 'title', $title);
-    }
-
-    if (nonempty($volume_no)) {
-        my $volume_group = new_child_element($meta, 'volume-in-collection');
-
-        append_xml_element($volume_group, 'volume-number', $volume_no);
-    }
-
-    if (nonempty(my $pissn = $PUBS->pissn($publ_key))) {
-        my %atts = ("publication-format" => 'print');
-
-        append_xml_element($meta, "issn", $pissn, \%atts);
-    }
-
-    if (nonempty(my $eissn = $PUBS->eissn($publ_key))) {
-        my %atts = ("publication-format" => 'electronic');
-
-        append_xml_element($meta, "issn", $eissn, \%atts);
-    }
-
-    for my $publisher_name ($gentag->get_publishers()) {
-        my $publisher = append_xml_element($meta, "publisher");
-
-        append_xml_element($publisher, "publisher-name", $publisher_name);
-
-        ## TODO: HARD-CODED VALUE
-        if ($publisher_name eq "American Mathematical Society") {
-            append_xml_element($publisher, "publisher-loc", "Providence, Rhode Island");
-        }
-    }
-
-    if (nonempty(my $copub = $tex->get_macro_expansion_text('AMS@copublisher'))) {
-        my $custom = append_xml_element($meta, "custom-meta-group");
-
-        append_custom_meta($tex, $custom, "subseries", $copub);
-    }
-
-    my $url = qq{https://www.ams.org/$publ_key/};
-
-    append_xml_element($meta, 'self-uri', $url, { 'xlink:href' => $url });
-
-    return $meta;
-}
 
 my sub copy_element {
     my $src  = shift;
