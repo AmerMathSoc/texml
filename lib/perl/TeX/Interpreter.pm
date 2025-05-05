@@ -6355,7 +6355,7 @@ my %initialized_of :BOOLEAN(:name<initialized> :default<false>);
 
 my %use_mathjax_of :BOOLEAN(:name<use_mathjax> :default<false>);
 
-my %output_hooks_of :ARRAY(:name<output_hook>);
+my %output_hooks_of :ARRAY(:name<output_hook> :add<*custom*>);
 
 package OutputRecord {
     use TeX::Class;
