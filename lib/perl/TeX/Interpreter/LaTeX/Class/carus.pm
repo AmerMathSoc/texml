@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Class::carus;
 
-# Copyright (C) 2022 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Interpreter::LaTeX::Class::carus;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 sub install ( $ ) {
@@ -53,6 +54,13 @@ __DATA__
 \LoadClass{maabook}
 
 \seriesinfo{carus}{}{}
+
+\def\AMS@publname{Carus Mathematical Monographs}
+
+\def\AMS@pissn{0069-0813}
+\def\AMS@eissn{2637-7535}
+
+\def\AMS@series@url{https://www.ams.org/publications/ebooks/car-maa}
 
 \endinput
 

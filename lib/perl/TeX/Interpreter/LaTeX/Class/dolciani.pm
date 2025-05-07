@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Class::maatext;
+package TeX::Interpreter::LaTeX::Class::dolciani;
 
 use 5.26.0;
 
@@ -40,8 +40,6 @@ sub install ( $ ) {
 
     $tex->class_load_notification();
 
-    $tex->set_module_list('TeX::Interpreter::LaTeX::Package::amsthm', undef);
-
     $tex->read_package_data();
 
     return;
@@ -51,20 +49,18 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{maatext}
+\ProvidesClass{dolciani}
 
 \LoadClass{maabook}
 
-\def\chaptername{}
+\seriesinfo{dol}{}{}
 
-\seriesinfo{maatext}{}{}
+\def\AMS@publname{Dolciani Mathematical Expositions}
 
-\def\AMS@publname{AMS/MAA Textbooks}
+\def\AMS@pissn{}
+\def\AMS@eissn{}
 
-\def\AMS@pissn{2577-1205}
-\def\AMS@eissn{2577-1213}
-
-\def\AMS@series@url{https://www.ams.org/publications/ebooks/text-maa}
+\def\AMS@series@url{https://www.ams.org/publications/ebooks/dol-maa}
 
 \endinput
 

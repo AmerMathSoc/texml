@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Class::maatext;
+package TeX::Interpreter::LaTeX::Class::maanml;
 
 use 5.26.0;
 
@@ -40,8 +40,6 @@ sub install ( $ ) {
 
     $tex->class_load_notification();
 
-    $tex->set_module_list('TeX::Interpreter::LaTeX::Package::amsthm', undef);
-
     $tex->read_package_data();
 
     return;
@@ -51,20 +49,18 @@ sub install ( $ ) {
 
 __DATA__
 
-\ProvidesClass{maatext}
+\ProvidesClass{maanml}
 
 \LoadClass{maabook}
 
-\def\chaptername{}
+\seriesinfo{nml}{}{}
 
-\seriesinfo{maatext}{}{}
+\def\AMS@publname{Anneli Lax New Mathematical Library}
 
-\def\AMS@publname{AMS/MAA Textbooks}
+\def\AMS@pissn{2578-6407}
+\def\AMS@eissn{2643-5586}
 
-\def\AMS@pissn{2577-1205}
-\def\AMS@eissn{2577-1213}
-
-\def\AMS@series@url{https://www.ams.org/publications/ebooks/text-maa}
+\def\AMS@series@url{https://www.ams.org/publications/ebooks/nml-maa}
 
 \endinput
 
