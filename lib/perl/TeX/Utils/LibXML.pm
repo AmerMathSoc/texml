@@ -1,6 +1,8 @@
 package TeX::Utils::LibXML;
 
-# Copyright (C) 2022 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,7 @@ package TeX::Utils::LibXML;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
-
-use version; our $VERSION = qv '1.0.0';
 
 use base qw(Exporter);
 
@@ -41,6 +40,7 @@ our %EXPORT_TAGS = (all => [ qw(append_xml_element
                                 find_unique_node
                                 new_child_element
                                 new_xml_element
+                                new_text_element
                              ) ]);
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
@@ -51,7 +51,7 @@ use TeX::Utils::Misc;
 
 use XML::LibXML;
 
-sub find_unique_node( $$ ) {
+sub find_unique_node {
     my $node  = shift;
     my $xpath = shift;
 
@@ -66,13 +66,19 @@ sub find_unique_node( $$ ) {
     return $nodes[0];
 }
 
-sub new_xml_element( $ ) {
+sub new_text_element {
+    my $pcdata = shift;
+
+    return XML::LibXML::Text->new($pcdata);
+}
+
+sub new_xml_element {
     my $name = shift;
 
     return XML::LibXML::Element->new($name);
 }
 
-sub new_child_element( $$ ) {
+sub new_child_element {
     my $parent = shift;
     my $element_name = shift;
 
@@ -83,7 +89,7 @@ sub new_child_element( $$ ) {
     return $child;
 }
 
-sub copy_xml_node( $$$ ) {
+sub copy_xml_node {
     my $xpath = shift;
     my $src   = shift;
     my $dst   = shift;
@@ -95,7 +101,7 @@ sub copy_xml_node( $$$ ) {
     return;
 }
 
-sub append_xml_element( $$;$$ ) {
+sub append_xml_element {
     my $parent       = shift;
     my $element_name = shift;
     my $pcdata       = shift;
@@ -106,7 +112,7 @@ sub append_xml_element( $$;$$ ) {
 
     if (empty($element_name)) {
         if (nonempty($pcdata)) {
-            $parent->appendChild(XML::LibXML::Text->new($pcdata));
+            $parent->appendChild(new_text_element($pcdata));
         }
     } else {
         $child = XML::LibXML::Element->new($element_name);
