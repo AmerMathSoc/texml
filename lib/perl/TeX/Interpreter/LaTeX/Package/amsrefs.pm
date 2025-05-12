@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::amsrefs;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Interpreter::LaTeX::Package::amsrefs;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use TeX::Utils::Misc qw(nonempty trim);
@@ -168,9 +169,13 @@ sub do_modify_bib_label {
     my @xrefs = $dom->findnodes(qq{descendant::xref[attribute::rid="bibr-$bibkey"]});
 
     for my $xref (@xrefs) {
-        $xref->removeChildNodes();
+        my $first = $xref->firstChild;
 
-        $xref->appendText($new_label);
+        my $new_text = new_text_element($new_label);
+
+        $first->replaceNode($new_text);
+
+        $xref->setAttribute('specific-use', 'cite');
     }
 
     return;
