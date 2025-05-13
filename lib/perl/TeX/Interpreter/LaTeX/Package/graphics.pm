@@ -47,6 +47,14 @@ use TeX::Token::Constants qw(BEGIN_GROUP END_GROUP);
 
 use Image::Info qw(image_info);
 
+{ no warnings 'once';
+
+  # Image::Info::SVG::XMLLibXMLReader has trouble with long lines, so
+  # force the use of XMLSimple
+
+  @Image::Info::SVG::PREFER_MODULE = qw(Image::Info::SVG::XMLSimple);
+}
+
 use TeX::KPSE qw(kpse_lookup);
 
 sub install {
