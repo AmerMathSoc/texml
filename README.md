@@ -4,7 +4,7 @@ texml, a tool for converting LaTeX files into JATS/BITS-like XML.
 
 ## Copyright and license
 
-Copyright (C) 2022 American Mathematical Society
+Copyright (C) 2022-2025 American Mathematical Society
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -124,6 +124,8 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * apt install libxml-libxslt-perl [XML::LibXSLT]
 
+* apt install libxml-simple-perl [XML::Simple]
+
 * apt install xml-twig-tools [XML::Twig]
 
 * apt install libpng-dev
@@ -163,6 +165,7 @@ The above instructions should work in an Ubuntu-based [Windows Subsystem for Lin
 - `$ cpan Config::IniFiles`
 - `$ cpan XML::Twig`
 - `$ cpan Image::Info`
+- `$ cpan XML::Simple`
 - `$ cpan Lingua::EN::Numbers::Ordinate`
 - install [STIX Two](https://github.com/stipub/stixfonts/) and [Source Sans](https://github.com/adobe-fonts/source-sans)
 - `$ git clone https://github.com/AmerMathSoc/texml.git`
