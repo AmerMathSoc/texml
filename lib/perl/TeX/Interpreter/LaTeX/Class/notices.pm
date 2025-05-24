@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Class::notices;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Interpreter::LaTeX::Class::notices;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 sub install ( $ ) {
@@ -190,11 +191,8 @@ __DATA__
 
 \newcommand{\@authorgraphicsii}[3][]{%
     \begin{figure}
-        \includegraphics[width=7pc,height=9pc]{#3}
+        \includegraphics[width=7pc,height=9pc,alt={#1}]{#3}
         \caption*{#2}%
-        \if###1##\else
-            \thisxmlpartag{alt-text}#1\par
-        \fi
     \end{figure}
     \@authorgraphicsi
 }
