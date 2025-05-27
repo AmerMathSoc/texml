@@ -63,6 +63,8 @@ __DATA__
 \def\AMS@pissn{0094-9000}
 \def\AMS@eissn{1547-7363}
 
+\def\AMS@series@url{https://www.ams.org/abouttpms/}
+
 \endinput
 
 __END__

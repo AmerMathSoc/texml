@@ -62,6 +62,8 @@ __DATA__
 
 \def\AMS@eissn{2692-3688}
 
+\def\AMS@series@url{https://www.ams.org/aboutcams/}
+
 \endinput
 
 __END__

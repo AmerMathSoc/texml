@@ -63,6 +63,8 @@ __DATA__
 \def\AMS@pissn{0002-9939}
 \def\AMS@eissn{1088-6826}
 
+\def\AMS@series@url{https://www.ams.org/aboutproc/}
+
 \endinput
 
 __END__

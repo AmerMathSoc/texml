@@ -62,6 +62,8 @@ __DATA__
 
 \def\AMS@eissn{1088-4173}
 
+\def\AMS@series@url{https://www.ams.org/aboutecgd/}
+
 \endinput
 
 __END__

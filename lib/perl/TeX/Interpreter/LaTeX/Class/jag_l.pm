@@ -63,6 +63,8 @@ __DATA__
 \def\AMS@pissn{1056-3911}
 \def\AMS@eissn{1534-7486}
 
+\def\AMS@series@url{https://www.ams.org/jag/}
+
 \endinput
 
 __END__

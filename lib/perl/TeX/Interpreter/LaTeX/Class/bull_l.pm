@@ -73,6 +73,8 @@ __DATA__
     \def\@SuperTitle
 }
 
+\def\AMS@series@url{https://www.ams.org/aboutbull/}
+
 \endinput
 
 __END__

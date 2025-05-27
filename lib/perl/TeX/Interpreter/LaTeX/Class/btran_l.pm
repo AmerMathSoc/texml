@@ -62,6 +62,8 @@ __DATA__
 
 \def\AMS@eissn{2330-0000}
 
+\def\AMS@series@url{https://www.ams.org/aboutbtran/}
+
 \endinput
 
 __END__

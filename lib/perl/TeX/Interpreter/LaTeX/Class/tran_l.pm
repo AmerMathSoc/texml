@@ -63,6 +63,8 @@ __DATA__
 \def\AMS@pissn{0002-9947}
 \def\AMS@eissn{1088-6850}
 
+\def\AMS@series@url{https://www.ams.org/abouttran/}
+
 \endinput
 
 __END__

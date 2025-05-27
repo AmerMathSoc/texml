@@ -62,6 +62,8 @@ __DATA__
 
 \def\AMS@eissn{1088-4165}
 
+\def\AMS@series@url{https://www.ams.org/aboutert/}
+
 \endinput
 
 __END__

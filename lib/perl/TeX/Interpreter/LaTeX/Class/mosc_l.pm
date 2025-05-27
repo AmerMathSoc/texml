@@ -67,6 +67,8 @@ __DATA__
 \def\AMS@eissn{1547-738X}
 \def\AMS@pissn{0077-1554}
 
+\def\AMS@series@url{https://www.ams.org/aboutmosc/}
+
 \endinput
 
 __END__

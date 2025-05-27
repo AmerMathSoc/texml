@@ -65,6 +65,8 @@ __DATA__
 \def\AMS@eissn{2473-585X}
 \def\AMS@pissn{0898-9583}
 
+\def\AMS@series@url{https://www.ams.org/aboutsuga/}
+
 \endinput
 
 __END__

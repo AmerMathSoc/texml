@@ -62,6 +62,8 @@ __DATA__
 
 \def\AMS@eissn{2330-1511}
 
+\def\AMS@series@url{https://www.ams.org/aboutbproc/}
+
 \endinput
 
 __END__

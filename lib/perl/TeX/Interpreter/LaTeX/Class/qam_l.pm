@@ -63,6 +63,8 @@ __DATA__
 \def\AMS@pissn{0033-569X}
 \def\AMS@eissn{1552-4485}
 
+\def\AMS@series@url{https://www.ams.org/qam/}
+
 \endinput
 
 __END__
