@@ -1,5 +1,7 @@
 package TeX::Utils::SVG;
 
+use v5.26.0;
+
 # Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,7 +31,6 @@ package TeX::Utils::SVG;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use Cwd;
@@ -358,6 +359,8 @@ sub convert_tex {
     # }
 
     print { $fh } $preamble;
+
+    print { $fh } q{\providecommand{\extrarowheight}{\dimen0 }}, "\n";
 
     if ($use_xetex) {
         print { $fh } qq{\\usepackage{unicode-math}\n};
