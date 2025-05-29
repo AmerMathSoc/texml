@@ -869,6 +869,10 @@ __DATA__
     \def\texml@year{#3}%
 }
 
+\def\AMS@pad@date#1{%
+    \ifnum#1 < 10 \edef#1{0#1}\fi
+}
+
 \def\output@history@date#1#2{%
     \begingroup
         \edef\@tempa{#2}%
@@ -881,8 +885,8 @@ __DATA__
             \thisxmlpartag{month}\texml@month\par
             \thisxmlpartag{year}\texml@year\par
             \setXMLattribute{date-type}{#1}%
-            \ifnum\texml@day < 10 \edef\texml@day{0\texml@day}\fi
-            \ifnum\texml@month < 10 \edef\texml@month{0\texml@month}\fi
+            \AMS@pad@date\texml@day
+            \AMS@pad@date\texml@month
             \setXMLattribute{iso-8601-date}{\texml@year-\texml@month-\texml@day}%
         \endXMLelement{date}\par
         \fi
@@ -905,6 +909,8 @@ __DATA__
                     \fi
                     \thisxmlpartag{year}%
                     \AMS@issue@year\par
+                    \AMS@pad@date\AMS@issue@day
+                    \AMS@pad@date\AMS@issue@month
                     \setXMLattribute{iso-8601-date}{\AMS@issue@year-\AMS@issue@month-\AMS@issue@day}%
                 \endXMLelement{date}%
             \fi
