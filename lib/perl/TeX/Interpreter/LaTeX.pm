@@ -1631,7 +1631,7 @@ __DATA__
 }
 
 \def\@ref#1{%
-        \expandafter\@setref {#1} \ref
+        \@setref {#1} \ref {}%
 }
 
 \DeclareRobustCommand\nameref{%
@@ -1640,7 +1640,7 @@ __DATA__
 }
 
 \def\@nameref#1{%
-        \expandafter\@setref {#1} \nameref
+        \@setref {#1} \nameref {}%
 }
 
 \def\start@xref@group{\startXMLelement{xref-group}}
@@ -1652,15 +1652,16 @@ __DATA__
     \let\end@xref@group\@empty
 }
 
-\def\@setref#1#2{%
+\def\@setref#1#2#3{%
         \leavevmode
         \start@xref@group
         \startXMLelement{xref}%
-        \ifst@rred
-            \setXMLattribute{linked}{no}%
-        \fi
-        \setXMLattribute{ref-key}{#1}%
-        \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#2}%
+            \ifst@rred
+                \setXMLattribute{linked}{no}%
+            \fi
+            \setXMLattribute{ref-key}{#1}%
+            \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#2}%
+            #3%
         \endXMLelement{xref}%
         \end@xref@group
     \endgroup
@@ -1674,7 +1675,7 @@ __DATA__
 }
 
 \def\@pageref#1{%
-    \expandafter\@setref {#1} \pageref
+    \@setref {#1} \pageref {}
 }
 
 % #1 = LABEL

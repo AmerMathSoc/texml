@@ -148,20 +148,23 @@ __DATA__
 % as \ref{label} would be linked.
 
 \newcommand{\hyperref}{%
-    \kernel@ifnextchar[\texml@hyperref\texml@hyperref@warning
+    \begingroup
+        \st@rredfalse
+        \kernel@ifnextchar[\texml@hyperref\texml@hyperref@warning
 }
 
 \newcommand{\texml@hyperref}[2][]{%
-    \if###1##
-        #2%
-    \else
-        \expandafter\@sethyperref
-            \csname r@#1\endcsname\@firstofone{#1}\hyperref{#2}%
-    \fi
+        \if###1##
+            #2%
+    \endgroup
+        \else
+            \@setref{#1}\hyperref{#2}%
+        \fi
 }
 
 \newcommand{\texml@hyperref@warning}{%
-    \PackageWarning{hyperref}{Three-argument form of \string\hyperref is not implemented yet}%
+        \PackageWarning{hyperref}{Three-argument form of \string\hyperref is not implemented yet}%
+    \endgroup
 }
 
 % #1 = \r@LABEL
@@ -172,15 +175,16 @@ __DATA__
 
 %% TODO: Merge this with \@setref
 
-\def\@sethyperref#1#2#3#4#5{%
-    \leavevmode
-    \start@xref@group
-    \startXMLelement{xref}%
-        \setXMLattribute{ref-key}{#3}%
-        \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#4}%
-    #5%
-    \endXMLelement{xref}%
-    \end@xref@group
+\def\@sethyperref#1#2#3{%
+        \leavevmode
+        \start@xref@group
+        \startXMLelement{xref}%
+            \setXMLattribute{ref-key}{#1}%
+            \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#2}%
+            #3%
+        \endXMLelement{xref}%
+        \end@xref@group
+    \endgroup
 }
 
 % \hypertarget{name}{text}
