@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::hyperref;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,9 +31,9 @@ package TeX::Interpreter::LaTeX::Package::hyperref;
 # USA
 # email: tech-support@ams.org
 
-use strict;
+use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -172,8 +174,7 @@ __DATA__
 
 \def\@sethyperref#1#2#3#4#5{%
     \leavevmode
-    \TeXML@init@ref@group
-    \start@xref@group
+    \if@TeXMLend\start@xref@group\fi
     \startXMLelement{xref}%
     \if@TeXMLend
         \@ifundefined{r@#3}{%
@@ -202,7 +203,7 @@ __DATA__
     \fi
     #5%
     \endXMLelement{xref}%
-    \end@xref@group
+    \if@TeXMLend\end@xref@group\fi
 }
 
 % \hypertarget{name}{text}
