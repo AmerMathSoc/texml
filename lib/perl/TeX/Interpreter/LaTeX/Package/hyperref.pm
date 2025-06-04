@@ -174,36 +174,13 @@ __DATA__
 
 \def\@sethyperref#1#2#3#4#5{%
     \leavevmode
-    \if@TeXMLend\start@xref@group\fi
+    \start@xref@group
     \startXMLelement{xref}%
-    \if@TeXMLend
-        \@ifundefined{r@#3}{%
-            \setXMLattribute{specific-use}{undefined}%
-            \texttt{?#3}%
-        }{%
-            \begingroup
-                \double@expand{%
-                    \edef\noexpand\@ref@label@attr{%
-                        \noexpand\auto@ref@label{\expandafter\@thirdoffour#1}%
-                    }%
-                }%
-                \ifx\@ref@label@attr\@empty\else
-                    \setXMLattribute{ref-label}{\@ref@label@attr}%
-                \fi
-            \endgroup
-            \setXMLattribute{specific-use}{\expandafter\@gobble\string#4}%
-            \setXMLattribute{rid}{\expandafter\@thirdoffour#1}%
-\edef\@ref@type{\expandafter\@fourthoffour#1}%
-            \setXMLattribute{ref-type}{\@ref@type}%
-            % \protect\printref{\expandafter#2#1}%
-        }%
-    \else
         \setXMLattribute{ref-key}{#3}%
         \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#4}%
-    \fi
     #5%
     \endXMLelement{xref}%
-    \if@TeXMLend\end@xref@group\fi
+    \end@xref@group
 }
 
 % \hypertarget{name}{text}

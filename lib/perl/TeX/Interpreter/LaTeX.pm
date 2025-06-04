@@ -119,6 +119,9 @@ sub INITIALIZE :CUMULATIVE(BASE FIRST) {
     return;
 }
 
+my sub do_resolve_xrefs;
+my sub do_resolve_ref_ranges;
+
 sub install {
     my $tex = shift;
 
@@ -139,7 +142,7 @@ sub install {
 
     $tex->define_csname('TeXML@resolveXMLxrefs' => \&do_resolve_xrefs);
 
-    $tex->define_csname('TeXML@resolverefgroups' => \&do_resolve_xref_groups);
+    $tex->define_csname('TeXML@resolverefgroups' => \&do_resolve_ref_ranges);
 
     $tex->define_csname('TeXML@sortXMLcites' => \&do_sort_cites);
 
@@ -704,6 +707,10 @@ sub do_resolve_xrefs {
     my $num_xrefs = 0;
     my $num_cites = 0;
 
+    $tex->begingroup();
+
+    $tex->let_csname('@setref' => 'resolve@setref');
+
     while (my @xrefs = $body->findnodes(qq{descendant::xref[starts-with(attribute::specific-use, "unresolved")]})) {
         if (++$pass > 10) {
             $tex->print_nl("resolve_xrefs: Bailing on pass number $pass");
@@ -837,10 +844,12 @@ sub do_resolve_xrefs {
         }
     }
 
+    $tex->endgroup();
+
     return;
 }
 
-sub do_resolve_xref_groups {
+sub do_resolve_ref_ranges {
     my $tex   = shift;
     my $token = shift;
 
@@ -849,6 +858,8 @@ sub do_resolve_xref_groups {
     my $body = $handle->get_dom();
 
     $tex->print_nl("Resolving <xref-group>s");
+
+    $tex->begingroup();
 
     for my $group ($body->findnodes(qq{descendant::xref-group})) {
         my $first = $group->getAttribute('first');
@@ -948,6 +959,8 @@ sub do_resolve_xref_groups {
 
         # $tex->__DEBUG("middle refs = @middle");
     }
+
+    $tex->endgroup();
 
     return;
 }
@@ -1593,7 +1606,10 @@ __DATA__
     \startXMLelement{xref-group}%
         \setXMLattribute{first}{#1}%
         \setXMLattribute{last}{#2}%
-        \ref{#1}--\ref{#2}%
+        \begingroup
+            \suppress@xref@group
+            \ref{#1}--\ref{#2}%
+        \endgroup
     \endXMLelement{xref-group}%
 }
 
@@ -1602,7 +1618,10 @@ __DATA__
     \startXMLelement{xref-group}%
         \setXMLattribute{first}{#1}%
         \setXMLattribute{last}{#2}%
-        \eqref{#1}--\eqref{#2}%
+        \begingroup
+            \suppress@xref@group
+            \eqref{#1}--\eqref{#2}%
+        \endgroup
     \endXMLelement{xref-group}%
 }
 
@@ -1612,7 +1631,7 @@ __DATA__
 }
 
 \def\@ref#1{%
-    \expandafter\@setref {#1} \ref
+        \expandafter\@setref {#1} \ref
 }
 
 \DeclareRobustCommand\nameref{%
@@ -1621,7 +1640,30 @@ __DATA__
 }
 
 \def\@nameref#1{%
-    \expandafter\@setref {#1} \nameref
+        \expandafter\@setref {#1} \nameref
+}
+
+\def\start@xref@group{\startXMLelement{xref-group}}
+
+\def\end@xref@group{\endXMLelement{xref-group}}
+
+\def\suppress@xref@group{%
+    \let\start@xref@group\@empty
+    \let\end@xref@group\@empty
+}
+
+\def\@setref#1#2{%
+        \leavevmode
+        \start@xref@group
+        \startXMLelement{xref}%
+        \ifst@rred
+            \setXMLattribute{linked}{no}%
+        \fi
+        \setXMLattribute{ref-key}{#1}%
+        \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#2}%
+        \endXMLelement{xref}%
+        \end@xref@group
+    \endgroup
 }
 
 \long\def\texml@get@pageref#1#2#3#4{\@latex@warning{Use of \string\pageref}}
@@ -1656,31 +1698,21 @@ __DATA__
     \expandafter\expandafter\csname texml@get@\expandafter\@gobble\string#1\endcsname
 }
 
-\def\@setref{\csname @setref@\ifst@rred no\fi link\endcsname}
-
-\def\start@xref@group{\startXMLelement{xref-group}}%
-\def\end@xref@group{\endXMLelement{xref-group}}%
+\def\resolve@setref{%
+    \leavevmode
+    \csname @setref@\ifst@rred no\fi link\endcsname
+}
 
 \def\@setref@link#1#2{%
-        \leavevmode
-        \if@TeXMLend\start@xref@group\fi
         \startXMLelement{xref}%
-        \ifst@rred
-            \setXMLattribute{linked}{no}%
-        \fi
         \if@TeXMLend
-            \ifcsname r@#1\endcsname
-                \@setref@link@{#1}#2%
-            \else
-                \setXMLattribute{specific-use}{undefined}%
-                \texttt{?#1}%
-            \fi
+        \ifcsname r@#1\endcsname
+            \@setref@link@{#1}#2%
         \else
-            \setXMLattribute{ref-key}{#1}%
-            \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#2}%
+            \setXMLattribute{specific-use}{undefined}%
+            \texttt{?#1}%
         \fi
         \endXMLelement{xref}%
-        \if@TeXMLend\end@xref@group\fi
     \endgroup
 }
 
@@ -1711,21 +1743,12 @@ __DATA__
 }
 
 \def\@setref@nolink#1#2{%
-        \leavevmode
-        \if@TeXMLend
-            \ifcsname r@#1\endcsname
-                \protected@edef\texml@refinfo{\csname r@#1\endcsname}%
-                \def\texml@get{\csname texml@get@\expandafter\@gobble\string#2\endcsname}%
-                \protect\printref{\expandafter\texmf@get\texml@refinfo}%
-            \else
-                \texttt{?#1}%
-            \fi
+        \ifcsname r@#1\endcsname
+            \protected@edef\texml@refinfo{\csname r@#1\endcsname}%
+            \def\texml@get{\csname texml@get@\expandafter\@gobble\string#2\endcsname}%
+            \protect\printref{\expandafter\texmf@get\texml@refinfo}%
         \else
-            \startXMLelement{xref}%
-            \setXMLattribute{linked}{no}%
-            \setXMLattribute{ref-key}{#1}%
-            \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#2}%
-            \endXMLelement{xref}%
+            \texttt{?#1}%
         \fi
     \endgroup
 }
