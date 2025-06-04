@@ -69,15 +69,34 @@ sub do_resolve_crefs {
 
     $tex->print_nl("Resolving <cref>s");
 
+    $tex->begingroup();
+
+    $tex->let_csname('@cref'          => 'texml@cref');
+    $tex->let_csname('@@setcrefrange' => 'texml@@setcrefrange');
+    $tex->let_csname('@setnamecref'   => 'texml@setnamecref');
+
     for my $cref ($body->findnodes(qq{descendant::cref})) {
         (undef, my $ref_cmd) = split / /, $cref->getAttribute('specific-use');
 
-        my $ref_key = $cref->getAttribute('ref-key');
+        my $tex_cmd = qq{\\${ref_cmd}};
 
-        my $new_node = $tex->convert_fragment(qq{\\texmlcleveref{${ref_cmd}}{$ref_key}});
+        if ($ref_cmd =~ m{range$}) {
+            my $first = $cref->getAttribute('first');
+            my $last  = $cref->getAttribute('last');
+
+            $tex_cmd .= qq{{$first}{$last}};
+        } else {
+            my $ref_key = $cref->getAttribute('ref-key');
+
+            $tex_cmd .= qq{{$ref_key}};
+        }
+
+        my $new_node = $tex->convert_fragment($tex_cmd);
 
         $cref->replaceNode($new_node);
     }
+
+    $tex->endgroup();
 
     return;
 }
@@ -848,8 +867,6 @@ __DATA__
     \endXMLelement{cref}%
 }
 
-\def\texmlcleveref#1#2{\texml@cref{#1}{#2}}
-
 \def\texml@cref#1#2{%
     \leavevmode
     \start@xref@group
@@ -1020,9 +1037,18 @@ __DATA__
 \def\@setcrefrange{\@@setcrefrange{cref}}%
 \def\@setCrefrange{\@@setcrefrange{Cref}}%
 
-\def\@setlabelcrefrange{\@@setcrefrange{labelcref}}%
+\def\@setlabelcrefrange{\@@setcrefrange{labelcref}}% TBD ???
 
 \def\@@setcrefrange#1#2#3#4{%
+    \leavevmode
+    \startXMLelement{cref}%
+        \setXMLattribute{specific-use}{unresolved #1range}%
+        \setXMLattribute{first}{#2}%
+        \setXMLattribute{last}{#3}%
+    \endXMLelement{cref}%
+}
+
+\def\texml@@setcrefrange#1#2#3#4{%
     \begingroup
         \expandafter\ifx\csname r@#2@cref\endcsname\relax
             \protect\G@refundefinedtrue
@@ -1102,21 +1128,25 @@ __DATA__
 
 \DeclareRobustCommand{\labelcref}[1]{\@cref{labelcref}{#1}}
 
-\DeclareRobustCommand{\namecref}[1]{\@setnamecref{cref}{#1}{}{}}
-
-\DeclareRobustCommand{\nameCref}[1]{\@setnamecref{Cref}{#1}{}{}}
-
-\DeclareRobustCommand{\lcnamecref}[1]{\@setnamecref{Cref}{#1}{}{\MakeLowercase}}
-
-\DeclareRobustCommand{\namecrefs}[1]{\@setnamecref{cref}{#1}{@plural}{}}
-
-\DeclareRobustCommand{\nameCrefs}[1]{\@setnamecref{Cref}{#1}{@plural}{}}
+\DeclareRobustCommand{\namecref}[1]  {\@setnamecref{cref}{#1}{}{}{namecref}}
+\DeclareRobustCommand{\nameCref}[1]  {\@setnamecref{Cref}{#1}{}{}{nameCref}}
+\DeclareRobustCommand{\lcnamecref}[1]{\@setnamecref{Cref}{#1}{}{\MakeLowercase}{lcnamecref}}
+\DeclareRobustCommand{\namecrefs}[1] {\@setnamecref{cref}{#1}{@plural}{}{namecrefs}}
+\DeclareRobustCommand{\nameCrefs}[1] {\@setnamecref{Cref}{#1}{@plural}{}{nameCrefs}}
 
 \DeclareRobustCommand{\lcnamecrefs}[1]{%
-    \@setnamecref{Cref}{#1}{@plural}{\MakeLowercase}%
+    \@setnamecref{Cref}{#1}{@plural}{\MakeLowercase}{lcnamecrefs}%
 }
 
-\def\@setnamecref#1#2#3#4{%
+\def\@setnamecref#1#2#3#4#5{%
+    \leavevmode
+    \startXMLelement{cref}%
+        \setXMLattribute{specific-use}{unresolved #5}%
+        \setXMLattribute{ref-key}{#2}%
+    \endXMLelement{cref}%
+}
+
+\def\texml@setnamecref#1#2#3#4#5{%
     \expandafter\ifx\csname r@#2@cref\endcsname\relax
         \protect\G@refundefinedtrue
         \nfss@text{\reset@font\bfseries ??}%
