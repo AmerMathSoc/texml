@@ -738,19 +738,8 @@ sub do_resolve_xrefs {
 
                     $num_cites++;
                 }
-            } elsif (lc($ref_cmd) eq 'cref') {
-                my $ref_key = $xref->getAttribute('ref-key');
-
-                my $new_node = $tex->convert_fragment(qq{\\texmlcleveref{${ref_cmd}}{$ref_key}});
-
-                my $flag = $new_node->firstChild()->getAttribute("specific-use");
-
-                if (nonempty($flag) && $flag !~ m{^un(defined|resolved)}) {
-                    $num_xrefs++;
-                }
-
-                $xref->replaceNode($new_node);
-            } else {
+            }
+            else {
                 my $linked = 1;
 
                 my $link_att = $xref->getAttribute('linked');
@@ -926,7 +915,7 @@ sub do_resolve_xref_groups {
 
                 my $this_refkey = $record->get_refkey;
 
-                next if $this_refkey =~ m{\@cref$};
+                next if $this_refkey =~ m{\@cref$}; ## ???
 
                 if ($this_refkey eq $last) {
                     $last_found = 1;
@@ -1115,10 +1104,6 @@ __DATA__
 
 \def\TeXMLNoResolveXrefs{\let\TeXML@resolveXMLxrefs\@empty}
 \def\TeXMLNoResolveXrefgroups{\let\TeXML@resolverefgroups\@empty}
-
-% \AtTeXMLend{\TeXML@resolveXMLcites}
-
-% \def\TeXMLnoResolveCites{\let\TeXML@resolveXMLcites\@empty}
 
 \newif\ifTeXMLsortcites@
 \TeXMLsortcites@false
@@ -1673,21 +1658,12 @@ __DATA__
 
 \def\@setref{\csname @setref@\ifst@rred no\fi link\endcsname}
 
-\def\TeXML@init@ref@group{%
-    \let\start@xref@group\@empty
-    \let\end@xref@group\@empty
-    \if@TeXMLend\else
-        \ifinXMLelement{xref-group}\else
-            \def\start@xref@group{\startXMLelement{xref-group}}%
-            \def\end@xref@group{\endXMLelement{xref-group}}%
-        \fi
-    \fi
-}
+\def\start@xref@group{\startXMLelement{xref-group}}%
+\def\end@xref@group{\endXMLelement{xref-group}}%
 
 \def\@setref@link#1#2{%
         \leavevmode
-        \TeXML@init@ref@group
-        \start@xref@group
+        \if@TeXMLend\start@xref@group\fi
         \startXMLelement{xref}%
         \ifst@rred
             \setXMLattribute{linked}{no}%
@@ -1704,7 +1680,7 @@ __DATA__
             \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#2}%
         \fi
         \endXMLelement{xref}%
-        \end@xref@group
+        \if@TeXMLend\end@xref@group\fi
     \endgroup
 }
 
