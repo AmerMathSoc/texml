@@ -71,9 +71,9 @@ sub do_resolve_crefs {
 
     $tex->begingroup();
 
-    $tex->let_csname('@cref'          => 'texml@cref');
-    $tex->let_csname('@@setcrefrange' => 'texml@@setcrefrange');
-    $tex->let_csname('@setnamecref'   => 'texml@setnamecref');
+    $tex->let_csname('@cref'          => 'resolve@cref');
+    $tex->let_csname('@@setcrefrange' => 'resolve@@setcrefrange');
+    $tex->let_csname('@setnamecref'   => 'resolve@setnamecref');
 
     for my $cref ($body->findnodes(qq{descendant::cref})) {
         (undef, my $ref_cmd) = split / /, $cref->getAttribute('specific-use');
@@ -856,6 +856,8 @@ __DATA__
 \DeclareRobustCommand{\cref}[1]{\@cref{cref}{#1}}%
 \DeclareRobustCommand{\Cref}[1]{\@cref{Cref}{#1}}%
 
+\DeclareRobustCommand{\labelcref}[1]{\@cref{labelcref}{#1}}
+
 \DeclareRobustCommand{\cpageref}[1]{\@cref{cpageref}{#1}}%
 \DeclareRobustCommand{\Cpageref}[1]{\@cref{Cpageref}{#1}}%
 
@@ -867,7 +869,7 @@ __DATA__
     \endXMLelement{cref}%
 }
 
-\def\texml@cref#1#2{%
+\def\resolve@cref#1#2{%
     \leavevmode
     \start@xref@group
     \begingroup
@@ -1048,7 +1050,9 @@ __DATA__
     \endXMLelement{cref}%
 }
 
-\def\texml@@setcrefrange#1#2#3#4{%
+\def\resolve@@setcrefrange#1#2#3#4{%
+    \leavevmode
+    \start@xref@group
     \begingroup
         \expandafter\ifx\csname r@#2@cref\endcsname\relax
             \protect\G@refundefinedtrue
@@ -1114,6 +1118,7 @@ __DATA__
             \fi
         \fi
     \endgroup
+    \end@xref@group
 }
 
 \def\@@@setcrefrange#1#2#3{%
@@ -1125,8 +1130,6 @@ __DATA__
 \def\@setcref@pairgroupconjunction{\crefpairgroupconjunction}
 \def\@setcref@middlegroupconjunction{\crefmiddlegroupconjunction}
 \def\@setcref@lastgroupconjunction{\creflastgroupconjunction}
-
-\DeclareRobustCommand{\labelcref}[1]{\@cref{labelcref}{#1}}
 
 \DeclareRobustCommand{\namecref}[1]  {\@setnamecref{cref}{#1}{}{}{namecref}}
 \DeclareRobustCommand{\nameCref}[1]  {\@setnamecref{Cref}{#1}{}{}{nameCref}}
@@ -1146,7 +1149,7 @@ __DATA__
     \endXMLelement{cref}%
 }
 
-\def\texml@setnamecref#1#2#3#4#5{%
+\def\resolve@setnamecref#1#2#3#4#5{%
     \expandafter\ifx\csname r@#2@cref\endcsname\relax
         \protect\G@refundefinedtrue
         \nfss@text{\reset@font\bfseries ??}%
