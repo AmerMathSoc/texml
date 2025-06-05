@@ -1104,10 +1104,12 @@ __DATA__
                 \cref@gettype{#3}{\@typeb}%
                 \stash@refinfo{#2}\@labela
                 \stash@refinfo{#3}\@labelb
-\expandafter\let\expandafter\@tempa\csname texml@refinfo@\@labela\endcsname
-\setXMLattribute{first}{\expandafter\texml@get@refid\@tempa}%
-\expandafter\let\expandafter\@tempa\csname texml@refinfo@\@labelb\endcsname
-\setXMLattribute{last}{\expandafter\texml@get@refid\@tempa}%
+                \expandafter\let\expandafter\@tempa
+                    \csname texml@refinfo@\@labela\endcsname
+                \setXMLattribute{first}{\expandafter\texml@get@refid\@tempa}%
+                \expandafter\let\expandafter\@tempa
+                    \csname texml@refinfo@\@labelb\endcsname
+                \setXMLattribute{last}{\expandafter\texml@get@refid\@tempa}%
                 \edef\@format{%
                     \expandafter\noexpand \csname #1range@\@typea @format#4\endcsname
                 }%
