@@ -1037,7 +1037,7 @@ __DATA__
 
 \def\format@xref#1{%
     \startXMLelement{xref}%
-        \setXMLattribute{specific-use}{#1}%
+        \setXMLattribute{specific-use}{\cref@variant}%
         \ifx\texml@refinfo\@empty\else
             \setXMLattribute{rid}{\expandafter\texml@get@refid\texml@refinfo}%
             \setXMLattribute{ref-type}{\expandafter\texml@get@reftype\texml@refinfo}%
@@ -1076,6 +1076,7 @@ __DATA__
     \leavevmode
     \start@xref@group
     \begingroup
+        \def\cref@variant{#1}%
         \expandafter\ifx\csname r@#2@cref\endcsname\relax
             \protect\G@refundefinedtrue
             \@latex@warning{Reference `#2' on page \thepage \space undefined}%
@@ -2320,13 +2321,17 @@ __DATA__
 
 \ProcessOptions*\relax
 
+\def\texml@gt@def#1#2{%
+    \edef#1{\noexpand\XMLgeneratedText{#2}}%
+}
+
 \AtBeginDocument{%
     \edef\@tempa{%
         \expandafter\noexpand\csname extras\cref@language\endcsname
     }%
     %
     \@ifundefined{crefrangeconjunction}{%
-        \let\crefrangeconjunction\crefrangeconjunction@preamble
+        \texml@gt@def\crefrangeconjunction\crefrangeconjunction@preamble
     }{%
         \expandafter\def\expandafter\@tempb\expandafter{%
             \expandafter\renewcommand\expandafter
@@ -2338,7 +2343,7 @@ __DATA__
     }%
     %
     \@ifundefined{crefrangepreconjunction}{%
-        \let\crefrangepreconjunction\crefrangepreconjunction@preamble
+        \texml@gt@def\crefrangepreconjunction\crefrangepreconjunction@preamble
     }{%
         \expandafter\def\expandafter\@tempb\expandafter{%
             \expandafter\renewcommand\expandafter
@@ -2350,7 +2355,7 @@ __DATA__
     }%
     %
     \@ifundefined{crefrangepostconjunction}{%
-        \let\crefrangepostconjunction\crefrangepostconjunction@preamble
+        \texml@gt@def\crefrangepostconjunction\crefrangepostconjunction@preamble
     }{%
         \expandafter\def\expandafter\@tempb\expandafter{%
             \expandafter\renewcommand\expandafter
@@ -2362,7 +2367,7 @@ __DATA__
     }%
     %
     \@ifundefined{crefpairconjunction}{%
-        \let\crefpairconjunction\crefpairconjunction@preamble
+        \texml@gt@def\crefpairconjunction\crefpairconjunction@preamble
     }{%
         \expandafter\def\expandafter\@tempb\expandafter{%
             \expandafter\renewcommand\expandafter
@@ -2372,10 +2377,11 @@ __DATA__
         \expandafter\expandafter\expandafter\cref@addto
             \expandafter\@tempa\expandafter{\@tempb}%
         \@ifundefined{crefpairgroupconjunction}{%
-            \let\crefpairgroupconjunction\crefpairconjunction}{}%
+            \texml@gt@def\crefpairgroupconjunction\crefpairconjunction
+        }{}%
     }%
     \@ifundefined{crefmiddleconjunction}{%
-        \let\crefmiddleconjunction\crefmiddleconjunction@preamble
+        \texml@gt@def\crefmiddleconjunction\crefmiddleconjunction@preamble
     }{%
         \expandafter\def\expandafter\@tempb\expandafter{%
             \expandafter\renewcommand\expandafter
@@ -2385,10 +2391,11 @@ __DATA__
         \expandafter\expandafter\expandafter\cref@addto
             \expandafter\@tempa\expandafter{\@tempb}%
         \@ifundefined{crefmiddlegroupconjunction}{%
-            \let\crefmiddlegroupconjunction\crefmiddleconjunction}{}%
+            \texml@gt@def\crefmiddlegroupconjunction\crefmiddleconjunction
+        }{}%
     }%
     \@ifundefined{creflastconjunction}{%
-        \let\creflastconjunction\creflastconjunction@preamble
+        \texml@gt@def\creflastconjunction\creflastconjunction@preamble
     }{%
         \expandafter\def\expandafter\@tempb\expandafter{%
             \expandafter\renewcommand\expandafter{%
@@ -2399,42 +2406,42 @@ __DATA__
         \expandafter\expandafter\expandafter\cref@addto
             \expandafter\@tempa\expandafter{\@tempb}%
         \@ifundefined{creflastgroupconjunction}{%
-            \edef\creflastgroupconjunction{, \creflastconjunction}%
+            \texml@gt@def\creflastgroupconjunction{, \creflastconjunction}%
         }{}%
     }%
-  \@ifundefined{crefpairgroupconjunction}{%
-    \let\crefpairgroupconjunction
-    \crefpairgroupconjunction@preamble
-  }{%
-    \expandafter\def\expandafter\@tempb\expandafter{%
-      \expandafter\renewcommand\expandafter
-      {\expandafter\crefpairgroupconjunction\expandafter}%
-      \expandafter{\crefpairgroupconjunction}}%
-    \expandafter\expandafter\expandafter\cref@addto
-      \expandafter\@tempa\expandafter{\@tempb}%
-  }%
-  \@ifundefined{crefmiddlegroupconjunction}{%
-    \let\crefmiddlegroupconjunction
-      \crefmiddlegroupconjunction@preamble
-  }{%
-    \expandafter\def\expandafter\@tempb\expandafter{%
-      \expandafter\renewcommand\expandafter
-      {\expandafter\crefmiddlegroupconjunction\expandafter}%
-      \expandafter{\crefmiddlegroupconjunction}}%
-    \expandafter\expandafter\expandafter\cref@addto
-      \expandafter\@tempa\expandafter{\@tempb}%
-  }%
-  \@ifundefined{creflastgroupconjunction}{%
-    \let\creflastgroupconjunction
-      \creflastgroupconjunction@preamble
-  }{%
-    \expandafter\def\expandafter\@tempb\expandafter{%
-      \expandafter\renewcommand\expandafter
-      {\expandafter\creflastgroupconjunction\expandafter}%
-      \expandafter{\creflastgroupconjunction}}%
-    \expandafter\expandafter\expandafter\cref@addto
-      \expandafter\@tempa\expandafter{\@tempb}%
-  }%
+    \@ifundefined{crefpairgroupconjunction}{%
+        \texml@gt@def\crefpairgroupconjunction\crefpairgroupconjunction@preamble
+    }{%
+        \expandafter\def\expandafter\@tempb\expandafter{%
+            \expandafter\renewcommand\expandafter
+            {\expandafter\crefpairgroupconjunction\expandafter}%
+            \expandafter{\crefpairgroupconjunction}%
+        }%
+        \expandafter\expandafter\expandafter\cref@addto
+            \expandafter\@tempa\expandafter{\@tempb}%
+    }%
+    \@ifundefined{crefmiddlegroupconjunction}{%
+        \texml@gt@def\crefmiddlegroupconjunction\crefmiddlegroupconjunction@preamble
+    }{%
+        \expandafter\def\expandafter\@tempb\expandafter{%
+            \expandafter\renewcommand\expandafter
+            {\expandafter\crefmiddlegroupconjunction\expandafter}%
+            \expandafter{\crefmiddlegroupconjunction}%
+        }%
+        \expandafter\expandafter\expandafter\cref@addto
+            \expandafter\@tempa\expandafter{\@tempb}%
+    }%
+    \@ifundefined{creflastgroupconjunction}{%
+        \texml@gt@def\creflastgroupconjunction\creflastgroupconjunction@preamble
+    }{%
+        \expandafter\def\expandafter\@tempb\expandafter{%
+            \expandafter\renewcommand\expandafter
+            {\expandafter\creflastgroupconjunction\expandafter}%
+            \expandafter{\creflastgroupconjunction}%
+        }%
+        \expandafter\expandafter\expandafter\cref@addto
+            \expandafter\@tempa\expandafter{\@tempb}%
+    }%
     %%
     %%
     %%
