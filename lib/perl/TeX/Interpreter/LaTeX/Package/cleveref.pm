@@ -207,31 +207,34 @@ __DATA__
     \act
 }
 
-\def\cref@ifstreq#1#2#3#4{%
-  \begingroup
-    \edef\@tempa{#1}%
-    \edef\@tempb{#2}%
-    \expandafter\def\expandafter\@tempa\expandafter{\csname\@tempa\endcsname}%
-    \expandafter\def\expandafter\@tempb\expandafter{\csname\@tempb\endcsname}%
-    \ifx\@tempa\@tempb
-      \let\@tempc\@firstoftwo
-    \else
-      \let\@tempc\@secondoftwo
-    \fi
-    \expandafter
-  \endgroup
-  \@tempc{#3}{#4}}%
+\def\cref@ifstreq#1#2{%
+    \begingroup
+        \edef\@tempa{#1}%
+        \edef\@tempb{#2}%
+        \expandafter\def\expandafter\@tempa\expandafter{\csname\@tempa\endcsname}%
+        \expandafter\def\expandafter\@tempb\expandafter{\csname\@tempb\endcsname}%
+        \ifx\@tempa\@tempb
+            \let\@tempc\@firstoftwo
+        \else%
+            \let\@tempc\@secondoftwo
+        \fi
+    \expandafter\endgroup
+    \@tempc
+}
 
 \def\cref@getref#1#2{%
-  \expandafter\let\expandafter#2\csname r@#1@cref\endcsname
-  \expandafter\expandafter\expandafter\def
-    \expandafter\expandafter\expandafter#2%
-    \expandafter\expandafter\expandafter{%
-      \expandafter\@firstoftwo#2}}%
+    \expandafter\let\expandafter#2\csname r@#1@cref\endcsname
+    \expandafter\expandafter\expandafter\def
+        \expandafter\expandafter\expandafter#2%
+        \expandafter\expandafter\expandafter{%
+            \expandafter\@firstoftwo#2%
+    }%
+}
 
 \def\cref@getlabel#1#2{%
-  \cref@getref{#1}{\@tempa}%
-  \expandafter\@cref@getlabel\@tempa\@nil#2}%
+    \cref@getref{#1}{\@tempa}%
+    \expandafter\@cref@getlabel\@tempa\@nil#2%
+}%
 
 \def\@cref@getlabel{\@ifnextchar[%]
   \@@cref@getlabel{\@@cref@getlabel[][][]}}%
@@ -861,6 +864,10 @@ __DATA__
 \DeclareRobustCommand{\cpageref}[1]{\@cref{cpageref}{#1}}%
 \DeclareRobustCommand{\Cpageref}[1]{\@cref{Cpageref}{#1}}%
 
+\DeclareRobustCommand{\labelcpageref}[1]{%
+    \@cref{labelcpageref}{#1}%
+}
+
 \def\@cref#1#2{%
     \leavevmode
     \startXMLelement{cref}%
@@ -868,6 +875,9 @@ __DATA__
         \setXMLattribute{ref-key}{#2}%
     \endXMLelement{cref}%
 }
+
+% #1 = cref | Cref | labelcref | cpageref | Cpageref | labelcpageref
+% #2 = list of refkeys
 
 \def\resolve@cref#1#2{%
     \leavevmode
@@ -904,13 +914,13 @@ __DATA__
                 \advance\count@group 1
             \else
                 \cref@isstackfull{\@refstack}%
-                \if@cref@stackfull
-                    \@setcref@middlegroupconjunction
+                \if@cref@stackfull %% TBD TEST THIS
+                    \XMLgeneratedText\@setcref@middlegroupconjunction
                 \else
                     \ifnum\count@group=2
-                        \@setcref@pairgroupconjunction
+                        \XMLgeneratedText\@setcref@pairgroupconjunction
                     \else
-                        \@setcref@lastgroupconjunction
+                        \XMLgeneratedText\@setcref@lastgroupconjunction
                     \fi
                 \fi
                 \advance\count@group 1
@@ -997,10 +1007,11 @@ __DATA__
 % #3 position in list
 
 \def\@@setcref#1#2#3{%
-    \startXMLelement{xref}%
         \@ifundefined{r@#2@cref}{%
-            \setXMLattribute{specific-use}{undefined}%
-            \texttt{?#2}%
+            \startXMLelement{xref}%
+                \setXMLattribute{specific-use}{undefined}%
+                \texttt{?#2}%
+            \endXMLelement{xref}%
         }{%
             \cref@gettype{#2}{\@temptype}% puts label type in \@temptype
             \cref@getlabel{#2}{\@templabel}%  puts label in \@templabel
@@ -1011,26 +1022,37 @@ __DATA__
             }{}%
             \@ifundefined{#1@\@temptype @format#3}{%
                 \@latex@warning{#1\space reference format for label type `\@temptype' undefined}%
-                \setXMLattribute{specific-use}{undefined}%
-                \texttt{?#2}%
+                \startXMLelement{xref}%
+                    \setXMLattribute{specific-use}{undefined}%
+                    \texttt{?#2}%
+                \endXMLelement{xref}%
             }{%
-                % \edef\@tempa{\@nameuse{r@#2@cref}}%
                 \protected@edef\texml@refinfo{\@nameuse{r@#2}}%
-                \setXMLattribute{specific-use}{#1}%
-                \setXMLattribute{rid}{\expandafter\texml@get@refid\texml@refinfo}%
-                \setXMLattribute{ref-type}{\expandafter\texml@get@reftype\texml@refinfo}%
-                \edef\ref@subtype{\expandafter\texml@get@subtype\texml@refinfo}%
-                \ifx\ref@subtype\@empty\else
-                    \setXMLattribute{ref-subtype}{\ref@subtype}%
-                \fi
                 \expandafter\@@@setcref\expandafter{\csname #1@\@temptype @format#3\endcsname}{#2}%
             }%
         }%
+}
+
+\let\texml@refinfo\@empty
+
+\def\format@xref#1{%
+    \startXMLelement{xref}%
+        \setXMLattribute{specific-use}{#1}%
+        \ifx\texml@refinfo\@empty\else
+            \setXMLattribute{rid}{\expandafter\texml@get@refid\texml@refinfo}%
+            \setXMLattribute{ref-type}{\expandafter\texml@get@reftype\texml@refinfo}%
+            \edef\ref@subtype{\expandafter\texml@get@subtype\texml@refinfo}%
+            \ifx\ref@subtype\@empty\else
+                \setXMLattribute{ref-subtype}{\ref@subtype}%
+            \fi
+        \fi
+        #1%
     \endXMLelement{xref}%
 }
 
 \def\@@@setcref#1#2{%
-    \cref@getlabel{#2}{\@templabel}#1{\@templabel}{}{}%
+    \cref@getlabel{#2}{\@templabel}%
+    #1{\@templabel}{}{}%
 }
 
 \DeclareRobustCommand{\crefrange}[2]{\@setcrefrange{#1}{#2}{}}%
@@ -1182,10 +1204,6 @@ __DATA__
     \@@setcpagerefrange{#1}{#2}{Cref}{}%
 }
 
-\DeclareRobustCommand{\labelcpageref}[1]{%
-    \@cref{labelcpageref}{#1}%
-}
-
 \def\@setcpageref{\@@setcpageref{cref}}
 \def\@setCpageref{\@@setcpageref{Cref}}
 \def\@setlabelcpageref{\@@setcpageref{labelcref}}
@@ -1276,33 +1294,41 @@ __DATA__
 \cref@stack@init{\cref@label@types}
 
 \newcommand\crefdefaultlabelformat[1]{%
-  \def\cref@default@label##1##2##3{#1}}%
+    \def\cref@default@label##1##2##3{#1}%
+}
 
 \newcommand\crefname[3]{%
-  \@crefname{cref}{#1}{#2}{#3}{}}%
+    \@crefname{cref}{#1}{#2}{#3}{}%
+}
 
 \newcommand\Crefname[3]{%
-  \@crefname{Cref}{#1}{#2}{#3}{}}%
+    \@crefname{Cref}{#1}{#2}{#3}{}%
+}
 
 \newcommand\creflabelformat[2]{%
-  \expandafter\def\csname cref@#1@label\endcsname##1##2##3{#2}%
-  \cref@stack@add{#1}{\cref@label@types}}%
+    \expandafter\def\csname cref@#1@label\endcsname##1##2##3{#2}%
+    \cref@stack@add{#1}{\cref@label@types}%
+}
 
 \newcommand\crefrangelabelformat[2]{%
-  \expandafter\def\csname cref@#1@rangelabel\endcsname
-    ##1##2##3##4##5##6{#2}%
-  \cref@stack@add{#1}{\cref@label@types}}%
+    \expandafter\def\csname cref@#1@rangelabel\endcsname##1##2##3##4##5##6{#2}%
+    \cref@stack@add{#1}{\cref@label@types}%
+}
+
 \newcommand\crefalias[2]{%
-  \expandafter\def\csname cref@#1@alias\endcsname{#2}}%
+    \expandafter\def\csname cref@#1@alias\endcsname{#2}%
+}
 
 \newcommand\crefname@preamble[3]{%
     \@crefname{cref}{#1}{#2}{#3}{@preamble}%
 }%
 
 \newcommand\Crefname@preamble[3]{%
-  \@crefname{Cref}{#1}{#2}{#3}{@preamble}}%
+    \@crefname{Cref}{#1}{#2}{#3}{@preamble}%
+}
 
-\def\cref@othervariant#1#2#3{\cref@@othervariant#1\@nil#2#3}%
+\def\cref@othervariant#1#2#3{\cref@@othervariant#1\@nil#2#3}
+
 \def\cref@@othervariant#1#2\@nil#3#4{%
   \if#1c%
     \def#3{C#2}%
@@ -1351,64 +1377,71 @@ __DATA__
 }
 
 \def\@crefconstructcomponents#1{%
-  \@ifundefined{cref@#1@label}{%
-    \let\@templabel\cref@default@label
-  }{%
-    \expandafter\let\expandafter\@templabel
-    \csname cref@#1@label\endcsname
-  }%
-  \@ifundefined{cref@#1@rangelabel}{%
-    \expandafter\def\expandafter\@tempa\expandafter{%
-      \@templabel{####1}{####3}{####4}}%
-    \expandafter\def\expandafter\@tempb\expandafter{%
-      \@templabel{####2}{####5}{####6}}%
-    \toksdef\@toksa=0%
-    \@toksa={\def\@temprangelabel##1##2##3##4##5##6}%
-    \expandafter\expandafter\expandafter\the
-    \expandafter\expandafter\expandafter\@toksa
-    \expandafter\expandafter\expandafter{%
-      \expandafter\expandafter\expandafter\crefrangepreconjunction
-      \expandafter\@tempa\expandafter\crefrangeconjunction\@tempb
-      \crefrangepostconjunction}%
-  }{%
-    \expandafter\let\expandafter\@temprangelabel
-    \csname cref@#1@rangelabel\endcsname
-  }%
-  \if@cref@nameinlink
-    \expandafter\def\expandafter\@templabel@first\expandafter{%
-      \@templabel{########1}{}{########3}}%
-    \expandafter\def\expandafter\@temprangelabel@first\expandafter{%
-      \@temprangelabel{########1}{########2}%
-        {}{########4}{########5}{########6}}%
-  \fi
-  \expandafter\def\expandafter\@templabel\expandafter{%
-    \@templabel{########1}{########2}{########3}}%
-  \expandafter\def\expandafter\@temprangelabel\expandafter{%
-    \@temprangelabel{########1}{########2}{########3}%
-    {########4}{########5}{########6}}%
-  \if@cref@nameinlink\else
-    \let\@templabel@first\@templabel
-    \let\@temprangelabel@first\@temprangelabel
-  \fi
-  \if@cref@nameinlink
-    \def\@tempa##1##2{##2##1}%
-    \expandafter\expandafter\expandafter\def
-    \expandafter\expandafter\expandafter\@tempname
-    \expandafter\expandafter\expandafter{%
-      \expandafter\@tempa\expandafter
-        {\csname cref@#1@name\endcsname}{########2}}%
-    \expandafter\expandafter\expandafter\def
-    \expandafter\expandafter\expandafter\@tempName
-    \expandafter\expandafter\expandafter{%
-      \expandafter\@tempa\expandafter
-        {\csname Cref@#1@name\endcsname}{########2}}%
-    \expandafter\expandafter\expandafter\def
-    \expandafter\expandafter\expandafter\@tempnameplural
-    \expandafter\expandafter\expandafter{%
-      \expandafter\@tempa\expandafter
-        {\csname cref@#1@name@plural\endcsname}{########2}}%
-    \expandafter\expandafter\expandafter\def
-    \expandafter\expandafter\expandafter\@tempNameplural
+    \@ifundefined{cref@#1@label}{%
+        \let\@templabel\cref@default@label
+    }{%
+        \expandafter\let\expandafter\@templabel
+            \csname cref@#1@label\endcsname
+    }%
+    \@ifundefined{cref@#1@rangelabel}{%
+        \expandafter\def\expandafter\@tempa\expandafter{%
+            \@templabel{####1}{####3}{####4}%
+        }%
+        \expandafter\def\expandafter\@tempb\expandafter{%
+            \@templabel{####2}{####5}{####6}%
+        }%
+        \toksdef\@toksa=0%
+        \@toksa={\def\@temprangelabel##1##2##3##4##5##6}%
+        \expandafter\expandafter\expandafter\the
+        \expandafter\expandafter\expandafter\@toksa
+        \expandafter\expandafter\expandafter{%
+            \expandafter\expandafter\expandafter\crefrangepreconjunction
+            \expandafter\@tempa\expandafter\crefrangeconjunction\@tempb
+            \crefrangepostconjunction
+        }%
+    }{%
+        \expandafter\let\expandafter\@temprangelabel
+            \csname cref@#1@rangelabel\endcsname
+    }%
+    \if@cref@nameinlink
+        \expandafter\def\expandafter\@templabel@first\expandafter{%
+            \@templabel{########1}{}{########3}%
+        }%
+        \expandafter\def\expandafter\@temprangelabel@first\expandafter{%
+            \@temprangelabel{########1}{########2}%
+                {}{########4}{########5}{########6}%
+        }%
+    \fi
+    \expandafter\def\expandafter\@templabel\expandafter{%
+        \@templabel{########1}{########2}{########3}%
+    }%
+    \expandafter\def\expandafter\@temprangelabel\expandafter{%
+        \@temprangelabel{########1}{########2}{########3}%
+            {########4}{########5}{########6}%
+    }%
+    \if@cref@nameinlink\else
+        \let\@templabel@first\@templabel
+        \let\@temprangelabel@first\@temprangelabel
+    \fi
+    \if@cref@nameinlink
+        \def\@tempa##1##2{##2##1}%
+        \expandafter\expandafter\expandafter\def
+        \expandafter\expandafter\expandafter\@tempname
+        \expandafter\expandafter\expandafter{%
+            \expandafter\@tempa\expandafter{\csname cref@#1@name\endcsname}{########2}%
+        }%
+        \expandafter\expandafter\expandafter\def
+        \expandafter\expandafter\expandafter\@tempName
+        \expandafter\expandafter\expandafter{%
+            \expandafter\@tempa\expandafter{\csname Cref@#1@name\endcsname}{########2}%
+        }%
+        \expandafter\expandafter\expandafter\def
+        \expandafter\expandafter\expandafter\@tempnameplural
+        \expandafter\expandafter\expandafter{%
+            \expandafter\@tempa\expandafter{\csname cref@#1@name@plural\endcsname}{########2}%
+        }%
+        \expandafter\expandafter\expandafter\def
+        \expandafter\expandafter\expandafter\@tempNameplural
     \expandafter\expandafter\expandafter{%
       \expandafter\@tempa\expandafter
         {\csname Cref@#1@name@plural\endcsname}{########2}}%
@@ -1434,7 +1467,8 @@ __DATA__
     \let\@tempnameplural@range\@tempnameplural
     \let\@tempNameplural@range\@tempNameplural
   \fi
-}%
+}
+
 \def\@crefdefineformat#1{%
   \begingroup
     \@crefconstructcomponents{#1}%
@@ -1464,6 +1498,7 @@ __DATA__
       \@toksa={\labelcrefformat{#1}}%
       \expandafter\the\expandafter\@toksa\expandafter{\@templabel}}%
   \endgroup}%
+
 \def\@crefrangedefineformat#1{%
   \begingroup
     \@crefconstructcomponents{#1}%
@@ -1503,58 +1538,72 @@ __DATA__
         \@temprangelabel}%
     \fi
   \endgroup}%
+
 \def\@crefdefinemultiformat#1{%
-  \begingroup
-    \@crefconstructcomponents{#1}%
-    \expandafter\ifx\csname cref@#1@name@plural\endcsname\@empty\relax
-      \expandafter\def\expandafter\@tempfirst
-        \expandafter{\@templabel}%
-    \else
-      \expandafter\expandafter\expandafter\def
-      \expandafter\expandafter\expandafter\@tempfirst
-      \expandafter\expandafter\expandafter{%
-        \expandafter\@tempnameplural
-        \expandafter\nobreakspace\@templabel@first}%
-    \fi
-    \expandafter\ifx\csname Cref@#1@name@plural\endcsname\@empty\relax
-      \expandafter\def\expandafter\@tempFirst
-        \expandafter{\@templabel}%
-    \else
-      \expandafter\expandafter\expandafter\def
-      \expandafter\expandafter\expandafter\@tempFirst
-      \expandafter\expandafter\expandafter{%
-        \expandafter\@tempNameplural
-        \expandafter\nobreakspace\@templabel@first}%
-    \fi
-    \expandafter\def\expandafter\@tempsecond\expandafter{%
-      \expandafter\crefpairconjunction\@templabel}%
-    \expandafter\def\expandafter\@tempmiddle\expandafter{%
-      \expandafter\crefmiddleconjunction\@templabel}%
-    \expandafter\def\expandafter\@templast\expandafter{%
-      \expandafter\creflastconjunction\@templabel}%
-    \expandafter\def\expandafter\@templabel\expandafter{\@templabel}%
-    \toksdef\@toksa=0%
-    \toksdef\@toksb=1%
-    \@toksb={}%
-    \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
-      \expandafter{\@tempfirst}}%
-    \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
-      \expandafter{\@tempsecond}}%
-    \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
-      \expandafter{\@tempmiddle}}%
-    \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
-      \expandafter{\@templast}}%
-    \@toksa={\crefmultiformat{#1}}%
-    \expandafter\the\expandafter\@toksa\the\@toksb
-    \@toksb={}%
-    \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
-      \expandafter{\@tempFirst}}%
-    \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
-      \expandafter{\@tempsecond}}%
-    \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
-      \expandafter{\@tempmiddle}}%
-    \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
-      \expandafter{\@templast}}%
+    \begingroup
+        \@crefconstructcomponents{#1}%
+        \expandafter\ifx\csname cref@#1@name@plural\endcsname\@empty\relax
+            \expandafter\def\expandafter\@tempfirst\expandafter{\@templabel}%
+        \else
+            \expandafter\expandafter\expandafter\def
+            \expandafter\expandafter\expandafter\@tempfirst
+            \expandafter\expandafter\expandafter{%
+                \expandafter\@tempnameplural
+                \expandafter\nobreakspace\@templabel@first
+            }%
+        \fi
+        \expandafter\ifx\csname Cref@#1@name@plural\endcsname\@empty\relax
+            \expandafter\def\expandafter\@tempFirst \expandafter{\@templabel}%
+        \else
+            \expandafter\expandafter\expandafter\def
+            \expandafter\expandafter\expandafter\@tempFirst
+            \expandafter\expandafter\expandafter{%
+                \expandafter\@tempNameplural
+                    \expandafter\nobreakspace\@templabel@first
+            }%
+        \fi
+        \expandafter\def\expandafter\@tempsecond\expandafter{%
+            \expandafter\crefpairconjunction\@templabel
+        }%
+        \expandafter\def\expandafter\@tempmiddle\expandafter{%
+            \expandafter\crefmiddleconjunction\@templabel
+        }%
+        \expandafter\def\expandafter\@templast\expandafter{%
+            \expandafter\creflastconjunction\@templabel
+        }%
+        \expandafter\def\expandafter\@templabel\expandafter{\@templabel}%
+        \toksdef\@toksa=0
+        \toksdef\@toksb=1
+        \@toksb={}%
+        %%%
+        \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
+            \expandafter{\@tempfirst}%
+        }%
+        \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
+            \expandafter{\@tempsecond}%
+        }%
+        \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
+            \expandafter{\@tempmiddle}%
+        }%
+        \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
+            \expandafter{\@templast}%
+        }%
+        \@toksa={\crefmultiformat{#1}}%
+        \expandafter\the\expandafter\@toksa\the\@toksb
+        %%%
+        \@toksb={}%
+        \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
+            \expandafter{\@tempFirst}%
+        }%
+        \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
+            \expandafter{\@tempsecond}%
+        }%
+        \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
+            \expandafter{\@tempmiddle}%
+        }%
+        \expandafter\cref@append@toks\expandafter\@toksb\expandafter{%
+            \expandafter{\@templast}%
+        }%
     \@toksa={\Crefmultiformat{#1}}%
     \expandafter\the\expandafter\@toksa\the\@toksb
     \@ifundefined{cref@#1@label}{}{%
@@ -1570,6 +1619,7 @@ __DATA__
       \@toksa={\labelcrefmultiformat{#1}}%
       \expandafter\the\expandafter\@toksa\the\@toksb}%
   \endgroup}%
+
 \def\@crefrangedefinemultiformat#1{%
   \begingroup
     \@crefconstructcomponents{#1}%
@@ -1642,6 +1692,7 @@ __DATA__
       \expandafter\the\expandafter\@toksa\the\@toksb
     \fi
   \endgroup}%
+
 \def\@labelcrefdefinedefaultformats{%
   \begingroup
     \toksdef\@toksa=0%
@@ -1705,11 +1756,13 @@ __DATA__
     \@toksa={\labelcrefrangemultiformat{default}}%
     \expandafter\the\expandafter\@toksa\the\@toksb
   \endgroup}%
+
 \def\@crefdefineallformats#1{%
   \@crefdefineformat{#1}%
   \@crefrangedefineformat{#1}%
   \@crefdefinemultiformat{#1}%
   \@crefrangedefinemultiformat{#1}}%
+
 \def\@crefcopyformats#1#2{%
   \let\@tempf\iffalse
   \@ifundefined{cref@#2@name}{%
@@ -1873,6 +1926,7 @@ __DATA__
       \expandafter\expandafter\expandafter\let\expandafter\@tempa\@tempb}{}%
   \fi
 }
+
 \newcommand\crefformat[2]{\@crefformat{cref}{#1}{#2}}%
 \newcommand\Crefformat[2]{\@crefformat{Cref}{#1}{#2}}%
 \newcommand\crefrangeformat[2]{\@crefrangeformat{crefrange}{#1}{#2}}%
@@ -1951,6 +2005,7 @@ __DATA__
         \@tempa{##1}{##2}{##3}{##4}{##5}{##6}}%
     }{}%
   \endgroup}%
+
 \def\@crefmultiformat#1#2#3#4#5#6{%
   \begingroup
     \expandafter\gdef\csname #1@#2@format@first\endcsname##1##2##3{#3}%
@@ -1997,10 +2052,11 @@ __DATA__
         \csname #1@#2@format@last\endcsname
     }{}%
   \endgroup}%
+
 \def\@crefrangemultiformat#1#2#3#4#5#6{%
-  \begingroup
-    \expandafter\gdef\csname #1@#2@format@first\endcsname
-      ##1##2##3##4##5##6{#3}%
+    \begingroup
+        \expandafter\gdef\csname #1@#2@format@first\endcsname
+            ##1##2##3##4##5##6{#3}%
     \expandafter\gdef\csname #1@#2@format@second\endcsname
       ##1##2##3##4##5##6{#4}%
     \expandafter\gdef\csname #1@#2@format@middle\endcsname
@@ -2153,9 +2209,7 @@ __DATA__
     \def\crefpairgroupconjunction@preamble{ and\nobreakspace}%
     \def\crefmiddlegroupconjunction@preamble{, }%
     \def\creflastgroupconjunction@preamble{, and\nobreakspace}%
-\tracingmacros=-1
     \Crefname@preamble{equation}{Equation}{Equations}%
-\tracingmacros=0
     \Crefname@preamble{figure}{Figure}{Figures}%
     \Crefname@preamble{table}{Table}{Tables}%
     \Crefname@preamble{page}{Page}{Pages}%
@@ -2256,7 +2310,7 @@ __DATA__
     \ExecuteOptions{nameinlink}
 \fi
 
-\crefdefaultlabelformat{#2#1#3}%
+\crefdefaultlabelformat{#2\format@xref{#1}#3}%
 
 \if@cref@nameinlink
     \creflabelformat{equation}{#2\textup{(#1)}#3}
@@ -2333,18 +2387,21 @@ __DATA__
         \@ifundefined{crefmiddlegroupconjunction}{%
             \let\crefmiddlegroupconjunction\crefmiddleconjunction}{}%
     }%
-  \@ifundefined{creflastconjunction}{%
-    \let\creflastconjunction\creflastconjunction@preamble
-  }{%
-    \expandafter\def\expandafter\@tempb\expandafter{%
-      \expandafter\renewcommand\expandafter
-      {\expandafter\creflastconjunction\expandafter}%
-      \expandafter{\creflastconjunction}}%
-    \expandafter\expandafter\expandafter\cref@addto
-      \expandafter\@tempa\expandafter{\@tempb}%
-    \@ifundefined{creflastgroupconjunction}{%
-      \edef\creflastgroupconjunction{, \creflastconjunction}}{}%
-  }%
+    \@ifundefined{creflastconjunction}{%
+        \let\creflastconjunction\creflastconjunction@preamble
+    }{%
+        \expandafter\def\expandafter\@tempb\expandafter{%
+            \expandafter\renewcommand\expandafter{%
+                \expandafter\creflastconjunction\expandafter
+            }%
+            \expandafter{\creflastconjunction}%
+        }%
+        \expandafter\expandafter\expandafter\cref@addto
+            \expandafter\@tempa\expandafter{\@tempb}%
+        \@ifundefined{creflastgroupconjunction}{%
+            \edef\creflastgroupconjunction{, \creflastconjunction}%
+        }{}%
+    }%
   \@ifundefined{crefpairgroupconjunction}{%
     \let\crefpairgroupconjunction
     \crefpairgroupconjunction@preamble
@@ -2378,100 +2435,134 @@ __DATA__
     \expandafter\expandafter\expandafter\cref@addto
       \expandafter\@tempa\expandafter{\@tempb}%
   }%
-  \let\@tempstack\cref@label@types
-  \cref@isstackfull{\@tempstack}%
-  \@whilesw\if@cref@stackfull\fi{%
-    \edef\@tempa{\cref@stack@top{\@tempstack}}%
-    \@ifundefined{cref@\@tempa @name}{%
-      \expandafter\def\expandafter\@tempb\expandafter{%
-        \csname cref@\@tempa @name\endcsname}%
-      \expandafter\def\expandafter\@tempc\expandafter{%
-        \csname cref@\@tempa @name@preamble\endcsname}%
-      \expandafter\expandafter\expandafter
-        \let\expandafter\@tempb\@tempc
-      \expandafter\def\expandafter\@tempb\expandafter{%
-        \csname cref@\@tempa @name@plural\endcsname}%
-      \expandafter\def\expandafter\@tempc\expandafter{%
-        \csname cref@\@tempa @name@plural@preamble\endcsname}%
-      \expandafter\expandafter\expandafter
-        \let\expandafter\@tempb\@tempc
-    }{%
-      \edef\@tempb{%
-        \expandafter\noexpand\csname extras\cref@language\endcsname}%
-      \expandafter\def\expandafter\@tempc\expandafter{%
-        \expandafter\crefname\expandafter{\@tempa}}%
-      \expandafter\expandafter\expandafter\cref@addto
-      \expandafter\expandafter\expandafter\@tempc
-      \expandafter\expandafter\expandafter{%
-        \expandafter\expandafter\expandafter{%
-          \csname cref@\@tempa @name\endcsname}}%
-      \expandafter\expandafter\expandafter\cref@addto
-      \expandafter\expandafter\expandafter\@tempc
-      \expandafter\expandafter\expandafter{%
-        \expandafter\expandafter\expandafter{%
-          \csname cref@\@tempa @name@plural\endcsname}}%
-      \expandafter\expandafter\expandafter\cref@addto
-        \expandafter\@tempb\expandafter{\@tempc}%
+    %%
+    %%
+    %%
+    \let\@tempstack\cref@label@types
+    \cref@isstackfull{\@tempstack}%
+    \@whilesw\if@cref@stackfull\fi{%
+        \edef\@tempa{\cref@stack@top{\@tempstack}}%
+        \@ifundefined{cref@\@tempa @name}{%
+            \expandafter\def\expandafter\@tempb\expandafter{%
+                \csname cref@\@tempa @name\endcsname
+            }%
+            \expandafter\def\expandafter\@tempc\expandafter{%
+                \csname cref@\@tempa @name@preamble\endcsname
+            }%
+            \expandafter\expandafter\expandafter\let\expandafter\@tempb\@tempc
+            \expandafter\def\expandafter\@tempb\expandafter{%
+                \csname cref@\@tempa @name@plural\endcsname
+            }%
+            \expandafter\def\expandafter\@tempc\expandafter{%
+                \csname cref@\@tempa @name@plural@preamble\endcsname
+            }%
+            \expandafter\expandafter\expandafter\let\expandafter\@tempb\@tempc
+        }{%
+            \edef\@tempb{%
+                \expandafter\noexpand\csname extras\cref@language\endcsname
+            }%
+            \expandafter\def\expandafter\@tempc\expandafter{%
+                \expandafter\crefname\expandafter{\@tempa}%
+            }%
+            \expandafter\expandafter\expandafter\cref@addto
+            \expandafter\expandafter\expandafter\@tempc
+            \expandafter\expandafter\expandafter{%
+                \expandafter\expandafter\expandafter{%
+                    \csname cref@\@tempa @name\endcsname}%
+            }%
+            \expandafter\expandafter\expandafter\cref@addto
+            \expandafter\expandafter\expandafter\@tempc
+            \expandafter\expandafter\expandafter{%
+                \expandafter\expandafter\expandafter{%
+                \csname cref@\@tempa @name@plural\endcsname}%
+            }%
+            \expandafter\expandafter\expandafter\cref@addto
+                \expandafter\@tempb\expandafter{\@tempc}%
+        }%
+        \@ifundefined{Cref@\@tempa @name}{%
+            \expandafter\def\expandafter\@tempb\expandafter{%
+                \csname Cref@\@tempa @name\endcsname
+            }%
+            \expandafter\def\expandafter\@tempc\expandafter{%
+                \csname Cref@\@tempa @name@preamble\endcsname
+            }%
+            \expandafter\expandafter\expandafter\let\expandafter\@tempb\@tempc
+            \expandafter\def\expandafter\@tempb\expandafter{%
+                \csname Cref@\@tempa @name@plural\endcsname
+            }%
+            \expandafter\def\expandafter\@tempc\expandafter{%
+                \csname Cref@\@tempa @name@plural@preamble\endcsname
+            }%
+            \expandafter\expandafter\expandafter\let\expandafter\@tempb\@tempc
+        }{%
+            \edef\@tempb{%
+                \expandafter\noexpand\csname extras\cref@language\endcsname
+            }%
+            \expandafter\def\expandafter\@tempc\expandafter{%
+                \expandafter\Crefname\expandafter{\@tempa}%
+            }%
+            \expandafter\expandafter\expandafter\cref@addto
+            \expandafter\expandafter\expandafter\@tempc
+            \expandafter\expandafter\expandafter{%
+                \expandafter\expandafter\expandafter{%
+                    \csname Cref@\@tempa @name\endcsname
+                }%
+            }%
+            \expandafter\expandafter\expandafter\cref@addto
+            \expandafter\expandafter\expandafter\@tempc
+            \expandafter\expandafter\expandafter{%
+                \expandafter\expandafter\expandafter{%
+                    \csname Cref@\@tempa @name@plural\endcsname
+                }%
+            }%
+            \expandafter\expandafter\expandafter\cref@addto
+                \expandafter\@tempb\expandafter{\@tempc}%
+        }%
+        \@ifundefined{cref@\@tempa @format}{%
+            \@ifundefined{cref@\@tempa @name}{}{%
+                \expandafter\@crefdefineformat\expandafter{\@tempa}%
+            }%
+        }{}%
+        \@ifundefined{crefrange@\@tempa @format}{%
+            \@ifundefined{cref@\@tempa @name@plural}{}{%
+                \expandafter\@crefrangedefineformat\expandafter{\@tempa}%
+            }%
+        }{}%
+        \@ifundefined{cref@\@tempa @format@first}{%
+            \@ifundefined{cref@\@tempa @name@plural}{}{%
+                \expandafter\@crefdefinemultiformat\expandafter{\@tempa}%
+            }%
+        }{}%
+        \@ifundefined{crefrange@\@tempa @format@first}{%
+            \@ifundefined{cref@\@tempa @name@plural}{}{%
+                \expandafter\@crefrangedefinemultiformat\expandafter{\@tempa}%
+            }%
+        }{}%
+        \cref@stack@pop{\@tempstack}%
+        \cref@isstackfull{\@tempstack}%
     }%
-    \@ifundefined{Cref@\@tempa @name}{%
-      \expandafter\def\expandafter\@tempb\expandafter{%
-        \csname Cref@\@tempa @name\endcsname}%
-      \expandafter\def\expandafter\@tempc\expandafter{%
-        \csname Cref@\@tempa @name@preamble\endcsname}%
-      \expandafter\expandafter\expandafter
-        \let\expandafter\@tempb\@tempc
-      \expandafter\def\expandafter\@tempb\expandafter{%
-        \csname Cref@\@tempa @name@plural\endcsname}%
-      \expandafter\def\expandafter\@tempc\expandafter{%
-        \csname Cref@\@tempa @name@plural@preamble\endcsname}%
-      \expandafter\expandafter\expandafter
-        \let\expandafter\@tempb\@tempc
-    }{%
-      \edef\@tempb{%
-        \expandafter\noexpand\csname extras\cref@language\endcsname}%
-      \expandafter\def\expandafter\@tempc\expandafter{%
-        \expandafter\Crefname\expandafter{\@tempa}}%
-      \expandafter\expandafter\expandafter\cref@addto
-      \expandafter\expandafter\expandafter\@tempc
-      \expandafter\expandafter\expandafter{%
-        \expandafter\expandafter\expandafter{%
-          \csname Cref@\@tempa @name\endcsname}}%
-      \expandafter\expandafter\expandafter\cref@addto
-      \expandafter\expandafter\expandafter\@tempc
-      \expandafter\expandafter\expandafter{%
-        \expandafter\expandafter\expandafter{%
-          \csname Cref@\@tempa @name@plural\endcsname}}%
-      \expandafter\expandafter\expandafter\cref@addto
-        \expandafter\@tempb\expandafter{\@tempc}%
-    }%
-    \@ifundefined{cref@\@tempa @format}{%
-      \@ifundefined{cref@\@tempa @name}{}{%
-        \expandafter\@crefdefineformat\expandafter{\@tempa}}}{}%
-    \@ifundefined{crefrange@\@tempa @format}{%
-      \@ifundefined{cref@\@tempa @name@plural}{}{%
-        \expandafter\@crefrangedefineformat\expandafter{\@tempa}}}{}%
-    \@ifundefined{cref@\@tempa @format@first}{%
-      \@ifundefined{cref@\@tempa @name@plural}{}{%
-        \expandafter\@crefdefinemultiformat\expandafter{\@tempa}}}{}%
-    \@ifundefined{crefrange@\@tempa @format@first}{%
-      \@ifundefined{cref@\@tempa @name@plural}{}{%
-        \expandafter\@crefrangedefinemultiformat
-        \expandafter{\@tempa}}}{}%
-    \cref@stack@pop{\@tempstack}%
-    \cref@isstackfull{\@tempstack}}%
-  \@crefcopyformats{section}{subsection}%
-  \@crefcopyformats{subsection}{subsubsection}%
-  \@crefcopyformats{appendix}{subappendix}%
-  \@crefcopyformats{subappendix}{subsubappendix}%
-  \@crefcopyformats{figure}{subfigure}%
-  \@crefcopyformats{table}{subtable}%
-  \@crefcopyformats{equation}{subequation}%
-  \@crefcopyformats{enumi}{enumii}%
-  \@crefcopyformats{enumii}{enumiii}%
-  \@crefcopyformats{enumiii}{enumiv}%
-  \@crefcopyformats{enumiv}{enumv}%
-  \@labelcrefdefinedefaultformats
-  \let\cref@language\relax
+    %%
+    %%
+    %%
+    \@crefcopyformats{section}{subsection}%
+    \@crefcopyformats{subsection}{subsubsection}%
+    \@crefcopyformats{appendix}{subappendix}%
+    \@crefcopyformats{subappendix}{subsubappendix}%
+    \@crefcopyformats{figure}{subfigure}%
+    \@crefcopyformats{table}{subtable}%
+    \@crefcopyformats{equation}{subequation}%
+    \@crefcopyformats{enumi}{enumii}%
+    \@crefcopyformats{enumii}{enumiii}%
+    \@crefcopyformats{enumiii}{enumiv}%
+    \@crefcopyformats{enumiv}{enumv}%
+    %%
+    %%
+    %%
+    \@labelcrefdefinedefaultformats
+    %%
+    %%
+    %%
+    \let\cref@language\relax
 }%  end of \AtBeginDocument
 
 \endinput
