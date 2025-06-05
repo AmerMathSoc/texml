@@ -1027,15 +1027,25 @@ __DATA__
                     \texttt{?#2}%
                 \endXMLelement{xref}%
             }{%
-                \protected@edef\texml@refinfo{\@nameuse{r@#2}}%
                 \expandafter\@@@setcref\expandafter{\csname #1@\@temptype @format#3\endcsname}{#2}%
             }%
         }%
 }
 
+\def\stash@refinfo#1#2{%
+    \cref@getlabel{#1}{#2}%
+    \expandafter\protected@edef\csname texml@refinfo@#2\endcsname{\@nameuse{r@#1}}%
+}
+
+\def\@@@setcref#1#2{%
+    \stash@refinfo{#2}\@templabel
+    #1{\@templabel}{}{}%
+}
+
 \let\texml@refinfo\@empty
 
 \def\format@xref#1{%
+    \expandafter\let\expandafter\texml@refinfo\csname texml@refinfo@#1\endcsname
     \startXMLelement{xref}%
         \setXMLattribute{specific-use}{\cref@variant}%
         \ifx\texml@refinfo\@empty\else
@@ -1048,11 +1058,6 @@ __DATA__
         \fi
         #1%
     \endXMLelement{xref}%
-}
-
-\def\@@@setcref#1#2{%
-    \cref@getlabel{#2}{\@templabel}%
-    #1{\@templabel}{}{}%
 }
 
 \DeclareRobustCommand{\crefrange}[2]{\@setcrefrange{#1}{#2}{}}%
@@ -1145,8 +1150,8 @@ __DATA__
 }
 
 \def\@@@setcrefrange#1#2#3{%
-    \cref@getlabel{#2}{\@labela}%
-    \cref@getlabel{#3}{\@labelb}%
+    \stash@refinfo{#2}\@labela
+    \stash@refinfo{#3}\@labelb
     #1{\@labela}{\@labelb}{}{}{}{}%
 }
 
