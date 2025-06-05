@@ -1014,7 +1014,7 @@ __DATA__
             \endXMLelement{xref}%
         }{%
             \cref@gettype{#2}{\@temptype}% puts label type in \@temptype
-            \cref@getlabel{#2}{\@templabel}%  puts label in \@templabel
+            \stash@refinfo{#2}\@templabel%  puts label in \@templabel
             \@ifundefined{#1@\@temptype @format#3}{%
                 \edef\@tempa{#1}%
                 \def\@tempb{labelcref}%
@@ -1038,7 +1038,7 @@ __DATA__
 }
 
 \def\@@@setcref#1#2{%
-    \stash@refinfo{#2}\@templabel
+    \cref@getlabel{#2}{\@templabel}%
     #1{\@templabel}{}{}%
 }
 
@@ -1102,8 +1102,12 @@ __DATA__
             \else
                 \cref@gettype{#2}{\@typea}%
                 \cref@gettype{#3}{\@typeb}%
-                \cref@getlabel{#2}{\@labela}%
-                \cref@getlabel{#3}{\@labelb}%
+                \stash@refinfo{#2}\@labela
+                \stash@refinfo{#3}\@labelb
+\expandafter\let\expandafter\@tempa\csname texml@refinfo@\@labela\endcsname
+\setXMLattribute{first}{\expandafter\texml@get@refid\@tempa}%
+\expandafter\let\expandafter\@tempa\csname texml@refinfo@\@labelb\endcsname
+\setXMLattribute{last}{\expandafter\texml@get@refid\@tempa}%
                 \edef\@format{%
                     \expandafter\noexpand \csname #1range@\@typea @format#4\endcsname
                 }%
@@ -1150,8 +1154,8 @@ __DATA__
 }
 
 \def\@@@setcrefrange#1#2#3{%
-    \stash@refinfo{#2}\@labela
-    \stash@refinfo{#3}\@labelb
+    \cref@getlabel{#2}{\@labela}%
+    \cref@getlabel{#3}{\@labelb}%
     #1{\@labela}{\@labelb}{}{}{}{}%
 }
 
