@@ -711,6 +711,9 @@ sub do_resolve_xrefs {
 
     $tex->let_csname('@setref' => 'resolve@setref');
 
+    $tex->let_csname('start@xref@group' => '@empty');
+    $tex->let_csname('end@xref@group' => '@empty');
+
     while (my @xrefs = $body->findnodes(qq{descendant::xref[starts-with(attribute::specific-use, "unresolved")]})) {
         if (++$pass > 10) {
             $tex->print_nl("resolve_xrefs: Bailing on pass number $pass");
@@ -860,6 +863,9 @@ sub do_resolve_ref_ranges {
     $tex->print_nl("Resolving <xref-group>s");
 
     $tex->begingroup();
+
+    $tex->let_csname('start@xref@group' => '@empty');
+    $tex->let_csname('end@xref@group' => '@empty');
 
     for my $group ($body->findnodes(qq{descendant::xref-group})) {
         my $first = $group->getAttribute('first');
@@ -1607,26 +1613,26 @@ __DATA__
 
 \DeclareRobustCommand\refRange[2]{%
     \leavevmode
-    \startXMLelement{xref-group}%
+    \start@xref@group
         \setXMLattribute{first}{#1}%
         \setXMLattribute{last}{#2}%
         \begingroup
             \suppress@xref@group
             \ref{#1}--\ref{#2}%
         \endgroup
-    \endXMLelement{xref-group}%
+    \end@xref@group
 }
 
 \DeclareRobustCommand\eqrefRange[2]{%
     \leavevmode
-    \startXMLelement{xref-group}%
+    \start@xref@group
         \setXMLattribute{first}{#1}%
         \setXMLattribute{last}{#2}%
         \begingroup
             \suppress@xref@group
             \eqref{#1}--\eqref{#2}%
         \endgroup
-    \endXMLelement{xref-group}%
+    \end@xref@group
 }
 
 \DeclareRobustCommand\ref{%
