@@ -1157,7 +1157,11 @@ __DATA__
 
 \def\XMLelement#1#2{\startXMLelement{#1}#2\endXMLelement{#1}}
 
-\def\XMLgeneratedText#1{\ifinXMLelement{x}#1\else\XMLelement{x}{#1}\fi}
+\def\XMLgeneratedText#1{%
+    \if###1##\else
+        \ifinXMLelement{x}#1\else\XMLelement{x}{#1}\fi
+    \fi
+}
 
 \def\JATStyledContent#1#2{%
     \leavevmode
