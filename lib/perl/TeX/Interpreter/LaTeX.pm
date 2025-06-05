@@ -142,7 +142,9 @@ sub install {
 
     $tex->define_csname('TeXML@resolveXMLxrefs' => \&do_resolve_xrefs);
 
-    $tex->define_csname('TeXML@resolverefgroups' => \&do_resolve_ref_ranges);
+    # $tex->define_csname('TeXML@resolverefgroups' => \&do_resolve_ref_ranges);
+
+    $tex->add_output_hook(\&do_resolve_ref_ranges);
 
     $tex->define_csname('TeXML@sortXMLcites' => \&do_sort_cites);
 
@@ -853,8 +855,9 @@ sub do_resolve_xrefs {
 }
 
 sub do_resolve_ref_ranges {
-    my $tex   = shift;
-    my $token = shift;
+    my $xml = shift;
+
+    my $tex = $xml->get_tex_engine();
 
     my $handle = $tex->get_output_handle();
 
@@ -1119,10 +1122,10 @@ __DATA__
 \fontencoding{OT1}\selectfont
 
 \AtTeXMLend{\TeXML@resolveXMLxrefs}
-\AtTeXMLend{\TeXML@resolverefgroups}
+% \AtTeXMLend{\TeXML@resolverefgroups}
 
 \def\TeXMLNoResolveXrefs{\let\TeXML@resolveXMLxrefs\@empty}
-\def\TeXMLNoResolveXrefgroups{\let\TeXML@resolverefgroups\@empty}
+% \def\TeXMLNoResolveXrefgroups{\let\TeXML@resolverefgroups\@empty}
 
 \newif\ifTeXMLsortcites@
 \TeXMLsortcites@false
