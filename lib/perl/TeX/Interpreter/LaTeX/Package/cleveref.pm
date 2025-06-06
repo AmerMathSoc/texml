@@ -2216,7 +2216,42 @@ __DATA__
 %%* TBD: Support for polyglossia and babel
 
 % \DeclareOption{english}{%
-%   \AtBeginDocument{%
+%  \AtBeginDocument{%
+%%* MOVED BELOW
+%  }
+% }% end \AtBeginDocument and \DeclareOption
+
+\edef\@curroptions{\@ptionlist{\@currname.\@currext}}%
+
+\@expandtwoargs\in@{,capitalise,}{,\@classoptionslist,\@curroptions,}
+
+\ifin@
+    \ExecuteOptions{capitalise}%
+\else
+    \@expandtwoargs\in@{,capitalize,}{,\@classoptionslist,\@curroptions,}%
+    \ifin@
+        \ExecuteOptions{capitalise}%
+    \fi
+\fi
+
+\@expandtwoargs\in@{,nameinlink,}{,\@classoptionslist,\@curroptions,}
+
+\ifin@
+    \ExecuteOptions{nameinlink}
+\fi
+
+\crefdefaultlabelformat{#2\format@xref{#1}#3}%
+
+\if@cref@nameinlink
+    \creflabelformat{equation}{#2\textup{(#1)}#3}
+\else
+    \creflabelformat{equation}{\textup{(#2#1#3)}}
+\fi
+
+\ProcessOptions*\relax
+
+% \DeclareOption{english}{%
+%  \AtBeginDocument{%
     \def\crefrangeconjunction@preamble{ to\nobreakspace}%
     \def\crefrangepreconjunction@preamble{}%
     \def\crefrangepostconjunction@preamble{}%
@@ -2249,93 +2284,65 @@ __DATA__
     \Crefname@preamble{listing}{Listing}{Listings}%
     \Crefname@preamble{line}{Line}{Lines}%
     \if@cref@capitalise%  capitalise set
-      \if@cref@abbrev
-        \crefname@preamble{equation}{Eq.}{Eqs.}%
-        \crefname@preamble{figure}{Fig.}{Figs.}%
-      \else
-        \crefname@preamble{equation}{Equation}{Equations}%
-        \crefname@preamble{figure}{Figure}{Figures}%
-      \fi
-      \crefname@preamble{page}{Page}{Pages}%
-      \crefname@preamble{table}{Table}{Tables}%
-      \crefname@preamble{part}{Part}{Parts}%
-      \crefname@preamble{chapter}{Chapter}{Chapters}%
-      \crefname@preamble{section}{Section}{Sections}%
-      \crefname@preamble{appendix}{Appendix}{Appendices}%
-      \crefname@preamble{enumi}{Item}{Items}%
-      \crefname@preamble{footnote}{Footnote}{Footnotes}%
-      \crefname@preamble{theorem}{Theorem}{Theorems}%
-      \crefname@preamble{lemma}{Lemma}{Lemmas}%
-      \crefname@preamble{corollary}{Corollary}{Corollaries}%
-      \crefname@preamble{proposition}{Proposition}{Propositions}%
-      \crefname@preamble{definition}{Definition}{Definitions}%
-      \crefname@preamble{result}{Result}{Results}%
-      \crefname@preamble{example}{Example}{Examples}%
-      \crefname@preamble{remark}{Remark}{Remarks}%
-      \crefname@preamble{note}{Note}{Notes}%
-      \crefname@preamble{algorithm}{Algorithm}{Algorithms}%
-      \crefname@preamble{listing}{Listing}{Listings}%
-      \crefname@preamble{line}{Line}{Lines}%
+        \if@cref@abbrev
+            \crefname@preamble{equation}{Eq.}{Eqs.}%
+            \crefname@preamble{figure}{Fig.}{Figs.}%
+        \else
+            \crefname@preamble{equation}{Equation}{Equations}%
+            \crefname@preamble{figure}{Figure}{Figures}%
+        \fi
+        \crefname@preamble{page}{Page}{Pages}%
+        \crefname@preamble{table}{Table}{Tables}%
+        \crefname@preamble{part}{Part}{Parts}%
+        \crefname@preamble{chapter}{Chapter}{Chapters}%
+        \crefname@preamble{section}{Section}{Sections}%
+        \crefname@preamble{appendix}{Appendix}{Appendices}%
+        \crefname@preamble{enumi}{Item}{Items}%
+        \crefname@preamble{footnote}{Footnote}{Footnotes}%
+        \crefname@preamble{theorem}{Theorem}{Theorems}%
+        \crefname@preamble{lemma}{Lemma}{Lemmas}%
+        \crefname@preamble{corollary}{Corollary}{Corollaries}%
+        \crefname@preamble{proposition}{Proposition}{Propositions}%
+        \crefname@preamble{definition}{Definition}{Definitions}%
+        \crefname@preamble{result}{Result}{Results}%
+        \crefname@preamble{example}{Example}{Examples}%
+        \crefname@preamble{remark}{Remark}{Remarks}%
+        \crefname@preamble{note}{Note}{Notes}%
+        \crefname@preamble{algorithm}{Algorithm}{Algorithms}%
+        \crefname@preamble{listing}{Listing}{Listings}%
+        \crefname@preamble{line}{Line}{Lines}%
     \else%  capitalise unset
-      \if@cref@abbrev
-        \crefname@preamble{equation}{eq.}{eqs.}%
-        \crefname@preamble{figure}{fig.}{figs.}%
-      \else
-        \crefname@preamble{equation}{equation}{equations}%
-        \crefname@preamble{figure}{figure}{figures}%
-      \fi
-      \crefname@preamble{page}{page}{pages}%
-      \crefname@preamble{table}{table}{tables}%
-      \crefname@preamble{part}{part}{parts}%
-      \crefname@preamble{chapter}{chapter}{chapters}%
-      \crefname@preamble{section}{section}{sections}%
-      \crefname@preamble{appendix}{appendix}{appendices}%
-      \crefname@preamble{enumi}{item}{items}%
-      \crefname@preamble{footnote}{footnote}{footnotes}%
-      \crefname@preamble{theorem}{theorem}{theorems}%
-      \crefname@preamble{lemma}{lemma}{lemmas}%
-      \crefname@preamble{corollary}{corollary}{corollaries}%
-      \crefname@preamble{proposition}{proposition}{propositions}%
-      \crefname@preamble{definition}{definition}{definitions}%
-      \crefname@preamble{result}{result}{results}%
-      \crefname@preamble{example}{example}{examples}%
-      \crefname@preamble{remark}{remark}{remarks}%
-      \crefname@preamble{note}{note}{notes}%
-      \crefname@preamble{algorithm}{algorithm}{algorithms}%
-      \crefname@preamble{listing}{listing}{listings}%
-      \crefname@preamble{line}{line}{lines}%
+        \if@cref@abbrev
+            \crefname@preamble{equation}{eq.}{eqs.}%
+            \crefname@preamble{figure}{fig.}{figs.}%
+        \else
+            \crefname@preamble{equation}{equation}{equations}%
+            \crefname@preamble{figure}{figure}{figures}%
+        \fi
+        \crefname@preamble{page}{page}{pages}%
+        \crefname@preamble{table}{table}{tables}%
+        \crefname@preamble{part}{part}{parts}%
+        \crefname@preamble{chapter}{chapter}{chapters}%
+        \crefname@preamble{section}{section}{sections}%
+        \crefname@preamble{appendix}{appendix}{appendices}%
+        \crefname@preamble{enumi}{item}{items}%
+        \crefname@preamble{footnote}{footnote}{footnotes}%
+        \crefname@preamble{theorem}{theorem}{theorems}%
+        \crefname@preamble{lemma}{lemma}{lemmas}%
+        \crefname@preamble{corollary}{corollary}{corollaries}%
+        \crefname@preamble{proposition}{proposition}{propositions}%
+        \crefname@preamble{definition}{definition}{definitions}%
+        \crefname@preamble{result}{result}{results}%
+        \crefname@preamble{example}{example}{examples}%
+        \crefname@preamble{remark}{remark}{remarks}%
+        \crefname@preamble{note}{note}{notes}%
+        \crefname@preamble{algorithm}{algorithm}{algorithms}%
+        \crefname@preamble{listing}{listing}{listings}%
+        \crefname@preamble{line}{line}{lines}%
     \fi
     \def\cref@language{english}%
-%  }}% end \AtBeginDocument and \DeclareOption
-
-\edef\@curroptions{\@ptionlist{\@currname.\@currext}}%
-
-\@expandtwoargs\in@{,capitalise,}{,\@classoptionslist,\@curroptions,}
-
-\ifin@
-    \ExecuteOptions{capitalise}%
-\else
-    \@expandtwoargs\in@{,capitalize,}{,\@classoptionslist,\@curroptions,}%
-    \ifin@
-        \ExecuteOptions{capitalise}%
-    \fi
-\fi
-
-\@expandtwoargs\in@{,nameinlink,}{,\@classoptionslist,\@curroptions,}
-
-\ifin@
-    \ExecuteOptions{nameinlink}
-\fi
-
-\crefdefaultlabelformat{#2\format@xref{#1}#3}%
-
-\if@cref@nameinlink
-    \creflabelformat{equation}{#2\textup{(#1)}#3}
-\else
-    \creflabelformat{equation}{\textup{(#2#1#3)}}
-\fi
-
-\ProcessOptions*\relax
+%  }
+% }% end \AtBeginDocument and \DeclareOption
 
 \def\texml@gt@def#1#2{%
     \edef#1{\noexpand\XMLgeneratedText{#2}}%
