@@ -6381,6 +6381,8 @@ sub add_output_hook {
 
     my $hook = shift;
 
+    my $priority = shift // 0;
+
     ## We defer creating the output handle as long as possible so
     ## that, for example, we can use \setXMLroot and \setXMLdoctype.
     ## But we want to be able to register hooks much earlier, so we
@@ -6388,9 +6390,9 @@ sub add_output_hook {
     ## ensure_output_open().
 
     if (defined(my $handle = $tex->get_output_handle())) {
-        $handle->push_hook($hook);
+        $handle->push_hook([ $priority, $hook ]);
     } else {
-        $tex->push_output_hook($hook);
+        $tex->push_output_hook([ $priority, $hook ]);
     }
 
     return;

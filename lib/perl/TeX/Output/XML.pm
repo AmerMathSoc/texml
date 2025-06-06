@@ -742,8 +742,20 @@ sub delete_empty_paragraphs {
 sub run_hooks {
     my $self = shift;
 
+    my @stages;
+
     for my $hook ($self->get_hooks()) {
-        $hook->($self);
+        my ($priority, $sub) = $hook->@*;
+
+        push $stages[$priority]->@*, $sub;
+    }
+
+    for my $stage (@stages) {
+        next unless defined $stage;
+
+        for my $hook ($stage->@*) {
+            $hook->($self);
+        }
     }
 
     return;
