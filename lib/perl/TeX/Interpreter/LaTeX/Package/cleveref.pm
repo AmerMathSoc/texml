@@ -1014,6 +1014,10 @@ __DATA__
             \endXMLelement{xref}%
         }{%
             \cref@gettype{#2}{\@temptype}% puts label type in \@temptype
+            %%
+            %% It turns out I didn't need to move the \stash@refinfo
+            %% here, but it doesn't do any harm, so I'm leaving them.
+            %%
             \stash@refinfo{#2}\@templabel%  puts label in \@templabel
             \@ifundefined{#1@\@temptype @format#3}{%
                 \edef\@tempa{#1}%
@@ -1080,6 +1084,8 @@ __DATA__
 \def\resolve@@setcrefrange#1#2#3#4{%
     \leavevmode
     \start@xref@group
+    \setXMLattribute{first}{#2}%
+    \setXMLattribute{last}{#3}%
     \begingroup
         \def\cref@variant{#1}%
         \expandafter\ifx\csname r@#2@cref\endcsname\relax
@@ -1102,14 +1108,13 @@ __DATA__
             \else
                 \cref@gettype{#2}{\@typea}%
                 \cref@gettype{#3}{\@typeb}%
+                %%
+                %% It turns out I didn't need to move the
+                %% \stash@refinfo's here, but they don't do any harm,
+                %% so I'm leaving them.
+                %%
                 \stash@refinfo{#2}\@labela
                 \stash@refinfo{#3}\@labelb
-                \expandafter\let\expandafter\@tempa
-                    \csname texml@refinfo@\@labela\endcsname
-                \setXMLattribute{first}{\expandafter\texml@get@refid\@tempa}%
-                \expandafter\let\expandafter\@tempa
-                    \csname texml@refinfo@\@labelb\endcsname
-                \setXMLattribute{last}{\expandafter\texml@get@refid\@tempa}%
                 \edef\@format{%
                     \expandafter\noexpand \csname #1range@\@typea @format#4\endcsname
                 }%

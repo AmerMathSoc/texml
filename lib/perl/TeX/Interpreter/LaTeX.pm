@@ -144,7 +144,7 @@ sub install {
 
     # $tex->define_csname('TeXML@resolverefgroups' => \&do_resolve_ref_ranges);
 
-    $tex->add_output_hook(\&do_resolve_ref_ranges);
+    $tex->add_output_hook(\&do_resolve_ref_ranges, 9);
 
     $tex->define_csname('TeXML@sortXMLcites' => \&do_sort_cites);
 
