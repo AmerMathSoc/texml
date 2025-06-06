@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::AMStoc;
 
-# Copyright (C) 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,8 +31,9 @@ package TeX::Interpreter::LaTeX::Package::AMStoc;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
+
+use TeX::Token qw(:catcodes);
 
 use TeX::Utils::Misc;
 
@@ -40,7 +43,7 @@ use TeX::Utils::Misc;
 ##                                                                  ##
 ######################################################################
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -106,18 +109,26 @@ sub do_finish_toc {
     my $xml_id = $tex->read_undelimited_parameter();
 
     my $fragment = << "EOF";
-        \\makeatletter
         \\immediate\\closeout\\tf\@$type
         \\typeout{Generating TOC $type}%
         \\gdef\\\@currtoclevel{-1}%
         \\let\\\@authorlist\\\@empty
-        \\makeatletter
         \\\@input{\\jobname.$type}%
         \\\@clear\@tocstack
-        \\makeatother
 EOF
 
-    my $new = $tex->convert_fragment($fragment);
+    ## See https://github.com/AmerMathSoc/texml/issues/259 for an
+    ## explanation of why we don't call convert_fragment() directly.
+
+    my $at_cat = $tex->get_catcode(ord('@'));
+
+    $tex->set_catcode(ord('@'), CATCODE_LETTER);
+
+    my $t_list = $tex->tokenize($fragment);
+
+    my $new = $tex->convert_token_list($t_list);
+
+    $tex->set_catcode(ord('@'), $at_cat);
 
     my $handle = $tex->get_output_handle();
 
@@ -256,19 +267,14 @@ __DATA__
         \fi
         \typeout{#2}%
         \startXMLelement{toc}%
-        \addXMLid
-        \par
-        \startXMLelement{title-group}%
-        \label{@starttoc:#1}%
-        \startXMLelement{title}%
-        {\xmlpartag{}#2\par}%
-        \endXMLelement{title}%
-        \endXMLelement{title-group}%
-        % \gdef\@currtoclevel{-1}%
-        % \let\@authorlist\@empty
-        % \makeatletter
-        % \@input{\jobname.#1}%
-        % \@clear@tocstack
+            \addXMLid
+            \par
+            \startXMLelement{title-group}%
+                \label{@starttoc:#1}%
+                \startXMLelement{title}%
+                    {\xmlpartag{}#2\par}%
+                \endXMLelement{title}%
+            \endXMLelement{title-group}%
         \endXMLelement{toc}%
         \if@filesw
             \@xp\newwrite\csname tf@#1\endcsname
