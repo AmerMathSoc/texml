@@ -974,8 +974,11 @@ __DATA__
                     \edef\@tempa{{\@beginref}{\@pos}}%
                     \csname @set\cref@variant\expandafter\endcsname\@tempa
                 \else
-                    \edef\@tempa{{\@beginref}{\@endref}{\@pos}}%
-                    \csname @set\cref@variant range\expandafter\endcsname\@tempa
+                    \begingroup
+                        \suppress@xref@group
+                        \edef\@tempa{{\@beginref}{\@endref}{\@pos}}%
+                        \csname @set\cref@variant range\expandafter\endcsname\@tempa
+                    \endgroup
                 \fi
                 \advance\count@subgroup 1
                 \cref@isstackfull{\@refsubstack}%
