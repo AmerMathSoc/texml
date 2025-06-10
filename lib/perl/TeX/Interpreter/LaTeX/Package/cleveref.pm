@@ -1005,6 +1005,16 @@ __DATA__
 
 \def\@setlabelcref{\@@setcref{labelcref}}%
 
+\def\cleveref@start@xref{%
+    \relax\ifinXMLelement{xref}\else
+        \startXMLelement{xref}%
+    \fi
+}
+
+\def\cleveref@end@xref{%
+    \endXMLelement{xref}%
+}
+
 % #1 command (cref, Cref, labelcref)
 % #2 refkey
 % #3 position in list
@@ -1045,15 +1055,17 @@ __DATA__
 }
 
 \def\@@@setcref#1#2{%
-    \cref@getlabel{#2}{\@templabel}%
-    #1{\@templabel}{}{}%
+    \begingroup
+        \cref@getlabel{#2}{\@templabel}%
+        #1{\@templabel}{}{}%
+    \endgroup
 }
 
 \let\texml@refinfo\@empty
 
 \def\format@xref#1{%
     \expandafter\let\expandafter\texml@refinfo\csname texml@refinfo@#1\endcsname
-    \startXMLelement{xref}%
+    \cleveref@start@xref
         \setXMLattribute{specific-use}{\cref@variant}%
         \ifx\texml@refinfo\@empty\else
             \setXMLattribute{rid}{\expandafter\texml@get@refid\texml@refinfo}%
@@ -1064,7 +1076,7 @@ __DATA__
             \fi
         \fi
         #1%
-    \endXMLelement{xref}%
+    \cleveref@end@xref
 }
 
 \DeclareRobustCommand{\crefrange}[2]{\@setcrefrange{#1}{#2}{}}%
@@ -1444,72 +1456,47 @@ __DATA__
         \let\@temprangelabel@first\@temprangelabel
     \fi
     \if@cref@nameinlink
-        \def\@tempa##1##2{##2##1}%
-        \expandafter\expandafter\expandafter\def
-        \expandafter\expandafter\expandafter\@tempname
-        \expandafter\expandafter\expandafter{%
-            \expandafter\@tempa\expandafter{\csname cref@#1@name\endcsname}{########2}%
+        \def\@tempa##1##2##3{%
+            \protected@edef##1{%
+                \noexpand\cleveref@start@xref
+                ##3\csname##2\endcsname
+            }%
         }%
-        \expandafter\expandafter\expandafter\def
-        \expandafter\expandafter\expandafter\@tempName
-        \expandafter\expandafter\expandafter{%
-            \expandafter\@tempa\expandafter{\csname Cref@#1@name\endcsname}{########2}%
-        }%
-        \expandafter\expandafter\expandafter\def
-        \expandafter\expandafter\expandafter\@tempnameplural
-        \expandafter\expandafter\expandafter{%
-            \expandafter\@tempa\expandafter{\csname cref@#1@name@plural\endcsname}{########2}%
-        }%
-        \expandafter\expandafter\expandafter\def
-        \expandafter\expandafter\expandafter\@tempNameplural
-    \expandafter\expandafter\expandafter{%
-      \expandafter\@tempa\expandafter
-        {\csname Cref@#1@name@plural\endcsname}{########2}}%
-    \expandafter\expandafter\expandafter\def
-    \expandafter\expandafter\expandafter\@tempnameplural@range
-    \expandafter\expandafter\expandafter{%
-      \expandafter\@tempa\expandafter
-        {\csname cref@#1@name@plural\endcsname}{########3}}%
-    \expandafter\expandafter\expandafter\def
-    \expandafter\expandafter\expandafter\@tempNameplural@range
-    \expandafter\expandafter\expandafter{%
-      \expandafter\@tempa\expandafter
-        {\csname Cref@#1@name@plural\endcsname}{########3}}%
-  \else
-    \expandafter\def\expandafter\@tempname\expandafter{%
-      \csname cref@#1@name\endcsname}%
-    \expandafter\def\expandafter\@tempName\expandafter{%
-      \csname Cref@#1@name\endcsname}%
-    \expandafter\def\expandafter\@tempnameplural\expandafter{%
-      \csname cref@#1@name@plural\endcsname}%
-    \expandafter\def\expandafter\@tempNameplural\expandafter{%
-      \csname Cref@#1@name@plural\endcsname}%
-    \let\@tempnameplural@range\@tempnameplural
-    \let\@tempNameplural@range\@tempNameplural
-  \fi
+    \else
+        \def\@tempa##1##2##3{\protected@edef##1{\csname ##2\endcsname}}%
+    \fi
+    \@tempa\@tempname{cref@#1@name}{########2}%
+    \@tempa\@tempName{Cref@#1@name}{########2}%
+    \@tempa\@tempnameplural{cref@#1@name@plural}{########2}%
+    \@tempa\@tempNameplural{Cref@#1@name@plural}{########2}%
+    \@tempa\@tempnameplural@range{cref@#1@name@plural}{########3}%
+    \@tempa\@tempNameplural@range{Cref@#1@name@plural}{########3}%
 }
 
 \def\@crefdefineformat#1{%
-  \begingroup
-    \@crefconstructcomponents{#1}%
-    \expandafter\ifx\csname cref@#1@name\endcsname\@empty\relax
-      \expandafter\def\expandafter\@tempfirst\expandafter{\@templabel}%
-    \else
-      \expandafter\expandafter\expandafter\def
-      \expandafter\expandafter\expandafter\@tempfirst
-      \expandafter\expandafter\expandafter{%
-        \expandafter\@tempname\expandafter\nobreakspace\@templabel@first}%
-    \fi
-    \expandafter\ifx\csname Cref@#1@name\endcsname\@empty\relax
-      \expandafter\def\expandafter\@tempFirst\expandafter{\@templabel}%
-    \else
-      \expandafter\expandafter\expandafter\def
-      \expandafter\expandafter\expandafter\@tempFirst
-      \expandafter\expandafter\expandafter{%
-        \expandafter\@tempName\expandafter\nobreakspace\@templabel@first}%
-    \fi
-    \expandafter\def\expandafter\@templabel\expandafter{\@templabel}%
-    \toksdef\@toksa=0%
+    \begingroup
+        \@crefconstructcomponents{#1}%
+        \expandafter\ifx\csname cref@#1@name\endcsname\@empty\relax
+            \expandafter\def\expandafter\@tempfirst\expandafter{\@templabel}%
+        \else
+            \expandafter\expandafter\expandafter\def
+            \expandafter\expandafter\expandafter\@tempfirst
+            \expandafter\expandafter\expandafter{%
+                \expandafter\@tempname\expandafter\nobreakspace\@templabel@first
+            }%
+        \fi
+        \expandafter\ifx\csname Cref@#1@name\endcsname\@empty\relax
+            \expandafter\def\expandafter\@tempFirst\expandafter{\@templabel}%
+        \else
+            \expandafter\expandafter\expandafter\def
+            \expandafter\expandafter\expandafter\@tempFirst
+            \expandafter\expandafter\expandafter{%
+                \expandafter\@tempName\expandafter\nobreakspace\@templabel@first
+            }%
+        \fi
+        \expandafter\def\expandafter\@templabel\expandafter{\@templabel}%
+        %
+        \toksdef\@toksa=0%
     \@toksa={\crefformat{#1}}%
     \expandafter\the\expandafter\@toksa\expandafter{\@tempfirst}%
     \@toksa={\Crefformat{#1}}%
@@ -2193,8 +2180,9 @@ __DATA__
 \@cref@nameinlinkfalse
 
 \DeclareOption{nameinlink}{%
-  \PackageInfo{cleveref}{include cross-reference names in hyperlinks}%
-  \@cref@nameinlinktrue}%
+    \PackageInfo{cleveref}{include cross-reference names in hyperlinks}%
+    \@cref@nameinlinktrue
+}
 
 \newif\if@cref@abbrev
 \@cref@abbrevtrue
@@ -2246,9 +2234,15 @@ __DATA__
 \crefdefaultlabelformat{#2\format@xref{#1}#3}%
 
 \if@cref@nameinlink
-    \creflabelformat{equation}{#2\textup{(#1)}#3}
+    \creflabelformat{equation}{%
+        \begingroup
+            \let\cleveref@end@xref\@empty
+            #2(\format@xref{#1})#3%
+        \endgroup
+        \cleveref@end@xref
+    }
 \else
-    \creflabelformat{equation}{\textup{(#2#1#3)}}
+    \creflabelformat{equation}{(#2\format@xref{#1}#3)}
 \fi
 
 \ProcessOptions*\relax
