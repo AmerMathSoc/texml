@@ -324,6 +324,8 @@ __DATA__
 
 \ProcessOptions
 
+% \PassOptionsToPackage{nameinlink}{cleveref}
+
 \RequirePackage{AMStoc}
 
 \RequirePackage{OLDfont}
@@ -870,7 +872,7 @@ __DATA__
 }
 
 \def\AMS@pad@date#1{%
-    \ifnum#1 < 10 \edef#1{0#1}\fi
+    \ifnum0#1 < 10 \ifnum0#1 > 0 \edef#1{0#1}\fi\fi
 }
 
 \def\output@history@date#1#2{%
@@ -911,7 +913,15 @@ __DATA__
                     \AMS@issue@year\par
                     \AMS@pad@date\AMS@issue@day
                     \AMS@pad@date\AMS@issue@month
-                    \setXMLattribute{iso-8601-date}{\AMS@issue@year-\AMS@issue@month-\AMS@issue@day}%
+                    \setXMLattribute{iso-8601-date}{%
+                        \AMS@issue@year
+                        \ifx\AMS@issue@month\empty\else
+                            -\AMS@issue@month
+                            \ifx\AMS@issue@date\else
+                                -\AMS@issue@day
+                            \fi
+                        \fi
+                     }%
                 \endXMLelement{date}%
             \fi
             \output@history@date{received}\AMS@datereceived
