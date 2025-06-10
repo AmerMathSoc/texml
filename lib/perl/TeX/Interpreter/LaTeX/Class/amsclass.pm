@@ -324,7 +324,7 @@ __DATA__
 
 \ProcessOptions
 
-% \PassOptionsToPackage{nameinlink}{cleveref}
+\PassOptionsToPackage{nameinlink}{cleveref}
 
 \RequirePackage{AMStoc}
 
