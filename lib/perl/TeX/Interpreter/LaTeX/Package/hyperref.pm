@@ -68,7 +68,7 @@ __DATA__
 \let\texml@get@autoref\texml@get@reftext
 
 \def\@autoref#1{%
-    \expandafter\@setref {#1} \autoref
+    \expandafter\@setref {#1} \autoref{}%
 }
 
 \def\texml@set@prefix@autoref#1{%
