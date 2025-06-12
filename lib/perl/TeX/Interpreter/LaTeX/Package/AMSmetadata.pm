@@ -556,7 +556,7 @@ sub append_time_stamp {
 
     my $tex = shift;
 
-    return unless $tex->if('iftexml@add@timestamp@');
+    return unless $tex->if('texml@add@timestamp@');
 
     my $time_stamp = iso_8601_timestamp();
 
@@ -574,7 +574,7 @@ sub append_time_stamp {
 my sub add_history {
     my $tex = shift;
 
-    return unless $tex->if('iftexml@add@history@');
+    return unless $tex->if('texml@add@history@');
 
     my $parent = shift;
     my $gentag = shift;

@@ -12643,7 +12643,7 @@ sub if {
 
     my $if_name = shift;
 
-    my $eqvt = $tex->get_csname($if_name);
+    my $eqvt = $tex->get_csname("if$if_name");
 
     return defined $eqvt && $eqvt->get_equiv->isa("TeX::Primitive::iftrue");
 }
