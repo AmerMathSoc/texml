@@ -33,6 +33,8 @@ use 5.26.0;
 
 use warnings;
 
+use List::Util qw(all);
+
 use TeX::Token qw(:factories);
 
 use TeX::Utils::Misc qw(nonempty pluralize);
@@ -43,6 +45,7 @@ my sub do_showonlyrefs;
 my sub do_register_refkey;
 my sub do_resolve_xrefs;
 my sub do_resolve_ref_ranges;
+my sub do_sort_cites;
 
 sub install  {
     my $class = shift;
@@ -55,7 +58,7 @@ sub install  {
 
     $tex->define_csname('TeXML@resolveXMLxrefs' => \&do_resolve_xrefs);
 
-    # $tex->define_csname('TeXML@resolverefgroups' => \&do_resolve_ref_ranges);
+    $tex->define_csname('TeXML@sortXMLcites' => \&do_sort_cites);
 
     $tex->add_output_hook(\&do_resolve_ref_ranges, 9);
 
@@ -433,6 +436,58 @@ sub do_register_refkey {
     return;
 }
 
+sub do_sort_cites {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $handle = $tex->get_output_handle();
+
+    my $body = $handle->get_dom();
+
+    my @groups = $body->findnodes(qq{descendant::cite-group});
+
+    $tex->print_nl("Sorting cite groups");
+
+    my $num_sorted = 0;
+
+    my sub __extract_cite_label {
+        my $xref_node = shift;
+
+        my $label = $xref_node->firstChild();
+
+        return "$label" + 0;
+    }
+
+    for my $cite_group (@groups) {
+        my @xrefs = $cite_group->findnodes(qq{descendant::xref});
+
+        next if @xrefs < 2;
+
+        my @labels = map { $_->firstChild() } @xrefs;
+
+        return unless all { m{^\d+$} } @labels;
+
+        my @new = map { [ __extract_cite_label($_), $_->cloneNode(1) ] } @xrefs;
+
+        my @sorted = sort { $a->[0] <=> $b->[0] } @new;
+
+        for (my $i = 0; $i < @new; $i++) {
+            $xrefs[$i]->replaceNode($sorted[$i]->[1]);
+        }
+
+        $num_sorted++;
+    }
+
+    $tex->print_ln();
+
+    $tex->print_nl(sprintf "Sorted %d cite group%s",
+                   $num_sorted,
+                   $num_sorted == 1 ? "" : "s"
+        );
+
+    return;
+}
+
 1;
 
 __DATA__
@@ -444,6 +499,14 @@ __DATA__
 
 \def\TeXMLNoResolveXrefs{\let\TeXML@resolveXMLxrefs\@empty}
 % \def\TeXMLNoResolveXrefgroups{\let\TeXML@resolverefgroups\@empty}
+
+\newif\ifTeXMLsortcites@
+\TeXMLsortcites@false
+
+\def\TeXMLsortCites{\TeXMLsortcites@true}
+\def\TeXMLnoSortCites{\TeXMLsortcites@false}
+
+\AtTeXMLend{\ifTeXMLsortcites@ \TeXML@sortXMLcites \fi}
 
 \let\@currentlabel\@empty
 \let\@currentXMLid\@empty
@@ -523,6 +586,7 @@ __DATA__
 }
 
 \def\@ref#1{%
+        \ifst@rred\suppress@xref@group\fi
         \@setref {#1} \ref {}%
 }
 

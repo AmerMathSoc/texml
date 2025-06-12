@@ -45,7 +45,7 @@ use File::Basename;
 
 use File::Spec::Functions qw(catfile);
 
-use List::Util qw(all uniq);
+use List::Util qw(uniq);
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
 
@@ -134,8 +134,6 @@ sub install {
     $tex->define_pseudo_macro('@pop@tocstack'    => \&do_pop_toc_stack);
     $tex->define_csname('@clear@tocstack' => \&do_clear_toc_stack);
     # $tex->define_csname('@show@tocstack'  => \&do_show_toc_stack);
-
-    $tex->define_csname('TeXML@sortXMLcites' => \&do_sort_cites);
 
     $tex->define_csname('TeXML@setliststyle' => \&do_set_list_style);
 
@@ -617,58 +615,6 @@ sub do_clear_toc_stack {
     return;
 }
 
-my sub __extract_cite_label {
-    my $xref_node = shift;
-
-    my $label = $xref_node->firstChild();
-
-    return "$label" + 0;
-}
-
-sub do_sort_cites {
-    my $tex   = shift;
-    my $token = shift;
-
-    my $handle = $tex->get_output_handle();
-
-    my $body = $handle->get_dom();
-
-    my @groups = $body->findnodes(qq{descendant::cite-group});
-
-    $tex->print_nl("Sorting cite groups");
-
-    my $num_sorted = 0;
-
-    for my $cite_group (@groups) {
-        my @xrefs = $cite_group->findnodes(qq{descendant::xref});
-
-        next if @xrefs < 2;
-
-        my @labels = map { $_->firstChild() } @xrefs;
-
-        return unless all { m{^\d+$} } @labels;
-
-        my @new = map { [ __extract_cite_label($_), $_->cloneNode(1) ] } @xrefs;
-
-        my @sorted = sort { $a->[0] <=> $b->[0] } @new;
-
-        for (my $i = 0; $i < @new; $i++) {
-            $xrefs[$i]->replaceNode($sorted[$i]->[1]);
-        }
-
-        $num_sorted++;
-    }
-
-    $tex->print_ln();
-
-    $tex->print_nl(sprintf "Sorted %d cite group%s",
-                   $num_sorted,
-                   $num_sorted == 1 ? "" : "s"
-        );
-
-    return;
-}
-
 my %LIST_STYLE_TYPE = (alph   => 'a', # 'lower-alpha',
                        Alph   => 'A', # 'upper-alpha',
                        arabic => '1', # 'decimal',
@@ -738,14 +684,6 @@ sub do_counter_style {
 __DATA__
 
 \fontencoding{OT1}\selectfont
-
-\newif\ifTeXMLsortcites@
-\TeXMLsortcites@false
-
-\def\TeXMLsortCites{\TeXMLsortcites@true}
-\def\TeXMLnoSortCites{\TeXMLsortcites@false}
-
-\AtTeXMLend{\ifTeXMLsortcites@ \TeXML@sortXMLcites \fi}
 
 \def\@no@lnbk #1[#2]{ }% *sigh*
 
