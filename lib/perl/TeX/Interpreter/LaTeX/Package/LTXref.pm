@@ -56,9 +56,9 @@ sub install  {
 
     $tex->define_csname('TeXML@register@refkey' => \&do_register_refkey);
 
-    $tex->define_csname('TeXML@resolveXMLxrefs' => \&do_resolve_xrefs);
+    $tex->add_output_hook(\&do_resolve_xrefs);
 
-    $tex->define_csname('TeXML@sortXMLcites' => \&do_sort_cites);
+    $tex->add_output_hook(\&do_sort_cites, 1);
 
     $tex->add_output_hook(\&do_resolve_ref_ranges, 9);
 
@@ -129,9 +129,12 @@ sub do_showonlyrefs {
     return;
 }
 
-sub do_resolve_xrefs {
-    my $tex   = shift;
-    my $token = shift;
+sub do_resolve_xrefs { ## TODO: move cite out of this
+    my $xml = shift;
+
+    my $tex = $xml->get_tex_engine();
+
+    return unless $tex->if('TeXML@resolveXMLxrefs@');
 
     do_showonlyrefs($tex); # grrr.  methods fucked up
 
@@ -171,21 +174,23 @@ sub do_resolve_xrefs {
 
                 my $token = make_csname_token($key);
 
-                my $token_list = TeX::TokenList->new({ tokens => [ $token ] });
+                if (defined $tex->expansion_of($key)) {
+                    my $token_list = TeX::TokenList->new({ tokens => [ $token ] });
 
-                my $label = $tex->convert_token_list($token_list);
+                    my $label = $tex->convert_token_list($token_list);
 
-                ## TODO: Why doesn't this work?  \csname not working?
-                # my $label = $tex->convert_fragment(qq{\\csname $key \\endcsname});
+                    ## TODO: Why doesn't this work?  \csname not working?
+                    # my $label = $tex->convert_fragment(qq{\\csname $key \\endcsname});
 
-                if (defined $label && $label->hasChildNodes()) {
-                    $xref->setAttribute('specific-use', 'cite');
+                    if (defined $label && $label->hasChildNodes()) {
+                        $xref->setAttribute('specific-use', 'cite');
 
-                    my $first = $xref->firstChild();
+                        my $first = $xref->firstChild();
 
-                    $xref->replaceChild($label, $first);
+                        $xref->replaceChild($label, $first);
 
-                    $num_cites++;
+                        $num_cites++;
+                    }
                 }
             }
             else {
@@ -295,6 +300,8 @@ sub do_resolve_ref_ranges {
     my $xml = shift;
 
     my $tex = $xml->get_tex_engine();
+
+    return unless $tex->if('TeXML@resolveXMLxrefgroups@');
 
     my $handle = $tex->get_output_handle();
 
@@ -437,8 +444,11 @@ sub do_register_refkey {
 }
 
 sub do_sort_cites {
-    my $tex   = shift;
-    my $token = shift;
+    my $xml = shift;
+
+    my $tex = $xml->get_tex_engine();
+
+    return unless $tex->if('TeXMLsortcites@');
 
     my $handle = $tex->get_output_handle();
 
@@ -494,19 +504,20 @@ __DATA__
 
 \ProvidesPackage{LTXref}
 
-\AtTeXMLend{\TeXML@resolveXMLxrefs}
-% \AtTeXMLend{\TeXML@resolverefgroups}
+\newif\ifTeXML@resolveXMLxrefs@
+\TeXML@resolveXMLxrefs@true
 
-\def\TeXMLNoResolveXrefs{\let\TeXML@resolveXMLxrefs\@empty}
-% \def\TeXMLNoResolveXrefgroups{\let\TeXML@resolverefgroups\@empty}
+\newif\ifTeXML@resolveXMLxrefgroups@
+\TeXML@resolveXMLxrefgroups@true
+
+\def\TeXMLNoResolveXrefs{\TeXML@resolveXMLxrefs@false}
+\def\TeXMLNoResolveXrefgroups{\TeXML@resolveXMLxrefgroups@false}
 
 \newif\ifTeXMLsortcites@
 \TeXMLsortcites@false
 
 \def\TeXMLsortCites{\TeXMLsortcites@true}
 \def\TeXMLnoSortCites{\TeXMLsortcites@false}
-
-\AtTeXMLend{\ifTeXMLsortcites@ \TeXML@sortXMLcites \fi}
 
 \let\@currentlabel\@empty
 \let\@currentXMLid\@empty
