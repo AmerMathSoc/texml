@@ -761,7 +761,22 @@ __DATA__
 \newcommand{\curraddr}[2][]{\g@addto@macro\AMS@authors{\curraddr{#1}{#2}}}
 \newcommand{\email}[2][]   {\g@addto@macro\AMS@authors{\email{#1}{#2}}}
 \newcommand{\authorbio}[1] {\g@addto@macro\AMS@authors{\authorbio{#1}}}
-\newcommand{\thanks}[1]    {\g@addto@macro\AMS@authors{\thanks{#1}}}
+
+\let\AMS@thanks\@empty
+
+\newcommand{\thanks}[1]{\g@addto@macro\AMS@thanks{\thanks{#1}}}
+
+\def\output@funding@group{%
+    \ifx\AMS@thanks\@empty\else
+        \begingroup
+            \xmlpartag{funding-statement}%
+            \def\thanks##1{##1\par}%
+            \startXMLelement{funding-group}%
+                \AMS@thanks
+            \endXMLelement{funding-group}%
+        \endgroup
+    \fi
+}
 
 \def\url@setup{%
     \let\do\@makeother \dospecials

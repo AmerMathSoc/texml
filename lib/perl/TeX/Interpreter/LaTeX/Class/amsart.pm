@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Class::amsart;
 use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -244,6 +244,7 @@ __DATA__
         \fi
         \output@abstract@meta
         \output@subjclass@meta
+        \output@funding@group
         \output@custom@meta@group
         \endXMLelement{article-meta}
 }

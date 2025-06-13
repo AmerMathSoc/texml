@@ -117,22 +117,6 @@ __DATA__
 
 \renewcommand{\thanks}[1]{%
     \g@addto@macro\AMS@thanks{#1\par}%
-    % \setbox\AMS@thanks\vbox{%
-    %     \unvbox\AMS@thanks\par
-    %     \xmlpartag{funding-statement}%
-    %     #1\par
-    % }%
-}
-
-\def\output@funding@meta{%
-    \ifx\AMS@thanks\@empty\else
-        \startXMLelement{funding-group}
-        \begingroup
-            \xmlpartag{funding-statement}%
-            \AMS@thanks
-        \endgroup
-        \endXMLelement{funding-group}\par
-    \fi
 }
 
 \def\seriesinfo#1#2#3{%
@@ -262,7 +246,7 @@ __DATA__
             \output@abstract@meta
             \output@keyword@meta
             \output@subjclass@meta
-            \output@funding@meta
+            \output@funding@group
         \endXMLelement{book-meta}%
         \par
     \fi
