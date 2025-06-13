@@ -99,14 +99,6 @@ __DATA__
     \glet\insertAMSDRMstatement\@empty
 }
 
-\AtBeginDocument{%
-    \glet\AMS@authors\@empty
-}
-
-% \AtBeginDocument{%
-%     \init@bits@meta
-% }
-
 \AtEndDocument{%
     \@end@BITS@section
 }
@@ -238,7 +230,7 @@ __DATA__
                 \endXMLelement{book-id}\par
             \fi
             \ifx\AMS@title\@empty\else
-                \startXMLelement{title-group}
+                \startXMLelement{book-title-group}
                     \startXMLelement{article-title}
                         \AMS@title
                     \endXMLelement{article-title}\par
@@ -247,7 +239,7 @@ __DATA__
                             \AMS@subtitle
                         \endXMLelement{subtitle}
                     \fi
-                \endXMLelement{title-group}\par
+                \endXMLelement{book-title-group}\par
             \fi
             \output@author@meta
             \output@history@meta

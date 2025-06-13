@@ -76,7 +76,6 @@ __DATA__
     \makededication
     \@starttoc{toc}\contentsname
     \insertAMSDRMstatement
-    \glet\AMS@authors\@empty
 }
 
 \let\c@xcb=\c@section
