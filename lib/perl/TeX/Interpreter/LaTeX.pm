@@ -1098,7 +1098,10 @@ __DATA__
 
 \AtBeginDocument{\@declarefontcommand\overline\overline{overline}}
 
+%% Question: Why do I need both \leavevmode's here?
+
 \DeclareRobustCommand\emph[1]{%
+    \leavevmode
     \ifmmode
         \string\mathit{#1}%
     \else
