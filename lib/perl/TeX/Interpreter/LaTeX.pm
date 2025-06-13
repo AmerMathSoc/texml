@@ -1711,7 +1711,7 @@ __DATA__
         \xmlpartag{}%
         \ifx\AMS@authors\@empty\else
             \startXMLelement{sec-meta}\par
-                \output@author@meta
+                \output@contrib@groups
                 \output@abstract@meta
                 \output@subjclass@meta
             \endXMLelement{sec-meta}\par

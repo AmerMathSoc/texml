@@ -1037,7 +1037,7 @@ __DATA__
     \fi
 }
 
-\def\output@author@meta{%
+\def\output@contrib@groups{%
     \ifx\AMS@authors\@empty\else
         \begingroup
             \let\start@author\start@author@

@@ -232,7 +232,7 @@ __DATA__
                 \fi
             \endXMLelement{title-group}\par
         \fi
-        \output@author@meta
+        \output@contrib@groups
         \output@history@meta
         \ifx\AMS@volumeno\@empty\else
             \thisxmlpartag{volume}

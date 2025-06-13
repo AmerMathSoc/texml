@@ -225,7 +225,7 @@ __DATA__
                     \fi
                 \endXMLelement{book-title-group}\par
             \fi
-            \output@author@meta
+            \output@contrib@groups
             \output@history@meta
             \ifx\AMS@volumeno\@empty
                 \ifx\AMS@manid\@empty\else

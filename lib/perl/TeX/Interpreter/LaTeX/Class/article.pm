@@ -67,6 +67,8 @@ __DATA__
 
 \setcounter{tocdepth}{2}
 
+\LoadClass{amsart}
+
 \endinput
 
 __END__
