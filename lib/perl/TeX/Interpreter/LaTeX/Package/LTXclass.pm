@@ -1,8 +1,8 @@
-package TeX::Interpreter::LaTeX::Class::book;
+package TeX::Interpreter::LaTeX::Package::LTXclass;
 
 use 5.26.0;
 
-# Copyright (C) 2022, 2025 American Mathematical Society
+# Copyright (C) 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -33,12 +33,12 @@ use 5.26.0;
 
 use warnings;
 
-sub install {
+sub install  {
     my $class = shift;
 
     my $tex = shift;
 
-    $tex->class_load_notification();
+    $tex->package_load_notification();
 
     $tex->read_package_data();
 
@@ -49,11 +49,34 @@ sub install {
 
 __DATA__
 
-\ProvidesClass{book}
+\ProvidesPackage{LTXclass}
 
-\LoadClass{amsbook}
+\let\insertAMSDRMstatement\@empty
 
-\RequirePackage{LTXclass}
+\def\author#1{\gdef\AMS@authors{#1}}
+
+\def\and@author@separator{%
+                    \par
+                \endXMLelement{contrib}%
+                \startXMLelement{contrib}%
+                    \setXMLattribute{contrib-type}{author}%
+}
+
+\def\output@contrib@groups{%
+    \ifx\AMS@authors\@empty\else
+        \begingroup
+            \let\and\and@author@separator
+            \startXMLelement{contrib-group}
+                \setXMLattribute{content-type}{authors}
+                \startXMLelement{contrib}%
+                \setXMLattribute{contrib-type}{author}%
+                    \xmlpartag{string-name}%
+                    \AMS@authors\par
+                \endXMLelement{contrib}%
+            \endXMLelement{contrib-group}
+        \endgroup
+    \fi
+}
 
 \endinput
 

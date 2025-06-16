@@ -186,70 +186,70 @@ __DATA__
 }
 
 \def\output@book@meta{%
-    \ifx\AMS@publkey\@empty\else
-        % Add just enough to allow texml to find the gentag file.
-        \startXMLelement{book-meta}%
+    % Add just enough to allow texml to find the gentag file.
+    \startXMLelement{book-meta}%
+        \ifx\AMS@publkey\@empty\else
             \startXMLelement{book-id}%
                 \setXMLattribute{book-id-type}{publisher}%
                 \AMS@publkey\par
             \endXMLelement{book-id}\par
-            \ifx\AMS@volumeid\@empty\else
-                \startXMLelement{book-id}%
-                    \setXMLattribute{book-id-type}{volume_id}%
-                    \AMS@volumeid\par
-                \endXMLelement{book-id}\par
-            \fi
-            \ifx\AMS@DOI\@empty\else
-                \startXMLelement{book-id}%
-                    \setXMLattribute{book-id-type}{doi}%
-                    \setXMLattribute{assigning-authority}{crossref}%
-                    \AMS@DOI\par
-                \endXMLelement{book-id}\par
-            \fi
-            \ifx\AMS@lccn\@empty\else
-                \startXMLelement{book-id}%
-                    \setXMLattribute{book-id-type}{lccn}%
-                    \setXMLattribute{assigning-authority}{Library of Congress}%
-                    \AMS@lccn\par
-                \endXMLelement{book-id}\par
-            \fi
-            \ifx\AMS@title\@empty\else
-                \startXMLelement{book-title-group}
-                    \startXMLelement{article-title}
-                        \AMS@title
-                    \endXMLelement{article-title}\par
-                    \ifx\AMS@subtitle\@empty\else
-                        \startXMLelement{subtitle}
-                            \AMS@subtitle
-                        \endXMLelement{subtitle}
-                    \fi
-                \endXMLelement{book-title-group}\par
-            \fi
-            \output@contrib@groups
-            \output@history@meta
-            \ifx\AMS@volumeno\@empty
-                \ifx\AMS@manid\@empty\else
-                    \startXMLelement{book-volume-number}%
-                        \AMS@manid\par
-                    \endXMLelement{book-volume-number}\par
+        \fi
+        \ifx\AMS@volumeid\@empty\else
+            \startXMLelement{book-id}%
+                \setXMLattribute{book-id-type}{volume_id}%
+                \AMS@volumeid\par
+            \endXMLelement{book-id}\par
+        \fi
+        \ifx\AMS@DOI\@empty\else
+            \startXMLelement{book-id}%
+                \setXMLattribute{book-id-type}{doi}%
+                \setXMLattribute{assigning-authority}{crossref}%
+                \AMS@DOI\par
+            \endXMLelement{book-id}\par
+        \fi
+        \ifx\AMS@lccn\@empty\else
+            \startXMLelement{book-id}%
+                \setXMLattribute{book-id-type}{lccn}%
+                \setXMLattribute{assigning-authority}{Library of Congress}%
+                \AMS@lccn\par
+            \endXMLelement{book-id}\par
+        \fi
+        \ifx\AMS@title\@empty\else
+            \startXMLelement{book-title-group}
+                \startXMLelement{article-title}
+                    \AMS@title
+                \endXMLelement{article-title}\par
+                \ifx\AMS@subtitle\@empty\else
+                    \startXMLelement{subtitle}
+                        \AMS@subtitle
+                    \endXMLelement{subtitle}
                 \fi
-            \else
+            \endXMLelement{book-title-group}\par
+        \fi
+        \output@contrib@groups
+        \output@history@meta
+        \ifx\AMS@volumeno\@empty
+            \ifx\AMS@manid\@empty\else
                 \startXMLelement{book-volume-number}%
-                    \AMS@volumeno\par
+                    \AMS@manid\par
                 \endXMLelement{book-volume-number}\par
-                \ifx\AMS@issue\@empty\else
-                    \startXMLelement{book-issue-number}%
-                        \AMS@issue\par
-                    \endXMLelement{book-issue-number}\par
-                \fi
             \fi
-            \output@abstract@meta
-            \output@keyword@meta
-            \output@subjclass@meta
-            \output@funding@group
-        \endXMLelement{book-meta}%
-        \par
-    \fi
+        \else
+            \startXMLelement{book-volume-number}%
+                \AMS@volumeno\par
+            \endXMLelement{book-volume-number}\par
+            \ifx\AMS@issue\@empty\else
+                \startXMLelement{book-issue-number}%
+                    \AMS@issue\par
+                \endXMLelement{book-issue-number}\par
+            \fi
+        \fi
+        \output@abstract@meta
+        \output@keyword@meta
+        \output@subjclass@meta
+        \output@funding@group
+    \endXMLelement{book-meta}%
+    \par
     \glet\output@book@meta\@empty
 }
 
