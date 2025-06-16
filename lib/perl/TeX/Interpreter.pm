@@ -6062,6 +6062,8 @@ my %skip_line_of  :COUNTER(:name<skip_line> :default<0>);
 package CondStateRecord {
     use TeX::Class;
 
+    my %cur_if_of     :ATTR(:name<cur_if> :type<TeX::Token>);
+
     my %if_limit_of   :COUNTER(:name<if_limit>);
     my %if_line_of    :COUNTER(:name<if_line>);
 
@@ -6107,9 +6109,11 @@ sub pass_text {
 sub push_cond_stack {
     my $tex = shift;
 
-    my $cur_if = shift;
+    my $cur_if  = shift;
+    my $cur_tok = shift;
 
-    my $p = CondStateRecord->new({ if_limit => $tex->if_limit(),
+    my $p = CondStateRecord->new({ cur_if   => $cur_tok,
+                                   if_limit => $tex->if_limit(),
                                    if_line  => $tex->if_line(),
                                    link     => $tex->get_cond_ptr(),
                                  });
@@ -8075,7 +8079,7 @@ sub finish_align_in_display {
 
 my %output_line_length_of :COUNTER(:name<output_line_length> :default<72>);
 
-sub __unskip { ## TBD: Review this
+my sub __unskip { ## TBD: Review this
     my @nodes = @_;
 
     my @prefix;
@@ -8114,7 +8118,7 @@ sub __unskip { ## TBD: Review this
 ## general solution would require us to classify all nodes according
 ## to whether they count as content or not.
 
-sub __is_empty_par { ## TBD: Review this.
+my sub __is_empty_par { ## TBD: Review this.
     my @nodes = @_;
 
     return 1 if @nodes == 0;
@@ -10995,31 +10999,27 @@ sub final_cleanup {
         $tex->print_char(")");
     }
 
-    # while cond_ptr <> null do
-    # begin
-    #     print_nl("(");
-    #     print_esc("end occurred ");
-    #     print("when ");
-    #     print_cmd_chr(if_test, cur_if);
-    #
-    #     if if_line <> 0 then
-    #     begin
-    #         print(" on line ");
-    #         print_int(if_line);
-    #     end;
-    #
-    #     print(" was incomplete)");
-    #
-    #     if_line := if_line_field(cond_ptr);
-    #
-    #     cur_if := subtype(cond_ptr);
-    #
-    #     temp_ptr := cond_ptr;
-    #     cond_ptr := link(cond_ptr);
-    #
-    #     free_node(temp_ptr, if_node_size);
-    # end;
-    #
+    while (my $ptr = $tex->get_cond_ptr()) {
+        my $if_limit = $ptr->if_limit();
+        my $if_line  = $ptr->if_line();
+        my $cur_if   = $ptr->get_cur_if();
+
+        $tex->print_nl("(");
+        $tex->print_esc("end occurred ");
+        $tex->print("when ");
+        # $tex->print_cmd_chr($if_limit);
+        $tex->print_esc($cur_if->get_csname());
+
+        if ($if_line != 0) {
+            print(" on line ");
+            $tex->print_int($if_line);
+        }
+
+        $tex->print(" was incomplete)");
+
+        $tex->pop_cond_stack();
+    }
+
     # if history <> spotless then
     #     if ((history = warning_issued) or (interaction < error_stop_mode)) then
     #         if selector = term_and_log then
@@ -12711,7 +12711,7 @@ sub get_encoding {
 #
 # lig a b  =:>   X    ; [a]bc... => X[c]...           op=4
 
-sub __char_code {
+my sub __char_code {
     my $code_or_char = shift;
 
     if ($code_or_char =~ s{(?:U\+|")(.+)}{ hex($1) }e) {

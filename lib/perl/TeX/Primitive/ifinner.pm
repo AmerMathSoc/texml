@@ -1,6 +1,8 @@
 package TeX::Primitive::ifinner;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Primitive::ifinner;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use base qw(TeX::Primitive::BeginIf);
@@ -46,7 +47,7 @@ sub expand {
 
     my $negate = shift;
 
-    $tex->push_cond_stack($self);
+    $tex->push_cond_stack($self, $cur_tok);
 
     my $bool = false;
 
