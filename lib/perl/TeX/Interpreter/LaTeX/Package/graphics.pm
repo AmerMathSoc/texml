@@ -258,6 +258,7 @@ __DATA__
 
 \def\includegraphics{%
     \begingroup
+        \let\mbox\@firstofone
         \def\texml@includegraphics{\includegraphics}%
         \@ifstar
             {\g@save@includegraphics{*}\@includegraphics}%
