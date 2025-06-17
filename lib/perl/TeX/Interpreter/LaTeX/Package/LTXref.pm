@@ -308,6 +308,7 @@ sub do_resolve_ref_ranges {
     my $body = $handle->get_dom();
 
     $tex->print_nl("Resolving <xref-group>s");
+    $tex->print_ln();
 
     $tex->begingroup();
 
@@ -673,7 +674,6 @@ __DATA__
 
 \def\@setref@link#1#2{%
         \startXMLelement{xref}%
-        \if@TeXMLend
         \ifcsname r@#1\endcsname
             \@setref@link@{#1}#2%
         \else
