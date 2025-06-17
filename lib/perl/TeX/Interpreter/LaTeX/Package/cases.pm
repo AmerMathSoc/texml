@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::cases;
 
-# Copyright (C) 2022 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,17 +31,72 @@ package TeX::Interpreter::LaTeX::Package::cases;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+my sub normalize_texml_cases;
+
+sub install {
     my $class = shift;
 
     my $tex = shift;
 
     $tex->package_load_notification();
 
+    $tex->add_output_hook(\&normalize_texml_cases);
+
     $tex->read_package_data();
+
+    return;
+}
+
+sub normalize_texml_cases {
+    my $xml = shift;
+
+    my $tex = $xml->get_tex_engine();
+
+    my $dom = $tex->get_output_handle()->get_dom();
+
+    for my $case ($dom->findnodes("/descendant::texml_cases")) {
+        my $parent = $case->parentNode;
+
+        my @rows = $case->findnodes("tr");
+
+        for (my $r = 0; $r < @rows; $r++) {
+            my $row = $rows[$r];
+
+            my @col = $row->findnodes("td");
+
+            # next unless @col;
+
+            if (defined $col[-2] && $r < $#rows) {
+                $col[-2]->appendText("\\\\");
+            }
+
+            if (defined $col[1]) {
+                $col[0]->appendText("&");
+            }
+
+            if (defined $col[2]) { # tag
+                for my $child ($col[2]->childNodes) {
+                    $parent->insertBefore($child, $case);
+                }
+            }
+
+            if (defined $col[0]) {
+                for my $child ($col[0]->childNodes) {
+                    $parent->insertBefore($child, $case);
+                }
+            }
+
+            if (defined $col[1]) {
+                for my $child ($col[1]->childNodes) {
+                    $parent->insertBefore($child, $case);
+                }
+            }
+        }
+
+        $parent->removeChild($case);
+    }
 
     return;
 }
@@ -131,7 +188,7 @@ __DATA__
 }
 
 \DeclareOption{subnum}{
-    \let\numc@setsub\subequations 
+    \let\numc@setsub\subequations
     \let\numc@resetsub\endsubequations
 }
 
