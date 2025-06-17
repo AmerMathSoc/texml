@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::HTMLtable;
 
-# Copyright (C) 2022 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,11 @@ package TeX::Interpreter::LaTeX::Package::HTMLtable;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+my sub normalize_tables;
+
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -45,9 +48,42 @@ sub install ( $ ) {
         $tex->primitive($primitive);
     }
 
+    $tex->add_output_hook(\&normalize_tables);
+
     $tex->read_package_data();
 
     return;
+}
+
+## TODO: Should probably have a way to skip normalize_tables();
+
+sub normalize_tables {
+    my $xml = shift;
+
+    my $tex = $xml->get_tex_engine();
+
+    my $dom = $tex->get_output_handle()->get_dom();
+
+    ## DANGER! This assumes the row_tag and col_tabl are constant
+    ## throughout the document!
+
+    my $table_tag = $tex->xml_table_tag();
+    my $row_tag   = $tex->xml_table_row_tag();
+    my $col_tag   = $tex->xml_table_col_tag();
+
+    for my $table ($dom->findnodes("/descendant::${table_tag}")) {
+        my @rows = $table->findnodes($row_tag);
+
+        for my $row (@rows) {
+            for my $col ($row->findnodes($col_tag)) {
+                if ($col->hasAttribute('hidden')) {
+                    $row->removeChild($col);
+                }
+            }
+        }
+    }
+
+    return
 }
 
 ######################################################################
@@ -855,7 +891,7 @@ Output::XML::pop_element
 
 ===========================================================================
 \setCSSproperty:        These go on <td>
-                                   
+
   background-color      preamble [\columncolor], \cellcolor (colortbl)
   border-left           preamble
   border-right          preamble

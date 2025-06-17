@@ -614,37 +614,6 @@ sub normalize_disp_level {
     return
 }
 
-## TODO: Should probably have a way to skip normalize_tables();
-
-sub normalize_tables {
-    my $self = shift;
-
-    my $dom = $self->get_dom();
-
-    my $tex = $self->get_tex_engine();
-
-    ## DANGER! This assumes the row_tag and col_tabl are constant
-    ## throughout the document!
-
-    my $table_tag = $tex->xml_table_tag();
-    my $row_tag   = $tex->xml_table_row_tag();
-    my $col_tag   = $tex->xml_table_col_tag();
-
-    for my $table ($dom->findnodes("/descendant::${table_tag}")) {
-        my @rows = $table->findnodes($row_tag);
-
-        for my $row (@rows) {
-            for my $col ($row->findnodes($col_tag)) {
-                if ($col->hasAttribute('hidden')) {
-                    $row->removeChild($col);
-                }
-            }
-        }
-    }
-
-    return
-}
-
 sub add_alt_title {
     my $parent = shift;
     my $dom    = shift;
@@ -775,10 +744,6 @@ sub finalize_document {
     $self->normalize_texml_cases();
 
     $self->normalize_statements();
-
-    ## TODO: Should probably have a way to skip normalize_tables();
-
-    $self->normalize_tables();
 
     ## $self->normalize_app_group();
 
