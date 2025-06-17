@@ -420,7 +420,7 @@ sub pseudo_input_ln {
     return (0, $suppress_eol);
 }
 
-sub update_terminal() {
+sub update_terminal {
     my $tex = shift;
 
     term_out->flush();
@@ -2414,7 +2414,7 @@ my %primitives_of :HASH(:name<primitive>);
 ## This section is mostly irrelevant, but we might want to implement
 ## some version of print_cs and sprint_cs.
 
-sub load_primitive( $;$ ) {
+sub load_primitive {
     my $tex = shift;
 
     my $name       = shift;
@@ -4909,7 +4909,7 @@ sub scan_alphabetic_character_code {
     return $cur_val;
 }
 
-sub scan_optional_space() {
+sub scan_optional_space {
     my $tex = shift;
 
     my $cur_tok = $tex->get_x_token();
@@ -4923,7 +4923,7 @@ sub scan_optional_space() {
     return;
 }
 
-sub scan_optional_relax() {
+sub scan_optional_relax {
     my $tex = shift;
 
     my $cur_tok = $tex->get_next();
@@ -6135,6 +6135,8 @@ sub pop_cond_stack {
     $tex->set_if_line($p->if_line());
 
     $tex->set_cond_ptr($p->get_link());
+
+    # $p->DESTROY();
 
     return;
 }
@@ -10927,8 +10929,6 @@ sub TeX {
 
     $tex->main_control();        # { come to life }
 
-    $tex->final_cleanup();       # { prepare for death }
-
     return $tex->end_of_TEX();
 }
 
@@ -10948,6 +10948,8 @@ sub close_files_and_terminate {
     # stat if tracing_stats > 0 then @<Output statistics about this job@>; stats
 
     $tex->finish_output_file();
+
+    $tex->final_cleanup();       # { prepare for death }
 
     if ($tex->log_opened()) {
         $tex->wlog_cr();
@@ -10999,6 +11001,16 @@ sub final_cleanup {
         $tex->print_char(")");
     }
 
+    $tex->check_cond_stack();
+
+    return;
+}
+
+sub check_cond_stack {
+    my $tex = shift;
+
+    # $tex->print_nl("*** Checking cond stack");
+
     while (my $ptr = $tex->get_cond_ptr()) {
         my $if_limit = $ptr->if_limit();
         my $if_line  = $ptr->if_line();
@@ -11019,16 +11031,6 @@ sub final_cleanup {
 
         $tex->pop_cond_stack();
     }
-
-    # if history <> spotless then
-    #     if ((history = warning_issued) or (interaction < error_stop_mode)) then
-    #         if selector = term_and_log then
-    #         begin
-    #             selector := term_only;
-    #             print_nl("(see the transcript file for additional information)");
-    #
-    #             selector := term_and_log;
-    #         end;
 
     return;
 }
@@ -11623,7 +11625,7 @@ sub evaluate_expression {
 
 my @EXTENSIONS = qw(leavevmode UCSchar UCSchardef ifMathJaxMacro TeXMLrowspan TeXMLtoprow);
 
-sub load_extension( $;$ ) {
+sub load_extension {
     my $tex = shift;
 
     my $name  = shift;
