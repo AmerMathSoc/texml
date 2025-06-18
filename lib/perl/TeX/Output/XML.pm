@@ -516,116 +516,23 @@ sub __replace_cssID {
     return;
 }
 
-sub normalize_app_group {
-    my $self = shift;
-
-    my $dom = $self->get_dom();
-
-    ## There should only be one book-app-group, but this is a convenient idiom
-
-    for my $app_group ($dom->findnodes("/descendant::book-app-group")) {
-        my @apps = $app_group->findnodes('book-app');
-
-        if (@apps == 1) {
-            $app_group->replaceNode($apps[0]);
-        }
-    }
-
-    return;
-}
-
-sub normalize_disp_level {
-    my $self = shift;
-
-    my $dom = $self->get_dom();
-
-    my $min_disp_level = 100;
-
-    for my $node ($dom->findnodes("/descendant::*[\@disp-level]")) {
-        my $level = $node->getAttribute('disp-level');
-
-        $min_disp_level = min($min_disp_level, $level);
-    }
-
-    return if $min_disp_level == 1;
-
-    my $delta = 1 - $min_disp_level;
-
-    for my $node ($dom->findnodes("/descendant::*[\@disp-level]")) {
-        my $prev_level = $node->getAttribute('disp-level');
-
-        $node->setAttribute('disp-level', $prev_level + $delta);
-    }
-
-    return
-}
-
-sub add_alt_title {
-    my $parent = shift;
-    my $dom    = shift;
-
-    for my $title ($parent->findnodes("title")) { # There should be at most one
-        my $utf8 = xml_to_utf8_string($title);
-
-        if (nonempty($utf8)) {
-            $utf8 =~ s{ \x{2060}?\z}{}; # U+2060 WORD JOINER
-
-            my $raw = $title =~ s{</?[a-z].*?>}{}igr;
-
-            if ($utf8 ne $raw) {
-                my $alt_title = $dom->createElement("alt-title");
-
-                $alt_title->appendText($utf8);
-
-                $parent->insertAfter($alt_title, $title);
-            }
-        }
-    }
-
-    for my $title ($parent->findnodes("subtitle")) { # There should be at most one
-        my $utf8 = xml_to_utf8_string($title);
-
-        if (nonempty($utf8)) {
-            $utf8 =~ s{ \x{2060}?\z}{};
-
-            my $raw = $title =~ s{</?[a-z].*?>}{}igr;
-
-            if ($utf8 ne $raw) {
-                my $alt_title = $dom->createElement("alt-subtitle");
-
-                $alt_title->appendText($utf8);
-
-                $parent->insertAfter($alt_title, $title);
-            }
-        }
-    }
-
-    return;
-}
-
-sub add_toc_alt_titles {
-    my $self = shift;
-
-    my $dom = $self->get_dom();
-
-    for my $toc_entry ($dom->findnodes("/descendant::toc-entry")) {
-        add_alt_title($toc_entry, $dom);
-    }
-
-    return;
-}
-
-sub add_section_alt_titles {
-    my $self = shift;
-
-    my $dom = $self->get_dom();
-
-    for my $section ($dom->findnodes("/descendant::sec|/descendant::app")) {
-        add_alt_title($section, $dom);
-    }
-
-    return;
-}
+# sub normalize_app_group {
+#     my $self = shift;
+#
+#     my $dom = $self->get_dom();
+#
+#     ## There should only be one book-app-group, but this is a convenient idiom
+#
+#     for my $app_group ($dom->findnodes("/descendant::book-app-group")) {
+#         my @apps = $app_group->findnodes('book-app');
+#
+#         if (@apps == 1) {
+#             $app_group->replaceNode($apps[0]);
+#         }
+#     }
+#
+#     return;
+# }
 
 sub delete_empty_paragraphs {
     my $self = shift;
@@ -690,11 +597,6 @@ sub finalize_document {
     $self->normalize_statements();
 
     ## $self->normalize_app_group();
-
-    $self->normalize_disp_level();
-
-    $self->add_toc_alt_titles();
-    $self->add_section_alt_titles();
 
     return;
 }
