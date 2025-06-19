@@ -1,6 +1,8 @@
-package TeX::Class;
+package TeX::Class v1.1.3;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -35,10 +37,7 @@ package TeX::Class;
 ## accumulate some TeX-specific modifications in the future, although
 ## there are none as of yet.
 
-use strict;
 use warnings;
-
-use version; our $VERSION = qv '1.1.2';
 
 ## This is a modified version of Class::Std, v0.011, with the
 ## following modifications:
@@ -122,9 +121,8 @@ use version; our $VERSION = qv '1.1.2';
 
 use overload;
 
-use UNIVERSAL;
-
 use Carp;
+
 use Scalar::Util;
 
 use constant CUSTOM_ACCESSOR => '*custom*';
@@ -166,26 +164,35 @@ sub import {
     my $caller = caller;
 
     no strict 'refs';
-    *{ $caller . '::ident'   } = \&Scalar::Util::refaddr;
+
+    *{ "${caller}::ident" } = \&Scalar::Util::refaddr;
+
     for my $sub ( @exported_subs ) {
-        *{ $caller . '::' . $sub } = \&{$sub};
+        *{ "${caller}::$sub" } = \&{$sub};
     }
+
     for my $sub ( @exported_extension_subs ) {
-        my $target = $caller . '::' . $sub;
+        my $target = "${caller}::$sub";
+
         my $real_sub = *{ $target }{CODE} || sub { return @_[2..$#_] };
+
         no warnings 'redefine';
+
         *{ $target } = sub {
             my ($package, $referent, @unhandled) = @_;
+
             for my $handler ($sub, $real_sub) {
-                next if !@unhandled;
+                next if ! @unhandled;
+
                 @unhandled = $handler->($package, $referent, @unhandled);
             }
+
             return @unhandled;
         };
     }
 }
 
-sub __nonempty( $ ) {
+my sub __nonempty( $ ) {
     my $string = shift;
 
     return unless defined $string;
@@ -193,12 +200,13 @@ sub __nonempty( $ ) {
     return $string =~ /\S/;
 }
 
-sub __empty( $ ) {
+my sub __empty( $ ) {
     return ! __nonempty($_[0]);
 }
 
 sub _raw_str {
-    my ($pat) = @_;
+    my $pat = shift;
+
     return qr{ ('$pat') | ("$pat")
              | qq? (?:
                      /($pat)/ | \{($pat)\} | \(($pat)\) | \[($pat)\] | <($pat)>
@@ -207,7 +215,8 @@ sub _raw_str {
 }
 
 sub _str {
-    my ($pat) = @_;
+    my $pat = shift;
+
     return qr{ '($pat)' | "($pat)"
              | qq? (?:
                      /($pat)/ | \{($pat)\} | \(($pat)\) | \[($pat)\] | <($pat)>
@@ -267,7 +276,7 @@ BEGIN {
 
 ## This is more or less Class::Std's normal :ATTR
 
-sub __declare_ATTR( $$$ ) {
+sub __declare_ATTR {
     my $package  = shift;
     my $referent = shift;
     my $config   = shift;
@@ -338,7 +347,7 @@ sub __declare_ATTR( $$$ ) {
 
                 my ($self, $new_val) = @_;
 
-                if (defined($new_val) && ! UNIVERSAL::isa($new_val, $type)) {
+                if (defined($new_val) && ! eval { $new_val->isa($type) }) {
                     croak "Incorrect value type in set_$setter";
                 }
 
@@ -374,7 +383,7 @@ sub __declare_ATTR( $$$ ) {
     return $spec;
 }
 
-sub __parse_boolean($;$) {
+my sub __parse_boolean($;$) {
     my $raw = shift;
 
     my $value_of_null = shift;
@@ -390,7 +399,7 @@ sub __parse_boolean($;$) {
     return $value_of_null;
 }
 
-sub __declare_BOOLEAN( $$$ ) {
+sub __declare_BOOLEAN {
     my $package  = shift;
     my $referent = shift;
     my $config   = shift;
@@ -475,7 +484,7 @@ sub __declare_BOOLEAN( $$$ ) {
     return $spec;
 }
 
-sub __declare_COUNTER( $$$ ) {
+sub __declare_COUNTER {
     my $package  = shift;
     my $referent = shift;
     my $config   = shift;
@@ -605,7 +614,7 @@ sub __declare_COUNTER( $$$ ) {
     return $spec;
 }
 
-sub __declare_ARRAY( $$$ ) {
+sub __declare_ARRAY {
     my $package  = shift;
     my $referent = shift;
     my $config   = shift;
@@ -720,7 +729,7 @@ sub __declare_ARRAY( $$$ ) {
 
                 my ($self, $index, $new_val) = @_;
 
-                if (! UNIVERSAL::isa($new_val, $type)) {
+                if (! eval { $new_val->isa($type) }) {
                     croak "Incorrect value type in $setter";
                 }
 
@@ -774,7 +783,7 @@ sub __declare_ARRAY( $$$ ) {
                 my ($self, @new_vals) = @_;
 
                 for my $new_val (@new_vals) {
-                    if (! UNIVERSAL::isa($new_val, $type)) {
+                    if (! eval { $new_val->isa($type) }) {
                         croak "Incorrect value type in $push";
                     }
                 }
@@ -810,7 +819,7 @@ sub __declare_ARRAY( $$$ ) {
                 my ($self, @new_vals) = @_;
 
                 for my $new_val (@new_vals) {
-                    if (! UNIVERSAL::isa($new_val, $type)) {
+                    if (! eval { $new_val->isa($type) }) {
                         croak "Incorrect value type in $unshift";
                     }
                 }
@@ -839,7 +848,7 @@ sub __declare_ARRAY( $$$ ) {
 
                 my ($self, $new_val) = @_;
 
-                if (! UNIVERSAL::isa($new_val, $type)) {
+                if (! eval { $new_val->isa($type) }) {
                     croak "Incorrect value type in add_$adder";
                 }
 
@@ -863,7 +872,7 @@ sub __declare_ARRAY( $$$ ) {
     return $spec;
 }
 
-sub __declare_HASH( $$$ ) {
+sub __declare_HASH {
     my $package  = shift;
     my $referent = shift;
     my $config   = shift;
@@ -975,7 +984,7 @@ sub __declare_HASH( $$$ ) {
 
                 my ($self, $key, $value) = @_;
 
-                if (! UNIVERSAL::isa($value, $type)) {
+                if (! eval { $value->isa($type) }) {
                     croak "Incorrect value type in $setter";
                 }
 
@@ -1051,7 +1060,7 @@ sub MODIFY_HASH_ATTRIBUTES {
         push @{ $attribute{$package} }, $spec;
     }
 
-    return grep {defined} @attrs;
+    return grep { defined } @attrs;
 }
 
 ## protect_array_attribute() solves two different problems.
@@ -1121,7 +1130,7 @@ sub MODIFY_HASH_ATTRIBUTES {
 sub protect_array_attribute {
     my $aref = shift;
 
-    my @array = @{ $aref };
+    my @array = $aref->@*;
 
     # caller(0) = protect_array_attribute()
     # caller(1) = accessor, e.g. get_authors()
@@ -1155,21 +1164,28 @@ sub protect_hash_attribute {
 }
 
 sub _DUMP {
-    my ($self) = @_;
+    my $self = shift;
+
     my $id = ID($self);
 
     my %dump;
+
     for my $package (keys %attribute) {
         my $attr_list_ref = $attribute{$package};
-        for my $attr_ref ( @{$attr_list_ref} ) {
-            next if !exists $attr_ref->{ref}{$id};
+
+        for my $attr_ref ( $attr_list_ref->@* ) {
+            next unless exists $attr_ref->{ref}{$id};
+
             $dump{$package}{$attr_ref->{name}} = $attr_ref->{ref}{$id};
         }
     }
 
     require Data::Dumper;
+
     my $dump = Data::Dumper::Dumper(\%dump);
+
     $dump =~ s/^.{8}//gxms;
+
     return $dump;
 }
 
@@ -1194,46 +1210,51 @@ my %OVERLOADER_FOR = (
 
 sub MODIFY_CODE_ATTRIBUTES {
     my ($package, $referent, @attrs) = @_;
+
     for my $attr (@attrs) {
         if ($attr eq 'CUMULATIVE') {
-            push @{$cumulative{$package}}, $referent;
+            push $cumulative{$package}->@*, $referent;
         }
         elsif ($attr =~ m/\A CUMULATIVE \s* [(] \s* BASE \s* FIRST \s* [)] \z/xms) {
-            push @{$anticumulative{$package}}, $referent;
+            push $anticumulative{$package}->@*, $referent;
         }
         elsif ($attr =~ m/\A RESTRICTED \z/xms) {
-            push @{$restricted{$package}}, $referent;
+            push $restricted{$package}->@*, $referent;
         }
         elsif ($attr =~ m/\A PRIVATE \z/xms) {
-            push @{$private{$package}}, $referent;
+            push $private{$package}->@*, $referent;
         }
         elsif (exists $OVERLOADER_FOR{$attr}) {
-            push @{$overload{$package}}, [$referent, $attr];
+            push $overload{$package}->@*, [$referent, $attr];
         }
+
         undef $attr;
     }
-    return grep {defined} @attrs;
+
+    return grep { defined } @attrs;
 }
 
 my %_hierarchy_of;
 
 sub _hierarchy_of {
-    my ($class) = @_;
+    my $class = shift;
 
-    return @{$_hierarchy_of{$class}} if exists $_hierarchy_of{$class};
+    return $_hierarchy_of{$class}->@* if exists $_hierarchy_of{$class};
 
     no strict 'refs';
 
     my @hierarchy = $class;
-    my @parents   = @{$class.'::ISA'};
+    my @parents   = "${class}::ISA"->@*;
 
     while (defined (my $parent = shift @parents)) {
         push @hierarchy, $parent;
-        push @parents, @{$parent.'::ISA'};
+
+        push @parents, "${parent}::ISA"->@*;
     }
 
     my %seen;
-    return @{$_hierarchy_of{$class}}
+
+    return $_hierarchy_of{$class}->@*
         = sort { $a->isa($b) ? -1
                : $b->isa($a) ? +1
                :                0
@@ -1243,23 +1264,24 @@ sub _hierarchy_of {
 my %_reverse_hierarchy_of;
 
 sub _reverse_hierarchy_of {
-    my ($class) = @_;
+    my $class = shift;
 
-    return @{$_reverse_hierarchy_of{$class}}
+    return $_reverse_hierarchy_of{$class}->@*
         if exists $_reverse_hierarchy_of{$class};
 
     no strict 'refs';
 
     my @hierarchy = $class;
-    my @parents   = reverse @{$class.'::ISA'};
+    my @parents   = reverse "${class}::ISA"->@*;
 
     while (defined (my $parent = shift @parents)) {
         push @hierarchy, $parent;
-        push @parents, reverse @{$parent.'::ISA'};
+
+        push @parents, reverse "${parent}::ISA"->@*;
     }
 
     my %seen;
-    return @{$_reverse_hierarchy_of{$class}}
+    return $_reverse_hierarchy_of{$class}->@*
         = reverse sort { $a->isa($b) ? -1
                        : $b->isa($a) ? +1
                        :                0
@@ -1268,6 +1290,7 @@ sub _reverse_hierarchy_of {
 
 {
     no warnings qw( void );
+
     CHECK { initialize() }
 }
 
@@ -1276,7 +1299,7 @@ sub __find_sub {
 
     no strict 'refs';
 
-    for my $name (keys %{ "${package}::" }) {
+    for my $name (keys "${package}::"->%*) {
         my $candidate = *{ "${package}::$name" }{CODE};
 
         return $name if $candidate && $candidate == $sub_ref;
@@ -1304,7 +1327,7 @@ sub initialize {
     # :RESTRICTED methods (only callable within hierarchy)...
 
     for my $package (keys %restricted) {
-        for my $sub_ref (@{ $restricted{$package} }) {
+        for my $sub_ref ( $restricted{$package}->@*) {
             my $name = __find_sub($package, $sub_ref);
 
             no warnings 'redefine';
@@ -1336,7 +1359,7 @@ sub initialize {
     # :PRIVATE methods (only callable from class itself)...
 
     for my $package (keys %private) {
-        for my $sub_ref (@{ $private{$package} }) {
+        for my $sub_ref ($private{$package}->@*) {
             my $name = __find_sub($package, $sub_ref);
 
             no warnings 'redefine';
@@ -1361,7 +1384,7 @@ sub initialize {
     # :CUMULATIVE methods
 
     for my $package (keys %cumulative) {
-        for my $sub_ref (@{ $cumulative{$package} }) {
+        for my $sub_ref ($cumulative{$package}-@*) {
             my $name = __find_sub($package, $sub_ref);
 
             $cumulative_named{$name}{$package} = $sub_ref;
@@ -1383,7 +1406,7 @@ sub initialize {
 
                     ${ "${parent}::AUTOLOAD" } = our $AUTOLOAD if $name eq 'AUTOLOAD';
 
-                    if (!defined $list_context) {
+                    if (! defined $list_context) {
                         $sub_ref->(@args);
 
                         next;
@@ -1399,7 +1422,7 @@ sub initialize {
                     }
                 }
 
-                return if !defined $list_context;
+                return unless defined $list_context;
 
                 return @results if $list_context;
 
@@ -1414,11 +1437,11 @@ sub initialize {
     # :CUMULATIVE(BASE FIRST) (aka anticumulative) methods
 
     for my $package (keys %anticumulative) {
-        for my $sub_ref (@{ $anticumulative{$package} }) {
+        for my $sub_ref ($anticumulative{$package}->@*) {
             my $name = __find_sub($package, $sub_ref);
 
             if ($cumulative_named{$name}) {
-                for my $other_package (keys %{ $cumulative_named{$name} }) {
+                for my $other_package (keys $cumulative_named{$name}->%*) {
                     next unless $other_package->isa($package)
                              || $package->isa($other_package);
 
@@ -1450,8 +1473,9 @@ sub initialize {
                 for my $parent (_reverse_hierarchy_of($class)) {
                     my $sub_ref = $anticumulative_named{$name}{$parent} or next;
 
-                    if (!defined $list_context) {
+                    if (! defined $list_context) {
                         $sub_ref->(@args);
+
                         next;
                     }
 
@@ -1465,7 +1489,7 @@ sub initialize {
                     }
                 }
 
-                return if !defined $list_context;
+                return if ! defined $list_context;
 
                 return @results if $list_context;
 
@@ -1480,8 +1504,8 @@ sub initialize {
     # OVERLOAD methods
 
     for my $package (keys %overload) {
-        foreach my $operation (@{ $overload{$package} }) {
-            my ($referent, $attr) = @{ $operation };
+        foreach my $operation ($overload{$package}->@*) {
+            my ($referent, $attr) = $operation->@*;
 
             local $^W;
 
@@ -1504,6 +1528,25 @@ sub initialize {
     return;
 }
 
+my sub uniq {
+    my %seen;
+
+    return grep { $seen{$_}++ } @_;
+}
+
+my sub _mislabelled {
+    my (@names) = map { qq{'$_'} } uniq @_;
+
+    return q{} if @names == 0;
+
+    my $arglist
+        = @names == 1 ? $names[0]
+        : @names == 2 ? join q{ or }, @names
+        :               join(q{, }, @names[0..$#names-1]) . ", or $names[-1]"
+        ;
+    return "(Did you mislabel one of the args you passed: $arglist?)\n";
+}
+
 sub new {
     my ($class, $arg_ref) = @_;
 
@@ -1512,7 +1555,7 @@ sub new {
 
     no strict 'refs';
 
-    croak "Can't find class $class" if ! keys %{$class.'::'};
+    croak "Can't find class $class" if ! keys "${class}::"->%*;
 
     croak "Argument to $class->new() must be hash reference"
         if @_ > 1 && ref $arg_ref ne 'HASH';
@@ -1530,13 +1573,14 @@ sub new {
 
   BUILD:
     for my $base_class (_reverse_hierarchy_of($class)) {
-        my $arg_set = $arg_set{$base_class} = { %{$arg_ref}, %{$arg_ref->{$base_class}||{}} };
+        my $arg_set = $arg_set{$base_class}
+                    = { %{ $arg_ref }, %{ $arg_ref->{$base_class} || {} } };
 
         # Apply BUILD() methods...
         {
             no warnings 'once';
 
-            if (my $build_ref = *{$base_class.'::BUILD'}{CODE}) {
+            if (my $build_ref = *{ "${base_class}::BUILD" }{CODE}) {
                 $build_ref->($new_obj, $new_obj_id, $arg_set);
             }
         }
@@ -1544,7 +1588,7 @@ sub new {
         # Apply init_arg and default for attributes still undefined...
 
       INITIALIZATION:
-        for my $attr_ref ( @{$attribute{$base_class}} ) {
+        for my $attr_ref ( $attribute{$base_class}->@* ) {
             next INITIALIZATION if defined $attr_ref->{ref}{$new_obj_id};
 
             my $lvalue = \$attr_ref->{ref}{$new_obj_id};
@@ -1560,7 +1604,7 @@ sub new {
                 } elsif (defined(my $adder= $attr_ref->{adder})) {
                     $new_obj->$adder($init_val);
                 } else {
-                    $$lvalue = $init_val;
+                    $lvalue->$* = $init_val;
                 }
 
                 next INITIALIZATION;
@@ -1591,18 +1635,18 @@ sub new {
                 if (defined $setter) {
                     $new_obj->$setter($default_value);
                 } else {
-                    $$lvalue = $default_value;
+                    $lvalue->$* = $default_value;
                 }
 
                 next INITIALIZATION;
             }
             elsif ($attr_ref->{is_array}) {
-                $$lvalue = [];
+                $lvalue->$* = [];
 
                 next INITIALIZATION;
             }
             elsif ($attr_ref->{is_hash}) {
-                $$lvalue = {};
+                $lvalue->$* = {};
 
                 next INITIALIZATION;
             }
@@ -1611,9 +1655,9 @@ sub new {
 
                 if ($supply_defaults && __nonempty($type)) {
                     if ($is_one_of_us{$type}) {
-                        $$lvalue = $type->new({ SUPPLY_DEFAULTS => 1 });
-                    } elsif (UNIVERSAL::can($type, "new")) {
-                        $$lvalue = $type->new();
+                        $lvalue->$* = $type->new({ SUPPLY_DEFAULTS => 1 });
+                    } elsif (eval { $type->can("new") }) {
+                        $lvalue->$* = $type->new();
                     }
                 }
             }
@@ -1643,7 +1687,7 @@ sub new {
         # Apply START() methods...
         {
             no warnings 'once';
-            if (my $init_ref = *{$base_class.'::START'}{CODE}) {
+            if (my $init_ref = *{ "${base_class}::START" }{CODE}) {
                 $init_ref->($new_obj, $new_obj_id, $arg_set);
             }
         }
@@ -1674,7 +1718,7 @@ sub clone {
     for my $base_class (_reverse_hierarchy_of($class)) {
 
       INITIALIZATION:
-        for my $attr_ref ( @{ $attribute{$base_class} } ) {
+        for my $attr_ref ( $attribute{$base_class}->@* ) {
 
             my $rvalue = $attr_ref->{ref}{$orig_id};
 
@@ -1687,9 +1731,9 @@ sub clone {
     return $clone;
 }
 
-sub __clone_values(@);
+sub __clone_values;
 
-sub __clone_values(@) {
+sub __clone_values {
     my @values = @_;
 
     my @clones;
@@ -1709,7 +1753,7 @@ sub __clone_values(@) {
             next;
         }
 
-        if (UNIVERSAL::can($type, "clone")) {
+        if (eval { $type->can("clone") }) {
             push @clones, $value->clone();
 
             next;
@@ -1724,7 +1768,7 @@ sub __clone_values(@) {
         if ($type eq 'HASH') {
             my %new;
 
-            while (my ($key, $val) = each %{ $value }) {
+            while (my ($key, $val) = each $value->%*) {
                 $new{$key} = (__clone_values($val))[0];
             }
 
@@ -1918,24 +1962,6 @@ sub hash_keys {
     croak "Unknown field '$field_name' in keys for $class";
 }
 
-sub uniq (@) {
-    my %seen;
-    return grep { $seen{$_}++ } @_;
-}
-
-sub _mislabelled {
-    my (@names) = map { qq{'$_'} } uniq @_;
-
-    return q{} if @names == 0;
-
-    my $arglist
-        = @names == 1 ? $names[0]
-        : @names == 2 ? join q{ or }, @names
-        :               join(q{, }, @names[0..$#names-1]) . ", or $names[-1]"
-        ;
-    return "(Did you mislabel one of the args you passed: $arglist?)\n";
-}
-
 sub DESTROY {
     my ($self) = @_;
 
@@ -1947,11 +1973,11 @@ sub DESTROY {
         no strict 'refs';
         no warnings 'once';
 
-        if (my $demolish_ref = *{$base_class.'::DEMOLISH'}{CODE}) {
-            &{$demolish_ref};
+        if (my $demolish_ref = *{ "${base_class}::DEMOLISH" }{CODE}) {
+            &{ $demolish_ref };
         }
 
-        for my $attr_ref ( @{$attribute{$base_class}} ) {
+        for my $attr_ref ( $attribute{$base_class}->@* ) {
             delete $attr_ref->{ref}{$id};
         }
     }
@@ -1959,17 +1985,21 @@ sub DESTROY {
 
 sub AUTOLOAD {
     my ($invocant) = @_;
+
     my $invocant_class = ref $invocant || $invocant;
+
     my ($package_name, $method_name) = our $AUTOLOAD =~ m/ (.*) :: (.*) /xms;
 
-    my $ident = ID($invocant);
-    if (!defined $ident) { $ident = $invocant }
+    my $ident = ID($invocant) // $invocant;
 
     for my $parent_class ( _hierarchy_of($invocant_class) ) {
         no strict 'refs';
-        if (my $automethod_ref = *{$parent_class.'::AUTOMETHOD'}{CODE}) {
+
+        if (my $automethod_ref = *{ "${parent_class}::AUTOMETHOD" }{CODE}) {
             local $CALLER::_ = $_;
+
             local $_ = $method_name;
+
             if (my $method_impl
                     = $automethod_ref->($invocant, $ident, @_[1..$#_])) {
                 goto &$method_impl;
@@ -1978,6 +2008,7 @@ sub AUTOLOAD {
     }
 
     my $type = ref $invocant ? 'object' : 'class';
+
     croak qq{Can't locate $type method "$method_name" via package "$package_name"};
 }
 
@@ -1988,6 +2019,8 @@ sub AUTOLOAD {
 
     *UNIVERSAL::can = sub {
         my ($invocant, $method_name) = @_;
+
+#print STDERR qq{*** invocant = '$invocant'; method_name = '$method_name'\n};
 
         if ( defined $invocant ) {
             if (my $sub_ref = $real_can->(@_)) {
@@ -2000,9 +2033,11 @@ sub AUTOLOAD {
                 for my $parent_class ( _hierarchy_of($invocant_class) ) {
                     no strict 'refs';
 
-                    if (my $automethod_ref = *{$parent_class.'::AUTOMETHOD'}{CODE}) {
+                    if (my $automethod_ref = *{ "${parent_class}::AUTOMETHOD" }{CODE}) {
                         local $CALLER::_ = $_;
+
                         local $_ = $method_name;
+
                         if (my $method_impl = $automethod_ref->(@_)) {
                             return sub { my $inv = shift; $inv->$method_name(@_) }
                         }
@@ -2019,36 +2054,43 @@ sub AUTOLOAD {
 ## importing Class::Std just to get access to Class::Std::SCR would be
 ## problematic.
 
-package TeX::Class::SCR;
+package TeX::Class::SCR {
+    use base qw(TeX::Class);
 
-use base qw(TeX::Class);
+    BEGIN { *ID = \&Scalar::Util::refaddr; }
 
-BEGIN { *ID = \&Scalar::Util::refaddr; }
+    my %values_of  : ATTR( :init_arg<values> );
+    my %classes_of : ATTR( :init_arg<classes> );
 
-my %values_of  : ATTR( :init_arg<values> );
-my %classes_of : ATTR( :init_arg<classes> );
+    sub new {
+        my ($class, $opt_ref) = @_;
 
-sub new {
-    my ($class, $opt_ref) = @_;
-    my $new_obj = bless \do{my $scalar}, $class;
-    my $new_obj_id = ID($new_obj);
-    $values_of{$new_obj_id}  = $opt_ref->{values};
-    $classes_of{$new_obj_id} = $opt_ref->{classes};
-    return $new_obj;
+        my $new_obj = bless \do{my $scalar}, $class;
+
+        my $new_obj_id = ID($new_obj);
+
+        $values_of{$new_obj_id}  = $opt_ref->{values};
+
+        $classes_of{$new_obj_id} = $opt_ref->{classes};
+
+        return $new_obj;
+    }
+
+    use overload (
+        q{""}  => sub { return join q{}, grep { defined $_ } @{$values_of{ID($_[0])}}; },
+        q{0+}  => sub { return scalar @{$values_of{ID($_[0])}};    },
+        q{@{}} => sub { return $values_of{ID($_[0])};              },
+        q{%{}} => sub {
+            my ($self) = @_;
+            my %hash;
+
+            @hash{ $classes_of{ID($self)}->@* } = $values_of{ID($self)}->@*;
+
+            return \%hash;
+        },
+        fallback => 1,
+        );
 }
-
-use overload (
-    q{""}  => sub { return join q{}, grep { defined $_ } @{$values_of{ID($_[0])}}; },
-    q{0+}  => sub { return scalar @{$values_of{ID($_[0])}};    },
-    q{@{}} => sub { return $values_of{ID($_[0])};              },
-    q{%{}} => sub {
-        my ($self) = @_;
-        my %hash;
-        @hash{@{$classes_of{ID($self)}}} = @{$values_of{ID($self)}};
-        return \%hash;
-    },
-    fallback => 1,
-);
 
 1;
 
