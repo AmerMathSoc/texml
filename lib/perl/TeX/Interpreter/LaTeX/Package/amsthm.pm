@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::amsthm;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Interpreter::LaTeX::Package::amsthm;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use TeX::Constants qw(:named_args);
@@ -40,16 +41,66 @@ use TeX::Command::Executable::Assignment qw(:modifiers);
 
 use TeX::Token qw(:catcodes);
 
-sub install ( $ ) {
+my sub normalize_statements;
+
+sub install {
     my $class = shift;
 
     my $tex = shift;
 
     $tex->package_load_notification();
 
+    $tex->add_output_hook(\&normalize_statements);
+
     $tex->read_package_data();
 
     $tex->define_pseudo_macro(newtheorem => \&do_newtheorem);
+
+    return;
+}
+
+sub normalize_statements {
+    my $xml = shift;
+
+    my $dom = $xml->get_dom();
+
+    ## Proofs nested within their theorems cause UI problems in the
+    ## AMS MathViewer, so we unnest them.  Arguably this should be
+    ## done in the MathViewer-specific part of the toolchain.
+
+    for my $theorem ($dom->findnodes("/descendant::statement[contains(\@content-type, 'theorem')]")) {
+        my @proofs = $theorem->findnodes("statement[contains(\@content-type,'proof')]");
+
+        for (my $i = 0; $i < @proofs; $i++) {
+            my $proof = $proofs[$i];
+
+            ## Only move the proof if it is the last element in the
+            ## statement.  This weeds out cases such as jams447 or
+            ## jams893, which have a theorem and its proof embedded
+            ## inside a remark or an example.
+
+            next if defined $proof->nextNonBlankSibling();
+
+            my $comment_1 = XML::LibXML::Comment->new(" Proof #$i was here ");
+            my $comment_2 = XML::LibXML::Comment->new(" Proof #$i moved here ");
+
+            $theorem->replaceChild($comment_1, $proof);
+
+            my $first = $proof->firstChild();
+
+            $proof->insertBefore($comment_2, $first);
+
+            my $parent = $theorem->parentNode();
+
+            if (defined(my $sibling = $theorem->nextSibling())) {
+                $parent->insertBefore($proof, $sibling);
+            } else {
+                $parent->insertBefore($proof, undef);
+            }
+
+            # $theorem->addSibling($proof);
+        }
+    }
 
     return;
 }
