@@ -132,6 +132,7 @@ __DATA__
         \output@collection@meta
         \output@book@meta
     \endgroup
+    \glet\AMS@authors\@empty
     \glet\init@bits@meta\@empty
 }
 
