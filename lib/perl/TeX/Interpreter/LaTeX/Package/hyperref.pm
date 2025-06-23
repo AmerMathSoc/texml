@@ -33,6 +33,8 @@ use v5.26.0;
 
 use warnings;
 
+use TeX::Node::Extension::UnicodeStringNode qw(:factories);
+
 sub install {
     my $class = shift;
 
@@ -40,7 +42,50 @@ sub install {
 
     $tex->package_load_notification();
 
+    $tex->define_csname('TeXML@NormalizeURL' => \&do_normalize_url);
+
     $tex->read_package_data();
+
+    return;
+}
+
+sub do_normalize_url { # Cf. do_url_formatstring() in url.pm
+    my $tex   = shift;
+    my $token = shift;
+
+    my $index = $tex->scan_eight_bit_int();
+
+    my $box = $tex->box($index);
+
+    my $url = $box->to_string();
+
+    # Although fundamentally misguided
+    # (https://unspecified.wordpress.com/2012/02/12/how-do-you-escape-a-complete-uri/),
+    # hopefully this is useful heuristic:
+
+    if ($url !~ m{%} && $url =~ m{\A(?: (ftp|https?)://)? (.*?) (?:/ (.*?))? (?: \? (.*))? \z}smx) {
+        my $proto = $1 || 'http';
+        my $host  = $2;
+        my $path  = $3;
+        my $query = $4;
+
+        ## This is kind of like URI::Escape::escape_uri, but it
+        ## doesn't replace /
+
+        $url = qq{$proto://$host};
+
+        if (nonempty($path)) {
+            $path =~ s{([^A-Za-z0-9/\-\._~\#])}{ sprintf("%%%02X", ord($1)) }eg;
+
+            $url .= qq{/$path};
+        }
+
+        $url .= qq{?$query} if nonempty $query;
+    }
+
+    $box->delete_nodes();
+
+    $box->push_node(new_unicode_string($url));
 
     return;
 }

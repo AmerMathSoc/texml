@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::url;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,12 +31,9 @@ package TeX::Interpreter::LaTeX::Package::url;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use TeX::Constants qw(EXPANDED);
-
-use TeX::Node::Extension::UnicodeStringNode qw(:factories);
 
 use TeX::Utils::DOI qw(doi_to_url);
 use TeX::Utils::Misc qw(nonempty);
@@ -45,7 +44,7 @@ use TeX::Token::Constants;
 
 use TeX::Constants qw(:named_args);
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -54,28 +53,22 @@ sub install ( $ ) {
 
     $tex->read_package_data();
 
-    $tex->define_csname('TeXML@NormalizeURL' => \&do_normalize_url);
-
     $tex->define_pseudo_macro('Url@FormatString' => \&do_url_formatstring);
 
     return;
 }
 
-sub do_url_formatstring {
+sub do_url_formatstring { # Cf. do_normalize_url() in hyperref.pm
     my $self = shift;
 
     my $tex   = shift;
     my $token = shift;
 
-    my $url_string = $tex->get_csname('Url@String');
+    my $url_for_display = $tex->expansion_of('Url@String');
 
-    if (! defined $url_string) {
+    if (! defined $url_for_display) {
         die "No URL\@string!\n";
     }
-
-    my $eqvt = $url_string->get_equiv();
-
-    my $url_for_display = $eqvt->get_replacement_text();
 
     my $url_for_link = $url_for_display->clone();
 
@@ -111,48 +104,9 @@ sub do_url_formatstring {
 
     $tex->endgroup();
 
+    $tex->__DEBUG("formatted='$formatted'");
+
     return $formatted;
-}
-
-sub do_normalize_url {
-    my $tex   = shift;
-    my $token = shift;
-
-    my $index = $tex->scan_eight_bit_int();
-
-    my $box = $tex->box($index);
-
-    my $url = $box->to_string();
-
-    # Although fundamentally misguided
-    # (https://unspecified.wordpress.com/2012/02/12/how-do-you-escape-a-complete-uri/),
-    # hopefully this is useful heuristic:
-
-    if ($url !~ m{%} && $url =~ m{\A(?: (ftp|https?)://)? (.*?) (?:/ (.*?))? (?: \? (.*))? \z}smx) {
-        my $proto = $1 || 'http';
-        my $host  = $2;
-        my $path  = $3;
-        my $query = $4;
-
-        ## This is kind of like URI::Escape::escape_uri, but it
-        ## doesn't replace /
-
-        $url = qq{$proto://$host};
-
-        if (nonempty($path)) {
-            $path =~ s{([^A-Za-z0-9/\-\._~\#])}{ sprintf("%%%02X", ord($1)) }eg;
-
-            $url .= qq{/$path};
-        }
-
-        $url .= qq{?$query} if nonempty $query;
-    }
-
-    $box->delete_nodes();
-
-    $box->push_node(new_unicode_string($url));
-
-    return;
 }
 
 1;
@@ -172,7 +126,7 @@ __DATA__
 %% TBD: Might need to remove spaces
 
 \def\Url{%      % # & _ ~ $ ^
-        \fontencoding{OT1tt}\selectfont
+        \fontencoding{UCS}\selectfont
         \Url@movingtest
         \ifmmode\@inmatherr$\fi %$
         \let\do\@makeother \dospecials % verbatim catcodes
