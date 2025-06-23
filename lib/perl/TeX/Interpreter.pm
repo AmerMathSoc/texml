@@ -167,6 +167,8 @@ use Unicode::UCD qw(charinfo);
 ##                                                                  ##
 ######################################################################
 
+use constant DECODE => 1;
+
 use constant MATH_SHIFT_TOKEN => make_character_token('\$', CATCODE_MATH_SHIFT);
 use constant TAB_TOKEN        => make_character_token('&', CATCODE_ALIGNMENT);
 use constant SPACE_TOKEN      => make_character_token(' ', CATCODE_SPACE);
@@ -9334,13 +9336,9 @@ sub make_accent {
     my $unicode_accent = $tex->decode_character($accent_code,
                                                 $tex->get_encoding());
 
-    $tex->__DEBUG(sprintf qq{unicode_accent="%02X; encoding=%s}, $unicode_accent, $tex->get_encoding);
-
     $tex->do_assignments();
 
-    my ($base_char_code, $base_enc) = $tex->get_next_character(1);
-
-    $tex->__DEBUG(sprintf qq{base_char_code="%02X; base_enc=%s}, $base_char_code, $base_enc);
+    my ($base_char_code, $base_enc) = $tex->get_next_character(DECODE);
 
     $base_enc ||= $tex->get_encoding();
 
