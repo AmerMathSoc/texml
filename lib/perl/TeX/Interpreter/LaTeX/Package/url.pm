@@ -35,9 +35,6 @@ use warnings;
 
 use TeX::Constants qw(EXPANDED);
 
-use TeX::Utils::DOI qw(doi_to_url);
-use TeX::Utils::Misc qw(nonempty);
-
 use TeX::Token qw(:catcodes);
 
 use TeX::Token::Constants;
