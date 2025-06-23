@@ -33,8 +33,6 @@ use 5.26.0;
 
 use warnings;
 
-use utf8;
-
 use FindBin;
 
 use List::Util qw(min uniq);
@@ -146,16 +144,20 @@ sub new_xml_element {
 ##                                                                  ##
 ######################################################################
 
-## This is ridiculous, but without the explicit use of utf8::upgrade,
-## non-8-bit characters sometimes aren't handled correctly.  What am I
-## missing?
+## As far as I can tell, this is needed because XML::LibXML handles
+## it's own character encodings and will treat characters in the
+## Unicode C1 block (0x80..0xFF) as single-byte ISO Latin-1 unless
+## perl's UTF8 flag is explicitly turned on, and this is the only way
+## to ensure that.
 
-my sub __new_utf8_string { # Not needed with v5.26?
-    my $string = shift;
+my sub __new_utf8_char {
+    my $char_code = shift;
 
-    utf8::upgrade($string);
+    my $char = chr($char_code);
 
-    return $string;
+    utf8::upgrade($char);
+
+    return $char; 
 }
 
 ######################################################################
@@ -460,7 +462,7 @@ sub close_document {
 
         my $css_file = "$job_name.css";
 
-        my $mode = $tex->is_unicode_input() ? ">:utf8" : ">";
+        my $mode = $tex->is_unicode_input() ? ">:encoding(UTF-8)" : ">";
 
         open(my $fh, $mode, $css_file) or do {
             $tex->fatal_error("Can't open $css_file: $!");
@@ -801,7 +803,7 @@ sub hlist_out {
                 $char_code = $tex->decode_character($char_code, $enc);
             }
 
-            $self->append_text(__new_utf8_string(chr($char_code)));
+            $self->append_text(__new_utf8_char($char_code));
 
             next;
         }
@@ -922,7 +924,7 @@ sub vlist_out {
 
             # # ...but it does.
 
-            # my $char = __new_utf8_string(chr($node->get_char_code()));
+            # my $char = __new_utf8_char($node->get_char_code());
 
             # $self->append_text($char);
 
