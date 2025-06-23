@@ -104,8 +104,6 @@ sub do_url_formatstring { # Cf. do_normalize_url() in hyperref.pm
 
     $tex->endgroup();
 
-    $tex->__DEBUG("formatted='$formatted'");
-
     return $formatted;
 }
 
