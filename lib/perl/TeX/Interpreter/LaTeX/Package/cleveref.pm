@@ -2233,6 +2233,10 @@ __DATA__
 
 \crefdefaultlabelformat{#2\format@xref{#1}#3}%
 
+\renewcommand\crefdefaultlabelformat[1]{%
+    \@latex@error{Ignoring redefinition of \string\crefdefaultlabelformat\space on line -- you shouldn't do that unless you really know what you're doing}\@ehc
+}
+
 \if@cref@nameinlink
     \creflabelformat{equation}{%
         \begingroup
