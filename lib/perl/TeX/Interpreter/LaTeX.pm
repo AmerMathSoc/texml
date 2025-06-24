@@ -655,9 +655,9 @@ __DATA__
 \def\XMLelement#1#2{\startXMLelement{#1}#2\endXMLelement{#1}}
 
 \def\XMLgeneratedText#1{%
-%    \if###1##\else
+    \ifnum\strcmp{#1}{}=0\else
         \ifinXMLelement{x}#1\else\XMLelement{x}{#1}\fi
-%    \fi
+    \fi
 }
 
 \def\JATStyledContent#1#2{%
