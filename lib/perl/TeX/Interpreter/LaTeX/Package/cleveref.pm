@@ -1381,38 +1381,30 @@ __DATA__
     \fi
   \fi}%
 
+% #1 = cref | Cref
+% #2 = type (equation, section, etc.)
+% #3 = singular
+% #4 = plural
+% #5 = e.g., @preamble
+
 \def\@crefname#1#2#3#4#5{%
-  \expandafter\def\csname #1@#2@name#5\endcsname{#3}%
-  \expandafter\def\csname #1@#2@name@plural#5\endcsname{#4}%
-  \cref@othervariant{#1}{\@tempc}{\@tempd}%
-  \@ifundefined{\@tempc @#2@name#5}{%
-    \expandafter\expandafter\expandafter\def
-    \expandafter\expandafter\expandafter\@tempa
-    \expandafter\expandafter\expandafter{%
-      \csname#1@#2@name\endcsname}%
-    \expandafter\expandafter\expandafter\def
-    \expandafter\expandafter\expandafter\@tempb
-    \expandafter\expandafter\expandafter{%
-      \csname#1@#2@name@plural\endcsname}%
-    \expandafter\ifx\@tempa\@empty\else
-      \expandafter\expandafter\expandafter\def
-      \expandafter\expandafter\expandafter\@tempa
-      \expandafter\expandafter\expandafter{%
-        \expandafter\@tempd\@tempa}%
-      \expandafter\expandafter\expandafter\def
-      \expandafter\expandafter\expandafter\@tempb
-      \expandafter\expandafter\expandafter{%
-        \expandafter\@tempd\@tempb}%
-    \fi
-    \toksdef\@toksa=0%
-    \@toksa={%
-      \expandafter\def\csname\@tempc @#2@name#5\endcsname}%
-    \expandafter\the\expandafter\@toksa\expandafter{\@tempa}%
-    \@toksa={%
-      \expandafter\def\csname\@tempc @#2@name@plural#5\endcsname}%
-    \expandafter\the\expandafter\@toksa\expandafter{\@tempb}%
-  }{}%
-  \cref@stack@add{#2}{\cref@label@types}%
+    \expandafter\def\csname #1@#2@name#5\endcsname{#3}%
+    \expandafter\def\csname #1@#2@name@plural#5\endcsname{#4}%
+    \cref@othervariant{#1}{\@tempc}{\@tempd}%
+    \@ifundefined{\@tempc @#2@name#5}{%
+        \edef\@tempa{\csname#1@#2@name\endcsname}%
+        \edef\@tempb{\csname#1@#2@name@plural\endcsname}%
+        \expandafter\ifx\@tempa\@empty\else
+            \edef\@tempa{\expandafter\noexpand\@tempd\@tempa}%
+            \edef\@tempb{\expandafter\noexpand\@tempd\@tempb}%
+        \fi
+        \toksdef\@toksa=0
+        \@toksa={\expandafter\def\csname\@tempc @#2@name#5\endcsname}%
+        \expandafter\the\expandafter\@toksa\expandafter{\@tempa}%
+        \@toksa={\expandafter\def\csname\@tempc @#2@name@plural#5\endcsname}%
+        \expandafter\the\expandafter\@toksa\expandafter{\@tempb}%
+    }{}%
+    \cref@stack@add{#2}{\cref@label@types}%
 }
 
 \def\@crefconstructcomponents#1{%
@@ -2248,7 +2240,7 @@ __DATA__
     \creflabelformat{equation}{%
         \begingroup
             \let\cleveref@end@xref\@empty
-            #2\XMLgeneratedText(\format@xref{#1}\XMLgeneratedText)#3%
+            #2\cleveref@start@xref\XMLgeneratedText(\format@xref{#1}\XMLgeneratedText)#3%
         \endgroup
         \cleveref@end@xref
     }
