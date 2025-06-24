@@ -881,7 +881,6 @@ __DATA__
 
 \def\resolve@cref#1#2{%
     \leavevmode
-    \start@xref@group
     \begingroup
         \def\cref@variant{#1}%
         \def\@tempa{\in@{page}}%
@@ -898,6 +897,7 @@ __DATA__
         \cref@stack@init{\@refstack}%
         \edef\@tempa{#2}%
         \expandafter\cref@stack@push\expandafter{\@tempa}{\@refstack}%
+        %
         \cref@isstackfull{\@refstack}%
         \@whilesw\if@cref@stackfull\fi{%
             \cref@stack@init{\@refsubstack}%
@@ -926,8 +926,12 @@ __DATA__
                 \advance\count@group 1
                 \lowercase{\def\cref@variant{#1}}%
             \fi
+            %
+            % Loop over references of the same type (@refsubstack)
+            %
             \count@subgroup=1
             \cref@isstackfull{\@refsubstack}%
+            \start@xref@group
             \@whilesw\if@cref@stackfull\fi{%
                 \if@cref@compress
                     \expandafter\cref@processconsecutive\expandafter{\cref@variant@get}%
@@ -983,6 +987,8 @@ __DATA__
                 \advance\count@subgroup 1
                 \cref@isstackfull{\@refsubstack}%
             }% end loop over reference substack
+            \end@xref@group
+            %
             \cref@isstackfull{\@refstack}%
             \if@cref@stackfull
                 \def\@tempa{labelcref}%
@@ -996,7 +1002,6 @@ __DATA__
             \fi
         }% end loop over main reference stack
     \endgroup
-    \end@xref@group
 }
 
 \def\@setcref{\@@setcref{cref}}%
@@ -1012,7 +1017,9 @@ __DATA__
 }
 
 \def\cleveref@end@xref{%
-    \endXMLelement{xref}%
+    \relax\ifinXMLelement{xref}%
+        \endXMLelement{xref}%
+    \fi
 }
 
 % #1 command (cref, Cref, labelcref)
@@ -2241,12 +2248,12 @@ __DATA__
     \creflabelformat{equation}{%
         \begingroup
             \let\cleveref@end@xref\@empty
-            #2(\format@xref{#1})#3%
+            #2\XMLgeneratedText(\format@xref{#1}\XMLgeneratedText)#3%
         \endgroup
         \cleveref@end@xref
     }
 \else
-    \creflabelformat{equation}{(#2\format@xref{#1}#3)}
+    \creflabelformat{equation}{\XMLgeneratedText(#2\format@xref{#1}#3\XMLgeneratedText)}
 \fi
 
 \ProcessOptions*\relax
