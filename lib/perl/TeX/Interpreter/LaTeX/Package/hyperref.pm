@@ -35,6 +35,8 @@ use warnings;
 
 use TeX::Node::Extension::UnicodeStringNode qw(:factories);
 
+use TeX::Utils::Misc qw(nonempty);
+
 sub install {
     my $class = shift;
 
