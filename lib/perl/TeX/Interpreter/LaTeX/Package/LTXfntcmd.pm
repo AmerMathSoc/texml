@@ -68,16 +68,16 @@ __DATA__
 
 \@declarestyledcommand\textbfsf\mathbfsf{bold-sans}% text/72 (matsuura)
 
-\newcommand{\@declarefontcommand}[4][]{%
+\newcommand{\@declarefontcommand}[4][OT1]{%
     \DeclareRobustCommand#2[1]{%
         \begingroup
-        \if#####1####\else\fontencoding{#1}\selectfont\fi
         \ifmmode
-            \string#3{##1}%
+            \fontencoding{UCS}\selectfont
+            \string#3{\begingroup\fontencoding{#1}\selectfont##1\endgroup}%
         \else
             \leavevmode
             \startXMLelement{#4}%
-            ##1%
+            {\fontencoding{#1}\selectfont##1}%
             \endXMLelement{#4}%
         \fi
         \endgroup
