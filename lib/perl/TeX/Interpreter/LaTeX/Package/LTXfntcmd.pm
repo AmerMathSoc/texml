@@ -73,7 +73,7 @@ __DATA__
         \begingroup
         \ifmmode
             \fontencoding{UCS}\selectfont
-            \string#3{\begingroup\fontencoding{#1}\selectfont##1\endgroup}%
+            \string#3{##1}%
         \else
             \leavevmode
             \startXMLelement{#4}%
