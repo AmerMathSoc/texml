@@ -1805,7 +1805,10 @@ __DATA__
             \noexpand\DeclareRobustCommand\noexpand#2{%
                 \relax
                 \noexpand\ifmmode
-                    \string#2#1%
+                    \begingroup
+                        \noexpand\fontencoding{UCS}\noexpand\selectfont
+                        \string#2#1%
+                    \endgroup
                 \noexpand\else
                     \noexpand\expandafter
                     \expandafter\noexpand\csname non@mathmode@\string#2\endcsname
