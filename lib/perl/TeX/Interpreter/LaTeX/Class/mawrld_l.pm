@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Class::mawrld_l;
 use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -53,6 +53,11 @@ __DATA__
 \LoadClass{amsbook}
 
 \seriesinfo{mawrld}{}{}
+
+\def\AMS@pissn{1055-9426}
+\def\AMS@eissn{2380-5692}
+
+\def\AMS@series@url{https://www.ams.org/mawrld-mon}
 
 \endinput
 

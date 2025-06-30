@@ -33,7 +33,7 @@ use 5.26.0;
 
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -57,8 +57,8 @@ __DATA__
 
 \def\AMS@publname{Dolciani Mathematical Expositions}
 
-\def\AMS@pissn{}
-\def\AMS@eissn{}
+\def\AMS@pissn{0884-4461}
+\def\AMS@eissn{2643-5543}
 
 \def\AMS@series@url{https://www.ams.org/publications/ebooks/dol-maa}
 

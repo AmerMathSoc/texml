@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Class::amstext_l;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Class::amstext_l;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -51,6 +52,15 @@ __DATA__
 \ProvidesClass{amstext_l}
 
 \LoadClass{amsbook}
+
+\seriesinfo{gsm}{}{}
+
+\def\AMS@publname{Pure and Applied Undergraduate Texts}
+
+\def\AMS@pissn{1943-9334}
+\def\AMS@eissn{2380-5676}
+
+\def\AMS@series@url{https://www.ams.org/amstext/}
 
 \newenvironment{inclusion}[1]{%
     \quotation

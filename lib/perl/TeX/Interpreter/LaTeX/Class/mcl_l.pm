@@ -32,7 +32,7 @@ package TeX::Interpreter::LaTeX::Class::mcl_l;
 use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -53,6 +53,11 @@ __DATA__
 \LoadClass{amsbook}
 
 \seriesinfo{mcl}{}{}
+
+\def\AMS@pissn{1944-8074}
+\def\AMS@eissn{}
+
+\def\AMS@series@url{https://www.ams.org/mcl}
 
 \let\dedication\relax
 \let\enddedication\relax
