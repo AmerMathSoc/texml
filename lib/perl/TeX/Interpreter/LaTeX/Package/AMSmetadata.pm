@@ -618,35 +618,43 @@ sub add_permissions {
     my $parent = shift;
     my $gentag = shift;
 
-    if (nonempty(my $copyright = $gentag->get_copyright())) {
-        my $year  = $copyright->get_year();
-        my $owner = $copyright->get_owner();
+    my $publ_key = $gentag->get_publ_key();
 
-        if (nonempty($year) && nonempty($owner)) {
-            my $permissions = append_xml_element($parent, "permissions");
+    my $year;
+    my $owner;
+    my $revert;
 
-            my $revert = $copyright->get_revert();
+    if ($publ_key eq 'memo') { # sigh
+        $year  = $tex->expansion_of('AMS@copyrightyear');
+        $owner = $tex->expansion_of('AMS@copyrightholder');
+    } elsif (nonempty(my $copyright = $gentag->get_copyright())) {
+        $year   = $copyright->get_year();
+        $owner  = $copyright->get_owner();
+        $revert = $copyright->get_revert();
+    }
 
-            my $statement = qq{Copyright $year $owner};
+    if (nonempty($year) && nonempty($owner)) {
+        my $permissions = append_xml_element($parent, "permissions");
 
-            if (nonempty($revert)) {
-                $statement .= "; reverts to public domain $revert years from publication";
-            }
+        my $statement = qq{Copyright $year $owner};
 
-            $statement = $tex->convert_fragment($statement);
-
-            append_xml_element($permissions, "copyright-statement", $statement);
-
-            append_xml_element($permissions, "copyright-year", $year);
-
-            $owner = $tex->convert_fragment($owner);
-
-            append_xml_element($permissions, "copyright-holder", $owner);
-
-            add_license($tex, $permissions, $gentag);
-
-            add_free_to_read($tex, $permissions, $gentag);
+        if (nonempty($revert)) {
+            $statement .= "; reverts to public domain $revert years from publication";
         }
+
+        $statement = $tex->convert_fragment($statement);
+
+        append_xml_element($permissions, "copyright-statement", $statement);
+
+        append_xml_element($permissions, "copyright-year", $year);
+
+        $owner = $tex->convert_fragment($owner);
+
+        append_xml_element($permissions, "copyright-holder", $owner);
+
+        add_license($tex, $permissions, $gentag);
+
+        add_free_to_read($tex, $permissions, $gentag);
     }
 
     return;
