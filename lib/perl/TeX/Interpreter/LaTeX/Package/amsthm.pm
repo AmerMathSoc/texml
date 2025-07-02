@@ -207,8 +207,6 @@ __DATA__
 
 \newtoks\thm@style
 
-\let\swapnumbers\@empty
-
 \def\theoremstyle#1{\thm@style{#1}}
 
 \theoremstyle{plain}
@@ -260,7 +258,7 @@ __DATA__
     \if S#1%
         \if###5##\else
             \refstepcounter@cref[#4]{#5}%
-            \@nameuse{the#4}%
+            \@nameuse{the#4}\@addpunct{.}\space
         \fi
         %
         #3%
