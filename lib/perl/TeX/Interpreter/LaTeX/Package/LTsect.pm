@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Package::LTXsect;
+package TeX::Interpreter::LaTeX::Package::LTsect;
 
 use 5.26.0;
 
@@ -233,7 +233,7 @@ sub normalize_disp_level {
 
 __DATA__
 
-\ProvidesPackage{LTXsect}
+\ProvidesPackage{LTsect}
 
 \newif\if@ams@empty
 

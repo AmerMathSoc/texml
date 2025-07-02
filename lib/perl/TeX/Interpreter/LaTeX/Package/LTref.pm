@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Package::LTXref;
+package TeX::Interpreter::LaTeX::Package::LTref;
 
 use 5.26.0;
 
@@ -503,7 +503,7 @@ sub do_sort_cites {
 
 __DATA__
 
-\ProvidesPackage{LTXref}
+\ProvidesPackage{LTref}
 
 \newif\ifTeXML@resolveXMLxrefs@
 \TeXML@resolveXMLxrefs@true

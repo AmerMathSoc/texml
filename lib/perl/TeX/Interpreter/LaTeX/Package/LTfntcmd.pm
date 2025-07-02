@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Package::LTXfntcmd;
+package TeX::Interpreter::LaTeX::Package::LTfntcmd;
 
 use 5.26.0;
 
@@ -49,7 +49,7 @@ sub install  {
 
 __DATA__
 
-\ProvidesPackage{LTXfntcmd}
+\ProvidesPackage{LTfntcmd}
 
 \def\@declarestyledcommand#1#2#3{%
     \DeclareRobustCommand#1[1]{%
