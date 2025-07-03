@@ -2009,7 +2009,7 @@ __DATA__
 \DeclareMathPassThrough{rceil}
 \DeclareMathPassThrough{rfloor}
 \DeclareMathPassThrough{rgroup}
-\DeclareMathJaxMacro{rule}
+\DeclareMathJaxMacro\rule
 \DeclareMathPassThrough{rmoustache}
 % \DeclareMathJaxMacro\Rule
 \DeclareMathJaxMacro\S
