@@ -533,11 +533,7 @@ __DATA__
 \def\parse@arXiv#1 [#2]#3\@nnil{%
     \def\arXiv@number{#1}%
     \def\arXiv@category{#2}%
-    \ifx\arXiv@category\@empty
-        \def\arXiv@url{https://arxiv.org/abs/#1}%
-    \else
-        \def\arXiv@url{https://arxiv.org/abs/\arXiv@category/#1}%
-    \fi
+    \def\arXiv@url{https://arxiv.org/abs/#1}%
 }
 
 \providecommand{\arXiv}[1]{%
