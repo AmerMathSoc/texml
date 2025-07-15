@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::extarrows;
 
-# Copyright (C) 2022 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Package::extarrows;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -52,16 +53,37 @@ __DATA__
 
 \RequirePackage{amsmath}
 
-\def\xlongrightarrow{\xrightarrow}
-\def\xlongleftarrow{\xleftarrow}
-
-\newcommand{\xLongrightarrow}[2][]{%
-    \TeXMLCreateSVG{$\xLongrightarrow[#1]{#2}$}%
-}
-
 \newcommand{\xlongequal}[2][]{%
     \TeXMLCreateSVG{$\xlongequal[#1]{#2}$}%
 }
+
+\providecommand{\xLongleftrightarrow}[2][]{%
+    \TeXMLCreateSVG{$\xLongleftrightarrow[#1]{#2}$}%
+}
+
+\providecommand{\xlongleftrightarrow}[2][]{%
+    \TeXMLCreateSVG{$\xlongleftrightarrow[#1]{#2}$}%
+}
+
+\providecommand{\xLeftrightarrow}[2][]{%
+    \TeXMLCreateSVG{$\xLeftrightarrow[#1]{#2}$}%
+}
+
+\providecommand{\xleftrightarrow}[2][]{%
+    \TeXMLCreateSVG{$\xleftrightarrow[#1]{#2}$}%
+}
+
+\providecommand{\xLongleftarrow}[2][]{%
+    \TeXMLCreateSVG{$\xLongleftarrow[#1]{#2}$}%
+}
+
+\providecommand{\xLongrightarrow}[2][]{%
+    \TeXMLCreateSVG{$\xLongrightarrow[#1]{#2}$}%
+}
+
+\def\xlongleftarrow{\xleftarrow}
+
+\def\xlongrightarrow{\xrightarrow}
 
 \endinput
 
