@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Package::HTMLtable;
+package TeX::Interpreter::LaTeX::Package::LTtab;
 
 use 5.26.0;
 
@@ -96,7 +96,7 @@ sub normalize_tables {
 
 __DATA__
 
-\ProvidesPackage{HTMLtable}
+\ProvidesPackage{LTtab}
 
 %% Assign a unique id to each tabular for use in CSS selectors.
 
@@ -628,6 +628,37 @@ __DATA__
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
+%%                     THE TABBING ENVIRONMENT                      %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\DeclareSVGEnvironment{tabbing}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%%                      THE ARRAY ENVIRONMENT                       %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\array{%
+    \string\begin{array}%
+    \let\\\@arraycr
+    \let\par\UnicodeLineFeed
+}
+
+\def\endarray{\string\end{array}}
+
+\def\@arraycr{\@ifstar\@xarraycr\@xarraycr}
+
+\def\@xarraycr{\@ifnextchar[\@argarraycr{\string\\}}
+
+\def\@argarraycr[#1]{%
+    \@tempdima=#1\relax
+    \string\\[\the\@tempdima]
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
 %%                     THE TABULAR ENVIRONMENT                      %%
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -697,6 +728,8 @@ __DATA__
 
 \newif\if@multicolumn
 \@multicolumnfalse
+
+% \DeclareMathJaxMacro\multicolumn %% NOT REALLY
 
 \long\def\multicolumn#1#2#3{%
     \multispan{#1}%

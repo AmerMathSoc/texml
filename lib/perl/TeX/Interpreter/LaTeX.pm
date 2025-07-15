@@ -758,6 +758,9 @@ __DATA__
     }%
 }
 
+\DeclareSVGEnvironment{SVG}
+\DeclareSVGEnvironment{SVG*}
+
 \def\jats@graphics@element{inline-graphic}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1374,27 +1377,7 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\def\array{%
-    \string\begin{array}%
-    \let\\\@arraycr
-    \let\par\UnicodeLineFeed
-}
-
-\def\endarray{\string\end{array}}
-
-\def\@arraycr{\@ifstar\@xarraycr\@xarraycr}
-
-\def\@xarraycr{\@ifnextchar[\@argarraycr{\string\\}}
-
-\def\@argarraycr[#1]{%
-    \@tempdima=#1\relax
-    \string\\[\the\@tempdima]
-}
-
-\DeclareSVGEnvironment{tabbing}
-
-\DeclareSVGEnvironment{SVG}
-\DeclareSVGEnvironment{SVG*}
+\RequirePackage{LTtab}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
@@ -1821,8 +1804,7 @@ __DATA__
 
 %% See HTMLtable.pm.  These shouldn't be passed along to MathJax.
 
-\let\noalign\@gobble
-\DeclareMathJaxMacro\multicolumn %% NOT REALLY
+% \let\noalign\@gobble
 % \DeclareMathJaxMacro\omit        %% Ha ha!  Not really!
 \DeclareMathJaxMacro\hskip
 % \DeclareMathJaxMacro\cr
@@ -2030,7 +2012,6 @@ __DATA__
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \RequirePackage{DisablePackages}
-\RequirePackage{HTMLtable}
 \RequirePackage{Diacritics}
 \RequirePackage{TeXMLCreateSVG}
 
