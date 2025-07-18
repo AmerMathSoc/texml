@@ -217,9 +217,9 @@ __DATA__
         \fi
         \ifx\AMS@title\@empty\else
             \startXMLelement{book-title-group}
-                \startXMLelement{article-title}
+                \startXMLelement{book-title}
                     \AMS@title
-                \endXMLelement{article-title}\par
+                \endXMLelement{book-title}\par
                 \ifx\AMS@subtitle\@empty\else
                     \startXMLelement{subtitle}
                         \AMS@subtitle
