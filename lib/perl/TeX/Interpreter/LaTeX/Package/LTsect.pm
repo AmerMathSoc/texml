@@ -44,6 +44,7 @@ use TeX::Utils::XML;
 
 my sub add_toc_alt_titles;
 my sub add_section_alt_titles;
+my sub add_title_group_alt_titles;
 my sub normalize_disp_level;
 
 sub install  {
@@ -55,6 +56,7 @@ sub install  {
 
     $tex->add_output_hook(\&add_toc_alt_titles);
     $tex->add_output_hook(\&add_section_alt_titles);
+    $tex->add_output_hook(\&add_title_group_alt_titles);
     $tex->add_output_hook(\&normalize_disp_level);
 
     $tex->define_csname('@push@sectionstack'  => \&do_push_section_stack);
@@ -140,7 +142,7 @@ my sub add_alt_title {
     my $parent = shift;
     my $dom    = shift;
 
-    for my $title ($parent->findnodes("title")) { # There should be at most one
+    for my $title ($parent->findnodes("title|article-title|book-title")) { # There should be at most one
         my $utf8 = xml_to_utf8_string($title);
 
         if (nonempty($utf8)) {
@@ -198,6 +200,18 @@ sub add_section_alt_titles {
 
     for my $section ($dom->findnodes("/descendant::sec|/descendant::app")) {
         add_alt_title($section, $dom);
+    }
+
+    return;
+}
+
+sub add_title_group_alt_titles {
+    my $xml = shift;
+
+    my $dom = $xml->get_dom();
+
+    for my $title_group ($dom->findnodes("/descendant::book-title-group|/descendant::title-group")) {
+        add_alt_title($title_group, $dom);
     }
 
     return;
