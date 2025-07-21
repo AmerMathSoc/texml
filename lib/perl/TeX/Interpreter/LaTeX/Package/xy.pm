@@ -61,7 +61,18 @@ __DATA__
 
 \DeclareSVGEnvironment{xy}
 
-\DeclareMathPassThrough{txt}
+\def\txt#1{%
+    \ifmmode
+        \begingroup
+            \def\\{\string\\}%
+            \string\txt{#1}%
+        \endgroup
+    \else
+        % This is allowed in LaTeX, but I don't want to deal with it
+        % unless forced to
+        \@mathonly\txt
+    \fi
+}
 
 \let\UseAllTwocells\@empty
 \let\UseTwocells\@empty
