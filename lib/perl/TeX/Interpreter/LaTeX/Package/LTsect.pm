@@ -321,6 +321,8 @@ __DATA__
     \if@texml@deferredsection@
         \if@numbered \st@rredfalse \else \st@rredtrue\fi
     \fi
+    \@tempskipa #5\relax
+    \ifdim\@tempskipa>\z@ \@ams@inlinetrue \else \@ams@inlinefalse \fi
     \ifst@rred
         \let\@secnumber\@empty
         \let\@svsec\@empty
@@ -333,7 +335,7 @@ __DATA__
             \refstepcounter{#1}%
             \typeout{#1\space\@secnumber}%
             \edef\@secnumpunct{%
-                \ifdim\@tempskipa>\z@ % not a run-in section heading
+                \if@ams@inline
                     \if@ams@empty\else\XMLgeneratedText.\fi
                 \else
                     \XMLgeneratedText.%
@@ -349,8 +351,6 @@ __DATA__
             }%
         \fi
     \fi
-    \@tempskipa #5\relax
-    \ifdim\@tempskipa>\z@ \@ams@inlinetrue \else \@ams@inlinefalse \fi
     \start@XML@section{#1}{\@toclevel}{\@svsec}{#8}%
     \ifnum#2>\@m \else \@tocwrite{#1}{#8}\fi
 }
