@@ -1290,17 +1290,17 @@ sub append_article_meta {
 
     my $title_group;
 
-    # if (nonempty(my $title = $gentag->get_title())) {
-    #     $title_group = new_xml_element("title-group");
-    # 
-    #     append_xml_element($title_group,
-    #                        'article-title',
-    #                        $tex->convert_fragment($title->get_tex()));
-    # 
-    #     append_xml_element($title_group, 'alt-title', $title->as_unicode());
-    # } else {
+    if (nonempty(my $title = $gentag->get_title())) {
+        $title_group = new_xml_element("title-group");
+    
+        append_xml_element($title_group,
+                           'article-title',
+                           $tex->convert_fragment($title->get_tex()));
+    
+        # append_xml_element($title_group, 'alt-title', $title->as_unicode());
+    } else {
         $title_group = find_unique_node($old_front, "article-meta/title-group");
-    # }
+    }
 
     $meta->appendChild($title_group);
 
