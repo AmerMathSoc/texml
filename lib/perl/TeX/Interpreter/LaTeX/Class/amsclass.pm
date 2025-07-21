@@ -890,11 +890,20 @@ __DATA__
     \ifnum0#1 < 10 \ifnum0#1 > 0 \edef#1{0#1}\fi\fi
 }
 
+\def\AMS@normalize@date#1{%
+    \begingroup
+        \let~\space
+        \edef\@tempa{\def\noexpand#1{#1}}%
+    \expandafter\endgroup
+    \@tempa
+}
+
 \def\output@history@date#1#2{%
     \begingroup
         \edef\@tempa{#2}%
         \ifx\@tempa\@empty\else
         \clear@texml@date
+        \AMS@normalize@date#2%
         % For now, just assume the date is valid.
         \expandafter\texml@parse@date#2 ., . .\@nil        
         \startXMLelement{date}\par
