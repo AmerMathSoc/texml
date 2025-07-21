@@ -202,7 +202,8 @@ __DATA__
 
 \newcommand{\set@cell@fg@color}[2][]{%
     \XC@raw@color#1{#2}%
-    \setCSSproperty{color}{\TML@current@color}%
+    % \hbox tricks \TML@current@color to generate correct color specification format.
+    \hbox{\setCSSproperty{color}{\TML@current@color}}%
     \ignorespaces
 }
 
