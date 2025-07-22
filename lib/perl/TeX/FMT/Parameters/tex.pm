@@ -1,6 +1,8 @@
  package TeX::FMT::Parameters::tex;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use base qw(TeX::FMT::Parameters);
@@ -264,16 +265,19 @@ sub BUILD {
         holding_inserts_code        => 53,
         error_context_lines_code    => 54,
         tex_int_pars                => 55,
+
         web2c_int_base            => sub { $_[0]->tex_int_pars() },
         char_sub_def_min_code     => sub { $_[0]->web2c_int_base() },
-        char_sub_def_max_code     => sub { $_[0]->web2c_int_base() + 1 },
-        tracing_char_sub_def_code => sub { $_[0]->web2c_int_base() + 2 },
-        mubyte_in_code            => sub { $_[0]->web2c_int_base() + 3 },
-        mubyte_out_code           => sub { $_[0]->web2c_int_base() + 4 },
-        mubyte_log_code           => sub { $_[0]->web2c_int_base() + 5 },
-        spec_out_code             => sub { $_[0]->web2c_int_base() + 6 },
-        web2c_int_pars            => sub { $_[0]->web2c_int_base() + 7 },
+        char_sub_def_max_code     => sub { $_[0]->char_sub_def_min_code() + 1 },
+        tracing_char_sub_def_code => sub { $_[0]->char_sub_def_max_code() + 1 },
+        mubyte_in_code            => sub { $_[0]->tracing_char_sub_def_code() + 1 },
+        mubyte_out_code           => sub { $_[0]->mubyte_in_code()  + 1 },
+        mubyte_log_code           => sub { $_[0]->mubyte_out_code() + 1 },
+        spec_out_code             => sub { $_[0]->mubyte_log_code() + 1 },
+        web2c_int_pars            => sub { $_[0]->spec_out_code()   + 1 },
+
         int_pars                  => sub { $_[0]->web2c_int_pars() },
+
         count_base    => sub { $_[0]->int_base() + $_[0]->int_pars() },
         del_code_base => sub { $_[0]->count_base() + $_[0]->number_regs() },
         ##

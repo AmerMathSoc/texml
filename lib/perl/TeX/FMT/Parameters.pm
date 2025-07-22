@@ -1,6 +1,8 @@
 package TeX::FMT::Parameters;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::FMT::Parameters;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use base qw(Exporter);
@@ -61,7 +62,7 @@ my %dimen_parameters_of :ARRAY(:name<dimen_parameter>);
 ##                                                                  ##
 ######################################################################
 
-sub get_engine_parameters( $ ) {
+sub get_engine_parameters {
     my $engine = shift;
 
     my $class = __PACKAGE__ . "::" . $engine;

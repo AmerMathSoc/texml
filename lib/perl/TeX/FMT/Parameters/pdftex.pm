@@ -1,6 +1,8 @@
 package TeX::FMT::Parameters::pdftex;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -34,7 +36,6 @@ package TeX::FMT::Parameters::pdftex;
 # pdftex_version_string=='-1.40.17'
 # pdfTeX_banner=='This is pdfTeX, Version 3.14159265',eTeX_version_string,pdftex_version_string
 
-use strict;
 use warnings;
 
 use base qw(TeX::FMT::Parameters::tex);
@@ -220,7 +221,9 @@ sub BUILD {
         xchr_code_base => sub { $_[0]->xord_code_base() + 1 },
         xprn_code_base => sub { $_[0]->xchr_code_base() + 1 },
         math_font_base => sub { $_[0]->xprn_code_base() + 1 },
+
         pdftex_first_integer_code => sub { $_[0]->web2c_int_pars() },
+
         pdf_output_code => sub { $_[0]->pdftex_first_integer_code() + 0 },
         pdf_compress_level_code => sub { $_[0]->pdftex_first_integer_code() + 1 },
         pdf_decimal_digits_code => sub { $_[0]->pdftex_first_integer_code() + 2 },
