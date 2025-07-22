@@ -49,6 +49,8 @@ use TeX::Class;
 
 use TeX::Utils::Misc;
 
+my %tlyear_of :COUNTER(:name<tlyear>);
+
 my %parameters_of :HASH(:name<parameter> :get<*custom*>);
 
 my %skip_parameters_of  :ARRAY(:name<skip_parameter>);
@@ -64,7 +66,7 @@ my %dimen_parameters_of :ARRAY(:name<dimen_parameter>);
 
 sub get_engine_parameters {
     my $engine = shift;
-    my $year   = shift; ## TBD
+    my $year   = shift || 2016;
 
     my $class = __PACKAGE__ . "::" . $engine;
 
@@ -72,7 +74,7 @@ sub get_engine_parameters {
         die "Could not load engine parameters '$class'\n";
     }
 
-    return $class->new();
+    return $class->new( { tlyear => $year } );
 
 }
 
