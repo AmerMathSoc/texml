@@ -64,6 +64,7 @@ my %dimen_parameters_of :ARRAY(:name<dimen_parameter>);
 
 sub get_engine_parameters {
     my $engine = shift;
+    my $year   = shift; ## TBD
 
     my $class = __PACKAGE__ . "::" . $engine;
 
@@ -432,11 +433,23 @@ sub get_parameter_raw {
 
     return unless defined $value;
 
-    if (ref($value) eq 'CODE') {
-        $value = $self->$value();
+    return ref($value) eq 'CODE' ? $self->$value() : $value;
+}
+
+sub list_parameters {
+    my $self = shift;
+
+    my $p = $parameters_of{ident $self};
+
+    for my $k (sort keys $p->%*) {
+        my $v = $p->{$k};
+
+        $v = $self->$v() if ref($v) eq 'CODE';
+
+        print qq{$k => $v\n};
     }
 
-    return $value;
+    return;
 }
 
 ######################################################################
