@@ -1,0 +1,70 @@
+#!/usr/bin/perl -w
+
+use v5.26.0;
+
+use FindBin;
+
+use lib qw(/ams/texmf/texml/lib/perl);
+
+use warnings;
+
+use TeX::FMT::Parameters;
+
+sub p {
+    my $p = shift;
+    my $n = shift;
+
+    print "$n = ", $p->get_parameter($n), "\n";
+}
+
+sub list_parameters {
+    my $engine = shift;
+    my $year   = shift;
+
+    my $p = get_engine_parameters($engine, $year);
+
+    my $h = $p->get_parameters();
+
+    my $f = "${engine}_${year}.txt";
+
+    open(my $fh, ">", $f) or die "Can't open $f: $!\n";
+
+    for my $k (sort keys $h->%*) {
+        my $v = $h->{$k};
+
+        $v = $p->$v() if ref($v) eq 'CODE';
+
+        print { $fh } qq{$k => $v\n};
+    }
+
+    close($fh);
+
+    return;
+}
+
+if (@ARGV) {
+    my $engine = shift;
+    my $year   = shift;
+
+    list_parameters($engine, $year);
+
+    exit;
+}
+
+for my $ref_file (glob("*.txt.ref")) {
+    if ($ref_file =~ m{\A (([a-z]+)_(\d+)\.txt)\.ref \z}smx) {
+        my ($txt_file, $engine, $year) = ($1, $2, $3);
+
+        list_parameters($engine, $year);
+
+        if (system qq{cmp $ref_file $txt_file}) {
+            print "$txt_file failed!\n";
+        } else {
+            print "$txt_file passed!\n";
+        }
+    } else {
+        print STDERR qq{$ref_file?  What do you call this, then?\n};
+    }
+}
+
+__END__
