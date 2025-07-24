@@ -1,5 +1,7 @@
 package TeX::FMT::Parameters::luatex;
 
+## THIS DOESN'T WORK YET.
+
 use v5.25.0;
 
 # Copyright (C) 2024, 2025 American Mathematical Society
@@ -30,8 +32,6 @@ use v5.25.0;
 # Providence, RI 02904
 # USA
 # email: tech-support@ams.org
-
-## THIS DOESN'T WORK YET.
 
 use warnings;
 

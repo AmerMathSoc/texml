@@ -42,6 +42,40 @@ use base qw(TeX::FMT::Parameters::tex);
 
 use TeX::Class;
 
+my %YEAR = (
+    2024 => {
+        partoken_name => sub { $_[0]->pdf_copy_font + 1 },
+        max_command   => sub { $_[0]->partoken_name },
+        frozen_null_font => sub { $_[0]->frozen_control_sequence + 12 + $_[0]->prim_size },
+        prim_eqtb_base => sub { $_[0]->frozen_primitive + 1 },
+        tracing_stack_levels_code => sub { $_[0]->tracing_char_sub_def_code + 1 },
+        partoken_context_code => sub { $_[0]->tracing_stack_levels_code + 1},
+        show_stream_code      => sub { $_[0]->partoken_context_code + 1},
+        mubyte_in_code        => sub { $_[0]->show_stream_code + 1},
+        pdf_major_version_code => sub { $_[0]->pdf_option_pdf_inclusion_errorlevel_code + 1 },
+        pdf_minor_version_code  => sub { $_[0]->pdf_major_version_code + 1},
+        pdf_omit_charset_code   => sub { $_[0]->pdf_suppress_ptex_info_code + 1 },
+        pdf_omit_info_dict_code => sub { $_[0]->pdf_omit_charset_code + 1 },
+        pdf_omit_procset_code   => sub { $_[0]->pdf_omit_info_dict_code + 1 },
+        pdf_int_pars            => sub { $_[0]->pdf_omit_procset_code + 1 },
+        expanded_code            => sub { $_[0]->etex_convert_codes },
+        pdftex_first_expand_code => sub { $_[0]->expanded_code + 1 },
+        latespecial_node => 4,
+        language_node => 5,
+        immediate_code => 5,
+        set_language_code => 6,
+        pdftex_first_extension_code => 7,
+
+        pdf_lateliteral_node => sub { $_[0]->pdf_literal_node + 1 },
+
+        pdf_obj_code         => sub { $_[0]->pdf_lateliteral_node + 1 },
+        pdf_running_link_off_node   => sub { $_[0]->pdf_fake_space_node + 1 },
+        pdf_running_link_on_node    => sub { $_[0]->pdf_running_link_off_node + 1 },
+        pdf_space_font_code         => sub { $_[0]->pdf_running_link_on_node + 1 },
+        pdftex_last_extension_code  => sub { $_[0]->pdf_space_font_code },
+    },
+);
+
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
@@ -151,8 +185,10 @@ sub BUILD {
         etex_convert_base        => 5,
         eTeX_revision_code       => sub { $_[0]->etex_convert_base() },
 
-        # etex_convert_codes       => sub { $_[0]->etex_convert_base() + 1 },
-        # expanded_code            => sub { $_[0]->etex_convert_codes },
+        etex_convert_codes       => sub { $_[0]->etex_convert_base + 1 },
+
+
+        etex_convert_codes       => sub { $_[0]->etex_convert_base + 1 },
 
         pdftex_first_expand_code => sub { $_[0]->eTeX_revision_code() + 1 },
 
@@ -187,7 +223,7 @@ sub BUILD {
         ##
         ##
         letterspace_font => sub { $_[0]->XeTeX_def_code() + 16 },
-        pdf_copy_font    => sub { $_[0]->XeTeX_def_code() + 17 },
+        pdf_copy_font    => sub { $_[0]->letterspace_font + 1 },
 
         max_command      => sub { $_[0]->pdf_copy_font() },
 
@@ -350,6 +386,14 @@ sub BUILD {
         $self->set_parameter($param, $value);
     }
 
+    my $tlyear = $self->tlyear();
+
+    if (defined(my $extra = $YEAR{$tlyear})) {
+        while (my ($param, $value) = each $extra->%*) {
+            $self->set_parameter($param, $value);
+        }
+    }
+
     return;
 }
 
@@ -367,6 +411,24 @@ sub START {
 1;
 
 __DATA__
+
+<2024>#primitive partokenname partoken_name 0
+
+<2024>#primitive tracingstacklevels assign_int int_base+tracing_stack_levels_code
+
+<2024>#primitive partokencontext assign_int int_base+partoken_context_code
+<2024>#primitive showstream      assign_int int_base+show_stream_code
+<2024>#primitive pdfmajorversion assign_int int_base+pdf_major_version_code
+<2024>#primitive pdfomitcharset  assign_int int_base+pdf_omit_charset_code
+<2024>#primitive pdfomitinfodict assign_int int_base+pdf_omit_info_dict_code
+<2024>#primitive pdfomitprocset  assign_int int_base+pdf_omit_procset_code
+
+<2024>#primitive expanded convert expanded_code
+
+<2024>#primitive pdfrunninglinkoff extension pdf_running_link_off_node
+<2024>#primitive pdfrunninglinkon  extension pdf_running_link_on_node
+<2024>#primitive pdfspacefont      extension pdf_space_font_code
+
 
 letterspacefont    letterspace_font
 pdfcopyfont        pdf_copy_font

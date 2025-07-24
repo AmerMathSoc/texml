@@ -1,6 +1,8 @@
 package TeX::FMT::File;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::FMT::File;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use Carp;
@@ -60,6 +61,7 @@ use base qw(TeX::BinaryFile);
 use TeX::Class;
 
 my %engine       :ATTR(:get<engine>     :set<engine>);
+my %tlyear_of    :COUNTER(:name<tlyear> :default<2016>);
 
 my %debug_mode_of :BOOLEAN(:name<debug_mode> :get<debug_mode> :default<0>);
 
@@ -167,9 +169,9 @@ sub BUILD {
 ##                                                                  ##
 ######################################################################
 
-sub __debug {} # print STDERR "*** ", @_, "\n" }
+my sub __debug { }; # print STDERR "*** ", @_, "\n" }
 
-sub __check( $$$ ) {
+my sub __check {
     my $name     = shift;
     my $expected = shift;
     my $found    = shift;
@@ -712,17 +714,13 @@ sub load_header {
 
     my $magic_number = $self->read_integer();
 
+    __debug "magic number: $magic_number";
+
     die "Unknown FMT format\n" unless $magic_number == W2TX_MAGIC_NUMBER;
 
     $self->set_magic_number($magic_number);
 
     my $engine = $self->load_format_engine();
-
-    my $params = get_engine_parameters($self->get_engine());
-
-    $self->set_params($params);
-    $self->get_eqtb()->set_params($params);
-    $self->get_mem()->set_params($params);
 
     return;
 }
@@ -738,11 +736,19 @@ sub load_format_engine {
         $next = $self->read_integer();
     }
 
+    __debug "engine length: $next";
+
     my $engine = $self->read_string($next);
 
     __debug "engine = '$engine'";
 
     $self->set_engine($engine);
+
+    my $params = get_engine_parameters($engine, $self->tlyear);
+
+    $self->set_params($params);
+    $self->get_eqtb()->set_params($params);
+    $self->get_mem()->set_params($params);
 
     return $engine;
 }
@@ -997,12 +1003,11 @@ sub load_dynamic_memory {
 
         $p = $q + $mem->get_node_size($q);
 
-        if (
-            ($p > $lo_mem_max)
+        if ( ($p > $lo_mem_max)
              ||
- ( $q >= $mem->get_rlink($q) && ($mem->get_rlink($q) != $rover) )
+             ( $q >= $mem->get_rlink($q) && ($mem->get_rlink($q) != $rover) )
             ) {
-                 die "load_dynamic_memory: Bad format: p = $p; q = $q\n";
+            die "load_dynamic_memory: Bad format: p = $p; q = $q\n";
         }
 
         $q = $mem->get_rlink($q);
@@ -1054,6 +1059,8 @@ sub load_eqtb {
 
     my $k = $self->is_luatex ? $params->null_cs() : $params->active_base();
 
+    __debug "k=$k";
+
     do {
         my $x = $self->read_integer();
 
@@ -1065,7 +1072,7 @@ sub load_eqtb {
         for my $j ($k .. $k + $x - 1) {
             my $word = $self->read_memory_word();
 
-            __debug "load_eqtb: word($j) = $word";
+#            __debug "load_eqtb: word($j) = $word";
 
             $eqtb->set_word($j, $word);
         }
@@ -1098,7 +1105,12 @@ sub load_eqtb {
     }
 
     my $par_loc   = $self->read_integer();
+
+    __debug "par_loc=$par_loc";
+
     my $write_loc = $self->read_integer();
+
+    __debug "write_loc=$write_loc";
 
     if ($self->is_luatex()) {
         $self->undump_math_codes();
@@ -1174,14 +1186,24 @@ sub load_primitive_table {
 
     my @prim;
 
+    __debug "Reading prim array";
+
     for (my $p = 0; $p <= $params->prim_size(); $p++) {
         $prim[$p] = $self->read_memory_word();
+
+        __debug "prim[$p] = $prim[$p]";
     }
 
-    my @prim_eqtb;
+    if ($params->tlyear() == 2016) {
+        __debug "Reading prim_eqtb array";
 
-    for (my $p = 0; $p <= $params->prim_size(); $p++) {
-        $prim_eqtb[$p] = $self->read_memory_word();
+        my @prim_eqtb;
+    
+        for (my $p = 0; $p <= $params->prim_size(); $p++) {
+            $prim_eqtb[$p] = $self->read_memory_word();
+
+            __debug "prim_eqtb[$p] = $prim_eqtb[$p]";
+        }
     }
 
     return;
@@ -1199,9 +1221,21 @@ sub load_hash_table {
     my $hash = $self->get_hash();
     my $eqtb = $self->get_eqtb();
 
+    # DEBUG: {
+    #     for (1..2) {
+    #         my $x = $self->read_integer();
+    #         __debug "x = $x";
+    #     }
+    #     # die;
+    # }
+
     my $hash_used = $self->read_integer();
 
     __debug "hash_used = $hash_used";
+
+    if ($hash_used < $params->hash_base || $hash_used > $params->frozen_control_sequence) {
+        croak "Bad FMT: bad hash_used";
+    }
 
     $self->set_hash_used($hash_used);
 
@@ -1226,11 +1260,10 @@ sub load_hash_table {
 
         $hash->set_word($ptr, $word);
 
-# DEBUG: {
-#     my $c = $word->get_rh();
-#     print STDERR $self->get_string($c), "|\n";
-# }
-
+      # DEBUG: {
+      #     my $c = $word->get_rh();
+      #     print STDERR $self->get_string($c), "|\n";
+      #   }
     } until $ptr == $hash_used;
 
     __debug "Reading hash region 2; ptr = ", $hash_used + 1;
@@ -1238,12 +1271,16 @@ sub load_hash_table {
     for my $ptr ($hash_used + 1 .. $params->undefined_control_sequence() - 1) {
         my $word = $self->read_memory_word();
 
+        __debug "load_hash_table (2): word($ptr) = $word";
+
         $hash->set_word($ptr, $word);
     }
 
     __debug "Reading hash region 3";
 
     my $hash_high = $self->get_hash_high();
+
+    __debug "hash_high = $hash_high";
 
     if ($hash_high > 0) {
         my $eqtb_size = $self->get_eqtb_size();
@@ -1253,6 +1290,8 @@ sub load_hash_table {
         for my $ptr ($eqtb_size + 1 .. $eqtb_size + $hash_high) {
             my $word = $self->read_memory_word();
 
+            __debug "load_hash_table (3): word($ptr) = $word";
+
             $hash->set_word($ptr, $word);
         }
     }
@@ -1260,6 +1299,10 @@ sub load_hash_table {
     my $cs_count = $self->read_integer();
 
     __debug "cs_count = $cs_count";
+
+    # while (defined( my $x = $self->read_integer())) {
+    #     __debug "x = $x";
+    # } die;
 
     $self->set_cs_count($cs_count);
 
@@ -1606,6 +1649,20 @@ sub load_pdftex_data {
     my $pdf_last_obj    = $self->read_integer();
     my $pdf_last_xform  = $self->read_integer();
     my $pdf_last_ximage = $self->read_integer();
+
+    if ($self->tlyear() == 2024) {
+        ## undumptounicode()
+
+        my $remaining = $self->read_integer();
+
+        if ($remaining > 0) {
+            croak "undumptounicode() not implemented";
+
+            for (1..$remaining) {
+                # ??? See tounicode.c
+            }
+        }
+    }
 
     return;
 }

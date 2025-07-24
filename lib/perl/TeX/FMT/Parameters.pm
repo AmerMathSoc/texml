@@ -213,7 +213,7 @@ sub BUILD {
         write_node    => 1,
         close_node    => 2,
         special_node  => 3,
-        # language_node => 4,
+        language_node => 4,
         ##
         immediate_code    => 4,
         set_language_code => 5,
@@ -431,11 +431,17 @@ sub get_parameter_raw {
 
     my $param_name = shift;
 
-    my $value = $parameters_of{ident $self}->{$param_name};
+    my $ident = ident $self;
+
+    my $value = $parameters_of{$ident}->{$param_name};
 
     return unless defined $value;
 
-    return ref($value) eq 'CODE' ? $self->$value() : $value;
+    if (ref($value) eq 'CODE') {
+        $value = $parameters_of{$ident}->{$param_name} = $self->$value();
+    }
+
+    return $value;
 }
 
 sub list_parameters {
@@ -653,6 +659,8 @@ sub load_primitives {
 
     my $data_handle = shift;
 
+    my $tlyear = $self->tlyear();
+
     my $position = tell($data_handle);
 
     local $_;
@@ -660,11 +668,29 @@ sub load_primitives {
     while (<$data_handle>) {
         chomp;
 
-        next if m/^\s*$/;
+        s{ +$}{};
+
+        next unless length;
 
         last if m/__END__/;
 
+        s{^<(\d+)>\s*}{} and do {
+            next unless $1 == $tlyear;
+
+            redo;
+        };
+
+        s{^\# \s* primitive \s*}{}smx and do {
+            my ($csname, $cmd_code, $equiv) = split /\s+/, trim($_), 3;
+
+            $self->primitive($csname, $cmd_code, $equiv);
+
+            next;
+        };
+
         next if m{^#};
+
+        ## Keep old-style primitives for now
 
         my ($csname, $cmd_code, $equiv) = split /\s+/, trim($_), 3;
 

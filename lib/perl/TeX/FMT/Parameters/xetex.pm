@@ -2,6 +2,8 @@ package TeX::FMT::Parameters::xetex;
 
 use v5.26.0;
 
+## THIS IS UNRELIABLE.  2016 SEEMS TO WORK, BUT 2024 DOES NOT
+
 # Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -37,6 +39,74 @@ use base qw(TeX::FMT::Parameters);
 
 use TeX::Class;
 
+my %YEAR = (
+    2024 => {
+        eqtb_size   => sub { $_[0]->scaled_base() + $_[0]->biggest_reg },
+        special_char   => sub { $_[0]->biggest_usv + 2 },
+        partoken_name  => sub { $_[0]->set_interaction + 1 },
+        max_command    => sub { $_[0]->partoken_name },
+        frozen_null_font => sub { $_[0]->frozen_control_sequence + 12 + $_[0]->prim_size },
+        tracing_stack_levels_code => sub { $_[0]->tracing_char_sub_def_code + 1 },
+        partoken_context_code => sub { $_[0]->tracing_stack_levels_code + 1},
+        show_stream_code      => sub { $_[0]->partoken_context_code + 1},
+        web2c_int_pars        => sub { $_[0]->show_stream_code + 1 },
+        prim_size             => 2100,
+        #
+        pdftex_first_rint_code => sub { $_[0]->badness_code + 1 },
+        pdf_last_x_pos_code    => sub { $_[0]->pdftex_first_rint_code + 6 },
+        pdf_last_y_pos_code    => sub { $_[0]->pdf_last_x_pos_code + 1},
+        elapsed_time_code      => sub { $_[0]->pdf_last_y_pos_code + 1 },
+        pdf_shell_escape_code  => sub { $_[0]->elapsed_time_code + 1 },
+        random_seed_code       => sub { $_[0]->pdf_shell_escape_code + 1 },
+        pdftex_last_item_codes => sub { $_[0]->random_seed_code + 1 },
+        eTeX_int               => sub { $_[0]->pdftex_last_item_codes + 1 },
+        XeTeX_pdf_page_count_code => sub { $_[0]->XeTeX_last_char_code + 1 },
+        XeTeX_last_item_codes  => sub { $_[0]->XeTeX_pdf_page_count_code },
+        XeTeX_dim              => sub { $_[0]->XeTeX_last_item_codes + 1 },
+        XeTeX_last_dim_codes   => sub { $_[0]->XeTeX_glyph_bounds_code },
+        #
+        etex_convert_codes => sub { $_[0]->etex_convert_base + 1},
+        #
+        expanded_code             => sub { $_[0]->etex_convert_codes },
+        pdftex_first_expand_code  => sub { $_[0]->expanded_code + 1 },
+        left_margin_kern_code     => sub { $_[0]->pdftex_first_expand_code + 1 },
+        right_margin_kern_code    => sub { $_[0]->left_margin_kern_code    + 1 },
+        pdf_strcmp_code           => sub { $_[0]->right_margin_kern_code   + 1 },
+        pdf_creation_date_code    => sub { $_[0]->pdf_strcmp_code          + 1 },
+        pdf_file_mod_date_code    => sub { $_[0]->pdf_creation_date_code   + 1 },
+        pdf_file_size_code        => sub { $_[0]->pdf_file_mod_date_code   + 1 },
+        pdf_mdfive_sum_code       => sub { $_[0]->pdf_file_size_code       + 1 },
+        pdf_file_dump_code        => sub { $_[0]->pdf_mdfive_sum_code      + 1 },
+        uniform_deviate_code      => sub { $_[0]->pdf_file_dump_code       + 1 },
+        normal_deviate_code       => sub { $_[0]->uniform_deviate_code     + 1 },
+        pdftex_convert_codes      => sub { $_[0]->normal_deviate_code      + 1 },
+        #
+        XeTeX_first_expand_code   => sub { $_[0]-> pdftex_convert_codes },
+        #
+        XeTeX_revision_code       => sub { $_[0]->XeTeX_first_expand_code   + 0 },
+        XeTeX_variation_name_code => sub { $_[0]->XeTeX_revision_code       + 1 },
+        XeTeX_feature_name_code   => sub { $_[0]->XeTeX_variation_name_code + 1 },
+        XeTeX_selector_name_code  => sub { $_[0]->XeTeX_feature_name_code   + 1 },
+        XeTeX_glyph_name_code     => sub { $_[0]->XeTeX_selector_name_code  + 1 },
+        XeTeX_Uchar_code          => sub { $_[0]->XeTeX_glyph_name_code     + 1 },
+        XeTeX_Ucharcat_code       => sub { $_[0]->XeTeX_Uchar_code          + 1 },
+        XeTeX_convert_codes       => sub { $_[0]->XeTeX_Ucharcat_code       + 1 },
+        job_name_code             => sub { $_[0]->XeTeX_convert_codes },
+        #
+        latespecial_node  => 4,
+        language_node     => 5,
+        immediate_code    => 5,
+        set_language_code => 6,
+        pdftex_first_extension_code => 7,
+        pdf_save_pos_node => sub { $_[0]->pdftex_first_extension_code + 16 },
+        reset_timer_code  => sub { $_[0]->pdftex_first_extension_code + 26 },
+        set_random_seed_code => sub { $_[0]->pdftex_first_extension_code + 28 },
+        #
+        # max_integer => 0X7FFFFFFF,
+        
+    },
+);
+
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
@@ -65,7 +135,7 @@ sub BUILD {
 
         biggest_usv  => 0x10FFFF,
 
-        special_char => 65537,
+        special_char => sub { $_[0]->biggest_char + 2 },
         # number_chars => 65537,
 
         too_big_usv  => 0x110000,
@@ -311,9 +381,9 @@ sub BUILD {
 
         web2c_int_base            => sub { $_[0]->tex_int_pars },
         char_sub_def_min_code     => sub { $_[0]->web2c_int_base },
-        char_sub_def_max_code     => sub { $_[0]->web2c_int_base+1 },
-        tracing_char_sub_def_code => sub { $_[0]->web2c_int_base+2 },
-        web2c_int_pars            => sub { $_[0]->web2c_int_base+3 },
+        char_sub_def_max_code     => sub { $_[0]->char_sub_def_min_code + 1 },
+        tracing_char_sub_def_code => sub { $_[0]->char_sub_def_max_code + 1 },
+        web2c_int_pars            => sub { $_[0]->tracing_char_sub_def_code + 1 },
         int_pars                  => sub { $_[0]->web2c_int_pars },
 
         etex_int_base               => sub { $_[0]->web2c_int_pars },
@@ -373,7 +443,10 @@ sub BUILD {
         h_offset_code             => 18,
         v_offset_code             => 19,
         emergency_stretch_code    => 20,
-        dimen_pars => sub { $_[0]->pdf_page_height_code() + 1 },
+        pdf_page_width_code       => 21,
+        pdf_page_height_code      => 22,
+
+        dimen_pars => 23,
 
         scaled_base => sub { $_[0]->dimen_base() + $_[0]->dimen_pars() },
         eqtb_size   => sub { $_[0]->scaled_base() + $_[0]->number_regs() - 1 },
@@ -436,41 +509,41 @@ sub BUILD {
 
         XeTeX_int                         => sub { $_[0]->eTeX_int + 8 },
 
-        XeTeX_version_code                => sub { $_[0]->XeTeX_int +  0 },
-        XeTeX_count_glyphs_code           => sub { $_[0]->XeTeX_int +  1 },
-        XeTeX_count_variations_code       => sub { $_[0]->XeTeX_int +  2 },
-        XeTeX_variation_code              => sub { $_[0]->XeTeX_int +  3 },
-        XeTeX_find_variation_by_name_code => sub { $_[0]->XeTeX_int +  4 },
-        XeTeX_variation_min_code          => sub { $_[0]->XeTeX_int +  5 },
-        XeTeX_variation_max_code          => sub { $_[0]->XeTeX_int +  6 },
-        XeTeX_variation_default_code      => sub { $_[0]->XeTeX_int +  7 },
-        XeTeX_count_features_code         => sub { $_[0]->XeTeX_int +  8 },
-        XeTeX_feature_code_code           => sub { $_[0]->XeTeX_int +  9 },
-        XeTeX_find_feature_by_name_code   => sub { $_[0]->XeTeX_int + 10 },
-        XeTeX_is_exclusive_feature_code   => sub { $_[0]->XeTeX_int + 11 },
-        XeTeX_count_selectors_code        => sub { $_[0]->XeTeX_int + 12 },
-        XeTeX_selector_code_code          => sub { $_[0]->XeTeX_int + 13 },
-        XeTeX_find_selector_by_name_code  => sub { $_[0]->XeTeX_int + 14 },
-        XeTeX_is_default_selector_code    => sub { $_[0]->XeTeX_int + 15 },
-        XeTeX_OT_count_scripts_code       => sub { $_[0]->XeTeX_int + 16 },
-        XeTeX_OT_count_languages_code     => sub { $_[0]->XeTeX_int + 17 },
-        XeTeX_OT_count_features_code      => sub { $_[0]->XeTeX_int + 18 },
-        XeTeX_OT_script_code              => sub { $_[0]->XeTeX_int + 19 },
-        XeTeX_OT_language_code            => sub { $_[0]->XeTeX_int + 20 },
-        XeTeX_OT_feature_code             => sub { $_[0]->XeTeX_int + 21 },
-        XeTeX_map_char_to_glyph_code      => sub { $_[0]->XeTeX_int + 22 },
-        XeTeX_glyph_index_code            => sub { $_[0]->XeTeX_int + 23 },
-        XeTeX_font_type_code              => sub { $_[0]->XeTeX_int + 24 },
-        XeTeX_first_char_code             => sub { $_[0]->XeTeX_int + 25 },
-        XeTeX_last_char_code              => sub { $_[0]->XeTeX_int + 26 },
+        XeTeX_version_code                => sub { $_[0]->XeTeX_int + 0 },
+        XeTeX_count_glyphs_code           => sub { $_[0]->XeTeX_version_code                + 1 },
+        XeTeX_count_variations_code       => sub { $_[0]->XeTeX_count_glyphs_code           + 1 },
+        XeTeX_variation_code              => sub { $_[0]->XeTeX_count_variations_code       + 1 },
+        XeTeX_find_variation_by_name_code => sub { $_[0]->XeTeX_variation_code              + 1 },
+        XeTeX_variation_min_code          => sub { $_[0]->XeTeX_find_variation_by_name_code + 1 },
+        XeTeX_variation_max_code          => sub { $_[0]->XeTeX_variation_min_code          + 1 },
+        XeTeX_variation_default_code      => sub { $_[0]->XeTeX_variation_max_code          + 1 },
+        XeTeX_count_features_code         => sub { $_[0]->XeTeX_variation_default_code      + 1 },
+        XeTeX_feature_code_code           => sub { $_[0]->XeTeX_count_features_code         + 1 },
+        XeTeX_find_feature_by_name_code   => sub { $_[0]->XeTeX_feature_code_code           + 1 },
+        XeTeX_is_exclusive_feature_code   => sub { $_[0]->XeTeX_find_feature_by_name_code   + 1 },
+        XeTeX_count_selectors_code        => sub { $_[0]->XeTeX_is_exclusive_feature_code   + 1 },
+        XeTeX_selector_code_code          => sub { $_[0]->XeTeX_count_selectors_code        + 1 },
+        XeTeX_find_selector_by_name_code  => sub { $_[0]->XeTeX_selector_code_code          + 1 },
+        XeTeX_is_default_selector_code    => sub { $_[0]->XeTeX_find_selector_by_name_code  + 1 },
+        XeTeX_OT_count_scripts_code       => sub { $_[0]->XeTeX_is_default_selector_code    + 1 },
+        XeTeX_OT_count_languages_code     => sub { $_[0]->XeTeX_OT_count_scripts_code       + 1 },
+        XeTeX_OT_count_features_code      => sub { $_[0]->XeTeX_OT_count_languages_code     + 1 },
+        XeTeX_OT_script_code              => sub { $_[0]->XeTeX_OT_count_features_code      + 1 },
+        XeTeX_OT_language_code            => sub { $_[0]->XeTeX_OT_script_code              + 1 },
+        XeTeX_OT_feature_code             => sub { $_[0]->XeTeX_OT_language_code            + 1 },
+        XeTeX_map_char_to_glyph_code      => sub { $_[0]->XeTeX_OT_feature_code             + 1 },
+        XeTeX_glyph_index_code            => sub { $_[0]->XeTeX_map_char_to_glyph_code      + 1 },
+        XeTeX_font_type_code              => sub { $_[0]->XeTeX_glyph_index_code            + 1 },
+        XeTeX_first_char_code             => sub { $_[0]->XeTeX_font_type_code              + 1 },
+        XeTeX_last_char_code              => sub { $_[0]->XeTeX_first_char_code             + 1 },
 
-        pdf_last_x_pos_code               => sub { $_[0]->XeTeX_int + 27 },
-        pdf_last_y_pos_code               => sub { $_[0]->XeTeX_int + 28 },
-        pdf_strcmp_code                   => sub { $_[0]->XeTeX_int + 29 },
-        pdf_mdfive_sum_code               => sub { $_[0]->XeTeX_int + 30 },
-        pdf_shell_escape_code             => sub { $_[0]->XeTeX_int + 31 },
+        pdf_last_x_pos_code               => sub { $_[0]->XeTeX_last_char_code + 1 },
+        pdf_last_y_pos_code               => sub { $_[0]->pdf_last_x_pos_code + 1 },
+        pdf_strcmp_code                   => sub { $_[0]->pdf_last_y_pos_code + 1 },
+        pdf_mdfive_sum_code               => sub { $_[0]->pdf_strcmp_code + 1 },
+        pdf_shell_escape_code             => sub { $_[0]->pdf_mdfive_sum_code + 1 },
 
-        XeTeX_pdf_page_count_code         => sub { $_[0]->XeTeX_int + 32 },
+        XeTeX_pdf_page_count_code         => sub { $_[0]->pdf_shell_escape_code + 1 },
 
         XeTeX_dim               => sub { $_[0]->XeTeX_int + 33 },
         XeTeX_glyph_bounds_code => sub { $_[0]->XeTeX_dim },
@@ -603,13 +676,18 @@ sub BUILD {
         display_widow_penalties_loc => sub { $_[0]->etex_pen_base + 3 },
         etex_pens                   => sub { $_[0]->etex_pen_base() + 4 },
 
-        pdf_page_width_code  => 21,
-        pdf_page_height_code => 22,
-
         );
 
     while (my ($param, $value) = each %new) {
         $self->set_parameter($param, $value);
+    }
+
+    my $tlyear = $self->tlyear();
+
+    if (defined(my $extra = $YEAR{$tlyear})) {
+        while (my ($param, $value) = each $extra->%*) {
+            $self->set_parameter($param, $value);
+        }
     }
 
     return;
@@ -634,6 +712,22 @@ sub START {
 1;
 
 __DATA__
+
+<2024>#primitive creationdate    convert pdf_creation_date_code
+<2024>#primitive elapsedtime     last_item elapsed_time_code
+<2024>#primitive expanded        convert expanded_code
+<2024>#primitive filedump        convert pdf_file_dump_code
+<2024>#primitive filemoddate     convert pdf_file_mod_date_code
+<2024>#primitive filesize        convert pdf_file_size_code
+<2024>#primitive normaldeviate   convert normal_deviate_code
+<2024>#primitive partokencontext assign_int int_base+partoken_context_code
+<2024>#primitive partokenname    partoken_name 0
+<2024>#primitive randomseed      last_item random_seed_code
+<2024>#primitive resettimer      extension reset_timer_code
+<2024>#primitive setrandomseed   extension set_random_seed_code
+<2024>#primitive showstream      assign_int int_base+show_stream_code
+<2024>#primitive tracingstacklevels assign_int int_base+tracing_stack_levels_code
+<2024>#primitive uniformdeviate  convert uniform_deviate_code
 
 call            call
 long_call       long_call

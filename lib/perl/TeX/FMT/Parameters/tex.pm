@@ -1,4 +1,4 @@
- package TeX::FMT::Parameters::tex;
+package TeX::FMT::Parameters::tex;
 
 use v5.26.0;
 
@@ -270,10 +270,13 @@ sub BUILD {
         char_sub_def_min_code     => sub { $_[0]->web2c_int_base() },
         char_sub_def_max_code     => sub { $_[0]->char_sub_def_min_code() + 1 },
         tracing_char_sub_def_code => sub { $_[0]->char_sub_def_max_code() + 1 },
+
         mubyte_in_code            => sub { $_[0]->tracing_char_sub_def_code() + 1 },
         mubyte_out_code           => sub { $_[0]->mubyte_in_code()  + 1 },
         mubyte_log_code           => sub { $_[0]->mubyte_out_code() + 1 },
+
         spec_out_code             => sub { $_[0]->mubyte_log_code() + 1 },
+
         web2c_int_pars            => sub { $_[0]->spec_out_code()   + 1 },
 
         int_pars                  => sub { $_[0]->web2c_int_pars() },
