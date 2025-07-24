@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::longtable;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Package::longtable;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -49,8 +50,6 @@ sub install ( $ ) {
 __DATA__
 
 \ProvidesPackage{longtable}
-
-\RequirePackage{HTMLtable}
 
 \DeclareOption{errorshow}{}
 
