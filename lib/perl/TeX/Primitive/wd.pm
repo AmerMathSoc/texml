@@ -1,6 +1,8 @@
 package TeX::Primitive::wd;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Primitive::wd;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use base qw(TeX::Primitive::SetBoxDimen);
@@ -42,7 +43,7 @@ sub read_value {
     my $self = shift;
     my $tex = shift;
 
-    my $box_no = $tex->scan_eight_bit_int();
+    my $box_no = $tex->scan_register_num();
 
     my $cur_val = 0;
 

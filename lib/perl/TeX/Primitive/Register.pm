@@ -1,6 +1,8 @@
 package TeX::Primitive::Register;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -34,7 +36,6 @@ package TeX::Primitive::Register;
 ## * \advance, \divide, \multiply (sort of)
 ## * things created by \countdef, \dimendef, \muskipdef, \skipdef, \toksdef
 
-use strict;
 use warnings;
 
 use base qw(TeX::Primitive::Parameter);
@@ -80,11 +81,11 @@ sub find_register {
 
     ## In perl 5.10.0, we could write
     ##
-    ##     my $index = $self->get_index() // $tex->scan_eight_bit_int();
+    ##     my $index = $self->get_index() // $tex->scan_register_num();
 
     my $index = $self->get_index();
 
-    $index = $tex->scan_eight_bit_int() unless defined $index;
+    $index = $tex->scan_register_num() unless defined $index;
 
     my $level = $self->get_level();
 

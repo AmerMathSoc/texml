@@ -49,7 +49,7 @@ sub expand {
 
     $tex->push_cond_stack($self, $cur_tok);
 
-    my $box_no = $tex->scan_eight_bit_int();
+    my $box_no = $tex->scan_register_num();
 
     my $box = $tex->box($box_no);
 

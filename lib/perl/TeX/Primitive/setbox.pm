@@ -1,6 +1,8 @@
 package TeX::Primitive::setbox;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -50,7 +52,7 @@ sub execute {
 
     my $modifier = $prefix ; # | $self->get_modifier();
 
-    my $n = $tex->scan_eight_bit_int();
+    my $n = $tex->scan_register_num();
 
     $n += 256 if $modifier & MODIFIER_GLOBAL;
 

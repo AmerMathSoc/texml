@@ -1,6 +1,8 @@
 package TeX::Primitive::SetBoxDimen;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Primitive::SetBoxDimen;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use base qw(TeX::Command::Executable::Assignment
@@ -55,7 +56,7 @@ sub execute {
 
     # c := cur_chr;
 
-    my $index = $tex->scan_eight_bit_int();
+    my $index = $tex->scan_register_num();
 
     $tex->scan_optional_equals();
 
@@ -70,7 +71,7 @@ sub read_value {
     my $self = shift;
     my $tex = shift;
 
-    my $index = $tex->scan_eight_bit_int();
+    my $index = $tex->scan_register_num();
 
     my $cur_val = 0;
 

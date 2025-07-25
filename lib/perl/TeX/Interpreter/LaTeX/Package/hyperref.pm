@@ -55,7 +55,7 @@ sub do_normalize_url { # Cf. do_url_formatstring() in url.pm
     my $tex   = shift;
     my $token = shift;
 
-    my $index = $tex->scan_eight_bit_int();
+    my $index = $tex->scan_register_num();
 
     my $box = $tex->box($index);
 

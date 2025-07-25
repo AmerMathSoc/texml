@@ -1,6 +1,8 @@
 package TeX::Primitive::texml::boxtostring;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Primitive::texml::boxtostring;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use base qw(TeX::Command::Expandable);
@@ -42,7 +43,7 @@ sub expand {
     my $tex     = shift;
     my $cur_tok = shift;
 
-    my $index = $tex->scan_eight_bit_int();
+    my $index = $tex->scan_register_num();
 
     my $box = $tex->box($index);
 

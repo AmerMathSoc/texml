@@ -2143,7 +2143,7 @@ sub __assign_int_commands { # command code = assign_int(_cmd); Region 5
 
     push @params, qw(synctex); # syncTeX
 
-    push @params, qw(XeTeXversion);
+    push @params, qw(eTeXversion XeTeXversion);
 
     push @params, qw(noligs nokerns outputmode); # LuaTeX
 
@@ -2186,6 +2186,8 @@ sub __init_eqtb_region_5 {
     $tex->set_end_line_char(carriage_return);
 
     $tex->set_TeXML_SVG_mag(1000);
+
+    $tex->set_eTeXversion(42);
 
     for my $k (0..255) {
         $tex->set_del_code($k, make_eqvt(-1, level_one));
@@ -4658,15 +4660,36 @@ sub scan_something_internal {
     return wantarray ? ($cur_val, $cur_val_level) : $cur_val;
 }
 
-sub scan_eight_bit_int {
+# sub scan_eight_bit_int {
+#     my $tex = shift;
+# 
+#     my $cur_val = $tex->scan_int();
+# 
+#     if ($cur_val < 0 || $cur_val > 255) {
+#         $tex->print_err("Bad register code");
+# 
+#         $tex->set_help("A register number must be between 0 and 255.",
+#                         "I changed this one to zero.");
+# 
+#         $tex->int_error($cur_val);
+# 
+#         $cur_val = 0;
+#     }
+# 
+#     return $cur_val;
+# }
+
+sub scan_register_num {
     my $tex = shift;
 
     my $cur_val = $tex->scan_int();
 
-    if ($cur_val < 0 || $cur_val > 255) {
+    my $max_reg_num = 32767; # operate in eTeX extension mode
+
+    if ($cur_val < 0 || $cur_val > $max_reg_num) {
         $tex->print_err("Bad register code");
 
-        $tex->set_help("A register number must be between 0 and 255.",
+        $tex->set_help("A register number must be between 0 and $max_reg_num.",
                         "I changed this one to zero.");
 
         $tex->int_error($cur_val);
@@ -9243,7 +9266,7 @@ sub unpackage {
 
     my $box_command = shift;
 
-    my $index = $tex->scan_eight_bit_int();
+    my $index = $tex->scan_register_num();
 
     my $box = $tex->box($index);
 
