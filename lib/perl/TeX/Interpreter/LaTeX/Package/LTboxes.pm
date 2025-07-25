@@ -128,9 +128,10 @@ __DATA__
         \startXMLelement{boxed-text}%
             \setXMLattribute{content-type}{framebox}%
             \ifdim\@tempdima < \maxdimen
-                \setXMLattribute{width}{\the\@tempdima}%
+                \setXMLattribute{width}{\bigpoints\@tempdima}%
             \fi
             \setXMLattribute{position}{#1}%
+            % Consistency would dictate that we use \bigpoints here too.
             \setXMLattribute{fboxrule}{\the\fboxrule}%
             \setXMLattribute{fboxsep}{\the\fboxsep}%
             #2%\par
@@ -147,23 +148,13 @@ __DATA__
     \endgroup
 }
 
-\long\def\fbox#1{\framebox[\maxdimen]}
+\long\def\fbox{\framebox[\maxdimen]}
 
 \long\def\frame#1{%
     \begingroup
         \fboxsep\z@
         \fbox{#1}%
     \endgroup
-}
-
-\DeclareMathJaxMacro\fbox
-
-\@namedef{fbox }#1{%
-    \ifmmode
-        \string\fbox{\hbox{#1}}%
-    \else
-        \@nameuse{non@mathmode@\string\fbox}{#1}%
-    \fi
 }
 
 \endinput
