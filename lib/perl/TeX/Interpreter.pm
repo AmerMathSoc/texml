@@ -10803,7 +10803,7 @@ sub __list_primitives {
                          Uchar);
 
     ## texml extensions (\titlecase is much less useful than it seems)
-    push @primitives, qw(tccode titlecase boxtostring endutemplate);
+    push @primitives, qw(bigpoints tccode titlecase boxtostring endutemplate);
 
     return @primitives;
 }
