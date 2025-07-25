@@ -707,6 +707,49 @@ __DATA__
     \expandafter\PreserveMacroDefinition\csname end#1\endcsname
 }
 
+\def\DeclareMathJaxMacro{%
+  \@ifstar{\@DeclareMathJaxMacro{}}{\@DeclareMathJaxMacro{ }}%
+}
+
+\def\@DeclareMathJaxMacro#1#2{%
+    \ifMathJaxMacro#2%
+        % \typeout{\string#2 is already a MathJaxMacro}%
+    \else
+        % \typeout{Rewriting \string#2 as a MathJaxMacro}%
+        \@@DeclareMathJaxMacro{#1}{#2}%
+    \fi
+}
+
+\def\@@DeclareMathJaxMacro#1#2{%
+    \@ifrobust{#2}{%
+        \edef\@tempa{%
+            \let\expandafter\noexpand\csname non@mathmode@\string#2\endcsname
+            \expandafter\noexpand\csname \expandafter\@gobble\string#2 \endcsname
+        }%
+        \@tempa
+    }{%
+        \expandafter\let\csname non@mathmode@\string#2\endcsname#2%
+    }%
+    \let#2\relax
+    \begingroup
+        \edef\@tempa{%
+            \noexpand\DeclareRobustCommand\noexpand#2{%
+                \relax
+                \noexpand\ifmmode
+                    \begingroup
+                        \noexpand\fontencoding{UCS}\noexpand\selectfont
+                        \string#2#1%
+                    \endgroup
+                \noexpand\else
+                    \noexpand\expandafter
+                    \expandafter\noexpand\csname non@mathmode@\string#2\endcsname
+                \noexpand\fi
+            }%
+        }%
+    \expandafter\endgroup
+    \@tempa
+}
+
 %% Now that MathJax supports scaling of images in scripts, we should
 %% replace \TeXMLSVGmathchoice by something that creates SVGs that use
 %% relative units:
@@ -1324,52 +1367,7 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% Preserve \llap and \rlap in math mode.
-
-\let\ltx@rlap\rlap
-
-%% Add an extra \hbox around the argument of \rlap and \llap to
-%% compensate for the fact that MathJax correctly switches to text
-%% mode inside \hbox but not inside \rlap and \llap.
-
-\def\rlap#1{%
-    \ifmmode
-        \string\rlap\string{\string\hbox\string{\hbox{#1}\string}\string}%
-    \else
-        \ltx@rlap{#1}%
-    \fi
-}
-
-\let\ltx@llap\llap
-
-\def\llap#1{%
-    \ifmmode
-        \string\llap\string{\string\hbox\string{\hbox{#1}\string}\string}%
-    \else
-        \ltx@llap{#1}%
-    \fi
-}
-
-\def\centerline#1{\par#1\par}
-
-\DeclareRobustCommand\parbox{%
-    \@latex@warning@no@line{This document uses \string\parbox!}%
-  \@ifnextchar[%]
-    \@iparbox
-    {\@iiiparbox c\relax[s]}}%
-
-\long\def\@iiiparbox#1#2[#3]#4#5{%
-    \leavevmode
-    \@pboxswfalse
-    \startXMLelement{span}%
-    \setXMLattribute{specific-use}{parbox}%
-    \ifmmode
-        \text{#5}%
-    \else
-        #5\@@par
-    \fi
-    \endXMLelement{span}%
-}
+\RequirePackage{LTboxes}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
@@ -1759,49 +1757,6 @@ __DATA__
     \string}%
 }
 
-\def\DeclareMathJaxMacro{%
-  \@ifstar{\@DeclareMathJaxMacro{}}{\@DeclareMathJaxMacro{ }}%
-}
-
-\def\@DeclareMathJaxMacro#1#2{%
-    \ifMathJaxMacro#2%
-        % \typeout{\string#2 is already a MathJaxMacro}%
-    \else
-        % \typeout{Rewriting \string#2 as a MathJaxMacro}%
-        \@@DeclareMathJaxMacro{#1}{#2}%
-    \fi
-}
-
-\def\@@DeclareMathJaxMacro#1#2{%
-    \@ifrobust{#2}{%
-        \edef\@tempa{%
-            \let\expandafter\noexpand\csname non@mathmode@\string#2\endcsname
-            \expandafter\noexpand\csname \expandafter\@gobble\string#2 \endcsname
-        }%
-        \@tempa
-    }{%
-        \expandafter\let\csname non@mathmode@\string#2\endcsname#2%
-    }%
-    \let#2\relax
-    \begingroup
-        \edef\@tempa{%
-            \noexpand\DeclareRobustCommand\noexpand#2{%
-                \relax
-                \noexpand\ifmmode
-                    \begingroup
-                        \noexpand\fontencoding{UCS}\noexpand\selectfont
-                        \string#2#1%
-                    \endgroup
-                \noexpand\else
-                    \noexpand\expandafter
-                    \expandafter\noexpand\csname non@mathmode@\string#2\endcsname
-                \noexpand\fi
-            }%
-        }%
-    \expandafter\endgroup
-    \@tempa
-}
-
 %% See HTMLtable.pm.  These shouldn't be passed along to MathJax.
 
 % \let\noalign\@gobble
@@ -1811,8 +1766,6 @@ __DATA__
 \DeclareMathJaxMacro\hline
 
 \DeclareMathJaxMacro\newline
-
-\DeclareMathJaxMacro\framebox
 
 \DeclareMathJaxMacro*\ %
 \DeclareMathJaxMacro*\!
@@ -1904,27 +1857,6 @@ __DATA__
 
 \DeclareMathJaxMacro\strut
 \DeclareMathJaxMacro\smash
-
-\long\def\fbox#1{%
-    \leavevmode
-    \begingroup
-    \everypar{}%
-    \startXMLelement{boxed-text}%
-        \setXMLattribute{content-type}{fbox}%
-        #1%\par 
-    \endXMLelement{boxed-text}%
-    \endgroup
-}
-
-\DeclareMathJaxMacro\fbox
-
-\@namedef{fbox }#1{%
-    \ifmmode
-        \string\fbox{\hbox{#1}}%
-    \else
-        \@nameuse{non@mathmode@\string\fbox}{#1}%
-    \fi
-}
 
 \DeclareMathPassThrough{stackrel}[2]
 
