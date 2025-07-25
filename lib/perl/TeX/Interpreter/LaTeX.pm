@@ -1905,13 +1905,24 @@ __DATA__
 \DeclareMathJaxMacro\strut
 \DeclareMathJaxMacro\smash
 
+\long\def\fbox#1{%
+    \leavevmode
+    \begingroup
+    \everypar{}%
+    \startXMLelement{boxed-text}%
+        \setXMLattribute{content-type}{fbox}%
+        #1%\par 
+    \endXMLelement{boxed-text}%
+    \endgroup
+}
+
 \DeclareMathJaxMacro\fbox
 
 \@namedef{fbox }#1{%
     \ifmmode
         \string\fbox{\hbox{#1}}%
     \else
-        \@nameuse{non@mathmode@\string\fbox}%
+        \@nameuse{non@mathmode@\string\fbox}{#1}%
     \fi
 }
 
