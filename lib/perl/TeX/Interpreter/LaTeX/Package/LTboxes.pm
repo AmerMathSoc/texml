@@ -98,16 +98,61 @@ __DATA__
     \endXMLelement{span}%
 }
 
-\DeclareMathJaxMacro\framebox
+%% We don't need to worry about \@framepicbox since it only occurs
+%% inside the picture environment.
 
-\long\def\fbox#1{%
-    \leavevmode
+\DeclareRobustCommand\framebox{%
+    \@ifnextchar[\@framebox\fbox
+}%
+
+\def\@framebox[#1]{%
+    \@ifnextchar[%]
+        {\@iframebox[#1]}%
+        {\@iframebox[#1][c]}%
+}
+
+\def\@iframebox[#1][#2]{%
     \begingroup
-    \everypar{}%
-    \startXMLelement{boxed-text}%
-        \setXMLattribute{content-type}{fbox}%
-        #1%\par 
-    \endXMLelement{boxed-text}%
+        \setlength\@tempdima{#1}%
+        \ifmmode
+            \expandafter\math@iframebox
+        \else
+            \expandafter\txt@iframebox
+        \fi
+        [#2]
+}
+
+\long\def\txt@iframebox[#1]#2{%
+        \leavevmode
+        \everypar{}%
+        \startXMLelement{boxed-text}%
+            \setXMLattribute{content-type}{framebox}%
+            \ifdim\@tempdima < \maxdimen
+                \setXMLattribute{width}{\the\@tempdima}%
+            \fi
+            \setXMLattribute{position}{#1}%
+            \setXMLattribute{fboxrule}{\the\fboxrule}%
+            \setXMLattribute{fboxsep}{\the\fboxsep}%
+            #2%\par
+        \endXMLelement{boxed-text}%
+    \endgroup
+}
+
+\long\def\math@iframebox[#1]#2{%
+    \string\framebox
+        \ifdim\@tempdima < \maxdimen
+            [\the\@tempdima][#1]%
+        \fi
+        {\hbox{#2}}%
+    \endgroup
+}
+
+\long\def\fbox#1{\framebox[\maxdimen]}
+
+\long\def\frame#1{%
+    \begingroup
+        \fboxsep\z@
+        \fbox{#1}%
     \endgroup
 }
 
