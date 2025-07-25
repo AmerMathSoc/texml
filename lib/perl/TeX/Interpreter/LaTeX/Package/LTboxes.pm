@@ -119,7 +119,7 @@ __DATA__
         \else
             \expandafter\txt@iframebox
         \fi
-        [#2]
+        [#2]%
 }
 
 \long\def\txt@iframebox[#1]#2{%
