@@ -1906,14 +1906,19 @@ sub initialize_char_codes {
     for my $usv (@usvs) {
         next if exists $cat_codes->{$usv};
 
-        $tex->eq_define(\$math_codes->{$usv}, $usv, MODIFIER_GLOBAL);
-        $tex->eq_define(\$del_codes->{$usv},    -1, MODIFIER_GLOBAL);
-
-        # $tex->DEBUG(sprintf "*** initialize_char_codes: usv = 0x%04X\n", $usv);
+        # printf STDERR "*** initialize_char_codes: usv = 0x%04X\n", $usv;
 
         my $charinfo = charinfo($usv);
 
-        my $category = $charinfo->{category};
+        my $category = $charinfo->{category} if defined $charinfo;
+
+        if (! defined $charinfo || $category eq 'Cs' || $category eq 'Cn') {
+            $tex->eq_define(\$cat_codes->{$usv}, CATCODE_INVALID, MODIFIER_GLOBAL);
+            next;
+        }
+
+        $tex->eq_define(\$math_codes->{$usv}, $usv, MODIFIER_GLOBAL);
+        $tex->eq_define(\$del_codes->{$usv},    -1, MODIFIER_GLOBAL);
 
         if ($category =~ m{^L[ltu]}) {
             my $lower_usv = 0;
@@ -3600,7 +3605,9 @@ sub end_file_reading {
 
     my $eof_hook = $tex->get_eof_hook();
 
-    if ($tex->file_type() > anonymous_file) {
+    my $type = $tex->file_type();
+
+    if ($type == openin_file || $type == input_file) {
         my $fh = $tex->get_cur_file();
 
         close($fh) if defined $fh; # { forget it }
@@ -4662,20 +4669,20 @@ sub scan_something_internal {
 
 # sub scan_eight_bit_int {
 #     my $tex = shift;
-# 
+#
 #     my $cur_val = $tex->scan_int();
-# 
+#
 #     if ($cur_val < 0 || $cur_val > 255) {
 #         $tex->print_err("Bad register code");
-# 
+#
 #         $tex->set_help("A register number must be between 0 and 255.",
 #                         "I changed this one to zero.");
-# 
+#
 #         $tex->int_error($cur_val);
-# 
+#
 #         $cur_val = 0;
 #     }
-# 
+#
 #     return $cur_val;
 # }
 
@@ -6010,6 +6017,8 @@ sub read_toks {
         $tex->set_lexer_state(new_line);
 
         while (my $token = $tex->get_next()) {
+            $tex->trace_token($token);
+
             $token_list->push($token);
 
             if ($tex->align_state() < ALIGN_NO_COLUMN) {
@@ -6057,7 +6066,7 @@ sub tokenize {
         sub {
             my $tex = shift;
 
-            $tex->back_input(POP_MAIN_CONTROL);
+            $tex->pop_main_control();
 
             return;
         });
@@ -6065,6 +6074,8 @@ sub tokenize {
     my $token_list = new_token_list();
 
     while (my $token = $tex->get_next()) {
+        $tex->trace_token($token);
+
         last if ident($token) == ident(POP_MAIN_CONTROL);
 
         $token_list->push($token);
@@ -8354,33 +8365,44 @@ sub fire_up {
 ##                                                                  ##
 ######################################################################
 
+sub trace_token {
+    my $tex = shift;
+    my $token = shift;
+
+return;
+
+    if ($tex->tracing_macros() & TRACING_MAIN_TOKS) {
+        $tex->begin_diagnostic();
+
+        $tex->print_nl("");
+
+        my $catcode = $token->get_catcode();
+
+        if ($catcode == CATCODE_CSNAME) {
+            $token = "\\" . $token->get_csname();
+        } else {
+            $token = qq{'$token'};
+        }
+
+        my $mode = $tex->get_cur_mode();
+
+        my $subroutine = (caller(1))[3] =~ s{^TeX::Interpreter::}{}r;
+
+        $tex->print("$subroutine: read $token ($catcode); mode=$mode");
+
+        $tex->end_diagnostic(false);
+    }
+
+    return;
+}
+
 sub main_control {
     my $tex = shift;
 
     $tex->begin_token_list($tex->get_toks_list('every_job'), every_job_text);
 
     while (my $cur_tok = $tex->get_x_token()) {
-        # if ($tex->tracing_macros() & TRACING_MAIN_TOKS) {
-        #     $tex->begin_diagnostic();
-        #
-        #     $tex->print_nl("");
-        #
-        #     my $catcode = $cur_tok->get_catcode();
-        #
-        #     my $token;
-        #
-        #     if ($catcode == CATCODE_CSNAME) {
-        #         $token = "\\" . $cur_tok->get_csname();
-        #     } else {
-        #         $token = qq{'$cur_tok'};
-        #     }
-        #
-        #     my $mode = $tex->get_cur_mode();
-        #
-        #     $tex->print("main_control: $token ($catcode); mode=$mode");
-        #
-        #     $tex->end_diagnostic(false);
-        # }
+        $tex->trace_token($cur_tok);
 
         ## POP_MAIN_CONTROL terminates the current instance of
         ## main_control().  Normally, this will be the main invocation
