@@ -403,7 +403,7 @@ __DATA__
 
 \let\verticalad\@gobble
 \let\quarterad\@gobble
-\let\horizontalad\\@gobble
+\let\horizontalad\@gobble
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
