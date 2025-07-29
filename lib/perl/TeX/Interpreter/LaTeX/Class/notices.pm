@@ -33,7 +33,7 @@ use v5.26.0;
 
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -400,6 +400,10 @@ __DATA__
 }
 
 \def\fullcolumnad{\end{document}}
+
+\let\verticalad\@gobble
+\let\quarterad\@gobble
+\let\horizontalad\\@gobble
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
