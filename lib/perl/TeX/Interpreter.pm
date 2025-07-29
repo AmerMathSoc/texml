@@ -284,9 +284,7 @@ sub DEBUG {
 sub __DEBUG {
     my $tex = shift;
 
-    my $subroutine = (caller(1))[3];
-
-    $subroutine =~ s{^TeX::Interpreter::}{};
+    my $subroutine = (caller(1))[3] =~ s{^TeX::Interpreter::}{}r;
 
     my $file_name = $tex->get_file_name() || '<undef>';
     my $line_no   = $tex->input_line_no() || '<undef>';
@@ -3240,7 +3238,7 @@ package InStateRecord {
 
     my %lines_of       :ARRAY(:name<line>);
     my %chars_of       :ARRAY(:name<char>);
-    my %line_no_of     :COUNTER(:name<line_no> :default(-1));
+    my %line_no_of     :COUNTER(:name<line_no> :default(1));
     my %char_no_of     :COUNTER(:name<char_no> :default(-1));
     my %file_name_of   :ATTR(:name<file_name>);
     my %file_handle_of :ATTR(:name<file_handle>);
@@ -3277,7 +3275,7 @@ my %lexer_state_of :COUNTER(:name<lexer_state> :default(-1)); # state in tex.web
 
 my %lines_of       :ARRAY(:name<line>);
 my %chars_of       :ARRAY(:name<char>);
-my %line_no_of     :COUNTER(:name<input_line_no> :default(-1));
+my %line_no_of     :COUNTER(:name<input_line_no> :default(1));
 my %char_no_of     :COUNTER(:name<input_char_no> :default(-1));
 my %file_name_of   :ATTR(:name<file_name>);
 my %file_handle_of :ATTR(:name<cur_file>);
@@ -3387,6 +3385,7 @@ sub push_input {
     $saved->push_line($tex->get_lines());
 
     $tex->push_input_stack($saved);
+
     $tex->delete_cur_file();
 
     return;
@@ -3581,21 +3580,12 @@ sub begin_file_reading {
 
     $tex->delete_chars();
     $tex->delete_lines();
-    $tex->set_input_line_no(-1);
+    $tex->set_input_line_no(1);
     $tex->set_input_char_no(-1);
     $tex->delete_file_name();
     $tex->delete_cur_file();
     $tex->set_file_type(terminal);
-
-    return;
-}
-
-sub begin_string_reading {
-    my $tex = shift;
-
-    my $string = shift;
-
-    $tex->pseudo_start(pseudo_file2, $string);
+    $tex->delete_eof_hook();
 
     return;
 }
@@ -3605,9 +3595,7 @@ sub end_file_reading {
 
     my $eof_hook = $tex->get_eof_hook();
 
-    my $type = $tex->file_type();
-
-    if ($type == openin_file || $type == input_file) {
+    if ($tex->file_type() > anonymous_file) {
         my $fh = $tex->get_cur_file();
 
         close($fh) if defined $fh; # { forget it }
@@ -3618,6 +3606,16 @@ sub end_file_reading {
     if (defined($eof_hook)) {
         $eof_hook->($tex);
     }
+
+    return;
+}
+
+sub begin_string_reading {
+    my $tex = shift;
+
+    my $string = shift;
+
+    $tex->pseudo_start(pseudo_file2, $string);
 
     return;
 }
@@ -3781,11 +3779,11 @@ sub get_next_from_file {
                 $tex->fatal_error("You ran out of file, mate!");
             }
 
+            $tex->incr_input_line_no();
+
             if ($file_type == openin_file) {
                 return; ## Nothing to do
             }
-
-            $tex->incr_input_line_no();
 
             if (! $tex->is_force_eof()) { # Try to read the next line
                 my $eof = 0;
@@ -5741,6 +5739,7 @@ sub openin {
             my $record = InStateRecord->new({ file_name => $path,
                                               file_handle => $fh,
                                               file_type   => openin_file,
+                                              line_no     => 0,
                                             });
 
             $tex->set_read_file($fileno, $record);
@@ -5944,10 +5943,8 @@ sub read_toks {
     $tex->set_scanner_status(defining);
     # $tex->set_warning_index($cur_tok);
 
-    my $m = $fileno;
-
     if ( $fileno < 0 || $fileno > 15 ) {
-        $m = 16;
+        $fileno = 16;
     }
 
     my $saved_align = $tex->align_state();
@@ -5957,16 +5954,18 @@ sub read_toks {
     my $token_list = new_token_list();
 
     do {
+        my $in_record;
+
         $tex->begin_file_reading();
 
-        if ($tex->get_read_open($m) == closed) {
+        if ($tex->get_read_open($fileno) == closed) {
             $tex->print_err("*** (cannot \\read from closed fileno $fileno)");
 
             $tex->error();
 
             return;
         } else {
-            my $in_record = $tex->get_read_file($fileno);
+            $in_record = $tex->get_read_file($fileno);
 
             $tex->set_input_line_no($in_record->line_no());
             $tex->set_input_char_no($in_record->char_no());
@@ -5976,23 +5975,23 @@ sub read_toks {
 
             my $fh = $tex->get_cur_file();
 
-            if ($tex->get_read_open($m) == just_open) {
+            if ($tex->get_read_open($fileno) == just_open) {
                 # @<Input the first line of |read_file[m]|@>
 
                 if ($tex->input_ln($fh)) {
                     $tex->closein($fh);
 
-                    $tex->set_read_open($m, closed);
+                    $tex->set_read_open($fileno, closed);
                 } else {
-                    $tex->set_read_open($m, normal);
+                    $tex->set_read_open($fileno, normal);
                 }
             } else {
                 # @<Input the next line of |read_file[m]|@>;
 
                 if ($tex->input_ln($fh)) {
-                    $tex->closein($m);
+                    $tex->closein($fileno);
 
-                    $tex->set_read_open($m, closed);
+                    $tex->set_read_open($fileno, closed);
 
                     if ($tex->align_state() != ALIGN_NO_COLUMN) {
                         $tex->runaway();
@@ -6030,6 +6029,10 @@ sub read_toks {
 
                 last;
             }
+        }
+
+        if (defined $in_record) {
+            $in_record->set_line_no($tex->input_line_no());
         }
 
         $tex->end_file_reading();
@@ -8369,8 +8372,6 @@ sub trace_token {
     my $tex = shift;
     my $token = shift;
 
-return;
-
     if ($tex->tracing_macros() & TRACING_MAIN_TOKS) {
         $tex->begin_diagnostic();
 
@@ -8385,10 +8386,11 @@ return;
         }
 
         my $mode = $tex->get_cur_mode();
+        my $line = $tex->input_line_no();
 
         my $subroutine = (caller(1))[3] =~ s{^TeX::Interpreter::}{}r;
 
-        $tex->print("$subroutine: read $token ($catcode); mode=$mode");
+        $tex->print("$subroutine: read token [$token, $catcode] (l. $line; mode=$mode)");
 
         $tex->end_diagnostic(false);
     }
