@@ -60,59 +60,60 @@ use base qw(TeX::BinaryFile);
 
 use TeX::Class;
 
-my %engine       :ATTR(:get<engine>     :set<engine>);
-my %tlyear_of    :COUNTER(:name<tlyear> :default<2016>);
+my %tlyear_of :COUNTER(:name<tlyear> :default<2016>);
 
-my %debug_mode_of :BOOLEAN(:name<debug_mode> :get<debug_mode> :default<0>);
+my %engine    :ATTR(:name<engine>);
 
 my %params_of :ATTR(:name<params>);
 
-my %xord         :ATTR(:get<xord> :set<xord>);
-my %xchr         :ATTR(:get<xchr> :set<xchr>);
-my %xprn         :ATTR(:get<xprn> :set<xprn>);
+my %debug_mode_of :BOOLEAN(:name<debug_mode> :get<debug_mode> :default<0>);
 
-my %hash_high    :ATTR(:get<hash_high>    :set<hash_high>);
-my %hash_used    :ATTR(:get<hash_used>    :set<hash_used>);
-my %mem_top      :ATTR(:get<mem_top>      :set<mem_top>);
-my %eqtb_size    :ATTR(:get<eqtb_size>    :set<eqtb_size>);
+my %xord         :ATTR(:name<xord>);
+my %xchr         :ATTR(:name<xchr>);
+my %xprn         :ATTR(:name<xprn>);
 
-my %hyph_count   :ATTR(:get<hyph_count>   :set<hyph_count>);
-my %hyph_next    :ATTR(:get<hyph_next>    :set<hyph_next>);
+my %hash_high    :ATTR(:name<hash_high>);
+my %hash_used    :ATTR(:name<hash_used>);
+my %mem_top      :ATTR(:name<mem_top>);
+my %eqtb_size    :ATTR(:name<eqtb_size>);
 
-my %eTeX_mode    :ATTR(:get<eTeX_mode>    :set<eTeX_mode> :default(0));
-my %mltex_p      :ATTR(:get<mltex_p>      :set<mltex_p>  :default(0));
-my %enctex_p     :ATTR(:get<enctex_p>     :set<enctex_p> :default(0));
+my %hyph_count   :ATTR(:name<hyph_count>);
+my %hyph_next    :ATTR(:name<hyph_next>);
 
-my %string_check     :ATTR(:get<string_pool_checksum>, :set<string_pool_checksum>);
-my %string_pool_size :ATTR(:get<string_pool_size> :set<string_pool_size>);
-my %max_strings      :ATTR(:get<max_strings>      :set<max_strings>);
-my %strings          :ATTR(:get<strings>          :set<strings>);
+my %eTeX_mode    :ATTR(:name<eTeX_mode> :default(0));
+my %mltex_p      :ATTR(:name<mltex_p>   :default(0));
+my %enctex_p     :ATTR(:name<enctex_p>  :default(0));
 
-my %lo_mem_max   :ATTR(:get<lo_mem_max>   :set<lo_mem_max>);
-my %hi_mem_min   :ATTR(:get<hi_mem_min>   :set<hi_mem_min>);
-my %var_used     :ATTR(:get<var_used>     :set<var_used>);
-my %dyn_used     :ATTR(:get<dyn_used>     :set<dyn_used>);
-my %rover        :ATTR(:get<rover>        :set<rover>);
-my %avail        :ATTR(:get<avail>        :set<avail>);
+my %string_check     :ATTR(:name<string_pool_checksum>);
+my %string_pool_size :ATTR(:name<string_pool_size>);
+my %max_strings      :ATTR(:name<max_strings>);
+my %strings          :ATTR(:name<strings>);
 
-my %cs_count     :ATTR(:get<cs_count>     :set<cs_count>);
+my %lo_mem_max   :ATTR(:name<lo_mem_max>);
+my %hi_mem_min   :ATTR(:name<hi_mem_min>);
+my %var_used     :ATTR(:name<var_used>);
+my %dyn_used     :ATTR(:name<dyn_used>);
+my %rover        :ATTR(:name<rover>);
+my %avail        :ATTR(:name<avail>);
 
-my %mem          :ATTR(:get<mem>          :set<mem>);
-my %eqtb         :ATTR(:get<eqtb>         :set<eqtb>);
-my %hash         :ATTR(:get<hash>         :set<hash>);
+my %cs_count     :ATTR(:name<cs_count>);
 
-my %fmem_ptr     :ATTR(:get<fmem_ptr>     :set<fmem_ptr>);
-my %font_ptr     :ATTR(:get<font_ptr>     :set<font_ptr>);
-my %font_info    :ATTR(:get<font_info>    :set<font_info>);
-my %font_checks  :ATTR(:get<font_checks>  :set<font_checks>);
-my %font_sizes   :ATTR(:get<font_sizes>   :set<font_sizes>);
-my %font_dsizes  :ATTR(:get<font_dsizes>  :set<font_dsizes>);
-my %font_names   :ATTR(:get<font_names>   :set<font_names>);
+my %mem          :ATTR(:name<mem>);
+my %eqtb         :ATTR(:name<eqtb>);
+my %hash         :ATTR(:name<hash>);
 
-my %format_ident :ATTR(:get<format_ident> :set<format_ident>);
-my %interaction  :ATTR(:get<interaction_level>  :set<interaction_level>);
+my %fmem_ptr     :ATTR(:name<fmem_ptr>);
+my %font_ptr     :ATTR(:name<font_ptr>);
+my %font_info    :ATTR(:name<font_info>);
+my %font_checks  :ATTR(:name<font_checks>);
+my %font_sizes   :ATTR(:name<font_sizes>);
+my %font_dsizes  :ATTR(:name<font_dsizes>);
+my %font_names   :ATTR(:name<font_names>);
 
-my %magic_number :ATTR(:get<magic_number>, :set<magic_number>);
+my %format_ident :ATTR(:name<format_ident>);
+my %interaction  :ATTR(:name<interaction_level>);
+
+my %magic_number :ATTR(:name<magic_number>);
 
 my %font_map :ATTR(:get<font_map>);
 
@@ -1198,7 +1199,7 @@ sub load_primitive_table {
         __debug "Reading prim_eqtb array";
 
         my @prim_eqtb;
-    
+
         for (my $p = 0; $p <= $params->prim_size(); $p++) {
             $prim_eqtb[$p] = $self->read_memory_word();
 
