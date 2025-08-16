@@ -56,9 +56,13 @@ use TeX::FMT::Parameters::Utils qw(print_esc);
 
 use TeX::Font qw(:factories);
 
+use TeXML::CFG;
+
 use base qw(TeX::BinaryFile);
 
 use TeX::Class;
+
+my %cfg_of    :ATTR(:name<texml_cfg> :type<TeXML::CFG>);
 
 my %tlyear_of :COUNTER(:name<tlyear> :default<2016>);
 
@@ -154,10 +158,14 @@ sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
 
     $self->set_mem(TeX::FMT::Mem->new());
+    $self->get_mem()->set_fmt($self);
+
     $self->set_eqtb(TeX::FMT::Eqtb->new());
     $self->set_hash(TeX::FMT::Hash->new({ fmt => $self }));
 
-    $self->get_mem()->set_fmt($self);
+    $self->set_texml_cfg(my $cfg = TeXML::CFG->get_cfg());
+
+    $self->set_tlyear($cfg->val(__PACKAGE__, 'tlyear', 2016));
 
     $font_map{$ident} = [];
 
