@@ -251,7 +251,7 @@ sub START {
     return;
 }
 
-sub INITIALIZE :CUMULATIVE(BASE FIRST) {
+sub INITIALIZE {
     my $tex = shift;
 
     $tex->set_initialized(true);

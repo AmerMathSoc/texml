@@ -96,21 +96,38 @@ my $END_TOKEN = make_csname_token("end");
 ##                                                                  ##
 ######################################################################
 
-sub INITIALIZE :CUMULATIVE(BASE FIRST) {
-    my $tex = shift;
+my sub __find_fmt_file {
+    my $basename = shift;
 
-    $tex->set_log_ext("xlog");
-    $tex->set_output_ext("xml");
-
-    if (nonempty(my $tex_file = $tex->get_file_name())) {
-        $tex->set_file_name($tex_file);
-    }
+    $basename .= ".fmt" unless $basename =~ m{\.fmt$};
 
     (my $module = __PACKAGE__ . ".pm") =~ s{::}{\/}g;
 
-    my $fmt_file = catfile(dirname($INC{$module}), 'FMT', 'laTeXML.fmt');
+    my $fmt_file = catfile(dirname($INC{$module}), 'FMT', $basename);
 
-    $tex->load_fmt_file($fmt_file);
+    return $fmt_file if -e $fmt_file;
+
+    return;
+}
+
+sub INITIALIZE {
+    my $tex = shift;
+
+    $tex->set_output_ext("xml");
+
+    my $fmt_file = $tex->get_fmt_file();
+
+    if (defined $fmt_file) {
+        if (! -e $fmt_file) {
+            $fmt_file = __find_fmt_file($fmt_file);
+        }
+    } else {
+        $fmt_file = __find_fmt_file('laTeXML');
+    }
+
+    $tex->set_fmt_file($fmt_file);
+
+    $tex->SUPER::INITIALIZE();
 
     $tex->install();
 
