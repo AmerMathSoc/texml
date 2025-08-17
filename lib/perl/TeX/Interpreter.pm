@@ -200,8 +200,6 @@ use constant RESPECT_PROTECTED => 1;
 ##                                                                  ##
 ######################################################################
 
-my %fmt_of :ATTR(:name<fmt>);
-
 my %fmt_file_of :ATTR(:name<fmt_file>);
 
 my %interaction_mode_of :ATTR(:name<interaction_mode> :default<error_stop_mode>);
@@ -260,8 +258,6 @@ sub INITIALIZE :CUMULATIVE(BASE FIRST) {
 
     if (nonempty(my $fmt_file = $tex->get_fmt_file())) {
         $tex->load_fmt_file($fmt_file);
-    } elsif (nonempty(my $fmt = $tex->get_fmt())) {
-        $tex->load_format($fmt);
     }
 
     return;
@@ -286,6 +282,8 @@ sub __DEBUG {
 
     my $subroutine = (caller(1))[3] =~ s{^TeX::Interpreter::}{}r;
 
+    my $caller = (caller(2))[3];
+
     my $file_name = $tex->get_file_name() || '<undef>';
     my $line_no   = $tex->input_line_no() || '<undef>';
 
@@ -294,7 +292,7 @@ sub __DEBUG {
     for my $par (@_) {
         for my $line (split /\n/, $par) {
             if (nonempty($line)) {
-                $tex->print_nl("*** ${subroutine}: ");
+                $tex->print_nl("*** ${subroutine} (called from $caller): ");
                 $tex->print($line);
             } else {
                 $tex->print_ln();
@@ -14251,28 +14249,6 @@ sub load_module { # Used by load_fmt() and do_load_if_module_exists()
     }
 
     return LOAD_SUCCESS;
-}
-
-sub load_format {
-    my $tex = shift;
-
-    my $fmt = shift;
-
-    my $class = __PACKAGE__ . "::FMT::$fmt";
-
-    my $status = $tex->load_module($class);
-
-    if ($status) {
-        eval { $class->install($tex) };
-
-        if ($@) {
-            $tex->fatal_error("Can't install macro class $class: $@");
-        }
-     } else {
-        $tex->fatal_error("Can't load format '$fmt'");
-    }
-
-    return;
 }
 
 ######################################################################
