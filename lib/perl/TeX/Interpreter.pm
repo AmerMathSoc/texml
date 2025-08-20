@@ -2414,16 +2414,17 @@ sub undefined {
 ##                                                                  ##
 ######################################################################
 
-my %primitives_of :HASH(:name<primitive>);
-
 ## This section is mostly irrelevant, but we might want to implement
 ## some version of print_cs and sprint_cs.
+
+my %primitives_of :HASH(:name<primitive>);
 
 sub load_primitive {
     my $tex = shift;
 
     my $name       = shift;
     my $class_name = shift;
+    my $args       = shift || {};
 
     my $primitive = $tex->get_primitive($name);
 
@@ -2432,21 +2433,19 @@ sub load_primitive {
 
         my @candidates;
 
-        if (defined $class_name) {
-            if ($class_name =~ m{::}) {
-                @candidates = ($class_name);
-            } else {
-                @candidates = ("TeX::Primitive::$class_name");
+        if ($class_name =~ m{::}) {
+            push @candidates, $class_name;
+        }
 
-                for my $engine (qw(texml LuaTeX pdfTeX XeTeX)) {
-                    push @candidates, "TeX::Primitive::${engine}::$class_name"
-                }
-            }
+        push @candidates, "TeX::Primitive::$class_name";
+
+        for my $engine (qw(texml LuaTeX pdfTeX XeTeX)) {
+            push @candidates, "TeX::Primitive::${engine}::$class_name"
         }
 
         for my $class (@candidates) {
             if (eval "require $class") {
-                $primitive = $class->new({ name => $name });
+                $primitive = $class->new({ name => $name, $args->%* });
 
                 $tex->set_primitive($name, $primitive);
 
@@ -2467,8 +2466,9 @@ sub primitive {
 
     my $csname = shift;
     my $class  = shift || $csname;
+    my $args   = shift;
 
-    my $cmd = $tex->load_primitive($csname, $class);
+    my $cmd = $tex->load_primitive($csname, $class, $args);
 
     $tex->define_csname($csname, $cmd);
 
@@ -8401,6 +8401,8 @@ sub main_control {
 
     $tex->begin_token_list($tex->get_toks_list('every_job'), every_job_text);
 
+    $tex->set_toks_list('every_job', new_token_list()); # For recursive calls
+
     while (my $cur_tok = $tex->get_x_token()) {
         $tex->trace_token($cur_tok);
 
@@ -10830,6 +10832,154 @@ sub __list_primitives {
     return @primitives;
 }
 
+sub __list_unimplemented {
+    my $tex = shift;
+
+    return qw(beginL
+              beginR
+              botmarks
+              clubpenalties
+              currentgrouplevel
+              currentgrouptype
+              currentifbranch
+              currentiflevel
+              currentiftype
+              displaywidowpenalties
+              eTeXrevision
+              efcode
+              endL
+              endR
+              firstmarks
+              fontchardp
+              fontcharht
+              fontcharic
+              fontcharwd
+              glueshrink
+              glueshrinkorder
+              gluestretch
+              gluestretchorder
+              gluetomu
+              iffontchar
+              ifincsname
+              interactionmode
+              interlinepenalties
+              knaccode
+              knbccode
+              knbscode
+              lastnodetype
+              leftmarginkern
+              letterspacefont
+              lpcode
+              marks
+              middle
+              mutoglue
+              pagediscards
+              parshapedimen
+              parshapeindent
+              parshapelength
+              partokenname
+              pdfannot
+              pdfcatalog
+              pdfcolorstack
+              pdfcolorstackinit
+              pdfcopyfont
+              pdfcreationdate
+              pdfdest
+              pdfendlink
+              pdfendthread
+              pdfescapehex
+              pdfescapename
+              pdfescapestring
+              pdffakespace
+              pdffiledump
+              pdffilemoddate
+              pdffilesize
+              pdffontattr
+              pdffontexpand
+              pdffontname
+              pdffontobjnum
+              pdffontsize
+              pdfglyphtounicode
+              pdfincludechars
+              pdfinfo
+              pdfinsertht
+              pdfinterwordspaceoff
+              pdfinterwordspaceon
+              pdflastmatch
+              pdfliteral
+              pdfmapfile
+              pdfmapline
+              pdfmatch
+              pdfmdfivesum
+              pdfnames
+              pdfnobuiltintounicode
+              pdfnoligatures
+              pdfnormaldeviate
+              pdfobj
+              pdfoutline
+              pdfpageref
+              pdfrefobj
+              pdfrefxform
+              pdfrefximage
+              pdfresettimer
+              pdfrestore
+              pdfrunninglinkoff
+              pdfrunninglinkon
+              pdfsave
+              pdfsavepos
+              pdfsetmatrix
+              pdfsetrandomseed
+              pdfsnaprefpoint
+              pdfsnapy
+              pdfsnapycomp
+              pdfspacefont
+              pdfstartlink
+              pdfstartthread
+              pdfstrcmp
+              pdftexbanner
+              pdftexrevision
+              pdfthread
+              pdftrailer
+              pdftrailerid
+              pdfunescapehex
+              pdfuniformdeviate
+              pdfxform
+              pdfxformname
+              pdfximage
+              pdfximagebbox
+              quitvmode
+              rightmarginkern
+              rpcode
+              shbscode
+              showgroups
+              showifs
+              showtokens
+              splitbotmarks
+              splitdiscards
+              splitfirstmarks
+              stbscode
+              tagcode
+              topmarks
+              widowpenalties);
+}
+
+sub __read_only_integers {
+    return qw(pdfelapsedtime
+              pdflastannot
+              pdflastlink
+              pdflastobj
+              pdflastxform
+              pdflastximage
+              pdflastximagecolordepth
+              pdflastximagepages
+              pdflastxpos
+              pdflastypos
+              pdfrandomseed
+              pdfretval
+              pdfshellescape
+              pdftexversion);
+}
+
 my %DEFS = (def  => 0,
             gdef => MODIFIER_GLOBAL,
             edef => MODIFIER_EXPAND,
@@ -10861,6 +11011,12 @@ sub init_prim {
 
     $tex->primitive($_) for $tex->__list_primitives();
 
+    ## Unimplemented primitives needed because expl3 insists on them.
+
+    $tex->primitive($_, "Unimplemented") for $tex->__list_unimplemented();
+
+    $tex->primitive($_, "TeX::Primitive::LastItem::Fake") for $tex->__read_only_integers();
+
     ## Primitives with non-alphanumeric names.
 
     $tex->primitive(" " => "ex_space");
@@ -10874,21 +11030,18 @@ sub init_prim {
     $tex->primitive(hpack => 'hbox');
     $tex->primitive(tpack => 'vtop');
 
-    my $glet = TeX::Primitive::let->new({ modifier => MODIFIER_GLOBAL });
-
-    $tex->set_primitive(glet => $glet);
-    $tex->define_csname(glet => $glet);
+    $tex->primitive(glet => 'let', { modifier => MODIFIER_GLOBAL });
 
     while (my ($def, $modifier) = each %DEFS) {
-        my $cmd = TeX::Primitive::def->new({ modifier => $modifier });
-
-        $tex->set_primitive($def => $cmd);
-        $tex->define_csname($def => $cmd);
+        $tex->primitive($def, 'def', { modifier => $modifier });
     }
 
     while (my ($toksdef, $modifier) = each %TOKS) {
-        my $cmd = TeX::Primitive::LuaTeX::CombineTokens->new({ modifier => $modifier });
+        # $tex->primitive($toksdef, 'CombineTokens', { modifier => $modifier });
 
+        my $cmd = TeX::Primitive::LuaTeX::CombineTokens->new({ name => $toksdef,
+                                                               modifier => $modifier });
+        
         $tex->set_primitive($toksdef => $cmd);
         $tex->define_csname($toksdef => $cmd);
     }
