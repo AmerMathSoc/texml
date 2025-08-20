@@ -113,7 +113,7 @@ __DATA__
 
 \def\@iframebox[#1][#2]{%
     \begingroup
-        \setlength\@tempdima{#1}%
+        \def\@tempdima{#1}%
         \ifmmode
             \expandafter\math@iframebox
         \else
@@ -127,8 +127,8 @@ __DATA__
         \everypar{}%
         \startXMLelement{boxed-text}%
             \setXMLattribute{content-type}{framebox}%
-            \ifdim\@tempdima < \maxdimen
-                \setXMLattribute{width}{\bigpoints\@tempdima}%
+            \ifx\@tempdima\@empty\else
+                \setXMLattribute{width}{\@tempdima}%
             \fi
             \setXMLattribute{position}{#1}%
             % Consistency would dictate that we use \bigpoints here too.
@@ -141,14 +141,14 @@ __DATA__
 
 \long\def\math@iframebox[#1]#2{%
     \string\framebox
-        \ifdim\@tempdima < \maxdimen
-            [\the\@tempdima][#1]%
+        \ifx\@tempdima\@empty\else
+            [\@tempdima][#1]%
         \fi
         {\hbox{#2}}%
     \endgroup
 }
 
-\long\def\fbox{\framebox[\maxdimen]}
+\long\def\fbox{\framebox[]}
 
 \long\def\frame#1{%
     \begingroup
