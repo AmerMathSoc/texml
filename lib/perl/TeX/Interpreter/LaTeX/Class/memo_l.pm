@@ -33,7 +33,7 @@ use 5.26.0;
 
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -61,8 +61,6 @@ __DATA__
 \def\AMS@eissn{1947-6221}
 
 \def\AMS@series@url{https://www.ams.org/memo/}
-
-\let\dedicatory\@gobble
 
 \endinput
 
