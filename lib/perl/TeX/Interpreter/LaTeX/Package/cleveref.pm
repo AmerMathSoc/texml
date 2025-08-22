@@ -91,6 +91,8 @@ sub do_resolve_crefs {
             $tex_cmd .= qq{{$ref_key}};
         }
 
+$tex->set_tracing_macros(1);
+
         my $new_node = $tex->convert_fragment($tex_cmd);
 
         $cref->replaceNode($new_node);
@@ -2112,6 +2114,79 @@ __DATA__
   \endgroup}%
 
 \let\cref@addtoreset\@addtoreset
+
+% AMSMATH
+
+\let\if@cref@amsmathloaded\iffalse
+
+\@ifpackageloaded{amsmath}{%
+    \let\if@cref@amsmathloaded\iftrue
+    \AtBeginDocument{%
+        \let\cref@old@label@in@display\label@in@display
+        \def\label@in@display{%
+            \@ifnextchar[\label@in@display@optarg\label@in@display@noarg
+        }%]
+        \def\label@in@display@noarg#1{\cref@old@label@in@display{{#1}}}%
+        \def\label@in@display@optarg[#1]#2{%
+            \cref@old@label@in@display{[#1]{#2}}%
+        }%
+        \def\ltx@label#1{\cref@label#1}%
+    }%  end of AtBeginDocument
+    \let\cref@old@subequations\subequations
+    \let\cref@old@endsubequations\endsubequations
+    \cref@resetby{equation}{\cref@result}%
+    \ifx\cref@result\relax\else
+        \cref@addtoreset{parentequation}{\cref@result}%
+    \fi
+    \renewenvironment{subequations}{%
+        \cref@addtoreset{equation}{parentequation}%
+        \let\cref@orig@equation@alias\cref@equation@alias
+        \@ifundefined{cref@subequation@alias}{%
+            \crefalias{equation}{subequation}%
+        }{%
+            \def\@tempa{{equation}}%
+            \expandafter\expandafter\expandafter\crefalias
+                \expandafter\@tempa\expandafter{\cref@subequation@alias}}%
+                \cref@old@subequations
+        }{%
+            \gdef\cl@parentequation{}%
+            \cref@old@endsubequations
+            \setcounter{parentequation}{0}%
+            \@ifundefined{cref@orig@cref@equation@alias}%
+                {\let\cref@equation@alias\relax}%
+                {\let\cref@equation@alias\cref@orig@equation@alias\relax}%
+            \let\cref@orig@equation@alias\relax
+        }%
+    \let\cref@old@make@df@tag@@\make@df@tag@@
+    \def\make@df@tag@@#1{%
+        \cref@old@make@df@tag@@{#1}%
+        \let\cref@old@df@tag\df@tag
+        \expandafter\gdef\expandafter\df@tag\expandafter{%
+            \cref@old@df@tag
+            \def\cref@currentlabel{[equation][2147483647][]#1}}%
+    }%
+    \let\cref@old@make@df@tag@@@\make@df@tag@@@
+    \def\make@df@tag@@@#1{%
+        \cref@old@make@df@tag@@@{#1}%
+        \let\cref@old@df@tag\df@tag
+        \expandafter\gdef\expandafter\df@tag\expandafter{%
+            \cref@old@df@tag
+            \toks@\@xp{\p@equation{#1}}%
+            \edef\cref@currentlabel{[equation][2147483647][]\the\toks@}%
+        }%
+    }%
+}{}%  end of \@ifpackageloaded{amsmath}
+
+\AtBeginDocument{%
+    \if@cref@amsmathloaded\else
+        \@ifpackageloaded{amsmath}{%
+            \PackageError{cleveref}{cleveref must be loaded after amsmath!}%
+            {Package load order is wrong: load cleveref *after* amsmath.}
+        }{}%
+    \fi
+}
+
+%% END AMSMATH
 
 % AMSTHM
 
