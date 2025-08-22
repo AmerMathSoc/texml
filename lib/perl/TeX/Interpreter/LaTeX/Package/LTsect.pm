@@ -335,11 +335,12 @@ __DATA__
             \refstepcounter{#1}%
             \typeout{#1\space\@secnumber}%
             \edef\@secnumpunct{%
-                \if@ams@inline
+% See https://github.com/AmerMathSoc/texml/issues/285
+%                \if@ams@inline
                     \if@ams@empty\else\XMLgeneratedText.\fi
-                \else
-                    \XMLgeneratedText.%
-                \fi
+%                \else
+%                    \XMLgeneratedText.%
+%                \fi
             }%
             \protected@edef\@svsec{%
                 \ifnum#2<\@m
