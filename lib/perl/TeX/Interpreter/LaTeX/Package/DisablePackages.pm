@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::DisablePackages;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Package::DisablePackages;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -59,9 +60,11 @@ __DATA__
 \DisablePackage{amstix2}
 \DisablePackage{amstixbb}
 \DisablePackage{backrefs}
+\DisablePackage{bookman}
 \DisablePackage{breakurl}
 \DisablePackage{chngcntr}
 \DisablePackage{circuitikz}
+\DisablePackage{courier}
 \DisablePackage{ctable}
 \DisablePackage{dutchcal}
 \DisablePackage{etoolbox}
@@ -70,20 +73,32 @@ __DATA__
 \DisablePackage{forest}
 \DisablePackage{geometry}
 \DisablePackage{grffile}
+\DisablePackage{helvet}
 \DisablePackage{hypcap}%      %% This one looks worth a look
 \DisablePackage{iftexml}
 \DisablePackage{layout}
+\DisablePackage{libertine}
 \DisablePackage{lmodern}
 \DisablePackage{makeidx}
 \DisablePackage{mathalfa}
+\DisablePackage{mathpazo}
+\DisablePackage{mathptm}
+\DisablePackage{mathptmx}
 \DisablePackage{morefloats}
+\DisablePackage{newpxtext}
+\DisablePackage{newpxmath}
 \DisablePackage{ogonek}
 \DisablePackage{old-arrows}
+\DisablePackage{palatino}
 \DisablePackage{pgfmath}
 \DisablePackage{pict2e}
 \DisablePackage{pictexwd}
+\DisablePackage{pslatex}
 \DisablePackage{pspicture}
+\DisablePackage{pxfonts}
+\DisablePackage{rawfonts}
 \DisablePackage{shaderef}
+\DisablePackage{stix}
 \DisablePackage{stix2}
 \DisablePackage{textcomp}
 \DisablePackage{thm-listof}
@@ -93,6 +108,10 @@ __DATA__
 \DisablePackage{tikz-qtree-compat}
 \DisablePackage{tkz-euclide}
 \DisablePackage{tikzsymbols}
+\DisablePackage{times}
+\DisablePackage{txfonts}
+\DisablePackage{utopia}
+\DisablePackage{xits}
 \DisablePackage{xkeyval}
 \DisablePackage{xstring}
 \DisablePackage{yhmath}
