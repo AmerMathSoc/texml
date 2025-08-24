@@ -128,6 +128,8 @@ Starting with an Ubuntu 18.04.5 LTS installation:
 
 * apt install xml-twig-tools [XML::Twig]
 
+* apt install libfile-mmagic-xs-perl [File::MMagic::XS]
+
 * apt install libpng-dev
 
 * apt install libjpeg-dev
