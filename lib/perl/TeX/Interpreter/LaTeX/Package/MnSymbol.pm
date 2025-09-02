@@ -1,5 +1,7 @@
 package TeX::Interpreter::LaTeX::Package::MnSymbol;
 
+use 5.26.0;
+
 # Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Package::MnSymbol;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -70,6 +71,9 @@ __DATA__
 \def\strokedint{\fint}
 
 \def\dashedrightarrow{\rightdasharrow}
+
+\def\upmapsto{\mapsup}
+\def\downmapsto{\mapsdown}
 
 \endinput
 
