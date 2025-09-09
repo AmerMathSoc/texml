@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::colortbl;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Package::colortbl;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -67,7 +68,19 @@ __DATA__
 
 % TBD: Colored rules
 
-% TBD: \arrayrulecolor
+\def\arrayrulecolor#1#{%
+    \arrayrulecolor@{#1}%
+}
+
+\def\arrayrulecolor@#1#2{%
+    % This needs to check whether it's inside an align...
+    \noalign{%
+        \XC@raw@color#1{#2}%
+        % \hbox tricks \TML@current@color to generate correct color
+        % specification format.
+        \hbox{\xdef\current@border@color{\TML@current@color}}%
+    }%
+}
 
 % TBD: \doublerulesepcolor
 
