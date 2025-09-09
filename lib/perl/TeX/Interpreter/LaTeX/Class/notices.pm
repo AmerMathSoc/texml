@@ -71,9 +71,15 @@ __DATA__
 \RequirePackage{wrapfig}
 \RequirePackage[table]{xcolor}
 
+\definecolor{notigray}{cmyk}{0.43,0.29,0.25,0.35}
+\definecolor{notiblue}{cmyk}{1,0.60,0,0}
+\definecolor{notiorange}{cmyk}{0,0.70,1,0}
+
 \RequirePackage[lite,nobysame]{amsrefs}
 
 \RequirePackage{hyperams}
+
+\let\notionecolumn\@empty
 
 \def\DOI#1{\gdef\AMS@DOI{#1}\extract@manid@from@doi}
 
