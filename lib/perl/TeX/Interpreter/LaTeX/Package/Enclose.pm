@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::Enclose;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -31,10 +33,9 @@ package TeX::Interpreter::LaTeX::Package::Enclose;
 
 # Support for the MathJax Enclose extension.
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex     = shift;
@@ -53,6 +54,11 @@ __DATA__
 \ProvidesPackage{Enclose}
 
 \let\MathJax@enclose@end\@empty
+
+% Possible notations: longdiv (default), actuarial, box, roundedbox,
+% circle, left, right, top, bottom, updiagonalstrike,
+% downdiagonalstrike, verticalstrike, horizontalstrike, madruwb,
+% updiagonalarrow, phasorangle
 
 \newcommand{\enclose}[1]{%
     \leavevmode
