@@ -1751,7 +1751,7 @@ sub __init_eqtb_region_3 {
 
         my $glue_param = make_glue_parameter($csname, \$glue_param{$param});
 
-        if ($param ne 'tab_skip') {
+        if ($param ne 'tab_skip') { ## ???
             $tex->set_primitive($csname => $glue_param);
             $tex->define_csname($csname => $glue_param);
         }
@@ -11037,21 +11037,11 @@ sub init_prim {
     }
 
     while (my ($toksdef, $modifier) = each %TOKS) {
-        # $tex->primitive($toksdef, 'CombineTokens', { modifier => $modifier });
-
-        my $cmd = TeX::Primitive::LuaTeX::CombineTokens->new({ name => $toksdef,
-                                                               modifier => $modifier });
-        
-        $tex->set_primitive($toksdef => $cmd);
-        $tex->define_csname($toksdef => $cmd);
+        $tex->primitive($toksdef, 'CombineTokens', { modifier => $modifier });
     }
 
     while (my ($prefix, $mask) = each %PREFIXES) {
-        my $cmd = TeX::Primitive::Prefix->new({ name => $prefix,
-                                                mask => $mask });
-
-        $tex->set_primitive($prefix => $cmd);
-        $tex->define_csname($prefix => $cmd);
+        $tex->primitive($prefix, "Prefix", { mask => $mask });
     }
 
     ## Extensions
@@ -11062,18 +11052,10 @@ sub init_prim {
 
     ## Provide aliases for pdfTeX names
 
-    my $ifabsnum = TeX::Primitive::ifnum->new({ abs => 1 });
-    my $ifabsdim = TeX::Primitive::ifdim->new({ abs => 1 });
-
-    $tex->set_primitive(ifabsnum => $ifabsnum);
-    $tex->define_csname(ifabsnum => $ifabsnum);
-    $tex->set_primitive(ifpdfabsnum => $ifabsnum);
-    $tex->define_csname(ifpdfabsnum => $ifabsnum);
-
-    $tex->set_primitive(ifabsdim => $ifabsdim);
-    $tex->define_csname(ifabsdim => $ifabsdim);
-    $tex->set_primitive(ifpdfabsdim => $ifabsdim);
-    $tex->define_csname(ifpdfabsdim => $ifabsdim);
+    $tex->primitive(ifabsnum    => 'ifnum', { abs => 1 });
+    $tex->primitive(ifpdfabsnum => 'ifnum', { abs => 1 });
+    $tex->primitive(ifabsdim    => 'ifdim', { abs => 1 });
+    $tex->primitive(ifpdfabsdim => 'ifdim', { abs => 1 });
 
     $tex->primitive(ifpdfprimitive => 'ifprimitive');
 
