@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::mathtools;
 
-# Copyright (C) 2022 American Mathematical Society
+use 5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,17 +31,87 @@ package TeX::Interpreter::LaTeX::Package::mathtools;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+use TeX::Utils::Misc qw(nonempty);
+
+my sub do_showonlyrefs;
+
+sub install {
     my $class = shift;
 
     my $tex = shift;
 
     $tex->package_load_notification();
 
+    # showonlyrefs needs to run before LTref::do_resolve_xrefs
+    $tex->add_output_hook(\&do_showonlyrefs, 0);
+
     $tex->read_package_data();
+
+    return;
+}
+
+sub do_showonlyrefs {
+    my $xml = shift;
+
+    my $tex = $xml->get_tex_engine();
+
+    my $handle = $tex->get_output_handle();
+
+    my $body = $handle->get_dom();
+
+    my @tags = $body->findnodes(q{descendant::tag[@SOR_key]});
+
+    return unless @tags;
+
+    $tex->print_nl("Tagging referenced equations");
+
+    $tex->convert_fragment(qq{\\setcounter{equation}{0}});
+
+    for my $tag (@tags) {
+        my $key = $tag->getAttribute('SOR_key');
+
+        if ($key =~ m{^set (.+) (\d+)$}) {
+            $tex->convert_fragment(qq{\\setcounter{$1}{$2}});
+
+            $tag->unbindNode();
+        }
+        elsif ($key eq 'SUBEQUATION_START') {
+            $tex->convert_fragment(q{\begingroup \csname subequation@start\endcsname}, undef, 1);
+
+            $tag->unbindNode();
+        }
+        elsif ($key eq 'SUBEQUATION_END') {
+            $tex->convert_fragment(q{\csname subequation@end\endcsname\endgroup}, undef, 1);
+
+            $tag->unbindNode();
+        } elsif (defined $tex->expansion_of(qq{MT_r_$key})) {
+            if (nonempty(my $counter = $tag->getAttribute('SOR_counter'))) {
+                $tex->convert_fragment(qq{\\refstepcounter{$counter}}, undef, 1);
+
+                $tag->removeAttribute('SOR_counter');
+            }
+
+            if (nonempty(my $label = $tag->getAttribute('SOR_label'))) {
+                my $xml_id = $tag->getAttribute('SOR_id');
+
+                $tag->removeAttribute('SOR_id');
+
+                my $text = $tex->convert_fragment($label);
+
+                $tag->appendChild($text);
+
+                $tag->removeAttribute('SOR_label');
+
+                $tex->convert_fragment(qq{\\csname SOR\@relabel\\endcsname{$key}{$xml_id}{$label}});
+            }
+
+            my $x = $tag->removeAttribute('SOR_key');
+        } else {
+            $tag->unbindNode();
+        }
+    }
 
     return;
 }

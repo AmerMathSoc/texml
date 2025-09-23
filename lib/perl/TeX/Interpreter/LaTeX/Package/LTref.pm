@@ -41,7 +41,6 @@ use TeX::Utils::Misc qw(nonempty pluralize);
 
 use TeX::Interpreter::LaTeX::Types::RefRecord qw(:all);
 
-my sub do_showonlyrefs;
 my sub do_register_refkey;
 my sub do_resolve_xrefs;
 my sub do_resolve_ref_ranges;
@@ -56,75 +55,13 @@ sub install  {
 
     $tex->define_csname('TeXML@register@refkey' => \&do_register_refkey);
 
-    $tex->add_output_hook(\&do_resolve_xrefs);
+    $tex->add_output_hook(\&do_resolve_xrefs, 1);
 
-    $tex->add_output_hook(\&do_sort_cites, 1);
+    $tex->add_output_hook(\&do_sort_cites, 2);
 
     $tex->add_output_hook(\&do_resolve_ref_ranges, 9);
 
     $tex->read_package_data();
-
-    return;
-}
-
-sub do_showonlyrefs {
-    my $tex   = shift;
-
-    my $handle = $tex->get_output_handle();
-
-    my $body = $handle->get_dom();
-
-    my @tags = $body->findnodes(q{descendant::tag[@SOR_key]});
-
-    return unless @tags;
-
-    $tex->print_nl("Tagging referenced equations");
-
-    $tex->convert_fragment(qq{\\setcounter{equation}{0}});
-
-    for my $tag (@tags) {
-        my $key = $tag->getAttribute('SOR_key');
-
-        if ($key =~ m{^set (.+) (\d+)$}) {
-            $tex->convert_fragment(qq{\\setcounter{$1}{$2}});
-
-            $tag->unbindNode();
-        }
-        elsif ($key eq 'SUBEQUATION_START') {
-            $tex->convert_fragment(q{\begingroup \csname subequation@start\endcsname}, undef, 1);
-
-            $tag->unbindNode();
-        }
-        elsif ($key eq 'SUBEQUATION_END') {
-            $tex->convert_fragment(q{\csname subequation@end\endcsname\endgroup}, undef, 1);
-
-            $tag->unbindNode();
-        } elsif (defined $tex->expansion_of(qq{MT_r_$key})) {
-            if (nonempty(my $counter = $tag->getAttribute('SOR_counter'))) {
-                $tex->convert_fragment(qq{\\refstepcounter{$counter}}, undef, 1);
-
-                $tag->removeAttribute('SOR_counter');
-            }
-
-            if (nonempty(my $label = $tag->getAttribute('SOR_label'))) {
-                my $xml_id = $tag->getAttribute('SOR_id');
-
-                $tag->removeAttribute('SOR_id');
-
-                my $text = $tex->convert_fragment($label);
-
-                $tag->appendChild($text);
-
-                $tag->removeAttribute('SOR_label');
-
-                $tex->convert_fragment(qq{\\csname SOR\@relabel\\endcsname{$key}{$xml_id}{$label}});
-            }
-
-            my $x = $tag->removeAttribute('SOR_key');
-        } else {
-            $tag->unbindNode();
-        }
-    }
 
     return;
 }
@@ -135,8 +72,6 @@ sub do_resolve_xrefs { ## TODO: move cite out of this
     my $tex = $xml->get_tex_engine();
 
     return unless $tex->if('TeXML@resolveXMLxrefs@');
-
-    do_showonlyrefs($tex); # grrr.  methods fucked up
 
     my $handle = $tex->get_output_handle();
 
