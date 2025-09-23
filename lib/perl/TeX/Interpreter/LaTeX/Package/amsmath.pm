@@ -87,15 +87,11 @@ __DATA__
 
 \DeclareRobustCommand{\eqref}[1]{%
     \global\@namedef{MT_r_#1}{#1}%
-    \leavevmode
-    \start@xref@group
-    \XMLgeneratedText(%
     \begingroup
-        \suppress@xref@group
-        \ref{#1}%
-    \endgroup
-    \XMLgeneratedText)%
-    \end@xref@group
+        \st@rredfalse
+        \def\xref@right@delim{\XMLgeneratedText(}%
+        \def\xref@left@delim{\XMLgeneratedText)}%
+        \@setref {#1} \eqref {}%
 }
 
 \def\subequation@start{%

@@ -567,6 +567,7 @@ __DATA__
 \long\def\texml@get@subtype#1#2#3#4{#4}
 
 \let\texml@get@ref\texml@get@reftext
+\let\texml@get@eqref\texml@get@reftext
 
 \DeclareRobustCommand\refRange[2]{%
     \leavevmode
@@ -620,6 +621,9 @@ __DATA__
     \let\end@xref@group\@empty
 }
 
+\let\xref@right@delim\@empty
+\let\xref@left@delim\@empty
+
 \def\@setref#1#2#3{%
         \leavevmode
         \start@xref@group
@@ -629,7 +633,7 @@ __DATA__
             \fi
             \setXMLattribute{ref-key}{#1}%
             \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#2}%
-            #3%
+            \xref@right@delim#3\xref@left@delim
         \endXMLelement{xref}%
         \end@xref@group
     \endgroup
@@ -707,14 +711,14 @@ __DATA__
         \fi
     \fi
     %
-    \texml@get@reftext@#2\texml@refinfo
+    \xref@right@delim\texml@get@reftext@#2\texml@refinfo\xref@left@delim
 }
 
 \def\@setref@nolink#1#2{%
         \ifcsname r@#1\endcsname
             \protected@edef\texml@refinfo{\csname r@#1\endcsname}%
             \def\texml@get{\csname texml@get@\expandafter\@gobble\string#2\endcsname}%
-            \protect\printref{\expandafter\texmf@get\texml@refinfo}%
+            \protect\printref{\expandafter\texml@get\texml@refinfo}%
         \else
             \texttt{?#1}%
         \fi
