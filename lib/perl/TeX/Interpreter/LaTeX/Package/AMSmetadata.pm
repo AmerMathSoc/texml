@@ -111,6 +111,7 @@ sub find_gentag_file {
             my $volume     = $article_meta->findvalue('volume');
             my $number     = $article_meta->findvalue('issue');
             my $pii        = $article_meta->findvalue('article-id[@pub-id-type="pii"]');
+
             $gentag = $PUBS->journal_gentag_file({ publ_key => $publ_key,
                                                    year     => $issue_year,
                                                    volume   => $volume,
@@ -120,6 +121,9 @@ sub find_gentag_file {
             if (! defined $gentag) {
                 ## If it's just been assigned to an issue, the gentag file
                 ## might still be in the EFF directory.
+
+                ## TODO: In this case, get volume, issue, page range,
+                ## cover date, etc., from LaTeX file.
 
                 $gentag = $PUBS->journal_gentag_file({ publ_key => $publ_key,
                                                        year     => 0,
@@ -745,7 +749,7 @@ sub add_self_uris {
 
     append_xml_element($parent, "self-uri", $uri,
                        { "content-type" => "abstract",
-                             "xlink:href"   => $uri });
+                         "xlink:href"   => $uri });
 
     my $doctype = $gentag->get_doctype();
 
@@ -1084,7 +1088,11 @@ sub append_journal_meta {
     append_xml_element($publisher, "publisher-name", "American Mathematical Society");
     append_xml_element($publisher, "publisher-loc", "Providence, Rhode Island");
 
-    my $uri = qq{https://www.ams.org/$publ_key/};
+    my $uri = $tex->expansion_of('AMS@series@url');
+
+    if (empty($uri)) {
+        $uri = qq{https://www.ams.org/$publ_key/};
+    }
 
     append_xml_element($meta, "self-uri", $uri, { "xlink:href", $uri });
 
@@ -1122,7 +1130,6 @@ sub append_article_categories {
     my $tex = shift;
 
     my $parent = shift;
-    my $gentag = shift;
 
     my $cat = append_xml_element($parent, "article-categories");
 
@@ -1292,11 +1299,11 @@ sub append_article_meta {
 
     if (nonempty(my $title = $gentag->get_title())) {
         $title_group = new_xml_element("title-group");
-    
+
         append_xml_element($title_group,
                            'article-title',
                            $tex->convert_fragment($title->get_tex()));
-    
+
         # append_xml_element($title_group, 'alt-title', $title->as_unicode());
     } else {
         $title_group = find_unique_node($old_front, "article-meta/title-group");
@@ -1398,7 +1405,7 @@ sub create_new_journal_front {
     my $gentag    = shift;
     my $old_front = shift;
 
-    my $front = new_xml_element("front");
+    my $front = $old_front->cloneNode(); # new_xml_element("front");
 
     append_journal_meta($tex, $front, $gentag);
 
