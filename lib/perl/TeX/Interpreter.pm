@@ -6390,7 +6390,8 @@ my %log_ext_of  :ATTR(:name<log_ext> :default<"log">);
 my %xml_public_id_of :ATTR(:name<xml_public_id> :default<"-//W3C//DTD XHTML 1.0 Strict//EN">);
 my %xml_system_id_of :ATTR(:name<xml_system_id> :default<"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">);
 
-my %xml_doc_root_of :ATTR(:name<xml_doc_root> :default<"article">);
+my %xml_doc_root_of   :ATTR(:name<xml_doc_root> :default<"article">);
+my %xml_root_attrs_of :HASH(:name<xml_root_attribute>);
 
 my %xsl_file_of :ATTR(:name<xsl_file>);
 
@@ -6472,6 +6473,14 @@ sub output_opened {
     my $tex = shift;
 
     return defined $tex->get_output_handle();
+}
+
+sub current_dom {
+    my $tex = shift;
+
+    my $handle = $tex->get_output_handle();
+
+    return defined $handle ? $handle->get_dom() : undef;
 }
 
 sub ensure_output_open {
@@ -11845,7 +11854,9 @@ sub __list_xml_extensions {
               endXMLelement
               ifinXMLelement
               importXMLfragment
-              setXMLattribute setXMLclass setXMLdoctype setXMLroot
+              setXMLattribute setXMLclass
+              setXMLdoctype setXMLroot
+              setXMLrootAttribute deleteXMLrootAttribute
               setXSLfile
               startXMLelement);
 }

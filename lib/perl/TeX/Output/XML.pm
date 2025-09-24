@@ -1,6 +1,6 @@
 package TeX::Output::XML;
 
-use 5.26.0;
+use v5.26.0;
 
 # Copyright (C) 2022-2025 American Mathematical Society
 #
@@ -157,7 +157,7 @@ my sub __new_utf8_char {
 
     utf8::upgrade($char);
 
-    return $char; 
+    return $char;
 }
 
 ######################################################################
@@ -221,6 +221,12 @@ sub open_document {
     my $root_node = $dom->createElement($xml_root);
 
     $root_node->setNamespace("http://www.w3.org/1999/xlink", "xlink", 0);
+
+    my %attr = $tex->get_xml_root_attributes();
+
+    while (my ($key, $value) = each %attr) {
+        $root_node->setAttribute($key, $value);
+    }
 
     $dom->setDocumentElement($root_node);
 
