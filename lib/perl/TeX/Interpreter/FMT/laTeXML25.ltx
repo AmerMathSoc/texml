@@ -223,6 +223,18 @@
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\def\@texml@warning#1{%
+    \GenericWarning{%
+        \space\space\space\@spaces\@spaces\@spaces
+    }{%
+        LaTeX Warning: #1%
+    }%
+}
+
+\def\texml@invalid@command#1{%
+    \@texml@warning{Command \protect#1 invalid in texml}%
+}
+
 \def\double@expand#1{%
     \begingroup
         \protected@edef\@temp@expand{#1}%
@@ -404,7 +416,7 @@
 \catcode`\~=\active % tilde is active
 
 \catcode`\^^L=\active
-\def^^L{\par}% ascii form-feed is \par
+\outer\def^^L{\par}% ascii form-feed is \outer\par
 
 \message{catcodes,}
 
@@ -512,34 +524,52 @@
 
 \let\extrafloats\@gobble
 
-\def\alloc@#1#2#3#4{\e@alloc#2#3{\count1#1}#4\float@count}
-
-\chardef\e@insert@top255
-\def\newinsert#1{%
-    \@tempswafalse
-    \global\advance\insc@unt\m@ne
-    \ifnum\count10<\insc@unt
-        \ifnum\count11<\insc@unt
-            \ifnum\count12<\insc@unt
-                \ifnum\count14<\insc@unt
-                    \@tempswatrue
-    \fi\fi\fi\fi
-    \if@tempswa
-        \allocationnumber\insc@unt
-    \else
-        \global\advance\insc@unt\@ne
-        \extrafloats\@ne
-        \@next\@currbox\@freelist
-            {\ifnum\@currbox<\e@insert@top
-                \allocationnumber\@currbox
-             \else
-                \ch@ck0\m@ne\insert
-             \fi}%
-            {\ch@ck0\m@ne\insert}%
-    \fi
-    \global\chardef#1\allocationnumber
-    \wlog{\string#1=\string\insert\the\allocationnumber}%
+\def\alloc@#1#2#3#4#5{%
+    \global\advance\count1#1\@ne
+    \ch@ck#1#4#2% make sure there's still room
+    \allocationnumber\count1#1%
+    \global#3#5\allocationnumber
+    \wlog{\string#5=\string#2\the\allocationnumber}%
 }
+
+\ifx\numexpr\@undefined
+    \def\newinsert#1{%
+        \global\advance\insc@unt \m@ne
+        \ch@ck0\insc@unt\count
+        \ch@ck1\insc@unt\dimen
+        \ch@ck2\insc@unt\skip
+        \ch@ck4\insc@unt\box
+        \allocationnumber\insc@unt
+        \global\chardef#1\allocationnumber
+        \wlog{\string#1=\string\insert\the\allocationnumber}%
+    }
+\else
+    \chardef\e@insert@top255
+    \def\newinsert#1{%
+        \@tempswafalse
+        \ifnum\count10<\insc@unt
+            \ifnum\count11<\insc@unt
+                \ifnum\count12<\insc@unt
+                    \ifnum\count14<\insc@unt
+                        \@tempswatrue
+        \fi\fi\fi\fi
+        \if@tempswa
+            \global\advance\insc@unt\m@ne
+            \allocationnumber\insc@unt
+        \else
+            \extrafloats\@ne
+            \@next\@currbox\@freelist
+                {\ifnum\@currbox<\e@insert@top
+                    \allocationnumber\@currbox
+                 \else
+                    \ch@ck0\m@ne\insert
+                 \fi}%
+                {\ch@ck0\m@ne\insert}%
+        \fi
+        \global\chardef#1\allocationnumber
+        \wlog{\string#1=\string\insert\the\allocationnumber}%
+    }
+\fi
 
 \gdef\ch@ck#1#2#3{%
     \ifnum\count1#1<#2\else
@@ -562,6 +592,24 @@
 
 \newbox\voidb@x % permanently void box register
 
+\message{compatibility for TeX 2, }
+
+\ifx\@undefined\inputlineno
+    \newcount\inputlineno
+    \inputlineno-1
+    \ifx\@undefined\language
+        \newcount\language
+    \fi
+    \newcount\lefthyphenmin
+    \newcount\righthyphenmin
+    \newcount\errorcontextlines
+    \newcount\holdinginserts
+    \newdimen\emergencystretch
+    \newcount\badness
+    \let\noboundary\relax
+    \newcount\setlanguage
+\fi
+
 \message{parameters,}
 
 \pretolerance=100
@@ -581,7 +629,7 @@
 \doublehyphendemerits=10000
 \finalhyphendemerits=5000
 \adjdemerits=10000
-\tracinglostchars=2
+\tracinglostchars=1
 \uchyph=1
 \defaulthyphenchar=`\-
 \defaultskewchar=-1
@@ -644,22 +692,13 @@
 \let\bgroup={
 \let\egroup=}
 
-\begingroup
-\catcode`\^^M=\active % these lines must end with %
-  \gdef\obeylines{\catcode`\^^M\active%
-    \let^^M\obeyedline%
-  }%
-  \global\let^^M\par % this is in case ^^M appears in a \write
-\endgroup
+{\catcode`\^^M=\active % these lines must end with %
+  \gdef\obeylines{\catcode`\^^M\active \let^^M\par}%
+  \global\let^^M\par} % this is in case ^^M appears in a \write
 
-\protected\gdef\obeyedline{\par}
-\global\let\obeyedspace\space
+\def\obeyspaces{\catcode`\ \active}
 
-\begingroup
-\catcode`\ =\active%
-\gdef\obeyspaces{\catcode`\ \active\let =\obeyedspace}%
-\global\let =\space%
-\endgroup
+{\obeyspaces\global\let =\space}
 
 \long\def\loop#1\repeat{%
     \def\iterate{%
@@ -908,9 +947,9 @@
 %%*         \advance\count@\month
 %%*         \advance\count@-#2\relax
 %%*     }
-%%* 
+%%*
 %%*     \expandafter\reserved@a\fmtversion\@nil
-%%* 
+%%*
 %%* \ifnum\count@>65
 %%*   \typeout{^^J%
 %%* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!^^J%
@@ -925,7 +964,7 @@
 %%*    \errhelp{To avoid this error message, obtain new LaTeX sources.}
 %%*    \errmessage{LaTeX source files more than 5 years old!}
 %%* \fi
-%%* 
+%%*
 %%*     \let\reserved@a\relax
 %%* \fi
 
@@ -953,248 +992,34 @@
 
 \let\@currname\@empty
 
-%% I'm not 100% sure any of this is useful to us, but let's keep it
-%% for now -- dmj.
-
 \def\IncludeInRelease#1{%
- \if@includeinrelease
-   \PackageError{latexrelease}{mis-matched IncludeInRelease}%
-                {There is an \string\EndIncludeRelease\space missing}%
-  \@includeinreleasefalse
-  \fi
-  \ifnum0%
-      \ifx\new@moduledate\@empty\else 1\fi
-      \ifnum \expandafter\@parse@version#1//00\@nil=0 1\fi
-      =11
-    \expandafter\@firstoftwo
-  \else
-    \expandafter\@secondoftwo
-  \fi
-    {\finish@module@release{#1}}%
-    {\kernel@ifnextchar[%
-      {\@IncludeInRelease{#1}}
-      {\@IncludeInRelease{#1}[#1]}}}
-
-\def\finish@module@release#1#2#3{%
-  \toks@{[#1] #3}%
-  \begingroup
-    \edef\x{\detokenize\expandafter{\new@modulename}}%
-    \edef\y{\detokenize{#2}}%
-  \expandafter\endgroup
-  \ifx\x\y \else
-    \@latex@error{\noexpand\IncludeInRelease dated #1 in a module is not
-      allowed.\MessageBreak Use a date at least equal to \new@moduledate
-      \space for complete rollback}\@ehd
-  \fi
-  \ifnum\expandafter\@parse@version\new@moduledate//00\@nil
-       >\expandafter\@parse@version\fmtversion//00\@nil
-    \GenericInfo{}{Applying: \the\toks@}%
-  \else
-    \GenericInfo{}{Skipping: \the\toks@}%
-    \expandafter\gobble@finish@module@release
-  \fi}
-
-\long\def\gobble@finish@module@release#1\EndModuleRelease{%
-  \EndModuleRelease}
+    \kernel@ifnextchar[%
+        {\@IncludeInRelease{#1}}
+        {\@IncludeInRelease{#1}[#1]}%
+}
 
 \def\@IncludeInRelease#1[#2]{\@IncludeInRele@se{#2}}
 
 \def\@IncludeInRele@se#1#2#3{%
-  \toks@{[#1] #3}%
-  \expandafter\ifx\csname\string#2+\@currname+IIR\endcsname\relax
-    \ifnum\expandafter\@parse@version#1//00\@nil
-         >\expandafter\@parse@version\fmtversion//00\@nil
-      \GenericInfo{}{Skipping: \the\toks@}%
-      \expandafter\expandafter\expandafter\@gobble@IncludeInRelease
-    \else
-      \GenericInfo{}{Applying: \the\toks@}%
-      \@includeinreleasetrue
-      \expandafter\let\csname\string#2+\@currname+IIR\endcsname\@empty
-    \fi
-  \else
-    \GenericInfo{}{Already applied: \the\toks@}%
-    \expandafter\@gobble@IncludeInRelease
-  \fi
-}
-\def\EndIncludeInRelease{%
-\if@includeinrelease
-  \@includeinreleasefalse
-\else
-  \PackageError{latexrelease}{mis-matched EndIncludeInRelease}{}%
-\fi
-\if@skipping@module
-  \expandafter\new@module@skip
-\fi}
-\long\def\@gobble@IncludeInRelease#1\EndIncludeInRelease{%
-  \@includeinreleasefalse
-  \@check@IncludeInRelease#1\IncludeInRelease\@check@IncludeInRelease
-  \@end@check@IncludeInRelease}
-\long\def\@check@IncludeInRelease#1\IncludeInRelease
-                                   #2#3\@end@check@IncludeInRelease{%
-  \ifx\@check@IncludeInRelease#2\else
-    \PackageError{latexrelease}{skipped IncludeInRelease for tag \string#2}{}%
-  \fi
-  \if@skipping@module
-    \expandafter\new@module@skip
-  \fi}
-
-\let\if@skipping@module\iffalse
-\def\@skipping@moduletrue{\let\if@skipping@module\iftrue}
-\def\@skipping@modulefalse{\let\if@skipping@module\iffalse}
-\let\new@modulename\@empty
-\let\new@moduledate\@empty
-
-\def\NewModuleRelease#1#2#3{%
-  \ifx\new@modulename\@empty \else
-    \@latex@error{Nested \noexpand\NewModuleRelease forbidden.}\@ehd \fi
-  \edef\new@moduledate{#1}%
-  \edef\new@modulename{#2}%
-  \GenericInfo{}{BEGIN module: \new@modulename\space (\new@moduledate)}%
-  \GenericInfo{}{ \@spaces\@spaces\@spaces\space#3\@gobble}%
-  \ifnum\sourceLaTeXdate<%
-        \expandafter\@parse@version\new@moduledate//00\@nil\relax
-    \ifnum\expandafter\@parse@version\fmtversion//00\@nil<%
-          \expandafter\@parse@version\new@moduledate//00\@nil\relax
-      \GenericInfo{}{Skipping module \new@modulename}%
-      \expandafter\expandafter
-      \expandafter\gobble@finish@module@release
-    \else
-      \GenericInfo{}{Applying module \new@modulename}
-      \@skipping@modulefalse
-    \fi
-  \else
-    \GenericInfo{}{Skipping module \new@modulename}
-    \@skipping@moduletrue
-    \expandafter\new@module@skip
-  \fi}
-\long\def\new@module@skip#1\IncludeInRelease{%
-  \long\def\reserved@a##1\EndModuleRelease{}%
-  \if\relax\detokenize\expandafter{\reserved@a#1{}{}\EndModuleRelease}\relax
-  \else
-    \@latex@error{Missing mandatory \string\IncludeInRelease{0000/00/00}}\@ehc
-    \expandafter\@secondoftwo
-  \fi
-  \@gobble
-    {\@expandtwoargs\IncludeInRelease
-         {0000/00/00}{\new@modulename}%
-         {ERROR! Emergency recovery}%
-     #1}%
-  \IncludeInRelease}
-\def\EndModuleRelease{%
-  \ifx\new@modulename\@empty
-    \@latex@error{Extra \string\EndModuleRelease.}\@eha
-  \else
-    \GenericInfo{}{END module: \new@modulename\space (\new@moduledate)}%
-    \let\new@modulename\@empty
-    \let\new@moduledate\@empty
-    \@skipping@modulefalse
-  \fi}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%                                                                  %%
-%%                            LTEXPL.DTX                            %%
-%%                                                                  %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\ifx\@kernel@after@enddocument\@undefined
-  \let \@kernel@after@enddocument               \@empty
-  \let \@kernel@after@enddocument@afterlastpage \@empty
-  \let \@kernel@before@begindocument \@empty
-  \let \@kernel@after@begindocument  \@empty
-\fi
-\def\reserved@a#1{\ifdefined#1\else\def#1{}\fi}
-\reserved@a\@expl@sys@load@backend@@
-\reserved@a\@expl@push@filename@@
-\reserved@a\@expl@push@filename@aux@@
-\reserved@a\@expl@pop@filename@@
-\def\@expl@finalise@setup@@{}
-\long\def\@gobble#1{}
-\long\def\@firstofone#1{#1}
-\long\def\@firstoftwo#1#2{#1}
-\long\def\@secondoftwo#1#2{#2}
-\long\def\IfFileExists#1{%
-  \openin\@inputcheck"#1" %
-  \ifeof\@inputcheck
-    \expandafter\@secondoftwo
-  \else
-    \closein\@inputcheck
-    \expandafter\@firstoftwo
-  \fi}
-\long\def\@ifnextchar#1#2#3{%
-  \let\reserved@d=#1%
-  \def\reserved@a{#2}%
-  \def\reserved@b{#3}%
-  \futurelet\@let@token\@ifnch}
-\def\@ifnch{%
-  \ifx\@let@token\reserved@d
-    \expandafter\reserved@a
-  \else
-    \expandafter\reserved@b
-  \fi}
-\expandafter\ifx\csname tex\string _let:D\endcsname\relax
-  \expandafter\@firstofone
-\else
-  \GenericInfo{}{Skipping: expl3 code already part of the format}%
-  \expandafter\endinput
-\fi
-  {%
-    \IfFileExists{expl3.ltx}
-      {%
-        \ifnum0%
-          \ifdefined\pdffilesize 1\fi
-          \ifdefined\filesize 1\fi
-          \ifdefined\luatexversion\ifnum\luatexversion>94 1\fi\fi
-          \ifdefined\kanjiskip 1\fi
-            >0 %
-          \expandafter\@firstofone
+    \toks@{[#1] #3}%
+    \expandafter\ifx\csname\string#2+\@currname+IIR\endcsname\relax
+        \ifnum  \expandafter\@parse@version#1//00\@nil
+              > \expandafter\@parse@version\fmtversion//00\@nil
+            \GenericInfo{}{Skipping: \the\toks@}%
+            \expandafter\expandafter\expandafter\@gobble@IncludeInRelease
         \else
-          \def~{ }\def\MessageBreak{^^J~~~~~~~~~~~~~~~}%
-          \errmessage{LaTeX Error:
-            LaTeX requires the e-TeX primitives and additional\MessageBreak
-            functionality available in the engines:\MessageBreak
-              - pdfTeX v1.40\MessageBreak
-              - XeTeX v0.99992\MessageBreak
-              - LuaTeX v0.95\MessageBreak
-              - e-(u)pTeX mid-2012\MessageBreak
-            or later%
-          }\batchmode \read -1 to \reserved@a
+            \GenericInfo{}{Applying: \the\toks@}%
+            \expandafter\let\csname\string#2+\@currname+IIR\endcsname\@empty
         \fi
-      }
-      {%
-        \errmessage{LaTeX requires expl3}%
-        \batchmode \read -1 to \reserved@a
-      }%
-      {\input expl3.ltx }%
-  }
-\ExplSyntaxOn
-\cs_gset_eq:NN \@expl@cs@to@str@@N \cs_to_str:N
-\cs_gset_eq:NN \@expl@str@if@eq@@nnTF \str_if_eq:nnTF
-\cs_gset_eq:NN \@expl@cs@prefix@spec@@N \cs_prefix_spec:N
-\cs_if_exist:NTF \cs_parameter_spec:N
-  { \cs_gset_eq:NN \@expl@cs@parameter@spec@@N \cs_parameter_spec:N }
-  { \cs_gset_eq:NN \@expl@cs@parameter@spec@@N \cs_argument_spec:N }
-\cs_gset_eq:NN \__kernel_cs_parameter_spec:N \@expl@cs@parameter@spec@@N
-\cs_gset_eq:NN \@expl@cs@replacement@spec@@N \cs_replacement_spec:N
-\cs_gset_eq:NN \@expl@str@map@function@@NN \str_map_function:NN
-\cs_gset_eq:NN \@expl@char@generate@@nn \char_generate:nn
-\ExplSyntaxOff
-\ExplSyntaxOn
-\cs_new_eq:NN \fpeval \fp_eval:n
-\cs_new_eq:NN \inteval \int_eval:n
-\cs_new_eq:NN \dimeval  \dim_eval:n
-\cs_new_eq:NN \skipeval \skip_eval:n
-\ExplSyntaxOff
-\ExplSyntaxOn
-\cs_new_eq:NN \UseName \use:c
-\cs_new:Npn \ExpandArgs #1
-  {
-    \cs_if_exist_use:cF { exp_args:N #1 }
-      { \msg_expandable_error:nnn { kernel } { unknown-arg-expansion } {#1} }
-  }
-\msg_new:nnn { kernel } { unknown-arg-expansion }
-  { Unknown~arg~expansion~"#1" }
-\ExplSyntaxOff
-\def\IfExplAtLeastTF{\@ifl@t@r\ExplLoaderFileDate}
+    \else
+        \GenericInfo{}{Already applied: \the\toks@}%
+        \expandafter\@gobble@IncludeInRelease
+    \fi
+}
+
+\long\def\@gobble@IncludeInRelease#1\EndIncludeInRelease{}
+
+\let\EndIncludeInRelease\relax
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
@@ -3176,7 +3001,7 @@ Type  H <return>  for immediate help.}%
 }%
 
 % \begingroup
-% 
+%
 % \expandafter\expandafter\expandafter\endgroup
 % \expandafter\ifx\csname eTeXversion\endcsname\relax
     \DeclareRobustCommand\TextOrMath{%
@@ -3196,7 +3021,7 @@ Type  H <return>  for immediate help.}%
 %             \expandafter\@firstoftwo
 %         \fi
 %     }
-% 
+%
 %     \edef\TextOrMath#1#2{%
 %         \expandafter\noexpand\csname TextOrMath\space\endcsname{#1}{#2}%
 %     }
@@ -3239,7 +3064,7 @@ Type  H <return>  for immediate help.}%
 \def\@nomath#1{%
     \relax
     \ifmmode
-        \@font@warning{Command \noexpand#1invalid in math mode}%
+        \@font@warning{Command \noexpand#1 invalid in math mode}%
     \fi
 }
 
@@ -3992,90 +3817,13 @@ Type  H <return>  for immediate help.}%
 \@onlypreamble\process@table
 
 \def\DeclareMathVersion#1{%
-    \expandafter\new@mathversion\csname mv@#1\endcsname
+    \texml@invalid@command\DeclareMathVersion
 }
 
 \@onlypreamble\DeclareMathVersion
 
-\def\new@mathversion#1{%
-    \expandafter\in@\expandafter#1\expandafter{\version@list}%
-    \ifin@
-        \@font@info{%
-            Redeclaring math version `\expandafter\@gobblefour\string#1'%
-        }%
-    \else
-        \expandafter\newcount\csname c@\expandafter \@gobble\string#1\endcsname
-        \def\version@elt{\noexpand\version@elt\noexpand}%
-        \edef\version@list{\version@list\version@elt#1}%
-    \fi
-    \toks@{}%
-    \count@\z@
-    \def\group@elt##1##2{%
-        \advance\count@\@ne
-        \addto@hook\toks@{\getanddefine@fonts##1##2}%
-    }%
-    \group@list
-    \global\csname c@\expandafter\@gobble\string#1\endcsname\count@
-    \def\alpha@elt##1##2##3{%
-        \ifx##2\no@alphabet@error
-            \toks@\expandafter{%
-                \the\toks@
-                \install@mathalphabet##1%
-                {\no@alphabet@error##1}%
-            }%
-        \else
-            \toks@\expandafter{%
-                \the\toks@
-                \install@mathalphabet##1%
-                {\select@group##1##2##3}%
-            }%
-        \fi
-    }%
-    \alpha@list
-    \xdef#1{\the\toks@}%
-}
-
-\@onlypreamble\new@mathversion
-
 \def\DeclareSymbolFont#1#2#3#4#5{%
-    \@tempswafalse
-    \edef\reserved@b{#2}%
-    \def\cdp@elt##1##2##3##4{%
-        \def\reserved@c{##1}%
-        \ifx\reserved@b\reserved@c \@tempswatrue\fi
-    }%
-    \cdp@list
-    \if@tempswa
-        \@ifundefined{sym#1}{%
-            \ifnum\count18<15 %
-                \expandafter\new@mathgroup\csname sym#1\endcsname
-                \expandafter\new@symbolfont\csname sym#1\endcsname
-                    {#2}{#3}{#4}{#5}%
-            \else
-                \@latex@error{Too many symbol fonts declared}\@eha
-            \fi
-        }{%
-            \@font@info{Redeclaring symbol font `#1'}%
-            \def\group@elt##1##2{%
-                \noexpand\group@elt\noexpand##1%
-                \expandafter\ifx\csname sym#1\endcsname##1%
-                    \expandafter\noexpand\csname#2/#3/#4/#5\endcsname
-                \else
-                    \noexpand##2%
-                \fi
-            }%
-            \xdef\group@list{\group@list}%
-            \def\version@elt##1{%
-                \expandafter
-                    \SetSymbolFont@\expandafter##1%
-                        \csname#2/#3/#4/#5\expandafter \endcsname
-                        \csname sym#1\endcsname
-            }%
-            \version@list
-        }%
-    \else
-        \@latex@error{Encoding scheme  `#2' unknown}\@eha
-    \fi
+    \texml@invalid@command\DeclareSymbolFont
 }
 
 \@onlypreamble\DeclareSymbolFont
@@ -4086,711 +3834,58 @@ Type  H <return>  for immediate help.}%
 \let\group@elt\relax
 \@onlypreamble\group@elt
 
-\def\new@symbolfont#1#2#3#4#5{%
-    \toks@\expandafter{\group@list}%
-    \edef\group@list{%
-        \the\toks@
-        \noexpand\group@elt\noexpand#1%
-        \expandafter\noexpand\csname#2/#3/#4/#5\endcsname
-    }%
-    \def\version@elt##1{%
-        \toks@\expandafter{##1}%
-        \edef##1{%
-            \the\toks@
-            \noexpand\getanddefine@fonts#1%
-                \expandafter\noexpand\csname#2/#3/#4/#5\endcsname
-        }%
-        \global\advance\csname c@\expandafter \@gobble\string##1\endcsname\@ne
-    }%
-    \version@list
-}
-
-\@onlypreamble\new@symbolfont
-
 \def\SetSymbolFont#1#2#3#4#5#6{%
-    \@tempswafalse
-    \edef\reserved@b{#3}%
-    \def\cdp@elt##1##2##3##4{%
-        \def\reserved@c{##1}%
-        \ifx\reserved@b\reserved@c \@tempswatrue\fi
-    }%
-    \cdp@list
-    \if@tempswa
-        \expandafter\SetSymbolFont@
-            \csname mv@#2\expandafter\endcsname
-            \csname#3/#4/#5/#6\expandafter\endcsname
-            \csname sym#1\endcsname
-    \else
-        \@latex@error{Encoding scheme  `#3' unknown}\@eha
-    \fi
+    \texml@invalid@command\SetSymbolFont
 }
 
 \@onlypreamble\SetSymbolFont
-
-\def\SetSymbolFont@#1#2#3{%
-    \expandafter\in@\expandafter#1\expandafter{\version@list}%
-    \ifin@
-        \expandafter\in@\expandafter#3\expandafter{\group@list}%
-        \ifin@
-            \begingroup
-                \expandafter\get@cdp\string#2\@nil\reserved@a
-                \toks@{}%
-                \def\install@mathalphabet##1##2{%
-                    \addto@hook\toks@{\install@mathalphabet##1{##2}}%
-                }%
-                \def\getanddefine@fonts##1##2{%
-                    \ifnum##1=#3%
-                        \addto@hook\toks@{\getanddefine@fonts#3#2}%
-                        \expandafter\get@cdp\string##2\@nil\reserved@b
-                        \ifx\reserved@a\reserved@b\else
-                            \@font@info{Encoding `\reserved@b' has changed
-                                to `\reserved@a' for symbol font\MessageBreak
-                                `\expandafter\@gobblefour\string#3' in the
-                                math version `\expandafter
-                                \@gobblefour\string#1'}%
-                        \fi
-                        \@font@info{%
-                            Overwriting symbol font
-                            `\expandafter\@gobblefour\string#3' in
-                            version `\expandafter
-                            \@gobblefour\string#1'\MessageBreak
-                            \@spaces \expandafter\@gobble\string##2 -->
-                                \expandafter\@gobble\string#2}%
-                    \else
-                        \addto@hook\toks@{\getanddefine@fonts##1##2}%
-                    \fi
-                }%
-                #1%
-                \xdef#1{\the\toks@}%
-            \endgroup
-        \else
-            \@latex@error{Symbol font `\expandafter\@gobblefour\string#3'
-                      not defined}\@eha
-        \fi
-    \else
-        \@latex@error{Math version `\expandafter\@gobblefour\string#1'
-       is not defined}{You probably misspelled the name of the math
-       version.^^JOr you have to specify an additional package.}%
-    \fi
-}
-
-\@onlypreamble\SetSymbolFont@
 
 \def\get@cdp#1#2/#3\@nil#4{\def#4{#2}}
 \@onlypreamble\get@cdp
 
 \def\DeclareMathAlphabet#1#2#3#4#5{%
-    \@tempswafalse
-    \edef\reserved@b{#2}%
-    \def\cdp@elt##1##2##3##4{%
-        \def\reserved@c{##1}%
-        \ifx\reserved@b\reserved@c \@tempswatrue\fi
-    }%
-    \cdp@list
-    \if@tempswa
-        \expandafter\ifx \csname\expandafter\@gobble\string#1\endcsname \relax
-            \new@mathalphabet#1{#2}{#3}{#4}{#5}%
-        \else
-            \edef\reserved@a{%
-                \noexpand\in@{\string\select@group}%
-                    {\expandafter\meaning\csname \expandafter
-                     \@gobble\string#1\space\endcsname}%
-            }%
-            \reserved@a
-            \ifin@
-                \@font@info{Redeclaring math alphabet \string#1}%
-                \def\version@elt##1{%
-                    \expandafter\SetMathAlphabet@\expandafter
-                    ##1\csname#2/#3/#4/#5\expandafter\endcsname
-                    \csname M@#2\expandafter\endcsname
-                    \csname \expandafter\@gobble\string#1\space\endcsname#1%
-                }%
-                \version@list
-            \else
-                \edef\reserved@a{%
-                    \noexpand\in@{\string\use@mathgroup}%
-                        {\expandafter\meaning\csname \expandafter
-                         \@gobble\string#1\space\endcsname}%
-                }%
-                \reserved@a
-                \ifin@
-                    \@font@info{Redeclaring math alphabet \string#1}%
-                    \new@mathalphabet#1{#2}{#3}{#4}{#5}%
-                \else
-                    \@latex@error{Command `\string#1' already defined}\@eha
-                \fi
-            \fi
-        \fi
-    \else
-        \@latex@error{Encoding scheme  `#2' unknown}\@eha
-    \fi
+    \texml@invalid@command\DeclareMathAlphabet
 }
 
 \@onlypreamble\DeclareMathAlphabet
 
-\def\new@mathalphabet#1#2#3#4#5{%
-    \toks@\expandafter{\alpha@list}%
-    \edef#1{%
-        \expandafter\noexpand
-        \csname \expandafter \@gobble\string#1\space\endcsname
-        \if/#5/%
-            \noexpand\no@alphabet@error
-            \noexpand\no@alphabet@error
-        \else
-            \expandafter\noexpand\csname M@#2\endcsname
-            \expandafter\noexpand\csname#2/#3/#4/#5\endcsname
-        \fi
-    }%
-    \toks2\expandafter{#1}%
-    \edef\alpha@list{\the\toks@\noexpand\alpha@elt\the\toks2}%
-    \def\version@elt##1{%
-        \toks@\expandafter{##1}%
-        \edef##1{%
-            \the\toks@
-            \install@mathalphabet
-            \expandafter\noexpand
-            \csname \expandafter\@gobble \string#1\space\endcsname
-            {%
-                \if/#5/%
-                    \noexpand\no@alphabet@error
-                \else
-                    \noexpand\select@group\the\toks2
-                \fi
-            }%
-        }%
-    }%
-    \version@list
-    \expandafter\edef
-        \csname \expandafter\@gobble \string#1\space\endcsname{%
-            \if/#5/%
-                \noexpand\no@alphabet@error
-                \noexpand#1%
-            \else
-                \noexpand\select@group\the\toks2
-            \fi
-    }%
-    \edef#1{%
-        \noexpand\protect
-        \expandafter\noexpand
-        \csname \expandafter \@gobble\string#1\space\endcsname
-    }%
-}
-
-\@onlypreamble\new@mathalphabet
-
 \def\SetMathAlphabet#1#2#3#4#5#6{%
-    \@tempswafalse
-    \edef\reserved@b{#3}%
-    \def\cdp@elt##1##2##3##4{%
-        \def\reserved@c{##1}%
-        \ifx\reserved@b\reserved@c \@tempswatrue\fi
-    }%
-    \cdp@list
-    \if@tempswa
-        \expandafter\SetMathAlphabet@
-            \csname mv@#2\expandafter\endcsname
-            \csname#3/#4/#5/#6\expandafter \endcsname
-            \csname M@#3\expandafter\endcsname
-            \csname \expandafter\@gobble\string#1\space\endcsname#1%
-    \else
-        \@latex@error{Encoding scheme  `#3' unknown}\@eha
-    \fi
+    \texml@invalid@command\SetMathAlphabet
 }
 
 \@onlypreamble\SetMathAlphabet
 
-\def\SetMathAlphabet@#1#2#3#4#5{%
-    \expandafter\in@\expandafter#1\expandafter{\version@list}%
-    \ifin@
-        \expandafter\in@\expandafter#4\expandafter{\alpha@list}%
-        \ifin@
-            \begingroup
-                \toks@{}%
-                \def\getanddefine@fonts##1##2{%
-                    \addto@hook\toks@{\getanddefine@fonts##1##2}%
-                }%
-                \def\reserved@c##1##2##3##4{% for message below
-                    \expandafter\@gobble\string##4%
-                }%
-                \def\install@mathalphabet##1##2{%
-                    \ifx##1#4%
-                        \addto@hook\toks@{%
-                            \install@mathalphabet#4{\select@group#4#3#2}%
-                        }%
-                        \@font@info{%
-                            Overwriting math alphabet
-                            `\string#5' in version `\expandafter
-                            \@gobblefour\string#1'\MessageBreak
-                            \@spaces \reserved@c##2 -->
-                            \expandafter\@gobble\string#2%
-                        }%
-                    \else
-                        \addto@hook\toks@{\install@mathalphabet##1{##2}}%
-                    \fi
-                }%
-                #1%
-                \xdef#1{\the\toks@}%
-            \endgroup
-        \else
-            \edef\reserved@a{%
-                \noexpand\in@{\string\use@mathgroup}{\meaning#4}%
-            }%
-            \reserved@a
-            \ifin@
-                \def\reserved@b##1\use@mathgroup##2##3{%
-                    \def\reserved@b{##3}%
-                    \def\reserved@c{##2}%
-                }%
-                \expandafter\reserved@b#4%
-                \begingroup
-                    \def\install@mathalphabet##1##2{%
-                        \addto@hook\toks@{\install@mathalphabet##1{##2}}%
-                    }%
-                    \def\getanddefine@fonts##1##2{%
-                        \addto@hook\toks@{\getanddefine@fonts##1##2}%
-                        \ifnum##1=\reserved@b
-                            \expandafter \addto@hook\expandafter\toks@
-                            \expandafter{%
-                                \expandafter\install@mathalphabet
-                                \expandafter#4\expandafter{%
-                                    \expandafter\select@group
-                                    \expandafter#4\reserved@c##2%
-                                }%
-                            }%
-                        \fi
-                    }%
-                    \def\version@elt##1{%
-                        \toks@{}%
-                        ##1%
-                        \xdef##1{\the\toks@}%
-                    }%
-                    \version@list
-                \endgroup
-                \expandafter\gdef\expandafter\alpha@list\expandafter{%
-                    \alpha@list
-                    \alpha@elt #4%
-                    \no@alphabet@error
-                    \no@alphabet@error
-                }%
-                \gdef#4{\no@alphabet@error #5}% fake things :-)
-                \SetMathAlphabet@{#1}{#2}{#3}#4#5%
-            \else
-                \@latex@error{%
-                    Command `\string#5' not defined as a math alphabet%
-                }{%
-                    Use \noexpand\DeclareMathAlphabet to define it.%
-                }%
-            \fi
-        \fi
-    \else
-        \@latex@error{%
-            Math version `\expandafter\@gobblefour\string#1' is not defined%
-        }{%
-            You probably misspelled the name of the math version.^^J%
-            Or you have to specify an additional package.%
-        }%
-    \fi
-}
-
-\@onlypreamble\SetMathAlphabet@
-
 \def\DeclareMathAccent#1#2#3#4{%
-    \expandafter\in@ \csname sym#3\expandafter\endcsname
-                     \expandafter{\group@list}%
-    \ifin@
-        \begingroup
-            \count\z@=#4\relax
-            \count\tw@\count\z@
-            \divide\count\z@\sixt@@n
-            \count@\count\z@
-            \multiply\count@\sixt@@n
-            \advance\count\tw@-\count@
-            \if\relax\noexpand#1% is command?
-                \edef\reserved@a{%
-                    \noexpand\in@{\expandafter\@gobble\string\mathaccent}{\meaning#1}%
-                }%
-                \reserved@a
-                \ifin@
-                    \expandafter\set@mathaccent
-                        \csname sym#3\endcsname#1#2%
-                        {\hexnumber@{\count\z@}\hexnumber@{\count\tw@}}%
-                    \@font@info{Redeclaring math accent \string#1}%
-                \else
-                    \expandafter\ifx \csname\expandafter\@gobble\string#1\endcsname \relax
-                        \expandafter\set@mathaccent
-                            \csname sym#3\endcsname#1#2%
-                            {\hexnumber@{\count\z@}\hexnumber@{\count\tw@}}%
-                    \else
-                        \@latex@error{Command `\string#1' already defined}\@eha
-                    \fi
-                \fi
-            \else
-                \@latex@error{Not a command name: `\noexpand#1'}\@eha
-            \fi
-        \endgroup
-    \else
-        \@latex@error{Symbol font `#3' is not defined}\@eha
-    \fi
+    \texml@invalid@command\DeclareMathAccent
 }
 
 \@onlypreamble\DeclareMathAccent
 
-\def\set@mathaccent#1#2#3#4{%
-    \xdef#2{\mathaccent"\mathchar@type#3\hexnumber@#1#4\relax}%
-}
-
-\@onlypreamble\set@mathaccent
-
 \def\DeclareMathSymbol#1#2#3#4{%
-    \expandafter\in@ \csname sym#3\expandafter\endcsname
-                     \expandafter{\group@list}%
-    \ifin@
-        \begingroup
-            \count\z@=#4\relax
-            \count\tw@\count\z@
-            \divide\count\z@\sixt@@n
-            \count@\count\z@
-            \multiply\count@\sixt@@n
-            \advance\count\tw@-\count@
-            \if\relax\noexpand#1% is command?
-                \edef\reserved@a{%
-                    \noexpand\in@ {\expandafter\@gobble\string\mathchar}%
-                                  {\meaning#1}%
-                }%
-                \reserved@a
-                \ifin@
-                    \expandafter\set@mathsymbol
-                        \csname sym#3\endcsname#1#2%
-                        {\hexnumber@{\count\z@}\hexnumber@{\count\tw@}}%
-                    \@font@info{Redeclaring math symbol \string#1}%
-                \else
-                    \expandafter\ifx \csname\expandafter\@gobble\string#1\endcsname \relax
-                        \expandafter\set@mathsymbol
-                            \csname sym#3\endcsname#1#2%
-                            {\hexnumber@{\count\z@}\hexnumber@{\count\tw@}}%
-                    \else
-                        \@latex@error{Command `\string#1' already defined}\@eha
-                    \fi
-                \fi
-            \else
-                \expandafter\set@mathchar
-                    \csname sym#3\endcsname#1#2
-                    {\hexnumber@{\count\z@}\hexnumber@{\count\tw@}}%
-            \fi
-        \endgroup
-    \else
-        \@latex@error{Symbol font `#3' is not defined}\@eha
-    \fi
+    \texml@invalid@command\DeclareMathSymbol
 }
 
-\@onlypreamble\DeclareMathSymbol
+% \@onlypreamble\DeclareMathSymbol
 
-\def\set@mathchar#1#2#3#4{%
-    \global\mathcode`#2="\mathchar@type#3\hexnumber@#1#4\relax
-}
-
-\@onlypreamble\set@mathchar
-
-\def\set@mathsymbol#1#2#3#4{%
-    \global\mathchardef#2"\mathchar@type#3\hexnumber@#1#4\relax
-}
-
-\@onlypreamble\set@mathsymbol
-
-\def\DeclareMathDelimiter#1{%
-    \if\relax\noexpand#1%
-        \expandafter\@DeclareMathDelimiter
-    \else
-        \expandafter\@xxDeclareMathDelimiter
-    \fi
-    #1%
+\def\DeclareMathDelimiter#1#2#3#4#5#6{%
+    \texml@invalid@command\DeclareMathDelimiter
 }
 
 \@onlypreamble\DeclareMathDelimiter
 
-\def\@xxDeclareMathDelimiter#1#2#3#4{%
-    \begingroup
-        \let\mathalpha\mathord
-        \ifnum7=\mathchar@type{#2}%
-            \endgroup
-            \expandafter\@firstofone
-        \else
-            \endgroup
-            \DeclareMathSymbol#1{#2}{#3}{#4}%
-            \expandafter\@firstoftwo
-        \fi
-        {\@xDeclareMathDelimiter#1}{#2}{#3}{#4}%
-}
-
-\@onlypreamble\@xxDeclareMathDelimiter
-
-\def\@DeclareMathDelimiter#1#2#3#4#5#6{%
-    \expandafter\in@\csname sym#3\expandafter\endcsname
-        \expandafter{\group@list}%
-    \ifin@
-        \expandafter\in@ \csname sym#5\expandafter\endcsname
-                         \expandafter{\group@list}%
-        \ifin@
-            \begingroup
-                \count\z@=#4\relax
-                \count\tw@\count\z@
-                \divide\count\z@\sixt@@n
-                \count@\count\z@
-                \multiply\count@\sixt@@n
-                \advance\count\tw@-\count@
-                \edef\reserved@c{%
-                    \hexnumber@{\count\z@}\hexnumber@{\count\tw@}%
-                }%
-               %
-                \count\z@=#6\relax
-                \count\tw@\count\z@
-                \divide\count\z@\sixt@@n
-                \count@\count\z@
-                \multiply\count@\sixt@@n
-                \advance\count\tw@-\count@
-                \edef\reserved@d{\hexnumber@{\count\z@}\hexnumber@{\count\tw@}}%
-              %
-                \edef\reserved@a{%
-                    \noexpand\in@ {\expandafter\@gobble\string\delimiter}%
-                                  {\meaning#1}%
-                }%
-                \reserved@a
-                \ifin@
-                    \expandafter\set@mathdelimiter
-                        \csname sym#3\expandafter\endcsname
-                        \csname sym#5\endcsname#1#2%
-                        \reserved@c\reserved@d
-                    \@font@info{Redeclaring math delimiter \string#1}%
-                \else
-                    \expandafter\ifx \csname\expandafter\@gobble\string#1\endcsname \relax
-                        \expandafter\set@mathdelimiter
-                            \csname sym#3\expandafter\endcsname
-                            \csname sym#5\endcsname#1#2%
-                            \reserved@c\reserved@d
-                    \else
-                        \@latex@error{Command `\string#1' already defined}\@eha
-                    \fi
-                \fi
-            \endgroup
-        \else
-            \@latex@error{Symbol font `#5' is not defined}\@eha
-        \fi
-    \else
-        \@latex@error{Symbol font `#3' is not defined}\@eha
-    \fi
-}
-
-\@onlypreamble\@DeclareMathDelimiter
-
-\def\@xDeclareMathDelimiter#1#2#3#4#5{%
-    \expandafter\in@ \csname sym#2\expandafter\endcsname
-                     \expandafter{\group@list}%
-    \ifin@
-        \expandafter\in@ \csname sym#4\expandafter\endcsname
-                         \expandafter{\group@list}%
-        \ifin@
-            \begingroup
-                \count\z@=#3\relax
-                \count\tw@\count\z@
-                \divide\count\z@\sixt@@n
-                \count@\count\z@
-                \multiply\count@\sixt@@n
-                \advance\count\tw@-\count@
-                \edef\reserved@c{\hexnumber@{\count\z@}\hexnumber@{\count\tw@}}%
-              %
-                \count\z@=#5\relax
-                \count\tw@\count\z@
-                \divide\count\z@\sixt@@n
-                \count@\count\z@
-                \multiply\count@\sixt@@n
-                \advance\count\tw@-\count@
-                \edef\reserved@d{\hexnumber@{\count\z@}\hexnumber@{\count\tw@}}%
-                \expandafter\set@@mathdelimiter
-                    \csname sym#2\expandafter\endcsname
-                    \csname sym#4\endcsname#1%
-                \reserved@c\reserved@d
-            \endgroup
-        \else
-            \@latex@error{Symbol font `#4' is not defined}\@eha
-        \fi
-    \else
-        \@latex@error{Symbol font `#2' is not defined}\@eha
-    \fi
-}
-
-\@onlypreamble\@xDeclareMathDelimiter
-
-\def\set@mathdelimiter#1#2#3#4#5#6{%
-    \xdef#3{\delimiter"\mathchar@type#4\hexnumber@#1#5\hexnumber@#2#6 }%
-}
-
-\@onlypreamble\set@mathdelimiter
-
-\def\set@@mathdelimiter#1#2#3#4#5{%
-    \global\delcode`#3="\hexnumber@#1#4\hexnumber@#2#5\relax
-}
-
-\@onlypreamble\set@@mathdelimiter
-
 \def\DeclareMathRadical#1#2#3#4#5{%
-    \expandafter\ifx \csname\expandafter\@gobble\string#1\endcsname \relax
-        \let#1\radical
-    \fi
-    \edef\reserved@a{%
-        \noexpand\in@ {\expandafter\@gobble\string\radical}{\meaning#1}%
-    }%
-    \reserved@a
-    \ifin@
-        \expandafter\in@ \csname sym#2\expandafter\endcsname
-                         \expandafter{\group@list}%
-        \ifin@
-            \expandafter\in@ \csname sym#4\expandafter\endcsname
-                             \expandafter{\group@list}%
-            \ifin@
-                \begingroup
-                    \count\z@=#3\relax
-                    \count\tw@\count\z@
-                    \divide\count\z@\sixt@@n
-                    \count@\count\z@
-                    \multiply\count@\sixt@@n
-                    \advance\count\tw@-\count@
-                    \edef\reserved@c{%
-                        \hexnumber@{\count\z@}%
-                        \hexnumber@{\count\tw@}%
-                    }%
-                    \count\z@=#5\relax
-                    \count\tw@\count\z@
-                    \divide\count\z@\sixt@@n
-                    \count@\count\z@
-                    \multiply\count@\sixt@@n
-                    \advance\count\tw@-\count@
-                    \edef\reserved@d{%
-                        \hexnumber@{\count\z@}%
-                        \hexnumber@{\count\tw@}%
-                    }%
-                    \xdef#1{%
-                        \radical"\expandafter\hexnumber@\csname sym#2\endcsname
-                                 \reserved@c
-                                \expandafter\hexnumber@ \csname sym#4\endcsname
-                                \reserved@d
-                        \relax
-                    }%
-                \endgroup
-            \else
-                \@latex@error{Symbol font `#4' is not defined}\@eha
-            \fi
-        \else
-            \@latex@error{Symbol font `#2' is not defined}\@eha
-        \fi
-    \else
-        \@latex@error{Command `\string#1' already defined}\@eha
-    \fi
+    \texml@invalid@command\DeclareMathRadical
 }
 
 \@onlypreamble\DeclareMathRadical
 
 \let\mathalpha\@firstofone
 
-\def\mathchar@type#1{%
-  \ifodd 2#11 #1\else             % is this non-negative number?
-    \ifx#1\mathord 0\else
-     \ifx#1\mathop   1\else
-       \ifx#1\mathbin 2\else
-         \ifx#1\mathrel 3\else
-           \ifx#1\mathopen 4\else
-             \ifx#1\mathclose 5\else
-               \ifx#1\mathpunct 6\else
-                   7%             % anything else is variable ord
-               \fi
-             \fi
-           \fi
-         \fi
-       \fi
-     \fi
-    \fi
-  \fi
-}
-
-\@onlypreamble\mathchar@type
-
 \def\DeclareSymbolFontAlphabet#1#2{%
-    \expandafter\DeclareSymbolFontAlphabet@
-        \csname \expandafter\@gobble\string#1\space\endcsname{#2}#1%
+    \texml@invalid@command\DeclareSymbolFontAlphabet
 }
 
 \@onlypreamble\DeclareSymbolFontAlphabet
-
-\def\DeclareSymbolFontAlphabet@#1#2#3{%
-    \@tempswatrue
-    \expandafter\in@ \csname sym#2\expandafter\endcsname
-                     \expandafter{\group@list}%
-    \ifin@
-        \expandafter\in@\expandafter#1\expandafter{\alpha@list}%
-        \ifin@
-            \@font@info{Redeclaring math alphabet \string#3}%
-            \toks@{}%
-            \def\alpha@elt##1##2##3{%
-                \ifx##1#1\else\addto@hook\toks@{\alpha@elt##1##2##3}\fi
-            }%
-            \alpha@list
-            \xdef\alpha@list{\the\toks@}%
-            \def\version@elt##1{%
-                \begingroup
-                    \toks@{}%
-                    \def\getanddefine@fonts####1####2{%
-                        \addto@hook\toks@{\getanddefine@fonts####1####2}%
-                    }%
-                    \def\install@mathalphabet####1####2{%
-                        \ifx####1#1\else
-                            \addto@hook\toks@{%
-                                \install@mathalphabet####1{####2}%
-                            }%
-                        \fi
-                    }%
-                    ##1%
-                    \xdef##1{\the\toks@}%
-                \endgroup
-            }%
-            \version@list
-        \else
-            \expandafter\ifx \csname\expandafter\@gobble\string#1\space\endcsname \relax \else
-                \edef\reserved@a{%
-                    \noexpand\in@{\string\use@mathgroup}{\meaning#1}%
-                }%
-                \reserved@a
-                \ifin@
-                    \@font@info{Redeclaring math alphabet \string#3}%
-                \else
-                    \@tempswafalse
-                    \@latex@error{Command `\string#3' already defined}\@eha
-                \fi
-            \fi
-        \fi
-    \else
-        \@tempswafalse
-        \@latex@error{Unknown symbol font `#2'}\@eha
-    \fi
-    \if@tempswa
-        \def\group@elt##1##2{%
-            \expandafter\ifx\csname sym#2\endcsname##1%
-                \expandafter\reserved@a\string##2\@nil
-            \fi
-        }%
-        \def\reserved@a##1##2/##3\@nil{%
-            \def\reserved@a{##2}%
-        }%
-        \group@list
-        \toks@{\relax\ifmmode \else \non@alpherr#1\fi}%
-        \edef#1{%
-            \the\toks@
-            \noexpand\use@mathgroup
-            \expandafter\noexpand\csname M@\reserved@a\endcsname
-            \csname sym#2\endcsname
-        }%
-        \def#3{\protect#1}%
-    \fi
-}
-\@onlypreamble\DeclareSymbolFontAlphabet@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
@@ -4801,8 +3896,8 @@ Type  H <return>  for immediate help.}%
 %% Copyright (C) 1989-2001 Frank Mittelbach and Rainer Sch\"opf,
 %% all rights reserved.
 
-\DeclareMathVersion{normal}
-\DeclareMathVersion{bold}
+% \DeclareMathVersion{normal}
+% \DeclareMathVersion{bold}
 
 \DeclareRobustCommand\rmfamily
         {\not@math@alphabet\rmfamily\mathrm
@@ -4854,7 +3949,7 @@ Type  H <return>  for immediate help.}%
 \def\not@math@alphabet#1#2{%
     \relax
     \ifmmode
-        \@latex@error{Command \noexpand#1invalid in math mode}%
+        \@latex@error{Command \noexpand#1 invalid in math mode}%
         {%
          Please
          \ifx#2\relax
@@ -4946,32 +4041,32 @@ Type  H <return>  for immediate help.}%
 \DeclareFontEncoding{OMX}{}{}
 \DeclareFontEncoding{U}{}{\noaccents@}
 
-\DeclareFontSubstitution{OML}{cmm}{m}{it}
-\DeclareFontSubstitution{OMS}{cmsy}{m}{n}
-\DeclareFontSubstitution{OMX}{cmex}{m}{n}
-\DeclareFontSubstitution{U}{cmr}{m}{n}
+% \DeclareFontSubstitution{OML}{cmm}{m}{it}
+% \DeclareFontSubstitution{OMS}{cmsy}{m}{n}
+% \DeclareFontSubstitution{OMX}{cmex}{m}{n}
+% \DeclareFontSubstitution{U}{cmr}{m}{n}
 
-\DeclareSymbolFont{operators}   {OT1}{cmr} {m}{n}
-\DeclareSymbolFont{letters}     {OML}{cmm} {m}{it}
-\DeclareSymbolFont{symbols}     {OMS}{cmsy}{m}{n}
-\DeclareSymbolFont{largesymbols}{OMX}{cmex}{m}{n}
+% \DeclareSymbolFont{operators}   {OT1}{cmr} {m}{n}
+% \DeclareSymbolFont{letters}     {OML}{cmm} {m}{it}
+% \DeclareSymbolFont{symbols}     {OMS}{cmsy}{m}{n}
+% \DeclareSymbolFont{largesymbols}{OMX}{cmex}{m}{n}
 
-\SetSymbolFont{operators}{bold}{OT1}{cmr} {bx}{n}
-\SetSymbolFont{letters}  {bold}{OML}{cmm} {b}{it}
-\SetSymbolFont{symbols}  {bold}{OMS}{cmsy}{b}{n}
+% \SetSymbolFont{operators}{bold}{OT1}{cmr} {bx}{n}
+% \SetSymbolFont{letters}  {bold}{OML}{cmm} {b}{it}
+% \SetSymbolFont{symbols}  {bold}{OMS}{cmsy}{b}{n}
 
-\DeclareMathSizes{5}{5}{5}{5}
-\DeclareMathSizes{6}{6}{5}{5}
-\DeclareMathSizes{7}{7}{5}{5}
-\DeclareMathSizes{8}{8}{6}{5}
-\DeclareMathSizes{9}{9}{6}{5}
-\DeclareMathSizes{\@xpt}{\@xpt}{7}{5}
-\DeclareMathSizes{\@xipt}{\@xipt}{8}{6}
-\DeclareMathSizes{\@xiipt}{\@xiipt}{8}{6}
-\DeclareMathSizes{\@xivpt}{\@xivpt}{\@xpt}{7}
-\DeclareMathSizes{\@xviipt}{\@xviipt}{\@xiipt}{\@xpt}
-\DeclareMathSizes{\@xxpt}{\@xxpt}{\@xivpt}{\@xiipt}
-\DeclareMathSizes{\@xxvpt}{\@xxvpt}{\@xxpt}{\@xviipt}
+% \DeclareMathSizes{5}{5}{5}{5}
+% \DeclareMathSizes{6}{6}{5}{5}
+% \DeclareMathSizes{7}{7}{5}{5}
+% \DeclareMathSizes{8}{8}{6}{5}
+% \DeclareMathSizes{9}{9}{6}{5}
+% \DeclareMathSizes{\@xpt}{\@xpt}{7}{5}
+% \DeclareMathSizes{\@xipt}{\@xipt}{8}{6}
+% \DeclareMathSizes{\@xiipt}{\@xiipt}{8}{6}
+% \DeclareMathSizes{\@xivpt}{\@xivpt}{\@xpt}{7}
+% \DeclareMathSizes{\@xviipt}{\@xviipt}{\@xiipt}{\@xpt}
+% \DeclareMathSizes{\@xxpt}{\@xxpt}{\@xivpt}{\@xiipt}
+% \DeclareMathSizes{\@xxvpt}{\@xxvpt}{\@xxpt}{\@xviipt}
 
 \mathcode`\ ="8000 % \space
 \mathcode`\'="8000 % ^\prime
@@ -5066,7 +4161,7 @@ Type  H <return>  for immediate help.}%
 \DeclareMathPassThrough{bigotimes}
 \DeclareMathPassThrough{bigoplus}
 \DeclareMathPassThrough{bigodot}
-\DeclareMathSymbol{\ointop}{\mathop}{largesymbols}{"48}
+% \DeclareMathSymbol{\ointop}{\mathop}{largesymbols}{"48}
 
 \DeclareMathPassThrough{oint}
 
@@ -5218,9 +4313,9 @@ Type  H <return>  for immediate help.}%
 \DeclareMathPassThrough{widehat}
 \DeclareMathPassThrough{mathring}
 
-\DeclareMathSymbol{\mathparagraph}{\mathord}{symbols}{"7B}
-\DeclareMathSymbol{\mathsection}{\mathord}{symbols}{"78}
-\DeclareMathSymbol{\mathdollar}{\mathord}{operators}{"24}
+% \DeclareMathSymbol{\mathparagraph}{\mathord}{symbols}{"7B}
+% \DeclareMathSymbol{\mathsection}{\mathord}{symbols}{"78}
+% \DeclareMathSymbol{\mathdollar}{\mathord}{operators}{"24}
 
 \def\mathsterling{\mathit{\mathchar"7024}}
 \def\mathunderscore{\kern.06em\vbox{\hrule\@width.3em}}
@@ -9119,19 +8214,19 @@ Type  H <return>  for immediate help.}%
 %     }%
 %     \@frameb@x\relax
 % }
-% 
+%
 % \DeclareRobustCommand\framebox{%
 %     \@ifnextchar(%)
 %         \@framepicbox
 %         {\@ifnextchar[\@framebox\fbox}%
 % }%
-% 
+%
 % \def\@framebox[#1]{%
 %     \@ifnextchar[%]
 %         {\@iframebox[#1]}%
 %         {\@iframebox[#1][c]}%
 % }
-% 
+%
 % \long\def\@iframebox[#1][#2]#3{%
 %     \leavevmode
 %     \@begin@tempboxa\hbox{#3}%
@@ -9142,7 +8237,7 @@ Type  H <return>  for immediate help.}%
 %         \@frameb@x{\kern-\fboxrule}%
 %     \@end@tempboxa
 % }
-% 
+%
 % \def\@frameb@x#1{%
 %     \@tempdima\fboxrule
 %     \advance\@tempdima\fboxsep
@@ -9167,11 +8262,11 @@ Type  H <return>  for immediate help.}%
 %         }%
 %     }%
 % }
-% 
+%
 % \def\@framepicbox(#1,#2){%
 %     \@ifnextchar[{\@iframepicbox(#1,#2)}{\@iframepicbox(#1,#2)[]}%
 % }
-% 
+%
 % \long\def\@iframepicbox(#1,#2)[#3]#4{%
 %     \frame{\@imakepicbox(#1,#2)[#3]{#4}}%
 % }
@@ -11692,7 +10787,7 @@ Type  H <return>  for immediate help.}%
 %%*         \chardef\xe@alloc@intercharclass\m@ne\e@alloc@intercharclass@top
 %%*     }
 %%* \fi
-%%* 
+%%*
 %%* \ifx\XeTeXcharclass\@undefined\else
 %%*     \countdef\xe@alloc@intercharclass=257
 %%*     \xe@alloc@intercharclass=\z@
@@ -11752,25 +10847,25 @@ Type  H <return>  for immediate help.}%
 %%*         \reserved@a{"80}{"9C}
 %%*         \reserved@a{"C0}{"DF}
 %%*     \fi
-%%* 
+%%*
 %%*     \uccode`\^^Y=`\I     % dotless i
 %%*     \lccode`\^^Y=`\^^Y   % dotless i
 %%*     \uccode`\^^Z=`\J     % dotless j, ae in OT1
 %%*     \lccode`\^^Z=`\^^Z   % dotless j, ae in OT1
-%%* 
+%%*
 %%*     \ifnum\inputlineno=\m@ne\else
 %%*         \lccode`\^^9d=`\i    % dotted I
 %%*         \uccode`\^^9d=`\^^9d % dotted I
 %%*         \lccode`\^^9e=`\^^9e % d-bar
 %%*         \uccode`\^^9e=`\^^d0 % d-bar
 %%*     \fi
-%%* 
+%%*
 %%*     \lccode`\^^[=`\^^[   % oe in OT1
 %%*     \lccode`\- =`\-   % default hyphen char
 %%*     \lccode 127=127   % alternate hyphen char
 %%*     \lccode 23 =23    % textcompwordmark in T1
 %%* \fi
-%%* 
+%%*
 %%* \ifx\XeTeXuseglyphmetrics\@undefined
 %%* \else
 %%*     \XeTeXuseglyphmetrics=1 %
@@ -11797,7 +10892,7 @@ Type  H <return>  for immediate help.}%
 %%*     \@tempcntb#2\relax
 %%*     \reserved@b
 %%* }
-%%* 
+%%*
 %%* \def\reserved@b{%
 %%*     \ifnum\@tempcnta>\@tempcntb\else
 %%*         \reserved@c\@tempcnta
@@ -11805,7 +10900,7 @@ Type  H <return>  for immediate help.}%
 %%*         \expandafter\reserved@b
 %%*     \fi
 %%* }
-%%* 
+%%*
 %%* \catcode`\ =10
 %%* \catcode`\#=6
 %%* \catcode`\$=3
@@ -11864,19 +10959,19 @@ Type  H <return>  for immediate help.}%
 %%*         \reserved@a{"80}{"9C}
 %%*         \reserved@a{"C0}{"DF}
 %%*     \fi
-%%* 
+%%*
 %%*     \uccode`\^^Y=`\I     % dotless i
 %%*     \lccode`\^^Y=`\^^Y   % dotless i
 %%*     \uccode`\^^Z=`\J     % dotless j, ae in OT1
 %%*     \lccode`\^^Z=`\^^Z   % dotless j, ae in OT1
-%%* 
+%%*
 %%*     \ifnum\inputlineno=\m@ne\else
 %%*         \lccode`\^^9d=`\i    % dotted I
 %%*         \uccode`\^^9d=`\^^9d % dotted I
 %%*         \lccode`\^^9e=`\^^9e % d-bar
 %%*         \uccode`\^^9e=`\^^d0 % d-bar
 %%*     \fi
-%%* 
+%%*
 %%*     \lccode`\^^[=`\^^[   % oe in OT1
 %%* \fi % End of reset block for 8-bit engines
 
