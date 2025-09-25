@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Class::mcom_l;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Class::mcom_l;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -59,6 +60,7 @@ __DATA__
 \gdef\AMS@publkey{mcom}
 
 \def\AMS@publname{Mathematics of Computation}
+\def\AMS@publname@short{Math. Comp.}
 
 \def\AMS@pissn{0025-5718}
 \def\AMS@eissn{1088-6842}

@@ -56,6 +56,7 @@ __DATA__
 \seriesinfo{memo}{}{}
 
 \def\AMS@publname{Memoirs of the American Mathematical Society}
+\def\AMS@publname@short{Memoirs of the AMS}
 
 \def\AMS@pissn{0065-9266}
 \def\AMS@eissn{1947-6221}

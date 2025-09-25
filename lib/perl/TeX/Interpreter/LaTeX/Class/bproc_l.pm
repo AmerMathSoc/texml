@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Class::bproc_l;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Class::bproc_l;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -59,6 +60,7 @@ __DATA__
 \gdef\AMS@publkey{bproc}
 
 \def\AMS@publname{Proceedings of the American Mathematical Society, Series B}
+\def\AMS@publname@short{Proc. Amer. Math. Soc. Ser. B}
 
 \def\AMS@eissn{2330-1511}
 

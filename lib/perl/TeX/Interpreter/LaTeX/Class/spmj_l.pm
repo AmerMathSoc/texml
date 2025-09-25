@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Class::spmj_l;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Class::spmj_l;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -62,7 +63,8 @@ __DATA__
 
 %% TBD: Russian title (Algebra i analiz)
 
-\def\AMS@publname{St. Petersburg Math. J.}
+\def\AMS@publname{St. Petersburg Mathematical Journal}
+\def\AMS@publname@short{St. Petersburg Math. J.}
 
 \def\AMS@eissn{1547-7371}
 \def\AMS@pissn{1061-0022}

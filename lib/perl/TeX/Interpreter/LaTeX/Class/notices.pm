@@ -53,9 +53,13 @@ __DATA__
 
 \LoadClass{amsart}
 
+\let\JATS@subject@group\@empty
+\let\JATS@subject@group@type\@empty
+
 \gdef\AMS@publkey{noti}
 
 \def\AMS@publname{Notices of the American Mathematical Society}
+\def\AMS@publname@short{Notices Amer. Math. Soc.}
 
 \def\AMS@pissn{0002-9920}
 \def\AMS@eissn{1088-9477}
