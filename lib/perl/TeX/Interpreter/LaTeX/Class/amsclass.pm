@@ -505,9 +505,11 @@ __DATA__
 
 % publname is the full title of the journal or book series,
 % e.g. "Journal of the American Mathematical Society" or "Graduate
-% Studies in Mathematics".
+% Studies in Mathematics".  publname@short is the official
+% abbreviation.
 
 \let\AMS@publname\@empty
+\let\AMS@publname@short\@empty
 
 \let\AMS@series@editor\@empty
 \let\AMS@series@editor@title\@empty
@@ -532,14 +534,48 @@ __DATA__
 \let\AMS@pissn\@empty
 \let\AMS@eissn\@empty
 
-% \publinfo is semi-deprecated; Use \issueinfo for journal articles
-% and \seriesinfo for book volumes.
+% Conference papers use \publinfo   and \pagespan.
+% Journal articles  use \issueinfo and \pagespan.
+% Monographs        use \seriesinfo.
+
+% This means the the publ_key and manid for journal articles is
+% implicit -- they can be derived either from the filename or the DOI
+% (the publ_key can also be inferred from the document class.)
+
+%% \seriesinfo{publ_key}{volume_id}{volume_no} is defined in TeXMLbook
 
 \def\publinfo#1#2#3{%
     \gdef\AMS@publkey{#1}%
     \gdef\AMS@volumeid{#2}%
     \gdef\AMS@manid{#3}%
 }
+
+% Issue number, year, month and day of a journal issue or Memoirs.
+
+\def\issueinfo#1#2#3#4{%
+    \gdef\AMS@volumeno{#1}%
+    \xdef\AMS@issue{\number0#2}%
+    \gdef\AMS@issue@month{}%
+    \@ifnotempty{#3}{\xdef\AMS@issue@month{\TEXML@month@int{#3}}}%
+    \gdef\AMS@issue@year{#4}%
+}
+
+\let\AMS@issue\@empty
+\let\AMS@issue@year\@empty
+\let\AMS@issue@month\@empty
+\def\AMS@issue@day{1}
+
+\def\pagespan#1#2{%
+    \gdef\AMS@start@page{#1}%
+    \gdef\AMS@end@page{#2}%
+    \setcounter{page}{#1}%
+    \ifnum\c@page<\z@
+        \pagenumbering{roman}%
+        \setcounter{page}{-#1}%
+    \fi
+}
+
+\pagespan{0}{0}
 
 \def\TEXML@month@int#1{%
     \@ifundefined{TeXML@month@#1}{}{\@nameuse{TeXML@month@#1}}%
@@ -558,21 +594,6 @@ __DATA__
 \@namedef{TeXML@month@November}{11}
 \@namedef{TeXML@month@December}{12}
 \@namedef{TeXML@month@June/July}{13}% Notices
-
-% Issue number, year, month and day of a journal issue or Memoirs.
-
-\def\issueinfo#1#2#3#4{%
-    \gdef\AMS@volumeno{#1}%
-    \xdef\AMS@issue{\number0#2}%
-    \gdef\AMS@issue@month{}%
-    \@ifnotempty{#3}{\xdef\AMS@issue@month{\TEXML@month@int{#3}}}%
-    \gdef\AMS@issue@year{#4}%
-}
-
-\let\AMS@issue\@empty
-\let\AMS@issue@year\@empty
-\let\AMS@issue@month\@empty
-\def\AMS@issue@day{1}
 
 \let\AMS@datereceived\@empty
 
@@ -652,6 +673,40 @@ __DATA__
 
 \let\AMS@copyrightyear\@empty
 \let\AMS@copyrightholder\@empty
+
+\newcommand{\CreativeCommonsBY}[1][3.0]{%
+    by the \ams@authorstringforcopyright\ under
+    \href{https://creativecommons.org/licenses/by/#1/}
+         {Creative Commons Attribution #1 License}
+    (CC BY #1)%
+}
+
+\newcommand{\CreativeCommonsBYNC}[1][3.0]{%
+    by the \ams@authorstringforcopyright\ under
+    \href{https://creativecommons.org/licenses/by-nc/#1/}
+         {Creative Commons Attribution-NonCommercial #1 License}
+    (CC BY NC #1)%
+}
+
+\newcommand{\CreativeCommonsBYNCND}[1][4.0]{%
+    by the \ams@authorstringforcopyright\ under
+    \href{https://creativecommons.org/licenses/by-nc-nd/#1/}
+         {Creative Commons Attribution-NonCommercial-NoDerivatives #1 License}
+    (CC BY NC ND #1)%
+}
+
+\newcommand{\CreativeCommonsBYND}[1][4.0]{%
+    by the \ams@authorstringforcopyright\ under
+    \href{https://creativecommons.org/licenses/by-nd/#1/}
+         {Creative Commons Attribution-NoDerivatives #1 License}
+    (CC BY ND #1)%
+}
+
+\def\ams@authorstringforcopyright{%
+    author\ifnum\AMS@num@authors>\@ne s\fi
+}
+
+\let\CreativeCommonsND\CreativeCommonsBYND
 
 \let\subjclass\relax
 
@@ -747,7 +802,11 @@ __DATA__
 
 \let\AMS@authors\@empty
 
+\newcount\AMS@num@authors
+\AMS@num@authors\z@
+
 \newcommand{\author}[2][]{%
+    \advance\AMS@num@authors\@ne
     \ifx\@empty\AMS@authors
         \gdef\AMS@authors{\start@author\author@name{#2}}%
     \else
@@ -898,15 +957,16 @@ __DATA__
     \@tempa
 }
 
-\def\output@history@date#1#2{%
+\def\output@history@date#1#2#3{%
     \begingroup
         \edef\@tempa{#2}%
         \ifx\@tempa\@empty\else
         \clear@texml@date
         \AMS@normalize@date#2%
         % For now, just assume the date is valid.
-        \expandafter\texml@parse@date#2 ., . .\@nil        
+        \expandafter\texml@parse@date#2 ., . .\@nil
         \startXMLelement{date}\par
+            #3%
             \thisxmlpartag{day}\texml@day\par
             \thisxmlpartag{month}\texml@month\par
             \thisxmlpartag{year}\texml@year\par
@@ -919,44 +979,71 @@ __DATA__
     \endgroup
 }
 
+\def\output@permissions@meta{%
+    \ifx\AMS@copyrightyear\@empty\else
+        \startXMLelement{permissions}%
+            \thisxmlpartag{copyright-statement}%
+            Copyright \AMS@copyrightyear\ \AMS@copyrightholder\par
+            \thisxmlpartag{copyright-year}%
+            \AMS@copyrightyear\par
+            \thisxmlpartag{copyright-holder}%
+            \AMS@copyrightholder\par
+        \endXMLelement{permissions}\par
+    \fi
+}
+
+\def\output@author@keywords{%
+    \ifx\AMS@keywords\@empty\else
+        \startXMLelement{kwd-group}%
+            \setXMLattribute{kwd-group-type}{author}%
+            \@for\@kwd:=\AMS@keywords\do{%
+                \thisxmlpartag{kwd}\@kwd\par
+            }%
+        \endXMLelement{kwd-group}\par
+    \fi
+}
+
+\def\output@issue@date{%
+    \ifx\AMS@issue@year\@empty\else
+        \startXMLelement{date}%
+            \setXMLattribute{date-type}{issue-date}%
+            \ifx\AMS@issue@month\@empty\else
+                \ifx\AMS@issue@day\@empty\else
+                    \thisxmlpartag{day}%
+                    \AMS@issue@day\par
+                \fi
+                \thisxmlpartag{month}%
+                \AMS@issue@month\par
+            \fi
+            \thisxmlpartag{year}%
+            \AMS@issue@year\par
+            \AMS@pad@date\AMS@issue@day
+            \AMS@pad@date\AMS@issue@month
+            \setXMLattribute{iso-8601-date}{%
+                \AMS@issue@year
+                \ifx\AMS@issue@month\empty\else
+                    -\AMS@issue@month
+                    \ifx\AMS@issue@day\@empty\else
+                        -\AMS@issue@day
+                    \fi
+                \fi
+             }%
+        \endXMLelement{date}%
+    \fi
+}
+
 \def\output@history@meta{%
     \iftexml@add@history@
         \startXMLelement{history}%
-            \ifx\AMS@issue@year\@empty\else
-                \startXMLelement{date}%
-                    \setXMLattribute{date-type}{issue-date}%
-                    \ifx\AMS@issue@month\@empty\else
-                        \ifx\AMS@issue@day\@empty\else
-                            \thisxmlpartag{day}%
-                            \AMS@issue@day\par
-                        \fi
-                        \thisxmlpartag{month}%
-                        \AMS@issue@month\par
-                    \fi
-                    \thisxmlpartag{year}%
-                    \AMS@issue@year\par
-                    \AMS@pad@date\AMS@issue@day
-                    \AMS@pad@date\AMS@issue@month
-                    \setXMLattribute{iso-8601-date}{%
-                        \AMS@issue@year
-                        \ifx\AMS@issue@month\empty\else
-                            -\AMS@issue@month
-                            \ifx\AMS@issue@date\else
-                                -\AMS@issue@day
-                            \fi
-                        \fi
-                     }%
-                \endXMLelement{date}%
-            \fi
-            \output@history@date{received}\AMS@datereceived
+            \output@history@date{received}\AMS@datereceived{}%
             \@for\@date:=\@datesrevised\do{%
-                \output@history@date{rev-recd}\@date
+                \output@history@date{rev-recd}\@date{}%
             }%
-            \output@history@date{accepted}\AMS@dateaccepted
-            \output@history@date{accepted}\AMS@dateaccepted
-            \output@history@date{preprint}\AMS@datepreposted
-            \output@history@date{published}\AMS@dateposted
-            %% TBD: Add received, posted, etc.
+            \output@history@date{accepted}\AMS@dateaccepted{}%
+            \output@history@date{preprint}\AMS@datepreposted{%
+                \setXMLattribute{publication-format}{electronic}%
+            }%
+            \output@issue@date
             \TeXMLtimestamp
         \endXMLelement{history}%
     \fi

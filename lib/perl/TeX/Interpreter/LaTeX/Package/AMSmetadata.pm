@@ -168,6 +168,9 @@ sub find_gentag_file {
 ##                                                                  ##
 ######################################################################
 
+# TODO: Would there be any benefit to running do_add_ams_metadata() as
+# an output hook?
+
 sub install {
     my $class = shift;
 
@@ -190,6 +193,14 @@ sub install {
 
         PTG::URL::Utils->import();
 
+        require PRD::Document::Date;
+
+        PRD::Document::Date->import(":factories");
+
+        require PRD::Document::PageRange;
+
+        PRD::Document::PageRange->import(":factories");
+
         $tex->define_csname(AddAMSmetadata => \&do_add_ams_metadata);
     } else {
         $tex->print_nl("Can't find private AMS modules: Disabling extended metadata support");
@@ -208,7 +219,7 @@ sub do_add_ams_metadata {
     my $tex   = shift;
     my $token = shift;
 
-    my $dom = $tex->get_output_handle()->get_dom();
+    my $dom = $tex->current_dom();
 
     $tex->print_ln();
     $tex->print_nl("%% Loading AMS metadata");
@@ -582,6 +593,7 @@ my sub add_history {
 
     my $parent = shift;
     my $gentag = shift;
+    my $old_front = shift;
 
     my $history = append_xml_element($parent, "history");
 
@@ -608,6 +620,11 @@ my sub add_history {
 
                 append_date($tex, $history, $issue_date, "issue-date");
             }
+        }
+    } else {
+        if (defined $old_front) {
+            copy_xml_node('article-meta/history/date[@date-type="issue-date"]',
+                          $old_front, $history);
         }
     }
 
@@ -1229,7 +1246,9 @@ sub add_article_citation {
             my $date = sprintf "%04d", $year;
 
             if (nonempty($month)) {
-                $date .= sprintf "-%02d", $MONTH_TO_INT{$month};
+                $month = $MONTH_TO_INT{$month} unless $month =~ m{^\d+$};
+
+                $date .= sprintf "-%02d", $month;
             }
 
             $record .= sprintf qq{  date={$date},\n};
@@ -1317,12 +1336,51 @@ sub append_article_meta {
         append_date($tex, $meta, $posted, undef, "electronic", "pub-date");
     }
 
+    ## If the paper has been moved into an issue (i.e., init_issue has
+    ## been run), but has not yet been reposted as part of that issue
+    ## (i.e., publish has not yet been run), then the issue metadata
+    ## will be in the LaTeX file, but not in the gentag file.  In that
+    ## case, we want to copy the issue metadata from the original
+    ## article-meta into the gentag.
+
+    if (empty($gentag->get_volume())) {
+        if (my $volume = $old_front->findvalue("article-meta/volume")) {
+            $gentag->set_volume($volume);
+        }
+
+        if (my $number = $old_front->findvalue("article-meta/issue")) {
+            $gentag->set_number($number);
+        }
+
+        if (my $pages = $old_front->findvalue("article-meta/page-range")) {
+            my ($fpage, $lpage) = split qr{-+}, $pages;
+
+            if (nonempty($fpage) && $fpage > 0) {
+                my $range = make_page_range($fpage, $lpage);
+
+                $gentag->add_page_range($range);
+            }
+        }
+
+        if (my $issue_date = find_unique_node($old_front, 'article-meta/history/date[@date-type="issue-date"]', 1)) {
+            if (my $year = $issue_date->findvalue('year')) {
+                my $mon  = $issue_date->findvalue('month');
+                my $day  = $issue_date->findvalue('day');
+
+                my $date = make_date($year, $mon, $day);
+
+                $gentag->set_issuedate($date);
+                $gentag->set_pubdate($date);
+            }
+        }
+    }
+
     if (nonempty(my $volume = $gentag->get_volume())) {
         append_xml_element($meta, volume => $volume);
+    }
 
-        if (nonempty(my $number = $gentag->get_number())) {
-            append_xml_element($meta, issue => $number);
-        }
+    if (nonempty(my $number = $gentag->get_number())) {
+        append_xml_element($meta, issue => $number);
     }
 
     if (my @ranges = $gentag->get_page_ranges()) {
@@ -1337,7 +1395,7 @@ sub append_article_meta {
         }
     }
 
-    add_history($tex, $meta, $gentag);
+    add_history($tex, $meta, $gentag, $old_front);
 
     add_permissions($tex, $meta, $gentag);
 

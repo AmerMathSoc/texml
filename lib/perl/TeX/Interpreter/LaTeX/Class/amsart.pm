@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Class::amsart;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Interpreter::LaTeX::Class::amsart;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 sub install {
@@ -87,18 +88,6 @@ __DATA__
 %%                                                                  %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\def\pagespan#1#2{%
-    \gdef\AMS@start@page{#1}%
-    \gdef\AMS@end@page{#2}%
-    \setcounter{page}{#1}%
-    \ifnum\c@page<\z@
-        \pagenumbering{roman}%
-        \setcounter{page}{-#1}%
-    \fi
-}
-
-\pagespan{0}{0}
-
 \let\AMS@PII\@empty
 
 \def\PII{\gdef\AMS@PII}
@@ -114,7 +103,9 @@ __DATA__
 
 % custom metadata for Notices
 
-\let\@noti@subject@group\@empty
+\def\JATS@subject@group{Research article}
+\def\JATS@subject@group@type{display-channel}
+
 \let\@noti@category\@empty
 \let\@titlepic\@empty
 \let\@disclaimertext\@empty
@@ -162,6 +153,11 @@ __DATA__
                 \startXMLelement{journal-title}
                     \AMS@publname
                 \endXMLelement{journal-title}\par
+                \ifx\AMS@publname@short\@empty\else
+                    \startXMLelement{abbrev-journal-title}
+                        \AMS@publname@short
+                    \endXMLelement{abbrev-journal-title}\par
+                \fi
             \endXMLelement{journal-title-group}
             \ifx\AMS@pissn\@empty\else
                 \startXMLelement{issn}
@@ -176,9 +172,38 @@ __DATA__
                 \endXMLelement{issn}\par
             \fi
             \output@article@publisher
+            \ifx\AMS@series@url\@empty\else
+                \startXMLelement{self-uri}%
+                    \setXMLattribute{xlink:href}{\AMS@series@url}%
+                    \AMS@series@url
+                \endXMLelement{self-uri}%
+            \fi
         \fi
         \endXMLelement{journal-meta}\par
     \fi
+}
+
+%% Note that this duplicates much of \output@history@date
+
+\def\output@jats@pub@date{%
+    \begingroup
+        \ifx\AMS@dateposted\@empty\else
+            \clear@texml@date
+            \AMS@normalize@date\AMS@dateposted
+            \edef\AMS@dateposted{\AMS@dateposted\space}%
+            % For now, just assume the date is valid.
+            \expandafter\texml@parse@date\AMS@dateposted ., . .\@nil
+            \startXMLelement{pub-date}\par
+                \thisxmlpartag{day}\texml@day\par
+                \thisxmlpartag{month}\texml@month\par
+                \thisxmlpartag{year}\texml@year\par
+                \setXMLattribute{publication-format}{electronic}%
+                \AMS@pad@date\texml@day
+                \AMS@pad@date\texml@month
+                \setXMLattribute{iso-8601-date}{\texml@year-\texml@month-\texml@day}%
+            \endXMLelement{pub-date}\par
+       \fi
+    \endgroup
 }
 
 \def\output@article@publisher{%
@@ -211,13 +236,14 @@ __DATA__
                 \AMS@manid
             \endXMLelement{article-id}\par
         \fi
-        \ifx\@noti@subject@group\@empty\else
+        \ifx\JATS@subject@group\@empty\else
             \startXMLelement{article-categories}
                 \startXMLelement{subj-group}
+                    \setXMLattribute{subj-group-type}{\JATS@subject@group@type}%
                     \startXMLelement{subject}
-                        \@noti@subject@group
-                    \endXMLelement{subject}
-                \endXMLelement{subj-group}
+                        \JATS@subject@group
+                    \endXMLelement{subject}\par
+                \endXMLelement{subj-group}\par
             \endXMLelement{article-categories}\par
         \fi
         \ifx\AMS@title\@empty\else
@@ -233,7 +259,7 @@ __DATA__
             \endXMLelement{title-group}\par
         \fi
         \output@contrib@groups
-        \output@history@meta
+        \output@jats@pub@date
         \ifx\AMS@volumeno\@empty\else
             \thisxmlpartag{volume}
             \AMS@volumeno\par
@@ -242,7 +268,24 @@ __DATA__
             \thisxmlpartag{issue}
             \AMS@issue\par
         \fi
+        \ifx\AMS@start@page\@empty\else
+            \ifnum\AMS@start@page > 0
+                \thisxmlpartag{fpage}
+                \AMS@start@page\par
+                \ifx\AMS@end@page\@empty\else
+                    \thisxmlpartag{lpage}
+                    \AMS@end@page\par
+                \fi
+                \thisxmlpartag{page-range}
+                \AMS@start@page
+                \ifx\AMS@end@page\@empty\else-\AMS@end@page\fi
+                \par
+            \fi
+        \fi
+        \output@history@meta
+        \output@permissions@meta
         \output@abstract@meta
+        \output@author@keywords
         \output@subjclass@meta
         \output@funding@group
         \output@custom@meta@group
