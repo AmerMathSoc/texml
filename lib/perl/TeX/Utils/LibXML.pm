@@ -55,10 +55,14 @@ sub find_unique_node {
     my $node  = shift;
     my $xpath = shift;
 
+    my $zero_ok = shift;
+
     my @nodes = $node->findnodes($xpath);
 
     if (@nodes == 0) {
-        TeX::RunError->throw("No '$xpath' node found");
+        if (! $zero_ok) {
+            TeX::RunError->throw("No '$xpath' node found");
+        }
     } elsif (@nodes > 1) {
         TeX::RunError->throw("Multiple '$xpath' nodes found");
     }
