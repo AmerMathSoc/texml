@@ -101,17 +101,17 @@ __DATA__
 
 \def\issuenote#1{}
 
-% custom metadata for Notices
+\let\JATS@subject@group\@empty
+\let\JATS@subject@group@type\@empty
 
-\def\JATS@subject@group{Research article}
-\def\JATS@subject@group@type{display-channel}
+\let\tableofcontents\@empty
+
+% custom metadata for Notices
 
 \let\@noti@category\@empty
 \let\@titlepic\@empty
 \let\@disclaimertext\@empty
 \let\@titlegraphicnote\@empty
-
-\let\tableofcontents\@empty
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%

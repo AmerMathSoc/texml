@@ -1152,9 +1152,15 @@ sub append_article_categories {
 
     my $subj_group = append_xml_element($cat, "subj-group");
 
-    $subj_group->setAttribute("subj-group-type", "display-channel");
+    my $subject    = $tex->expansion_of('JATS@subject@group');
+    my $group_type = $tex->expansion_of('JATS@subject@group@type');
 
-    append_xml_element($subj_group, "subject", "Research article");
+    $subject    //= "Research article";
+    $group_type //= "display-channel";
+
+    $subj_group->setAttribute("subj-group-type", $group_type);
+
+    append_xml_element($subj_group, "subject", $subject);
 
     return;
 }

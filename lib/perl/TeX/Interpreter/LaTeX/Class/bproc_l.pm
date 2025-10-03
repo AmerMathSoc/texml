@@ -66,6 +66,9 @@ __DATA__
 
 \def\AMS@series@url{https://www.ams.org/aboutbproc/}
 
+\def\JATS@subject@group{Research article}
+\def\JATS@subject@group@type{display-channel}
+
 \endinput
 
 __END__

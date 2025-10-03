@@ -60,6 +60,9 @@ __DATA__
     #2\unskip\@addpunct.%
 }
 
+\def\JATS@subject@group{Research article}
+\def\JATS@subject@group@type{display-channel}
+
 \endinput
 
 __END__
