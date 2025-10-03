@@ -113,8 +113,6 @@ __DATA__
 
 \let\AMS@thanks\@empty
 
-\let\AMS@series@url\@empty
-
 \renewcommand{\thanks}[1]{%
     \g@addto@macro\AMS@thanks{#1\par}%
 }

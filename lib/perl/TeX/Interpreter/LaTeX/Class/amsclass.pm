@@ -514,6 +514,8 @@ __DATA__
 \let\AMS@series@editor\@empty
 \let\AMS@series@editor@title\@empty
 
+\let\AMS@series@url\@empty
+
 % volumeno is the journal or book volume number
 
 \let\AMS@volumeno\@empty
@@ -534,7 +536,7 @@ __DATA__
 \let\AMS@pissn\@empty
 \let\AMS@eissn\@empty
 
-% Conference papers use \publinfo   and \pagespan.
+% Conference papers use \publinfo  and \pagespan.
 % Journal articles  use \issueinfo and \pagespan.
 % Monographs        use \seriesinfo.
 
