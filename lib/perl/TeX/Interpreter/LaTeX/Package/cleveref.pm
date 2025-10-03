@@ -91,8 +91,6 @@ sub do_resolve_crefs {
             $tex_cmd .= qq{{$ref_key}};
         }
 
-$tex->set_tracing_macros(1);
-
         my $new_node = $tex->convert_fragment($tex_cmd);
 
         $cref->replaceNode($new_node);
@@ -131,10 +129,14 @@ __DATA__
 \def\refstepcounter@cref[#1]#2{%
     \cref@old@refstepcounter{#2}%
     \cref@constructprefix{#2}{\cref@result}%
-    \@ifundefined{cref@#1@alias}{%
-        \def\@tempa{#1}%
-    }{%
-        \def\@tempa{\csname cref@#1@alias\endcsname}%
+    \def\@tempa{#1}%
+    \ifinXMLelement{\XML@appendix@group@element}%
+        \ifnum\strcmp{#1}{chapter}=0
+            \def\@tempa{appendix}%
+        \fi
+    \fi
+    \@ifundefined{cref@\@tempa @alias}{}{%
+        \edef\@tempa{\expandafter\noexpand\csname cref@\@tempa @alias\endcsname}%
     }%
     \protected@edef\cref@currentlabel{%
         [\@tempa][\arabic{#2}][\cref@result]%
