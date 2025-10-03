@@ -319,14 +319,16 @@ __DATA__
 
 \newif\ifappendix
 
+\def\XML@appendix@group@element{book-app-group}
+
 \def\appendix{%
     \ifappendix\else
         \par
         \backmatter
         \appendixtrue
-        \startXMLelement{book-app-group}%
+        \startXMLelement{\XML@appendix@group@element}%
         \addXMLid
-        \@push@sectionstack{-1}{book-app-group}%
+        \@push@sectionstack{-1}{\XML@appendix@group@element}%
         \c@chapter\z@
         \c@section\z@
         \c@subsection\z@

@@ -1322,12 +1322,14 @@ __DATA__
 
 \def\appendixname{Appendix}
 
+\def\XML@appendix@group@element{app-group}
+
 \def\appendix{%
     \par
     \backmatter
-    \startXMLelement{app-group}%
+    \startXMLelement{\XML@appendix@group@element}%
     \addXMLid
-    \@push@sectionstack{0}{app-group}%
+    \@push@sectionstack{0}{\XML@appendix@group@element}%
     \c@section\z@
     \c@subsection\z@
     \let\sectionname\appendixname
