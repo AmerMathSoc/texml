@@ -1419,7 +1419,13 @@ sub append_article_meta {
 
     add_msc_categories($tex, $meta, $gentag);
 
-    add_funding_info($tex, $meta, $gentag);
+    if (my $funding = find_unique_node($old_front, q{article-meta/funding-group}, 1)) {
+        $meta->appendChild($funding);
+    } else {
+        # This probably shouldn't happen, but it shouldn't hurt to keep it.
+
+        add_funding_info($tex, $meta, $gentag);
+    }
 
     add_custom_meta($tex, $meta, $gentag);
 
