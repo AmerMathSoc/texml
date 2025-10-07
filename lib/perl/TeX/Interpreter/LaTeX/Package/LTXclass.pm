@@ -53,28 +53,23 @@ __DATA__
 
 \let\insertAMSDRMstatement\@empty
 
-\def\author#1{\gdef\AMS@authors{#1}}
+\let\ams@class@author\author
 
-\def\and@author@separator{%
-                    \par
-                \endXMLelement{contrib}%
-                \startXMLelement{contrib}%
-                    \setXMLattribute{contrib-type}{author}%
+\def\author#1{%
+    \texml@split@authors#1\and\@nil
 }
 
-\def\output@contrib@groups{%
-    \ifx\AMS@authors\@empty\else
-        \begingroup
-            \let\and\and@author@separator
-            \startXMLelement{contrib-group}
-                \setXMLattribute{content-type}{authors}
-                \startXMLelement{contrib}%
-                \setXMLattribute{contrib-type}{author}%
-                    \xmlpartag{string-name}%
-                    \AMS@authors\par
-                \endXMLelement{contrib}%
-            \endXMLelement{contrib-group}
-        \endgroup
+\def\texml@split@authors#1\and#2\@nil{%
+    \texml@split@thanks #1\thanks{}\@nil
+    \if###2##\else
+        \texml@split@authors#2\@nil
+    \fi
+}
+
+\def\texml@split@thanks#1\thanks#2#3\@nil{%
+    \ams@class@author{#1}%
+    \if###2##\else
+        \thanks{#2}%
     \fi
 }
 
