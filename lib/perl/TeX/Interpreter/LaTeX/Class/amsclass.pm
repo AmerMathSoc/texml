@@ -71,6 +71,8 @@ sub install {
     $tex->define_csname(abstract    => \&do_abstract);
     $tex->define_csname(endabstract => \&do_endabstract);
 
+    $tex->define_csname('texml@parse@name' => \&do_parse_name);
+
     $tex->define_pseudo_macro(MR => \&do_MR);
 
     $tex->define_pseudo_macro('output@subjclass@meta' => \&do_subjclass_meta);
@@ -85,6 +87,25 @@ sub install {
 ##                              MACROS                              ##
 ##                                                                  ##
 ######################################################################
+
+sub do_parse_name {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $prefix = $tex->read_undelimited_parameter()->head();
+
+    $prefix = $prefix->get_csname() if $prefix == CATCODE_CSNAME;
+
+    my $raw_name = trim($tex->read_undelimited_parameter(EXPANDED));
+
+    $tex->define_simple_macro("$prefix\@string\@name", $raw_name);
+
+    $tex->let_csname("$prefix\@given",   '@empty');
+    $tex->let_csname("$prefix\@surname", '@empty');
+    $tex->let_csname("$prefix\@suffix",  '@empty');
+
+    return;
+}
 
 sub do_MR {
     my $macro = shift;
@@ -1082,9 +1103,25 @@ __DATA__
     \ifx\this@name\@empty\else
         \startXMLelement{contrib}
         \setXMLattribute{contrib-type}{\author@contrib@type}
-            \startXMLelement{string-name}
-                \this@name
-            \endXMLelement{string-name}\par
+            \texml@parse@name\this{\this@name}%
+            %
+            \ifx\this@surname\@empty\else
+                \startXMLelement{name}\par
+                    \thisxmlpartag{surname}
+                    \this@surname\par
+                    \ifx\this@given\@empty\else
+                        \thisxmlpartag{given-names}
+                        \this@given\par
+                    \fi
+                    \ifx\this@suffix\@empty\else
+                        \thisxmlpartag{suffix}
+                        \this@suffix\par
+                    \fi
+                \endXMLelement{name}
+            \fi
+            %
+            \thisxmlpartag{string-name}
+            \this@string@name\par
             \ifx\this@orcid\@empty\else
                 \startXMLelement{contrib-id}
                     \setXMLattribute{contrib-id-type}{orcid}
