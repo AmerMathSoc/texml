@@ -85,13 +85,26 @@ __DATA__
 
 \def\root#1\of#2{\sqrt[#1]{#2}}
 
+% \DeclareRobustCommand{\eqref}[1]{%
+%     \global\@namedef{MT_r_#1}{#1}%
+%     \begingroup
+%         \st@rredfalse
+%         \def\xref@right@delim{\XMLgeneratedText(}%
+%         \def\xref@left@delim{\XMLgeneratedText)}%
+%         \@setref {#1} \eqref {}%
+% }
+
 \DeclareRobustCommand{\eqref}[1]{%
     \global\@namedef{MT_r_#1}{#1}%
+    \leavevmode
+    \start@xref@group
+    \XMLgeneratedText(%
     \begingroup
-        \st@rredfalse
-        \def\xref@right@delim{\XMLgeneratedText(}%
-        \def\xref@left@delim{\XMLgeneratedText)}%
-        \@setref {#1} \eqref {}%
+        \suppress@xref@group
+        \ref{#1}%
+    \endgroup
+    \XMLgeneratedText)%
+    \end@xref@group
 }
 
 \def\subequation@start{%
