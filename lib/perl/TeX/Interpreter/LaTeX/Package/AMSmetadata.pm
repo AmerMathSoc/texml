@@ -487,17 +487,17 @@ sub add_contributors {
             }
 
             if (nonempty($given)) {
-                my $given_name = $given->as_unicode();
+                my $given_name = __to_unicode($given);
 
                 if (nonempty(my $middle = $name->get_middle())) {
-                    $given_name .= " " . $middle->as_unicode();
+                    $given_name .= " " . __to_unicode($middle);
                 }
 
                 append_xml_element($name_element, "given-names", $given_name);
             }
 
             if (nonempty(my $prefix = $name->get_honorific())) {
-                append_xml_element($name_element, "prefix", $prefix->as_unicode());
+                append_xml_element($name_element, prefix => __to_unicode($prefix));
             }
 
             if (nonempty(my $suffix = $name->get_suffix())) {
@@ -507,12 +507,12 @@ sub add_contributors {
                     append_xml_element($suffix_element, "x", ", ");
                 }
 
-                $suffix_element->appendText($suffix->as_unicode());
+                $suffix_element->appendText(__to_unicode($suffix));
             }
         } elsif (defined(my $unparsed = $name->get_unparsed())) {
             my $string_name = append_xml_element($contrib, "string-name");
 
-            $string_name->appendText($unparsed->as_unicode());
+            $string_name->appendText(__to_unicode($unparsed));
         }
 
         if (my @affiliations = $this_contrib->get_affiliations()) {
@@ -1328,8 +1328,6 @@ sub append_article_meta {
         append_xml_element($title_group,
                            'article-title',
                            $tex->convert_fragment($title->get_tex()));
-
-        # append_xml_element($title_group, 'alt-title', $title->as_unicode());
     } else {
         $title_group = find_unique_node($old_front, "article-meta/title-group");
     }
@@ -1541,11 +1539,13 @@ sub create_book_meta {
     my $title_group = new_child_element($meta, 'book-title-group');
 
     if (nonempty(my $title = $gentag->get_title())) {
-        append_xml_element($title_group, 'book-title', $title->as_unicode());
+        append_xml_element($title_group, 'book-title',
+                           $tex->convert_fragment($title->get_tex()));
     }
 
     if (nonempty(my $sub = $gentag->get_subtitle())) {
-        append_xml_element($title_group, 'subtitle', $sub->as_unicode());
+        append_xml_element($title_group, 'subtitle',
+                           $tex->convert_fragment($sub->get_tex()));
     }
 
     add_contributors($tex, $meta, $gentag);
