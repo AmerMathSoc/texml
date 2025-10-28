@@ -257,6 +257,14 @@ sub do_add_ams_metadata {
         return;
     }
 
+    ## Currently the following is only needed for Sugaku because the
+    ## \oa information isn't in the gentag file.  However, it should
+    ## be, at which time we can remove this.
+
+    if (defined(my $note = $tex->expansion_of('AMS@articlenote'))) {
+        $gentag->add_note($note);
+    }
+
     ## In case the MR number isn't in the gentag file yet.
     $gentag->add_mr_number();
 
