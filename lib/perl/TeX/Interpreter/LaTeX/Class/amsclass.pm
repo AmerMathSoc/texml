@@ -96,9 +96,9 @@ sub do_parse_name {
 
     $prefix = $prefix->get_csname() if $prefix == CATCODE_CSNAME;
 
-    my $raw_name = trim($tex->read_undelimited_parameter(EXPANDED));
+    my $raw_name = $tex->read_undelimited_parameter(EXPANDED);
 
-    $tex->define_simple_macro("$prefix\@string\@name", $raw_name);
+    $tex->define_simple_macro("$prefix\@string\@name", $raw_name->trim());
 
     $tex->let_csname("$prefix\@given",   '@empty');
     $tex->let_csname("$prefix\@surname", '@empty');
@@ -826,7 +826,7 @@ __DATA__
 \newcommand{\author}[2][]{%
     \advance\AMS@num@authors\@ne
     \ifx\@empty\AMS@authors
-        \gdef\AMS@authors{\start@author\author@name{#2}}%
+        \g@addto@macro\AMS@authors{\start@author\author@name{#2}}%
     \else
         \g@addto@macro\AMS@authors{\end@author\start@author\author@name{#2}}%
     \fi
