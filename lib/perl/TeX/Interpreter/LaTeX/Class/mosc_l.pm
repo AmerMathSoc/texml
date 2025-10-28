@@ -51,13 +51,15 @@ __DATA__
 
 \ProvidesClass{mosc-l}
 
-\RequirePackage{AMStrans}
-
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 
 \ProcessOptions\relax
 
 \LoadClass{amsart}[1996/10/24]
+
+\RequirePackage{AMStrans}
+
+\RequirePackage{amscyr}
 
 \gdef\AMS@publkey{mosc}
 
@@ -65,6 +67,9 @@ __DATA__
 
 \def\AMS@publname{Transactions of the Moscow Mathematical Society}
 \def\AMS@publname@short{Trans. Moscow Math. Soc.}
+
+\def\AMS@orig@publname{\textcyr{Trudy Moskovskogo Matematicheskogo Obwestva}}
+\def\AMS@orig@issn{0134-8663}
 
 \def\AMS@eissn{1547-738X}
 \def\AMS@pissn{0077-1554}
