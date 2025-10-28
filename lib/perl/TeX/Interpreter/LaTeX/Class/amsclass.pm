@@ -591,11 +591,6 @@ __DATA__
 \def\pagespan#1#2{%
     \gdef\AMS@start@page{#1}%
     \gdef\AMS@end@page{#2}%
-    \setcounter{page}{#1}%
-    \ifnum\c@page<\z@
-        \pagenumbering{roman}%
-        \setcounter{page}{-#1}%
-    \fi
 }
 
 \pagespan{0}{0}
