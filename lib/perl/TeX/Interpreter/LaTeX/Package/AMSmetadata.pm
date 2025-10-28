@@ -809,8 +809,13 @@ my %RELATED_ARTICLE_TYPE = (
 sub add_related_articles {
     my $tex = shift;
 
+    my $old_front = shift;
     my $parent = shift;
     my $gentag = shift;
+
+    for my $orig ($old_front->findnodes('article-meta/related-article')) {
+        $parent->appendChild($orig);
+    }
 
     for my $misclink ($gentag->get_related_articles()) {
         my $label = $misclink->get_label();
@@ -1405,7 +1410,7 @@ sub append_article_meta {
 
     add_self_uris($tex, $meta, $gentag);
 
-    add_related_articles($tex, $meta, $gentag);
+    add_related_articles($tex, $old_front, $meta, $gentag);
 
     copy_abstract($old_front, $meta, $gentag, 'article-meta/abstract');
 
