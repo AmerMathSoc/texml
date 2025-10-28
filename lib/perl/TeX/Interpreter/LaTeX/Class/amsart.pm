@@ -216,6 +216,8 @@ __DATA__
     \endXMLelement{publisher}
 }
 
+\let\output@translated@article\@empty % Cf. AMStrans.pm
+
 \def\output@article@meta{%
         \startXMLelement{article-meta}
         \ifx\AMS@DOI\@empty\else
@@ -284,6 +286,7 @@ __DATA__
         \fi
         \output@history@meta
         \output@permissions@meta
+        \output@translated@article
         \output@abstract@meta
         \output@author@keywords
         \output@subjclass@meta
