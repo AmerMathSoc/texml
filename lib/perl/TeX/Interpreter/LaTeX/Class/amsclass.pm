@@ -847,7 +847,7 @@ __DATA__
     \ifx\AMS@thanks\@empty\else
         \begingroup
             \xmlpartag{funding-statement}%
-            \def\thanks##1{##1\par}%
+            \def\thanks##1{##1\@addpunct.\par}%
             \startXMLelement{funding-group}%
                 \AMS@thanks
             \endXMLelement{funding-group}%
