@@ -63,8 +63,6 @@ __DATA__
 
 \gdef\AMS@publkey{spmj}
 
-%% TBD: Russian title (Algebra i analiz)
-
 \def\AMS@publname{St. Petersburg Mathematical Journal}
 \def\AMS@publname@short{St. Petersburg Math. J.}
 
