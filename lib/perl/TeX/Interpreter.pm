@@ -12206,7 +12206,13 @@ sub define_macro {
         $tex->error();
     }
 
-    my $macro_text = $tex->tokenize($raw_macro);
+    my $macro_text;
+
+    if (eval { $raw_macro->isa('TeX::TokenList') }) {
+        $macro_text = $raw_macro;
+    } else {
+        $macro_text = $tex->tokenize($raw_macro);
+    }
 
     my $macro =
         TeX::Primitive::Macro->new({ parameter_text   => $param_text,
