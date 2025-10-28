@@ -156,17 +156,6 @@ __DATA__
     \fi
 }
 
-% suga-l.dtx
-
-% \oa{This article originally appeared in Japanese in S\=ugaku {\bf
-% 73} 1 (2021), 240--266.}
-
-\let\AMS@oa\@empty
-
-\def\oa{\gdef\AMS@oa}
-
-% \def\@setoa{\@oa\@addpunct.}
-
 % russian.dtx
 
 \newcommand{\op}[1]{\AMS@transnote{Originally published in #1}}
@@ -271,7 +260,7 @@ related_article:
     | season
     | series
     | size
-    | source
+*   | source
     | std
     | string-date
     | string-name
