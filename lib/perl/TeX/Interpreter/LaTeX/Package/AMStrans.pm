@@ -145,10 +145,11 @@ __DATA__
                         \thisxmlpartag{lpage}
                         \AMS@orig@end@page\par
                     \fi
-                    \thisxmlpartag{page-range}
-                    \AMS@orig@start@page
-                    \ifx\AMS@orig@end@page\@empty\else-\AMS@orig@end@page\fi
-                    \par
+                    \ifx\AMS@orig@end@page\@empty\else
+                        \thisxmlpartag{page-range}
+                        \AMS@orig@start@page-\AMS@orig@end@page
+                        \par
+                    \fi
                 \fi
             \fi
             \endXMLelement{related-article}
