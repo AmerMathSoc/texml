@@ -51,13 +51,15 @@ __DATA__
 
 \ProvidesClass{spmj-l}
 
-\RequirePackage{AMStrans}
-
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 
 \ProcessOptions\relax
 
 \LoadClass{amsart}[1996/10/24]
+
+\RequirePackage{AMStrans}
+
+\RequirePackage{amscyr}
 
 \gdef\AMS@publkey{spmj}
 
@@ -68,6 +70,9 @@ __DATA__
 
 \def\AMS@eissn{1547-7371}
 \def\AMS@pissn{1061-0022}
+
+\def\AMS@orig@publname{\textcyr{Algebra i analiz}}
+\def\AMS@orig@issn{0234-0852}
 
 \def\AMS@series@url{https://www.ams.org/aboutspmj/}
 
