@@ -59,6 +59,8 @@ sub do_oa {
     my $tex   = shift;
     my $token = shift;
 
+    return; ## TBD: DISABLED UNTIL WE'RE READY FOR THIS DOWNSTREAM
+
     my $oa = $tex->read_undelimited_parameter();
 
     my $text = trim($oa->to_string());
