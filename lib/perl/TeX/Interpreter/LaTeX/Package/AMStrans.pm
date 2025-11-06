@@ -54,6 +54,9 @@ __DATA__
 \let\AMS@orig@publname\@empty
 \let\AMS@orig@issn\@empty
 
+\def\origDOI{\gdef\AMS@orig@DOI}
+\let\AMS@orig@DOI\@empty
+
 \let\AMS@orig@language\@empty
 
 \def\origlang{\gdef\AMS@orig@language} % "For documentation in the file only..."
@@ -72,7 +75,11 @@ __DATA__
 \let\AMS@orig@authors\@empty
 \let\AMS@orig@author\@gobble
 
+\newcount\AMS@num@orig@authors
+\AMS@num@orig@authors\z@
+
 \newcommand{\origauthor}[1]{%
+    \advance\AMS@num@orig@authors\@ne
     \g@addto@macro\AMS@orig@authors{\AMS@orig@author{#1}}%
 }
 
@@ -101,58 +108,116 @@ __DATA__
 
 \def\output@translated@#1{%
     \expandafter\ifx\csname AMS@orig@#1\endcsname\@empty\else
-        \par\thisxmlpartag{#1}\csname AMS@orig@#1\endcsname\par
+        \startXMLelement{#1}%
+            \csname AMS@orig@#1\endcsname
+        \endXMLelement{#1}%
     \fi
 }
 
-\def\output@orig@name#1{%
-    \par\thisxmlpartag{string-name}#1\par
+\def\format@orig@name@ru#1{%
+    \XMLelement{string-name}{#1}\XMLgeneratedText,
+}
+
+\def\format@orig@name#1{%
+    \XMLelement{string-name}{#1}%
+    \advance\@tempcnta\m@ne
+    \ifnum\@tempcnta=\z@
+        \XMLgeneratedText,
+    \else
+        \ifnum\@tempcnta=\@ne
+            \ifnum\AMS@num@orig@authors>2
+            \XMLgeneratedText,%
+            \fi
+            \space\XMLgeneratedText{and}\space
+        \else
+            \XMLgeneratedText,
+        \fi
+    \fi
+}
+
+\def\format@translated@authors{%
+    \ifx\AMS@orig@authors\@empty\else
+        \begingroup
+            \ifnum\strcmp{\AMS@orig@language}{}=0
+                \let\AMS@orig@author\format@orig@name
+            \else
+                \let\AMS@orig@author\format@orig@name@ru
+            \fi
+            \@tempcnta\AMS@num@orig@authors
+            \AMS@orig@authors
+        \endgroup
+    \fi
 }
 
 \def\output@translated@article{%
     \ifx\AMS@orig@publname\@empty\else
+        \par
         \startXMLelement{related-article}
             \setXMLattribute{related-article-type}{original}%
             \ifx\AMS@orig@language\@empty\else
                 \setXMLattribute{xml:lang}{\AMS@orig@language}%
             \fi
-            \ifx\AMS@orig@authors\@empty\else
-                \begingroup
-                    \let\AMS@orig@author\output@orig@name
-                    \AMS@orig@authors
-                \endgroup
-            \fi
+            \format@translated@authors
             \ifx\AMS@orig@title\@empty\else
-                \startXMLelement{article-title}
-                    \AMS@orig@title\par
-                \endXMLelement{article-title}
+                \startXMLelement{article-title}%
+                    \AMS@orig@title
+                \endXMLelement{article-title}\XMLgeneratedText,%
             \fi
             \ifx\AMS@orig@publname\@empty\else
-                \startXMLelement{source}
-                    \AMS@orig@publname\par
-                \endXMLelement{source}
+                \space
+                \startXMLelement{source}%
+                    \AMS@orig@publname
+                \endXMLelement{source}%
+                \ifx\AMS@orig@issn\@empty\else
+                    \space
+                    \XMLgeneratedText(%
+                        \output@translated@{issn}%
+                    \XMLgeneratedText)%
+                \fi
             \fi
-            \output@translated@{issn}%
-            \output@translated@{volume}%
-            \output@translated@{issue}%
-            \output@translated@{month}%
-            \output@translated@{year}%
-            \ifx\AMS@orig@start@page\@empty\else
-                \ifnum\AMS@orig@start@page > 0
-                    \thisxmlpartag{fpage}
-                    \AMS@orig@start@page\par
-                    \ifx\AMS@orig@end@page\@empty\else
-                        \thisxmlpartag{lpage}
-                        \AMS@orig@end@page\par
+            \ifx\AMS@orig@volume\@empty\else
+                \space
+                \output@translated@{volume}%
+                \ifx\AMS@orig@issue\@empty\else
+                    \XMLgeneratedText(\output@translated@{issue}\XMLgeneratedText)%
+                \fi
+            \fi
+            \ifx\AMS@orig@year\@empty\else
+                \space
+                \XMLgeneratedText(%
+                    \ifx\AMS@orig@month\@empty\else
+                        \output@translated@{month}
                     \fi
+                    \output@translated@{year}%
+                \XMLgeneratedText)%
+            \fi
+            \ifx\AMS@orig@start@page\@empty\else
+                \space
+                \ifnum\AMS@orig@start@page > 0
+                    \startXMLelement{fpage}%
+                        \AMS@orig@start@page
+                    \endXMLelement{fpage}%
                     \ifx\AMS@orig@end@page\@empty\else
-                        \thisxmlpartag{page-range}
-                        \AMS@orig@start@page-\AMS@orig@end@page
-                        \par
+                        \XMLgeneratedText{--}%
+                        \startXMLelement{lpage}%
+                            \AMS@orig@end@page
+                        \endXMLelement{lpage}%
                     \fi
                 \fi
             \fi
+            \XMLgeneratedText.%
+            \ifx\AMS@orig@DOI\@empty\else
+                \space DOI
+                \startXMLelement{ext-link}%
+                    \ifx\AMS@orig@language\@empty\else
+                        \setXMLattribute{hreflang}{\AMS@orig@language}%
+                    \fi
+                    \setXMLattribute{xlink:href}{https://doi.org/\AMS@orig@DOI}%
+                    \AMS@orig@DOI
+                \endXMLelement{ext-link}%
+            \fi
             \endXMLelement{related-article}
+            \par
     \fi
 }
 
