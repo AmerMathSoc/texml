@@ -2,6 +2,8 @@ package TeX::Interpreter::LaTeX::Class::suga_l;
 
 use v5.26.0;
 
+use utf8;
+
 # Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -33,6 +35,12 @@ use v5.26.0;
 
 use warnings;
 
+use TeX::Utils::Misc;
+
+use TeX::Command::Executable::Assignment qw(:modifiers);
+
+my sub do_oa;
+
 sub install {
     my $class = shift;
 
@@ -41,6 +49,110 @@ sub install {
     $tex->class_load_notification();
 
     $tex->read_package_data();
+
+    $tex->define_csname(oa => \&do_oa);
+
+    return;
+}
+
+sub do_oa {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $oa = $tex->read_undelimited_parameter();
+
+    my $text = trim($oa->to_string());
+
+    $tex->define_simple_macro('AMS@articlenote', $text, MODIFIER_GLOBAL);
+
+    my $t = $tex->expansion_of('AMS@articlenote');
+
+    # \oa{This article originally appeared in Japanese in S\=ugaku
+    # {\bf 73} 1 (2021), 240--266.}
+
+    # \oa{This article originally appeared in Japanese in S\={u}gaku
+    # \textbf{71} (2019), 302--324.}
+
+    my sub __error {
+        $tex->print_err("Invalid \\oa text '$text'");
+
+        $tex->error();
+
+        return;
+    }
+
+    unless ($text =~ s{\AThis article originally appeared in Japanese in }{}sm) {
+        __error();
+
+        return;
+    }
+
+    unless ($text =~ s{\AS.*gaku }{}sm) {
+        __error();
+
+        return;
+    }
+
+    my $volume;
+    my $issue;
+    my $year;
+    my $start_page;
+    my $end_page;
+
+    unless ($text =~ s{(\{\\bf|\\textbf\{)\s*}{}sm) {
+        __error();
+
+        return;
+    }
+
+    if ($text =~ s{\A(\d+)\}\s+}{}sm) {
+        $volume = $1;
+    } else {
+        __error();
+
+        return;
+    }
+
+    if ($text =~ s{\A(\d+)\s*}{}sm) {
+        $issue = $1;
+    }
+
+    if ($text =~ s{\A\((\d+)\),\s*}{}sm) {
+        $year = $1;
+    } else {
+        __error();
+
+        return;
+    }
+
+    if ($text =~ s{\A(\d+)(?:-+(\d+))?}{}sm) {
+        $start_page = $1;
+        $end_page   = $2;
+    } else {
+        __error();
+
+        return;
+    }
+
+    if (nonempty($volume)) {
+        $tex->define_simple_macro('AMS@orig@volume', $volume);
+    }
+
+    if (nonempty($issue)) {
+        $tex->define_simple_macro('AMS@orig@issue', $issue);
+    }
+
+    if (nonempty($year)) {
+        $tex->define_simple_macro('AMS@orig@year', $year);
+    }
+
+    if (nonempty($start_page)) {
+        $tex->define_simple_macro('AMS@orig@start@page', $start_page);
+    }
+
+    if (nonempty($end_page)) {
+        $tex->define_simple_macro('AMS@orig@end@page', $end_page);
+    }
 
     return;
 }
@@ -51,13 +163,13 @@ __DATA__
 
 \ProvidesClass{suga-l}
 
-\RequirePackage{AMStrans}
-
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 
 \ProcessOptions\relax
 
 \LoadClass{amsart}[1996/10/24]
+
+\RequirePackage{AMStrans}
 
 \gdef\AMS@publkey{suga}
 
@@ -65,6 +177,9 @@ __DATA__
 
 \def\AMS@eissn{2473-585X}
 \def\AMS@pissn{0898-9583}
+
+\def\AMS@orig@publname{数学}%{S\=ugaku}
+\def\AMS@orig@issn{1883-6127}
 
 \def\AMS@series@url{https://www.ams.org/aboutsuga/}
 
