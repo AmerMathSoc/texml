@@ -783,9 +783,9 @@ __DATA__
 
 %% Example: \DeclareSVGMathChar\Lbag\mathopen
 
-\def\DeclareSVGMathChar#1#2{\newcommand{#1}{#2{\TeXMLSVGmathchoice{#1}}}}
+\def\DeclareSVGMathChar#1#2{\def#1{#2{\TeXMLSVGmathchoice{#1}}}}
 
-\def\DeclareSVGChar#1{\newcommand{#1}{\TeXMLCreateSVG{#1}}}
+\def\DeclareSVGChar#1{\def#1{\TeXMLCreateSVG{#1}}}
 
 % * = preserve line breaks (for verbatim-type environments)
 
