@@ -221,6 +221,10 @@ __DATA__
     \fi
 }
 
+%% Temporarily disable \output@translated@article until we're ready for it.
+
+\let\output@translated@article\@empty
+
 % russian.dtx
 
 \newcommand{\op}[1]{\AMS@transnote{Originally published in #1}}
