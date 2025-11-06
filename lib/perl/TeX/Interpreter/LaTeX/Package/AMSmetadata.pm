@@ -261,7 +261,7 @@ sub do_add_ams_metadata {
     ## \oa information isn't in the gentag file.  However, it should
     ## be, at which time we can remove this.
 
-    if (defined(my $note = $tex->expansion_of('AMS@articlenote'))) {
+    if (nonempty(my $note = $tex->expansion_of('AMS@articlenote'))) {
         $gentag->add_note($note);
     }
 
