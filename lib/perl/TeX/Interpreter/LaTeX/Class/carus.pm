@@ -53,6 +53,8 @@ __DATA__
 
 \LoadClass{maabook}
 
+\@AMS@tocusesnames@true
+
 \seriesinfo{carus}{}{}
 
 \def\AMS@publname{Carus Mathematical Monographs}
