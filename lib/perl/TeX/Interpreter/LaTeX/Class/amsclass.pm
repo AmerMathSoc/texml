@@ -1541,6 +1541,10 @@ __DATA__
 \let\tocsubsection\tocsection
 \let\tocsubsubsection\tocsection
 
+\let\listofcontents\@empty
+\let\listoffigures\@empty
+\let\listoftables\@empty
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
 %%                        MISC ENVIRONMENTS                         %%
