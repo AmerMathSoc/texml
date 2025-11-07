@@ -98,7 +98,9 @@ sub do_parse_name {
 
     my $raw_name = $tex->read_undelimited_parameter(EXPANDED);
 
-    $tex->define_simple_macro("$prefix\@string\@name", $raw_name->trim());
+    $raw_name->trim();
+
+    $tex->define_simple_macro("$prefix\@string\@name", $raw_name);
 
     $tex->let_csname("$prefix\@given",   '@empty');
     $tex->let_csname("$prefix\@surname", '@empty');
