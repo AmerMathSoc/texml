@@ -51,7 +51,7 @@ sub install {
 
     $tex->define_csname('texml@parse@name' => \&do_parse_name);
 
-    $tex->read_package_data();
+    # $tex->read_package_data();
 
     return;
 }
@@ -63,6 +63,9 @@ sub do_parse_name {
     my $prefix = $tex->read_undelimited_parameter()->head();
 
     $prefix = $prefix->get_csname() if $prefix == CATCODE_CSNAME;
+
+    ## TODO: This is going to choke if there is a ~ or control space
+    ## in the name.  Cf. changes to amsclass's do_parse_name().
 
     my $raw_name = trim($tex->read_undelimited_parameter(EXPANDED));
 
@@ -136,7 +139,6 @@ my $TOKEN;
 
     $TOKEN = qr{ ( $WORD | \p{Space}+ | $COMMA ) }smx;
 }
-
 
 sub is_particle { # "von"
     my $string = shift;
