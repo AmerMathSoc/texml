@@ -369,66 +369,54 @@ __DATA__
 \def\@chapterefsubtype{chapter}
 
 \def\@chapter[#1]#2{%
-        \def\@currentreftype{sec}%
-        \edef\@currentrefsubtype{\@chapterefsubtype}%
-        \def\@toclevel{0}%
-        \@Guess@FM@type{#2}%
-        \let\@secnumber\@empty
-        \ifnum\c@secnumdepth<\@toclevel\relax \else
-            \ifx\thechapter\@empty \else
-                \refstepcounter{chapter}%
-                \edef\@secnumber{\thechapter}%
+    \def\@currentreftype{sec}%
+    \edef\@currentrefsubtype{\@chapterefsubtype}%
+    \def\@toclevel{0}%
+    \@Guess@FM@type{#2}%
+    \let\@secnumber\@empty
+    \ifnum\c@secnumdepth<\@toclevel\relax \else
+        \ifx\thechapter\@empty \else
+            \refstepcounter{chapter}%
+            \edef\@secnumber{\thechapter}%
+        \fi
+    \fi
+    \typeout{\ifx\chaptername\@empty\else\chaptername\space\fi\@secnumber}%
+    \@ams@inlinefalse
+    \start@XML@section{chapter}{0}{%
+        \ifnum\c@secnumdepth<\@toclevel \else
+            \ifx\chaptername\@empty\else
+                \chaptername\space
             \fi
         \fi
-        \typeout{\ifx\chaptername\@empty\else\chaptername\space\fi\@secnumber}%
-        % \ifx\@secnumber\@empty \else
-        %     \edef\@secnumber{\@secnumber.}%
-        % \fi
-        \@ams@inlinefalse
-        \start@XML@section{chapter}{0}{%
-            \ifnum\c@secnumdepth<\@toclevel \else
-                \ifx\chaptername\@empty\else
-                    \chaptername\space
-                \fi
-            \fi
-            \@secnumber
-        }{#2}%
-        \let\XML@section@tag\default@XML@section@tag
-        \ifx\chaptername\appendixname
-            \@tocwriteb\tocappendix{chapter}{#2}%
-        \else
-            \@tocwriteb\tocchapter{chapter}{#2}%
-        \fi
-        % \chaptermark{#1}%
-        % \addtocontents{lof}{\protect\addvspace{10\p@}}%
-        % \addtocontents{lot}{\protect\addvspace{10\p@}}%
-%    \endgroup
+        \@secnumber
+    }{#2}%
+    \let\XML@section@tag\default@XML@section@tag
+    \ifx\chaptername\appendixname
+        \@tocwriteb\tocappendix{chapter}{#2}%
+    \else
+        \@tocwriteb\tocchapter{chapter}{#2}%
+    \fi
     \@afterheading
 }
 
 \def\@schapter[#1]#2{%
-%    \begingroup
-        \let\saved@footnote\footnote
-        \let\footnote\@gobble
-        \typeout{#2}%
-        \@Guess@FM@type{#2}%
-        \def\@toclevel{0}%
-        \let\@secnumber\@empty
-        \let\footnote\saved@footnote
-        \@ams@inlinefalse
-        \start@XML@section{chapter}{0}{}{#2}%
-        \let\XML@section@tag\default@XML@section@tag
-        \let\footnote\@gobble
-        \ifx\chaptername\appendixname
-            \@tocwriteb\tocappendix{chapter}{#2}%
-        \else
-            \@tocwriteb\tocchapter{chapter}{#2}%
-        \fi
-        \let\footnote\saved@footnote
-%    \endgroup
-    % \chaptermark{#2}%
-    % \addtocontents{lof}{\protect\addvspace{10\p@}}%
-    % \addtocontents{lot}{\protect\addvspace{10\p@}}%
+    \let\saved@footnote\footnote
+    \let\footnote\@gobble
+    \typeout{#2}%
+    \@Guess@FM@type{#2}%
+    \def\@toclevel{0}%
+    \let\@secnumber\@empty
+    \let\footnote\saved@footnote
+    \@ams@inlinefalse
+    \start@XML@section{chapter}{0}{}{#2}%
+    \let\XML@section@tag\default@XML@section@tag
+    \let\footnote\@gobble
+    \ifx\chaptername\appendixname
+        \@tocwriteb\tocappendix{chapter}{#2}%
+    \else
+        \@tocwriteb\tocchapter{chapter}{#2}%
+    \fi
+    \let\footnote\saved@footnote
     \@afterheading
 }
 
