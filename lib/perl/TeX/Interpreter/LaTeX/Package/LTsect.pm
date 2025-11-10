@@ -47,6 +47,10 @@ my sub add_section_alt_titles;
 my sub add_title_group_alt_titles;
 my sub normalize_disp_level;
 
+my sub do_push_section_stack;
+my sub do_pop_section_stack;
+my sub do_clear_section_stack;
+
 sub install  {
     my $class = shift;
 
@@ -54,14 +58,17 @@ sub install  {
 
     $tex->package_load_notification();
 
-    $tex->add_output_hook(\&add_toc_alt_titles);
-    $tex->add_output_hook(\&add_section_alt_titles);
-    $tex->add_output_hook(\&add_title_group_alt_titles);
+    ## These need to run after LTref's output hooks.
+
+    $tex->add_output_hook(\&add_toc_alt_titles, 10);
+    $tex->add_output_hook(\&add_section_alt_titles, 10);
+    $tex->add_output_hook(\&add_title_group_alt_titles, 10);
+
     $tex->add_output_hook(\&normalize_disp_level);
 
-    $tex->define_csname('@push@sectionstack'  => \&do_push_section_stack);
-    $tex->define_pseudo_macro('@pop@sectionstack'    => \&do_pop_section_stack);
-    $tex->define_csname('@clear@sectionstack' => \&do_clear_section_stack);
+    $tex->define_csname('@push@sectionstack'      => \&do_push_section_stack);
+    $tex->define_pseudo_macro('@pop@sectionstack' => \&do_pop_section_stack);
+    $tex->define_csname('@clear@sectionstack'     => \&do_clear_section_stack);
 
     $tex->read_package_data();
 
@@ -96,17 +103,17 @@ sub do_pop_section_stack {
 
     my $target_level = $tex->read_undelimited_parameter(EXPANDED);
 
-    my @stack = reverse  $tex->get_section_stacks();
-
     while (defined(my $entry = $tex->pop_section_stack())) {
-        my ($level, $tag) = @{ $entry };
+        my ($level, $tag) = $entry->@*;
 
         if ($level < $target_level) {
             $tex->push_section_stack([ $level, $tag ]);
 
             last;
         } else {
-            $token_list->push($tex->tokenize(qq{\\par\\endXMLelement{$tag}}));
+            $tex->end_xml_element($tag);
+
+            # $token_list->push($tex->tokenize(qq{\\par\\endXMLelement{$tag}}));
 
             if ($level == $target_level) {
                 last;
@@ -122,7 +129,7 @@ sub do_clear_section_stack {
     my $token = shift;
 
     while (defined(my $entry = $tex->pop_section_stack())) {
-        my ($level, $tag) = @{ $entry };
+        my ($level, $tag) = $entry->@*;
 
         $tex->end_par();
 
@@ -143,6 +150,7 @@ my sub add_alt_title {
     my $dom    = shift;
 
     for my $title ($parent->findnodes("title|article-title|book-title")) { # There should be at most one
+
         my $utf8 = xml_to_utf8_string($title);
 
         if (nonempty($utf8)) {
@@ -371,8 +379,6 @@ __DATA__
 % make it easier to extend.
 
 \let\XML@section@specific@style\@empty
-
-% See amsclass.pm for \clear@deferred@section and \deferred@section@...
 
 \newif\if@numbered
 
