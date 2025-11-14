@@ -159,6 +159,8 @@ use TeX::Primitive::parshape qw(:factories);
 
 use TeX::Primitive::LuaTeX::CombineTokens;
 
+use TeX::Primitive::XeTeX::strcmp qw(:modifiers);
+
 use Unicode::UCD qw(charinfo);
 
 ######################################################################
@@ -11040,6 +11042,9 @@ sub init_prim {
     $tex->primitive(tpack => 'vtop');
 
     $tex->primitive(glet => 'let', { modifier => MODIFIER_GLOBAL });
+
+    $tex->primitive(stricmp => 'strcmp',
+                    { modifier => MODIFIER_CASE_INSENSITIVE });
 
     while (my ($def, $modifier) = each %DEFS) {
         $tex->primitive($def, 'def', { modifier => $modifier });

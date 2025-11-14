@@ -1,5 +1,7 @@
 package TeX::Primitive::XeTeX::strcmp;
 
+use v5.26.0;
+
 # Copyright (C) 2022 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,14 +31,23 @@ package TeX::Primitive::XeTeX::strcmp;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-use base qw(TeX::Command::Expandable);
+use base qw(TeX::Command::Expandable Exporter);
+
+our %EXPORT_TAGS = ( modifiers => [ qw(MODIFIER_CASE_INSENSITIVE) ] );
+
+our @EXPORT_OK = $EXPORT_TAGS{modifiers}->@*;
 
 use TeX::Constants qw(:booleans);
 
 use TeX::Token qw(:factories);
+
+use TeX::Class;
+
+my %modifier_of :ATTR(:get<modifier> :init_arg<modifier> :default(0));
+
+use constant MODIFIER_CASE_INSENSITIVE => 1;
 
 sub expand {
     my $self = shift;
@@ -53,6 +64,13 @@ sub expand {
     my $t2 = $tex->scan_toks(false, true);
 
     my $s2 = $tex->toks_to_string($t2);
+
+    my $modifier = $self->get_modifier();
+
+    if ($modifier & MODIFIER_CASE_INSENSITIVE) {
+        $s1 = lc $s1;
+        $s2 = lc $s2;
+    }
 
     my $cmp = $s1 cmp $s2;
 
