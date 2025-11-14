@@ -9,9 +9,9 @@ pdftex=$(BINDIR)/pdftex
 xetex=$(BINDIR)/xetex
 luatex=$(BINDIR)/luatex
 
-# all: pdftex
+# tex and pdftex work for 2016, 2024, and 2025
 
-all: tex pdftex xetex
+all: tex pdftex
 
 tex: tex-$(TLYEAR).fmt tex.initest tex_load
 
