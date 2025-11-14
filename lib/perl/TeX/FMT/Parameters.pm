@@ -36,8 +36,8 @@ use warnings;
 use base qw(Exporter);
 
 our %EXPORT_TAGS = (all => [ qw(get_engine_parameters) ]);
-our @EXPORT_OK   = @{ $EXPORT_TAGS{all} };
-our @EXPORT      = @{ $EXPORT_TAGS{all} };
+our @EXPORT_OK   = $EXPORT_TAGS{all}->@*;
+our @EXPORT      = $EXPORT_TAGS{all}->@*;
 
 use Carp;
 
@@ -50,6 +50,8 @@ use TeX::Class;
 use TeX::Utils::Misc;
 
 my %tlyear_of :COUNTER(:name<tlyear>);
+
+my %included_year :HASH(:name<included_year>);
 
 my %parameters_of :HASH(:name<parameter> :get<*custom*>);
 
@@ -675,7 +677,7 @@ sub load_primitives {
         last if m/__END__/;
 
         s{^<(\d+)>\s*}{} and do {
-            next unless $1 == $tlyear;
+            next unless $self->get_included_year($1);
 
             redo;
         };
@@ -720,7 +722,7 @@ sub add_command_handler {
 
         if (defined(my $old_handler = $self->get_cmd_handler($cmd_code))) {
             if (ref($old_handler) eq 'ARRAY') {
-                @new_handler = @{ $old_handler };
+                @new_handler = $old_handler->@*;
             } else {
                 @new_handler = ($old_handler);
             }
