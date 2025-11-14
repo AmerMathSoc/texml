@@ -1,18 +1,21 @@
 #!/usr/bin/perl -w
 
-use strict;
+use v5.26.0;
+
 use warnings;
 
 use lib qw(/ams/texmf/texml/lib/perl);
 
 use TeX::FMT::File;
 
-binmode STDOUT, ":utf8";
-binmode STDERR, ":utf8";
+use open qw(:std :encoding(UTF-8));
 
-my $file = shift || 'plain.fmt';
+my $file   = shift || 'plain.fmt';
+my $tlyear = shift || '2016';
 
 my $fmt = TeX::FMT::File->new({ file_name => $file });
+
+$fmt->set_tlyear($tlyear);
 
 print qq{*** tlyear = }, $fmt->tlyear(), "\n\n";
 
@@ -29,14 +32,25 @@ print "null: ", $fmt->null(), "\n";
 
 print "\n";
 
-print "del_code_base = ", $fmt->del_code_base, "\n";
-
-print "\n";
+# print "frozen_dont_expand: ", $fmt->frozen_dont_expand, "\n";
+# print "frozen_null_font: ", $fmt->frozen_null_font, "\n";
+# print "frozen_primitive: ", $fmt->frozen_primitive, "\n";
+# print "prim_eqtb_base: ", $fmt->prim_eqtb_base, "\n";
+# print "undefined_control_sequence: ", $fmt->undefined_control_sequence, "\n";
+# 
+# print "\n";
+# 
+# print "del_code_base = ", $fmt->del_code_base, "\n";
+# 
+# print "\n";
 
 #exit;
 
-my $eqtb   = $fmt->get_eqtb();
-my $hash   = $fmt->get_hash();
+my $eqtb = $fmt->get_eqtb();
+my $hash = $fmt->get_hash();
+
+# Region 1: active_base..null_cs
+# Region 2: hash_base..undefined_control_sequence
 
 for my $ptr ($fmt->active_base()..$fmt->undefined_control_sequence()) {
     my $word = $eqtb->get_word($ptr);
@@ -57,7 +71,12 @@ for my $ptr ($fmt->active_base()..$fmt->undefined_control_sequence()) {
         } else {
             $name = '<undef>';
         }
+
+        $name = qq{\\$name};
     }
+
+    # Ignore various language-related macros.
+    next if $name =~ m{^(lang|lhm|rhm)\@};
 
     print $ptr, ": ", $name, ": ";
     $fmt->show_eqtb_entry($ptr);
