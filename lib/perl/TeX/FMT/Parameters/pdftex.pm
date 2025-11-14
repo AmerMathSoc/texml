@@ -31,11 +31,6 @@ use v5.26.0;
 # USA
 # email: tech-support@ams.org
 
-# TeX Live 2016:
-# eTeX_version_string=='-2.6'
-# pdftex_version_string=='-1.40.17'
-# pdfTeX_banner=='This is pdfTeX, Version 3.14159265',eTeX_version_string,pdftex_version_string
-
 use warnings;
 
 use base qw(TeX::FMT::Parameters::tex);
@@ -74,10 +69,20 @@ my %YEAR = (
         pdf_space_font_code         => sub { $_[0]->pdf_running_link_on_node + 1 },
         pdftex_last_extension_code  => sub { $_[0]->pdf_space_font_code },
     },
+    2025 => {
+        base_year => 2024,
+        ignore_primitive_error_code => sub { $_[0]->saving_hyph_codes_code + 1},
+        eTeX_state_code => sub { $_[0]->ignore_primitive_error_code + 1} ,
+
+        pdf_ptex_use_underscore_code => sub { $_[0]->pdf_omit_procset_code + 1 },
+        pdf_int_pars => sub { $_[0]->pdf_ptex_use_underscore_code + 1 },
+    },
 );
 
 sub BUILD {
     my ($self, $ident, $arg_ref) = @_;
+
+    ## Base parameters for TeX Live 2016
 
     my %new = (
         has_etex               => 1,
@@ -186,7 +191,6 @@ sub BUILD {
         eTeX_revision_code       => sub { $_[0]->etex_convert_base() },
 
         etex_convert_codes       => sub { $_[0]->etex_convert_base + 1 },
-
 
         etex_convert_codes       => sub { $_[0]->etex_convert_base + 1 },
 
@@ -304,6 +308,7 @@ sub BUILD {
         last_line_fit_code         => sub { $_[0]->pre_display_direction_code + 1 },
         saving_vdiscards_code      => sub { $_[0]->last_line_fit_code + 1 },
         saving_hyph_codes_code     => sub { $_[0]->saving_vdiscards_code + 1 },
+
         eTeX_state_code            => sub { $_[0]->saving_hyph_codes_code + 1 },
 
         eTeX_state_base            => sub { $_[0]->int_base() + $_[0]->eTeX_state_code },
@@ -386,13 +391,29 @@ sub BUILD {
         $self->set_parameter($param, $value);
     }
 
-    my $tlyear = $self->tlyear();
+    my sub overlay;
 
-    if (defined(my $extra = $YEAR{$tlyear})) {
+    sub overlay {
+        my $year = shift;
+
+        $self->set_included_year($year, 1);
+
+        return unless defined $year;
+
+        my $extra = $YEAR{$year};
+
+        return unless defined $extra;
+
+        if (defined(my $base_year = delete $extra->{base_year})) {
+            overlay($base_year);
+        }
+
         while (my ($param, $value) = each $extra->%*) {
             $self->set_parameter($param, $value);
         }
     }
+
+    overlay($self->tlyear());
 
     return;
 }
@@ -414,14 +435,14 @@ __DATA__
 
 <2024>#primitive partokenname partoken_name 0
 
-<2024>#primitive tracingstacklevels assign_int int_base+tracing_stack_levels_code
+<2024>#primitive tracingstacklevels assign_int tracing_stack_levels_code
 
-<2024>#primitive partokencontext assign_int int_base+partoken_context_code
-<2024>#primitive showstream      assign_int int_base+show_stream_code
-<2024>#primitive pdfmajorversion assign_int int_base+pdf_major_version_code
-<2024>#primitive pdfomitcharset  assign_int int_base+pdf_omit_charset_code
-<2024>#primitive pdfomitinfodict assign_int int_base+pdf_omit_info_dict_code
-<2024>#primitive pdfomitprocset  assign_int int_base+pdf_omit_procset_code
+<2024>#primitive partokencontext assign_int partoken_context_code
+<2024>#primitive showstream      assign_int show_stream_code
+<2024>#primitive pdfmajorversion assign_int pdf_major_version_code
+<2024>#primitive pdfomitcharset  assign_int pdf_omit_charset_code
+<2024>#primitive pdfomitinfodict assign_int pdf_omit_info_dict_code
+<2024>#primitive pdfomitprocset  assign_int pdf_omit_procset_code
 
 <2024>#primitive expanded convert expanded_code
 
@@ -429,6 +450,8 @@ __DATA__
 <2024>#primitive pdfrunninglinkon  extension pdf_running_link_on_node
 <2024>#primitive pdfspacefont      extension pdf_space_font_code
 
+<2025>#primitive ignoreprimitiveerror assign_int ignore_primitive_error_code
+<2025>#primitive pdfptexuseunderscore assign_int pdf_ptex_use_underscore_code
 
 letterspacefont    letterspace_font
 pdfcopyfont        pdf_copy_font
