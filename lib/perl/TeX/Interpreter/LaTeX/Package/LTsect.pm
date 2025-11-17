@@ -277,7 +277,9 @@ __DATA__
 
 \PreserveMacroDefinition\ams@measure
 
-% \@startsect{NAME}{LEVEL}{INDENT}{BEFORESKIP}{AFTERSKIP}{STYLE}
+% \@startsection{NAME}{LEVEL}{INDENT}{BEFORESKIP}{AFTERSKIP}{STYLE}
+%
+% INDENT and BEFORESKIP are unused by texml
 %
 % LEVEL = \@m if *-ed
 
@@ -373,6 +375,10 @@ __DATA__
 
 \def\XML@section@tag{sec}
 
+\let\default@XML@section@tag\XML@section@tag
+
+\let\this@XML@section@tag\@empty
+
 % \XML@section@specific@style is an ugly hack introduced to solve a
 % problem for amstext/65 (katznels).  A better approach might be to
 % define a replacement for \@startsection that uses key-value pairs to
@@ -396,6 +402,26 @@ __DATA__
 
 \clear@deferred@section
 
+% -4 book-app-group | app-group
+% -3 book-app       [like a \chapter, but we need room for the <body>]
+% -2 body
+% -1 part
+%  0 chapter
+%  1 section
+%  2 subsection
+%  etc.
+
+\def\XML@appendix@group@element{app-group}
+
+\def\texml@book@app@group@level{-4}
+\def\texml@book@app@level{-3}
+\def\texml@book@app@body@level{-2}
+
+\let\texml@app@group@level\texml@book@app@group@level
+
+\def\texml@part@level{-1}
+\def\texml@chapter@level{0}
+
 \def\start@XML@section#1#2#3#4{
 % #1 = section type  (part, chapter, section, subsection, etc.)
 % #2 = section level (-1,   0,       1,       2,          etc.)
@@ -407,6 +433,11 @@ __DATA__
         \ifinXMLelement{\XML@appendix@group@element}%
             \ifnum#2=1
                 \def\XML@section@tag{app}%
+            \fi
+        \else
+            \ifx\this@XML@section@tag\@empty\else
+                \let\XML@section@tag\this@XML@section@tag
+                \glet\this@XML@section@tag\@empty
             \fi
         \fi
         \ifinXMLelement{statement}%
