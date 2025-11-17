@@ -1435,6 +1435,15 @@ __DATA__
 
 \newcommand\CMP[1]{CMP #1}
 
+\def\acknowledgments{%
+    \backmatter
+    \ifinXMLelement{\XML@appendix@group@element}%
+        \@pop@sectionstack{-4}%{\texml@app@group@level}%
+    \fi
+    \def\this@XML@section@tag{ack}%
+    \section*%
+}
+
 \newif\if@sec@bibliographies@
 \@sec@bibliographies@false
 
