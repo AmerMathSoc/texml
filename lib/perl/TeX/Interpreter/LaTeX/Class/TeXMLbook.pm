@@ -283,7 +283,7 @@ __DATA__
         \global\@backmatterfalse
         \startXMLelement{front-matter}%
         \addXMLid
-        \def\XML@section@tag{sec}%
+        \def\XML@section@tag{sec}% TBD: remove this line
     \fi
 }
 
@@ -299,7 +299,7 @@ __DATA__
         \addXMLid
         \startXMLelement{book-part}%
         \startXMLelement{body}%
-        \def\XML@section@tag{sec}%
+        \def\XML@section@tag{sec}% TBD: remove this line
         \mainmatter@hook
     \fi
 }
@@ -312,6 +312,7 @@ __DATA__
         \global\@backmattertrue
         \startXMLelement{book-back}%
         \addXMLid
+        %% TBD: remove next two lines
         \def\XML@section@tag{book-app}%
         \let\default@XML@section@tag\XML@section@tag
     \fi
@@ -319,7 +320,11 @@ __DATA__
 
 \newif\ifappendix
 
-\def\XML@appendix@group@element{book-app-group}
+\def\XML@appendix@group@element{book-app-group}% for cleveref
+
+%% TBD: replace definition of \appendix
+
+\iftrue
 
 \def\appendix{%
     \ifappendix\else
@@ -338,26 +343,65 @@ __DATA__
     \fi
 }
 
-\let\default@XML@section@tag\XML@section@tag
+\let\default@XML@section@tag\XML@section@tag %% TBD: remove this line
 
-\def\FM@type@Preface{preface}
-\def\FM@type@Foreword{preface}
+\else
 
-%% This is too fragile.
+\def\appendix{%
+    \kernel@ifnextchar[\appendix@{\appendix@[]}%
+}
+
+\def\appendix@[#1]{%
+    \ifappendix\else
+        \par
+        \backmatter
+        \appendixtrue
+        \startXMLelement{book-app-group}%
+        \addXMLid
+        \@push@sectionstack{\texml@book@app@group@level}{book-app-group}%
+        \ifnum\strcmp{#1}{} = 0 \else
+            \startXMLelement{book-part-meta}%
+                \startXMLelement{title-group}%
+                    \thisxmlpartag{title}#1\par
+                \endXMLelement{title-group}%
+            \endXMLelement{book-part-meta}%
+        \fi
+        \let\chapter\chapter@app
+        \c@chapter\z@
+        \c@section\z@
+        \c@subsection\z@
+        \let\chaptername\appendixname
+        \def\thechapter{\@Alph\c@chapter}%
+    \fi
+}
+
+\fi
 
 \def\@Guess@FM@type#1{%
     \if@frontmatter
         \begingroup
             \let\footnote\@gobble
             \let\protect\@empty
-            \@ifundefined{FM@type@#1}{}{%
-                \xdef\XML@section@tag{\csname FM@type@#1\endcsname}%
-            }%
+            \ifnum\stricmp{#1}{Preface}=\z@
+                \gdef\this@XML@section@tag{preface}%
+            \fi
         \endgroup
     \fi
 }
 
+% TBD: Replace \@chapdef
+
+\iftrue
+
 \def\@chapdef#1#2{\@ifstar{\@dblarg{#2}}{\@dblarg{#1}}}
+
+\else
+
+\def\@chapdef#1#2{%
+    \@ifstar {\st@rredtrue\@dblarg{#2}} {\st@rredfalse\@dblarg{#1}}%
+}
+
+\fi
 
 \def\chaptername{Chapter}
 \def\appendixname{Appendix}
@@ -365,6 +409,8 @@ __DATA__
 \def\chapter{%
     \@chapdef\@chapter\@schapter
 }
+
+\iftrue
 
 \def\@chapterefsubtype{chapter}
 
@@ -420,10 +466,104 @@ __DATA__
     \@afterheading
 }
 
+\else
+
+\def\@chapter[#1]#2{%
+    \def\@currentreftype{sec}%
+    \edef\@currentrefsubtype{chapter}%
+    \let\@toclevel\texml@chapter@level
+    \let\@secnumber\@empty
+    \ifnum \c@secnumdepth < \@toclevel \relax \else
+        \ifx\thechapter\@empty \else
+            \refstepcounter{chapter}%
+            \edef\@secnumber{\thechapter}%
+        \fi
+    \fi
+    \typeout{\ifx\chaptername\@empty\else\chaptername\space\fi\@secnumber}%
+    \@ams@inlinefalse
+    \@Guess@FM@type{#2}%
+    \start@XML@section{chapter}{\texml@chapter@level}{%
+        \ifnum\c@secnumdepth<\@toclevel \else
+            \ifx\chaptername\@empty\else
+                \chaptername\space
+            \fi
+        \fi
+        \@secnumber
+    }{#2}%
+    \@tocwriteb\tocchapter{chapter}{#2}%
+    \@afterheading
+}
+
+\def\@schapter[#1]#2{%
+    \let\saved@footnote\footnote
+    \let\footnote\@gobble
+    \typeout{#2}%
+    \let\@toclevel\texml@chapter@level
+    \let\@secnumber\@empty
+    \let\footnote\saved@footnote
+    \@ams@inlinefalse
+    \@Guess@FM@type{#2}%
+    \start@XML@section{chapter}{0}{}{#2}%
+    \let\footnote\@gobble
+    \ifx\chaptername\appendixname
+        \@tocwriteb\tocappendix{chapter}{#2}%
+    \else
+        \@tocwriteb\tocchapter{chapter}{#2}%
+    \fi
+    \let\footnote\saved@footnote
+    \@afterheading
+}
+
+\def\chapter@app{%
+    \@chapdef\chapter@app@\chapter@app@
+}
+
+\def\chapter@app@[#1]#2{%
+    \@pop@sectionstack{\texml@book@app@level}%
+    \def\@currentreftype{sec}%
+    \def\@currentrefsubtype{appendix}%
+    \let\@toclevel\texml@chapter@level
+    \let\@secnumber\@empty
+    \ifst@rred\else
+        \ifnum \c@secnumdepth < \@toclevel \relax \else
+            \ifx\thechapter\@empty \else
+                \refstepcounter{chapter}%
+                \edef\@secnumber{\thechapter}%
+            \fi
+        \fi
+    \fi
+    \typeout{\ifx\appendixname\@empty\else\appendixname\space\fi\@secnumber}%
+    \@ams@inlinefalse
+    \startXMLelement{book-app}%
+        \addXMLid
+        \@push@sectionstack{\texml@book@app@level}{book-app}%
+        \startXMLelement{book-part-meta}%
+            \startXMLelement{title-group}%
+                \ifnum\strcmp{\appendixname\@secnumber}{}=0 \else
+                    \thisxmlpartag{label}%
+                    \ifx\appendixname\@empty\else
+                        \appendixname\space
+                    \fi
+                    \@secnumber\par
+                \fi
+                \ifnum\strcmp{#2}{}=0 \else
+                    \thisxmlpartag{title}%
+                    #2\par
+                \fi
+            \endXMLelement{title-group}%
+        \endXMLelement{book-part-meta}%
+        \startXMLelement{body}%
+        \@push@sectionstack{\texml@book@app@body@level}{body}%
+    \@tocwriteb\tocappendix{chapter}{#2}%
+    \@afterheading
+}
+
+\fi
+
 \def\part{\secdef\@part\@spart}
 
 \def\@part[#1]#2{%
-    \def\@toclevel{-1}%
+    \let\@toclevel\texml@part@level
     \ifnum\c@secnumdepth<\@toclevel\relax
         \let\@secnumber\@empty
     \else
@@ -440,7 +580,7 @@ __DATA__
 \def\@spart#1{%
     \typeout{#1}%
     \let\@secnumber\@empty
-    \def\@toclevel{-1}%
+    \let\@toclevel\texml@part@level
     \@ams@inlinefalse
     \start@XML@section{part}{-1}{}{#1}%
     \@tocwriteb\tocpart{part}{#1}%
