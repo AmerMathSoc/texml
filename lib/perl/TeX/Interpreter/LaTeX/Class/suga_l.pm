@@ -180,15 +180,15 @@ __DATA__
 \def\AMS@eissn{2473-585X}
 \def\AMS@pissn{0898-9583}
 
-% https://www.jstage.jst.go.jp/browse/sugaku/
-
-\def\AMS@orig@publname{数学}%{S\=ugaku}
-\def\AMS@orig@issn{1883-6127}
-
 \def\AMS@series@url{https://www.ams.org/aboutsuga/}
 
 \def\JATS@subject@group{Research article}
 \def\JATS@subject@group@type{display-channel}
+
+% https://www.jstage.jst.go.jp/browse/sugaku/
+
+\def\AMS@orig@publname{数学}
+\def\AMS@orig@issn{1883-6127}
 
 \endinput
 
