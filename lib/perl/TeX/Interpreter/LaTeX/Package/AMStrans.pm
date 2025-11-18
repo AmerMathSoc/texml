@@ -2,6 +2,8 @@ package TeX::Interpreter::LaTeX::Package::AMStrans;
 
 use v5.26.0;
 
+use utf8;
+
 # Copyright (C) 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -56,6 +58,9 @@ __DATA__
 
 \def\origDOI{\gdef\AMS@orig@DOI}
 \let\AMS@orig@DOI\@empty
+
+\def\origURL{\gdef\AMS@orig@URL}
+\let\AMS@orig@URL\@empty
 
 \let\AMS@orig@language\@empty
 
@@ -149,7 +154,10 @@ __DATA__
     \fi
 }
 
-\def\output@translated@article{%
+%% TBD: Customize this based on language?  E.g., for Russian, insert
+%% "том" before volume and "выпуск" or "№" before issue?
+
+\def\output@translated@article@real{%
     \ifx\AMS@orig@publname\@empty\else
         \par
         \startXMLelement{related-article}
@@ -157,6 +165,7 @@ __DATA__
             \ifx\AMS@orig@language\@empty\else
                 \setXMLattribute{xml:lang}{\AMS@orig@language}%
             \fi
+            \output@translated@article@href
             \format@translated@authors
             \ifx\AMS@orig@title\@empty\else
                 \startXMLelement{article-title}%
@@ -206,24 +215,55 @@ __DATA__
                 \fi
             \fi
             \XMLgeneratedText.%
-            \ifx\AMS@orig@DOI\@empty\else
-                \space DOI
-                \startXMLelement{ext-link}%
-                    \ifx\AMS@orig@language\@empty\else
-                        \setXMLattribute{hreflang}{\AMS@orig@language}%
-                    \fi
-                    \setXMLattribute{xlink:href}{https://doi.org/\AMS@orig@DOI}%
-                    \AMS@orig@DOI
-                \endXMLelement{ext-link}%
-            \fi
+            \output@translated@article@extlink
             \endXMLelement{related-article}
             \par
     \fi
 }
 
+\def\output@translated@article@extlink{%
+    \ifx\AMS@orig@DOI\@empty
+        \ifx\AMS@orig@URL\@empty\else
+            \space URL
+            \startXMLelement{ext-link}%
+                \ifx\AMS@orig@language\@empty\else
+                    \setXMLattribute{hreflang}{\AMS@orig@language}%
+                \fi
+                \setXMLattribute{xlink:href}{\AMS@orig@URL}%
+                \AMS@orig@URL
+            \endXMLelement{ext-link}%
+        \fi
+    \else
+        \space DOI
+        \startXMLelement{ext-link}%
+            \ifx\AMS@orig@language\@empty\else
+                \setXMLattribute{hreflang}{\AMS@orig@language}%
+            \fi
+            \setXMLattribute{xlink:href}{https://doi.org/\AMS@orig@DOI}%
+            \AMS@orig@DOI
+        \endXMLelement{ext-link}%
+    \fi
+}
+
+\def\output@translated@article@href{%
+    \ifx\AMS@orig@DOI\@empty
+        \ifx\AMS@orig@URL\@empty\else
+            \ifx\AMS@orig@language\@empty\else
+                \setXMLattribute{hreflang}{\AMS@orig@language}%
+            \fi
+            \setXMLattribute{xlink:href}{\AMS@orig@URL}%
+        \fi
+    \else
+        \ifx\AMS@orig@language\@empty\else
+            \setXMLattribute{hreflang}{\AMS@orig@language}%
+        \fi
+        \setXMLattribute{xlink:href}{https://doi.org/\AMS@orig@DOI}%
+    \fi
+}
+
 %% Temporarily disable \output@translated@article until we're ready for it.
 
-\let\output@translated@article\@empty
+% \let\output@translated@article\output@translated@article@real
 
 % russian.dtx
 
