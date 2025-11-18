@@ -1356,14 +1356,15 @@ __DATA__
 
 \def\appendixname{Appendix}
 
-\def\XML@appendix@group@element{app-group}
+\def\XML@appendix@group@element{app-group}% TBD: remove this line
 
 \def\appendix{%
     \par
     \backmatter
-    \startXMLelement{\XML@appendix@group@element}%
+    \startXMLelement{\XML@appendix@group@element}% TBD: {app-group}%
     \addXMLid
-    \@push@sectionstack{0}{\XML@appendix@group@element}%
+    %% TBD: \@push@sectionstack{\texml@app@group@level}{app-group}%
+    \@push@sectionstack{\texml@app@group@level}{\XML@appendix@group@element}%
     \c@section\z@
     \c@subsection\z@
     \let\sectionname\appendixname
@@ -1438,7 +1439,7 @@ __DATA__
 \def\acknowledgments{%
     \backmatter
     \ifinXMLelement{\XML@appendix@group@element}%
-        \@pop@sectionstack{-4}%{\texml@app@group@level}%
+        \@pop@sectionstack{\texml@app@group@level}%
     \fi
     \def\this@XML@section@tag{ack}%
     \section*%
