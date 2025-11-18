@@ -73,17 +73,17 @@ __DATA__
         \let\saved@footnote\footnote
         \let\footnote\@gobble
         \typeout{#2}%
-        \@Guess@FM@type{#2}%
-        \def\@toclevel{0}%
+        \let\@toclevel\texml@chapter@level
         \let\@secnumber\@empty
         \let\footnote\saved@footnote
     %% Add a <label> even for unnumbered appendixes; see, e.g., gsm/228.
     %% Should this be added to all series?
         \@ams@inlinefalse
+        \@Guess@FM@type{#2}%
         \start@XML@section{chapter}{0}{%
             \ifx\chaptername\appendixname\appendixname\fi
         }{#2}%
-        \let\XML@section@tag\default@XML@section@tag
+        \let\XML@section@tag\default@XML@section@tag %% TBD: remove this line
         \let\footnote\@gobble
         \ifx\chaptername\appendixname
             \@tocwriteb\tocappendix{chapter}{#2}%
