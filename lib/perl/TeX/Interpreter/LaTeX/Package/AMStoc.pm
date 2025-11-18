@@ -269,7 +269,7 @@ __DATA__
         \startXMLelement{toc}%
             \addXMLid
             \par
-            \startXMLelement{title-group}%
+            \startXMLelement{title-group}% TBD: Change to toc-title-group
                 \label{@starttoc:#1}%
                 \startXMLelement{title}%
                     {\xmlpartag{}#2\par}%
