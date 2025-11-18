@@ -2,6 +2,8 @@ package TeX::Interpreter::LaTeX::Class::spmj_l;
 
 use v5.26.0;
 
+use utf8;
+
 # Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -69,13 +71,15 @@ __DATA__
 \def\AMS@eissn{1547-7371}
 \def\AMS@pissn{1061-0022}
 
-\def\AMS@orig@publname{\textcyr{Algebra i analiz}}
-\def\AMS@orig@issn{0234-0852}
-
 \def\AMS@series@url{https://www.ams.org/aboutspmj/}
 
 \def\JATS@subject@group{Research article}
 \def\JATS@subject@group@type{display-channel}
+
+% https://www.mathnet.ru/php/journal.phtml?jrnid=aa
+
+\def\AMS@orig@publname{Алгебра и анализ}
+\def\AMS@orig@issn{0234-0852}
 
 \endinput
 
