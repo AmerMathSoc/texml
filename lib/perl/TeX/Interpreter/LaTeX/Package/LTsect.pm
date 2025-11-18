@@ -430,7 +430,7 @@ __DATA__
     \par
     \stepXMLid
     \begingroup
-        \ifinXMLelement{\XML@appendix@group@element}%
+        \ifinXMLelement{\XML@appendix@group@element}% TBD: {app-group}%
             \ifnum#2=1
                 \def\XML@section@tag{app}%
             \fi
