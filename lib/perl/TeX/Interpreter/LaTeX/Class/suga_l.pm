@@ -59,9 +59,9 @@ sub do_oa {
     my $tex   = shift;
     my $token = shift;
 
-    return; ## TBD: DISABLED UNTIL WE'RE READY FOR THIS DOWNSTREAM
-
     my $oa = $tex->read_undelimited_parameter();
+
+    return; ## TBD: DISABLED UNTIL WE'RE READY FOR THIS DOWNSTREAM
 
     my $text = trim($oa->to_string());
 
@@ -179,6 +179,8 @@ __DATA__
 
 \def\AMS@eissn{2473-585X}
 \def\AMS@pissn{0898-9583}
+
+% https://www.jstage.jst.go.jp/browse/sugaku/
 
 \def\AMS@orig@publname{数学}%{S\=ugaku}
 \def\AMS@orig@issn{1883-6127}
