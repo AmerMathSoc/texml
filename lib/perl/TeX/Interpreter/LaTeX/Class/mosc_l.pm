@@ -2,6 +2,8 @@ package TeX::Interpreter::LaTeX::Class::mosc_l;
 
 use v5.26.0;
 
+use utf8;
+
 # Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -63,13 +65,8 @@ __DATA__
 
 \gdef\AMS@publkey{mosc}
 
-% TBD: Russian title (Trudy Moskov. Matem. Obshch.)
-
 \def\AMS@publname{Transactions of the Moscow Mathematical Society}
 \def\AMS@publname@short{Trans. Moscow Math. Soc.}
-
-\def\AMS@orig@publname{\textcyr{Trudy Moskovskogo Matematicheskogo Obwestva}}
-\def\AMS@orig@issn{0134-8663}
 
 \def\AMS@eissn{1547-738X}
 \def\AMS@pissn{0077-1554}
@@ -78,6 +75,11 @@ __DATA__
 
 \def\JATS@subject@group{Research article}
 \def\JATS@subject@group@type{display-channel}
+
+% https://www.mathnet.ru/php/journal.phtml?jrnid=mmo
+
+\def\AMS@orig@publname{Труды Московского математического общества}
+\def\AMS@orig@issn{0134-8663}
 
 \endinput
 
