@@ -1,5 +1,7 @@
 package TeX::Interpreter::LaTeX::Package::subfig;
 
+use v5.26.0
+
 # Copyright (C) 2022, 2024 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,9 +31,9 @@ package TeX::Interpreter::LaTeX::Package::subfig;
 # USA
 # email: tech-support@ams.org
 
-use strict;
+use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -170,11 +172,14 @@ __DATA__
                 \endXMLelement{label}%
             \fi
         % \fi
-        \startXMLelement{caption}%
-            \startXMLelement{p}%
-            #3%
-            \endXMLelement{p}%
-        \endXMLelement{caption}%
+        \ifnum\strcmp{#3}{}=\z@\else
+            \startXMLelement{caption}%
+                \begingroup
+                    \xmlpartag{p}%
+                    #3\par
+                \endgroup
+            \endXMLelement{caption}%
+        \fi
     \fi
 }
 
