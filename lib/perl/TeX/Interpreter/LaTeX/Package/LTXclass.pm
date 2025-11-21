@@ -73,6 +73,9 @@ __DATA__
     \fi
 }
 
+\def\fnum@figure{\figurename\space\thefigure\XMLgeneratedText:}
+\def\fnum@table{\tablename\space\thetable\XMLgeneratedText:}
+
 \endinput
 
 __END__

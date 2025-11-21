@@ -98,7 +98,7 @@ __DATA__
     \let\\\@tabularcr
     \let\tabularnewline\\%
     \let\color\set@cell@fg@color
-    \let\par\@empty
+    \let\par\@empty % ??? is this a good idea?
     \let\@sharp##%
     \set@typeset@protect
     \@arrayleft
@@ -167,16 +167,21 @@ __DATA__
     \LT@makecaption#1\fnum@table{#3}%
 }
 
+\providecommand\LT@texml@caption@sep{\XMLgeneratedText:}
+
 \def\LT@makecaption#1#2#3{%
     \protected@xdef\LT@caption@box{%
         \ifx#1\@gobble\else
             \par\startXMLelement{label}%
-                #2\XMLgeneratedText:\par
+                #2\LT@texml@caption@sep\par
             \endXMLelement{label}\par
         \fi
         \if###3##\else
             \par\startXMLelement{caption}%
-                #3\par
+                %% TBD: \xmlpartag{p} doesn't work.  Why???
+                \startXMLelement{p}%
+                    #3\@@par
+                \endXMLelement{p}%
             \endXMLelement{caption}\par
         \fi
     }%

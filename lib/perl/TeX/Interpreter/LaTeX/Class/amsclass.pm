@@ -1526,6 +1526,8 @@ __DATA__
 \def\fnum@table{\tablename\space\thetable\XMLgeneratedText.}
 \def\jats@table@element{table-wrap}
 
+\let\LT@texml@caption@sep\@empty
+
 \SaveEnvironmentDefinition{table}
 \SaveEnvironmentDefinition{table*}
 
