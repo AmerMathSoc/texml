@@ -257,6 +257,9 @@ __DATA__
 
 \ProvidesPackage{LTsect}
 
+\newif\ifNEWappendixes@
+\NEWappendixes@false
+
 \newif\if@ams@empty
 
 \def\ams@measure#1{%

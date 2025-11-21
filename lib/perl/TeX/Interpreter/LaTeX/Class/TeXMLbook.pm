@@ -283,7 +283,9 @@ __DATA__
         \global\@backmatterfalse
         \startXMLelement{front-matter}%
         \addXMLid
+\ifNEWappendixes@\else
         \def\XML@section@tag{sec}% TBD: remove this line
+\fi
     \fi
 }
 
@@ -299,7 +301,9 @@ __DATA__
         \addXMLid
         \startXMLelement{book-part}%
         \startXMLelement{body}%
+\ifNEWappendixes@\else
         \def\XML@section@tag{sec}% TBD: remove this line
+\fi
         \mainmatter@hook
     \fi
 }
@@ -313,8 +317,10 @@ __DATA__
         \startXMLelement{book-back}%
         \addXMLid
         %% TBD: remove next two lines
+\ifNEWappendixes@\else
         \def\XML@section@tag{book-app}%
         \let\default@XML@section@tag\XML@section@tag
+\fi
     \fi
 }
 
@@ -324,28 +330,7 @@ __DATA__
 
 %% TBD: replace definition of \appendix
 
-\iftrue
-
-\def\appendix{%
-    \ifappendix\else
-        \par
-        \backmatter
-        \appendixtrue
-        \startXMLelement{\XML@appendix@group@element}%
-        \addXMLid
-        \@push@sectionstack{-1}{\XML@appendix@group@element}%
-        \c@chapter\z@
-        \c@section\z@
-        \c@subsection\z@
-        \let\chaptername\appendixname
-        \def\thechapter{\@Alph\c@chapter}%
-        \def\@chapterefsubtype{appendix}%
-    \fi
-}
-
-\let\default@XML@section@tag\XML@section@tag %% TBD: remove this line
-
-\else
+\ifNEWappendixes@
 
 \def\appendix{%
     \kernel@ifnextchar[\appendix@{\appendix@[]}%
@@ -375,6 +360,27 @@ __DATA__
     \fi
 }
 
+\else
+
+\def\appendix{%
+    \ifappendix\else
+        \par
+        \backmatter
+        \appendixtrue
+        \startXMLelement{\XML@appendix@group@element}%
+        \addXMLid
+        \@push@sectionstack{-1}{\XML@appendix@group@element}%
+        \c@chapter\z@
+        \c@section\z@
+        \c@subsection\z@
+        \let\chaptername\appendixname
+        \def\thechapter{\@Alph\c@chapter}%
+        \def\@chapterefsubtype{appendix}%
+    \fi
+}
+
+\let\default@XML@section@tag\XML@section@tag %% TBD: remove this line
+
 \fi
 
 \def\@Guess@FM@type#1{%
@@ -391,15 +397,15 @@ __DATA__
 
 % TBD: Replace \@chapdef
 
-\iftrue
-
-\def\@chapdef#1#2{\@ifstar{\@dblarg{#2}}{\@dblarg{#1}}}
-
-\else
+\ifNEWappendixes@
 
 \def\@chapdef#1#2{%
     \@ifstar {\st@rredtrue\@dblarg{#2}} {\st@rredfalse\@dblarg{#1}}%
 }
+
+\else
+
+\def\@chapdef#1#2{\@ifstar{\@dblarg{#2}}{\@dblarg{#1}}}
 
 \fi
 
@@ -410,63 +416,7 @@ __DATA__
     \@chapdef\@chapter\@schapter
 }
 
-\iftrue
-
-\def\@chapterefsubtype{chapter}
-
-\def\@chapter[#1]#2{%
-    \def\@currentreftype{sec}%
-    \edef\@currentrefsubtype{\@chapterefsubtype}%
-    \def\@toclevel{0}%
-    \@Guess@FM@type{#2}%
-    \let\@secnumber\@empty
-    \ifnum\c@secnumdepth<\@toclevel\relax \else
-        \ifx\thechapter\@empty \else
-            \refstepcounter{chapter}%
-            \edef\@secnumber{\thechapter}%
-        \fi
-    \fi
-    \typeout{\ifx\chaptername\@empty\else\chaptername\space\fi\@secnumber}%
-    \@ams@inlinefalse
-    \start@XML@section{chapter}{0}{%
-        \ifnum\c@secnumdepth<\@toclevel \else
-            \ifx\chaptername\@empty\else
-                \chaptername\space
-            \fi
-        \fi
-        \@secnumber
-    }{#2}%
-    \let\XML@section@tag\default@XML@section@tag
-    \ifx\chaptername\appendixname
-        \@tocwriteb\tocappendix{chapter}{#2}%
-    \else
-        \@tocwriteb\tocchapter{chapter}{#2}%
-    \fi
-    \@afterheading
-}
-
-\def\@schapter[#1]#2{%
-    \let\saved@footnote\footnote
-    \let\footnote\@gobble
-    \typeout{#2}%
-    \@Guess@FM@type{#2}%
-    \def\@toclevel{0}%
-    \let\@secnumber\@empty
-    \let\footnote\saved@footnote
-    \@ams@inlinefalse
-    \start@XML@section{chapter}{0}{}{#2}%
-    \let\XML@section@tag\default@XML@section@tag
-    \let\footnote\@gobble
-    \ifx\chaptername\appendixname
-        \@tocwriteb\tocappendix{chapter}{#2}%
-    \else
-        \@tocwriteb\tocchapter{chapter}{#2}%
-    \fi
-    \let\footnote\saved@footnote
-    \@afterheading
-}
-
-\else
+\ifNEWappendixes@
 
 \def\@chapter[#1]#2{%
     \def\@currentreftype{sec}%
@@ -555,6 +505,62 @@ __DATA__
         \startXMLelement{body}%
         \@push@sectionstack{\texml@book@app@body@level}{body}%
     \@tocwriteb\tocappendix{chapter}{#2}%
+    \@afterheading
+}
+
+\else
+
+\def\@chapterefsubtype{chapter}
+
+\def\@chapter[#1]#2{%
+    \def\@currentreftype{sec}%
+    \edef\@currentrefsubtype{\@chapterefsubtype}%
+    \def\@toclevel{0}%
+    \@Guess@FM@type{#2}%
+    \let\@secnumber\@empty
+    \ifnum\c@secnumdepth<\@toclevel\relax \else
+        \ifx\thechapter\@empty \else
+            \refstepcounter{chapter}%
+            \edef\@secnumber{\thechapter}%
+        \fi
+    \fi
+    \typeout{\ifx\chaptername\@empty\else\chaptername\space\fi\@secnumber}%
+    \@ams@inlinefalse
+    \start@XML@section{chapter}{0}{%
+        \ifnum\c@secnumdepth<\@toclevel \else
+            \ifx\chaptername\@empty\else
+                \chaptername\space
+            \fi
+        \fi
+        \@secnumber
+    }{#2}%
+    \let\XML@section@tag\default@XML@section@tag
+    \ifx\chaptername\appendixname
+        \@tocwriteb\tocappendix{chapter}{#2}%
+    \else
+        \@tocwriteb\tocchapter{chapter}{#2}%
+    \fi
+    \@afterheading
+}
+
+\def\@schapter[#1]#2{%
+    \let\saved@footnote\footnote
+    \let\footnote\@gobble
+    \typeout{#2}%
+    \@Guess@FM@type{#2}%
+    \def\@toclevel{0}%
+    \let\@secnumber\@empty
+    \let\footnote\saved@footnote
+    \@ams@inlinefalse
+    \start@XML@section{chapter}{0}{}{#2}%
+    \let\XML@section@tag\default@XML@section@tag
+    \let\footnote\@gobble
+    \ifx\chaptername\appendixname
+        \@tocwriteb\tocappendix{chapter}{#2}%
+    \else
+        \@tocwriteb\tocchapter{chapter}{#2}%
+    \fi
+    \let\footnote\saved@footnote
     \@afterheading
 }
 
