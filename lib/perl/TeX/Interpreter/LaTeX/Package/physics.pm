@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::physics;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Package::physics;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -73,6 +74,60 @@ __DATA__
 \DeclareMathOperator{\Re}{Re}
 \let\Im\relax
 \DeclareMathOperator{\Im}{Im}
+
+%% I think this is a reasonable emulation of \dd.
+
+\newcommand{\dd}{%
+    \begingroup
+        \let\@texml@dd@n\@empty
+        \@ifnextchar[\texml@dd{\texml@dd[]}%
+}
+
+\def\texml@dd[#1]{%
+        \def\@texml@dd@n{#1}%
+        \futurelet\@let@token\texml@dd@
+}
+
+\def\texml@dd@{%
+        \ifx\@let@token\bgroup
+            \let\next@\texml@dd@G
+        \else\ifx\@let@token(%
+            \let\next@\texml@dd@P
+        \else
+            \let\next@\texml@dd@B
+        \fi\fi
+        \next@
+}
+
+\def\texml@dd@B{%
+        \mathrm{d}%
+        \ifx\@texml@dd@n\@empty\else
+            ^{\@texml@dd@n}%
+        \fi
+    \endgroup
+}
+
+\def\texml@dd@G#1{%
+        \mathinner{
+            \mathrm{d}%
+            \ifx\@texml@dd@n\@empty\else
+                ^{\@texml@dd@n}%
+            \fi
+            #1
+        }
+    \endgroup
+}
+
+\def\texml@dd@P(#1){%
+        \mathinner{
+            \mathrm{d}%
+            \ifx\@texml@dd@n\@empty\else
+                ^{\@texml@dd@n}%
+            \fi
+            \left(#1\right)
+        }
+    \endgroup
+}
 
 \endinput
 
