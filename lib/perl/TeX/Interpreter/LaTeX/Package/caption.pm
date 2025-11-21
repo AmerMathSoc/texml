@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::caption;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2205 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Package::caption;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -74,11 +75,12 @@ __DATA__
 \long\def\caption@iiibox#1#2#3#4[#5]#6{%
     \startXMLelement{fig}%
         \ifx###3##\else
-            \startXMLelement{caption}%
-                \startXMLelement{p}%
-                    #3%
-                \endXMLelement{p}%
-            \endXMLelement{caption}%
+            \begingroup
+                \xmlpartag{p}
+                \startXMLelement{caption}%
+                    #3\par
+                \endXMLelement{caption}%
+            \endgroup
         \fi
         #6%
     \endXMLelement{fig}%

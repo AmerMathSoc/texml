@@ -1,6 +1,6 @@
 package TeX::Interpreter::LaTeX::Package::subfig;
 
-use v5.26.0
+use v5.26.0;
 
 # Copyright (C) 2022, 2024 American Mathematical Society
 #

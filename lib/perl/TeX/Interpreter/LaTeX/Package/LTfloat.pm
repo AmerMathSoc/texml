@@ -239,10 +239,9 @@ __DATA__
         \par
         \begingroup
             \def\jats@graphics@element{inline-graphic}
+            \xmlpartag{p}%
             \startXMLelement{caption}%
-                \startXMLelement{p}%
-                #3%
-                \endXMLelement{p}%
+                #3\par
             \endXMLelement{caption}%
             \par
         \endgroup
