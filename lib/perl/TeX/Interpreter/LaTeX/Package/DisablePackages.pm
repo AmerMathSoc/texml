@@ -67,6 +67,7 @@ __DATA__
 \DisablePackage{courier}
 \DisablePackage{ctable}
 \DisablePackage{dutchcal}
+\DisablePackage{exscale}
 \DisablePackage{etoolbox}
 % \DisablePackage{fontenc}
 \DisablePackage{footmisc}
