@@ -117,7 +117,7 @@ sub val {
     my $val = $self->get_config()->val(@_);
 
     if (defined (my $root = $self->get_root())) {
-        $val =~ s{\$TEXML_ROOT\b}{$root} if defined $val;
+        $val =~ s{\$TEXML_ROOT\b}{$root}g if defined $val;
     }
 
     return $val;
