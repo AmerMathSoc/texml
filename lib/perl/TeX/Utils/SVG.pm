@@ -159,8 +159,9 @@ sub add_title {
     my $self = shift;
 
     my $svg_file = shift;
-    my $tex_fragment = shift;
+    my $svg_title = shift;
     my $id = shift;
+    my $data_src = shift;
 
     my $dom = eval { XML::LibXML->load_xml(location => $svg_file, huge => 1) };
 
@@ -170,13 +171,20 @@ sub add_title {
         return;
     }
 
+    $svg_title =~ s{\\renewcommand\{.*?\}\{.*?\}}{}g;
+    $svg_title =~ s{\\setlength\{.*?\}\{.*?\}}{}g;
+
+    $svg_title = trim($svg_title);
+
     my $root = $dom->documentElement();
 
     my $title = $dom->createElement("title");
 
+    $title->setAttribute('data-source', $data_src);
+
     $title->setAttribute(id => $id);
 
-    $title->appendTextNode($tex_fragment);
+    $title->appendTextNode($svg_title);
 
     $root->insertBefore($title, $root->firstChild());
 
@@ -220,6 +228,7 @@ sub generate_svg {
     my $tex_file  = shift;
     my $svg_title = shift;
     my $id = shift;
+    my $data_src  = shift;
     my $use_xetex = shift;
 
     my $base = basename($tex_file, '.tex');
@@ -246,7 +255,7 @@ sub generate_svg {
         $self->system(PDF2SVG, $cropped_pdf, $svg_file);
     }
 
-    $self->add_title($svg_file, $svg_title, $id);
+    $self->add_title($svg_file, $svg_title, $id, $data_src);
 
     return $svg_file;
 }
@@ -304,7 +313,7 @@ sub convert_tex {
 
     # if (! $use_xetex) {
     #     my $is_external_graphic = $tex_fragment =~ m{\\includegraphics};
-    # 
+    #
     #     $use_xetex = (! $is_external_graphic) && $tex_fragment !~ m{\.pstex_t};
     # }
 
@@ -406,7 +415,9 @@ sub convert_tex {
 
     print { $fh } qq{\\begin{document}\n\n};
 
-    printf { $fh } qq{%%%% SOURCE: %s, l. %s\n\n}, $tex->get_file_name(), $tex->input_line_no();
+    my $data_src = sprintf qq{%s, l. %s}, $tex->get_file_name(), $tex->input_line_no();
+
+    print { $fh } qq{%% SOURCE: $data_src\n\n};
 
     print { $fh } qq{\\begin{equation*}\n} if $starred;
 
@@ -439,13 +450,13 @@ sub convert_tex {
     if (my $post = $CFG->val(__PACKAGE__, 'post_texinputs')) {
         push @texinputs, $post;
     }
-    
+
     unshift @texinputs, ".";
-    
+
     local $ENV{TEXINPUTS} = join(":", @texinputs);
 
     my $svg_file = eval {
-        $self->generate_svg($tex_file, $tex_fragment, $id, $use_xetex);
+        $self->generate_svg($tex_file, $tex_fragment, $id, $data_src, $use_xetex);
     };
 
     chdir($cwd) or do {
