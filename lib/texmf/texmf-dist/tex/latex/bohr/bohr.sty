@@ -1,0 +1,410 @@
+% --------------------------------------------------------------------------
+% the BOHR package
+% 
+%   simple atom representation according to the Bohr model
+% 
+% --------------------------------------------------------------------------
+% Clemens Niederberger
+% Web:    https://bitbucket.org/cgnieder/bohr/
+% E-Mail: contact@mychemistry.eu
+% --------------------------------------------------------------------------
+% Copyright 2012-2015 Clemens Niederberger
+% 
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+% 
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Clemens Niederberger.
+% --------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% --------------------------------------------------------------------------
+\newcommand*\@bohr@date{2015/06/24}
+\newcommand*\@bohr@version{v1.0}
+\newcommand*\@bohr@description{simple atom representation according to the Bohr model}
+
+\ProvidesPackage{bohr}[\@bohr@date\space \@bohr@version\space \@bohr@description]
+\RequirePackage{tikz,pgfopts,elements}
+
+% --------------------------------------------------------------------------
+% message handling
+\newcommand*\@bohr@error@message{%
+  For details have a look at the `bohr' manual.%
+}
+
+\newrobustcmd*\@bohr@error[1]{\PackageError{bohr}{#1}{#1 \@bohr@error@message}}
+\newrobustcmd*\@bohr@warning[1]{\PackageWarning{bohr}{#1}}
+\newrobustcmd*\@bohr@warningnoline[1]{\PackageWarningNoLine{bohr}{#1}}
+\newrobustcmd*\@bohr@info[1]{\PackageInfo{bohr}{#1}}
+
+\newrobustcmd*\@bohr@expand@arg[2]{%
+  \edef\@bohr@tmpa{{#2}}%
+  \expandafter#1\@bohr@tmpa
+}
+
+\newrobustcmd*\@bohr@expand@second@arg[3]{%
+  \edef\@bohr@tmpa{{#3}}%
+  \def\@bohr@tmpb{{#2}}%
+  \expandafter\expandafter\expandafter#1\expandafter\@bohr@tmpb\@bohr@tmpa
+}
+
+% --------------------------------------------------------------------------
+% options
+\newcommand*\@bohr@name@options{}
+\newcommand*\@bohr@write@atom[1]{#1}
+\newcommand*\@bohr@nucleus@radius{1em}
+\newcommand*\@bohr@electron@options{blue!50!black!50}
+\newcommand*\@bohr@electron@radius{1.5pt}
+\newcommand*\@bohr@shell@dist{1em}
+\newcommand*\@bohr@nucleus@options{draw=black!80,fill=black!10,opacity=.25}
+\newcommand*\@bohr@shell@options{draw=blue!75,thin}
+
+\newbool{bohr@insert@symbol}
+\newbool{bohr@insert@number}
+
+\newcommand*\@bohr@insert@symbol[2]{%
+  \ifbool{bohr@insert@symbol}
+    {%
+      \ifblank{#2}
+        {\@elements@get@atom@symbol{#1}}
+        {\@bohr@write@atom{#2}}%
+    }
+    {\@bohr@write@atom{#2}}%
+}
+
+\newcommand\@bohr@add@options@to[2]{%
+  \edef#1{\expandonce#1,\unexpanded{#2}}%
+}
+
+\newcommand*\@bohr@option@deprecated[2]{%
+  \@bohr@warning{option `#1' has deprecated, use `#2' instead}%
+}
+
+\pgfkeys{
+  bohr/.cd,
+    insert-symbol/.is if       = bohr@insert@symbol ,
+    insert-number/.is if       = bohr@insert@number ,
+    insert-missing/.is choice,
+    insert-missing/true/.code  =
+      \booltrue{bohr@insert@symbol}\booltrue{bohr@insert@number} ,
+    insert-missing/false/.code =
+      \boolfalse{bohr@insert@symbol}\boolfalse{bohr@insert@number} ,
+    insert-missing/.default    = true ,
+    atom-style/.code           = \def\@bohr@write@atom{#1} ,
+    name-options-set/.code     = \def\@bohr@name@options{#1} ,
+    name-options-add/.code     =
+      \@bohr@add@options@to\@bohr@name@options{#1} ,
+    nucleus-radius/.code       = \def\@bohr@nucleus@radius{#1} ,
+    nucleus-options-set/.code  = \def\@bohr@nucleus@options{#1} ,
+    nucleus-options-add/.code  =
+      \@bohr@add@options@to\@bohr@nucleus@options{#1} ,
+    electron-radius/.code      = \def\@bohr@electron@radius{#1} ,
+    electron-options-set/.code = \def\@bohr@electron@options{#1} ,
+    electron-options-add/.code =
+      \@bohr@add@options@to\@bohr@electron@options{#1} ,
+    shell-dist/.code           = \def\@bohr@shell@dist{#1} ,
+    shell-options-set/.code    = \def\@bohr@shell@options{#1} ,
+    shell-options-add/.code    =
+      \@bohr@add@options@to\@bohr@shell@options{#1} ,
+    german/.code               = \def\@bohr@language{german} ,
+    ngerman/.code              = \def\@bohr@language{german} ,
+    french/.code               = \def\@bohr@language{french} ,
+    frenchb/.code              = \def\@bohr@language{french} ,
+    language/.code             = \def\@bohr@language{#1} ,
+    distribution-method/.is choice ,
+    distribution-method/periodic/.code =
+      \def\@bohr@draw@electrons{\@bohr@draw@electrons@periodic}
+      \def\@bohr@get@shell@num{\@bohr@get@shell@num@periodic} ,
+    distribution-method/quantum/.code =
+      \def\@bohr@draw@electrons{\@bohr@draw@electrons@quantum}
+      \def\@bohr@get@shell@num{\@bohr@get@shell@num@quantum}
+}
+
+\newrobustcmd\setbohr[1]{\pgfqkeys{/bohr}{#1}}
+
+\setbohr{distribution-method=quantum}
+
+\ProcessPgfOptions*
+
+% --------------------------------------------------------------------------
+% the \bohr command
+%   optional #1: number of shells
+%   #2: number of electrons
+%   #3: atom name
+\newrobustcmd*\bohr[3][]{\@bohr{#1}{#2}{#3}}
+
+\newcommand*\@bohr[3]{%
+  \ifblank{#2}% electron number given ?
+    {% no
+      \ifboolexpr{ bool {bohr@insert@number} and test {\ifblank{#3}} }
+        {%
+          \@bohr@error{I can't insert the electron number. You haven't
+            specified the element.}%
+        }{%
+          \ifboolexpr
+            {
+              bool {bohr@insert@number} and not
+              test {\lowercase{\ifcsvoid{@elements@atom@number@#3}}}
+            }
+            {%
+              \lowercase{%
+                \def\@bohr@electron@current@number{\csuse{@elements@atom@number@#3}}}%
+            }{%
+              \@bohr@error{You must specify an electron number, possibly 0.}%
+            }%
+        }%
+    }{% yes
+      \ifnum#2<0\relax
+        \@bohr@error{The electron number cannot be negative!}%
+      \else
+        \ifnum#2>112\relax
+          \@bohr@warning{I only know atoms up to 112 (Copernicium). You
+            gave me #2 so I am using 112 instead.}
+          \def\@bohr@electron@current@number{112}%
+        \else
+          \def\@bohr@electron@current@number{#2}%
+        \fi
+      \fi
+    }%
+  \ifblank{#1}
+    {\@bohr@get@shell@num{\@bohr@electron@current@number}}
+    {
+      \@bohr@get@shell@num{\@bohr@electron@current@number}%
+      \ifnum#1<\@bohr@shell@num
+        \@bohr@warning{The shell number you provided (#1) is too small for the
+          electron number you provided (\@bohr@electron@current@number)! I'll
+          use \@bohr@shell@num\space shells.}%
+      \else
+        \ifnum#1>7\relax
+          \@bohr@warning{I know only of 7 electron shells. You gave me #1 so I'll
+            be using 7 instead.}
+          \def\@bohr@shell@num{7}%
+        \else
+          \def\@bohr@shell@num{#1}%
+        \fi
+      \fi
+    }%
+  \tikzpicture[baseline=(nucleus.base)]
+    \expandafter\node\expandafter[\@bohr@name@options]
+      (nucleus) at (0,0) {\@bohr@insert@symbol{\@bohr@electron@current@number}{#3}} ;
+    \expandafter\draw\expandafter[\@bohr@nucleus@options]
+      (nucleus) circle (\@bohr@nucleus@radius) ;
+    \foreach\@bohr@current@shell@num in {1,...,\@bohr@shell@num}
+      {
+        \expandafter\draw\expandafter[\@bohr@shell@options]
+          (nucleus) circle (\@bohr@nucleus@radius+\@bohr@current@shell@num*\@bohr@shell@dist) ;
+      }
+    \@bohr@draw@electrons{\@bohr@electron@current@number}
+  \endtikzpicture
+}
+
+\newcommand*\@bohr@get@shell@num@periodic[1]{%
+  \ifnum#1<3\relax
+    \def\@bohr@shell@num{1}%
+  \else
+    \ifnum#1<11\relax
+      \def\@bohr@shell@num{2}%
+    \else
+      \ifnum#1<19\relax
+        \def\@bohr@shell@num{3}%
+      \else
+        \ifnum#1<37\relax
+          \def\@bohr@shell@num{4}%
+        \else
+          \ifnum#1<55\relax
+            \def\@bohr@shell@num{5}%
+          \else
+            \ifnum#1<87\relax
+              \def\@bohr@shell@num{6}%
+            \else
+              \def\@bohr@shell@num{7}%
+            \fi
+          \fi
+        \fi
+      \fi
+    \fi
+  \fi
+}
+
+\newrobustcmd*\@bohr@distribute@electrons[4]{%
+  \pgfmathparse{int(#2)}%
+  \let\@bohr@last@electron\pgfmathresult
+  \ifnum\@bohr@last@electron=0\relax
+  \else
+    \foreach\@bohr@electron@number in {#1,...,\@bohr@last@electron}
+      {
+        \expandafter\fill\expandafter[\@bohr@electron@options] (nucleus)
+          ++(#3*\@bohr@electron@number-#3:\@bohr@nucleus@radius+#4*\@bohr@shell@dist)
+          circle (\@bohr@electron@radius) ;
+      }
+  \fi
+}
+
+% the simple model according to periods:
+\newcommand*\@bohr@draw@electrons@periodic[1]{%
+  \ifnum#1<1\relax\else
+    \ifnum#1<3\relax
+      \@bohr@distribute@electrons{1}{#1}{180}{1}%
+    \else
+      \ifnum#1<11\relax
+        \@bohr@distribute@electrons{1}{2}{180}{1}%
+        \@bohr@distribute@electrons{1}{#1-2}{45}{2}%
+      \else
+        \ifnum#1<19\relax
+          \@bohr@distribute@electrons{1}{2}{180}{1}%
+          \@bohr@distribute@electrons{1}{8}{45}{2}%
+          \@bohr@distribute@electrons{1}{#1-10}{45}{3}%
+        \else
+          \ifnum#1<37\relax
+            \@bohr@distribute@electrons{1}{2}{180}{1}%
+            \@bohr@distribute@electrons{1}{8}{45}{2}%
+            \@bohr@distribute@electrons{1}{8}{45}{3}%
+            \@bohr@distribute@electrons{1}{#1-18}{20}{4}%
+          \else
+            \ifnum#1<55\relax
+              \@bohr@distribute@electrons{1}{2}{180}{1}%
+              \@bohr@distribute@electrons{1}{8}{45}{2}%
+              \@bohr@distribute@electrons{1}{8}{45}{3}%
+              \@bohr@distribute@electrons{1}{18}{20}{4}%
+              \@bohr@distribute@electrons{1}{#1-36}{20}{5}%
+            \else
+              \ifnum#1<87\relax
+                \@bohr@distribute@electrons{1}{2}{180}{1}%
+                \@bohr@distribute@electrons{1}{8}{45}{2}%
+                \@bohr@distribute@electrons{1}{8}{45}{3}%
+                \@bohr@distribute@electrons{1}{18}{20}{4}%
+                \@bohr@distribute@electrons{1}{18}{20}{5}%
+                \@bohr@distribute@electrons{1}{#1-54}{11.25}{6}%
+              \else
+                \@bohr@distribute@electrons{1}{2}{180}{1}%
+                \@bohr@distribute@electrons{1}{8}{45}{2}%
+                \@bohr@distribute@electrons{1}{8}{45}{3}%
+                \@bohr@distribute@electrons{1}{18}{20}{4}%
+                \@bohr@distribute@electrons{1}{18}{20}{5}%
+                \@bohr@distribute@electrons{1}{32}{11.25}{6}%
+                \ifnum#1<113\relax
+                  \@bohr@distribute@electrons{1}{#1-86}{11.25}{7}%
+                \else
+                  \@bohr@distribute@electrons{1}{26}{11.25}{7}%
+                  \@bohr@warning{%
+                    I only know atoms up to 112 (Copernicium). You gave me
+                    #1 so I am using 112 instead.%
+                  }%
+                \fi
+              \fi
+            \fi
+          \fi
+        \fi
+      \fi
+    \fi
+  \fi
+}
+
+% --------------------------------------------------------------------------
+% electron distribution per electron number
+\newcounter{@bohr@shell@number}
+
+\newrobustcmd*\@bohr@get@shell@num@quantum[1]{%
+  \setcounter{@bohr@shell@number}{0}%
+  \@bohr@expand@second@arg\forcsvlist
+    {\stepcounter{@bohr@shell@number}\@gobble}
+    {\csuse{@elements@electron@distribution@\romannumeral#1}}%
+  \edef\@bohr@shell@num{\arabic{@bohr@shell@number}}%
+}
+
+\newrobustcmd*\@bohr@draw@electrons@quantum[1]{%
+  \@bohr@expand@arg\@bohr@get@shell@electrons
+    {\csuse{@elements@electron@distribution@\romannumeral#1}}%
+}
+
+\newrobustcmd*\@bohr@get@shell@electrons[1]{%
+  \setcounter{@bohr@shell@number}{0}%
+  \forcsvlist{\@bohr@draw@shell@electrons}{#1}%
+}
+
+\newrobustcmd*\@bohr@draw@shell@electrons[1]{%
+  \stepcounter{@bohr@shell@number}%
+  \ifnum\value{@bohr@shell@number}=1\relax % n=1
+    \@bohr@distribute@electrons{1}{#1}{180}{1}%
+  \fi
+  \ifnum\value{@bohr@shell@number}=2\relax % n=2
+    \@bohr@distribute@electrons{1}{#1}{45}{2}%
+  \fi
+  \ifnum\value{@bohr@shell@number}=3\relax % n=3
+    \ifnum\numexpr#1\relax<9\relax
+      \@bohr@distribute@electrons{1}{#1}{45}{3}%
+    \else
+      \@bohr@distribute@electrons{1}{#1}{20}{3}%
+    \fi
+  \fi
+  \ifnum\value{@bohr@shell@number}=4\relax % n=4
+    \ifnum\numexpr#1\relax<9\relax
+      \@bohr@distribute@electrons{1}{#1}{45}{4}%
+    \else
+      \ifnum\numexpr#1\relax<18\relax
+        \@bohr@distribute@electrons{1}{#1}{20}{4}%
+      \else
+        \@bohr@distribute@electrons{1}{#1}{11.25}{4}%
+      \fi
+    \fi
+  \fi
+  \ifnum\value{@bohr@shell@number}=5\relax % n=5
+    \ifnum\numexpr#1\relax<9\relax
+      \@bohr@distribute@electrons{1}{#1}{45}{5}%
+    \else
+      \ifnum\numexpr#1\relax<18\relax
+        \@bohr@distribute@electrons{1}{#1}{20}{5}%
+      \else
+        \@bohr@distribute@electrons{1}{#1}{11.25}{5}%
+      \fi
+    \fi
+  \fi
+  \ifnum\value{@bohr@shell@number}=6\relax % n=6
+    \ifnum\numexpr#1\relax<9\relax
+      \@bohr@distribute@electrons{1}{#1}{45}{6}%
+    \else
+      \ifnum\numexpr#1\relax<18\relax
+        \@bohr@distribute@electrons{1}{#1}{20}{6}%
+      \else
+        \@bohr@distribute@electrons{1}{#1}{11.25}{6}%
+      \fi
+    \fi
+  \fi
+  \ifnum\value{@bohr@shell@number}=7\relax % n=7
+    \@bohr@distribute@electrons{1}{#1}{180}{7}%
+  \fi
+}
+
+% --------------------------------------------------------------------------
+
+\endinput
+
+% HISTORY
+2012/09/21 v0.1a - first version on bitbucket
+2012/09/22 v0.2  - added compatibility up to atomic number 112
+                 - added the commands \elementname and \elementsymbol with
+                   language support German and English
+                 - improved error checking
+2012/12/30 v0.2c - bug fixes in error checking
+2013/07/25 v0.2d - bug fix in warning message
+                 - added missing \@bohr@write@atom to \@bohr@insert@symbol
+                 - extended language support, added french element names
+                 - corrected name of Praseodynium
+2013/11/05 v0.3  - draw shell electrons according to main quantum number
+                 - French language file
+2013/11/10 v0.4  - allow `0' as value in electron distribution => this enables
+                   to draw excited states
+                 - new commands \setatomname, \setatomsymbol,
+                   \setelectrondistribution
+                 - new commands \elconf and \writeelconf
+                 - \elementsymbol prints symbols according to option
+                   `atom-style'
+2014/09/29 v0.4a - alias options for `language=german' and `language=french'
+2014/11/06 v0.4b - corrected wrong element symbol for Rhenium
+2015/06/14 v1.0  -

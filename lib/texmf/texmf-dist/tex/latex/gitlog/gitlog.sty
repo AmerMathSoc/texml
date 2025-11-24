@@ -1,0 +1,111 @@
+% gitlog.sty
+% Copyright 2015 Brent Longborough
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+% The Current Maintainer of this work is Brent Longborough.
+% -----------------------------------------------------
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{gitlog}[2015/11/22 0.0.beta typeset git change log]
+\RequirePackage{etoolbox}
+\RequirePackage{kvoptions}
+\RequirePackage[%	
+    datamodel=gitlog,
+	bibstyle=gitlog,
+	sorting=none,
+	date=iso8601,
+	firstinits=true,
+    defernumbers=true,
+    backend=biber,
+]{biblatex}
+
+\SetupKeyvalOptions{family=gitlog,prefix=gitLog@}
+\DeclareBoolOption[false]{date}
+\DeclareComplementaryOption{nodate}{date}
+\DeclareStringOption[Change Log]{title}
+% write:
+\DeclareBoolOption[true]{write}
+\AddToKeyvalOption{gitlog}{write}{\def\gitLog@writeset{true}}
+% nowrite:
+\DeclareComplementaryOption{nowrite}{write}
+\AddToKeyvalOption{gitlog}{nowrite}{\def\gitLog@writeset{true}}
+% bibfile:
+\DeclareStringOption{bibfile}
+% set up github option depending on hyperref
+\@ifpackageloaded{hyperref}{%
+    \DeclareStringOption[]{github}
+    \DeclareStringOption[]{bitbucket}
+}{%
+    \DeclareVoidOption{github}{%
+        \PackageError{gitlog}{I can't generate GitHub links unless you load hyperref.}
+    }
+    \DeclareVoidOption{bitbucket}{%
+        \PackageError{gitlog}{I can't generate Bitbucket links unless you load hyperref.}
+    }
+}
+% process options:
+\ProcessKeyvalOptions{gitlog}
+% check if write/nowrite has been set:
+\ifdef\gitLog@writeset
+  {}
+  {% write/nowrite option has not been set,
+   % set boolean depending on value of \gitLog@bibfile:
+    \ifdefempty\gitLog@bibfile
+      {\booltrue{gitLog@write}}
+      {\boolfalse{gitLog@write}}%
+  }
+% set default for bibfile if necessary
+\ifdefempty\gitLog@bibfile
+  {\def\gitLog@bibfile{\jobname.gitlog.bib}}{}
+% make entrykey a link if github link requested
+\DeclareFieldFormat{entrykey}{\ttfamily[#1]}
+\@ifpackageloaded{hyperref}{%
+    \ifdefempty\gitLog@github{}{%
+        \DeclareFieldFormat{entrykey}{%
+            \href{https://github.com/\gitLog@github/commit/\thefield{commithash}}{\ttfamily[#1]}%
+        }
+    }
+    \ifdefempty\gitLog@bitbucket{}{%
+        \DeclareFieldFormat{entrykey}{%
+            \href{https://bitbucket.org/\gitLog@bitbucket/commits/\thefield{commithash}}{\ttfamily[#1]}%
+        }
+    }
+}{}
+\newcommand{\printGitLog}{%
+    \nocite{*}
+    \raggedright
+    \printbibliography[title={\gitLog@title},type=gitcommit]
+}
+\ifgitLog@date
+    \newbibmacro*{date+author}{%
+        \printtext{\\}%
+        \usebibmacro{date}%
+        \setunit*{, }%
+        \usebibmacro{author}%
+    }
+\else
+    \newbibmacro*{date+author}{%
+        \relax
+    }
+\fi
+\ifgitLog@write
+    {\catcode`\%=12
+    \immediate\write18{
+     git --no-pager log --reverse --pretty="format:@gitcommit{%h,%n 
+     author = {%an},%n 
+     date = {%ad},%n 
+     title = {%B},%n
+     commithash = {%H} 
+     }" --date=short > \gitLog@bibfile}
+    }
+\else
+    \relax
+\fi
+\addbibresource{\gitLog@bibfile}

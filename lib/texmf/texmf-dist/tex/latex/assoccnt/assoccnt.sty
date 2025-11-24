@@ -1,0 +1,613 @@
+
+\def\assoccntpackageversion{0.8}
+\NeedsTeXFormat{LaTeX2e}%
+\ProvidesPackage{assoccnt}[2015/09/29 v\assoccntpackageversion -- Associate counters stepping]%
+%%%
+%% License: LaTeX Project Public License version 1.3 
+%% Copyright (2015) Dr. Christian Hupfer 
+%% Author: Christian Hupfer christian.hupfer@yahoo.de
+%%
+%%%%
+
+
+\def\@@assoccnt@@keys{assoccntkeyfamily}%
+
+\def\@@assoccnt@@packagename{assoccnt.sty}%
+\def\@@assoccnt@@keyprefix{@@assoccnt@@pkg@@}%
+
+\typeout{\@@assoccnt@@packagename{} -- version v\assoccntpackageversion}
+
+
+\RequirePackage{xcolor}%
+\RequirePackage{etoolbox}[2011/01/03 2.2]%
+\RequirePackage{xkeyval}[2012/10/14 v2.6b]%
+\RequirePackage{xstring}%
+
+\newif\if@calcpackage
+
+\@ifpackageloaded{calc}{%
+\@calcpackagetrue%
+}{%
+\@calcpackagefalse%
+}
+
+
+%%%% Defining package options
+
+\newtoggle{GlobalSuspend}%
+\settoggle{GlobalSuspend}{false}%
+
+
+% Option for enabling the global suspend facility for an arbitray counters
+\define@boolkey{\@@assoccnt@@packagename}[@@assoccnt@@pkg@@]{globalsuspend}[false]{%
+  \if@@assoccnt@@pkg@@globalsuspend%
+  \toggletrue{GlobalSuspend}%
+  \else%
+  \togglefalse{GlobalSuspend}%
+  \fi%
+}%
+
+\DeclareOptionX*{\PackageWarning{\@@assoccnt@@packagename}{Option '\CurrentOption ' ignored}}%
+
+
+\ProcessOptionsX%
+
+%%%%%
+
+
+
+\newcounter{@@assoccnt@@internalcounter}%
+
+
+\gdef\@@assoccnt@@storagemacro@@laststeppedcounter{}%
+\gdef\@@assoccnt@@storagemacro@@lastrefsteppedcounter{}%
+\gdef\@@assoccnt@@storagemacro@@lastaddtocounter{}%
+\gdef\@@assoccnt@@storagemacro@@lastsetcounter{}%
+
+
+\let\@@assoccnt@@standardaddtocounter\addtocounter%
+\let\@@assoccnt@@standardstepcounter\stepcounter%
+\let\@@assoccnt@@standardrefstepcounter\refstepcounter%
+\let\@@assoccnt@@standardsetcounter\setcounter%
+
+
+
+% Unused so far
+\newcommand{\IsInResetList}[4]{%
+  \IfSubStr{\csname cl@#1\endcsname}{{#2}}{%  Mind the {} around the #2 parameter!
+    #3%
+  }{%
+    #4%
+  }%
+}
+
+
+% Just for a quick suffix
+\newcommand{\@@assoccnt@@associatedcounterslistsuffix}{%
+AssociatedCountersList%
+}%
+
+
+
+%%% Internal macro to generate the name of the list of associated counters
+\newcommand{\@@assoccnt@@generatelistname}[1]{%
+% #1 Name of the driver counter
+  @@#1@@\@@assoccnt@@associatedcounterslistsuffix%
+}%
+
+\newcommand{\@@assoccnt@@drivercounterlist}{%
+@@assoccnt@@DriverCountersList%
+}%
+
+%%
+%% Adds a driver counter to an internal administration list
+\newcommand{\AddDriverCounter}[2][]{%
+% #1 -> options
+% #2 -> driver counter name
+  \setkeys{\@@assoccnt@@keys}{#1}%
+  \ifcsdef{\@@assoccnt@@drivercounterlist}{%
+  }{%
+    \csgdef{\@@assoccnt@@drivercounterlist}{}%
+  }%
+  \listcsgadd{\@@assoccnt@@drivercounterlist}{#2}%
+}%
+
+
+%%
+%% Removes the complete list of driver counters
+\newcommand{\ClearDriverCountersList}{%
+  \ifcsdef{\@@assoccnt@@drivercounterlist}%
+  {%
+    % Clear the possible driver counter entry in the list, the trailing associated counters list 
+    % is cleared as well
+    \forlistcsloop{\ClearAssociatedCountersList}{\@@assoccnt@@drivercounterlist}%
+  }{%
+    % Nothing to be done
+  }%
+}%
+
+\newcommand{\IsDriverCounter}[3]{%
+  \ifcsdef{\@@assoccnt@@drivercounterlist}{%
+    \ifinlistcs{#1}{\@@assoccnt@@drivercounterlist}{% True branch, it's in the list
+      #2%
+    }{% False branch, not in the list
+      #3% 
+    }%
+  }{%  List does not exist at all --> expand false branch
+    #3%
+  }%
+}% 
+
+\newcommand{\@@assoccnt@@generateboundtocounterslist}[1]{%
+#1@@boundtocounterslist%
+}%
+
+
+\newcommand{\@@assoccnt@@addassociatedcounter}[3][]{%
+  \ifcsdef{#2}{%
+    % driver counter list exists, check, whether it is already there
+    \ifinlistcs{#3}{#2}{%
+      % Do nothing, since counter is already in the list, prevent multiple list insertion
+    }{%
+      \listcsgadd{#2}{#3}%
+      \listcsgadd{\@@assoccnt@@generateboundtocounterslist{#3}}{#1}
+    }%
+  }{%
+    \listcsgadd{\@@assoccnt@@generatelistname{#1}}{#3}%
+    \listcsgadd{\@@assoccnt@@generateboundtocounterslist{#3}}{#1}%
+  }%
+}%  
+
+
+
+
+
+\newcommand{\AddAssociatedCounters}[3][]{%
+% #1 --> options
+% #2 --> driver counter 
+% #3 --> CSV list of counters, that should be stepped, if the driver counter is stepped
+  \setkeys{\@@assoccnt@@keys}{#1}%
+  \ifcsdef{\@@assoccnt@@generatelistname{#2}}{%
+    %  % Nothing to be done --> List already exists
+    \forcsvlist{\@@assoccnt@@addassociatedcounter[#2]{\@@assoccnt@@generatelistname{#2}}}{#3}%
+    % Prevent accidental self - association
+    \RemoveAssociatedCounter{#2}{#2}% 
+  }{%
+    \GenericError{}{Error: List for driver counter #2 does not exist -- Usage on line \the\inputlineno}{}{}
+  }%
+}%
+
+% This command defines a list of counters, that should be stepped also if the driver counter
+% is `\stepcounter`ed. 
+% A self - association is not possible, as this would lead to inconsistent counting
+\newcommand{\DeclareAssociatedCounters}[3][]{%
+% #1 --> options
+% #2 --> driver counter 
+% #3 --> CSV list of other counters, that should be stepped, if the driver counter is stepped
+  \setkeys{\@@assoccnt@@keys}{#1}%
+  \ifcsdef{\@@assoccnt@@generatelistname{#2}}{%
+    %  % Nothing to be done --> List already exists
+    \GenericWarning{}{Warning: List of associated counters for driver counter #2 already exists}%
+  }{%
+    \AddDriverCounter{#2}%
+    \listcsgadd{\@@assoccnt@@generatelistname{#2}}{}%   Define some global list 
+  }%
+  % Now add the counter names from #3 to the list 
+  % Note: Currently, it is not checked whether a counter is already added!
+  \forcsvlist{\@@assoccnt@@addassociatedcounter[#2]{\@@assoccnt@@generatelistname{#2}}}{#3}%
+  % Now remove an accidental self-association
+  \RemoveAssociatedCounter{#2}{#2}% 
+}%
+
+% Later on
+%\@onlypreamble{\DeclareAssociatedCounters}%
+
+
+%%
+
+
+
+
+\newcommand{\@@assoccnt@@copylist}[2]{%
+  \ifstrequal{#1}{#2}{%
+    % Nothing to be done
+  }{%
+    \csundef{#2}%
+    \renewcommand*{\do}[1]{%
+      \listcsgadd{#2}{##1}%
+    }%
+    \dolistcsloop{#1}%
+  }%
+}%
+
+
+
+%%% A generic macro, that removes a list entry from the list by
+%%% defining a temporary list and omitting the 
+\newcommand{\@@assoccnt@@removefromlist}[2]{%
+% #1 list name
+% #2 element to be removed
+  \ifcsdef{#1}{%
+    \ifcsdef{@@assoccnt@@templist}{%
+      \csundef{@@assoccnt@@templist}%
+    }{}%
+    \listcsgadd{@@assoccnt@@templist}{}%
+    \@@assoccnt@@standardsetcounter{@@assoccnt@@internalcounter}{0}%
+    \renewcommand*{\do}[1]{%
+      \ifstrequal{##1}{#2}{%
+        % Later one some success routine etc. ???
+      }{%
+        \listcsgadd{@@assoccnt@@templist}{##1}%
+        \@@assoccnt@@standardstepcounter{@@assoccnt@@internalcounter}%
+      }%
+    }%
+    \dolistcsloop{#1}%
+    \csundef{#1}%
+    \ifnumgreater{\number\value{@@assoccnt@@internalcounter}}{0}{%
+    \@@assoccnt@@copylist{@@assoccnt@@templist}{#1}%
+    }{}%
+  }{%
+    % The list is not defined at all, can't remove something from something not existing...
+  }%
+}%
+
+
+
+%% Remove a particular counter from the list 
+\newcommand{\RemoveAssociatedCounter}[2]{%
+% #1 arg: driver counter
+% #2 arg: counter name to be removed
+  \@@assoccnt@@removefromlist{\@@assoccnt@@generatelistname{#1}}{#2}%
+  \@@assoccnt@@removefromlist{\@@assoccnt@@generateboundtocounterslist{#1}}{#2}%
+}%
+
+%% Remove a CSV list of counters from the list of associated counters 
+
+\newcommand{\RemoveAssociatedCounters}[2]{%
+% #1 arg: driver counter
+% #2 arg: CSV list of counters to be removed
+  \forcsvlist{\RemoveAssociatedCounter{#1}}{#2}%
+}%
+
+%% Remove all associated counters from the list 
+\newcommand{\ClearAssociatedCountersList}[1]{%
+% #1 arg: driver counter
+  \csundef{\@@assoccnt@@generatelistname{#1}}%
+  \@@assoccnt@@removefromlist{\@@assoccnt@@drivercounterlist}{#1}%
+}%
+
+
+%% Test if a counter is an associated counter of driver counter 
+\newcommand{\IsAssociatedToCounter}[4]{%
+% #1 arg: driver counter
+% #2 arg: (possibly) associated counter
+% #3 arg: Code for execution on true branch
+% #4 arg: Code for execution on false branch
+  \ifcsdef{\@@assoccnt@@generatelistname{#1}}{%
+    \ifinlistcs{#2}{\@@assoccnt@@generatelistname{#1}}{%
+      #3%
+    }{%
+      #4%
+    }%
+  }{% List does not exist, so it's not associated
+    #4%
+  }%
+}%
+
+
+\newcommand{\IsAssociatedCounter}[3]{%
+  \ifcsdef{\@@assoccnt@@generateboundtocounterslist{#1}}{% true branch
+    \@@assoccnt@@standardsetcounter{@@assoccnt@@internalcounter}{0}%
+    \renewcommand*{\do}[1]{%
+      \@@assoccnt@@standardstepcounter{@@assoccnt@@internalcounter}%
+    }%
+    \dolistcsloop{\@@assoccnt@@generateboundtocounterslist{#1}}%
+    \ifnumgreater{\number\value{@@assoccnt@@internalcounter}}{0}{%
+      #2%
+    }{%
+      #3%
+    }%
+  }{%
+    #3% 
+  }% End of \ifcsdef false branch
+}%
+
+
+\newcommand{\@@assoccnt@@itemizedshowassociatedcounters}[1]{%
+  \begin{itemize}
+    \renewcommand*{\do}[1]{%
+    \item \@@assoccnt@@showassociatedcounterlist{##1} -- \fbox{\number\value{##1}}%
+    }%
+    \dolistcsloop{\@@assoccnt@@generatelistname{#1}}%
+  \end{itemize}%
+}%
+
+\newcommand{\GeneralCounterInfoColor}{orange}
+\newcommand{\DriverCounterInfoColor}{blue}
+\newcommand{\AssociatedCounterInfoColor}{red}
+
+\define@key{\@@assoccnt@@keys}{countertype}[driver]{%
+  \def\@@assoccnt@@keymacro@@countertype{#1}%
+}%
+
+
+\newcommand{\PrettyPrintCounterName}[2][countertype={general}]{%
+  \setkeys{\@@assoccnt@@keys}{#1}%
+  \IfStrEq{\@@assoccnt@@keymacro@@countertype}{driver}{%
+    \fbox{\textcolor{\DriverCounterInfoColor}{\textbf{#2{}}}}%
+  }{%
+    \IfStrEq{\@@assoccnt@@keymacro@@countertype}{associated}{%
+      \fbox{\textcolor{\AssociatedCounterInfoColor}{\textbf{#2{}}}}%
+    }{%
+      \fbox{\textcolor{\GeneralCounterInfoColor}{\textbf{#2}}}%
+    }%
+  }%
+}%
+
+
+\newcommand{\AssociatedDriverCounterInfo}[1]{%
+  \textbf{Associated/Driver counter information on counter \PrettyPrintCounterName[countertype=general]{#1}}\par
+  \IsAssociatedCounter{#1}{%
+    Counter \PrettyPrintCounterName[countertype=associated]{#1} is associated to \PrettyPrintCounterName[countertype=driver]{\GetDriverCounter{#1}}%
+    \IsDriverCounter{#1}{%
+      Counter \PrettyPrintCounterName[countertype=driver]{#1} is driver counter of
+      \@@assoccnt@@itemizedshowassociatedcounters{#1}%
+      % 
+    }{}%
+  }{%
+    \IsDriverCounter{#1}{%
+      Counter \PrettyPrintCounterName[countertype=driver]{#1} is driver counter of
+      \@@assoccnt@@itemizedshowassociatedcounters{#1}%
+    }{%
+      Counter \PrettyPrintCounterName[countertype=general]{#1} is neither driver nor associated counter  %
+    }%
+  }%
+}%
+
+
+
+
+
+\newcommand{\GetDriverCounter}[1]{%
+  \@@assoccnt@@standardsetcounter{@@assoccnt@@internalcounter}{0}%
+  \renewcommand*{\do}[1]{%
+    ##1%
+    \ifnumequal{\number\value{@@assoccnt@@internalcounter}}{1}{%
+      \listbreak}{%
+      \@@assoccnt@@standardstepcounter{@@assoccnt@@internalcounter}%
+    }%
+  }%
+  \dolistcsloop{\@@assoccnt@@generateboundtocounterslist{#1}}%
+}%
+
+\newcommand{\@@assoccnt@@showassociatedcounterlist}[1]{%
+  \PrettyPrintCounterName[countertype=associated]{\textbf{#1{ }}}%
+}%
+
+\newcommand{\@@assoccnt@@showdrivercounterlist}[1]{%
+  \textcolor{blue}{\textbf{#1}}
+  \ifcsdef{\@@assoccnt@@generatelistname{#1}}{%
+    \forlistcsloop{\@@assoccnt@@showassociatedcounterlist}{\@@assoccnt@@generatelistname{#1}}%
+  }{}%
+  \par%
+}%
+
+\newcommand{\AssociationStatistics}[1][]{%
+  \forlistcsloop{\@@assoccnt@@showdrivercounterlist}{\@@assoccnt@@drivercounterlist}%
+}%
+
+
+\define@key{\@@assoccnt@@keys}{SuspendCounters}{%
+  \def\@@assoccnt@@keymacro@@suspendedcounters{#1}%
+  \forcsvlist{\listgadd{\@@assoccnt@@suspendedcounterslist}}{#1}%
+}%
+
+
+% A convenience macro -- do not change%
+\newcommand{\@@assoccnt@@wrapperaddsuspendedcounter}[1]{%
+  \listcsgadd{@@assoccnt@@suspendedcounterslist}{#1}%
+}%
+
+
+\newcommand{\SuspendCounters}[2][]{%
+  \forcsvlist{\@@assoccnt@@wrapperaddsuspendedcounter}{#2}%
+}%
+
+%% Not much in here 
+\newcommand{\ResumeSuspendedCounters}{%
+  \undef{\@@assoccnt@@suspendedcounterslist}%
+}%
+
+
+\newcommand{\IsSuspendedCounter}[3]{%
+  \ifinlistcs{#1}{@@assoccnt@@suspendedcounterslist}{%
+    #2%
+  }{%
+    #3%
+  }%
+}%
+
+
+%%% The setcounter wrapper 
+%\newcommand{\@@assocccnt@@setcounter}[2]{%
+%  \@@assoccnt@@standardsetcounter{#1}{#2}%
+%  \gdef\@@assoccnt@@storagemacro@@lastsetcounter{#1}%
+%}%  
+
+%%% addtocounter wrapper -- needs to switch the arguments for the command for the list usage!!!
+\newcommand{\@@assocccnt@@addtocounter}[2]{%
+  \ifcsdef{@@assoccnt@@suspendedcounterslist}{%
+    % Now, there are suspended counters -- do not update them!
+    \IsSuspendedCounter{#2}{%
+      % Nothing to be done
+    }{%
+      \@@assoccnt@@standardaddtocounter{#2}{#1}%
+      \gdef\@@assoccnt@@storagemacro@@lastaddtocounter{#2}%
+    }%
+  }{%
+    \@@assoccnt@@standardaddtocounter{#2}{#1}%
+    \gdef\@@assoccnt@@storagemacro@@lastaddtocounter{#2}%
+  }%
+}%  
+
+
+\newcommand{\@@assoccnt@@addtocounter}[2]{%
+  \ifcsdef{@@assoccnt@@suspendedcounterslist}{%
+    % Now, there are suspended counters -- do not update them!
+    \IsSuspendedCounter{#2}{%
+      % Nothing to be done
+    }{%
+      \@@assoccnt@@standardaddtocounter{#2}{#1}%
+      \gdef\@@assoccnt@@storagemacro@@lastaddtocounter{#2}%
+    }%
+  }{%
+    \@@assoccnt@@standardaddtocounter{#2}{#1}%
+    \gdef\@@assoccnt@@storagemacro@@lastaddtocounter{#2}%
+  }%
+}%  
+
+
+\renewcommand{\addtocounter}[2]{%
+  \iftoggle{GlobalSuspend}{%
+    \IsSuspendedCounter{#1}{%
+      % No, do nothing at all%
+    }{%
+      \@@assoccnt@@standardaddtocounter{#1}{#2}%
+      \gdef\@@assoccnt@@storagemacro@@lastaddtocounter{#1}%
+    }
+  }{%
+    \@@assoccnt@@standardaddtocounter{#1}{#2}%
+    \gdef\@@assoccnt@@storagemacro@@lastaddtocounter{#1}%
+  }%
+  \ifcsdef{\@@assoccnt@@generatelistname{#1}}{%    Check first, whether the list exists at all, 
+    \forlistcsloop{\@@assoccnt@@addtocounter{#2}}{\@@assoccnt@@generatelistname{#1}}%  March through the list
+  }{% 
+    % No list -> do nothing at all
+  }%
+}%
+
+
+
+
+%%% addtocounter wrapper -- needs to switch the arguments for the command for the list usage!!!
+\newcommand{\@@assoccnt@@setcounter}[3]{%
+  \IsAssociatedToCounter{#1}{#3}{%
+    \@@assoccnt@@standardsetcounter{#3}{#2}%
+  }{%
+    \GenericWarning{}{Warning: Counter "#3" is not part of the associated list counters to driver counter "#1"}%
+  }%
+}%  
+
+
+
+
+
+
+\newcommand{\@@assoccnt@@stepcounter}[1]{% 
+  \@@assoccnt@@standardstepcounter{#1}%
+  \gdef\@@assoccnt@@storagemacro@@laststeppedcounter{#1}%
+}%
+
+
+\newcommand{\@@assoccnt@@stepdrivencounters}[1]{% 
+  \ifcsdef{\@@assoccnt@@generatelistname{#1}}{%    Check first, whether the list exists at all, 
+    \forlistcsloop{\@@assoccnt@@standardrefstepcounter}{\@@assoccnt@@generatelistname{#1}}%  March through the list
+  }{%
+  }%
+}%
+
+
+
+\renewcommand{\stepcounter}[1]{%
+  \@@assoccnt@@stepcounter{#1}%
+}%
+
+%%% Wrapper --> use standard ref stepping to prevent labelling system going mental
+\newcommand{\@@assocccnt@@refstepcounter}[1]{%  %
+  \@@assoccnt@@standardrefstepcounter{#1}%
+}%
+
+\renewcommand{\refstepcounter}[1]{%
+  \@@assoccnt@@refstepcounter{#1}%
+}%
+
+
+\newcommand{\@@assoccnt@@refstepcounter}[1]{%  %
+  \gdef\@@assoccnt@@storagemacro@@lastrefsteppedcounter{#1}%
+  \if@calcpackage
+  \@@assoccnt@@stepdrivencounters{#1}%
+  \fi
+  \@@assoccnt@@standardrefstepcounter{#1}%
+}%
+
+\renewcommand{\refstepcounter}[1]{%
+  \@@assoccnt@@refstepcounter{#1}%
+}%
+
+
+
+
+\listgadd{\@@assoccnt@@tempcounterlist}{}% This should be renamed later one... treated more generally
+
+\newcommand{\@@assoccnt@@setcounterwrapper}[3]{%
+  \ifcsdef{\@@assoccnt@@generatelistname{#1}}{%    Check first, whether the per driver list exists at all, 
+    \forlistcsloop{\@@assoccnt@@setcounter{#1}{#2}}{#3}%
+  }{}%
+}%
+
+
+\define@boolkey{\@@assoccnt@@keys}{AssociatedToo}[false]{%
+}%
+
+\define@key{\@@assoccnt@@keys}{AssociatedCounters}{%
+  \undef{\@@assoccnt@@tempcounterlist}%
+  \def\@@assoccnt@@keymacro@@associatedcounters{#1}%
+  \forcsvlist{\listgadd{\@@assoccnt@@tempcounterlist}}{#1}%
+}%
+
+
+%% Redefined \setcounter -- with additional optional key%
+
+\renewcommand{\setcounter}[3][]{%
+  \@@assoccnt@@standardsetcounter{#2}{#3}%
+  \gdef\@@assoccnt@@storagemacro@@lastsetcounter{#2}%
+  \setkeys{\@@assoccnt@@keys}{AssociatedToo=false,#1}%
+  \ifKV@assoccntkeyfamily@AssociatedToo 
+  \@@assoccnt@@setcounterwrapper{#2}{#3}{\@@assoccnt@@generatelistname{#2}}%
+  \else%
+  \ifdef{\@@assoccnt@@keymacro@@associatedcounters}{%
+    \@@assoccnt@@setcounterwrapper{#2}{#3}{@@assoccnt@@tempcounterlist}% 
+    \undef{\@@assoccnt@@tempcounterlist}% Clear the counter list
+    \listgadd{\@@assoccnt@@tempcounterlist}{}% Redefine the list for future use%
+    \undef{\@@assoccnt@@keymacro@@associatedcounters}%
+  }{}%
+  \fi%
+}%
+
+
+
+\newcommand{\LastSteppedCounter}{%
+  \ifdef{%
+    \@@assoccnt@@storagemacro@@laststeppedcounter%
+  }{%
+    \@@assoccnt@@storagemacro@@laststeppedcounter%
+  }{%
+    Undefined/unknown%
+  }%
+}%
+
+\newcommand{\LastSetCounter}{%
+  \@@assoccnt@@storagemacro@@lastsetcounter%
+}%
+
+\newcommand{\LastRefSteppedCounter}{%
+  \@@assoccnt@@storagemacro@@lastrefsteppedcounter%
+}%
+
+\newcommand{\LastAddedToCounter}{%
+  \@@assoccnt@@storagemacro@@lastaddtocounter%
+}%
+
+
+
+\endinput%

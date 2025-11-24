@@ -1,0 +1,150 @@
+% censor.sty
+\def\censorversionnumber{3.21}
+\ProvidesPackage{censor}
+[2013/06/24 \censorversionnumber
+ Provides capability for redaction of sensitive information]
+
+%
+% This work may be distributed and/or modified under the 
+% conditions of the LaTeX Project Public License, either version 1.3 
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX 
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+%
+% The Current Maintainer of this work is Steven B. Segletes.
+
+% VERSION:
+% 1.00 - Initial release
+% 2.00 - Added \blackout
+% 2.10 - Allowed \blackout to cross paragraph boundaries with use of
+%        \bpar. Stopped censoring periods, in order to preserve
+%        end-of-sentence spacing, which differs from inter-word spacing.
+% 3.00 - \censorbox introduced to handle figures, tables, etc.
+% 3.10 - Made \blackout work with \par in argument.  Introduced 
+%        \xblackout
+% 3.20 - Specify depth/height of censor rule.  Introduced \def\censordot{}
+% 3.21 - Fixed bug regarding \xblackout rules remaining after a
+%        \StopCensoring
+\usepackage{pbox}
+\usepackage{ifnextok}
+
+\newlength\censorruledepth
+\newlength\censorruleheight
+
+\censorruledepth=-0.3ex% -0.3ex DEFAULT
+\censorruleheight=2.1ex%  2.1ex DEFAULT
+\def\censordot{.}% versus \def\censordot{ }%
+
+\newcommand\censorrule[1]{\protect\rule[\censorruledepth]{#1}{\censorruleheight}}
+
+\newcommand\censor{\@ifstar{\@cenlen}{\@cenword}}
+  \newcommand\@cenlen[1]{\censorrule{#1 ex}}
+  \newcommand\@cenword[1]{\censorrule{\widthofpbox{#1}}}
+
+\newcommand\un@censor{\@ifstar{\un@cenlen}{\un@cenword}}
+  \newcommand\un@cenlen[1]{\protect\underline{\hspace{#1 ex}}}
+  \newcommand\un@cenword[1]{#1}
+
+\newcommand\StopCensoring{%
+           \let\censor\un@censor%
+           \let\censorbox\un@censorbox%
+           \let\xblackout\blackout%
+}
+\newcommand\RestartCensoring{%
+           \renewcommand\censor{\@ifstar{\@cenlen}{\@cenword}}%
+           \renewcommand\censorbox{\@ifstar{\censor@dim}{\censor@box}}%
+           \let\xblackout\sv@xblackout%
+}
+
+\let\sv@tilde~
+
+\def\stringend{$}
+
+\long\def\blackout#1{\def~{-}\censor@Block#1\stringend\let~\sv@tilde}
+\long\def\censor@Block{\IfNextToken\stringend{\@gobble}%
+  {\IfNextToken\@sptoken{ \bl@t{\censor@Block}}%
+  {\bl@t{\censor@Block}}}}
+
+% V2.00 DEFINITION:
+% \def\bl@t#1#2{\censor{#2}#1}
+
+% V2.10 DEFINITION (MADE \long IN V3.1):
+\long\def\bl@t#1#2{\if\bpar#2\par\else\if.#2\censordot\else\censor{#2}\fi\fi#1}
+
+%\def\bpar{_} %V3.00 DEFINITION
+\let\bpar\par %AS OF V3.1, CAN HANDLE \par
+
+\long\def\xblackout#1{\rule{0ex}{0ex}%
+  \def~{-}%
+  \def\@justpar{F}%
+  \def\@justperiod{F}%
+  \def\@justspace{F}%
+  \xcensor@Block#1\stringend%
+  \let~\sv@tilde%
+ }
+
+\let\sv@xblackout\xblackout
+
+\long\def\xcensor@Block{\IfNextToken\stringend{\@gobble}%
+  {\IfNextToken\@sptoken{ \def\@justspace{T}\xbl@t{\xcensor@Block}}%
+  {\xbl@t{\xcensor@Block}}}}
+
+\newlength\periodrlap\setlength\periodrlap{1.6ex}
+\newlength\afterperiodlap\setlength\afterperiodlap{1.2ex}
+\newlength\lletterlap\setlength\lletterlap{0.55ex}
+\newlength\rletterlap\setlength\rletterlap{0.55ex}
+\newlength\afterspacelap\setlength\afterspacelap{0.0ex}
+
+\def\@periodrlap{\rlap{\censorrule{\periodrlap}}}
+\def\@afterperiodlap{\llap{\censorrule{\afterperiodlap}}}
+\def\@lletterlap{\llap{\censorrule{\lletterlap}}}
+\def\@rletterlap{\rlap{\censorrule{\rletterlap}}}
+\def\@afterspacelap{\llap{\censorrule{\afterspacelap}}}
+
+\long\def\xbl@t#1#2{%
+  \if\par#2%
+    \par\def\@justpar{T}%
+  \else%
+    \if T\@justspace%
+      \rule{0ex}{1ex}\@afterspacelap%
+    \fi%
+    \if.#2%
+      \def\@justperiod{T}%
+      \@periodrlap%
+      \censordot%
+    \else%
+      \if F\@justpar%
+        \if T\@justperiod%
+          \@afterperiodlap%
+        \else%
+          \@lletterlap%
+        \fi%
+      \fi%
+      \censor{#2}%
+      \@rletterlap%
+      \def\@justpar{F}%
+      \def\@justperiod{F}%
+      \def\@justspace{F}%
+    \fi%
+  \fi%
+  #1%
+}
+
+\newcommand\censorbox{\@ifstar{\censor@dim}{\censor@box}}
+  \newcommand\censor@dim[4][]{{#1%
+                      \rule[-#4\baselineskip]{#2ex}{#3\baselineskip}}}
+  \newcommand\censor@box[2][]{#1\setbox0\hbox{#2}%
+                      \rule[-\the\dp0]{\the\wd0}{\the\ht0+\the\dp0}}
+
+\newcommand\un@censorbox{\@ifstar{\un@censor@dim}{\un@censor@box}}
+  \newcommand\un@censor@dim[4][]{{#1%
+                      \fbox{\rule[-#4\baselineskip]{0ex}{#3\baselineskip}
+                      \rule{#2ex}{0ex}}}}
+  \newcommand\un@censor@box[2][]{#1#2}
+
+% NOTE: A \protect\censorbox{} MAY BE REQUIRED INSIDE SOME ENVIRONMENTS
+\endinput

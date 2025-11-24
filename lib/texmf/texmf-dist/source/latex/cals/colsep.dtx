@@ -1,0 +1,126 @@
+% \subsection{Column separation (colsep) and cell background}
+
+% In-row decorations are the vertical borders between the cells
+% and also the background color of the cells.
+
+% \begin{macro}{\cals@cs@outOne}
+% Typesets the background and the left border of a cell.
+% Decorations have zero depth and undefined height.
+% Parameters:
+% \begin{enumerate}
+% \item Width of the cell. The use of |\relax| avoids typesetting
+%   the cell itself, which is used when creating the right frame
+%   of a table.
+% \item Width of the border. 0pt is no border.
+% \item Color of the background. Empty macro is no color.
+% \end{enumerate}
+% If some arguments are undefined (through |\relax|), global
+% variables are used: |\cals@bgcolor| and |\cals@cs@width|.
+%
+% Corrupts |dimen0|.
+%    \begin{macrocode}
+\newcommand\cals@cs@outOne[3]{%
+%    \end{macrocode}
+% Create the full-width background
+%    \begin{macrocode}
+\ifx \relax#1%
+\else
+ \cals@withColorII\cals@bgcolor{#3}\iftrue
+  \textcolor{\cals@color}{\vrule depth0pt width#1 }%
+  \hskip -#1\relax
+ \fi
+\fi
+%    \end{macrocode}
+% The border. I feel that overprinting the background is good,
+% but I don't know why I think so.
+%    \begin{macrocode}
+\cals@withWidthII\cals@cs@width{#2}\iftrue
+ \cals@halfWidthToDimen0 \cals@width %
+ \hskip -\dimen0 %
+ \vrule depth0pt width\cals@width\relax
+ \hskip -\dimen0 %
+\fi
+%    \end{macrocode}
+% We will need the actual width of the left border in
+% a grand-grand-...-caller, when constructing a rowsep specification.
+%    \begin{macrocode}
+\let\cals@lastLeftWidth=\cals@width
+%    \end{macrocode}
+% Add width to skip to the next cell.
+%    \begin{macrocode}
+\ifx \relax#1\else \hskip#1 \fi
+}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@current@cs}
+% The box to store column separation.
+%    \begin{macrocode}
+\newbox\cals@current@cs
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@csrow@begin}
+% \begin{macro}{\cals@csrow@nextcell}
+% \begin{macro}{\cals@csrow@end}
+% Constructs an hbox with colsep decorations. Call to the begin-macro
+% re-initializes |\cals@current@cs| and makes that the left table frame border
+% is of the correct width. The end-macro creates the right border for
+% the right table frame. The most work is performed in the nextcell-macro.
+% Arguments:
+% \begin{enumerate}
+% \item Width of the cell
+% \item Width of the left border
+% \item Width of the right border, \emph{must be a macro name}
+% \item Background color of the cell
+% \end{enumerate}
+% For the special conditions (|\relax|, 0pt, empty name) see
+% the description of |\cals@cs@outOne|.
+% The right border is not typeset immediately. Instead, it is saved
+% to |\cals@lastWidth| (as |\relax| if no overrides)
+% and is handled by the next call to |nextcell|.
+%    \begin{macrocode}
+\newcommand\cals@csrow@begin{%
+\setbox\cals@current@cs=\box\voidb@x %
+\let\cals@lastWidth=\relax}
+
+\newcommand\cals@csrow@nextcell[4]{%
+%    \end{macrocode}
+% For the first cell, temporarily re-define the default border width
+% to the frame border. Macro |\next| will restore it back.
+%    \begin{macrocode}
+\ifvoid\cals@current@cs
+  \toks0=\expandafter{\cals@cs@width}%
+  \def\next{\edef\cals@cs@width{\the\toks0}}%
+  \edef\cals@cs@width{\cals@framecs@width}%
+\else \let\next=\relax \fi
+%    \end{macrocode}
+% Create the decorations, remember the right border.
+% Restore the value |lastLeftWidth| after the end of the hbox-group.
+%    \begin{macrocode}
+\cals@maxWidth\cals@lastWidth{#2}%
+\setbox\cals@current@cs=\hbox{\unhbox\cals@current@cs
+    \cals@cs@outOne{#1}\cals@width{#4}%
+    \global\let\cals@tmp=\cals@lastLeftWidth}%
+\let\cals@lastLeftWidth=\cals@tmp
+\let\cals@lastWidth=#3%
+%    \end{macrocode}
+% Restore the old value of the default border width.
+%    \begin{macrocode}
+\next}
+
+%    \end{macrocode}
+% User-specified width (initially by |borderR|, now located in
+% |lastWidth|) must override the frame width.
+%    \begin{macrocode}
+\newcommand\cals@csrow@end{%
+\ifx \relax\cals@lastWidth
+ \let\cals@width=\cals@framecs@width
+\else
+ \let\cals@width=\cals@lastWidth
+\fi
+\cals@csrow@nextcell\relax\cals@width\relax\relax}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}

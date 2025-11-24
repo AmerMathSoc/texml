@@ -1,0 +1,209 @@
+% \iffalse meta-comment
+%
+% Copyright (C) 2015 by Olivier Pieters
+% -------------------------------------
+%
+% This file may be distributed and/or modified under the
+% conditions of the MIT License, a version can be found
+% in the GitHub repository:
+%
+%    https://github.com/opieters/DynamicNumber
+%
+% \fi
+%
+% \iffalse
+%<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+%<package>\ProvidesPackage{dynamicnumber}
+%<package>   [2015/10/27 v0.1.3 Dynamic Number package]
+%
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{dynamicnumber}
+\usepackage{hyperref}
+\EnableCrossrefs
+\CodelineIndex
+\RecordChanges
+\begin{document}
+  \DocInput{dynamicnumber.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \CheckSum{58}
+%
+% \CharacterTable
+%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
+%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
+%   Digits        \0\1\2\3\4\5\6\7\8\9
+%   Exclamation   \!     Double quote  \"     Hash (number) \#
+%   Dollar        \$     Percent       \%     Ampersand     \&
+%   Acute accent  \'     Left paren    \(     Right paren   \)
+%   Asterisk      \*     Plus          \+     Comma         \,
+%   Minus         \-     Point         \.     Solidus       \/
+%   Colon         \:     Semicolon     \;     Less than     \<
+%   Equals        \=     Greater than  \>     Question mark \?
+%   Commercial at \@     Left bracket  \[     Backslash     \\
+%   Right bracket \]     Circumflex    \^     Underscore    \_
+%   Grave accent  \`     Left brace    \{     Vertical bar  \|
+%   Right brace   \}     Tilde         \~}
+%
+%
+% \changes{v0.1}{2015/10/04}{Initial version}
+% \changes{v0.1.1}{2015/10/06}{Performance improvements (one call to newread)}
+%
+% \GetFileInfo{dynamicnumber.sty}
+%
+% \DoNotIndex{<list of control sequences>}
+%
+% \title{The \textsf{dynamicnumber} package\thanks{This document
+%   corresponds to \textsf{dynamicnumber}~\fileversion,
+%   dated \filedate.}}
+% \author{Olivier Pieters \\ \texttt{me (at) olivierpieters (dot) be}}
+%
+% \maketitle
+%
+% \section{Introduction}
+%
+% Dynamic Number dynamically typesets values generated in different kinds of
+% scripts in LaTeX through the use of symbolic links. The aim is to reduce
+% errors resulting from out-of-date numbers by directly setting them in the
+% number generating file and importing a symbolic link in the LaTeX source file.
+%
+% \textbf{Attention!} The name ``symbolic link'' is not related to UNIX symbolic
+% links.
+%
+% \section{Usage}
+%
+% \DescribeMacro{\dndeclare}
+% Declares a dynamic number (dn) list. \index{decare dn list|usage}  By creating
+% a list, variables can be saved and loaded for use in the document. The
+% mandatory argument is the list name.
+%
+% \DescribeMacro{\dnsetcurrent}
+% This environment does nothing.  \index{decare dn list|usage}  Sets the current
+% dn list. The mandatory argument specifies the list name. This command is very
+% useful if multiple lists are used, so you do not always have to specify the dn
+% list if it is not the current one.
+%
+%% \DescribeMacro{\dncurrent}
+% Returns the name of current dn list.  \index{current dn list|usage}  Returns
+% the current dn list and takes no arguments. This can be useful for debugging
+% purposes.
+%
+% \DescribeMacro{\dnload}
+% Load dn list \meta{name}|.dnlist|.  \index{load dn list|usage}  Loads the dn
+% list whose name is passed as mandatory argument. This argument should only
+% include the list-name and \emph{not} the filename. It sets the current dn list
+% to this list.
+%
+% \DescribeMacro{\dnget}
+% Get symbolic link value.  \index{get dn list entry|usage}  Loads the symbolic link's value from the current dn list if no optional argument is present (optional argument is passed first). Otherwise, the optional argument specifies the dn list containing the symbolic link
+%
+% \StopEventually{\PrintIndex}
+%
+% \section{Implementation}
+%
+% Load all required packages.
+%    \begin{macrocode}
+\RequirePackage{pgfkeys}
+\RequirePackage{xparse}
+%    \end{macrocode}
+%
+% Create input stream
+%    \begin{macrocode}
+\newread\dninstream
+%    \end{macrocode}
+% \begin{macro}{\@IfNoValueOrEmptyTF}
+% Tests if a parameter is empty using expl3.
+% Performs a double check to make sure it really is empty.
+% This is based on \href{http://tex.stackexchange.com/questions/63223/xparse-empty-arguments}{this}
+% StackExchange post.
+%    \begin{macrocode}
+\ExplSyntaxOn
+\DeclareExpandableDocumentCommand{\@IfNoValueOrEmptyTF}{mmm}
+ {
+  \IfNoValueTF{#1}{#2}
+   {
+%   \end{macrocode}
+%   Order: |{argument}{if empty}{if not empty}|
+%   \begin{macrocode}
+    \tl_if_empty:nTF {#1} {#2} {#3}
+   }
+ }
+\ExplSyntaxOff
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dndeclare}
+% The |\dndeclare| macro defines a list name and defines a |pgfkey| that stores
+% all symbolic links and their values. It always is a subdirectory of |/dynamicnumber|:
+% |/dynamicnumber/|\meta{name}|/|
+%    \begin{macrocode}
+\DeclareDocumentCommand{\dndeclare}{m}{%
+    \pgfkeys{%
+        /dynamicnumber/#1/.is family,
+        /dynamicnumber/#1/.unknown/.style = {%
+            \pgfkeyscurrentpath/\pgfkeyscurrentname/.initial = ##1%
+        }
+    }%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dnsetcurrent}
+% |\dnsetcurrent{|\meta{name}|}| sets the current dn list to \meta{name}.
+% If no list was previously set, the |\dnsetcurrent| command is defined and
+% set to \meta{name}.
+%    \begin{macrocode}
+\DeclareDocumentCommand{\dnsetcurrent}{m}{%
+	\@ifundefined{dncurrent}{%
+%   \end{macrocode}
+%   \begin{macro}{\dncurrent}
+%   Stores the current dn list used in the |\dnget| command.
+%       \begin{macrocode}
+		    \DeclareDocumentCommand{\dncurrent}{}{#1}%
+%       \end{macrocode}
+%   \end{macro}
+%   \begin{macrocode}
+	}
+	{%
+		\RenewDocumentCommand{\dncurrent}{}{#1}%
+	}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dnload}
+% Loads a dn list from file \meta{load}|.dnlist| and executes all commands in
+% this file after a check if the file exists.
+% \changes{v0.1.3}{2015/10/27}{Removed bug where the current list was reset.}
+%    \begin{macrocode}
+\DeclareDocumentCommand{\dnload}{m}{%
+    \IfFileExists{#1.dnlist}{%
+        \immediate\openin\dninstream=#1.dnlist
+        \@whilesw\unless\ifeof\dninstream\fi{%
+            \immediate\read\dninstream to \@auxcommand
+            \@auxcommand
+        }%
+        \immediate\closein\dninstream%
+    }{}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dnget}
+% Get the value stored in a specific dn list entry. A dn list can be specified
+% (hence optional argument), otherwise the current list will be used.
+%    \begin{macrocode}
+\DeclareDocumentCommand{\dnget}{O{} m}{%
+\@IfNoValueOrEmptyTF{#1}{%
+    \pgfkeysvalueof{/dynamicnumber/\dncurrent/#2}}{%
+    \pgfkeysvalueof{/dynamicnumber/#1/#2}}%
+}
+\endinput
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \Finale
+\endinput

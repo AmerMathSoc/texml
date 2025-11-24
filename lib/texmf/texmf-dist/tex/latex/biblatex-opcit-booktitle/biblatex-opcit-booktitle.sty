@@ -1,0 +1,233 @@
+% Copyright 2015-... Maïeul Rouquette
+% 
+% Inspired by Paul Stanley http://tex.stackexchange.com/a/172777/7712
+%
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Maïeul Rouquette
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{biblatex-opcit-booktitle}[2016/06/12 v1.5.0a Manage op. cit. when using subentry]
+\RequirePackage{xpatch}
+
+\DeclareFieldFormat{bibhypertarget:crossref}{%
+  \bibhypertarget{\iffootnote{f}{t}:\cbx@resetcount:\thefield{crossref}}{#1}}
+
+\DeclareFieldFormat{bibhyperlink:crossref}{%
+  \bibhyperlink{\iffootnote{f}{t}:\cbx@resetcount:\thefield{crossref}}{#1}}
+
+
+\newbibmacro*{cite:seen:related}{%
+ {\xifinlistcs{\thefield{crossref}}{blx@bsee@\the\c@refsection}%
+   {}%
+   {\listcsxadd{blx@bsee@\the\c@refsection}{\thefield{crossref}}}}}
+
+\newcommand{\ifrelatedunseen}[2]{%
+  \xifinlistcs{\thefield{crossref}}{blx@bsee@\the\c@refsection}%
+   {#2}%
+   {#1}}
+
+
+\RequirePackage{ltxcmds}
+\newcommand{\opcit@booktitle@failpatch}[2]{%
+  \PackageError{opcit-booktitle}{Fail to patch `#1` bibmacro (#2)}{}%
+}
+
+% verbose-trad-1 and verbose-trad2
+\ifboolexpr{%
+  test{\ltx@iffileloaded{verbose-trad2.cbx}}%
+  or test{\ltx@iffileloaded{verbose-trad1.cbx}}%
+  }{%
+  \xpatchbibmacro{cite}%
+    {\usebibmacro{cite:full}%
+         \usebibmacro{cite:save}}%
+    {\usebibmacro{cite:test:ifrelated}}%
+    {}%
+    {\opcit@booktitle@failpatch{cite}{verbose-trad1.cbx or verbose-trad2.cbx}}%
+}%
+{}
+
+% verbose-trad3. Not that lines must be applied AFTER the previous one
+\ltx@iffileloaded{verbose-trad3.cbx}{%
+  \xpatchbibmacro{cite}%
+    {\usebibmacro{cite:full}}%
+    {\usebibmacro{cite:test:ifrelated:verbose-trad3}}%
+    {}%
+    {\opcit@booktitle@failpatch{cite}{verbose-trad3.cbx}}%
+}{}
+
+\newbibmacro*{cite:test:ifrelated}%
+      {\ifboolexpr {%
+         test {\iffieldundef{crossref}}%
+         or not (test {\ifentrytype{inbook}}%
+               or test {\ifentrytype{incollection}}%
+               or test {\ifentrytype{inproceedings}}%
+               or test {\ifentrytype{bookinbook}})}%
+       {\usebibmacro{cite:full}%
+        \usebibmacro{cite:save}}%
+       {\ifrelatedunseen%
+        {\printtext[bibhypertarget:crossref]{%
+         \usebibmacro{cite:seen:related}%
+         \usebibmacro{cite:full}%
+         \usebibmacro{cite:save}}}%
+        {\usebibmacro{related:info}}}}
+
+\newbibmacro*{cite:test:ifrelated:verbose-trad3}%
+      {\ifboolexpr {%
+         test {\iffieldundef{crossref}}%
+         or not (test {\ifentrytype{inbook}}%
+               or test {\ifentrytype{incollection}}%
+               or test {\ifentrytype{inproceedings}}%
+               or test {\ifentrytype{bookinbook}})}%
+       {\usebibmacro{cite:full}%
+        }%
+       {\ifrelatedunseen%
+        {\printtext[bibhypertarget:crossref]{%
+         \usebibmacro{cite:seen:related}%
+         \usebibmacro{cite:full}%
+         }}%
+        {\usebibmacro{related:info}}}} 
+        
+\newbibmacro*{related:info}{%
+  % Here an hack to use the short form of the booktitle without recurring to a .dbx file in order to define new fields (because recurring to a .dbx file for such feature is complex for a little feature)
+  \entrydata{\thefield{crossref}}{%
+    \savefield{shorttitle}{\shortbooktitle}%
+    \savefield{entrytype}{\bookentrytype}%
+  }%
+  \ifdef{\shortbooktitle}%
+    {%
+      \restorefield{booktitle}{\shortbooktitle}%
+      \clearfield{booksubtitle}%
+    }%
+    {}%
+  \usebibmacro{cite:full:citepages}%
+  \printtext[bibhypertarget]{\usedriver%
+    {\DeclareNameAlias{sortname}{default}}%
+    {inbook:rel:\blx@cbxfile}}%
+}
+
+\DeclareBibliographyDriver{inbook:rel:verbose-trad1}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifthenelse{\ifciteidem\AND\NOT\boolean{cbx:noidem}}%
+    {\usebibmacro{cite:idem}}%
+    {\ifnameundef{labelname}%
+      {}%
+      {\usebibmacro{cite:name}}%
+    }%
+  \newblock%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{in:}%
+  \printtext[bibhyperlink:crossref]{%
+  \usebibmacro{maintitle+booktitle}%
+    \newunit\newblock
+    \usebibmacro{byeditor+others}%
+    \newunit%
+    \iffieldundef{maintitle}%
+      {\printfield{volume}%
+       \printfield{part}}
+      {}%
+    \newunit%
+    \restorefield{entrytype}{\bookentrytype}%
+    \bibstring[\mkibid]{opcit}%
+  }%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit\newblock
+  \setunit{\bibpagerefpunct}\newblock
+  \usebibmacro{pageref}%
+  \newunit\newblock
+  \iftoggle{bbx:related}
+    {\usebibmacro{related:init}%
+     \usebibmacro{related}}
+    {}%
+  \usebibmacro{finentry}}
+
+
+\DeclareBibliographyDriver{inbook:rel:verbose-trad2}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifthenelse{\ifciteidem\AND\NOT\boolean{cbx:noidem}}%
+    {\usebibmacro{cite:idem}}%
+    {\usebibmacro{author/translator+others}\setunit{\labelnamepunct}}%
+  \newblock%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{in:}%
+  \printtext[bibhyperlink:crossref]{%
+  \usebibmacro{maintitle+booktitle}%
+    \newunit\newblock
+    \usebibmacro{byeditor+others}%
+    \newunit%
+    \iffieldundef{maintitle}%
+      {\printfield{volume}%
+       \printfield{part}}
+      {}%
+    \newunit%
+    \restorefield{entrytype}{\bookentrytype}%
+    \bibstring[\mkibid]{opcit}%
+  }%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit\newblock
+  \setunit{\bibpagerefpunct}\newblock
+  \usebibmacro{pageref}%
+  \newunit\newblock
+  \iftoggle{bbx:related}
+    {\usebibmacro{related:init}%
+     \usebibmacro{related}}
+    {}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{inbook:rel:verbose-trad3}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \printnames{labelname}%
+  \setunit*{\printdelim{nametitledelim}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{in:}%
+  \printtext[bibhyperlink:crossref]{%
+  \usebibmacro{maintitle+booktitle}%
+    \newunit\newblock
+    \usebibmacro{byeditor+others}%
+    \newunit%
+    \iffieldundef{maintitle}%
+      {\printfield{volume}%
+       \printfield{part}}
+      {}%
+  }%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit\newblock
+  \setunit{\bibpagerefpunct}\newblock
+  \usebibmacro{pageref}%
+  \newunit\newblock
+  \iftoggle{bbx:related}
+    {\usebibmacro{related:init}%
+     \usebibmacro{related}}
+    {}%
+  \usebibmacro{finentry}}
+
+\endinput

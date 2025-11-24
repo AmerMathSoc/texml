@@ -1,0 +1,182 @@
+% Copyright 2016 Slavonic Computing Initialive
+% http://sci.ponomar.net
+% 
+\ProvidesPackage{cu-calendar}[2016/03/30 v1.0 CU Calendars]
+
+\RequirePackage{intcalc}
+\RequirePackage{cu-num}
+
+%
+% Tools
+%
+\def\cu@jdn#1-#2-#3-#4{%
+  \expandafter\cu@@jdn
+  \expandafter{\the\numexpr \intcalcDiv{14 - #2}{12} \relax}{#1}{#2}{#3}{#4}%
+}%
+\def\cu@@jdn#1#2#3#4#5{%
+  \expandafter\cu@@@jdn
+  \expandafter{\the\numexpr #2 + 4800 - #1\relax}{#1}{#2}{#3}{#4}{#5}%
+}%
+\def\cu@@@jdn#1#2#3#4#5#6{%  y a year month day
+  \expandafter\cu@@@@jdn
+  \expandafter{\the\numexpr #4 - 3 + 12 * (#2)\relax}{#1}{#2}{#3}{#4}{#5}{#6}%
+}%
+\def\cu@@@@jdn#1#2#3#4#5#6#7{% m y a year month day
+  \expandafter #7%
+  \expandafter{\the\numexpr #6 + 
+    \intcalcDiv{153 * (#1) + 2}{5} + (365 * (#2)) + \intcalcDiv{#2}{4} - 32083\relax}{#2}%
+}%
+\def\greg@#1#2{% jdn_julian y
+  \expandafter\greg@@
+  \expandafter{\the\numexpr #1 - \intcalcDiv{#2}{100}\relax}{#2}%
+}%
+\def\greg@@#1#2{% jdn_julian y
+  \the\numexpr #1 + \intcalcDiv{#2}{400} + 32083 - 32045\relax%
+}%
+%
+\def\cu@jdnFromJulianDate#1{%
+  \cu@jdn #1-\@firstoftwo
+}%
+\def\cu@jdnFromGregorianDate#1{%
+  \cu@jdn #1-\greg@
+}%
+%
+\def\cu@calendar#1{%
+  \expandafter\cu@@calendar
+  \expandafter{\the\numexpr (#1 + 1401) * 4 + 3\relax}%
+}%
+\def\cu@@calendar#1{% e
+  \expandafter\cu@@@calendar
+  \expandafter{\the\numexpr 2 + 
+    \intcalcMul{5}{\intcalcDiv{\intcalcMod{#1}{1461}}{4}} \relax}{#1}%
+}%
+\def\cu@@@calendar#1#2{%  h  e
+  \expandafter\cu@@@@calendar
+  \expandafter{\the\numexpr 1 + \intcalcDiv{\intcalcMod{#1}{153}}{5}\relax}{#1}{#2}%
+}%
+\def\cu@@@@calendar#1#2#3{%  day h  e
+  \expandafter\cu@@@@@calendar
+  \expandafter{\the\numexpr 1 + 
+    \intcalcMod{\intcalcAdd{\intcalcDiv{#2}{153}}{2}}{12}\relax}{#1}{#2}{#3}%
+}%
+\def\cu@@@@@calendar#1#2#3#4{% month day h  e
+  \the\numexpr 
+    \intcalcDiv{#4}{1461} - 4716 + \intcalcDiv{14-#1}{12}\relax -#1-#2%
+}%
+\def\cu@calendarJulian#1{\cu@calendar{#1}}%
+\def\cu@calendarGregorian#1{%
+  \expandafter\cu@calendar\expandafter{%
+    \the\numexpr #1 +
+    \intcalcDiv{\intcalcMul{\intcalcDiv{274277 + 4 * (#1)}{146097}}{3}}{4} - 38
+    \relax
+}}%
+%
+\def\cu@julianToGregorian#1{%
+  \cu@calendarGregorian{\cu@jdnFromJulianDate{#1}}%
+}%
+\def\cu@gregorianToJulian#1{%
+  \cu@calendarJulian{\cu@jdnFromGregorianDate{#1}}%
+}%
+\let\cu@julianFromGregorian\cu@gregorianToJulian
+\let\cu@gregorianFromJulian\cu@julianToGregorian
+%
+% User API
+%
+\let\cuAsJulian\cu@julianFromGregorian
+\let\cuAsGregorian\cu@gregorianFromJulian
+%
+\def\cuJulianDate#1{%
+  \expandafter\cu@formatDate\number\cu@julianFromGregorian{#1}\relax
+}%
+\def\cuJulianToday{%
+  \cu@julianFromGregorian{\year -\month -\day}%
+}%
+\def\cuToday{%
+  \year -\month -\day
+}%
+\def\cuDate#1{%
+  \expandafter\cu@formatDate\number #1\relax
+}%
+%
+\def\cuMonthName#1{%
+  \ifcase#1\or%
+    і҆аннꙋа́рїа\or
+    феврꙋа́рїа\or
+    ма́рта\or
+    а҆прі́ллїа\or
+    ма́їа\or
+    і҆ꙋ́нїа\or
+    і҆ꙋ́лїа\or
+    а҆́ѵгꙋста\or
+    септе́мврїа\or
+    ѻ҆ктѡ́врїа\or
+    ное́мврїа\or
+    деке́мврїа\fi
+}%
+%
+\def\cuDayName#1{%
+  \ifcase#1 недѣ́лѧ\or%
+    понедѣ́льникъ\or
+    вто́рникъ\or
+    среда̀\or
+    четверто́къ\or
+    пѧто́къ\or
+    сꙋббѡ́та\fi
+}%
+%
+\def\cuDayNameAccusative#1{%
+  \ifcase#1 недѣ́лю\or%
+    понедѣ́льникъ\or
+    вто́рникъ\or
+    сре́дꙋ\or
+    четверто́къ\or
+    пѧто́къ\or
+    сꙋббѡ́тꙋ\fi
+}%
+%
+\def\cuDefineDateFormat#1#2{%
+	\expandafter\def\csname cs@dateformat@#1\endcsname{#2}%
+}%
+\def\cuUseDateFormat#1{%
+	\expandafter\let\expandafter\cu@current@dateformat\csname cs@dateformat@#1\endcsname
+}%
+\def\cu@@formatDate#1-#2-#3\relax{%
+	\edef\cu@JDN{\cu@jdnFromGregorianDate{#1-#2-#3}}%
+	\edef\cu@JDN@March@First{\cu@jdnFromJulianDate{#1-3-1}}%
+	\edef\cuYEAR{\number #1}%
+	\edef\cuYEARAM{\the\numexpr #1 + 5508\ifnum\cu@JDN<\cu@JDN@March@First\else + 1\fi}% 
+	\edef\cuMONTH{\number #2}%
+	\edef\cuDAY{\number #3}%
+	\edef\cuDOW{\intcalcMod{1+\cu@JDN}{7}}%
+	\edef\cuINDICTION{\intcalcAdd{15}{\intcalcMod{#1 - 312}{-15}}}%
+	\edef\cuDISPLAYDATE{\cu@current@dateformat}%
+}%
+\def\cu@@formatJulianDate#1-#2-#3\relax{%
+	\edef\cu@JDN{\cu@jdnFromJulianDate{#1-#2-#3}}%
+	\edef\cu@JDN@March@First{\cu@jdnFromJulianDate{#1-3-1}}%
+	\edef\cuYEAR{\number #1}%
+	\edef\cuYEARAM{\the\numexpr #1 + 5508\ifnum\cu@JDN<\cu@JDN@March@First\else + 1\fi}% 
+	\edef\cuMONTH{\number #2}%
+	\edef\cuDAY{\number #3}%
+	\edef\cuDOW{\intcalcMod{1+\cu@JDN}{7}}%
+	\edef\cuINDICTION{\intcalcAdd{15}{\intcalcMod{#1 - 312}{-15}}}%
+	\edef\cuDISPLAYDATE{\cu@current@dateformat}%
+}%
+\protected\def\cu@formatDate#1-#2-#3\relax{%
+	\bgroup
+	\cu@@formatDate#1-#2-#3\relax
+	\cuDISPLAYDATE
+	\egroup
+}%
+%
+\protected\def\cu@formatJulianDate#1-#2-#3\relax{%
+	\bgroup
+	\cu@@formatJulianDate#1-#2-#3\relax
+	\cuDISPLAYDATE
+	\egroup
+}%
+\cuDefineDateFormat{default}{%
+	\cuNum{\cuDAY}~\cuMonthName{\cuMONTH}~лѣ́та~\cuNum{\cuYEAR}%
+}%
+\cuUseDateFormat{default}%
+%

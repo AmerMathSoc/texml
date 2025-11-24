@@ -1,0 +1,385 @@
+% bxpdfver.sty
+
+%% package declaration
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{bxpdfver}[2015/08/05 v0.2a]
+
+%% preparations
+\def\bxpv@pkgname{bxpdfver}
+\def\bxpv@error{\PackageError\bxpv@pkgname}
+\def\bxpv@info{\PackageInfo\bxpv@pkgname}
+
+%% variables
+\newif\ifbxpv@ok
+\let\bxpv@drv@type\relax
+\let\bxpv@drv@name\relax
+\let\bxpv@version\relax
+\let\bxpv@mversion\relax
+\let\bxpv@compress=t
+\let\bxpv@obj@compress=t
+
+%% process options
+% (PDF version)
+\DeclareOption{1.4}{%
+  \edef\bxpv@version{\CurrentOption}%
+}
+\DeclareOption{1.5}{%
+  \edef\bxpv@version{\CurrentOption}%
+}
+\DeclareOption{1.6}{%
+  \edef\bxpv@version{\CurrentOption}%
+}
+\DeclareOption{1.7}{%
+  \edef\bxpv@version{\CurrentOption}%
+}
+\DeclareOption{1.8}{%
+  \edef\bxpv@version{\CurrentOption}%
+}
+\DeclareOption{1.9}{%
+  \edef\bxpv@version{\CurrentOption}%
+}
+% (compression)
+\DeclareOption{nocompress}{%
+  \let\bxpv@compress=f%
+}
+\DeclareOption{compress}{%
+  \let\bxpv@compress=t%
+}
+\DeclareOption{noobjcompress}{%
+  \let\bxpv@obj@compress=f%
+}
+\DeclareOption{objcompress}{%
+  \let\bxpv@obj@compress=t%
+}
+% (driver)
+\DeclareOption{native}{%
+  \let\bxpv@drv@type=p%
+  \def\bxpv@drv@name{native}%
+}
+\DeclareOption{dvipdfmx}{%
+  \let\bxpv@drv@type=d%
+  \def\bxpv@drv@name{dvipdfmx}%
+}
+\DeclareOption{dvips}{%
+  \let\bxpv@drv@type=x%
+  \def\bxpv@drv@name{dvips}%
+}
+\DeclareOption{dviout}{%
+  \let\bxpv@drv@type=x%
+  \def\bxpv@drv@name{dviout}%
+}
+\DeclareOption{disabled}{%
+  \let\bxpv@drv@type=0%
+  \def\bxpv@drv@name{disabled}%
+}
+%
+\ProcessOptions*
+
+%--------------------------------------- helpers
+
+%% unique tokens
+\def\bxpv@end{\bxpv@end@}
+\def\bxpv@mt{\bxpv@mt@}
+
+%--------------------------------------- environment check
+
+%% \bxpv@suppress@compress
+\@onlypreamble\bxpv@suppress@compress
+\def\bxpv@suppress@compress{%
+  \bxpv@error{Cannot suppress compression}%
+  \bxpv@errh@na
+}
+%% \bxpv@suppress@obj@compress
+\@onlypreamble\bxpv@suppress@obj@compress
+\def\bxpv@suppress@obj@compress{%
+  \bxpv@error{Cannot suppress object compression}%
+  \bxpv@errh@na
+}
+%% \bxpv@set@version
+\@onlypreamble\bxpv@set@version
+\def\bxpv@set@version{%
+  \bxpv@error{Cannot set PDF version}%
+  \bxpv@errh@na
+}
+%% \bxpv@errh@na
+\@onlypreamble\bxpv@errh@na
+\def\bxpv@errh@na{%
+  This feature is not supported by the engine in use.%
+  \MessageBreak\@ehc
+}
+
+\begingroup
+
+%% \bxpv@check@prim\CS{<proc>}
+% Do <proc> if \CS is defined as primitive.
+\def\bxpv@check@prim#1{%
+  \edef\bxpv@tmpa{\string#1}%
+  \edef\bxpv@tmpb{\meaning#1}%
+  \ifx\bxpv@tmpa\bxpv@tmpb \expandafter\@firstofone
+  \else \expandafter\@gobble
+  \fi
+}
+
+%% \bxpv@pdfoutput: use PDF output?
+\ifx\pdfoutput\@undefined
+  \chardef\bxpv@pdfoutput\z@
+  % XeTeX might support \pdfminorversion etc in the future :)
+  \bxpv@check@prim\XeTeXversion{\chardef\bxpv@pdfoutput\@ne}%
+  % pTeX-ng
+  \bxpv@check@prim\ngbanner{\chardef\bxpv@pdfoutput\@ne}%
+\else
+  \chardef\bxpv@pdfoutput\pdfoutput
+\fi
+
+%% adjust internal dispatchers
+\bxpv@okfalse
+\ifnum\bxpv@pdfoutput>\z@ % PDF-output
+  \global\let\bxpv@drv@type=p
+  % \bxpv@isupp@obj@compress: auto-supress of obj-compression
+  \@onlypreamble\bxpv@isupp@obj@compress
+  \global\let\bxpv@isupp@obj@compress\relax
+  % \bxpv@iunsupp@obj@compress: un-auto-supress
+  \@onlypreamble\bxpv@iunsupp@obj@compress
+  \global\let\bxpv@iunsupp@obj@compress\relax
+  %% If \pdfcompresslevel is available, use it.
+  \bxpv@check@prim\pdfcompresslevel{%
+    \gdef\bxpv@suppress@compress{%
+      \global\pdfcompresslevel\z@
+    }%
+  }
+  %% If \pdfobjcompresslevel is available, use it.
+  \bxpv@check@prim\pdfobjcompresslevel{%
+    \global\chardef\bxpv@org@pdfobjcompresslevel\pdfobjcompresslevel
+    \gdef\bxpv@suppress@obj@compress{%
+      \global\pdfobjcompresslevel\z@
+      \global\let\bxpv@iunsupp@obj@compress\relax
+    }%
+    \gdef\bxpv@isupp@obj@compress{%
+      \global\pdfobjcompresslevel\z@
+    }%
+    \gdef\bxpv@iunsupp@obj@compress{%
+      \global\pdfobjcompresslevel\bxpv@org@pdfobjcompresslevel
+    }%
+  }
+  \bxpv@check@prim\pdfminorversion\bxpv@oktrue
+\fi
+\ifbxpv@ok % \pdfminorversion is available
+  \global\chardef\bxpv@org@pdfminorversion\pdfminorversion
+  \gdef\bxpv@set@version{%
+    \ifx\bxpv@mversion\relax
+      \global\pdfminorversion\bxpv@org@pdfminorversion
+    \else
+      \global\pdfminorversion\bxpv@mversion
+    \fi
+    \ifnum\pdfminorversion<5
+      \bxpv@isupp@obj@compress
+    \else
+      \bxpv@iunsupp@obj@compress
+    \fi
+  }%
+\else
+  % XeTeX now does not have \pdfminorversion,
+  % so do it just as dvipdfmx.
+  \bxpv@check@prim\XeTeXversion{%
+    \global\let\bxpv@drv@type=d%
+  }
+\fi
+
+%% driver check
+\if x\bxpv@drv@type % 'bad' driver
+  \bxpv@error{Unsupported driver '\bxpv@drv@name'}\@ehc
+  % no further errors
+  \let\bxpv@drv@type=0\relax
+\fi
+\if d\bxpv@drv@type % 'dvipdfmx'
+  \global\let\bxpv@set@version\relax
+  \AtBeginDocument{%
+    \bxpv@set@version@dvipdfmx
+  }
+\else\if 0\bxpv@drv@type % 'disabled'
+  \global\let\bxpv@set@version\relax
+  \global\let\bxpv@suppress@compress\relax
+  \global\let\bxpv@suppress@obj@compress\relax
+\fi\fi
+
+\endgroup
+
+%--------------------------------------- public interface
+
+%%<*> \suppresspdfcompression
+\@onlypreamble\suppresspdfcompression
+\newcommand*\suppresspdfcompression{%
+  \bxpv@suppress@compress
+}
+
+%%<*> \suppresspdfobjcompression
+\@onlypreamble\suppresspdfobjcompression
+\newcommand*\suppresspdfobjcompression{%
+  \bxpv@suppress@obj@compress
+}
+
+%%<*> \setpdfversion{<version>}
+\@onlypreamble\setpdfversion
+\newcommand*\setpdfversion[1]{%
+  \edef\bxpv@version{#1}%
+  \bxpv@get@mversion
+  \bxpv@set@version
+}
+
+%--------------------------------------- version values
+
+%% \bxpv@get@mversion
+% Sets \bxpv@mversion.
+% Note: \bxpv@version is assumed to be already expnaded.
+\@onlypreamble\bxpv@get@mversion
+\def\bxpv@get@mversion{%
+  \let\bxpv@mversion\relax
+  \ifx\bxpv@version\@empty\else
+    \@tfor\bxpv@x:=456789\do{%
+      \edef\bxpv@tmpa{1.\bxpv@x}%
+      \ifx\bxpv@version\bxpv@tmpa
+        \chardef\bxpv@mversion=\bxpv@x\relax
+      \fi
+    }%
+    \ifx\bxpv@mversion\relax
+      \bxpv@file@mversion
+    \fi
+    \ifx\bxpv@mversion\relax
+      \bxpv@error{Invalid value given for PDF version\MessageBreak
+        (value=\bxpv@version)}{%
+        PDF version must be either 1.4, 1.5, ..., 1.9, or\MessageBreak
+        or the name of a PDF file from which the version is pulled.%
+        \MessageBreak\@ehc}%
+    \else
+      \bxpv@info{Output PDF version is set to 1.\the\bxpv@mversion
+        \MessageBreak}%
+    \fi
+  \fi
+}
+
+%% \bxpv@file@mversion
+\@onlypreamble\bxpv@file@mversion
+\def\bxpv@file@mversion{%
+  \begingroup
+    \expandafter\bxpv@file@mversion@a\bxpv@version\bxpv@end
+    \global\let\bxpv@gtmpa\bxpv@mversion
+  \endgroup
+  \let\bxpv@mversion\bxpv@gtmpa
+}
+\@onlypreamble\bxpv@file@mversion@a
+\def\bxpv@file@mversion@a#1\bxpv@end{%
+  \bxpv@okfalse
+  \lowercase{\bxpv@file@mversion@b#1}%
+   \bxpv@mark.pdf\bxpv@mark\bxpv@end
+  \ifbxpv@ok
+    \openin\@inputcheck=#1\relax
+    \bxpv@file@mversion@c
+    \closein\@inputcheck
+    \@tfor\bxpv@x:=456789\do{%
+      \ifx\bxpv@x\bxpv@tmpb
+        \chardef\bxpv@mversion=\bxpv@x\relax
+      \fi
+    }%
+  \fi
+}
+\@onlypreamble\bxpv@file@mversion@b
+\def\bxpv@file@mversion@b#1.pdf\bxpv@mark#2\bxpv@end{%
+  \ifx\bxpv@mt#2\bxpv@mt\else \bxpv@oktrue \fi
+}
+\@onlypreamble\bxpv@file@mversion@c
+\def\bxpv@file@mversion@c{%
+  \@tempcnta\z@
+  \loop\ifnum\@tempcnta<\@cclvi
+    \catcode\@tempcnta12 %
+    \advance\@tempcnta\@ne
+  \repeat
+  \endlinechar=32
+  \catcode32=10
+  \read\@inputcheck to\bxpv@tmpb
+  \expandafter\bxpv@file@mversion@xa\bxpv@tmpb\bxpv@end
+}
+% some more subprocedures
+\@onlypreamble\bxpv@file@mversion@xa
+\@onlypreamble\bxpv@file@mversion@xb
+\@onlypreamble\bxpv@file@mversion@xc
+\begingroup
+  \escapechar\m@ne
+  \def\bxpv@tmpa#1\bxpv@end{%
+    \gdef\bxpv@file@mversion@xa##1\bxpv@end{%
+      \bxpv@file@mversion@xb##1#1\bxpv@end
+    }%
+    \gdef\bxpv@file@mversion@xb##1#1##2\bxpv@end{%
+      \ifx\bxpv@mt##1\bxpv@mt
+        \bxpv@file@mversion@xc##2\bxpv@end
+      \fi
+    }%
+    \gdef\bxpv@file@mversion@xc##1 ##2\bxpv@end{%
+      \def\bxpv@tmpb{##1}%
+    }%
+  }
+  \edef\bxpv@tmpb{{\expandafter\string\csname\string\%PDF-1.\endcsname}}%
+  \expandafter\bxpv@tmpa\bxpv@tmpb\bxpv@end
+\endgroup
+
+%--------------------------------------- dvipdfmx something
+\ifx d\bxpv@drv@type % 'dvipdfmx'
+
+%% required packages
+\RequirePackage{atbegshi}[2009/07/70]
+
+%% \bxpv@set@version@dvipdfmx
+\@onlypreamble\bxpv@set@version@dvipdfmx
+\def\bxpv@set@version@dvipdfmx{%
+  \ifx\bxpv@mversion\relax\else
+    % special added to every page
+    \AtBeginShipout{%
+      \setbox\AtBeginShipoutBox=\vbox{%
+        \baselineskip\z@skip\lineskip\z@skip\lineskiplimit\z@
+        \special{pdf:minorversion \the\bxpv@mversion}%
+        \copy\AtBeginShipoutBox
+      }%
+    }%
+  \fi
+}
+
+\fi
+%--------------------------------------- start-up
+
+\ifx t\bxUseDebug
+\typeout{%
+  mversion=\meaning\bxpv@mversion^^J%
+  compress=\meaning\bxpv@compress^^J%
+  objcompress=\meaning\bxpv@obj@compress^^J%
+  drvtype=\meaning\bxpv@drv@type^^J%
+  drvname=\meaning\bxpv@drv@name^^J%
+  +version=\meaning\bxpv@set@version^^J%
+  +compress=\meaning\bxpv@suppress@compress^^J%
+  +objcompress=\meaning\bxpv@suppress@obj@compress^^J%
+}
+\ifx p\bxpv@drv@type
+  \AtBeginDocument{%
+    \def\do#1{\ifx#1\@undefined\else\the#1\fi}%
+    \typeout{%
+      pdfminorversion=\do\pdfminorversion^^J%
+      pdfcompresslevel=\do\pdfcompresslevel^^J%
+      pdfobjcompresslevel=\do\pdfobjcompresslevel^^J%
+    }%
+  }
+\fi
+\fi
+
+%% Applies the setting specified by package options
+\ifx\bxpv@version\relax\else
+  \bxpv@get@mversion
+  \bxpv@set@version
+\fi
+\if t\bxpv@compress\else
+  \bxpv@suppress@compress
+\fi
+\if t\bxpv@obj@compress\else
+  \bxpv@suppress@obj@compress
+\fi
+
+%--------------------------------------- all done
+\endinput
+%% EOF

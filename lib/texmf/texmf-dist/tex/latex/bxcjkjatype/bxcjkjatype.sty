@@ -1,0 +1,706 @@
+%
+% bxcjkjatype.sty
+%
+
+%% package declaration
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{bxcjkjatype}[2013/10/18 v0.2c]
+\def\bxjy@pkgname{bxcjkjatype}
+
+%% definitions
+\def\bxjy@error{\PackageError\bxjy@pkgname}
+\def\bxjy@warn{\PackageWarning\bxjy@pkgname}
+\def\bxjy@info{\PackageInfo\bxjy@pkgname}
+
+%--------------------------------------- helpers
+
+%% variables
+\newif\ifbxjy@ok
+
+%% unique tokens
+\def\bxjy@mark{\bxjy@mark@}
+\def\bxjy@end{\bxjy@end@}
+
+%% \bxjy@ifprimitive\CS{<true>}{<false>}
+\@onlypreamble\bxjy@ifprimitive
+\def\bxjy@ifprimitive#1{%
+  \edef\bxjy@tmpa{\string#1}%
+  \edef\bxjy@tmpb{\meaning#1}%
+  \ifx\bxjy@tmpa\bxjy@tmpb \expandafter\@firstoftwo
+  \else \expandafter\@secondoftwo \fi
+}
+
+%% \bxjy@cond\ifXX...\fi{<true>}{<false>}
+\@gobbletwo\if\if \def\bxjy@cond#1\fi{%
+  #1\expandafter\@firstoftwo\else\expandafter\@secondoftwo\fi
+}
+
+%--------------------------------------- environment check
+
+%% engine check
+\bxjy@oktrue
+\bxjy@ifprimitive\kanjiskip{\bxjy@okfalse}{}
+\bxjy@ifprimitive\luatexversion{\bxjy@okfalse}{}
+\bxjy@ifprimitive\XeTeXversion{\bxjy@okfalse}{}
+\bxjy@ifprimitive\eTeXversion{}{\bxjy@okfalse}
+\ifbxjy@ok\else
+  \bxjy@error{The engine in use is not supported}%
+    {Only pdfTeX engine is supported.\MessageBreak
+    Package loading is aborted.}
+\expandafter\endinput\fi\relax
+
+%--------------------------------------- option handling
+
+%% using keyval
+\RequirePackage{keyval}
+
+%% Declares options
+\let\bxjy@driver\@undefined
+\let\bxjy@none=n
+\let\bxjy@pdftex=p
+\let\bxjy@dvipdfmx=d
+\DeclareOption{none}{\let\bxjy@driver\bxjy@none}
+\DeclareOption{dvips}{\let\bxjy@driver\bxjy@none}
+\DeclareOption{pdftex}{\let\bxjy@driver\bxjy@pdftex}
+\DeclareOption{dvipdfmx}{\let\bxjy@driver\bxjy@dvipdfmx}
+\let\bxjy@whole=f
+\DeclareOption{whole}{\let\bxjy@whole=t}
+\DeclareOption{wholeCJK*}{\let\bxjy@whole=t}
+\DeclareOption{wholeCJK}{\let\bxjy@whole=p}
+\DeclareOption{nowhole}{\let\bxjy@whole=f}
+\newif\ifbxjy@everypage
+\DeclareOption{everypage}{\bxjy@everypagetrue}
+\DeclareOption{noeverypage}{\bxjy@everypagefalse}
+\let\bxjy@oneweight=f
+\DeclareOption{ipaex-type1}{\let\bxjy@oneweight=i}
+\DeclareOption{oneweight}{\let\bxjy@oneweight=t}
+\DeclareOption{nooneweight}{\let\bxjy@oneweight=f}
+\newif\ifbxjy@autotilde
+\DeclareOption{autotilde}{\bxjy@autotildetrue}
+\DeclareOption{noautotilde}{\bxjy@autotildefalse}
+\newif\ifbxjy@CJKpunct \bxjy@CJKpuncttrue
+\DeclareOption{CJKpunct}{\bxjy@CJKpuncttrue}
+\DeclareOption{noCJKpunct}{\bxjy@CJKpunctfalse}
+\newif\ifbxjy@CJKspace \bxjy@CJKspacetrue
+\DeclareOption{CJKspace}{\bxjy@CJKspacetrue}
+\DeclareOption{noCJKspace}{\bxjy@CJKspacefalse}
+% preset spec options
+\def\bxjy@all@main@preset{%
+  %(uniweight)
+  ms,ipa,ipaex,%
+  %(multiweight)
+  ms-hg,ipa-hg,moga-mobo,moga-maruberi,%
+  kozuka-pro,kozuka-pr6,kozuka-pr6n,%
+  hiragino-pro,hiragino-pron,morisawa-pro,morisawa-pr6n}
+\let\bxjy@main@preset\relax
+\def\bxjy@do#1{\DeclareOption{#1}{\def\bxjy@main@preset{#1}}}
+\@for\bxjy@x:=\bxjy@all@main@preset\do{%
+  \expandafter\bxjy@do\expandafter{\bxjy@x}}
+% keyval-type
+\DeclareOption*{%
+  \expandafter\bxjy@setkey@a\expandafter{\CurrentOption}}
+\def\bxjy@setkey@a{\setkeys{bxjy}}
+\let\bxjy@scale\relax
+\define@key{bxjy}{scale}{%
+  \def\bxjy@scale{#1}}
+%% Dispatch options
+\ProcessOptions*
+
+%--------------------------------------- configuration check
+
+%% Check the driver specified
+\def\bxjy@tmpa#1#2{%
+  \bxjy@info{Driver auto-detected: #2}%
+  \let\bxjy@driver#1}
+\def\bxjy@tmpb#1#2{%
+  \bxjy@error{Wrong driver specified, changed to: #2}\@ehc%
+  \let\bxjy@driver#1}
+\ifnum\ifdefined\pdfoutput\pdfoutput\else\z@\fi>\z@
+  \unless\ifdefined\bxjy@driver
+    \bxjy@tmpa\bxjy@pdftex{pdftex}%
+  \else\unless\ifx\bxjy@driver\bxjy@pdftex
+    \bxjy@tmpb\bxjy@pdftex{pdftex}%
+  \fi\fi
+\else
+  \unless\ifdefined\bxjy@driver
+    \bxjy@tmpa\bxjy@dvipdfmx{dvipdfmx}%
+  \else\ifx\bxjy@driver\bxjy@pdftex
+    \bxjy@tmpb\bxjy@dvipdfmx{dvipdfmx}%
+  \fi\fi
+\fi
+
+%% Consistency check
+\ifx i\bxjy@oneweight \unless\ifx\bxjy@main@preset\relax
+  \bxjy@error{Preset options cannot go with 'ipaex-type1'}\@ehc
+  \let\bxjy@main@preset\relax
+\fi\fi
+\ifx \bxjy@driver\bxjy@none \unless\ifx\bxjy@main@preset\relax
+  \bxjy@error{Preset options require a valid driver}\@ehc
+  \let\bxjy@main@preset\relax
+\fi\fi
+\ifx i\bxjy@oneweight \unless\ifx\bxjy@scale\relax
+  \bxjy@error{Scaling cannot go with 'ipaex-type1'}\@ehc
+  \let\bxjy@main@preset\relax
+\fi\fi
+
+%% default scale value
+\ifx\bxjy@scale\relax
+  \ifx\Cjascale\@undefined
+    \ifx\jsScale\@undefined
+      \def\bxjy@scale{1}
+    \else \let\bxjy@scale\jsScale
+    \fi
+  \else \let\bxjy@scale\Cjascale
+  \fi
+\fi
+\ifx i\bxjy@oneweight
+  \def\bxjy@scale{1}%
+\fi
+
+%--------------------------------------- preparations
+
+%% Load CJK package and friends
+\RequirePackage{CJK}
+\@namedef{opt@CJK.sty}{encapsulated}
+\let\CJK@global\relax
+\let\CJK@active\relax
+\let\CJK@local\relax
+\RequirePackage{CJKutf8}
+\ifbxjy@CJKspace
+\RequirePackage{CJKspace}
+\fi
+\ifbxjy@CJKpunct
+\RequirePackage{CJKpunct}
+\fi
+
+%% Load other packages
+\RequirePackage{etoolbox}
+\ifbxjy@everypage\ifx\bxjy@driver\bxjy@dvipdfmx
+  \RequirePackage{atbegshi}
+\fi\fi
+%%
+
+%%<+> \FirstCJKUse
+%%<+> \EveryCJKUse
+\appto\CJKhook{%
+  \bxjy@first@cjk@use@hook
+  \bxjy@every@cjk@use@hook}
+\def\bxjy@first@cjk@use@hook{%
+  \global\let\bxjy@first@cjk@use@hook\relax}
+\let\bxjy@every@cjk@use@hook\@empty
+\newcommand*\FirstCJKUse{%
+  \gappto\bxjy@first@cjk@use@hook}
+\newcommand*\EveryCJKUse{%
+  \gappto\bxjy@every@cjk@use@hook}
+
+%--------------------------------------- user interface
+
+%%%%<*> \setminchofont/\setgothicfont/etc.
+\newcommand*\setminchofont{\bxjy@setfont{mnl,mnr,mnb}}
+\newcommand*\setgothicfont{\bxjy@setfont{gtr,gtb,gtx,gtu}}
+\newcommand*\setlightminchofont{\bxjy@setfont{mnl}}
+\newcommand*\setmediumminchofont{\bxjy@setfont{mnr}}
+\newcommand*\setboldminchofont{\bxjy@setfont{mnb}}
+\newcommand*\setmediumgothicfont{\bxjy@setfont{gtr}}
+\newcommand*\setboldgothicfont{\bxjy@setfont{gtb}}
+\newcommand*\setxboldgothicfont{\bxjy@setfont{gtx}}
+\newcommand*\setoneweightgothicfont{\bxjy@setfont{gtu}}
+\newcommand*\setmarugothicfont{\bxjy@setfont{mgr}}
+\def\bxjy@setfont#1{\@ifnextchar[%]
+  {\bxjy@setfont@a{#1}}{\bxjy@setfont@a{#1}[]}}
+\def\bxjy@setfont@a#1[#2]#3{%
+  \ifx\bxjy@driver\bxjy@none
+    \bxjy@error{The command is invalid in dvips mode}\@eha
+  \else
+    \@for\bxjy@x:={#1}\do{%
+      \ifx @#2@\@namedef{bxjy@FS/\bxjy@x}{#3}%
+      \else\ifx\bxjy@driver\bxjy@dvipdfmx
+        \@namedef{bxjy@FS/\bxjy@x}{:#2:#3}%
+      \else % ttc is unavailable in pdfTeX
+        \bxjy@error{pdfTeX does not support TTC}\@eha
+      \fi\fi}%
+  \fi}
+\@for\bxjy@x:={%
+  mnr,mnb,gtr,gtb,gtx,gtu,mgr%
+}\do{\@namedef{bxjy@FS/\bxjy@x}{}}
+
+%%<*> \begin{uCJK}
+\@ifdefinable{\uCJK}{%
+  \def\uCJK{%
+    \bxjy@set@genfam
+    \CJK{UTF8}{\bxjy@genfam}}
+  \let\enduCJK\endCJK
+}
+%%<*> \begin{uCJK*}
+\@ifdefinable{\uCJK*}{%
+  \csdef{uCJK*}{%
+    \bxjy@set@genfam
+    \CJK{UTF8}{\bxjy@genfam}}
+  \cslet{enduCJK*}\endCJK
+}
+
+%%<*> \setCJKfamilydefault{<fam>}
+\newbool{bxjy@default@set}
+\newrobustcmd*\setCJKfamilydefault[1]{%
+  \bxjy@default@settrue
+  \CJKencfamily{UTF8}{#1}}
+\AtEndOfPackage{%
+  \bxjy@default@setfalse}
+
+%% \bxjy@set@genfam
+\def\bxjy@set@genfam{%
+  \bxjy@okfalse
+  \edef\bxjy@tmpa{\f@family}%
+  \edef\bxjy@tmpb{\sfdefault}%
+  \ifx\bxjy@tmpa\bxjy@tmpb \bxjy@oktrue \fi
+  \edef\bxjy@tmpb{\ttdefault}%
+  \ifx\bxjy@tmpa\bxjy@tmpb \bxjy@oktrue \fi
+  \edef\bxjy@genfam{\ifbxjy@ok \gtdefault \else \mcdefault \fi}}
+
+%% autotilde
+\EveryCJKUse{%
+  \ifbxjy@autotilde \CJKtilde \fi}
+
+%%<*> \CJKecglue
+\unless\ifdefined\CJKecglue
+  \def\CJKtilde{%
+    \CJK@global\def~{\CJKecglue\ignorespaces}}
+  \def\CJKecglue{\hspace{0.25em plus 0.125em minus 0.08em}}
+\fi
+
+%%<*> \>
+\def\bxjy@tmpa{\mskip\medmuskip}
+\ifx\>\bxjy@tmpa
+  \def\>{\ifmmode\mskip\medmuskip\else \CJKecglue\ignorespaces \fi}
+\fi
+
+%--------------------------------------- something Unicode
+
+%% \bxjy@pick@char\CSnext\CSexit
+\def\bxjy@pick@char#1#2{%
+  \let\bxjy@pc@next#1\let\bxjy@pc@exit#2%
+  \futurelet\bxjy@pc@tok\bxjy@pick@char@a
+}
+\def\bxjy@pick@char@a{%
+  \bxjy@cond\ifcat\noexpand\bxjy@pc@tok\relax\fi{%
+    \bxjy@pick@char@b
+  }{\bxjy@pc@exit}%
+}
+\chardef\bxjy@csta="C0
+\def\bxjy@pick@char@b#1{%
+  \bxjy@cond{\ifnum0\ifcat\noexpand#1\noexpand~%
+                    \ifnum`#1<\bxjy@csta\else1\fi\fi =\@ne}\fi{%
+    \begingroup
+      \let\UTFviii@two@octets\bxjy@pcseq@two
+      \let\UTFviii@three@octets\bxjy@pcseq@three
+      \let\UTFviii@four@octets\bxjy@pcseq@four
+      \let\CJK@@@\bxjy@pcseq@cjk
+      \expandafter\bxjy@pick@char@c\romannumeral-`>#1%
+  }{\bxjy@pc@exit#1}%
+}
+\def\bxjy@pick@char@c#1\bxjy@end{%
+  \endgroup
+  \edef\bxjy@tmpa{{#1}}%
+  \expandafter\bxjy@pc@next\bxjy@tmpa
+}
+
+%% \bxjy@pcseq@two
+\def\bxjy@pcseq@two#1#2{#1\string#2\bxjy@end}
+\def\bxjy@pcseq@three#1#2#3{#1\string#2\string#3\bxjy@end}
+\def\bxjy@pcseq@four#1#2#3#4{#1\string#2\string#3\string#4\bxjy@end}
+\def\bxjy@pcseq@cjk#1\expandafter#2#3#4#5#6#7#8#9\fi{%
+  \csname bxjy@X/\string#4\expandafter\endcsname\string#8}
+\@namedef{bxjy@X/\string\CJK@XX}{\bxjy@pcseq@two}
+\@namedef{bxjy@X/\string\CJK@XXX}{\bxjy@pcseq@three}
+\@namedef{bxjy@X/\string\CJK@XXXX}{\bxjy@pcseq@four}
+
+%% \bxjy@pick@cseq\CS
+\def\bxjy@pick@cseq#1#2{%
+  \def\bxjy@pcs@do##1{#1{##1}\bxjy@pick@cseq@a}%
+  \bxjy@pick@cseq@a#2\bxjy@pcs@end
+}
+\def\bxjy@pick@cseq@a{\bxjy@pick@char\bxjy@pcs@do\bxjy@pcs@exit}
+\def\bxjy@pcs@exit#1\bxjy@pcs@end{}
+
+%%<*> \UTF{<hex-number>}
+\newcommand*\UTF[1]{%
+  \edef\bxjy@tmpa{#1}%
+  \expandafter\bxjy@utf@a\bxjy@tmpa\bxjy@mark000000\bxjy@end}
+\def\bxjy@utf@a#1#2#3#4#5#6#7#8\bxjy@end{%
+  \bxjy@utf@b#1#2#3#4#5#6#7\bxjy@end}
+\def\bxjy@utf@b#1\bxjy@mark#2\bxjy@end{%
+  \uppercase{\bxjy@utf@c#2#1}\bxjy@end}
+\def\bxjy@utf@c#1#2#3#4#5#6\bxjy@end{%
+  \Unicode{"#1#2#3#4}{"#5#6}}
+
+%%<*> \CJKforce{<kanji>...}
+\newcommand*\CJKforce[1]{%
+  \let\bxjy@cjkforce@do\bxjy@cjkforce@a
+  \bxjy@pick@cseq\bxjy@cjk@force{#1}%
+}
+\def\bxjy@cjkforce@a#1#2#3{%
+  \ifx#1\relax\else \let#2#1\let#1\relax \fi
+}
+%%<*> \CJKunforce{<kanji>...}
+\newcommand*\CJKunforce[1]{%
+  \let\bxjy@cjkforce@do\bxjy@cjkunforce@a
+  \bxjy@pick@cseq\bxjy@cjk@force{#1}%
+}
+\def\bxjy@cjkunforce@a#1#2#3{%
+  \ifx#1\relax \let#1#2\fi
+}
+\def\bxjy@cjk@force#1{%
+  \expandafter\bxjy@cjkforce@do
+   \csname u8:#1\expandafter\endcsname
+   \csname bxjy@U/#1\endcsname{#1}%
+}
+
+%%<*> \CJKforced{<kanji>}
+\@ifdefinable{\CJKforced}{%
+  \protected\def\CJKforced#1{% drop braces
+    \bxjy@pick@char\bxjy@cjkforced\relax#1%
+  }
+  \def\bxjy@cjkforced#1{%
+    \scantokens{\def\x{#1}\relax}% make active again
+    \begingroup
+      \expandafter\let\csname u8:#1\endcsname\relax \x
+    \endgroup
+  }
+  \let\bxjy@org@at\@
+  \protected\def\@{\bxjy@at@a}
+}
+
+%%<*> \@
+\def\bxjy@at@a{%
+  \futurelet\bxjy@tok\bxjy@at@b
+}
+\def\bxjy@at@b{%
+  \bxjy@cond\ifcat\noexpand\bxjy@tok.\fi{\bxjy@org@at}{%
+  \bxjy@cond\ifcat\noexpand\bxjy@tok\@sptoken\fi{\bxjy@org@at}{%
+  \bxjy@cond\ifcat\noexpand\bxjy@tok\bgroup\fi{\CJKforced}{%
+  \bxjy@cond\ifcat\noexpand\bxjy@tok\relax\fi{\bxjy@at@c}{%
+     \bxjy@org@at
+  }}}}%
+}
+\def\bxjy@at@c#1{%
+  \bxjy@cond\ifcat\noexpand#1\noexpand~\fi{\CJKforced}{%
+     \bxjy@org@at
+  }#1%
+}
+
+%--------------------------------------- fontmap internals
+
+%% \bxjy@noembed
+\def\bxjy@noembed{*}
+
+%% \bxjy@cmap@embed/\bxjy@cmap@noembed
+\def\bxjy@cmap@embed{unicode}
+\def\bxjy@cmap@noembed{UniJIS2004-UTF16-H}
+
+%% \bxjy@NEF/<sym>
+\def\bxjy@do#1#2{%
+  \def\bxjy@tmpb{#2}%
+  \@for\bxjy@tmpa:=#1\do{%
+    \cslet{bxjy@NEF/\bxjy@tmpa}\bxjy@tmpb}}
+\bxjy@do{mnr,mnb}{Ryumin-Light}
+\bxjy@do{gtr,gtb,gtx,gtu,mgr}{GothicBBB-Medium}
+
+%% \bxjy@addtospec{<id>}
+\@onlypreamble\bxjy@addtospec
+\def\bxjy@addtospec#1{%
+  \begingroup
+    \let\Entry\bxjy@Entry\let\ \space
+    \@nameuse{bxjy@ME/#1}%
+  \endgroup}
+\@onlypreamble\bxjy@Entry
+\def\bxjy@Entry#1{%
+  \letcs\FONT{bxjy@FS/#1}%
+  \ifx\FONT\bxjy@noembed
+    \let\unicode\bxjy@cmap@noembed
+    \edef\FONT{!\@nameuse{bxjy@NEF/#1}}%
+  \else\unless\ifx\FONT\@empty
+    \let\unicode\bxjy@cmap@embed
+  \fi\fi
+  \ifx\FONT\@empty \expandafter\@gobble
+  \else \expandafter\bxjy@entry@sub \fi}
+\ifx\bxjy@driver\bxjy@dvipdfmx
+  \def\bxjy@entry@sub#1{%<tfm-spec>
+    \xappto\bxjy@spec{%
+     \noexpand\special{pdf:mapline #1 \unicode\ \FONT}}}
+  \let\bxjy@spec\@empty
+\else\ifx\bxjy@driver\bxjy@pdftex
+  \def\bxjy@entry@sub#1{%<tfm-spec>
+    \pdfmapline{=#1 <\FONT}}
+\else % invalid in dvips
+\fi\fi
+
+%--------------------------------------- map entry definitions
+
+%% \bxjy@mapentry{<id>}{<text>}
+\def\bxjy@mapentry#1{%
+  \expandafter\bxjy@mapentry@a\csname bxjy@ME/#1\endcsname}
+\def\bxjy@mapentry@a#1{\@onlypreamble#1\def#1}
+
+%% the map entries
+\bxjy@mapentry{STDU}{% (uniweight)
+\Entry{mnr}{unisong@Unicode@}%
+\Entry{gtu}{unihei@Unicode@}%
+\Entry{mgr}{unikai@Unicode@}%
+}
+\bxjy@mapentry{STDM}{% (nouniweight)
+\Entry{mnr}{unisong@Unicode@}%
+\Entry{mnb}{unili@Unicode@}%
+\Entry{gtr}{unihei@Unicode@}%
+\Entry{gtb}{uniyou@Unicode@}%
+\Entry{gtx}{unifs@Unicode@}%
+\Entry{mgr}{unikai@Unicode@}%
+}
+
+%--------------------------------------- NFSS declarations
+
+%%<*> \mcdefault/\gtdefault/\mgdefault
+\providecommand{\mcdefault}{mc}
+\providecommand{\gtdefault}{gt}
+\providecommand{\mgdefault}{mg}
+
+%%<*> \mcfamily/\gtfamily/\mgfamily
+\newrobustcmd*{\mcfamily}{%
+  \not@math@alphabet\mcfamily\relax
+  \CJKfamily{\mcdefault}}
+\newrobustcmd*{\gtfamily}{%
+  \not@math@alphabet\mcfamily\relax
+  \CJKfamily{\gtdefault}}
+\newrobustcmd*{\mgfamily}{%
+  \not@math@alphabet\mcfamily\relax
+  \CJKfamily{\mgdefault}}
+
+%% Add patches to \rmfamily, etc.
+\csappto{rmfamily }{%
+  \CJKfamily{\mcdefault}}
+\csappto{sffamily }{%
+  \CJKfamily{\gtdefault}}
+\csappto{ttfamily }{%
+  \CJKfamily{\gtdefault}}
+\csappto{normalfont }{%
+  \CJKfamily{}}
+
+%%<*> \ebseries
+\ifx f\bxjy@oneweight
+  \providerobustcmd*{\ebseries}{%
+    \not@math@alphabet\ebseries\relax
+    \fontseries\ebdefault\selectfont}
+  \providecommand{\ebdefault}{eb}
+\fi
+\let\bxjy@CJKnormal\CJKnormal
+\protected\def\CJKnormal{\bxjy@CJKnormal}
+
+%% \bxjy@decl@series
+\@onlypreamble\bxjy@decl@series
+\def\bxjy@decl@series#1#2#3{%
+\DeclareFontShape{C70}{#1}{#2}{n}{<->#3}{\CJKnormal}%
+\DeclareFontShape{C70}{#1}{#2}{sl}{<->CJKssub*#1/#2/n}{\CJKnormal}%
+\DeclareFontShape{C70}{#1}{#2}{it}{<->CJKssub*#1/#2/n}{\CJKnormal}%
+\DeclareFontShape{C70}{#1}{#2}{sc}{<->CJKssub*#1/#2/n}{\CJKnormal}}
+%% \bxjy@decl@family
+\@onlypreamble\bxjy@decl@family
+\def\bxjy@decl@family#1#2#3#4{%
+\DeclareFontFamily{C70}{#1}{\hyphenchar\font\m@ne}%
+\bxjy@decl@series{#1}{m}{#2}%
+\bxjy@decl@series{#1}{bx}{#3}%
+\bxjy@decl@series{#1}{b}{CJKssub*#1/bx/n}%
+\bxjy@decl@series{#1}{eb}{#4}}
+
+%% the declarations
+\def\bxjy@sc{sCJK*[\bxjy@scale]}
+\ifx f\bxjy@oneweight
+\bxjy@decl@family{mc}{\bxjy@sc unisong}{\bxjy@sc unili}{CJKssub*mc/bx/n}
+\bxjy@decl@family{gt}{\bxjy@sc unihei}{\bxjy@sc uniyou}{\bxjy@sc unifs}
+\bxjy@decl@family{mg}{\bxjy@sc unikai}{CJKssub*mg/m/n}{CJKssub*mg/m/n}
+\else\ifx t\bxjy@oneweight
+\bxjy@decl@family{mc}{\bxjy@sc unisong}{CJKssub*gt/m/n}{CJKssub*gt/m/n}
+\bxjy@decl@family{gt}{\bxjy@sc unihei}{CJKssub*gt/m/n}{CJKssub*gt/m/n}
+\bxjy@decl@family{mg}{\bxjy@sc unikai}{CJKssub*mg/m/n}{CJKssub*mg/m/n}
+\else\ifx i\bxjy@oneweight
+\renewcommand{\mcdefault}{ipxm}
+\renewcommand{\gtdefault}{ipxg}
+\renewcommand{\mgdefault}{ipxg}
+\fi\fi\fi
+
+%% Set default CJK family
+\setCJKfamilydefault{\mcdefault}
+
+%% \bxjy@check@alldefined
+\@onlypreamble\bxjy@check@alldefined
+\def\bxjy@check@alldefined#1{%
+  \bxjy@oktrue
+  \@for\bxjy@x:={#1}\do{%
+    \expandafter\ifx\csname bxjy@FS/\bxjy@x\endcsname\@empty
+      \bxjy@okfalse \fi}}
+%% When no font is selected for a family by \set...font, then thm
+%  must be switched to that of ipxex-type1.
+\FirstCJKUse{%
+\bxjy@check@alldefined{mnr,mnb}%
+\unless\ifbxjy@ok
+\bxjy@decl@family{mc}{\bxjy@sc ipxm-r-u}{CJKssub*gt/m/n}{CJKssub*gt/m/n}
+\fi
+\bxjy@check@alldefined{gtr,gtb,gtx}%
+\unless\ifbxjy@ok 
+\bxjy@decl@family{gt}{\bxjy@sc ipxg-r-u}{CJKssub*gt/m/n}{CJKssub*gt/m/n}
+\fi
+\bxjy@check@alldefined{mgr}%
+\unless\ifbxjy@ok 
+\bxjy@decl@family{mg}{\bxjy@sc ipxg-r-u}{CJKssub*gt/m/n}{CJKssub*gt/m/n}
+\fi
+}
+
+%--------------------------------------- begin-document hook
+
+\ifx\bxjy@driver\bxjy@dvipdfmx  %<*dvipdfmx>
+
+%% \bxjy@set@page@hook{<text>}
+\ifbxjy@everypage
+\def\bxjy@set@page@hook#1{%
+  \AtBeginShipout{\setbox\AtBeginShipoutBox=\vbox{%
+     \baselineskip\z@skip\lineskip\z@skip\lineskiplimit\z@
+     #1\copy\AtBeginShipoutBox}}}
+\else
+\let\bxjy@set@page@hook\AtBeginDvi
+\fi
+
+\else                           %<!*dvipdfmx>
+\let\bxjy@set@page@hook\@gobble
+\fi                             %</dvipdfmx>
+
+%% The begin-document hook for font mapping
+\AtBeginDocument{%
+  \ifx f\bxjy@oneweight \bxjy@addtospec{STDM}%
+  \else\ifx t\bxjy@oneweight \bxjy@addtospec{STDU}%
+  \fi\fi
+  \bxjy@set@page@hook{\bxjy@spec}%
+}
+
+%% The document hooks for 'whole' option
+\AtBeginDocument{%
+  \unless\ifbxjy@default@set
+    \bxjy@set@genfam
+    \setCJKfamilydefault{\bxjy@genfam}%
+  \fi}
+\ifx t\bxjy@whole
+  \AtBeginDocument{\csuse{CJK*}{UTF8}{}}
+  \AtEndDocument{\clearpage\csuse{endCJK*}}
+\else\ifx p\bxjy@whole
+  \AtBeginDocument{\CJK{UTF8}{}}
+  \AtEndDocument{\clearpage\CJK}
+\fi\fi
+
+%% Invokes first-CJK hook at begin-document
+\AtBeginDocument{\bxjy@first@cjk@use@hook}
+
+%--------------------------------------- preset font mappings
+
+%% \bxjy@declare@preset{<name>}{<text>}
+\def\bxjy@declare@preset#1{%
+  \expandafter\bxjy@decl@preset@a\csname bxjy@the@preset@#1\endcsname}
+\def\bxjy@decl@preset@a#1{\@onlypreamble#1\def#1}
+
+%% \bxjy@declare@preset@alias{<name1>}{<name2>}
+\def\bxjy@declare@preset@alias#1#2{%
+  \expandafter\bxjy@decl@preset@alias@a\csname bxjy@the@preset@#1%
+  \expandafter\endcsname\csname bxjy@the@preset@#2\endcsname}
+\def\bxjy@decl@preset@alias@a#1#2{\@onlypreamble#1\let#1#2}
+
+%% \bxjy@uniweight{<font-mn>}{<font-gt>}
+\@onlypreamble\bxjy@uniweight
+\def\bxjy@uniweight#1#2{%
+  \setminchofont{#1}\setgothicfont{#2}\setmarugothicfont{#2}}
+
+%% \bxjy@multiweight{<font-mnl>}{<font-mnr>}{<font-mnb>}
+%%   {<font-gtr>}{<font-gtb>}{<font-gtx>}{<font-gtu>}{<font-mgr>}
+\@onlypreamble\bxjy@multiweight
+\def\bxjy@multiweight#1#2#3#4#5#6#7#8{%
+  \setminchofont{#2}\setgothicfont{#7}\setmarugothicfont{#8}%
+  \ifx f\bxjy@oneweight
+  \setboldminchofont{#3}% #1 ignored
+  \setmediumgothicfont{#4}\setboldgothicfont{#5}\setxboldgothicfont{#6}%
+  \fi}
+
+%% \bxjy@use@preset{<name>}
+\def\bxjy@use@preset#1{%
+  \csname bxjy@the@preset@#1\endcsname}
+
+%% for compatibility
+\def\bxjy@MI{:0:}
+\let\bxjy@enable@switch@realfont\relax
+\let\usecmapforalphabet\relax
+
+%%%% definitions of main preset mappings
+%(uniweight)
+\bxjy@declare@preset{ms}{%
+  \bxjy@uniweight{:0:msmincho.ttc}{:0:msgothic.ttc}}
+\bxjy@declare@preset{ipa}{%
+  \bxjy@uniweight{ipam.ttf}{ipag.ttf}}
+\bxjy@declare@preset{ipaex}{%
+  \bxjy@uniweight{ipaexm.ttf}{ipaexg.ttf}}
+%(multiweight)
+\bxjy@declare@preset{ms-hg}{%
+  \bxjy@multiweight{:0:msmincho.ttc}{:0:msmincho.ttc}{:0:hgrme.ttc}%
+  {:0:hgrgm.ttc}{:0:hgrge.ttc}{:0:hgrsgu.ttc}{:0:msgothic.ttc}{hgrsmp.ttf}}
+\bxjy@declare@preset{ipa-hg}{%
+  \bxjy@multiweight{ipam.ttf}{ipam.ttf}{:0:hgrme.ttc}%
+  {:0:hgrgm.ttc}{:0:hgrge.ttc}{:0:hgrsgu.ttc}{ipag.ttf}{hgrsmp.ttf}}
+\bxjy@declare@preset{moga-mobo}{%
+  \bxjy@enable@switch@realfont
+  \bxjy@multiweight{\bxjy@MI mogam.ttc}{\bxjy@MI mogam.ttc}%
+  {\bxjy@MI mogamb.ttc}{\bxjy@MI mogag.ttc}{\bxjy@MI mogagb.ttc}%
+  {\bxjy@MI mogagb.ttc}{\bxjy@MI mogag.ttc}{\bxjy@MI mobog.ttc}}
+\bxjy@declare@preset{moga-maruberi}{%
+  \bxjy@enable@switch@realfont
+  \bxjy@multiweight{\bxjy@MI mogam.ttc}{\bxjy@MI mogam.ttc}%
+  {\bxjy@MI mogamb.ttc}{\bxjy@MI mogag.ttc}{\bxjy@MI mogagb.ttc}%
+  {\bxjy@MI mogagb.ttc}{\bxjy@MI mogag.ttc}{MTLmr3m.ttf}}
+\bxjy@declare@preset{kozuka-pro}{%
+  \usecmapforalphabet
+  \bxjy@multiweight{KozMinPro-Light.otf}{KozMinPro-Regular.otf}%
+   {KozMinPro-Bold.otf}{KozGoPro-Regular.otf}{KozGoPro-Bold.otf}%
+   {KozGoPro-Heavy.otf}{KozGoPro-Medium.otf}{KozGoPro-Heavy.otf}}
+\bxjy@declare@preset{kozuka-pr6}{%
+  \usecmapforalphabet
+  \bxjy@multiweight{KozMinProVI-Light.otf}{KozMinProVI-Regular.otf}%
+   {KozMinProVI-Bold.otf}{KozGoProVI-Regular.otf}{KozGoProVI-Bold.otf}%
+   {KozGoProVI-Heavy.otf}{KozGoProVI-Medium.otf}{KozGoProVI-Heavy.otf}}
+\bxjy@declare@preset{kozuka-pr6n}{%
+  \usecmapforalphabet
+  \bxjy@multiweight{KozMinPr6N-Light.otf}{KozMinPr6N-Regular.otf}%
+   {KozMinPr6N-Bold.otf}{KozGoPr6N-Regular.otf}{KozGoPr6N-Bold.otf}%
+   {KozGoPr6N-Heavy.otf}{KozGoPr6N-Medium.otf}{KozGoPr6N-Heavy.otf}}
+\bxjy@declare@preset{hiragino-pro}{%
+  \usecmapforalphabet
+  \bxjy@multiweight{HiraMinPro-W2.otf}{HiraMinPro-W3.otf}%
+   {HiraMinPro-W6.otf}{HiraKakuPro-W3.otf}{HiraKakuPro-W6.otf}%
+   {HiraKakuStd-W8.otf}{HiraKakuPro-W6.otf}{HiraMaruPro-W4.otf}}
+\bxjy@declare@preset{hiragino-pron}{%
+  \usecmapforalphabet
+  \bxjy@multiweight{HiraMinProN-W2.otf}{HiraMinProN-W3.otf}%
+   {HiraMinProN-W6.otf}{HiraKakuProN-W3.otf}{HiraKakuProN-W6.otf}%
+   {HiraKakuStdN-W8.otf}{HiraKakuProN-W6.otf}{HiraMaruProN-W4.otf}}
+\bxjy@declare@preset{morisawa-pro}{%
+  \usecmapforalphabet
+  \bxjy@multiweight{A-OTF-RyuminPro-Light.otf}{A-OTF-RyuminPro-Light.otf}%
+   {A-OTF-FutoMinA101Pro-Bold.otf}{A-OTF-GothicBBBPro-Medium.otf}%
+   {A-OTF-FutoGoB101Pro-Bold}{A-OTF-MidashiGoPro-MB31.otf}%
+   {A-OTF-GothicBBBPro-Medium.otf}{A-OTFJun101Pro-Light.otf}}
+\bxjy@declare@preset{morisawa-pr6n}{%
+  \usecmapforalphabet
+  \bxjy@multiweight{A-OTF-RyuminPr6N-Light.otf}{A-OTF-RyuminPr6N-Light.otf}%
+   {A-OTF-FutoMinA101Pr6N-Bold.otf}{A-OTF-GothicBBBPr6N-Medium.otf}%
+   {A-OTF-FutoGoB101Pr6N-Bold}{A-OTF-MidashiGoPr6N-MB31.otf}%
+   {A-OTF-GothicBBBPr6N-Medium.otf}{A-OTFJun101Pr6N-Light.otf}}
+
+%% ... and invokes the specified one!
+\ifx\bxjy@main@preset\relax\else
+\bxjy@use@preset{\bxjy@main@preset}
+\fi
+
+%--------------------------------------- all done
+\endinput
+%% EOF

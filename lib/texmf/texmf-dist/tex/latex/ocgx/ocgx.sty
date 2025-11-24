@@ -1,0 +1,111 @@
+% Copyright (C) 2012 by Paul Gaborit
+%
+% This file may be distributed and/or modified
+%
+% 1. under the LaTeX Project Public License and/or
+% 2. under the GNU Public License.
+
+\NeedsTeXFormat{LaTeX2e}[1994/06/01]
+\def\ocgxversion{0.5}
+\ProvidesPackage{ocgx}[2012/11/14 v\ocgxversion{} manage OCG in PDF document]
+\RequirePackage{ocg-p}
+
+%%%% small patch to ocg.sty %%%%
+% called from the aux file
+% \def\@ocg@makeknown#1#2#3{% #1: OCG name, #2: OC id, #3: on/off
+%    \@ifundefined{OCG#2}{%
+%      %\message{OCG#2}%
+%       \expandafter\gdef\csname OCG#2\endcsname{#1}%
+%       \immediate\pdfobj{<< /Type /OCG /Name (#1) >>}% new ocg
+%       \xdef\@ocg@curocg{\the\pdflastobj\space 0 R}% reference to id
+%       % *** PATCH ***
+%       \expandafter\xdef\csname OCGpdfobj#2\endcsname{\@ocg@curocg}
+%       % *** END OF PATCH ***
+%       \xdef\@ocg@ocgs{\@ocg@ocgs\space\@ocg@curocg}% list of all OCGs in "first defined" order
+%       \ifnum#3=1 %on
+%          \xdef\@ocg@ocgson{\@ocg@ocgson\space\@ocg@curocg}% list of all default-on OCGs
+%       \else%
+%          \xdef\@ocg@ocgsoff{\@ocg@ocgsoff\space\@ocg@curocg}% list of all default-off OCGs
+%       \fi%
+%       \xdef\@ocg@layersnames{%
+%          \@ocg@layersnames\space/OC#2\space\@ocg@curocg% name-to-id mapping
+%       }%
+%    }{%
+%       %\message{OCG#2 reopened}%
+%       % layer reopened
+%    }%
+% }
+%%%% END OF PATCH %%%%
+
+\csname ocgx@end:ENDOFOCGS\endcsname
+\def\ocgx@listOCG#1 {%
+  \unless\ifcsname ocgx@end:#1\endcsname
+    \ifcsname OCGpdfobj#1\endcsname
+      \expandafter\def\expandafter\ocgx@list\expandafter{%
+        \ocgx@list
+        \csname OCGpdfobj#1\endcsname\space}%
+    \fi%
+    \expandafter\ocgx@listOCG
+  \fi
+}
+
+\long\def\switchocg#1#2{%
+  \def\ocgx@list{}%
+  \ocgx@listOCG#1 ENDOFOCGS %
+  \leavevmode%
+  \pdfstartlink user {%
+    /Subtype /Link
+    /A << /S/SetOCGState /State [/Toggle \ocgx@list] >>
+    /Border [0 0 0]
+  }%
+  #2\pdfendlink%
+}
+
+\long\def\showocg#1#2{%
+  \def\ocgx@list{}%
+  \ocgx@listOCG#1 ENDOFOCGS %
+  \leavevmode%
+  \pdfstartlink user {%
+    /Subtype/Link
+    /A << /S/SetOCGState
+    /State [/ON \ocgx@list] >>
+    /Border [0 0 0]
+  }%
+  #2\pdfendlink%
+}
+
+\long\def\hideocg#1#2{%
+  \def\ocgx@list{}%
+  \ocgx@listOCG#1 ENDOFOCGS %
+  \leavevmode%
+  \pdfstartlink user {%
+    /Subtype/Link
+    /A << /S/SetOCGState
+    /State [/OFF \ocgx@list] >>
+    /Border [0 0 0]
+  }%
+  #2\pdfendlink%
+}
+
+\long\def\actionsocg#1#2#3#4{%
+  \def\ocgx@list{}%
+  \ocgx@listOCG#1 ENDOFOCGS %
+  \edef\ocgx@toswitch{\ocgx@list}%
+  % 
+  \def\ocgx@list{}%
+  \ocgx@listOCG#2 ENDOFOCGS %
+  \edef\ocgx@toshow{\ocgx@list}%
+  % 
+  \def\ocgx@list{}%
+  \ocgx@listOCG#3 ENDOFOCGS %
+  \edef\ocgx@tohide{\ocgx@list}%
+  % 
+  \leavevmode%
+  \pdfstartlink user{%
+    /Subtype/Link
+    /A << /S/SetOCGState
+    /State [/Toggle \ocgx@toswitch /ON \ocgx@toshow /OFF \ocgx@tohide] >>
+    /Border [0 0 0]
+  }%
+  #4\pdfendlink%
+}

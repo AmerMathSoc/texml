@@ -1,0 +1,257 @@
+%%
+%% This is file `gnuplottex.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% gnuplottex.dtx  (with options: `package')
+%% 
+%% Copyright (c) 2006-13, Lars Kotthoff <lars@larsko.org> and contributors
+%% 
+%% Large portions copied from pdftex,
+%% Copyright (c) 2001-3, Radhakrishnan CV <cvr@river-valley.com>
+%%                       Rajagopal CV <cvr3@river-valley.com>
+%%                       http://www.river-valley.com
+%% 
+%% River Valley Technologies, Floor III, SJP Buildings, Cotton Hills
+%% Trivandrum, India 695014
+%% 
+%% Tel: +91 471 233 7501
+%% 
+%%                     Antoine Chambert-Loir
+%%                     <chambert@math.polytechnique.fr>
+%%                     http://www.math.polytechnique.fr/\protect \unhbox \voidb@x \penalty \@M \ {}chambert
+%% 
+%% Ecole polytechnique, Palaiseau Cedex, France
+%% 
+%% This program is free software; you can redistribute it and/or
+%% modify it under the terms of the GNU General Public License
+%% as published by the Free Software Foundation; either version 2
+%% of the License, or (at your option) any later version.
+%% 
+%% This program is distributed in the hope that it will be useful,
+%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%% GNU General Public License for more details.
+%% 
+%% You should have received a copy of the GNU General Public License
+%% along with this program (gpl.txt); if not, write to the Free
+%% Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+%% MA  02111-1307, USA.
+%% 
+ \NeedsTeXFormat{LaTeX2e}[1999/12/01]
+ \ProvidesPackage{gnuplottex}
+    [2015/12/13 v0.9.1 gnuplot graphs in LaTeX]
+\RequirePackage{graphicx,moreverb,keyval,ifthen,catchfile}
+\newif\ifShellEscape
+\newif\ifmiktex \miktexfalse
+\newif\ifusesiunitx
+\newif\ifcleanup
+\newif\ifusesubfolder
+
+\newwrite\verbatim@out
+
+\DeclareOption{shell}{\ShellEscapetrue}
+\DeclareOption{noshell}{\ShellEscapefalse}
+\DeclareOption{miktex}{\global\miktextrue}
+\DeclareOption{siunitx}{\usesiunitxtrue}
+\DeclareOption{cleanup}{\cleanuptrue}
+\DeclareOption{subfolder}{\usesubfoldertrue}
+
+\@ifundefined{gnuplotexe}{\def\gnuplotexe{gnuplot}}{}
+
+\ExecuteOptions{shell}
+\ProcessOptions\relax
+%% test if shell escape really works
+\ifShellEscape
+\def\tmpfile{w18-test-\the\year\the\month\the\day\the\time.tex}
+\ifmiktex
+\immediate\write18{echo t > "\tmpfile"}
+\else
+\immediate\write18{touch \tmpfile}
+\fi
+\ifmiktex
+\IfFileExists{\tmpfile.}{\ShellEscapetrue}{\ShellEscapefalse}
+\immediate\write18{del "\tmpfile"}
+\else
+\IfFileExists{\tmpfile}{\ShellEscapetrue}{\ShellEscapefalse}
+\immediate\write18{rm -f \tmpfile}
+                \immediate\write18{rm -f "\jobname.gnuploterrors"}
+\fi
+\fi
+
+\ifusesubfolder
+    \ifmiktex
+        \immediate\write18{mkdir gnuplottex}
+        \immediate\write18{echo test > "gnuplottex/\tmpfile"}
+    \else
+        \immediate\write18{mkdir -p "gnuplottex"}
+        \immediate\write18{touch "gnuplottex/\tmpfile"}
+    \fi
+    \IfFileExists{gnuplottex/\tmpfile}{
+        \ifmiktex
+            \immediate\write18{del "gnuplottex\@backslashchar\tmpfile"}
+        \else
+            \immediate\write18{rm -f "gnuplottex/\tmpfile"}
+        \fi
+        \def\subfolder{gnuplottex/}
+        }{
+            \PackageWarningNoLine{gnuplottex}
+                {Creation of subfolder failed.\MessageBreak
+                You'll need to create the folder yourself}
+            \def\subfolder{}
+        }
+\else
+    \def\subfolder{}
+\fi
+
+\ifShellEscape
+    \PackageInfo{gnuplottex}
+    {Automatically converting gnuplot files.}
+\else
+    \PackageWarningNoLine{gnuplottex}
+        {Shell escape not enabled.\MessageBreak
+        You'll need to convert the graphs yourself.}
+\fi
+\newcounter{fignum}
+\def\figname{\jobname-gnuplottex-fig\thefignum}
+
+\def\usesiunitxingnuplot{\immediate\write\verbatim@out{set format '\@backslashchar num{\@percentchar g}'}}
+
+\def\gnuplotverbatimwrite#1{%
+    \def\BeforeStream
+    {\message{Opening gnuplot stream #1}%
+        \immediate\write\verbatim@out{\string set terminal \gnuplotterminal \gnuplotterminaloptions}
+\immediate\write\verbatim@out{\string set output '\subfolder\figname.\gnuplottexextension{\gnuplotterminal}'}
+    \ifusesiunitx
+        \ifthenelse{\equal{\extension}{\string tex}}{\usesiunitxingnuplot}{\PackageWarningNoLine{gnuplottex}{Axis numbers not written in \noexpand\num{}. Use a terminal that allows TeX output to enable this feature.}}
+    \else
+        \relax
+    \fi
+    }
+    \@bsphack
+    \immediate\openout \verbatim@out #1
+    \BeforeStream%
+    \let\do\@makeother\dospecials
+    \catcode`\^^M\active
+    \def\verbatim@processline{%
+        \immediate\write\verbatim@out
+        {\the\verbatim@line}}%
+    \verbatim@start}
+\def\endgnuplotverbatimwrite{%
+    \immediate\closeout\verbatim@out
+    \@esphack
+\catcode`\\0
+\catcode`\{1
+\catcode`\}2
+\catcode`\$3
+\catcode`\&4
+\catcode`\^^M5
+\catcode`\#6
+\catcode`\^7
+\catcode`\_8
+\catcode`\ 10
+\catcode`\%14}
+\def\gnuplottexextension@latex{\string tex}
+\def\gnuplottexextension@epslatex{\string tex}
+\def\gnuplottexextension@cairolatex{\string tex}
+\def\gnuplottexextension@eepic{\string tex}
+\def\gnuplottexextension@pstricks{\string tex}
+\def\gnuplottexextension@pslatex{\string tex}
+\def\gnuplottexextension@pstex{\string tex}
+\def\gnuplottexextension@emtex{\string tex}
+\def\gnuplottexextension@jpeg{\string jpg}
+\def\gnuplottexextension@tikz{\string tex}
+\def\gnuplottexextension@lua{\string tex}
+\def\gnuplottexextension#1{\@ifundefined{gnuplottexextension@#1}{#1}{\csname gnuplottexextension@#1\endcsname}}
+\define@key{pic}{scale}[1]{\def\gnuplotscale{#1}}
+\define@key{pic}{terminal}[latex]{\def\gnuplotterminal{#1}}
+\define@key{pic}{terminaloptions}{\def\gnuplotterminaloptions{ #1}}
+\newenvironment{gnuplot}[1][]{\stepcounter{fignum}%
+\def\gnuplotterminal{latex}
+\def\gnuplotterminaloptions{}
+\def\gnuplotscale{1}
+\setkeys{pic}{#1}
+    \xdef\gnuplotCutFile{\subfolder\figname.gnuplot}
+    \gnuplotverbatimwrite{\gnuplotCutFile}}
+    {\endgnuplotverbatimwrite%
+    \gnuplotgraphicsprocess%
+    \gnuplotgraphicsinclude}
+\def\extension{\gnuplottexextension{\gnuplotterminal}}
+\long\gdef\gnuplotgraphicsprocess{%
+\ifShellEscape
+\IfFileExists{\subfolder\figname.gnuplot}{%
+                        \ifmiktex
+                            \immediate\write18{\gnuplotexe\space \subfolder\figname.gnuplot}
+                        \else
+                            \immediate\write18{\gnuplotexe\space \subfolder\figname.gnuplot\space 2>>\jobname.gnuploterrors}
+                        \fi
+\IfFileExists{\subfolder\figname.\extension}{%
+\PackageInfo{gnuplottex}{\subfolder\figname.gnuplot converted}
+                \ifcleanup
+                    \ifmiktex
+                        \immediate\write18{del "\subfolder\figname.gnuplot"}
+                    \else
+                        \immediate\write18{rm -f "\subfolder\figname.gnuplot"}
+                    \fi
+                \fi
+            }
+{\PackageWarningNoLine{gnuplottex}
+{Conversion of \subfolder\figname.gnuplot failed}}}{}
+\fi}
+\long\def\gnuploterrors@eatpar#1#2\@nil{\def\gnuploterrors@{#2}}
+\AtEndDocument{%
+  \ifmiktex
+  \else
+    \CatchFileDef\gnuploterrors@{\jobname.gnuploterrors}{\endlinechar=`^^J \catcode`\ =12 }%
+    \expandafter\gnuploterrors@eatpar\gnuploterrors@\@nil
+    \ifx\gnuploterrors@\@empty\else
+      \PackageWarningNoLine{gnuplottex}{Gnuplot execution produced errors:^^J%
+        \detokenize\expandafter{\gnuploterrors@}}%
+    \fi
+  \fi
+}
+\long\gdef\gnuplotgraphicsinclude{%
+\IfFileExists{\subfolder\figname.\extension}{%
+\ifthenelse{\equal{\extension}{\string tex}}
+{\scalebox{\gnuplotscale}{\input{\subfolder\figname.\extension}}}
+{\includegraphics[scale=\gnuplotscale]{\subfolder\figname.\extension}}
+}
+{\PackageWarningNoLine{gnuplottex}
+{Please convert \subfolder\figname.gnuplot manually}}
+}
+\newcommand{\gnuplotloadfilewrite}[2]{%
+  \immediate\openout \verbatim@out #1%
+  \message{Opening gnuplot stream #1}%
+  \immediate\write\verbatim@out{\string set terminal \gnuplotterminal \gnuplotterminaloptions}%
+  \immediate\write\verbatim@out{\string set output '\subfolder\figname.\gnuplottexextension{\gnuplotterminal}'}%
+  \ifusesiunitx
+    \ifthenelse{\equal{\extension}{\string tex}}{\usesiunitxingnuplot}{\PackageWarningNoLine{gnuplottex}{Axis numbers not written in \noexpand\num{}. Use a terminal that allows TeX output to enable this feature.}}
+  \else
+    \relax
+  \fi
+  \ifusesiunitx
+      {\escapechar=-1\edef\percentforgnuplot{\string\%}
+          \escapechar=-1\edef\backslashforgnuplot{\string\\}
+      \immediate\write\verbatim@out{set format '\backslashforgnuplot num{\percentforgnuplot g}'}}
+  \else
+      \relax
+  \fi
+  \immediate\write\verbatim@out{\string load '#2'}%
+  \immediate\closeout\verbatim@out%
+ }
+
+ \newcommand{\gnuplotloadfile}[2][]{
+  \stepcounter{fignum}%
+  \def\gnuplotterminal{latex}
+  \def\gnuplotterminaloptions{}
+  \def\gnuplotscale{1}
+  \setkeys{pic}{#1}
+  \xdef\gnuplotCutFile{\subfolder\figname.gnuplot}
+  \gnuplotloadfilewrite{\gnuplotCutFile}{#2}
+  \gnuplotgraphicsprocess%
+  \gnuplotgraphicsinclude
+ }
+\endinput
+%%
+%% End of file `gnuplottex.sty'.

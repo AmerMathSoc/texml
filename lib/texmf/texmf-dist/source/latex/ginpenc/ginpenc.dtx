@@ -1,0 +1,816 @@
+% \iffalse meta comment
+% File: ginpenc.dtx Copyright (C) 2003, 2011 Harald Harders
+% \fi
+%
+% \iffalse
+%
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{longtable}
+\IfFileExists{ginpenc.sty}{\usepackage{ginpenc}
+  \let\ginpencSTYfound\active}{\GenericWarning{ginpenc.dtx}{Package
+    file ginpenc.sty not found (Documentation will be messed up!^^J^^A
+    Generate ginpenc.sty by LaTeXing ginpenc.ins, process
+    ginpenc.dtx again)^^J}\stop}
+\GetFileInfo{ginpenc.sty}
+\title{The \texttt{ginpenc} package}
+\author{Harald Harders\\\texttt{harald.harders@gmx.de}}
+\date{Version \fileversion, \filedate, printed \today}
+\newlength{\tempdima}%
+\makeatletter
+\renewenvironment{table}[1][]{%
+  \@float{table}[#1]%
+  \centering%
+  \setlength{\tempdima}{\abovecaptionskip}%
+  \setlength{\abovecaptionskip}{\belowcaptionskip}%
+  \setlength{\belowcaptionskip}{\tempdima}%
+  }{%
+\end@float
+}
+\makeatother
+\EnableCrossrefs
+\CodelineIndex
+\DoNotIndex{\def,\edef,\let,\newcommand,\newenvironment,\newcounter}
+\DoNotIndex{\setcounter,\space,\if,\else,\fi,\empty,\@empty,\ifx,\fi}
+\DoNotIndex{\ifnum,\fi,\expandafter}
+\CodelineNumbered
+\RecordChanges
+\CheckSum{573}
+\begin{document}
+ \DocInput{ginpenc.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \changes{1.01}{2011/12/29}{Write version and date explicitely into
+%   sty file}
+% \changes{1.00}{2003/09/29}{First official version}
+%
+% \maketitle
+% \begin{abstract}
+% \noindent
+% If the package \texttt{inputenc} is used and German Umlauts are
+% input directly, they are converted to \verb|\"a| etc.
+% This breaks the sort algorithm of \texttt{makeindex}, for instance.
+% This package converts Umlauts and the Sharp~s to the short forms,
+% defined by the \texttt{babel} package, e.g. \verb|"a|, instead, if 
+% the text is typeset in German.
+% \end{abstract}
+%
+% \tableofcontents
+%
+% \section*{Copyright}
+% Copyright 2003, 2011 Harald Harders.
+%
+% This program can be redistributed and/or modified under the terms
+% of the LaTeX Project Public License Distributed from CTAN
+% archives in directory macros/latex/base/lppl.txt; either
+% version 1 of the License, or any later version.
+%
+% \section{The user interface}
+%
+% To use this package place
+% \begin{verbatim}
+%\usepackage{ginpenc}
+% \end{verbatim}
+% in the preamble of your document. No options are necessary.
+%
+% If you also use the \texttt{babel} package, the German Umlauts and
+% the Sharp~S are written to outputfiles, e.g.\ the \texttt{idx}
+% files, as \verb|"A|, \verb|"O|, \verb|"U|, \verb|"a|, \verb|"o|,
+% \verb|"u|, and \verb|"s| instead of \verb|\"A|, \verb|\"O|,
+% \verb|\"U|, \verb|\"a|, \verb|\"o|, \verb|\"u|, and \verb|\ss| if
+% one of the German dialects (\texttt{german}, \texttt{ngerman},
+% \texttt{austrian}, \texttt{naustrian}) is active.
+% If another language is active, this package does not do anything.
+%
+% This should not change anything in the document itself.
+% But output to auxiliary files as the index file with the extension
+% \texttt{.idx} are written with these short-hand forms instead of the
+% long forms.
+% This helps \texttt{makeindex} to sort the entries correctly, if the
+% command-line switch \texttt{-g} is given.
+%
+% \section{New commands}
+%
+% \DescribeMacro{\inputenc}%
+% This package defines the command \cs{inputenc} which returns the
+% active encoding. 
+% If no encoding is active, it does not return anything.
+%
+% \section*{Acknowledgements}
+%
+% Most code parts are by Heiko Oberdiek (\texttt{oberdiek@uni-freiburg.de})
+% (see \texttt{news-message.txt}).
+%
+%
+% \StopEventually{\PrintChanges \PrintIndex}
+%
+%
+% \section{The implementation}
+%
+% Heading of the package and all other files:
+%    \begin{macrocode}
+%<package>\ProvidesPackage{ginpenc}
+%<ansinew>\ProvidesFile{ansinew.gie}
+%<applemac>\ProvidesFile{applemac.gie}
+%<ascii>\ProvidesFile{ascii.gie}
+%<cp1250>\ProvidesFile{cp1250.gie}
+%<cp1252>\ProvidesFile{cp1252.gie}
+%<cp437>\ProvidesFile{cp437.gie}
+%<cp437de>\ProvidesFile{cp437de.gie}
+%<cp850>\ProvidesFile{cp850.gie}
+%<cp852>\ProvidesFile{cp852.gie}
+%<cp865>\ProvidesFile{cp865.gie}
+%<decmulti>\ProvidesFile{decmulti.gie}
+%<latin1>\ProvidesFile{latin1.gie}
+%<latin2>\ProvidesFile{latin2.gie}
+%<latin3>\ProvidesFile{latin3.gie}
+%<latin5>\ProvidesFile{latin5.gie}
+%<latin9>\ProvidesFile{latin9.gie}
+%<next>\ProvidesFile{next.gie}
+%<package,gie>  [2011/12/29  v1.01  Replace \string\"a by "a with babel for German texts]
+%    \end{macrocode}
+% \iffalse
+%<*package>
+% \fi
+% \begin{macro}{\ifginpenc@babel}
+% Stores if babel has been loaded.
+%    \begin{macrocode}
+\newif\ifginpenc@babel
+%    \end{macrocode}
+% \end{macro}
+% Everything has to be done at \cs{begin\{document\}} in order to
+% ensure that the packages \texttt{inputenc} and \texttt{babel} are
+% loaded before the code is executed.
+%    \begin{macrocode}
+\AtBeginDocument{%
+%    \end{macrocode}
+% \begin{macro}{\inputenc}
+% Default value for \cs{inputenc}:
+%    \begin{macrocode}
+  \let\inputenc\empty
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\inputencoding}
+% Redefinition of \cs{inputencoding} to store the input encoding name.
+% 
+% First, copy the original command.
+%    \begin{macrocode}
+  \newcommand*\gie@inputencoding{}%
+  \let\gie@inputencoding\inputencoding
+%    \end{macrocode}
+% Redefine \cs{inputencoding}
+%    \begin{macrocode}
+  \def\inputencoding#1{%
+%    \end{macrocode}
+% \begin{macro}{\inputenc}
+% Define \cs{inputenc} to the current value.
+%    \begin{macrocode}
+    \def\inputenc{#1}%
+%    \end{macrocode}
+% \end{macro}
+% Call the original \cs{inputencoding} command.
+%    \begin{macrocode}
+    \gie@inputencoding{#1}%
+%    \end{macrocode}
+% If \texttt{babel} is loaded, load the corresponding definition file
+% that redefines the \verb|\"A| to \verb|"A| etc.
+%    \begin{macrocode}
+    \ifginpenc@babel
+      \IfFileExists{\inputenc.gie}{%
+        \input{\inputenc.gie}%
+        }{%
+        \PackageWarning{ginpenc}{Encoding file \inputenc.gie not
+          found}%
+        }%
+    \fi
+    }%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\inputenc}
+% Since the package \texttt{inputenc} calls \cs{inputencoding} the
+% first time before it is redefined the encoding has to be found out
+% by a different way.
+%    \begin{macrocode}
+  \begingroup
+  \expandafter\ifx\csname @inpenc@undefined\endcsname\relax
+    \edef\x{\endgroup}%
+  \else
+    \def\@inpenc@undefined@#1{\def\noexpand\inputenc{#1}}%
+    \edef\x{\endgroup
+      \@inpenc@undefined
+    }%
+  \fi
+  \x
+%    \end{macrocode}
+% \end{macro}
+% If \texttt{babel} is loaded, load the corresponding definition file
+% that redefines the \verb|\"A| to \verb|"A| etc.
+%    \begin{macrocode}
+  \@ifpackageloaded{babel}{%
+    \ginpenc@babeltrue
+    \ifx\inputenc\empty
+    \else
+      \IfFileExists{\inputenc.gie}{%
+        \input{\inputenc.gie}%
+%    \end{macrocode}
+% Add the new commands to the extras section of all German languages.
+%    \begin{macrocode}
+        \addto\extrasgerman{\umlautgerman}%
+        \addto\extrasngerman{\umlautgerman}%
+        \addto\extrasaustrian{\umlautgerman}%
+        \addto\extrasnaustrian{\umlautgerman}%
+        \addto\noextrasgerman{\umlautnotgerman}%
+        \addto\noextrasngerman{\umlautnotgerman}%
+        \addto\noextrasaustrian{\umlautnotgerman}%
+        \addto\noextrasnaustrian{\umlautnotgerman}%
+%    \end{macrocode}
+% Select active language to let take effect the \cs{extras} commands.
+%    \begin{macrocode}
+        \expandafter\selectlanguage\expandafter{\languagename}%
+        }{%
+        \PackageWarning{ginpenc}{Encoding file \inputenc.gie not
+          found}%
+        }%
+    \fi
+    }{}%
+  }
+%    \end{macrocode}
+% \iffalse
+%</package>
+% \fi
+%
+% \section{Encoding files}
+%
+% Only the file \texttt{ansinew.gie} is described since the other files
+% work the same.
+%
+% \iffalse
+%<*ansinew>
+% \fi
+% \subsection{ansinew.gie}
+% The work is done in a group in order to avoid a change of the
+% \texttt{shorthand} state.
+% To reach a global definition of the commands they are defined with
+% \cs{gdef}.
+%    \begin{macrocode}
+\begingroup
+%    \end{macrocode}
+% Switch on the German shorthands.
+%    \begin{macrocode}
+\shorthandon{"}%
+%    \end{macrocode}
+% \begin{macro}{\umlautgerman}
+% Redefine the character codes in order to use the short versions of
+% the Umlaut commands.
+%    \begin{macrocode}
+\gdef\umlautgerman{%
+  \DeclareInputText{196}{"A}%
+  \DeclareInputText{214}{"O}%
+  \DeclareInputText{220}{"U}%
+  \DeclareInputText{223}{"s}%
+  \DeclareInputText{228}{"a}%
+  \DeclareInputText{246}{"o}%
+  \DeclareInputText{252}{"u}%
+}%
+%    \end{macrocode}
+% \end{macro}
+% Switch off the German shorthands.
+%    \begin{macrocode}
+\shorthandoff{"}%
+%    \end{macrocode}
+% \begin{macro}{\umlautnotgerman}
+% Redefine the character codes in order to use the long versions of
+% the Umlaut commands outside German text.
+%    \begin{macrocode}
+\gdef\umlautnotgerman{%
+  \DeclareInputText{196}{\"A}%
+  \DeclareInputText{214}{\"O}%
+  \DeclareInputText{220}{\"U}%
+  \DeclareInputText{223}{\ss}%
+  \DeclareInputText{228}{\"a}%
+  \DeclareInputText{246}{\"o}%
+  \DeclareInputText{252}{\"u}%
+}%
+%    \end{macrocode}
+% \end{macro}
+%    \begin{macrocode}
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</ansinew>
+% \fi
+%
+%
+% \iffalse
+%<*applemac>
+% \fi
+% \subsection{applemac.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{128}{"A}%
+  \DeclareInputText{133}{"O}%
+  \DeclareInputText{134}{"U}%
+  \DeclareInputText{138}{"a}%
+  \DeclareInputText{154}{"o}%
+  \DeclareInputText{159}{"u}%
+  \DeclareInputText{167}{"s}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{128}{\"A}%
+  \DeclareInputText{133}{\"O}%
+  \DeclareInputText{134}{\"U}%
+  \DeclareInputText{138}{\"a}%
+  \DeclareInputText{154}{\"o}%
+  \DeclareInputText{159}{\"u}%
+  \DeclareInputText{167}{\ss}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</applemac>
+% \fi
+%
+%
+% \iffalse
+%<*ascii>
+% \fi
+% \subsection{ascii.gie}
+%    \begin{macrocode}
+\begingroup
+\gdef\umlautgerman{}%
+\gdef\umlautnotgerman{}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</ascii>
+% \fi
+%
+%
+% \iffalse
+%<*cp1250>
+% \fi
+% \subsection{cp1250.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{196}{"A}%
+  \DeclareInputText{214}{"O}%
+  \DeclareInputText{220}{"U}%
+  \DeclareInputText{223}{"s}%
+  \DeclareInputText{228}{"a}%
+  \DeclareInputText{246}{"o}%
+  \DeclareInputText{252}{"u}%
+}%
+\gshorthandoff{"}%
+\def\umlautnotgerman{%
+  \DeclareInputText{196}{\"A}%
+  \DeclareInputText{214}{\"O}%
+  \DeclareInputText{220}{\"U}%
+  \DeclareInputText{223}{\ss}%
+  \DeclareInputText{228}{\"a}%
+  \DeclareInputText{246}{\"o}%
+  \DeclareInputText{252}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</cp1250>
+% \fi
+%
+%
+% \iffalse
+%<*cp1252>
+% \fi
+% \subsection{cp1252.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{196}{"A}%
+  \DeclareInputText{214}{"O}%
+  \DeclareInputText{220}{"U}%
+  \DeclareInputText{223}{"s}%
+  \DeclareInputText{228}{"a}%
+  \DeclareInputText{246}{"o}%
+  \DeclareInputText{252}{"u}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{196}{\"A}%
+  \DeclareInputText{214}{\"O}%
+  \DeclareInputText{220}{\"U}%
+  \DeclareInputText{223}{\ss}%
+  \DeclareInputText{228}{\"a}%
+  \DeclareInputText{246}{\"o}%
+  \DeclareInputText{252}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</cp1252>
+% \fi
+%
+%
+% \iffalse
+%<*cp437>
+% \fi
+% \subsection{cp437.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{142}{"A}%
+  \DeclareInputText{153}{"O}%
+  \DeclareInputText{154}{"U}%
+  \DeclareInputText{132}{"a}%
+  \DeclareInputText{148}{"o}%
+  \DeclareInputText{129}{"u}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{142}{\"A}%
+  \DeclareInputText{153}{\"O}%
+  \DeclareInputText{154}{\"U}%
+  \DeclareInputText{132}{\"a}%
+  \DeclareInputText{148}{\"o}%
+  \DeclareInputText{129}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</cp437>
+% \fi
+%
+%
+% \iffalse
+%<*cp437de>
+% \fi
+% \subsection{cp437de.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{142}{"A}%
+  \DeclareInputText{153}{"O}%
+  \DeclareInputText{154}{"U}%
+  \DeclareInputText{225}{"s}%
+  \DeclareInputText{132}{"a}%
+  \DeclareInputText{148}{"o}%
+  \DeclareInputText{129}{"u}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{142}{\"A}%
+  \DeclareInputText{153}{\"O}%
+  \DeclareInputText{154}{\"U}%
+  \DeclareInputText{225}{\ss}%
+  \DeclareInputText{132}{\"a}%
+  \DeclareInputText{148}{\"o}%
+  \DeclareInputText{129}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</cp437de>
+% \fi
+%
+%
+% \iffalse
+%<*cp850>
+% \fi
+% \subsection{cp850.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{142}{"A}%
+  \DeclareInputText{153}{"O}%
+  \DeclareInputText{154}{"U}%
+  \DeclareInputText{225}{"s}%
+  \DeclareInputText{132}{"a}%
+  \DeclareInputText{148}{"o}%
+  \DeclareInputText{129}{"u}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{142}{\"A}%
+  \DeclareInputText{153}{\"O}%
+  \DeclareInputText{154}{\"U}%
+  \DeclareInputText{225}{\ss}%
+  \DeclareInputText{132}{\"a}%
+  \DeclareInputText{148}{\"o}%
+  \DeclareInputText{129}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</cp850>
+% \fi
+%
+%
+% \iffalse
+%<*cp852>
+% \fi
+% \subsection{cp852.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{142}{"A}%
+  \DeclareInputText{153}{"O}%
+  \DeclareInputText{154}{"U}%
+  \DeclareInputText{225}{"s}%
+  \DeclareInputText{132}{"a}%
+  \DeclareInputText{148}{"o}%
+  \DeclareInputText{129}{"u}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{142}{\"A}%
+  \DeclareInputText{153}{\"O}%
+  \DeclareInputText{154}{\"U}%
+  \DeclareInputText{225}{\ss}%
+  \DeclareInputText{132}{\"a}%
+  \DeclareInputText{148}{\"o}%
+  \DeclareInputText{129}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</cp852>
+% \fi
+%
+%
+% \iffalse
+%<*cp865>
+% \fi
+% \subsection{cp865.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{142}{"A}%
+  \DeclareInputText{153}{"O}%
+  \DeclareInputText{154}{"U}%
+  \DeclareInputText{225}{"s}%
+  \DeclareInputText{132}{"a}%
+  \DeclareInputText{148}{"o}%
+  \DeclareInputText{129}{"u}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{142}{\"A}%
+  \DeclareInputText{153}{\"O}%
+  \DeclareInputText{154}{\"U}%
+  \DeclareInputText{225}{\ss}%
+  \DeclareInputText{132}{\"a}%
+  \DeclareInputText{148}{\"o}%
+  \DeclareInputText{129}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</cp865>
+% \fi
+%
+%
+% \iffalse
+%<*decmulti>
+% \fi
+% \subsection{decmulti.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{196}{"A}%
+  \DeclareInputText{214}{"O}%
+  \DeclareInputText{220}{"U}%
+  \DeclareInputText{223}{"s}%
+  \DeclareInputText{228}{"a}%
+  \DeclareInputText{246}{"o}%
+  \DeclareInputText{252}{"u}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{196}{\"A}%
+  \DeclareInputText{214}{\"O}%
+  \DeclareInputText{220}{\"U}%
+  \DeclareInputText{223}{\ss}%
+  \DeclareInputText{228}{\"a}%
+  \DeclareInputText{246}{\"o}%
+  \DeclareInputText{252}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</decmulti>
+% \fi
+%
+%
+% \iffalse
+%<*latin1>
+% \fi
+% \subsection{latin1.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{196}{"A}%
+  \DeclareInputText{214}{"O}%
+  \DeclareInputText{220}{"U}%
+  \DeclareInputText{223}{"s}%
+  \DeclareInputText{228}{"a}%
+  \DeclareInputText{246}{"o}%
+  \DeclareInputText{252}{"u}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{196}{\"A}%
+  \DeclareInputText{214}{\"O}%
+  \DeclareInputText{220}{\"U}%
+  \DeclareInputText{223}{\ss}%
+  \DeclareInputText{228}{\"a}%
+  \DeclareInputText{246}{\"o}%
+  \DeclareInputText{252}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</latin1>
+% \fi
+%
+%
+% \iffalse
+%<*latin2>
+% \fi
+% \subsection{latin2.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{196}{"A}%
+  \DeclareInputText{214}{"O}%
+  \DeclareInputText{220}{"U}%
+  \DeclareInputText{223}{"s}%
+  \DeclareInputText{228}{"a}%
+  \DeclareInputText{246}{"o}%
+  \DeclareInputText{252}{"u}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{196}{\"A}%
+  \DeclareInputText{214}{\"O}%
+  \DeclareInputText{220}{\"U}%
+  \DeclareInputText{223}{\ss}%
+  \DeclareInputText{228}{\"a}%
+  \DeclareInputText{246}{\"o}%
+  \DeclareInputText{252}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</latin2>
+% \fi
+%
+%
+% \iffalse
+%<*latin3>
+% \fi
+% \subsection{latin3.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{196}{"A}%
+  \DeclareInputText{214}{"O}%
+  \DeclareInputText{220}{"U}%
+  \DeclareInputText{223}{"s}%
+  \DeclareInputText{228}{"a}%
+  \DeclareInputText{246}{"o}%
+  \DeclareInputText{252}{"u}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{196}{\"A}%
+  \DeclareInputText{214}{\"O}%
+  \DeclareInputText{220}{\"U}%
+  \DeclareInputText{223}{\ss}%
+  \DeclareInputText{228}{\"a}%
+  \DeclareInputText{246}{\"o}%
+  \DeclareInputText{252}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</latin3>
+% \fi
+%
+%
+% \iffalse
+%<*latin5>
+% \fi
+% \subsection{latin5.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{196}{"A}%
+  \DeclareInputText{214}{"O}%
+  \DeclareInputText{220}{"U}%
+  \DeclareInputText{223}{"s}%
+  \DeclareInputText{228}{"a}%
+  \DeclareInputText{246}{"o}%
+  \DeclareInputText{252}{"u}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{196}{\"A}%
+  \DeclareInputText{214}{\"O}%
+  \DeclareInputText{220}{\"U}%
+  \DeclareInputText{223}{\ss}%
+  \DeclareInputText{228}{\"a}%
+  \DeclareInputText{246}{\"o}%
+  \DeclareInputText{252}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</latin5>
+% \fi
+%
+%
+% \iffalse
+%<*latin9>
+% \fi
+% \subsection{latin9.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{196}{"A}%
+  \DeclareInputText{214}{"O}%
+  \DeclareInputText{220}{"U}%
+  \DeclareInputText{223}{"s}%
+  \DeclareInputText{228}{"a}%
+  \DeclareInputText{246}{"o}%
+  \DeclareInputText{252}{"u}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{196}{\"A}%
+  \DeclareInputText{214}{\"O}%
+  \DeclareInputText{220}{\"U}%
+  \DeclareInputText{223}{\ss}%
+  \DeclareInputText{228}{\"a}%
+  \DeclareInputText{246}{\"o}%
+  \DeclareInputText{252}{\"u}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</latin9>
+% \fi
+%
+%
+% \iffalse
+%<*next>
+% \fi
+% \subsection{next.gie}
+%    \begin{macrocode}
+\begingroup
+\shorthandon{"}%
+\gdef\umlautgerman{%
+  \DeclareInputText{133}{"A}%
+  \DeclareInputText{150}{"O}%
+  \DeclareInputText{154}{"U}%
+  \DeclareInputText{217}{"a}%
+  \DeclareInputText{240}{"o}%
+  \DeclareInputText{246}{"u}%
+  \DeclareInputText{251}{"s}%
+}%
+\shorthandoff{"}%
+\gdef\umlautnotgerman{%
+  \DeclareInputText{133}{\"A}%
+  \DeclareInputText{150}{\"O}%
+  \DeclareInputText{154}{\"U}%
+  \DeclareInputText{217}{\"a}%
+  \DeclareInputText{240}{\"o}%
+  \DeclareInputText{246}{\"u}%
+  \DeclareInputText{251}{\"s}%
+}%
+\endgroup
+%    \end{macrocode}
+% \iffalse
+%</next>
+% \fi
+%
+%
+% \Finale
+%

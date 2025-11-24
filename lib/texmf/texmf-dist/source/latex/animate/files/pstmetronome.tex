@@ -1,0 +1,233 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% animated metronome
+% this code is based to 99.9 percent on the work by Manuel Luque
+% (pstricks.blogspot.com)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\makeatletter
+\pst@addfams{pst-metronome}
+\define@key[psset]{pst-metronome}{theta0}{\def\psk@oscmetronomethetai{#1 }}
+\psset[pst-metronome]{theta0=45} % position initiale du metronome
+\define@key[psset]{pst-metronome}{M}{\def\psk@oscmetronometM{#1 }}
+\psset[pst-metronome]{M=25} % masse du disque en g
+\define@key[psset]{pst-metronome}{m}{\def\psk@oscmetronometm{#1 }}
+\psset[pst-metronome]{m=6} % masse du curseur en g
+\define@key[psset]{pst-metronome}{r}{\def\psk@oscmetronomer{#1 }}
+\psset[pst-metronome]{r=1} % rayon du disque en cm
+\define@key[psset]{pst-metronome}{x}{\def\psk@oscmetronomex{#1 }}
+\psset[pst-metronome]{x=8.4} % position du curseur en cm par rapport à l'axe
+\define@key[psset]{pst-metronome}{d}{\def\psk@oscmetronomed{#1 }}
+\psset[pst-metronome]{d=3.2} % distance de l'axe au centre du disque en cm
+\define@key[psset]{pst-metronome}{dt}{\def\psk@oscmetronomedt{#1 }}
+\psset[pst-metronome]{dt=0.01} % pas pour RK4
+\define@key[psset]{pst-metronome}{nT}{\def\psk@oscmetronomenT{#1 }}
+\psset[pst-metronome]{nT=1} % nombre de périodes représentées
+%---- calculer theta(t) et thetapoint(t) --------
+\def\psmetronome{\pst@object{psmetronome}}
+\def\psmetronome@i{%
+\begingroup%
+\use@par%
+  \begin@SpecialObj%
+  \pstVerb{%
+ /deg2rad {180 div 3.14159 mul} def
+ /rad2deg {180 mul 3.14159 div} def
+ /gp 9.8 def % pesanteur
+ /radius \psk@oscmetronomer 1e-2 mul def % en m
+ /OA \psk@oscmetronomed 1e-2 mul def % distance de l'axe au centre du disque en m
+ /xC \psk@oscmetronomex 1e-2 mul def % position du curseur en m par rapport à l'axe
+ /theta0 \psk@oscmetronomethetai def % en degrés
+ /theta0rad theta0 deg2rad def % en radians
+ /Md \psk@oscmetronometM 1e-3 mul def % en kg
+ /mc \psk@oscmetronometm 1e-3 mul def % en kg
+ /dt \psk@oscmetronomedt def
+ /nT \psk@oscmetronomenT def
+ % moment d'inertie du métronome
+ % J=1/2M*R^2+M*a^2+m*x^2
+ /Ji {0.5 Md mul radius dup mul mul Md OA dup mul mul add mc xC dup mul mul add} def
+ /AT {4
+      Ji
+      gp Md OA mul mc xC mul sub mul
+      div
+      sqrt
+      mul} def
+ % Pour le calcul de la période
+ % coefficients de l'approximation polynômiale du calcul
+ % de l'intégrale elliptique
+% coefficient pour le calcul de l'intégrale elliptique
+        /m0 theta0 2 div sin def
+        /m1 {1 m0 dup mul sub} def
+        /m2 {m1 dup mul} def
+        /m3 {m2 m1 mul} def
+        /m4 {m2 dup mul} def
+        /m_1 {1 m1 div} def
+     /EllipticK {
+        0.5
+        0.12498593597 m1 mul add
+        0.06880248576 m2 mul add
+        0.03328355376 m3 mul add
+        0.00441787012 m4 mul add
+        m_1 ln mul
+        1.38629436112 add
+        0.09666344259 m1 mul add
+        0.03590092383 m2 mul add
+        0.03742563713 m3 mul add
+        0.01451196212 m4 mul add
+      } def
+/Tm {AT EllipticK mul} def
+% tableau des valeurs de theta(t)
+    /W 0 def % vitesse angulaire
+    /theta theta0 def
+    /oscillateur {sin gp Md OA mul mc xC mul sub mul neg mul Ji div} def
+    /j1 {W dt mul} def
+    /k1 {theta oscillateur dt mul} def
+    /j2 {W k1 2 div add dt mul} def
+    /k2 {theta j1 2 div rad2deg add oscillateur dt mul} def
+    /j3 {W k2 2 div add dt mul} def
+    /k3 {theta j2 2 div rad2deg add oscillateur dt mul} def
+    /j4 {W k3 add dt mul} def
+    /k4 {theta j3 rad2deg add oscillateur dt mul} def
+    /theta2 {theta j1 rad2deg 2 j2 rad2deg j3 rad2deg add mul add j4 rad2deg add 6 div add} def
+/tabTheta [ % pour l'animation
+    0 theta0 % date angle
+dt dt Tm nT mul{ %
+    theta2 %
+    /W2 W k1 2 k2 k3 add mul add k4 add 6 div add def
+    /theta theta2 def
+    /W W2 def
+    }  for
+        ] def
+/Nvaleurs tabTheta length 2 div cvi def
+    /W 0 def % vitesse angulaire
+    /theta theta0 def
+/tabThetaGraph [ % pour le graphique theta(t)
+    0 theta0  % date angle
+0 dt Tm nT mul { % pop
+    theta2 % 180 div 3.14159 mul
+    /W2 W k1 2 k2 k3 add mul add k4 add 6 div add def
+    /theta theta2 def
+    /W W2 def
+    }  for
+        ] def
+    /W 0 def % vitesse angulaire
+    /theta theta0 def
+/tabThetaPoint [ % pour le graphique thetapoint(t)
+    0 0  % date angle
+dt dt Tm nT mul { % pop
+%    theta2 % 180 div 3.14159 mul
+    /W2 W k1 2 k2 k3 add mul add k4 add 6 div add def
+    W2
+    /theta theta2 def
+    /W W2 def
+    }  for
+        ] def
+/tabXOSC [ % oscillations par min en fonction de x
+0.5 0.1 12 {/xc exch def
+ /xC xc 1e-2 mul def
+ xc 60 Tm div % cvi
+ } for
+        ] def
+/tabXbattements [ % battements par min en fonction de x
+3 0.1 12 {/xc exch def
+ /xC xc 1e-2 mul def
+ xc 60 Tm div 2 mul % cvi
+ } for
+        ] def
+% graduation T --> x
+/tabXT [ % [T,x]
+ 40 1 220 {/batt exch def % battements
+ /Tmetronome2 120 batt div dup mul def
+ /A1 16 mc mul EllipticK dup mul mul def
+ /B1 gp Tmetronome2 mul mc mul def
+ /C1 gp Md mul OA mul Tmetronome2 mul neg
+     8 Md mul radius dup mul mul 16 Md mul OA dup mul mul add EllipticK dup mul mul add def
+ /Delta B1 dup mul 4 A1 mul C1 mul sub sqrt def
+ /xC1 B1 neg Delta sub 2 div A1 div def
+ /xC2 B1 neg Delta add 2 div A1 div def
+ xC2 0 ge {/posC xC2 def}{/posC xC1 def} ifelse
+ batt posC 1e2 mul
+ } for
+        ] def
+/xT { % pour une valeur particulière battement -> position du curseur
+    /batt exch def
+    /Tmetronome2 120 batt div dup mul def
+    /A1 16 mc mul EllipticK dup mul mul def
+    /B1 gp Tmetronome2 mul mc mul def
+    /C1 gp Md mul OA mul Tmetronome2 mul neg
+     8 Md mul radius dup mul mul 16 Md mul OA dup mul mul add EllipticK dup mul mul add def
+    /Delta B1 dup mul 4 A1 mul C1 mul sub sqrt def
+    /xC1 B1 neg Delta sub 2 div A1 div def
+    /xC2 B1 neg Delta add 2 div A1 div def
+     xC2 0 ge {/posC xC2 def}{/posC xC1 def} ifelse
+     posC 1e2 mul
+ } def
+/xC \psk@oscmetronomex 1e-2 mul def % position du curseur en m par rapport à l'axe
+/Tm {AT EllipticK mul} def
+  }%
+  \end@SpecialObj%
+\endgroup}
+%
+\def\psmetronomeA{\pst@object{psmetronomeA}}
+\def\psmetronomeA@i{%
+\begingroup%
+\use@par%
+  \begin@SpecialObj%
+  \pstVerb{%
+ /radius \psk@oscmetronomer 1e-2 mul def % en m
+ /OA \psk@oscmetronomed 1e-2 mul def % distance de l'axe au centre du disque en m
+ /xC \psk@oscmetronomex 1e-2 mul def % position du curseur en m par rapport à l'axe
+  }%
+\psframe[fillstyle=solid](! -0.075 \psk@oscmetronomed neg)(0.075,13)
+\pscircle[fillstyle=solid,fillcolor={[rgb]{0.75 0.75 0.75}}](! 0 \psk@oscmetronomed neg){!radius 1e2 mul}
+\pscircle[fillstyle=solid,linewidth=0.05](0,0){0.15}
+\pscircle*[linecolor=red](0,0){0.05}
+% curseur
+\pspolygon[fillstyle=solid](! -0.25 \psk@oscmetronomex 0.5 sub)(! -0.5 \psk@oscmetronomex 0.5 add)(!-0.075 \psk@oscmetronomex 0.5 add)(!-0.075 \psk@oscmetronomex 0.5 sub)
+\pspolygon[fillstyle=solid](! 0.25 \psk@oscmetronomex 0.5 sub)(! 0.5 \psk@oscmetronomex 0.5 add)(!0.075 \psk@oscmetronomex 0.5 add)(!0.075 \psk@oscmetronomex 0.5 sub)
+\pspolygon[fillstyle=solid,fillcolor=gray](! -0.25 \psk@oscmetronomex 0.5 sub)(! -0.3 \psk@oscmetronomex 0.3 sub)(! -0.075 \psk@oscmetronomex 0.3 sub)(!-0.075 \psk@oscmetronomex 0.3 add)(!0.075 \psk@oscmetronomex 0.3 add)(!0.075 \psk@oscmetronomex 0.3 sub)(!0.3 \psk@oscmetronomex 0.3 sub)(!0.25 \psk@oscmetronomex 0.5 sub)
+\pscircle[fillstyle=solid](!-0.125 \psk@oscmetronomex 0.4 sub){0.08}
+\pscircle[fillstyle=solid](!0.125 \psk@oscmetronomex 0.4 sub){0.08}
+% fin curseur
+{\psset{linecolor=red}
+\psline(!-.1 \psk@oscmetronomex)(!0.1 \psk@oscmetronomex)\psline(!0 \psk@oscmetronomex 0.1 sub)(!0 \psk@oscmetronomex 0.1 add)
+\psline(! -.1 \psk@oscmetronomed neg)(!0.1 \psk@oscmetronomed neg)\psline(! 0 \psk@oscmetronomed neg 0.1 sub)(!0 \psk@oscmetronomed neg 0.1 add)}
+\pnode(!0 \psk@oscmetronomex){C}% curseur
+\pnode(! 0 \psk@oscmetronomed neg){D}% disque
+\pstextpath[c](0,-2ex){\psarcn[linestyle=none](D){1}{180}{0}}{\small\textsf{\textbf{m e t r o n o m e}}}
+\pstextpath[c](0,1ex){\psarc[linestyle=none](D){1}{180}{0}}{\small\textsf{\textbf{P S t r i c k s}}}
+  \end@SpecialObj%
+\endgroup}
+\psmetronome%
+\pstVerb{/tabTempos [40 42 44 46 48 50 52 54 46 58 60 63 66 69 72 76 80 84 88 92 96 100 104 108 112 116 120 126 132 138 144 152 160 168 176 184 192 200 208] def}%
+
+\def\metronomebody{%
+  \pspolygon[fillstyle=solid,linewidth=2\pslinewidth,linearc=0.5,fillcolor=yellow!30](-5,-4.5)(5,-4.5)(1,14)(-1,14)
+  \psline(1.2,4.5)(1.2,12.5)
+  \psline(-1.2,4.5)(-1.2,12.5)
+  \multido{\i=0+2}{20}{%
+     \pstVerb{/BATT tabTempos \i\space get def}
+     \psline[linecolor=red](!1.2 BATT xT)(!0.7 BATT xT)
+     \uput[r](!0.7 BATT xT){\psPrintValue[PSfont=Helvetica,fontscale=6]{BATT}}
+  }%
+  \multido{\i=1+2}{19}{%
+     \pstVerb{/BATT tabTempos \i\space get def}
+     \psline[linecolor=red](!-1.2 BATT xT)(!-0.7 BATT xT)
+     \uput[r](!-1.3 BATT xT){\psPrintValue[PSfont=Helvetica,fontscale=6]{BATT}}}%
+  \rput(!0 40 xT){\textsf{\tiny GRAVE}}%
+  \rput(!0 46 xT){\textsf{\tiny LARGO}}%
+  \rput(!0 52 xT){\textsf{\tiny LENTO}}%
+  \rput(!0 58 xT){\textsf{\tiny ADAGIO}}%
+  \rput(!0 60 xT){\textsf{\tiny LARGETTO}}%
+  \rput(!0 66 xT){\textsf{\tiny ANDANTE}}%
+  \rput(!0 76 xT){\textsf{\tiny ANDANTINO}}%
+  \rput(!0 84 xT){\textsf{\tiny MODERATO}}%
+  \rput(!0 108 xT){\textsf{\tiny ALLEGRETTO}}%
+  \rput(!0 132 xT){\textsf{\tiny ALLEGRO}}%
+  \rput(!0 160 xT){\textsf{\tiny VIVACE}}%
+  \rput(!0 184 xT){\textsf{\tiny PRESTO}}%
+  \rput(!0 200 xT){\textsf{\tiny PRESTISSIMO}}%
+}
+
+\def\pendulum#1{%
+  \pstVerb{/iA #1\space def /date tabTheta iA get def /Theta tabTheta iA 1 add get def}%
+  \rput{!Theta}{\psmetronomeA}%
+}
+\makeatother

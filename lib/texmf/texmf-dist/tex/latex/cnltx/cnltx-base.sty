@@ -1,0 +1,894 @@
+% --------------------------------------------------------------------------
+% the CNLTX bundle
+%
+%   LaTeX source code and output
+%
+% --------------------------------------------------------------------------
+% Clemens Niederberger
+% Web:    https://github.com/cgnieder/cnltx/
+% E-Mail: contact@mychemistry.eu
+% --------------------------------------------------------------------------
+% Copyright 2013-2015 Clemens Niederberger
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+%
+% The Current Maintainer of this work is Clemens Niederberger.
+% --------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% --------------------------------------------------------------------------
+\def\cnltx@@date{2015/08/17}
+\def\cnltx@@version{v0.13}
+\def\cnltx@@info{LaTeX tools and documenting facilities (CN)}
+\ProvidesPackage{cnltx-base}[\cnltx@@date\space \cnltx@@version\space \cnltx@@info]
+\RequirePackage{pgfopts,etoolbox,ltxcmds,pdftexcmds}
+
+% --------------------------------------------------------------------------
+% error messaging
+
+% messages with a common detailed error message:
+% * : star: class, nostar: package
+% #1: prefix
+% #2: package/class name
+% #3: message type
+% #4: extended error message
+\newcommand*\cnltx@create@generic@message{%
+  \@ifstar
+    {\cnltx@create@generic@message@aux{Class}}
+    {\cnltx@create@generic@message@aux{Package}}%
+}
+
+% #1: Class|Package
+% #2: prefix
+% #3: package/class name
+% #4: message type
+% #5: extended error message
+\newcommand\cnltx@create@generic@message@aux[5]{%
+  \ifstrequal{#4}{Error}
+    {%
+      \lowercase{\csdef{#2@#4}}##1{%
+        \csuse{#1#4}{#3}{##1}{#5}}%
+    }{%
+      \lowercase{\csdef{#2@#4}}##1{%
+        \csuse{#1#4}{#3}{##1}}%
+    }}
+
+% messages where the detailed error message must be specified as second
+% argument:
+% * : star: class, nostar: package
+% #1: prefix
+% #2: package/class name
+% #3: message type
+\newcommand*\cnltx@create@message{%
+  \@ifstar
+    {\cnltx@create@message@aux{Class}}
+    {\cnltx@create@message@aux{Package}}%
+}
+
+% #1: Class|Package
+% #2: prefix
+% #3: package/class name
+% #4: message type
+\newcommand\cnltx@create@message@aux[4]{%
+  \ifstrequal{#4}{Error}
+    {%
+      \lowercase{\csdef{#2@#4}}##1##2{%
+        \csuse{#1#4}{#3}{##1}{##2}}%
+    }{%
+      \lowercase{\csdef{#2@#3}}##1{%
+        \csuse{#1#4}{#3}{##1}}%
+    }}
+
+% message handling for the cnltx bundle:
+\newcommand*\cnltx@error@message{%
+  For details have a look at the `cnltx' manual.}
+
+% * : star: class, nostar: package
+% #1: bundle module
+% #2: message type
+\newcommand*\cnltx@create@bundle@message{%
+  \@ifstar
+    {\cnltx@create@bundle@message@aux{Class}}
+    {\cnltx@create@bundle@message@aux{Package}}%
+}
+
+\newcommand\cnltx@create@bundle@message@aux[3]{%
+  \cnltx@create@generic@message@aux
+    {#1}
+    {cnltx@#2}
+    {cnltx-#2}
+    {#3}
+    {\cnltx@error@message}%
+}
+
+\cnltx@create@bundle@message{base}{Error}
+\cnltx@create@bundle@message{base}{Warning}
+\cnltx@create@bundle@message{base}{WarningNoLine}
+\cnltx@create@bundle@message{base}{Info}
+
+% --------------------------------------------------------------------------
+% modules
+\newrobustcmd*\cnltx@load@module[1]{\RequirePackage{cnltx-\trim@spaces{#1}}}
+\newrobustcmd*\cnltx@load@modules[1]{\forcsvlist{\cnltx@load@module}{#1}}
+
+\newrobustcmd*\cnltx@register@module[1]{%
+  \DeclareOption{#1}{\AtEndOfPackage{\cnltx@load@module{#1}}}%
+}
+
+% --------------------------------------------------------------------------
+% setup command
+\newrobustcmd\setcnltx[1]{\pgfqkeys{/cnltx}{#1}}
+
+\def\cnltx@par{\par}
+% --------------------------------------------------------------------------
+% scratch variables
+\newcounter{cnltx@tmpa}
+\newcounter{cnltx@tmpb}
+\newcounter{cnltx@tmpc}
+
+\newlength\cnltx@tmpa@length
+\newlength\cnltx@tmpb@length
+\newlength\cnltx@tmpc@length
+
+\newcommand*\cnltx@tmpa{}
+\newcommand*\cnltx@tmpb{}
+\newcommand*\cnltx@tmpc{}
+
+% --------------------------------------------------------------------------
+% catcode stuff:
+\DeclareListParser*{\cnltx@map@tokenlist}{}
+
+\newrobustcmd*\cnltx@save@catcodes[1]{%
+  \cnltx@map@tokenlist\cnltx@save@catcode{#1}%
+}
+\newrobustcmd*\cnltx@save@catcode[1]{%
+  \csedef{cnltx@catcode@#1}{\the\catcode`#1}%
+}
+
+\newrobustcmd*\cnltx@restore@catcodes[1]{%
+  \cnltx@map@tokenlist\cnltx@restore@catcode{#1}%
+}
+\newrobustcmd*\cnltx@restore@catcode[1]{%
+  \catcode`#1=\csname cnltx@catcode@#1\endcsname
+  \csundef{cnltx@catcode@#1}%
+}
+
+\newrobustcmd*\cnltx@set@catcodes[2]{%
+  \cnltx@map@tokenlist{\cnltx@set@catcode{#2}}{#1}%
+}
+\newrobustcmd*\cnltx@set@catcode[2]{%
+  \catcode`#1=#2\relax
+}
+
+\newrobustcmd*\cnltx@make@letter[1]{\cnltx@set@catcode{#1}{11}}
+\newrobustcmd*\cnltx@make@other[1]{\cnltx@set@catcode{#1}{12}}
+\newrobustcmd*\cnltx@make@active[1]{\cnltx@set@catcode{#1}{13}}
+
+% --------------------------------------------------------------------------
+% damit wir beim Definieren der vielen assoziierten Makros nichts
+% überschreiben:
+\newrobustcmd*\cnltx@robust@cs[1]{%
+  \expandafter\newrobustcmd\expandafter*\csname#1\endcsname
+}
+\newrobustcmd*\cnltx@new@cs[1]{%
+  \expandafter\newcommand\expandafter*\csname#1\endcsname
+}
+
+% --------------------------------------------------------------------------
+% who knows what they might be good for -- well, for indexing:
+\newrobustcmd*\cnltxat{@}
+\let\cnltxletterat\cnltxat
+\makeatother
+\newrobustcmd*\cnltxotherat{@}
+\makeatletter
+\newrobustcmd*\cnltxbang{!}
+\newrobustcmd*\cnltxequal{=}
+
+% --------------------------------------------------------------------------
+% generic conditionals
+% those two are in the spirit of etoolbox's \ifbool and \notbool and provide
+% the same functionalty as the `test' directive in `\ifboolexpr':
+\newcommand\iftest[1]{%
+  #1%
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+
+\newcommand\nottest[1]{%
+  #1%
+    \expandafter\@secondoftwo
+  \else
+    \expandafter\@firstoftwo
+  \fi
+}
+
+\newcommand*\cnltx@ifcounter[1]{%
+  \ifboolexpe{
+    test {\ifcsdef{c@#1}} and
+    test {\ifcsdef{cl@#1}} and
+    test {\ifcsdef{p@#1}} and
+    test {\ifcsdef{the#1}}
+  }%
+}
+
+\newrobustcmd*\cnltx@ifsym[2]{\@ifnextchar#1{\@firstoftwo{#2}}}
+\newcommand*\cnltx@ifdash{\cnltx@ifsym{-}}
+\newcommand*\cnltx@ifbang{\cnltx@ifsym{!}}
+
+% test if shellescape is enabled:
+\newcommand*\cnltx@ifshellescape{%
+  \iftest{\ifnum\pdf@shellescape=1 }%
+}
+
+% an idea by Herbert Voß (http://tex.stackexchange.com/a/7183/5049):
+%   make the test character an (hopefully extremely) unlikely % with
+%   catcode!=14;  let's make & a temporary comment char
+%   save both catcodes just in case someone changed the defaults:
+\edef\cnltx@tmpa{
+  \catcode`\noexpand\%=\the\catcode`\%
+  \catcode`\noexpand\&=\the\catcode`\&
+}
+\catcode`\%=3
+\catcode`\&=14
+& the test:
+\newcommand*\cnltx@ifisnum[1]{&
+  \iftest{\if%\ifnum9<1#1%\else_\fi}&
+}
+\cnltx@tmpa
+
+% an idea by Enrico Gregorio (http://tex.stackexchange.com/a/34449/5049):
+\newcommand*\cnltx@truncdiv[2]{((#1-(#2-1)/2)/#2)}
+\newcommand*\cnltx@modulo@op[2]{(#1-\cnltx@truncdiv{#1}{#2}*#2)}
+\newcommand*\cnltx@modulo[2]{\number\numexpr\cnltx@modulo@op{#1}{#2}\relax}
+
+% ``\@ifnextchars''
+% list parser with no separator:
+\DeclareListParser*\cnltx@add@tokens{}
+
+% the list that holds the tokens to be checked:
+\def\cnltx@tokens@list{}
+
+% set the tokens list (the parser does not like blank lists):
+\newrobustcmd*\cnltx@set@tokens[1]{%
+  \def\cnltx@tokens@list{}%
+  \ifblank{#1}
+    {}
+    {\cnltx@add@tokens{\listadd\cnltx@tokens@list}{#1}}%
+}
+
+% check for token but leave it where it is:
+\newrobustcmd\cnltx@ifnextchars[3]{%
+  \cnltx@set@tokens{#1}%
+  \ltx@ifnextchar{ }
+    {\cnltx@ifnextchars@aux{#2}{#3}{}}
+    {\cnltx@ifnextchars@aux{#2}{#3}}%
+}
+
+\newrobustcmd\cnltx@ifnextchars@aux[3]{%
+  \ifblank{#3}{#2}{%
+    \ifinlist{#3}{\cnltx@tokens@list}
+      {#1}
+      {#2}%
+    }%
+  #3%
+}
+
+% test string equality, expandably:
+\newcommand\cnltx@ifstrequal[2]{%
+  \ifnum\pdf@strcmp{\unexpanded{#1}}{\unexpanded{#2}}=\z@
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+
+% a check for etoolbox's lists where items may contain braces:
+\newbool{cnltx@inlist}
+\newrobustcmd\cnltx@ifinlist@type[5]{%
+  \def\do##1{%
+    \boolfalse{cnltx@inlist}%
+    \ifstrequal{##1}{#2}
+      {\booltrue{cnltx@inlist}\listbreak}
+      {}%
+  }%
+  #1{#3}%
+  \ifbool{cnltx@inlist}
+    {#4}
+    {#5}%
+}
+\newrobustcmd*\cnltx@ifinlist{\cnltx@ifinlist@type\dolistloop}
+\newrobustcmd*\cnltx@ifinlistcs{\cnltx@ifinlist@type\dolistcsloop}
+
+% --------------------------------------------------------------------------
+% expansion helper
+% \cnltx@expandargs(<spec>)
+%   this is heavily inspired by expl3's \exp_args:N<spec>; in fact the code
+%   they use is very clever so it is basically just copied and renamed -- I'm
+%   sorry for that but I couldn't've done better.
+\def\cnltx@expandargs@internal{}
+
+% auxiliary macros:
+\long\def\cnltx@getnext@braced#1#2#3{#2\cnltx@firstofone{#3{#1}}}
+\long\def\cnltx@getnext@unbraced#1#2#3{#2\cnltx@firstofone{#3#1}}
+\long\def\cnltx@firstofone#1{#1}
+
+% the argument macros:
+% n:
+\long\def\cnltx@braced@unexpanded#1\cnltx@firstofone#2#3{%
+  #1\cnltx@firstofone{#2{#3}}%
+}
+% N:
+\long\def\cnltx@unbraced@unexpanded#1\cnltx@firstofone#2#3{%
+  #1\cnltx@firstofone{#2#3}%
+}
+% c:
+\long\def\cnltx@braced@csname#1\cnltx@firstofone#2#3{%
+  \expandafter\cnltx@getnext@unbraced\csname#3\endcsname{#1}{#2}%
+}
+% o:
+\long\def\cnltx@braced@expanded@once#1\cnltx@firstofone#2#3{%
+  \expandafter\cnltx@getnext@braced\expandafter{#3}{#1}{#2}%
+}
+% f:
+\long\def\cnltx@braced@expanded@fully#1\cnltx@firstofone#2#3{%
+  \expandafter\cnltx@getnext@braced
+  \expandafter{\romannumeral-`0#3}{#1}{#2}%
+}
+% x:
+\protected\long\def\cnltx@braced@expanded@exhaustively#1\cnltx@firstofone#2#3{%
+  \edef\cnltx@expandargs@internal{{#3}}%
+  \expandafter\cnltx@getnext@braced\cnltx@expandargs@internal{#1}{#2}%
+}
+
+% the actual expansion helper macro:
+\protected\def\cnltx@expandargs(#1){%
+  \def\cnltx@expandargs@aux{#1\cnltx@firstofone}%
+  \cnltx@replace@all\cnltx@expandargs@aux{N}{\cnltx@unbraced@unexpanded}%
+  \cnltx@replace@all\cnltx@expandargs@aux{n}{\cnltx@braced@unexpanded}%
+  \cnltx@replace@all\cnltx@expandargs@aux{c}{\cnltx@braced@csname}%
+  \cnltx@replace@all\cnltx@expandargs@aux{o}{\cnltx@braced@expanded@once}%
+  \cnltx@replace@all\cnltx@expandargs@aux{f}{\cnltx@braced@expanded@fully}%
+  \cnltx@replace@all\cnltx@expandargs@aux{x}{\cnltx@braced@expanded@exhaustively}%
+  \cnltx@expandargs@aux
+}
+
+% \exp_args:Nx
+\newcommand\cnltx@fullexpand@arg{\cnltx@expandargs(x)}
+
+% \exp_args:Nxx
+\newcommand\cnltx@fullexpand@twoargs{\cnltx@expandargs(xx)}
+
+% \exp_args:NV
+\newcommand\cnltx@expand@arg{\cnltx@expandargs(o)}
+
+% expanding an environment argument or something:
+\newcommand\cnltx@fullexpand@afterarg{\cnltx@expandargs(nx)}
+
+\providecommand*\expandtwice
+  {\unexpanded\expandafter\expandafter\expandafter}
+
+% --------------------------------------------------------------------------
+% tokenlist manipulation
+\newcommand*\cnltx@stripbs{\expandafter\@gobble\string}
+
+% again we borrow an idea from expl3:
+% \cnltx@if@in{tokenlist}{search}{true}{false}
+\newrobustcmd\cnltx@if@in[2]{%
+  \def\cnltx@ifin@tmp##1#2{}%
+  \expandafter\ifblank\expandafter{\cnltx@ifin@tmp#1{}{}#2}
+    {\@secondoftwo}
+    {\@firstoftwo}%
+}
+
+% \cnltx@replace@once{macro}{search}{replace}
+% \cnltx@replace@all{macro}{search}{replace}
+\newrobustcmd*\cnltx@replace@once {\@@cnltx@replace\@@cnltx@replace@once\edef}
+\newrobustcmd*\cnltx@greplace@once{\@@cnltx@replace\@@cnltx@replace@once\xdef}
+\newrobustcmd*\cnltx@replace@all  {\@@cnltx@replace\@@cnltx@replace@all \edef}
+\newrobustcmd*\cnltx@greplace@all {\@@cnltx@replace\@@cnltx@replace@all \xdef}
+
+\long\def\cnltx@remove@to@q@stop#1\q@stop{}
+
+\newrobustcmd\@@cnltx@replace[5]{%
+  \ifstrempty{#4}
+    {}
+    {%
+      \ifnum\iffalse{\fi`}=\z@\fi
+      \edef\cnltx@tmpa##1##2#4{%
+        ##2%
+        \noexpand\q@mark
+        \noexpand\cnltx@remove@to@q@stop
+        \unexpanded{\unexpanded{#5}}%
+        ##1%
+      }%
+      \ifnum`{=\z@}\fi
+      #2#3{\expandafter#1#3\q@mark#4\q@stop}%
+    }%
+}
+\long\def\@@cnltx@replace@aux#1\q@mark#2{\expandonce{#1}}
+\newcommand*\@@cnltx@replace@all{%
+  \expandafter\@@cnltx@replace@aux\cnltx@tmpa\@@cnltx@replace@all\@empty
+}
+\def\@@cnltx@replace@once{%
+  \expandafter\@@cnltx@replace@aux\cnltx@tmpa
+    {\@@cnltx@replace@once@end\@empty}\@empty
+}
+\long\def\@@cnltx@replace@once@end#1\q@mark#2\q@stop{\expandonce{#1}}
+
+% \cnltx@remove@once{macro}{search}
+% \cnltx@remove@all{macro}{search}
+\newrobustcmd\cnltx@remove@once[2]{\cnltx@replace@once#1{#2}{}}
+\newrobustcmd\cnltx@remove@all[2]{\cnltx@replace@all#1{#2}{}}
+
+% --------------------------------------------------------------------------
+% an equivalent of \newcommand where the macro with the optional argument
+% is expandable.  For this to work the newly defined macro /needs/ to eat the
+% first following token!
+\def\cnltx@num@to@args#1{%
+  \ifnum#1>1
+    \cnltx@num@to@args@aux{2}{#1}{####}%
+  \fi
+}
+\def\cnltx@num@to@args@aux#1#2#3{%
+  \ifnum#1<\numexpr#2+1\relax
+    #3#1%
+    \expandafter\cnltx@num@to@args@aux
+    \expandafter{\number\numexpr#1+1}{#2}{#3}%
+  \fi
+}
+
+% \newexpandablecmd*<cs>[<num mand>][<default opt>]{<definition>}
+\newrobustcmd*\newexpandablecmd{%
+  \@star@or@long\cnltx@newexpcmd
+}
+\newrobustcmd*\renewexpandablecmd{%
+  \@star@or@long\cnltx@renewexpcmd
+}
+\newrobustcmd*\provideexpandablecmd{%
+  \@star@or@long\cnltx@provideexpcmd
+}
+
+\def\cnltx@dummy{}
+
+\newrobustcmd*\cnltx@provideexpcmd[1]{%
+  \ifdef{#1}
+    {\cnltx@renewexpcmd\cnltx@dummy}
+    {\cnltx@newexpcmd#1}%
+}
+
+\newrobustcmd*\cnltx@newexpcmd{%
+  \cnltx@new@expcmd
+}
+
+\newrobustcmd*\cnltx@renewexpcmd[1]{%
+  \ifdef{#1}
+    {%
+      \let\@ifdefinable\@rc@ifdefinable
+      \cnltx@newexpcmd#1%
+    }
+    {\@latex@error{\noexpand#1undefined}\@ehc}%
+}
+
+\def\cnltx@new@expcmd#1{%
+  \@ifnextchar[%]
+    {\cnltx@newexpcmd@i{#1}}
+    {\cnltx@newexpcmd@i{#1}[0]}%
+}
+\def\cnltx@newexpcmd@i#1[#2]{%
+  \@ifnextchar[%]
+    {\cnltx@newexpcmd@ii{#1}{#2}}
+    {\new@command#1[#2]}%
+}
+
+\def\cnltx@newexpcmd@ii#1#2[#3]{%
+  \edef\cnltx@newexpcmd@args{\cnltx@num@to@args{#2}}%
+  \expandafter\cnltx@defexpcmd\expandafter{\cnltx@newexpcmd@args}{#2}[#3]#1%
+}
+
+\long\def\cnltx@defexpcmd#1#2[#3]#4#5{%
+  \@ifdefinable#4{%
+    \long\def#4##1{%
+      \cnltxnewexpcmd@ifisopt
+        {#2}
+        {##1}
+        {\csuse{\@backslashchar\cnltx@stripbs#4}}
+        {#3}%
+      }%
+  }%
+  \l@ngrel@x\csdef{\@backslashchar\cnltx@stripbs#4}[##1]#1{#5}%
+}
+\newcommand\cnltxnewexpcmd@ifisopt[4]{%
+  \cnltxnewexpcmd@ifisopt@aux#2\q@marker[\q@marker
+    {#3#2}
+    {\iftest{\ifnum#1>1 }{#3[#4]{#2}}{#3[#4]#2}}%
+}
+\long\def\cnltxnewexpcmd@ifisopt@aux#1[#2\q@marker#3#{%
+  \ifstrempty{#1#2}%
+}
+
+% --------------------------------------------------------------------------
+% looking for trailing punctuation:
+%
+% list parser with no separator:
+\DeclareListParser*\cnltx@add@punctuation{}
+
+% the list that holds the punctuation marks:
+\def\cnltx@punctuation@list{}
+
+% set the punctuation list (the parser does not like blank lists):
+\newrobustcmd*\cnltx@set@punctuation[1]{%
+  \def\cnltx@punctuation@list{}%
+  \ifblank{#1}
+    {}
+    {\cnltx@add@punctuation{\listadd\cnltx@punctuation@list}{#1}}%
+}
+
+% set default list:
+\cnltx@set@punctuation{,.!?;:}
+
+\pgfkeys{
+  cnltx/.cd ,
+    set-trail-punct/.code = \cnltx@set@punctuation{#1}
+}
+
+% --------------------------------------------------------------------------
+% small helper if we gobbled \par:
+\newcommand*\cnltx@punctuation@ifpar{%
+  \iftest{\expandafter\ifx\cnltx@trailpunct\par}%
+}
+
+% --------------------------------------------------------------------------
+% per case list:
+\newrobustcmd*\cnltx@set@punctuation@default{%
+  \ifx\cnltx@punctuation@list\cnltx@tmp@punctuation
+  \else
+    \let\cnltx@punctuation@list\cnltx@tmp@punctuation
+  \fi
+}
+
+\newrobustcmd*\cnltx@set@punctuation@option[1]{%
+  \let\cnltx@tmp@punctuation\cnltx@punctuation@list
+  \ifblank{#1}{}{\cnltx@set@punctuation{#1}}%
+}
+
+% --------------------------------------------------------------------------
+% check for punctuation mark and gobble it if present:
+\newrobustcmd\cnltx@ifpunctuation@gobble[3][]{%
+  \cnltx@set@punctuation@option{#1}%
+  \ltx@ifnextchar{ }
+    {\cnltx@ifpunctuation@gobble@aux{#2}{#3}{ }}
+    {\cnltx@ifpunctuation@gobble@aux{#2}{#3}}%
+}
+
+\newrobustcmd\cnltx@ifpunctuation@gobble@aux[3]{%
+  \edef\cnltx@trailpunct{\unexpanded{#3}}%
+  \ifblank{#3}{#2}{%
+    \ifinlist{#3}{\cnltx@punctuation@list}
+      {#1}
+      {#2\cnltx@punctuation@ifpar{}{#3}}%
+    \cnltx@punctuation@ifpar{\par}{}%
+  }%
+  \cnltx@set@punctuation@default
+}
+
+% --------------------------------------------------------------------------
+% check for punctuation mark but leave it where it is:
+\newrobustcmd\cnltx@ifpunctuation@nogobble[3][]{%
+  \cnltx@set@punctuation@option{#1}%
+  \ltx@ifnextchar{ }
+    {\cnltx@ifpunctuation@nogobble@aux{#2}{#3}{}}
+    {\cnltx@ifpunctuation@nogobble@aux{#2}{#3}}%
+}
+
+\newrobustcmd\cnltx@ifpunctuation@nogobble@aux[3]{%
+  \ifblank{#3}{#2}{%
+    \ifinlist{#3}{\cnltx@punctuation@list}
+      {#1}
+      {#2}%
+    }%
+  \cnltx@set@punctuation@default
+  #3%
+}
+
+% --------------------------------------------------------------------------
+% the main command:
+\newrobustcmd\cnltx@ifpunctuation{%
+  \@ifstar
+    \cnltx@ifpunctuation@nogobble
+    \cnltx@ifpunctuation@gobble
+}
+
+% --------------------------------------------------------------------------
+% counter representation commands
+% error messages
+\newcommand*\cnltx@base@error@unknown@user@representation[1]{%
+  \cnltx@base@error{Unknown counter representation \string#1}}
+
+\newcommand*\cnltx@base@error@unknown@internal@representation[1]{%
+  \cnltx@base@error{Unknown internal counter representation #1}}
+
+\newcommand*\cnltx@base@error@already@user@representation[1]{%
+  \cnltx@base@error{Counter representation \string#1 already exists}}
+
+\newcommand*\cnltx@base@error@already@internal@representation[1]{%
+  \cnltx@base@error{Internal counter representation \expandonce{#1} already exists}}
+
+% --------------------------------------------------------------------------
+% conditionals
+% test for user commands like \arabic
+\newcommand*\cnltx@if@user@representation{\ifdef}
+
+% test for internal commands like \@arabic; we will assume they're /always/
+% the same as the corresponding user command but with a leading @:
+\newcommand*\cnltx@if@internal@representation[1]{%
+  \ifcsdef{@\cnltx@stripbs#1}%
+}
+
+% --------------------------------------------------------------------------
+% the main command
+\newrobustcmd*\cnltx@new@counter@representation[2]{%
+  \edef#1##1{%
+    \noexpand\expandafter
+    \expandonce{\csname @\cnltx@stripbs#1\endcsname}%
+    \noexpand\csname c@##1\noexpand\endcsname
+  }%
+  \csdef{@\cnltx@stripbs#1}##1{#2}%
+}
+
+% --------------------------------------------------------------------------
+% the user commands
+\newrobustcmd*\newcounterrepresentation[2]{%
+  \cnltx@if@user@representation{#1}
+    {\cnltx@base@error@already@user@representation{#1}}
+    {}%
+  \cnltx@if@internal@representation{#1}
+    {%
+      \cnltx@base@error@already@internal@representation
+        {\csname @\cnltx@stripbs#1\endcsname}%
+    }
+    {}%
+  \cnltx@new@counter@representation{#1}{#2}%
+}
+
+\newrobustcmd*\renewcounterrepresentation[2]{%
+  \cnltx@if@user@representation{#1}
+    {}
+    {\cnltx@base@error@unknown@user@representation{#1}}%
+  \cnltx@if@internal@representation{#1}
+    {}
+    {%
+      \cnltx@base@error@unknown@internal@representation
+        {\csname @\cnltx@stripbs#1\endcsname}%
+    }%
+  \cnltx@new@counter@representation{#1}{#2}%
+}
+
+\newrobustcmd*\providecounterrepresentation[2]{%
+  \cnltx@if@user@representation{#1}{}{%
+    \cnltx@if@internal@representation{#1}{}{%
+      \cnltx@new@counter@representation{#1}{#2}%
+    }%
+  }%
+}
+
+\newrobustcmd*\DeclareCounterRepresentation[2]{%
+  \cnltx@new@counter@representation{#1}{#2}%
+}
+
+% --------------------------------------------------------------------------
+% the following definitions are redundant, the LaTeX2e kernel provides them
+% already.  They're provided as an overview:
+
+% \arabic:
+\providecounterrepresentation\arabic{\number#1}
+% \roman:
+\providecounterrepresentation\roman{\romannumeral#1}
+% \Roman:
+\providecounterrepresentation\Roman{%
+  \expandafter\@slowromancap\romannumeral#1@}
+%\alph:
+\providecounterrepresentation\alph{%
+  \ifcase#1%
+    \or a\or b\or c\or d\or e\or f%
+    \or g\or h\or i\or j\or k\or l%
+    \or m\or n\or o\or p\or q\or r%
+    \or s\or t\or u\or v\or w\or x%
+    \or y\or z%
+  \else
+    \@ctrerr
+  \fi
+}
+% \Alph:
+\providecounterrepresentation\Alph{%
+  \ifcase#1%
+    \or A\or B\or C\or D\or E\or F%
+    \or G\or H\or I\or J\or K\or L%
+    \or M\or N\or O\or P\or Q\or R%
+    \or S\or T\or U\or V\or W\or X%
+    \or Y\or Z%
+  \else
+    \@ctrerr
+  \fi
+}
+% \fnsymbol:
+% this is the definition of \fnsymbol in `latex.ltx'; a redefinition like in
+% `fixltx2e.sty' would be preferable but \TextOrMath is not defined per
+% default and we don't want to require `fixltx2e.sty'
+\providecounterrepresentation\fnsymbol{%
+  \ensuremath{%
+    \ifcase#1%
+      \or *%
+      \or \dagger
+      \or \ddagger
+      \or \mathsection
+      \or \mathparagraph
+      \or \|%
+      \or **%
+      \or \dagger\dagger
+      \or \ddagger\ddagger
+    \else
+      \@ctrerr
+    \fi
+  }%
+}
+
+% --------------------------------------------------------------------------
+% colors definitions:
+\RequirePackage{xcolor}
+\RequirePackage{trimspaces}
+
+\xdefinecolor{cnltxbrown}{rgb}{0.60,0.25,0.15}
+\xdefinecolor{cnltxblue}{rgb}{0.02,0.04,0.48}
+\xdefinecolor{cnltxred}{rgb}{0.65,0.04,0.07}
+\xdefinecolor{cnltxgreen}{rgb}{0.06,0.44,0.08}
+\xdefinecolor{cnltxgray}{gray}{0.5}
+\colorlet{cnltxyellow}{yellow!40!brown}
+\xdefinecolor{cnltxformalblue}{rgb}{0,0.2,0.6}
+\xdefinecolor{cnltxformalred}{rgb}{0.8,0.1,0.2}
+
+% set a color-scheme for the manual:
+\newrobustcmd\definecolorscheme{%
+  \cnltx@define@colorscheme
+}
+\newrobustcmd*\cnltx@define@colorscheme[2]{%
+  \csgdef{cnltx@color@scheme@#1}{}%
+  \forcsvlist{\cnltx@get@color{#1}}{#2}%
+}
+\newcommand*\cnltx@get@color[2]{\cnltx@get@color@aux{#1}#2\q@stop}
+\def\cnltx@get@color@aux#1#2=>#3\q@stop{%
+  \listcsgadd{cnltx@color@scheme@#1}{%
+    \colorlet{\trim@spaces{#2}}{\trim@spaces{#3}}%
+  }%
+}
+
+\newcommand*\cnltx@use@colorscheme[1]{%
+  \forlistcsloop{\@firstofone}{cnltx@color@scheme@#1}%
+}
+
+\pgfkeys{
+  cnltx/.cd,
+    color-scheme/.code = \cnltx@use@colorscheme{#1}
+}
+
+% predefined color-schemes:
+\definecolorscheme{default}{
+  cs            => cnltxbrown ,
+  option        => cnltxyellow ,
+  module        => cnltxblue ,
+  comment       => cnltxgray ,
+  beginend      => red ,
+  env           => black ,
+  argument      => black ,
+  meta          => black!80 ,
+  cnltx         => cnltxred ,
+  cnltxbg       => white ,
+  link          => black!90 ,
+  versionnote   => black!75 ,
+  bibentry      => cnltxgreen ,
+  bibentryfield => black ,
+  expandable    => red ,
+  unexpandable  => black ,
+  makeidxkey    => cnltxgreen ,
+  makeidxstring => black ,
+  math          => cnltxgreen
+}
+
+\definecolorscheme{blue}{
+  cs            => cnltxbrown ,
+  option        => cnltxgreen ,
+  module        => cnltxred ,
+  comment       => cnltxgray ,
+  beginend      => red ,
+  env           => black ,
+  argument      => black ,
+  meta          => black!80 ,
+  cnltx         => cnltxblue ,
+  cnltxbg       => yellow!10 ,
+  link          => cnltx ,
+  versionnote   => black!75 ,
+  bibentry      => cnltxyellow ,
+  bibentryfield => black ,
+  expandable    => red ,
+  unexpandable  => black ,
+  makeidxkey    => cnltxyellow ,
+  makeidxstring => black ,
+  math          => cnltxgreen
+}
+
+\definecolorscheme{formal}{
+  cs            => black ,
+  option        => cnltxformalblue ,
+  module        => cnltxblue ,
+  comment       => cnltxgray ,
+  beginend      => red ,
+  env           => black ,
+  argument      => black ,
+  meta          => black!80 ,
+  cnltx         => cnltxformalblue ,
+  cnltxbg       => white ,
+  link          => black!90 ,
+  versionnote   => black!75 ,
+  bibentry      => black ,
+  bibentryfield => black ,
+  expandable    => red ,
+  unexpandable  => black ,
+  makeidxkey    => black ,
+  makeidxstring => black ,
+  math          => cnltxgreen
+}
+
+% set the default:
+\setcnltx{color-scheme=default}
+
+\endinput
+
+% --------------------------------------------------------------------------
+HISTORY:
+
+2013/09/08 v0.1   - first working version
+2013/09/10 v0.2   - added `cnltx-tools' to the bundle
+                  - extended the messaging creation to class messages
+2013/09/12 v0.3   - added index style file `cnltx.ist'
+                  - added color `module'
+                  - added \cnltx@remove@once and \cnltx@remove@all
+                  - added long versions of tokenlist manipulation macros
+2013/09/14 v0.4   - added \cnltx@fullexpand@afterarg
+                  - new colors `bibentry' and `bibentryfield'
+2013/09/20 v0.5   - added colors `expandable' and `unexpandable'
+                  - added \definecolorscheme
+2013/09/24 v0.6   - added \cnltx@ifisnum
+2013/09/30 v0.7   - added functionality to look for trailing punctuation
+                  - added colors `makeidxkey' and `makeidxstring'
+                  - added counter representation command facilities
+                  - generalized expansion helpers (by copying expl3's
+                    \exp_arg:N<spec> idea)
+                   - \iftest and \nottest
+2013/10/21 v0.8   - \cnltx@ifnextchars
+2013/11/22 v0.9   - \cnltx@modulo
+                  - scratch variables
+                  - \cnltx@ifshellescape
+                  - \cnltx@greplace@once, \cnltx@greplace@all,
+                    \cnltx@gremove@once, \cnltx@gremove@all
+                  - \cnltx@ifisnum now also returns <false> if the test
+                    argument is `<num>!'
+2014/01/05 v0.10  - \expandtwice
+                  - \cnltx@ifstrequal
+2014/03/11 v0.11  - \cnltx@save@catcode, \cnltx@save@catcodes,
+                    \cnltx@set@catcode, \cnltx@set@catcodes,
+                    \cnltx@restore@catcode, \cnltx@restore@catcodes
+                  - \cnltx@make@letter, \cnltx@make@other, \cnltx@make@active
+                  - \cnltx@load@module, \cnltx@load@modules
+2015/01/11 v0.12  - updating the bundle to CTAN
+                  - more security for \cnltx@ifisnum
+2015/08/17 v0.13  - resolve long overdue issues with cnltx-doc
+

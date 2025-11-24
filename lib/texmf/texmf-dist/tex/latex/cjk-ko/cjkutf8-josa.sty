@@ -1,0 +1,131 @@
+% cjkutf8-josa.sty
+%
+% Copyright (c) 2016 Dohyun Kim <nomos at ktug org>
+%
+% This program is free software; you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation; either version 2 of the License, or
+% (at your option) any later version.
+%
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+%
+% You should have received a copy of the GNU General Public License
+% along with this program in doc/COPYING; if not, write to the Free
+% Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+% MA 02110-1301 USA
+
+\ProvidesPackage{cjkutf8-josa}[2016/04/04 v1.8 Automatic Josa selection for cjk-ko]
+
+\AtBeginDocument{
+  \ifx\use@josa\undefined\else
+    % redefine \@setref
+    \let\CJKKO@orig@setref\@setref
+    \def\@setref#1#2#3{\CJKKO@orig@setref{#1}{#2}{#3}%
+      \bgroup
+      \ifx#1\relax\else
+        \ifx\protect\relax % not from kotexutf
+          \let\protect\noexpand % not from kotexutf
+          \xdef\josa@str{\expandafter#2#1}%
+        \fi
+      \fi
+      \egroup}
+    % redefine \@cite@ofmt
+    \let\CJKKO@orig@cite@ofmt\@cite@ofmt
+    \def\@cite@ofmt#1{\CJKKO@orig@cite@ofmt{#1}%
+      \bgroup
+      \let\protect\noexpand % not from kotexutf
+      \let\@safe@activesfalse\@empty % babel ?
+      \def\hyper@@link[##1]##2##3##4{##4}%
+      \def\beamer@sort##1##2{}%
+      \def\hyperlink##1##2{##2}% for beamer: not from kotexutf
+      \xdef\josa@str{#1}%
+      \egroup}
+  \fi
+  \@ifpackageloaded{hyperref}{\g@addto@macro\pdfstringdefPreHook{%
+      \let\jong\relax
+      \let\rieul\relax
+      \let\jung\relax
+      \def\^^ea{^^ea}%
+      \def\^^eb{^^eb}%
+      \def\^^ec{^^ec}%
+  }}{}
+}
+
+%%% user commands: \jong \jung \rieul
+\protected\def\jong {\let\josa@str\empty\chardef\@josa\z@ }
+\protected\def\rieul{\let\josa@str\empty\chardef\@josa\@ne}
+\protected\def\jung {\let\josa@str\empty\chardef\@josa\tw@}
+\jung
+
+\def\makejosa#1#2{%
+  \bgroup
+  \expandafter\make@josa\josa@str\@nil{#1}{#2}%
+  \egroup}
+
+\def\make@josa{\afterassignment\make@@josa\let\@let@token= }
+\def\make@@josa{%
+  \ifx\@let@token\@nil
+    \expandafter\make@@@josa
+  \else
+    \ifx\@let@token 1\rieul\else
+    \ifx\@let@token 3\jong \else
+    \ifx\@let@token 6\jong \else
+    \ifx\@let@token 7\rieul\else
+    \ifx\@let@token 8\rieul\else
+    \ifx\@let@token 0\jong \else
+    \ifx\@let@token l\rieul\else
+    \ifx\@let@token m\jong \else
+    \ifx\@let@token n\jong \else
+    \ifx\@let@token L\rieul\else
+    \ifx\@let@token M\jong \else
+    \ifx\@let@token N\jong \else
+    \ifx\@let@token\jong \jong \else
+    \ifx\@let@token\rieul\rieul\else
+      \jung
+    \fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi
+    \expandafter\make@josa
+  \fi}
+
+\def\make@@@josa#1#2{%
+  \ifcase\@josa #2% jong
+  \or \ifx\empty#1\empty\else#2\fi % rieul
+  \else #1% jung
+  \fi}
+
+\def\error@josa{\PackageError{cjkutf8-josa}{Undefined Control Sequence}{}}
+
+\DeclareRobustCommand*\^^ea[2]{%
+  \ifx#1^^b0\ifx#2^^80\makejosa{가}{이}\else\error@josa\fi % \가
+  \else\ifx#1^^b3\ifx#2^^bc\makejosa{와}{과}\else\error@josa\fi % \과
+  \else\error@josa\fi\fi}
+\DeclareRobustCommand*\^^eb[2]{%
+  \ifx#1^^8a\ifx#2^^94\makejosa{는}{은}\else\error@josa\fi % \는
+  \else\ifx#1^^9d\ifx#2^^bc\makejosa{라}{이라}\else\error@josa\fi % \라
+  \else\ifx#1^^a1\ifx#2^^9c\makejosa{}{으}로\else\error@josa\fi % \로
+  \else\ifx#1^^a5\ifx#2^^bc\makejosa{를}{을}\else\error@josa\fi % \를
+  \else\error@josa\fi\fi\fi\fi}
+\DeclareRobustCommand*\^^ec[2]{%
+  \let\reserved@a#1\let\reserved@b#2%
+  \futurelet\@let@token\@josa@begin@ec}
+\def\@josa@begin@ec{%
+  \ifx\reserved@a^^99%
+    \ifx\reserved@b^^80\makejosa{와}{과}\else\error@josa\fi % \와
+  \else\ifx\reserved@a^^9c%
+    \ifx\reserved@b^^bc\makejosa{}{으}\else\error@josa\fi % \으로
+  \else\ifx\reserved@a^^9d%
+    \ifx\reserved@b^^80\makejosa{는}{은}% \은
+    \else\ifx\reserved@b^^84\makejosa{를}{을}% \을
+    \else\ifx\reserved@b^^b4%
+      \ifx\@let@token^^ea\makejosa\relax{이}% \이라
+      \else\ifx\@let@token^^eb\makejosa\relax{이}% \이라
+      \else\ifx\@let@token^^ec\makejosa\relax{이}% \이라
+      \else\ifx\@let@token^^ed\makejosa\relax{이}% \이라
+      \else\makejosa{가}{이}% \이
+      \fi\fi\fi\fi
+    \else\error@josa \fi\fi\fi
+  \else\error@josa \fi\fi\fi}
+
+\endinput

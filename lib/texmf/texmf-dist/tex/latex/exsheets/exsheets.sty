@@ -1,0 +1,3295 @@
+% ----------------------------------------------------------------------------
+% the EXSHEETS package
+% 
+%   Yet another package for the creation of exercise sheets
+% 
+% ----------------------------------------------------------------------------
+% Clemens Niederberger
+% Web:    http://www.mychemistry.eu/forums/forum/exsheets
+% E-Mail: contact@mychemistry.eu
+% ----------------------------------------------------------------------------
+% Copyright 2011-2016 Clemens Niederberger
+% 
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+% 
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Clemens Niederberger.
+% ----------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% ----------------------------------------------------------------------------
+\RequirePackage { expl3 , xparse }
+\ExplSyntaxOn
+
+\tl_const:Nn \c_exsheets_date_tl    {2016/02/01}
+\tl_const:Nn \c_exsheets_version_tl {0.21b}
+\tl_const:Nn \c_exsheets_info_tl
+  {Yet~ another~ package~ for~ the~ creation~ of~ exercise~ sheets~ and~ exams.}
+
+\ProvidesExplPackage
+  {exsheets}
+  {\c_exsheets_date_tl}
+  {\c_exsheets_version_tl}
+  {\c_exsheets_info_tl}
+
+% ----------------------------------------------------------------------------
+% variants of kernel functions:
+\cs_generate_variant:Nn \prop_get:NnN    { NV , Nx , cV , cf }
+\cs_generate_variant:Nn \prop_get:NnNF   { NV , Nx , cV , cf }
+\cs_generate_variant:Nn \prop_get:NnNT   { NV , Nx , cV , cf }
+\cs_generate_variant:Nn \prop_get:NnNTF  { NV , Nx , cV , cf }
+\cs_generate_variant:Nn \prop_gput:Nnn   { Nf , Nff , Nfx , Nx , Nxx , NxV , cf , cff }
+\cs_generate_variant:Nn \prop_gput_if_new:Nnn { Nxx }
+\cs_generate_variant:Nn \tl_if_blank:nTF { x }
+\cs_generate_variant:Nn \tl_if_eq:nnF    { x }
+\cs_generate_variant:Nn \int_to_arabic:n { V }
+\cs_generate_variant:Nn \seq_set_split:Nnn { NnV }
+\cs_generate_variant:Nn \quark_if_no_value:nTF { V }
+
+% ----------------------------------------------------------------------------
+% temporary variables
+\tl_new:N    \l__exsheets_tmpa_tl
+\tl_new:N    \l__exsheets_tmpb_tl
+\tl_new:N    \l__exsheets_tmpc_tl
+\int_new:N   \l__exsheets_tmpa_int
+\int_new:N   \l__exsheets_tmpb_int
+\int_new:N   \l__exsheets_tmpc_int
+\int_new:N   \l__exsheets_tmpd_int
+\int_new:N   \l__exsheets_tmpe_int
+\dim_new:N   \l__exsheets_tmpa_dim
+\dim_new:N   \l__exsheets_tmpb_dim
+\seq_new:N   \l__exsheets_tmpa_seq
+\fp_new:N    \l__exsheets_tmpa_fp
+\clist_new:N \l__exsheets_tmpa_clist
+\bool_new:N  \l__exsheets_tmpa_bool
+
+% ----------------------------------------------------------------------------
+% messages
+\msg_new:nnn {exsheets} {file-not-found}
+  {
+    You've~ requested~ the~ file~ `\tl_to_str:n {#1}'~ but~ I~ cannot~ find~
+    it~ \msg_line_context: .
+  }
+
+\msg_new:nnn {exsheets} {totalpoints}
+  {
+    You~ need~ to~ activate~ `points/parse'~ if~ you~ want~ to~ use~
+    \token_to_str:N \totalpoints .~ I~ will~ do~ nothing~ instead.
+  }
+
+\msg_new:nnn {exsheets} {parse-points}
+  {
+    You~ need~ to~ activate~ `points/parse'~ if~ you~ want~ to~ use~
+    \token_to_str:N #1 .~ I~ will~ do~ nothing~ instead.
+  }
+
+\msg_new:nnn {exsheets} {headings}
+  {
+    You~ requested~ the~ headings~ instance~ `#1'~ \msg_line_context: \c_space_tl
+    which~ is~ not~ defined.~ Is~ this~ a~ typo?~ Anyway,~ I~ will~ use~ the~
+    instance~ `block'~ instead~ and~pretend~ nothing~ happened.
+  }
+
+\msg_new:nnn {exsheets} {random-file}
+  {
+    You~ asked~ me~ to~ select~ #1~ questions~ from~ file~ #2~ which~
+    contains~ #3~ questions.~ I'll~ select~ all~ of~ them.
+  }
+
+\msg_new:nnn {exsheets} {random-selectable}
+  {
+    You~ asked~ me~ to~ select~ #1~ questions~ from~ file~ #2~ which~
+    contains~ #3~ questions.~ #4~ of~ these~ are~ selectable,~ so~ I'll~
+    select~ all~ of~ them.
+  }
+
+\msg_new:nnn {exsheets} {only-inside-question}
+  {
+    The~ command~ `~ \token_to_str:N #1 \c_space_tl'~ can~ only~ be~ used~
+    inside~ the~ question~ environment.
+  }
+
+\msg_new:nnn {exsheets} {loading-configurations}
+  { Loading~ custom~ configurations~ file~ `exsheets_configurations.cgf'. }
+
+\msg_new:nnn {exsheets} {deprecated-command}
+  {
+    The~ command~ `#1'~ is~ deprecated.~ Use~ `#2'~ instead.
+  }
+
+\msg_new:nnn {exsheets} {dropped-option}
+  { The~ option~ `#1'~ has~ been~ dropped. }
+
+\msg_new:nnn {exsheets} {grade-missing}
+  { The~ grade~ `#1'~ has~ never~ been~ declared. }
+
+\msg_new:nnn {exsheets} {grade-parse}
+  {
+    I~ cannot~ calculate~ the~ points~ for~ grade~ `#1'~ since~ you're~ using~
+    the~ option~ `points/parse=false'.
+  }
+
+\msg_new:nnn {exsheets} {variations}
+  {
+    The~ number~ of~ variations~ must~ at~ least~ be~ `2'.~ You~ chose~ `#1'~
+    hence~ I'm~ doing~ nothing.
+  }
+
+\msg_new:nnn {exsheets} {variant}
+  {
+    You~ must~ choose~ an~ integer~ between~ `1'~ and~ `#1'.~ You~ chose~
+    `#2'~ hence~ I'm~ doing~ nothing.
+  }
+
+\cs_new_protected:Npn \exsheets_deprecate_cs:Npnn #1#2#
+  { \__exsheets_deprecate_cs:Nnnn #1 {#2} }
+\cs_new_protected:Npn \__exsheets_deprecate_cs:Nnnn #1#2#3#4
+  {
+    \cs_new_protected:Npn #1 #2
+      {
+        \tl_if_blank:nTF {#3}
+          { \msg_warning:nnnn {exsheets} { deprecated-command } {#1} {#4} }
+          { \msg_warning:nnnn {exsheets} { deprecated-command } {#1} {#3} }
+        #4
+      }
+  }
+
+\cs_new_protected:Npn \exsheets_option_dropped:n #1
+  { \msg_warning:nnn {exsheets} {dropped-option} {#1} }
+
+% ----------------------------------------------------------------------------
+\RequirePackage
+  { xtemplate , l3sort , l3keys2e , xcolor , etoolbox , environ , pgfcore }
+
+% ----------------------------------------------------------------------------
+% color:
+\xdefinecolor { exsheetsblue } { rgb } { 0.02 , 0.04 , 0.48 }
+\xdefinecolor { exsheetsred  } { rgb } { 0.65 , 0.04 , 0.07 }
+% \tl_new:N   \g__exsheets_color_tl
+\tl_const:Nn \c__exsheets_color_tl { exsheetsblue }
+
+% ----------------------------------------------------------------------------
+% write to aux file:
+\cs_new_protected:Npn \exsheets_write_to_aux_x:n #1
+  { \if@filesw \iow_now:Nx \@auxout {#1} \fi }
+
+% prevent compilatin errors when exsheets is removed from a document:
+\AtBeginDocument{
+  \exsheets_write_to_aux_x:n
+    {
+      \exp_not:N \providecommand \exp_not:N \exsheets@question@property[3]{} ^^J
+      \exp_not:N \providecommand \exp_not:N \exsheets@save@number[2]{} ^^J
+      \exp_not:N \providecommand \exp_not:N \exsheets@sum@of@points[1]{} ^^J
+      \exp_not:N \providecommand \exp_not:N \exsheets@sum@of@bonus[1]{} ^^J
+      \exp_not:N \providecommand \exp_not:N \exsheets@use@id[2]{} ^^J
+      % \exp_not:N \providecommand \exp_not:N \exsheets@number@of@questions[1]{} ^^J
+      % \exp_not:N \providecommand \exp_not:N \numberofquestions{}
+    }
+}
+
+% ----------------------------------------------------------------------------
+% how are questions/solutions/... counted?
+\bool_new:N      \l__exsheets_print_number_bool
+\bool_set_true:N \l__exsheets_print_number_bool
+
+\tl_new:N  \l__exsheets_qu_counter_pattern_tl
+\tl_set:Nn \l__exsheets_qu_counter_pattern_tl { qu. }
+\tl_new:N  \l__exsheets_qu_counter_interpretation_tl
+\tl_new:N  \l__exsheets_counter_patterns_tl
+\tl_new:N  \l__exsheets_current_pattern_interpretation_tl
+\tl_new:N  \l__exsheets_current_pattern_tl
+
+\RequirePackage { cntformats }
+
+\cs_if_exist:NT \thechapter
+  {
+    \AddCounterPattern* [ exsheets ] { chapter } { ch }
+    \ReadCounterFrom [ exsheets ] { chapter } \l__exsheets_counter_ch_int
+  }
+
+\AddCounterPattern* [ exsheets ] { section } { se }
+\ReadCounterFrom [ exsheets ] { section } \l__exsheets_counter_sec_int
+
+\NewCounterPattern* [ exsheets ] { question } { qu }
+\ReadCounterFrom [ exsheets ] { question } \l_exsheets_counter_qu_int
+
+% ----------------------------------------------------------------------------
+% (also) package options:
+\bool_new:N \l__exsheets_solutions_by_ref_bool
+\bool_new:N \l__exsheets_questions_totoc_bool
+\bool_new:N \l__exsheets_solutions_totoc_bool
+\bool_new:N \l__exsheets_auto_label_bool
+\bool_new:N \l__exsheets_no_skip_after_bool
+\bool_new:N \l__exsheets_use_saved_pattern_bool
+\bool_set_true:N \l__exsheets_use_saved_pattern_bool
+
+\tl_new:N   \l__exsheets_heading_instance_tl
+\tl_set:Nn  \l__exsheets_heading_instance_tl {block}
+\tl_new:N   \l__exsheets_question_heading_instance_tl
+\tl_new:N   \l__exsheets_solution_heading_instance_tl
+\tl_new:N   \l_exsheets_heading_title_user_format_tl
+\tl_set:Nn  \l_exsheets_heading_title_user_format_tl { \normalsize\bfseries }
+\tl_new:N   \l_exsheets_heading_subtitle_user_format_tl
+\tl_set:Nn  \l_exsheets_heading_subtitle_user_format_tl { \normalsize\itshape }
+\tl_new:N   \l__exsheets_questions_toclevel_tl
+\tl_set:Nn  \l__exsheets_questions_toclevel_tl {subsection}
+\tl_new:N   \l__exsheets_solutions_toclevel_tl
+\tl_set:Nn  \l__exsheets_solutions_toclevel_tl {subsection}
+\tl_new:N   \l__exsheets_new_chapter_hook_tl
+\tl_new:N   \l__exsheets_new_section_hook_tl
+
+\dim_new:N  \l__exsheets_questions_skip_below_dim
+\dim_set:Nn \l__exsheets_questions_skip_below_dim { .5\baselineskip }
+\dim_new:N  \l__exsheets_solutions_skip_below_dim
+\dim_set:Nn \l__exsheets_solutions_skip_below_dim { .5\baselineskip }
+
+\keys_define:nn {exsheets}
+  {
+    color                     .code:n     =
+      \exsheets_option_dropped:n {color} ,
+    counter-format            .code:n     =
+      \SaveCounterPattern [ exsheets ]
+        \l__exsheets_qu_counter_pattern_tl
+        \l__exsheets_qu_counter_interpretation_tl
+        {#1} ,
+    counter-within            .code:n     = \@addtoreset{question}{#1} ,
+    headings                  .tl_set:N   = \l__exsheets_heading_instance_tl ,
+    load-headings             .code:n     =
+      \exsheets_option_dropped:n {load-headings} ,
+    headings-format           .tl_set:N   =
+      \l_exsheets_heading_title_user_format_tl ,
+    subtitle-format           .tl_set:N   =
+      \l_exsheets_heading_subtitle_user_format_tl ,
+    load-tasks                .code:n     =
+      \exsheets_option_dropped:n {load-tasks} ,
+    use-ref                   .bool_set:N = \l__exsheets_solutions_by_ref_bool ,
+    totoc                     .choice: ,
+    totoc / true              .code:n     =
+      \bool_set_true:N \l__exsheets_questions_totoc_bool
+      \bool_set_true:N \l__exsheets_solutions_totoc_bool ,
+    totoc / false             .code:n     =
+      \bool_set_false:N \l__exsheets_questions_totoc_bool
+      \bool_set_false:N \l__exsheets_solutions_totoc_bool ,
+    totoc                     .default:n  = true ,
+    questions-totoc           .bool_set:N = \l__exsheets_questions_totoc_bool ,
+    solutions-totoc           .bool_set:N = \l__exsheets_solutions_totoc_bool ,
+    toc-level                 .code:n     =
+      \tl_set:Nn \l__exsheets_questions_toclevel_tl {#1}
+      \tl_set:Nn \l__exsheets_solutions_toclevel_tl {#1} ,
+    questions-toc-level       .tl_set:N   = \l__exsheets_questions_toclevel_tl ,
+    solutions-toc-level       .tl_set:N   = \l__exsheets_solutions_toclevel_tl ,
+    skip-below                .code:n     =
+      \dim_set:Nn \l__exsheets_questions_skip_below_dim {#1}
+      \dim_set:Nn \l__exsheets_solutions_skip_below_dim {#1} ,
+    no-skip-below             .bool_set:N = \l__exsheets_no_skip_after_bool ,
+    auto-label                .bool_set:N = \l__exsheets_auto_label_bool ,
+    label-format              .code:n     =
+      \cs_set:Npn \exsheets_label_format:n ##1 {#1}
+      \exsheets_update_referencing_commands: ,
+    label-cmd                 .code:n     =
+      \cs_set:Npn \__exsheets_label:n {#1}
+      \exsheets_update_referencing_commands: ,
+    ref-cmd                   .code:n     =
+      \cs_set:Npn \__exsheets_ref:n {#1}
+      \exsheets_update_referencing_commands: ,
+    page-ref-cmd              .code:n     =
+      \cs_set:Npn \__exsheets_pageref:n {#1}
+      \exsheets_update_referencing_commands: ,
+    chapter-hook              .tl_set:N   = \l__exsheets_new_chapter_hook_tl ,
+    section-hook              .tl_set:N   = \l__exsheets_new_section_hook_tl ,
+    use-saved-counter-format  .bool_set:N = \l__exsheets_use_saved_pattern_bool
+  }
+\keys_set:nn {exsheets} { counter-format = qu. }
+
+% process package options:
+\ProcessKeysOptions {exsheets}
+
+% ----------------------------------------------------------------------------
+% points for exercises
+\bool_new:N       \l__exsheets_points_questions_default_bool
+\bool_set_false:N \l__exsheets_points_questions_default_bool
+\bool_new:N       \l__exsheets_parse_points_bool
+\bool_set_true:N  \l__exsheets_parse_points_bool
+\bool_new:N       \l__exsheets_points_name_bool
+\bool_set_true:N  \l__exsheets_points_name_bool
+\bool_new:N       \l__exsheets_points_separate_bonus_bool
+
+\fp_new:N         \g__exsheets_points_sum_fp
+\fp_new:N         \l__exsheets_points_default_fp
+\fp_set:Nn        \l__exsheets_points_default_fp { 1 }
+\fp_new:N         \l__exsheets_question_points_fp
+% this one should be public:
+\fp_new:N         \g_exsheets_total_points_fp
+\fp_new:N         \g__exsheets_bonus_sum_fp
+\fp_new:N         \l__exsheets_question_bonus_fp
+% this one should be public
+\fp_new:N         \g_exsheets_total_bonus_fp
+
+\tl_new:N         \l__exsheets_points_name_tl
+\tl_set:Nn        \l__exsheets_points_name_tl {P.}
+\tl_new:N         \l__exsheets_points_name_plural_tl
+\tl_set:Nn        \l__exsheets_points_name_plural_tl {P.}
+\tl_new:N         \l__exsheets_bonus_name_tl
+\tl_set:Nn        \l__exsheets_bonus_name_tl {P.}
+\tl_new:N         \l__exsheets_bonus_name_plural_tl
+\tl_set:Nn        \l__exsheets_bonus_name_plural_tl {P.}
+\tl_new:N         \l__exsheets_points_number_format_tl
+\tl_new:N         \l__exsheets_bonus_number_format_tl
+\tl_new:N         \l__exsheets_points_pre_bonus_marker_tl
+\tl_set:Nn        \l__exsheets_points_pre_bonus_marker_tl { \space(+ }
+\tl_new:N         \l__exsheets_points_post_bonus_marker_tl
+\tl_set:Nn        \l__exsheets_points_post_bonus_marker_tl { ) }
+\tl_new:N         \l__exsheets_points_format_tl
+\tl_set:Nn        \l__exsheets_points_format_tl { \use:n }
+
+\cs_new_protected:Npn \__exsheets_set_points_name:nNN #1#2#3
+  {
+    \tl_if_in:nnTF {#1} { / }
+      { \__exsheets_set_points_name_aux:wNN #1 \q_mark #2#3 }
+      { \__exsheets_set_points_name_aux:wNN #1 / \q_mark #2#3 }
+  }
+
+\cs_new_protected:Npn \__exsheets_set_points_name_aux:wNN #1/#2 \q_mark #3#4
+  {
+    \tl_set:Nn #3 {#1}
+    \tl_set:Nn #4 { #1#2 }
+  }
+
+\cs_new_protected:Npn \exsheets_set_points_name:n #1
+  {
+    \__exsheets_set_points_name:nNN {#1}
+      \l__exsheets_points_name_tl
+      \l__exsheets_points_name_plural_tl
+  }
+
+\cs_new_protected:Npn \exsheets_set_bonus_name:n #1
+  {
+    \__exsheets_set_points_name:nNN {#1}
+      \l__exsheets_bonus_name_tl
+      \l__exsheets_bonus_name_plural_tl
+  }
+
+% FIXME: \fp_add will deprecate!
+\cs_new_protected:Npn \exsheets_add_points:n #1
+  { 
+    \fp_gadd:Nn \g__exsheets_points_sum_fp {#1}
+    \fp_gadd:Nn \g__exsheets_this_question_points_fp {#1}
+  }
+\cs_generate_variant:Nn \exsheets_add_points:n { V }
+
+\cs_new_protected:Npn \exsheets_add_bonus:n #1
+  {
+    \fp_gadd:Nn \g__exsheets_bonus_sum_fp {#1}
+    \fp_gadd:Nn \g__exsheets_this_question_bonus_fp {#1}
+  }
+\cs_generate_variant:Nn \exsheets_add_bonus:n { V }
+
+\cs_new_protected:Npn \exsheets@sum@of@points #1
+  { \fp_gset:Nn \g_exsheets_total_points_fp {#1} }
+
+\cs_new_protected:Npn \exsheets@sum@of@bonus #1
+  { \fp_gset:Nn \g_exsheets_total_bonus_fp {#1} }
+
+\cs_new:Npn \__exsheets_parse_points:nN #1#2
+  {
+    \group_begin:
+      \tl_use:N #2
+        {
+          \bool_if:NTF \l__exsheets_parse_points_bool
+            { \exsheets_num:n { \fp_to_decimal:n {#1} } }
+            { \use:n {#1} }
+        }
+    \group_end:
+  }
+\cs_new:Npn \exsheets_parse_points:n #1
+  {
+    \__exsheets_parse_points:nN {#1}
+      \l__exsheets_points_number_format_tl
+  }
+\cs_generate_variant:Nn \exsheets_parse_points:n { V }
+
+\cs_new:Npn \exsheets_parse_bonus:n #1
+  {
+    \__exsheets_parse_points:nN {#1}
+      \l__exsheets_bonus_number_format_tl
+  }
+\cs_generate_variant:Nn \exsheets_parse_bonus:n { V }
+
+\cs_new:Npn \exsheets_num:n #1
+  { \fp_to_decimal:n {#1} }
+\cs_generate_variant:Nn \exsheets_num:n { V,x }
+
+\cs_new:Npn \__exsheets_print_points_name:nNN #1#2#3
+  {
+    \bool_if:NT \l__exsheets_points_name_bool
+      {
+        \,
+        \hbox:n
+          {
+            \bool_if:NTF \l__exsheets_parse_points_bool
+              {
+                \tl_if_eq:nnTF {#1} { ?? }
+                  { \tl_use:N #3 }
+                  {
+                    \fp_compare:nTF { #1 =  1 }
+                      { \tl_use:N #2 }
+                      { \tl_use:N #3 }
+                  }
+              }
+              { \tl_use:N #3 }
+          }
+      }
+  }
+
+\cs_new:Npn \exsheets_points_name:n #1
+  {
+    \__exsheets_print_points_name:nNN {#1}
+      \l__exsheets_points_name_tl
+      \l__exsheets_points_name_plural_tl
+  }
+\cs_generate_variant:Nn \exsheets_points_name:n { V }
+
+\cs_new:Npn \exsheets_bonus_name:n #1
+  {
+    \__exsheets_print_points_name:nNN {#1}
+      \l__exsheets_bonus_name_tl
+      \l__exsheets_bonus_name_plural_tl
+  }
+\cs_generate_variant:Nn \exsheets_bonus_name:n { V }
+
+\NewDocumentCommand \addpoints { sm }
+  {
+    \bool_if:NTF \l__exsheets_inside_question_bool
+      {
+        \exsheets_add_points:n {#2}
+        \IfBooleanF {#1} { \exsheets_print_points:n {#2} }
+      }
+      { \msg_error:nnn {exsheets} {only-inside-question} {\addpoints} }
+  }
+
+\NewDocumentCommand \addbonus { sm }
+  {
+    \bool_if:NTF \l__exsheets_inside_question_bool
+      {
+        \exsheets_add_bonus:n {#2}
+        \IfBooleanF {#1} { \exsheets_print_bonus:n {#2} }
+      }
+      { \msg_error:nnn {exsheets} {only-inside-question} {\addbonus} }
+  }
+
+\NewDocumentCommand \points { sm }
+  {
+    \IfBooleanTF {#1}
+      { \exsheets_parse_points:n {#2} }
+      { \exsheets_print_points:n {#2} }
+  }
+
+\NewDocumentCommand \bonus { sm }
+  {
+    \IfBooleanTF {#1}
+      { \exsheets_parse_bonus:n {#2} }
+      { \exsheets_print_bonus:n {#2} }
+  }
+
+\cs_new_protected:Npn \exsheets_print_points:n #1
+  {
+    \group_begin:
+      \tl_use:N \l__exsheets_points_format_tl
+        {
+          \exsheets_parse_points:n {#1}
+          \exsheets_points_name:n {#1}
+        }
+    \group_end:
+  }
+\cs_generate_variant:Nn \exsheets_print_points:n { V }
+
+\cs_new_protected:Npn \exsheets_print_bonus:n #1
+  {
+    \exsheets_parse_bonus:n {#1}
+    \exsheets_bonus_name:n {#1}
+  }
+\cs_generate_variant:Nn \exsheets_print_bonus:n { V }
+
+\NewDocumentCommand \pointssum { s }
+  {
+    \bool_if:NTF \l__exsheets_parse_points_bool
+      {
+        \IfBooleanTF {#1}
+          { \exsheets_parse_points:n { \g_exsheets_total_points_fp } }
+          { \exsheets_print_points:n { \g_exsheets_total_points_fp } }
+      }
+      { \msg_warning:nnn {exsheets} {parse-points} {\pointssum} }
+  }
+
+\NewDocumentCommand \bonussum { s }
+  {
+    \bool_if:NTF \l__exsheets_parse_points_bool
+      {
+        \IfBooleanTF {#1}
+          { \exsheets_parse_bonus:n { \g_exsheets_total_bonus_fp } }
+          { \exsheets_print_bonus:n { \g_exsheets_total_bonus_fp } }
+      }
+      { \msg_warning:nnn {exsheets} {parse-points} {\bonussum} }
+  }
+
+\NewDocumentCommand \currentpointssum { s }
+  {
+    \bool_if:NTF \l__exsheets_parse_points_bool
+      {
+        \IfBooleanTF {#1}
+          { \exsheets_parse_points:n { \g__exsheets_points_sum_fp } }
+          { \exsheets_print_points:n { \g__exsheets_points_sum_fp } }
+      }
+      { \msg_warning:nnn {exsheets} {parse-points} {\currentpointssum} }
+  }
+
+\NewDocumentCommand \currentbonussum { s }
+  {
+    \bool_if:NTF \l__exsheets_parse_points_bool
+      {
+        \IfBooleanTF {#1}
+          { \exsheets_parse_bonus:n { \g__exsheets_bonus_sum_fp } }
+          { \exsheets_print_bonus:n { \g__exsheets_bonus_sum_fp } }
+      }
+      { \msg_warning:nnn {exsheets} {parse-points} {\currentbonussum} }
+  }
+
+\NewDocumentCommand \totalpoints { s }
+  {
+    \group_begin:
+      \tl_use:N \l__exsheets_points_format_tl
+      {
+        \exsheets_totalpoints:
+        \IfBooleanF {#1}
+          {
+            \bool_if:nT
+              {
+                \l__exsheets_points_separate_bonus_bool ||
+                \fp_compare_p:n { \g_exsheets_total_bonus_fp = 0 }
+              }
+              { \exsheets_points_name:n { \g_exsheets_total_points_fp } }
+          }
+        \exsheets_totalbonus:
+        \IfBooleanF {#1}
+          {
+            \fp_compare:nF { \g_exsheets_total_bonus_fp = 0 }
+              {
+                \bool_if:NTF \l__exsheets_points_separate_bonus_bool
+                  { \exsheets_bonus_name:n { \g_exsheets_total_bonus_fp } }
+                  {
+                    \exsheets_points_name:n
+                      { \g_exsheets_total_points_fp + \g_exsheets_total_bonus_fp }
+                  }
+              }
+          }
+      }
+    \group_end:
+  }
+
+\exsheets_deprecate_cs:Npnn \sumpoints {} { \totalpoints* }
+
+\cs_new_protected:Npn \exsheets_totalpoints:
+  {
+    \bool_if:NTF \l__exsheets_parse_points_bool
+      {
+        \fp_compare:nTF { \g_exsheets_total_points_fp = 0 }
+          { ?? \, \exsheets_points_name:n { ?? } }
+          {
+            \exsheets_parse_points:n
+              { \g_exsheets_total_points_fp }
+          }
+      }
+      { \msg_warning:nn {exsheets} {totalpoints} }
+  }
+
+\cs_new:Npn \exsheets_totalbonus:
+  {
+    \bool_if:NT \l__exsheets_parse_points_bool
+      {
+        \fp_compare:nF { \g_exsheets_total_bonus_fp = 0 }
+          {
+            \tl_use:N \l__exsheets_points_pre_bonus_marker_tl
+            \exsheets_parse_bonus:n
+              { \g_exsheets_total_bonus_fp }
+            \tl_use:N \l__exsheets_points_post_bonus_marker_tl
+          }
+      }
+  }
+
+\keys_define:nn { exsheets / points }
+  {
+    name                 .code:n     =
+      \exsheets_set_points_name:n {#1}
+      \exsheets_set_bonus_name:n {#1} ,
+    name-plural          .code:n     =
+      \tl_set:Nn \l__exsheets_points_name_plural_tl {#1}
+      \tl_set:Nn \l__exsheets_bonus_name_plural_tl {#1} ,
+    bonus-name           .code:n     = \exsheets_set_bonus_name:n {#1} ,
+    bonus-plural         .tl_set:N   = \l__exsheets_bonus_name_plural_tl ,
+    pre-bonus            .tl_set:N   = \l__exsheets_points_pre_bonus_marker_tl ,
+    post-bonus           .tl_set:N   = \l__exsheets_points_post_bonus_marker_tl ,
+    use-name             .bool_set:N = \l__exsheets_points_name_bool ,
+    format               .tl_set:N   = \l__exsheets_points_format_tl ,
+    number-format        .tl_set:N   = \l__exsheets_points_number_format_tl ,
+    bonus-format         .tl_set:N   = \l__exsheets_bonus_number_format_tl ,
+    parse                .bool_set:N = \l__exsheets_parse_points_bool ,
+    separate-bonus       .bool_set:N = \l__exsheets_points_separate_bonus_bool
+  }
+
+% ----------------------------------------------------------------------------
+% variations of an exam, see http://tex.stackexchange.com/q/57012/5049 for
+% inspiration of the following features
+\int_zero_new:N \l__exsheets_variations_int
+
+\cs_new_protected:Npn \exsheets_set_variations:n #1
+  {
+    \int_compare:nNnTF {#1} < { 2 }
+      { \msg_warning:nnn {exsheets} {variations} {#1} }
+      {
+        \int_set:Nn \l__exsheets_variations_int {#1}
+        \int_zero:N \l__exsheets_tmpa_int
+        \int_do_while:nNnn
+          { \l__exsheets_tmpa_int } < { \l__exsheets_variations_int }
+          {
+            \int_incr:N \l__exsheets_tmpa_int
+            \__exsheets_generate_variation_auxiliary:n
+              { \l__exsheets_tmpa_int }
+            \__exsheets_reset_variation_auxiliary:x
+              { \int_use:N \l__exsheets_tmpa_int }
+          }
+        \__exsheets_generate_variation_auxiliary:n
+          { \l__exsheets_variations_int + 1 }
+        \exsheets_variant:n { 1 }
+      }
+  }
+
+\cs_new_protected:Npn \exsheets_variant:n #1
+  {
+    \bool_if:nTF
+      {
+        \int_compare_p:nNn {#1} > { 0 } &&
+        \int_compare_p:nNn {#1} < { \l__exsheets_variations_int + 1 }
+      }
+      {
+        \int_zero:N \l__exsheets_tmpa_int
+        \int_do_while:nNnn
+          { \l__exsheets_tmpa_int } < { \l__exsheets_variations_int }
+          {
+            \int_incr:N \l__exsheets_tmpa_int
+            \__exsheets_reset_variation_auxiliary:x
+              { \int_use:N \l__exsheets_tmpa_int }
+          }
+        \cs_set:cpn { __exsheets_variation_ \int_to_roman:n {#1} :n } ##1
+          {
+            ##1
+            \cs_set:Npn \exsheets_last_variant: {##1}
+            \use:c { __exsheets_variation_ \int_to_roman:n { #1 + 1 } :n }
+          }
+      }
+      {
+        \msg_warning:nnxx {exsheets} {variant}
+          { \int_use:N \l__exsheets_variations_int } {#1}
+      }
+  }
+
+\cs_new_protected:Npn \exsheets_vary:w
+  { \__exsheets_variation_i:n }
+  
+\cs_new:Npn \exsheets_last_variant: { }
+
+\cs_new_protected:Npn \__exsheets_generate_variation_auxiliary:n #1
+  {
+    \cs_if_exist:cTF { __exsheets_variation_ \int_to_roman:n {#1} :n }
+      { \cs_set:cpn { __exsheets_variation_ \int_to_roman:n {#1} :n } { } }
+      { \cs_new:cpn { __exsheets_variation_ \int_to_roman:n {#1} :n } { } }
+  }
+
+\cs_new_protected:Npn \__exsheets_reset_variation_auxiliary:n #1
+  {
+    \cs_set:cpn { __exsheets_variation_ \int_to_roman:n {#1} :n } ##1
+      { \use:c { __exsheets_variation_ \int_to_roman:n { #1 + 1 } :n } }
+  }
+\cs_generate_variant:Nn \__exsheets_reset_variation_auxiliary:n { x }
+
+\NewDocumentCommand \SetVariations { m }
+  { \exsheets_set_variations:n {#1} }
+
+\NewDocumentCommand \variant { m }
+  { \exsheets_variant:n {#1} }
+
+\NewDocumentCommand \vary { }
+  { \exsheets_vary:w }
+
+\NewDocumentCommand \lastvariant { }
+  { \exsheets_last_variant: }
+
+% initiate: two variations, first is default
+\SetVariations { 2 }
+\variant    { 1 }
+
+% ----------------------------------------------------------------------------
+% grades distribution
+\prop_new:N \l__exsheets_relgrades_prop
+\fp_new:N   \l__exsheets_grade_round_fp
+\fp_zero:N  \l__exsheets_grade_round_fp
+\bool_new:N \l__exsheets_grades_half_bool
+
+\cs_new:Npn \__exsheets_fp_round_to_half:n #1
+  { round( 2*(#1),0)/2 }
+
+\cs_new:Npn \__exsheets_grades_round:n #1
+  { round ( #1 , \l__exsheets_grade_round_fp ) }
+
+\cs_new:Npn \__exsheets_grade_rounded:
+  {
+    \bool_if:NTF { \l__exsheets_grades_half_bool }
+      { \__exsheets_fp_round_to_half:n }
+      { \__exsheets_grades_round:n }
+    { \g_exsheets_total_points_fp * \l__exsheets_tmpa_fp }
+  }
+
+\cs_new:Npn \exsheets_strip_braces:N #1
+  { \exp_after:wN \__exsheets_strip_braces:w \exp_after:wN #1#1 \q_stop }
+\cs_new_protected:Npn \__exsheets_strip_braces:w #1#2 \q_stop
+  { \tl_set:Nn #1 {#2} }
+
+\cs_new_protected:Npn \__exsheets_declare_relgrades:n #1
+  {
+    \clist_set:Nn \l__exsheets_tmpa_clist {#1}
+    \clist_map_inline:Nn \l__exsheets_tmpa_clist
+      { \__exsheets_declare_relgrade:w ##1 \q_stop }
+  }
+
+\cs_new_protected:Npn \__exsheets_declare_relgrade:w #1 = #2 \q_stop
+  {
+    \tl_set:Nn \l__exsheets_tmpa_tl {#1}
+    \tl_set:Nn \l__exsheets_tmpb_tl {#2}
+    \tl_trim_spaces:N \l__exsheets_tmpa_tl
+    \exsheets_strip_braces:N \l__exsheets_tmpa_tl
+    \tl_trim_spaces:N \l__exsheets_tmpb_tl
+    \exsheets_strip_braces:N \l__exsheets_tmpb_tl
+    \prop_put:NVV \l__exsheets_relgrades_prop
+      \l__exsheets_tmpa_tl
+      \l__exsheets_tmpb_tl
+  }
+
+\NewDocumentCommand \DeclareRelGrades { m }
+  { \__exsheets_declare_relgrades:n {#1} }
+\@onlypreamble \DeclareRelGrades
+
+\cs_new_protected:Npn \__exsheets_grade:nn #1#2
+  {
+    \prop_get:NnNTF \l__exsheets_relgrades_prop {#2} \l__exsheets_tmpa_fp
+      {
+        \bool_if:NTF \l__exsheets_parse_points_bool
+          {
+            \exsheets_parse_points:n
+              { min( \__exsheets_grade_rounded: , \g_exsheets_total_points_fp ) }
+            \int_compare:nT { #1 = 1 }
+              {
+                \exsheets_points_name:n
+                  { min( \__exsheets_grade_rounded: , \g_exsheets_total_points_fp ) }
+              }
+          }
+          { \msg_warning:nnn {exsheets} {grade-parse} {#1} \textbf{??} }
+      }
+      { \msg_warning:nnn {exsheets} {grade-missing} {#1} \textbf{??} }
+  }
+
+\NewDocumentCommand \grade { sm }
+  {
+    \IfBooleanTF {#1}
+      { \__exsheets_grade:nn { 0 } {#2} }
+      { \__exsheets_grade:nn { 1 } {#2} }
+  }
+
+\keys_define:nn { exsheets / grades }
+  {
+    round .fp_set:N   = \l__exsheets_grade_round_fp ,
+    half  .bool_set:N = \l__exsheets_grades_half_bool
+  }
+
+% ----------------------------------------------------------------------------
+% Aufgaben und Lösungen
+\bool_new:N        \g__exsheets_questions_use_bool
+\bool_gset_true:N  \g__exsheets_questions_use_bool
+\bool_new:N        \l__exsheets_questions_use_bool
+\bool_set_true:N   \l__exsheets_questions_use_bool
+\bool_new:N        \l__exsheets_questions_deactivate_bool
+\bool_new:N        \l__exsheets_save_question_body_to_aux_bool
+\bool_set_false:N  \l__exsheets_save_question_body_to_aux_bool
+
+\bool_new:N        \l__exsheets_solutions_use_bool
+\bool_set_true:N   \l__exsheets_solutions_use_bool
+
+\cs_new:Npn \exsheets_glue:N #1
+  { \cleaders \vbox:n {} \skip_vertical:N #1 }
+
+% classes, topics and other group concepts:
+\prop_new:N \l__exsheets_class_prop
+\tl_new:N   \g__exsheets_use_current_question_tl
+\bool_new:N \l__exsheets_use_this_question_bool
+
+\cs_new_protected:Npn \exsheets_new_question_class:nn #1#2
+  {
+    \prop_put:Nnn \l__exsheets_class_prop {#2} {#1}
+    \prop_new:c { g__exsheets_questions_#1_prop }
+    \prop_new:c { g__exsheets_#2_prop }
+    \prop_new:c { g__exsheets_#2_active_prop }
+    \bool_new:c { l__exsheets_questions_#1_bool }
+    \bool_new:c { g__exsheets_use_#2_bool }
+    \bool_new:c { l__exsheets_#1_active_bool }
+    \tl_new:c   { l__exsheets_questions_#1_tl }
+    \keys_define:nn {exsheets}
+      {
+        use-#2 .code:n =
+          {
+            \bool_gset_true:c { g__exsheets_use_#2_bool }
+            \use:c { __exsheets_activate_#2:n } {##1}
+          } ,
+        question / #1 .code:n =
+          \bool_set_true:c { l__exsheets_questions_#1_bool }
+          \tl_set:cn { l__exsheets_questions_#1_tl } {##1}
+      }
+    \cs_new_protected:cpn { __exsheets_activate_#2:n } ##1
+      {
+        \prop_gclear:c { g__exsheets_#2_active_prop }
+        \seq_set_split:Nnn \l__exsheets_tmpa_seq { , } {##1}
+        \seq_map_inline:Nn \l__exsheets_tmpa_seq
+          {
+            \prop_gput:cnn { g__exsheets_#2_active_prop }
+              {####1} { \__exsheets_dummy: }
+          }
+      }
+    \cs_new_protected:cpn { __exsheets_questions_use_#2: }
+      {
+        % is there a #1 provided?
+        \bool_if:cT { l__exsheets_questions_#1_bool }
+          {
+            % add #1 to questions property
+            \prop_gput:cff { g__exsheets_questions_#1_prop }
+              { \int_to_arabic:n { \g__exsheets_questions_id_int } }
+              { \tl_use:c { l__exsheets_questions_#1_tl } }
+            % add to #2 list, if it's a new one
+            \prop_get:cfNF { g__exsheets_#2_prop }
+              { \tl_use:c { l__exsheets_questions_#1_tl } }
+              \l__exsheets_tmpa_tl
+              {
+                \prop_gput:cfn { g__exsheets_#2_prop }
+                  { \tl_use:c { l__exsheets_questions_#1_tl } }
+                  { \__exsheets_dummy: }
+              }
+          }
+        % are we using #2?
+        \bool_if:cT { g__exsheets_use_#2_bool }
+          {
+            % is this question an active one?
+            \prop_get:cfNTF { g__exsheets_#2_active_prop }
+              { \tl_use:c { l__exsheets_questions_#1_tl } }
+              \l__exsheets_tmpa_tl
+              {
+                \bool_set_true:c { l__exsheets_#1_active_bool }
+                \bool_set_true:N \l__exsheets_use_this_question_bool
+              }
+              {
+                \bool_set_false:c { l__exsheets_#1_active_bool }
+                \bool_set_false:N \l__exsheets_questions_print_bool
+              }
+          }
+      }
+    \cs_new_protected:cpn { __exsheets_solutions_use_#2: }
+      {
+        % are we using #2?
+        \bool_if:cT { g__exsheets_use_#2_bool }
+          {
+            % is the question to this solution an active one?
+            % get question number from ID
+            \prop_get:NVN \g__exsheets_questions_id_prop
+              \g__exsheets_questions_current_id_tl
+              \l__exsheets_tmpa_tl
+            % get question #1 from number
+            \prop_get:cVN { g__exsheets_questions_#1_prop }
+              \l__exsheets_tmpa_tl
+              \l__exsheets_tmpb_tl
+            % test if #1 is active
+            \prop_get:cVNF { g__exsheets_#2_active_prop }
+              \l__exsheets_tmpb_tl
+              \l__exsheets_tmpc_tl
+              { \bool_set_false:N \l__exsheets_solutions_use_bool }
+          }
+      }
+  }
+
+\cs_new_protected:Npn \exsheets_declare_question_class:nn #1#2
+  {
+    \prop_if_in:NnTF \l__exsheets_class_prop {#2}
+      {}
+      { \exsheets_new_question_class:nn {#1} {#2} }
+  }
+
+\NewDocumentCommand \DeclareQuestionClass { mm }
+  { \exsheets_declare_question_class:nn {#1} {#2} }
+\@onlypreamble \DeclareQuestionClass
+
+% #1: class name
+\cs_new:Npn \exsheets_get_question_class:n #1
+  {
+    \cs_if_exist:cT { l__exsheets_questions_#1_tl }
+      { \tl_use:c { l__exsheets_questions_#1_tl } }
+  }
+
+% #1: class name
+\DeclareExpandableDocumentCommand \GetQuestionClass { m }
+  { \exsheets_get_question_class:n {#1} }
+
+% #1: class name
+\prg_new_conditional:Npnn \exsheets_if_question_class:n #1 {T,F,TF}
+  {
+    \tl_if_blank:fTF { \exsheets_get_question_class:n {#1} }
+      { \prg_return_false: }
+      { \prg_return_true: }
+  }
+\cs_generate_variant:Nn \tl_if_blank:nTF {f}
+
+% #1: class name
+\cs_new_protected:Npn \exsheets_print_question_class:nTF #1#2#3
+  {
+    \exsheets_if_question_class:nTF {#1}
+      {
+        \cs_set_protected:Npn \__exsheets_print_question_class:n ##1 {#2}
+        \__exsheets_print_question_class:n
+          { \exsheets_get_question_class:n {#1} }
+      }
+      {#3}
+  }
+
+\NewDocumentCommand \PrintQuestionClassTF { mmm }
+  { \exsheets_print_question_class:nTF {#1} {#2} {#3} }
+\NewDocumentCommand \PrintQuestionClassT { mm }
+  { \exsheets_print_question_class:nTF {#1} {#2} {  } }
+\NewDocumentCommand \PrintQuestionClassF { mm }
+  { \exsheets_print_question_class:nTF {#1} {  } {#2} }
+
+% ----------------------------------------------------------------------------
+% question tags:
+\prop_new:N \g__exsheets_tags_prop
+\seq_new:N  \l__exsheets_use_tags_seq
+
+% #1: ID
+% #2: tags
+\cs_new_protected:Npn \exsheets_set_question_tags:nn #1#2
+  { \prop_gput:Nnn \g__exsheets_tags_prop {#1} {#2} }
+\cs_generate_variant:Nn \exsheets_set_question_tags:nn {V}
+
+\cs_new_protected:Npn \exsheets_set_this_question_tags:n #1
+  { \exsheets_set_question_tags:Vn \g__exsheets_questions_current_id_tl {#1} }
+
+\keys_define:nn {exsheets}
+  {
+    use-tags .code:n = \seq_set_split:Nnn \l__exsheets_use_tags_seq {,} {#1} ,
+    question / tags .code:n =
+      \exsheets_after_begin_question:n { \exsheets_set_this_question_tags:n {#1} }
+  }
+
+% #1: ID
+\prg_new_protected_conditional:Npnn \exsheets_check_question_tags:n #1 {T,F,TF}
+  {
+    \bool_set_false:N \l__exsheets_tmpa_bool
+    \seq_if_empty:NTF \l__exsheets_use_tags_seq
+      { \bool_set_true:N \l__exsheets_tmpa_bool }
+      {
+        \prop_get:NnN \g__exsheets_tags_prop {#1} \l__exsheets_tmpa_tl
+        \seq_map_inline:Nn \l__exsheets_use_tags_seq
+          {
+            \tl_if_in:NnT \l__exsheets_tmpa_tl {##1}
+              {
+                \bool_set_true:N \l__exsheets_tmpa_bool
+                \seq_map_break:
+              }
+          }
+       }
+     \bool_if:NTF \l__exsheets_tmpa_bool
+       { \prg_return_true: }
+       { \prg_return_false: }
+  }
+\cs_generate_variant:Nn \exsheets_check_question_tags:nF {V}
+
+% ----------------------------------------------------------------------------
+% die 'question' Umgebung
+\tl_new:N  \l__exsheets_questions_name_tl
+\tl_set:Nn \l__exsheets_questions_name_tl {Question}
+\tl_new:N  \l__exsheets_exercise_name_tl
+\tl_set:Nn \l__exsheets_exercise_name_tl  {Exercise}
+
+\tl_new:N  \l__exsheets_questions_pre_hook_tl
+\tl_new:N  \l__exsheets_questions_post_hook_tl
+\tl_new:N  \l__exsheets_questions_pre_body_hook_tl
+\tl_new:N  \l__exsheets_questions_post_body_hook_tl
+\tl_new:N  \l__exsheets_after_begin_question_tl
+
+\tl_new:N  \CurrentQuestionID
+
+\bool_new:N       \l__exsheets_questions_print_bool
+\bool_set_true:N  \l__exsheets_questions_print_bool
+\bool_new:N       \l__exsheets_inside_question_bool
+
+\int_new:N        \g__exsheets_questions_id_int
+\int_gzero:N      \g__exsheets_questions_id_int
+
+\cs_new:Npn \IfInsideQuestionTF
+  { \bool_if:NTF \l__exsheets_inside_question_bool }
+\cs_new:Npn \IfInsideQuestionT
+  { \bool_if:NT \l__exsheets_inside_question_bool }
+\cs_new:Npn \IfInsideQuestionF
+  { \bool_if:NF \l__exsheets_inside_question_bool }
+
+\cs_new_eq:NN \exsheets_par: \par
+
+\cs_new_protected:Npn \exsheets_after_begin_question:n #1
+  { \tl_put_right:Nn \l__exsheets_after_begin_question_tl {#1} }
+
+\cs_new_protected:Npn \exsheets_add_space:N #1
+  {
+    \bool_if:nF
+      {
+        % \l__exsheets_heading_runin_bool ||
+        \l__exsheets_heading_inline_bool ||
+        \l__exsheets_no_skip_after_bool
+      }
+      {
+        \exsheets_par:
+        \dim_compare:nNnT { \parskip } = { 0pt }
+          { \exsheets_glue:N #1 }
+      }
+  }
+
+% #1: pre question hook
+% #2: post question hook
+\NewEnviron { __exsheets_questions_internal: } [2]
+  {
+    \__exsheets_start_question_if_used:n {#1}
+    \bool_if:nT
+      {
+        % \l__exsheets_questions_print_bool &&
+        \g__exsheets_questions_use_bool &&
+        !\l__exsheets_questions_deactivate_bool
+      }
+      {
+        % label:
+        \tl_if_blank:VTF \l__exsheets_questions_label_tl
+          {
+            \bool_if:NT \l__exsheets_auto_label_bool
+              {
+                \exsheets_label:V \g__exsheets_questions_current_id_tl
+                \exsheets_set_ref_properties:V \CurrentQuestionID
+              }
+          }
+          {
+            \exsheets_label:V \l__exsheets_questions_label_tl
+            \exsheets_set_ref_properties:V \l__exsheets_questions_label_tl
+          }
+        \__exsheets_save_number_in:N \g_exsheets_question_identification_prop
+        % TODO: don't print, only save if \l__exsheets_questions_print_bool is false
+        \__exsheets_save_and_print_question_body:VVV
+          \BODY
+          \l__exsheets_questions_pre_body_hook_tl
+          \l__exsheets_questions_post_body_hook_tl
+        \exsheets_set_question_properties:x
+          {
+            \tl_if_blank:VF \l__exsheets_questions_subtitle_tl
+              { subtitle = { \exp_not:V \l__exsheets_questions_subtitle_tl } , }
+            counter = \l__exsheets_qu_counter_interpretation_tl ,
+            % number  = \int_to_arabic:V \g__exsheets_questions_id_int ,
+            \bool_if:NF \l__exsheets_points_questions_default_bool
+              {
+                \fp_compare:nT { \g__exsheets_this_question_points_fp > 0 }
+                  { points = \fp_to_decimal:N \g__exsheets_this_question_points_fp , }
+                \fp_compare:nT { \g__exsheets_this_question_bonus_fp > 0 }
+                  { bonus-points = \fp_to_decimal:N \g__exsheets_this_question_bonus_fp }
+              }
+          }
+        \bool_if:NT \l__exsheets_questions_print_bool {#2}
+      }
+  }
+
+% #1: body
+% #2: pre body hook
+% #3: post body hook
+\cs_new_protected:Npn \__exsheets_save_and_print_question_body:nnn #1#2#3
+  {
+    \group_begin:
+      \bool_if:NF \l__exsheets_save_question_body_to_aux_bool
+        { \@fileswfalse }
+      \exsheets_set_question_properties:n { question-body = {#1} }
+    \group_end:
+    \bool_if:NT \l__exsheets_questions_print_bool
+      {
+        #2
+        { #1 }
+        #3
+        \exsheets_add_space:N \l__exsheets_questions_skip_below_dim
+      }
+  }
+\cs_generate_variant:Nn \__exsheets_save_and_print_question_body:nnn { VVV }
+
+\prop_new:N \g__exsheets_questions_id_prop
+\prop_new:N \g__exsheets_questions_subtitle_prop
+\prop_new:N \g__exsheets_questions_used_prop
+\int_new:N  \g__exsheets_questions_used_int
+
+\tl_new:N   \l__exsheets_questions_id_tl
+\tl_new:N   \l__exsheets_questions_subtitle_tl
+\tl_new:N   \g__exsheets_questions_current_id_tl
+\tl_new:N   \l__exsheets_questions_title_tl
+\tl_new:N   \l__exsheets_questions_label_tl
+\tl_new:N   \l__exsheets_questions_points_tl
+
+\prg_new_conditional:Npnn \exsheets_if_question_subtitle: { p,T,F,TF }
+  {
+    \tl_if_blank:VTF \l__exsheets_questions_subtitle_tl
+      { \prg_return_false: }
+      { \prg_return_true: }
+  }
+
+\cs_new:Npn \IfQuestionSubtitleTF { \exsheets_if_question_subtitle:TF }
+\cs_new:Npn \IfQuestionSubtitleT  { \exsheets_if_question_subtitle:T }
+\cs_new:Npn \IfQuestionSubtitleF  { \exsheets_if_question_subtitle:F }
+
+\bool_new:N \l__exsheets_only_print_points_bool
+
+\fp_new:N \g__exsheets_this_question_points_fp
+\fp_new:N \g__exsheets_this_question_bonus_fp
+
+\cs_new_protected:Npn \__exsheets_read_points:w #1 ! #2 ! #3 \q_stop
+  {
+    \tl_if_blank:nTF {#1}
+      {
+        \bool_set_true:N \l__exsheets_only_print_points_bool
+        \tl_set:Nn \l__exsheets_questions_points_tl {#2}
+      }
+      {
+        \bool_set_false:N \l__exsheets_only_print_points_bool
+        \__exsheets_read_points_aux:w #1++ \q_stop
+      }
+  }
+
+\cs_new_protected:Npn \__exsheets_read_points_aux:w #1+#2+#3 \q_stop
+  {
+    \tl_if_blank:nTF {#1}
+      { \fp_zero:N \l__exsheets_question_points_fp }
+      { \fp_set:Nn \l__exsheets_question_points_fp {#1} }
+    \tl_if_blank:nTF {#2}
+      { \fp_zero:N \l__exsheets_question_bonus_fp }
+      {
+        \tl_if_blank:nTF {#3}
+          { \fp_zero:N \l__exsheets_question_bonus_fp }
+          { \fp_set:Nn \l__exsheets_question_bonus_fp {#2} }
+      }
+  }
+\cs_new_protected:Npn \__exsheets_read_points:n #1
+  {
+    \bool_if:NTF \l__exsheets_parse_points_bool
+      { \__exsheets_read_points:w #1!! \q_stop }
+      { \tl_set:Nn \l__exsheets_questions_points_tl {#1} }
+  }
+
+\cs_new:Npn \exsheets_label_format:n #1 { qu:#1 }
+\cs_new:Npn \__exsheets_label:n { \label }
+\cs_new:Npn \exsheets_label:n { }
+\cs_generate_variant:Nn \exsheets_label:n { V }
+\cs_new:Npn \__exsheets_ref:n { \ref }
+\cs_new:Npn \exsheets_ref:n { }
+\cs_new:Npn \__exsheets_pageref:n { \pageref }
+\cs_new:Npn \exsheets_pageref:n { }
+
+\cs_new_protected:Npn \exsheets_update_referencing_command:NN #1#2
+  {
+    \cs_set:Npx #1 ##1
+      { \exp_not:o {#2} { \exsheets_label_format:n {##1} } }
+  }
+
+\cs_new_protected:Npn \exsheets_update_referencing_commands:
+  {
+    \exsheets_update_referencing_command:NN \exsheets_label:n \__exsheets_label:n
+    \exsheets_update_referencing_command:NN \exsheets_ref:n \__exsheets_ref:n
+    \exsheets_update_referencing_command:NN \exsheets_pageref:n \__exsheets_pageref:n
+  }
+
+\cs_new_protected:Npn \exsheets_set_ref_properties:n #1
+  {
+    \exsheets_set_question_properties:x
+      {
+        ref = \exp_not:o { \exsheets_ref:n {#1} } ,
+        pageref = \exp_not:o { \exsheets_pageref:n {#1} }
+      }
+  }
+\cs_generate_variant:Nn \exsheets_set_ref_properties:n { V }
+
+\exsheets_update_referencing_commands:
+
+\cs_new_protected:Npn \__exsheets_determine_question_usage:
+  {
+    \tl_gclear:N \g__exsheets_use_current_question_tl
+    \prop_map_inline:Nn \l__exsheets_class_prop
+      {
+        \use:c { __exsheets_questions_use_##1: }
+        \bool_if:nTF
+          {
+            (
+              \l__exsheets_use_this_question_bool
+                &&
+              \bool_if_p:c { l__exsheets_##2_active_bool }
+            )
+              ||
+            ! \bool_if_p:c { g__exsheets_use_##1_bool }
+          }
+          { \tl_gput_right:Nn \g__exsheets_use_current_question_tl { y } }
+          { \tl_gput_right:Nn \g__exsheets_use_current_question_tl { n } }
+      }
+  }
+
+\prg_new_protected_conditional:Npnn \exsheets_if_current_question_is_used: { T,F,TF }
+  {
+    \tl_if_in:NnTF \g__exsheets_use_current_question_tl { n }
+      { \prg_return_false: }
+      { \prg_return_true: }
+  }
+
+% #1: options
+\cs_new_protected:Npn \__exsheets_question_start:n #1
+  {
+    \bool_set_true:N \l__exsheets_inside_question_bool
+    \bool_if:NT \l__exsheets_questions_use_bool
+      { \bool_gset_true:N \g__exsheets_questions_use_bool }
+    % Optionen:
+    \tl_if_blank:nF {#1} { \keys_set:nn { exsheets / question } {#1} }
+    % ID:
+    \bool_if:nT
+      { 
+        (\l__exsheets_questions_deactivate_bool && \l__exsheets_select_questions_bool)
+          ||
+        !\l__exsheets_select_questions_bool
+      }
+      {
+        \int_gincr:N \g__exsheets_questions_id_int
+        \tl_if_blank:VTF \l__exsheets_questions_id_tl
+          {
+            \tl_gset:Nx \g__exsheets_questions_current_id_tl
+              { \int_use:N \g__exsheets_questions_id_int }
+          }
+          {
+            \tl_gset:Nx \g__exsheets_questions_current_id_tl
+              { \tl_use:N \l__exsheets_questions_id_tl }
+          }
+      }
+    \tl_use:N \l__exsheets_after_begin_question_tl
+    \tl_clear:N \l__exsheets_after_begin_question_tl
+    \bool_if:nT
+      { 
+        !\l__exsheets_questions_deactivate_bool &&
+        !\l__exsheets_select_questions_bool
+      }
+      {
+        \bool_if:NT \l__exsheets_questions_use_bool
+          {
+            % TODO: write this to the aux file and at this point check if the
+            % entry is already present
+            % \prop_gput:NVV \g__exsheets_questions_used_prop
+            %   \g__exsheets_questions_current_id_tl
+            %   \g__exsheets_questions_id_int
+            \int_gincr:N \g__exsheets_questions_used_int
+            \__exsheets_mark_as_used_x:nn
+              { \int_use:N \g__exsheets_questions_used_int }
+              { \tl_use:N \g__exsheets_questions_current_id_tl }
+           }
+        \prop_gput:NVV \g__exsheets_questions_id_prop
+          \g__exsheets_questions_current_id_tl
+          \g__exsheets_questions_id_int
+      }
+  }
+
+% #1: points or blank
+\cs_new_protected:Npn \__exsheets_question_points:n #1
+  {
+    % Punktevergabe:
+    \fp_gzero:N \g__exsheets_this_question_points_fp
+    \fp_gzero:N \g__exsheets_this_question_bonus_fp
+    \tl_if_blank:nTF {#1}
+      {
+        \__exsheets_read_points:n { 0 }
+        \bool_if:NT \l__exsheets_points_questions_default_bool
+          {
+            \fp_set_eq:NN
+              \l__exsheets_question_points_fp
+              \l__exsheets_points_default_fp
+            % check if moving this to a later point has negative effects...
+            % \exsheets_set_question_properties:x
+            %   { points = \fp_to_tl:N \l__exsheets_points_default_fp }
+          }
+      }
+      {
+        \fp_gset_eq:NN
+          \g__exsheets_this_question_points_fp
+          \l__exsheets_question_points_fp
+        \fp_gset_eq:NN
+          \g__exsheets_this_question_bonus_fp
+          \l__exsheets_question_bonus_fp
+        \__exsheets_read_points:n {#1}
+        % check if moving this to a later point has negative effects...
+        % \exsheets_set_question_properties:n { points = #2 }
+      }
+  }
+
+% #1: pre question hook
+\cs_new_protected:Npn \__exsheets_start_question_if_used:n #1
+  {
+    \tl_if_blank:VT \l__exsheets_question_heading_instance_tl
+      {
+        \tl_set_eq:NN
+          \l__exsheets_question_heading_instance_tl
+          \l__exsheets_heading_instance_tl
+      }
+    % Auswahl der Frage:
+    \__exsheets_select_question:V \g__exsheets_questions_current_id_tl
+    \prop_map_inline:Nn \l__exsheets_class_prop
+      { \use:c { __exsheets_questions_use_##1: } }
+    \exsheets_check_question_tags:VF \g__exsheets_questions_current_id_tl
+      { \bool_gset_false:N \g__exsheets_questions_use_bool }
+    \bool_if:nT
+      {
+        \g__exsheets_questions_use_bool &&
+        !\l__exsheets_questions_deactivate_bool
+      }
+      {
+        \__exsheets_determine_question_usage:
+        \exsheets_if_current_question_is_used:T
+          { \refstepcounter{question} }
+        \__exsheets_get_sectioning_numbers:
+        \bool_if:nT
+          {
+            (
+              \l__exsheets_points_questions_default_bool &&
+              \l__exsheets_parse_points_bool
+            ) ||
+            (
+              \l__exsheets_parse_points_bool%  &&
+              % \l__exsheets_questions_print_bool
+            )
+          }
+          {
+            \exsheets_add_points:V \l__exsheets_question_points_fp
+            \exsheets_add_bonus:V  \l__exsheets_question_bonus_fp
+          }
+        \tl_if_blank:VTF \l__exsheets_questions_id_tl
+          {
+            \tl_set:Nx \l__exsheets_tmpa_tl
+               { \int_use:N \g__exsheets_questions_id_int }
+          }
+          {
+            \tl_set_eq:NN
+              \l__exsheets_tmpa_tl
+              \l__exsheets_questions_id_tl
+          }
+        \tl_set_eq:NN \CurrentQuestionID \l__exsheets_tmpa_tl
+        \bool_if:NT \l__exsheets_questions_print_bool
+          {
+            \bool_if:NTF \l__exsheets_exam_bool
+              {
+                \tl_set_eq:NN
+                  \l__exsheets_questions_title_tl
+                  \l__exsheets_questions_name_tl
+              }
+              {
+                \tl_set_eq:NN
+                  \l__exsheets_questions_title_tl
+                  \l__exsheets_exercise_name_tl
+              }
+            \bool_if:nTF
+              { \l__exsheets_parse_points_bool && !\l__exsheets_only_print_points_bool }
+              {
+                #1
+                \exsheets_use_heading:VVVVnV
+                  \l__exsheets_question_heading_instance_tl
+                  \l__exsheets_questions_title_tl
+                  \l__exsheets_qu_counter_interpretation_tl
+                  \l__exsheets_question_points_fp
+                  { \l__exsheets_question_bonus_fp }
+                  \l__exsheets_tmpa_tl
+              }
+              {
+                \bool_if:NT \l__exsheets_only_print_points_bool
+                  { \bool_set_false:N \l__exsheets_parse_points_bool }
+                % might be dangerous to expand here...
+                \tl_if_blank:xTF { \l__exsheets_questions_points_tl }
+                  {
+                    #1
+                    \exsheets_use_heading:VVVnnV
+                      \l__exsheets_question_heading_instance_tl
+                      \l__exsheets_questions_title_tl
+                      \l__exsheets_qu_counter_interpretation_tl
+                      { 0 }
+                      { 0 }
+                      \l__exsheets_tmpa_tl
+                  }
+                  {
+                    #1
+                    \exsheets_use_heading:VVVVnV
+                      \l__exsheets_question_heading_instance_tl
+                      \l__exsheets_questions_title_tl
+                      \l__exsheets_qu_counter_interpretation_tl
+                      \l__exsheets_questions_points_tl
+                      { 0 }
+                      \l__exsheets_tmpa_tl
+                  }
+              }
+          }
+      }
+  }
+\cs_generate_variant:Nn \__exsheets_start_question_if_used:n {V}
+
+\newenvironment { __exsheets_question: } [2]
+  {
+    \__exsheets_question_start:n {#1}
+    \__exsheets_question_points:n {#2}
+    \exp_args:NVV \__exsheets_questions_internal:
+      \l__exsheets_questions_pre_hook_tl
+      \l__exsheets_questions_post_hook_tl
+  }
+  {
+    \end__exsheets_questions_internal:
+  }
+
+% current question number:
+\prop_new:N \g_exsheets_question_identification_prop
+
+\cs_new_protected:Npn \exsheets@save@number #1#2
+  { \expandafter\global\expandafter\edef\csname exsheets@question@#1\endcsname{#2} }
+
+\cs_new_protected:Npn \__exsheets_save_number_in_aux_x:Nnn #1#2#3
+  {
+    \prop_gput:Nfx #1 {#2} {#3}
+    \exsheets_write_to_aux_x:n { \exsheets@save@number {#2} {#3} }
+  }
+
+\cs_new_protected:Npn \__exsheets_save_number_in:N #1
+  {
+    \bool_if:NTF \l__exsheets_print_number_bool
+      {
+        \cs_if_exist:NTF \thechapter
+          {
+            \__exsheets_save_number_in_aux_x:Nnn #1
+              { \int_use:N \g__exsheets_questions_id_int }
+              { \arabic{chapter}-\arabic{section}-\arabic{question} }
+          }
+          {
+            \__exsheets_save_number_in_aux_x:Nnn #1
+              { \int_use:N \g__exsheets_questions_id_int }
+              { -\arabic{section}-\arabic{question} }
+          }
+      }
+      {
+        \cs_if_exist:NTF \thechapter
+          {
+            \__exsheets_save_number_in_aux_x:Nnn #1
+              { \int_use:N \g__exsheets_questions_id_int }
+              { @@@\arabic{chapter}-\arabic{section}-\arabic{question} }
+          }
+          {
+            \__exsheets_save_number_in_aux_x:Nnn #1
+              { \int_use:N \g__exsheets_questions_id_int }
+              { @@@-\arabic{section}-\arabic{question} }
+          }
+      }
+  }
+
+\cs_new_protected:Npn \__exsheets_restore_number_from_and_do:Nnn #1#2#3
+  {
+    \prop_get:NnNT #1 {#2} \l__exsheets_tmpc_tl
+      {
+        \exp_after:wN
+        \__exsheets_read_number:w \l__exsheets_tmpc_tl \q_stop
+        #3
+      }
+    % use \exsheets_read_counter_settings:V \l__exsheets_qu_counter_format_tl
+    % afterwards to print the number
+  }
+\cs_generate_variant:Nn \__exsheets_restore_number_from_and_do:Nnn { NV }
+
+\NewDocumentCommand \QuestionNumber { m }
+  { \exsheets_question_number:n {#1} }
+
+\cs_new_protected:Npn \exsheets_question_number:n #1
+  {
+    \prop_get:NnNTF \g__exsheets_questions_id_prop {#1} \l__exsheets_tmpa_tl
+      { \__exsheets_question_number:c { exsheets@question@\l__exsheets_tmpa_tl } }
+      { \textbf{??} }
+  }
+ 
+\cs_new_protected:Npn \__exsheets_question_number:N #1
+  {
+    \cs_if_exist:NTF #1
+      {
+        \exp_after:wN \__exsheets_get_question_number:w #1 \q_stop
+        \ReadCounterPatternFrom [ exsheets ] \l__exsheets_qu_counter_pattern_tl
+      }
+      { \textbf{??} }
+  }
+\cs_generate_variant:Nn \__exsheets_question_number:N { c }
+
+\cs_new_protected:Npn \__exsheets_get_question_number:w #1-#2-#3 \q_stop
+  {
+    \cs_if_exist:NT \thechapter
+      { \int_set:Nn \l__exsheets_counter_ch_int {#1} }
+    \int_set:Nn \l__exsheets_counter_sec_int {#2}
+    \int_set:Nn \l_exsheets_counter_qu_int {#3}
+  }
+
+% map ID's to number of used questions
+\cs_new_protected:Npn \exsheets@used@id #1#2
+  { \prop_gput:Nnn \g__exsheets_questions_used_prop {#2} {#1} }
+
+\cs_new_protected:Npn \__exsheets_mark_as_used_x:nn #1#2
+  {
+    \prop_gput_if_new:Nxx \g__exsheets_questions_used_prop {#2} {#1}
+    \exsheets_write_to_aux_x:n
+      { \exsheets@used@id {#1} {#2} }
+  }
+
+% ----------------------------------------------------------------------------
+% title of a question:
+\cs_if_exist:NF \exsheets_headings_files_loaded:
+  {
+    \file_input:n {exsheets_headings.def}
+    \file_input:n {exsheets_headings.cfg}
+  }
+
+% #1: instance
+% #2: title
+% #3: number
+% #4: points
+% #5: bonus
+% #6: id
+\cs_new_protected:Npn \exsheets_use_heading:nnnnnn #1#2#3#4#5#6
+  {
+    \IfInstanceExistTF {exsheets-heading} {#1}
+      { \UseInstance {exsheets-heading} {#1} }
+      {
+        \msg_warning:nnx {exsheets} {headings} {#1}
+        \UseInstance {exsheets-heading} {block}
+      }
+    {#2} {#3} {#4} {#5} {#6}
+  }
+\cs_generate_variant:Nn \exsheets_use_heading:nnnnnn { V , VVVnnV , VVVVnV }
+
+\NewDocumentCommand \ExSheetsHeading { mmmmmm }
+  { \exsheets_use_heading:nnnnnn {#1} {#2} {#3} {#4} {#5} {#6} }
+
+\bool_new:N       \l__exsheets_exam_bool
+\bool_set_false:N \l__exsheets_exam_bool
+\bool_new:N       \l__exsheets_questions_runin_bool
+\bool_set_false:N \l__exsheets_questions_runin_bool
+
+% options for the questions:
+\keys_define:nn { exsheets / question }
+  {
+    type            .choice: ,
+    type / exam     .code:n      =
+      \bool_set_true:N \l__exsheets_exam_bool ,
+    type / exercise .code:n      =
+      \bool_set_false:N \l__exsheets_exam_bool ,
+    name            .code:n      =
+      \tl_set:Nn \l__exsheets_exercise_name_tl {#1}
+      \tl_set:Nn \l__exsheets_questions_name_tl {#1} ,
+    headings        .tl_set:N    = \l__exsheets_question_heading_instance_tl ,
+    subtitle        .tl_set:N    = \l__exsheets_questions_subtitle_tl ,
+    print           .bool_set:N  = \l__exsheets_questions_print_bool ,
+    print           .default:n   = true ,
+    ID              .tl_set:N    = \l__exsheets_questions_id_tl ,
+    label           .tl_set:N    = \l__exsheets_questions_label_tl ,
+    use             .choice: ,
+    use / true      .code:n      =
+      \bool_gset_true:N \g__exsheets_questions_use_bool
+      \bool_set_true:N  \l__exsheets_questions_use_bool ,
+    use / false     .code:n      =
+      \bool_gset_false:N \g__exsheets_questions_use_bool
+      \bool_set_false:N  \l__exsheets_questions_use_bool ,
+    use             .default:n   = true ,
+    skip-below      .dim_set:N   = \l__exsheets_questions_skip_below_dim ,
+    no-skip-below   .bool_set:N  = \l__exsheets_no_skip_after_bool ,
+    pre-hook        .tl_set:N    = \l__exsheets_questions_pre_hook_tl ,
+    post-hook       .tl_set:N    = \l__exsheets_questions_post_hook_tl ,
+    pre-body-hook   .tl_set:N    = \l__exsheets_questions_pre_body_hook_tl ,
+    post-body-hook  .tl_set:N    = \l__exsheets_questions_post_body_hook_tl ,
+    save-to-aux     .bool_set:N  = \l__exsheets_save_question_body_to_aux_bool
+  }
+
+% ----------------------------------------------------------------------------
+% using ``metadata'':
+\cs_new_protected:Npn \exsheets_declare_question_property:n #1
+  {
+    \prop_new:c { g__exsheets_question_property_#1_prop }
+    \keys_define:nn { question / meta }
+      { #1 .code:n = \__exsheets_question_set_property:nn {#1} {##1} }
+  }
+
+\NewDocumentCommand \DeclareQuestionProperty { m }
+  { \exsheets_declare_question_property:n {#1} }
+\@onlypreamble \DeclareQuestionProperty
+
+\cs_new_protected:Npn \exsheets_set_question_properties:n #1
+  {
+    \@bsphack
+      \bool_if:NTF \l__exsheets_inside_question_bool
+        { \keys_set:nn { question / meta } {#1} }
+        { \msg_error:nnn {exsheets} {only-inside-question} {\SetQuestionProperties} }
+    \@esphack
+  }
+\cs_generate_variant:Nn \exsheets_set_question_properties:n { x }
+
+\prg_new_conditional:Npnn \exsheets_if_question_property:nn #1#2 {T,F,TF}
+  {
+    \prop_if_in:cnTF { g__exsheets_question_property_#1_prop } {#2}
+      { \prg_return_true: }
+      { \prg_return_false: }
+  }
+\DeclareExpandableDocumentCommand \IfQuestionPropertyTF { }
+  { \exsheets_if_question_property:nnTF }
+\DeclareExpandableDocumentCommand \IfQuestionPropertyT { }
+  { \exsheets_if_question_property:nnT }
+\DeclareExpandableDocumentCommand \IfQuestionPropertyF { }
+  { \exsheets_if_question_property:nnF }
+
+\NewDocumentCommand \SetQuestionProperties { +m }
+  { \exsheets_set_question_properties:n {#1} }
+
+% #1: ID
+% #2: property
+% #3: value
+\cs_new_protected:Npn \exsheets@question@property #1#2#3
+  {
+    \prop_gput:cnn { g__exsheets_question_property_#2_prop }
+      {#1} {#3}
+  }
+
+% #1: property
+% #2: value
+\cs_new_protected:Npn \__exsheets_question_set_property:nn #1#2
+  {
+    \prop_gput:cVn { g__exsheets_question_property_#1_prop }
+      \CurrentQuestionID {#2}
+    % watch if this has negativ effects:
+    \exsheets_write_to_aux_x:n
+      {
+        \exp_not:N \exsheets@question@property
+          { \CurrentQuestionID }
+          { \exp_not:n {#1} }
+          { \exp_not:n {#2} }
+      }
+  }
+
+% #1: property
+% #2: ID
+\DeclareExpandableDocumentCommand \GetQuestionProperty { mm }
+  { \exsheets_get_question_property:no {#1} {#2} }
+
+\cs_new:Npn \exsheets_get_question_property:nn #1#2
+  {
+    \prop_if_in:cnTF { g__exsheets_question_property_#1_prop } {#2}
+      { \prop_item:cn { g__exsheets_question_property_#1_prop } {#2} }
+      { ?? }
+  }
+\cs_generate_variant:Nn \exsheets_get_question_property:nn { no }
+
+\int_new:N \g__exsheets_tmpa_int
+% \cs_new_protected:Npn \ForEachQuestion #1
+%   {
+%     \int_gzero:N \g__exsheets_tmpa_int
+%     \int_step_inline:nnnn {1} {1} {\numberofquestions}
+%       { \int_gincr:N \g__exsheets_tmpa_int #1 }
+%   }
+\cs_new_protected:Npn \ForEachQuestion #1
+  {
+    \int_gzero:N \g__exsheets_tmpa_int
+    \prop_map_inline:Nn \g__exsheets_questions_used_prop
+      { \int_gincr:N \g__exsheets_tmpa_int #1 }
+  }
+
+\cs_new:Npn \iflastquestion
+  {
+    \int_compare:nTF
+      { \numberofquestions = \g__exsheets_tmpa_int }
+  }
+
+\cs_if_exist:NF \numberofquestions
+  {
+    \cs_new:Npn \numberofquestions
+      { \int_to_arabic:V \g__exsheets_questions_used_int }
+  }
+
+% ----------------------------------------------------------------------------
+% debug-Info:
+\bool_new:N       \l__exsheets_questions_debug_bool
+\bool_set_false:N \l__exsheets_questions_debug_bool
+
+\colorlet { exsheetsdebugcolor } { yellow }
+
+\keys_define:nn {exsheets}
+  {
+    debug .bool_set:N = \l__exsheets_questions_debug_bool
+  }
+
+\cs_new_protected:Npn \exsheets_debug_box:nn #1#2
+  {
+    \par
+    \noindent
+    \group_begin:
+      \normalfont\normalsize\normalcolor
+      \colorbox { exsheetsdebugcolor }
+        { \parbox { \dim_eval:n { #1  - 2 \fboxsep } } {#2} }
+    \group_end:
+    \par
+  }
+
+\cs_new:Npn \__exsheets_list_comma: {}
+
+\cs_new_protected:Npn \exsheets_questions_debug:n #1
+  {
+    \bool_if:nT
+      { \l__exsheets_questions_debug_bool && \l__exsheets_inside_question_bool }
+      {
+        \exsheets_debug_box:nn { \linewidth }
+          {
+            \textbf {ID} :~ \textit {#1}
+            \prop_map_inline:Nn \l__exsheets_class_prop
+              {
+                \bool_if:cT { l__exsheets_questions_##2_bool }
+                  {
+                    ;~  \textbf {##2} :~
+                    \textit { \tl_use:c { l__exsheets_questions_##2_tl } }
+                  }
+              }
+            \prop_get:NnN \g__exsheets_tags_prop
+              {#1}
+              \l__exsheets_tmpa_tl
+            \quark_if_no_value:VTF \l__exsheets_tmpa_tl
+              { ;~ \textbf {not~tagged} }
+              {
+                ;~ \textbf {tags} : ~
+                \seq_set_split:NnV \l__exsheets_tmpa_seq
+                  {,}
+                  \l__exsheets_tmpa_tl
+                \textit { \seq_use:Nn \l__exsheets_tmpa_seq {,~} }
+              }
+          }
+      }
+  }
+
+\exsheets_deprecate_cs:Npnn \DebugExSheets #1
+  {the~ option~ debug}
+  { \keys_set:nn {exsheets} { debug = #1 } }
+
+% ----------------------------------------------------------------------------
+% include random/selected questions from a file:
+\bool_new:N      \l__exsheets_select_questions_bool
+\bool_new:N      \l__exsheets_include_all_bool
+\bool_new:N      \l__exsheets_include_random_bool
+\bool_new:N      \l__exsheets_include_by_id_bool
+\bool_set_true:N \l__exsheets_include_all_bool
+
+\prop_new:N      \g__exsheets_included_questions_prop
+\clist_new:N     \l__exsheets_include_id_clist
+\clist_new:N     \l__exsheets_exclude_id_clist
+\clist_new:N     \questionsincludedlast
+
+\seq_new:N       \g_exsheets_included_questions_seq
+
+\int_new:N       \l__exsheets_include_random_int
+\int_zero:N      \l__exsheets_include_random_int
+
+\cs_new_protected:Npn \exsheets_file_input_if_exist:n #1
+  { \file_if_exist:nT {#1} { \file_input:n {#1} } }
+\cs_new_protected:Npn \exsheets_file_input_if_exist:nF #1#2
+  { \file_if_exist:nTF {#1} { \file_input:n {#1} } {#2} }
+
+\cs_new_protected:Npn \exsheets_prop_count:N #1
+  {
+    \__exsheets_prop_count:NN #1 \l__exsheets_tmpa_int
+    \int_use:N \l__exsheets_tmpa_int
+  }
+
+\cs_new_protected:Npn \__exsheets_prop_count:NN #1#2
+  {
+    \int_zero:N #2
+    \prop_map_inline:Nn #1
+      { \int_incr:N #2 }
+  }
+
+\NewDocumentCommand \includequestions { om }
+  {
+    \group_begin:
+      \IfNoValueF {#1}
+        { \keys_set:nn { exsheets / include } {#1} }
+      \exsheets_include_questions:n {#2}
+    \group_end:
+  }
+
+\int_new:N \l__exsheets_questions_set_int
+\int_new:N \g__exsheets_select_random_int
+
+\cs_new_protected:Npn \exsheets_include_questions:n #1
+  {
+    \bool_set_true:N \l__exsheets_select_questions_bool
+    \clist_gclear:N \questionsincludedlast
+    \seq_set_split:Nnn \l__exsheets_tmpa_seq { , } {#1}
+    \seq_map_inline:Nn \l__exsheets_tmpa_seq
+      {
+        \bool_set_true:N \l__exsheets_questions_deactivate_bool
+        \int_set_eq:NN
+          \l__exsheets_questions_set_int
+          \g__exsheets_questions_used_int
+        \int_set_eq:NN
+          \l__exsheets_tmpc_int
+          \g__exsheets_questions_id_int
+        \int_gzero:N \g__exsheets_select_random_int
+        \exsheets_file_input_if_exist:nF {##1}
+          { \msg_error:nnn {exsheets} {file-not-found} {##1} }
+        \__exsheets_prop_count:NN
+          \g__exsheets_included_questions_prop
+          \l__exsheets_tmpa_int
+        \bool_if:NT \l__exsheets_questions_debug_bool
+          {
+            \exsheets_debug_box:nn
+              { \linewidth }
+              {
+                The~file~ ` \texttt { \tl_to_str:n {##1} } ' ~contains~
+                \exsheets_prop_count:N \g__exsheets_included_questions_prop
+                \c_space_tl questions~with~the~following~IDs:\par
+                \cs_set_protected:Npn \__exsheets_list_comma:
+                  { \cs_set:Npn \__exsheets_list_comma: { ,~ } }
+                \prop_map_inline:Nn \g__exsheets_included_questions_prop
+                  { \__exsheets_list_comma: ####2 }
+              }
+          }
+        \bool_set_false:N \l__exsheets_questions_deactivate_bool
+        \int_set_eq:NN    \l__exsheets_tmpd_int \g__exsheets_questions_id_int
+        \int_gset_eq:NN   \g__exsheets_questions_id_int \l__exsheets_tmpc_int
+        \__exsheets_select_question_random:n {##1}
+        \exsheets_file_input_if_exist:n {##1}
+        \int_gset_eq:NN   \g__exsheets_questions_id_int \l__exsheets_tmpd_int
+        \prop_gclear:N    \g__exsheets_included_questions_prop
+        \clist_clear:N    \l__exsheets_include_id_clist
+        \clist_clear:N    \l__exsheets_exclude_id_clist
+        \int_gzero:N      \g__exsheets_selection_number_int
+      }
+    \bool_set_false:N \l__exsheets_select_questions_bool
+  }
+
+% options:
+%  - IDs=<list of IDs>
+%  - all=true|false    % default when no option is given
+%  - random=<num>
+%  - exclude=<list of IDs>
+\keys_define:nn { exsheets / include }
+  {
+    all     .bool_set:N  = \l__exsheets_include_all_bool ,
+    IDs     .code:n      =
+      \bool_set_false:N \l__exsheets_include_all_bool
+      \bool_set_false:N \l__exsheets_include_random_bool
+      \bool_set_true:N  \l__exsheets_include_by_id_bool
+      \clist_set:Nn \l__exsheets_include_id_clist {#1} ,
+    % the `exclude' option does _not_ set \l__exsheets_include_random_bool ,
+    % \l__exsheets_include_by_id_bool or \l__exsheets_include_all_bool so
+    % it can be combined with the other options:
+    exclude .clist_set:N = \l__exsheets_exclude_id_clist ,
+    random  .code:n      =
+      \bool_set_false:N \l__exsheets_include_all_bool
+      \bool_set_true:N  \l__exsheets_include_random_bool
+      \bool_set_false:N \l__exsheets_include_by_id_bool
+      \int_set:Nn \l__exsheets_include_random_int {#1}
+  }
+
+\int_new:N \g__exsheets_selection_number_int
+
+\cs_new_protected:Npn \__exsheets_select_question:n #1
+  {
+    \bool_if:NT \l__exsheets_select_questions_bool
+      {
+        \bool_if:NTF \l__exsheets_questions_deactivate_bool
+          {
+            \bool_if:NT \l__exsheets_questions_use_bool
+              {
+                \int_gincr:N \g__exsheets_selection_number_int
+                \bool_if:NTF \l__exsheets_include_random_bool
+                  {
+                    \prop_gput:Nxn \g__exsheets_included_questions_prop
+                      { \int_use:N \g__exsheets_selection_number_int } {#1}
+                  }
+                  {
+                    \prop_gput:Nxn \g__exsheets_included_questions_prop
+                      { \int_use:N \g__exsheets_questions_id_int } {#1}
+                  }
+              }
+          }
+          {
+            \int_gincr:N \g__exsheets_questions_id_int
+            \bool_if:NTF \l__exsheets_include_random_bool
+              {
+                \int_gincr:N \g__exsheets_select_random_int
+                \int_set_eq:NN \l__exsheets_tmpa_int \g__exsheets_select_random_int
+%                 ID: \int_use:N \g__exsheets_questions_id_int ,~
+%                 set: \int_use:N \l__exsheets_questions_set_int ,~
+%                 selection: \int_use:N \g__exsheets_selection_number_int ,~
+%                 tmpa: \int_use:N \l__exsheets_tmpa_int \par
+              }
+              {
+                \int_set_eq:NN
+                  \l__exsheets_tmpa_int
+                  \g__exsheets_questions_id_int
+              }
+            \prop_get:NxN \g__exsheets_included_questions_prop
+              {  \int_use:N \l__exsheets_tmpa_int }
+              \l__exsheets_tmpa_tl
+            \__exsheets_select_question_by_id:V \l__exsheets_tmpa_tl
+          }
+      }
+  }
+\cs_generate_variant:Nn \__exsheets_select_question:n { V }
+
+\cs_new_protected:Npn \__exsheets_select_question_by_id:n #1
+  {
+    \bool_if:NTF \l__exsheets_include_all_bool
+      {% parsing list of excluded IDs
+        \clist_if_in:NnTF
+          \l__exsheets_exclude_id_clist
+          {#1}
+          { \bool_gset_false:N  \g__exsheets_questions_use_bool }
+          {
+            \bool_gset_true:N \g__exsheets_questions_use_bool
+            \clist_gput_right:Nn \questionsincludedlast {#1}
+            \seq_gput_right:Nn \g_exsheets_included_questions_seq {#1}
+            \int_gincr:N \g__exsheets_questions_used_int
+            \__exsheets_mark_as_used_x:nn
+              { \int_use:N \g__exsheets_questions_used_int }
+              {#1}
+            % \prop_gput:NnV \g__exsheets_questions_used_prop
+            %   {#1}
+            %   \g__exsheets_questions_id_int
+            \prop_gput:NnV \g__exsheets_questions_id_prop
+              {#1}
+              \g__exsheets_questions_id_int
+          }
+      }
+      {% parsing list of included IDs
+        \clist_if_in:NnTF
+          \l__exsheets_include_id_clist
+          {#1}
+          {
+            \clist_if_in:NnTF
+              \l__exsheets_exclude_id_clist
+              {#1}
+              { \bool_gset_false:N \g__exsheets_questions_use_bool }
+              {
+                \bool_gset_true:N  \g__exsheets_questions_use_bool
+                \clist_gput_right:Nn \questionsincludedlast {#1}
+                \seq_gput_right:Nn \g_exsheets_included_questions_seq {#1}
+                % \prop_gput:NnV \g__exsheets_questions_used_prop
+                %   {#1}
+                %   \g__exsheets_questions_id_int
+                \int_gincr:N \g__exsheets_questions_used_int
+                \__exsheets_mark_as_used_x:nn
+                  { \int_use:N \g__exsheets_questions_used_int }
+                  {#1}
+                \prop_gput:NnV \g__exsheets_questions_id_prop
+                  {#1}
+                  \g__exsheets_questions_id_int
+              }
+          }
+          { \bool_gset_false:N \g__exsheets_questions_use_bool }
+      }
+  }
+\cs_generate_variant:Nn \__exsheets_select_question_by_id:n { V }
+
+\tl_new:N \l__exsheets_include_id_tl
+\bool_new:N \l__exsheets_use_selection_bool
+% TODO: poor efficiency -- there should be no need to map through
+% \l__exsheets_class_prop *two* times
+\cs_new_protected:Npn \__exsheets_select_question_random:n #1
+  {
+    \bool_if:NT \l__exsheets_include_random_bool
+      {
+        % number of question in file:
+        \__exsheets_prop_count:NN
+          \g__exsheets_included_questions_prop
+          \l__exsheets_tmpa_int
+        % number of selectable questions in file:
+        \int_zero:N \l__exsheets_tmpb_int
+        \prop_map_inline:Nn \g__exsheets_included_questions_prop
+          {
+            \prop_map_inline:Nn \l__exsheets_class_prop
+              {
+                \bool_if:cT { g__exsheets_use_####1_bool }
+                  {
+                    \bool_set_true:N \l__exsheets_use_selection_bool
+                    \prop_get:cnNT { g__exsheets_questions_####2_prop } {##1}
+                      \l__exsheets_tmpa_tl
+                      {
+                        \prop_if_in:cVT { g__exsheets_####1_active_prop }
+                          \l__exsheets_tmpa_tl
+                          { \int_incr:N \l__exsheets_tmpb_int }
+                      }
+                  }
+              }
+          }
+        \int_compare:nTF { \l__exsheets_include_random_int >= \l__exsheets_tmpa_int }
+          {
+            % not enough questions available:
+            \msg_warning:nnxxx {exsheets} {random-file}
+              { \int_use:N \l__exsheets_include_random_int }
+              {#1}
+              { \int_use:N \l__exsheets_tmpa_int }
+            \bool_set_true:N \l__exsheets_include_all_bool
+          }
+          {
+            \bool_if:nTF
+              {
+                \int_compare_p:n
+                  { \l__exsheets_include_random_int >= \l__exsheets_tmpb_int }
+                  &&
+                \l__exsheets_use_selection_bool
+              }
+              {
+                % not enough questions selectable:
+                \msg_warning:nnxxxx {exsheets} {random-selectable}
+                  { \int_use:N \l__exsheets_include_random_int }
+                  {#1}
+                  { \int_use:N \l__exsheets_tmpa_int }
+                  { \int_use:N \l__exsheets_tmpb_int }
+                \bool_set_true:N \l__exsheets_include_all_bool
+              }
+              {
+                \int_zero:N \l__exsheets_tmpb_int
+                \int_do_while:nn
+                  { \l__exsheets_tmpb_int < \l__exsheets_include_random_int }
+                  {
+                    \pgfmathparse { random(\int_use:N \l__exsheets_tmpa_int) }
+                    \tl_set_eq:NN \l__exsheets_tmpa_tl \pgfmathresult
+                    \prop_get:NVN \g__exsheets_included_questions_prop
+                      \l__exsheets_tmpa_tl
+                      \l__exsheets_tmpb_tl
+                    \clist_if_in:NVF \l__exsheets_include_id_clist \l__exsheets_tmpb_tl
+                      {
+                        \tl_clear:N \l__exsheets_include_id_tl
+                        \prop_map_inline:Nn \l__exsheets_class_prop
+                          {
+                            \prop_get:cVNT { g__exsheets_questions_##2_prop }
+                              \l__exsheets_tmpa_tl \l__exsheets_tmpc_tl
+                              {
+                                \bool_if:cT { g__exsheets_use_##1_bool }
+                                  {
+                                    \prop_if_in:cVTF { g__exsheets_##1_active_prop }
+                                      \l__exsheets_tmpc_tl
+                                      { \tl_put_right:Nn \l__exsheets_include_id_tl {y} }
+                                      { \tl_put_right:Nn \l__exsheets_include_id_tl {n} }
+                                  }
+                              }
+                          }
+                        \bool_set_true:N \l__exsheets_tmpa_bool
+                        \clist_if_in:NVT
+                          \l__exsheets_exclude_id_clist
+                          \l__exsheets_tmpb_tl
+                          { \bool_set_false:N \l__exsheets_tmpa_bool }
+                        \seq_if_in:NnT
+                          \g_exsheets_included_questions_seq
+                          \l__exsheets_tmpb_tl
+                          { \bool_set_false:N \l__exsheets_tmpa_bool }
+                        \tl_if_in:NnT \l__exsheets_include_id_tl {n}
+                          { \bool_set_false:N \l__exsheets_tmpa_bool }
+                        \bool_if:NT \l__exsheets_tmpa_bool
+                        % \tl_if_in:NnF \l__exsheets_include_id_tl { n }
+                        %   {
+                        %     \clist_if_in:NVF
+                        %       \l__exsheets_exclude_id_clist
+                        %       \l__exsheets_tmpb_tl
+                              {
+                                \clist_put_right:NV
+                                  \l__exsheets_include_id_clist
+                                  \l__exsheets_tmpb_tl
+                                \int_incr:N \l__exsheets_tmpb_int
+                              }
+                         %  }
+                      }
+                  }
+              }
+          }
+      }
+  }
+% \cs_generate_variant:Nn \clist_if_in_p:Nn {NV}
+% \cs_generate_variant:Nn \seq_if_in_p:Nn   {NV}
+
+\NewDocumentCommand \PrintIfIncludeActiveTF { mm }
+  { \bool_if:NTF \l__exsheets_questions_deactivate_bool {#2} {#1} }
+
+\NewDocumentCommand \PrintIfIncludeActiveT { }
+  { \bool_if:NF \l__exsheets_questions_deactivate_bool }
+
+\NewDocumentCommand \PrintIfIncludeActiveF { }
+  { \bool_if:NT \l__exsheets_questions_deactivate_bool }
+
+% ----------------------------------------------------------------------------
+% die 'solution' Umgebung:
+\bool_new:N       \l__exsheets_solutions_print_bool
+\bool_set_false:N \l__exsheets_solutions_print_bool
+\bool_new:N       \l__exsheets_solutions_print_here_bool
+\bool_set_false:N \l__exsheets_solutions_print_here_bool
+\bool_new:N       \l__exsheets_solutions_print_section_bool
+\bool_set_false:N \l__exsheets_solutions_print_section_bool
+\bool_new:N       \l__exsheets_solutions_print_chapter_bool
+\bool_set_false:N \l__exsheets_solutions_print_chapter_bool
+\bool_new:N       \l__exsheets_solutions_print_all_bool
+\bool_set_false:N \l__exsheets_solutions_print_all_bool
+
+% \prop_new:N       \g_exsheets_question_identification_prop
+\prop_new:N       \g__exsheets_solutions_content_prop
+\prop_new:N       \g__exsheets_solutions_questions_id_prop
+\prop_new:N       \g__exsheets_solutions_names_prop
+\prop_new:N       \g__exsheets_solutions_counter_prop
+
+\tl_new:N         \l__exsheets_solutions_name_tl
+\tl_set:Nn        \l__exsheets_solutions_name_tl { Solution }
+
+\cs_new_protected:Npn \__exsheets_save_solution:n #1
+  {
+    % save for later use
+    \bool_if:NTF \l__exsheets_include_all_bool
+      { \int_set:Nn \l__exsheets_tmpe_int { \g__exsheets_questions_id_int -1 } }
+      { \int_set_eq:NN \l__exsheets_tmpe_int \g__exsheets_questions_id_int }
+    \prop_gput:Nxn \g__exsheets_solutions_content_prop
+      { \int_use:N \g__exsheets_questions_id_int }
+      {#1}
+    \prop_gput:NxV \g__exsheets_solutions_questions_id_prop
+      { \int_use:N \g__exsheets_questions_id_int }
+      \g__exsheets_questions_current_id_tl
+    \prop_gput:NxV \g__exsheets_solutions_names_prop
+      { \int_use:N \g__exsheets_questions_id_int }
+      \l__exsheets_solutions_name_tl
+    \prop_gput:NxV \g__exsheets_solutions_counter_prop
+      { \int_use:N \g__exsheets_questions_id_int }
+      \l__exsheets_qu_counter_pattern_tl
+    % print here
+    \exsheets_if_current_question_is_used:T
+      {
+        \bool_if:NT \l__exsheets_solutions_print_here_bool
+          {
+            \int_set:Nn \l_exsheets_counter_qu_int { \arabic{question} }
+            \__exsheets_get_sectioning_numbers:
+            \__exsheets_print_solution:VVVn
+              \l__exsheets_qu_counter_interpretation_tl
+              \l__exsheets_solutions_name_tl
+              \g__exsheets_questions_current_id_tl
+              {#1}
+          }
+      }
+  }
+\cs_generate_variant:Nn \__exsheets_save_solution:n { V }
+
+\NewEnviron { __exsheets_solution_internal: }
+  {
+    \bool_if:nT
+      { \g__exsheets_questions_use_bool && \l__exsheets_solutions_use_bool }
+      { \__exsheets_save_solution:V \BODY }
+  }
+
+\bool_new:N       \l__exsheets_inside_solution_bool
+\bool_set_false:N \l__exsheets_inside_solution_bool
+
+\tl_new:N \l__exsheets_use_solution_tl
+
+\newenvironment { __exsheets_solution: } [1]
+  {
+    \tl_clear:N \l__exsheets_use_solution_tl
+    \prop_map_inline:Nn \l__exsheets_class_prop
+      {
+        \use:c { __exsheets_solutions_use_##1: }
+        \bool_if:nTF
+          {
+            (
+              \l__exsheets_solutions_use_bool
+                &&
+              \bool_if_p:c { l__exsheets_##2_active_bool }
+            )
+             ||
+            ! \bool_if_p:c { g__exsheets_use_##1_bool }
+          }
+          { \tl_put_right:Nn \l__exsheets_use_solution_tl { y } }
+          { \tl_put_right:Nn \l__exsheets_use_solution_tl { n } }
+      }
+    % verwende, wenn ein Ja dabei war:
+    \tl_if_in:NnT \l__exsheets_use_solution_tl { y }
+      { \bool_set_true:N \l__exsheets_solutions_use_bool }
+    \bool_if:NT \l__exsheets_questions_deactivate_bool
+      { \bool_set_false:N \l__exsheets_solutions_use_bool }
+    \bool_if:NT \l__exsheets_solutions_use_bool
+      {
+        \bool_set_true:N \l__exsheets_inside_solution_bool
+        \IfNoValueF {#1} { \keys_set:nn { exsheets / solution } {#1} }
+      }
+    \tl_if_blank:VT \l__exsheets_solution_heading_instance_tl
+      {
+        \tl_set_eq:NN
+          \l__exsheets_solution_heading_instance_tl
+          \l__exsheets_heading_instance_tl
+      }
+    \__exsheets_solution_internal:
+  }
+  { \end__exsheets_solution_internal: }
+
+\bool_new:N       \l__exsheets_solutions_runin_bool
+\bool_set_false:N \l__exsheets_solutions_runin_bool
+
+\cs_new_protected:Npn \__exsheets_solutions_name:nnn #1#2#3
+  {
+    \tl_if_blank:VT \l__exsheets_solution_heading_instance_tl
+      {
+        \tl_set_eq:NN
+          \l__exsheets_solution_heading_instance_tl
+          \l__exsheets_heading_instance_tl
+      }
+    \exsheets_use_heading:Vnnnnn
+      \l__exsheets_solution_heading_instance_tl
+      {#2} {#1} { 0 } { 0 } {#3}
+  }
+\cs_generate_variant:Nn \__exsheets_solutions_name:nnn { VV , VVV }
+
+\tl_new:N  \l_exsheets_solutions_name_style_tl
+\tl_set:Nn \l_exsheets_solutions_name_style_tl { \normalsize \bfseries }
+
+\cs_new:Npn \exsheets_solutions_name_style:n #1
+  { \l_exsheets_solutions_name_style_tl #1 }
+
+% ----------------------------------------------------------------------------
+% print solutions:
+% save section / chapter counter:
+\cs_new_protected:Npn \__exsheets_exlabel:n #1
+  {
+    \@bsphack
+      \exsheets_write_to_aux_x:n
+        {
+          \token_to_str:N \newlabel { exse:#1 }
+            { { \arabic { section } } { \thepage } }
+        }
+      \cs_if_exist:NT \thechapter
+        {
+          \exsheets_write_to_aux_x:n
+            {
+              \token_to_str:N \newlabel { exch:#1 }
+                { { \arabic { chapter } } { \thepage } }
+            }
+        }
+    \@esphack
+  }
+
+% user command:
+\cs_new_eq:NN \exlabel \__exsheets_exlabel:n
+
+% adapt \label, maybe do this _after_ BeginDocument:
+\bool_if:NT \l__exsheets_solutions_by_ref_bool
+  {
+    \cs_new_eq:NN \__exsheets_saved_label:n \label
+    \cs_set:Npn \label #1
+      { \__exsheets_saved_label:n {#1} \__exsheets_exlabel:n {#1} }
+  }
+
+% this is like \ref from latex.ltx
+\cs_new:Npn \__exsheets_exref:n #1
+  {
+    \cs_if_exist:cTF { r@#1 }
+     { \__exsheets_exref_aux:n {#1} }
+     {
+       1\relax
+       \protect\G@refundefinedtrue
+       \@latex@warning{exlabel `#1' on page \thepage \space undefined}%
+     }
+  }
+
+\cs_new:Npn \__exsheets_exref_aux:n #1
+  { \exp_after:wN \exp_after:wN \exp_after:wN \use_i:nn \cs:w r@#1 \cs_end: }
+
+\cs_new_eq:NN \exref \__exsheets_exref:n
+
+% user command:
+\NewDocumentCommand \printsolutions { O{all} }
+  { \exsheets_print_solutions:n {#1} }
+
+% internal command:
+\cs_new_protected:Npn \exsheets_print_solutions:n #1
+  {
+    \group_begin:
+      \bool_set_true:N \l__exsheets_solutions_print_bool
+      \bool_set_true:N \l__exsheets_inside_solution_bool
+      \cs_set:Npn \S ##1 { \exref { exse:##1 } }
+      \cs_set:Npn \C ##1 { \exref { exch:##1 } }
+      \keys_set:nn { exsheets / exsheets_print_solutions } {#1}
+    \group_end:
+  }
+
+\int_new:N \l__exsheets_counter_ch_int
+\int_new:N \l__exsheets_current_ch_int
+\int_new:N \l__exsheets_counter_sec_int
+\int_new:N \l__exsheets_current_sec_int
+\int_new:N \l_exsheets_counter_qu_int
+
+\keys_define:nn {exsheets}
+  {
+    exsheets_print_solutions           .choice: ,
+    exsheets_print_solutions / section .code:n    =
+      { \exsheets_print_solutions_section:n {#1} } ,
+    exsheets_print_solutions / chapter .code:n    =
+      { \exsheets_print_solutions_chapter:n {#1} } ,
+    exsheets_print_solutions / all     .code:n    =
+      { \exsheets_print_solutions_all: } ,
+    exsheets_print_solutions / byID    .code:n    =
+      { \exsheets_print_solutions_byID:n {#1} }
+  }
+
+\cs_new_protected:Npn \__exsheets_get_sectioning_numbers:
+  {
+    \cs_if_exist:NT \chapter
+      { \int_set:Nn \l__exsheets_counter_ch_int { \arabic{chapter} } }
+    \int_set:Nn \l__exsheets_counter_sec_int { \arabic{section} }
+    \int_set:Nn \l_exsheets_counter_qu_int { \arabic{question} }
+  }
+
+% #1: numeric ID
+% #2: condition
+\cs_new_protected:Npn \__exsheets_print_solution_if:nn #1#2
+  {
+    \bool_if:nT
+      { #2 && \prop_if_in_p:Nn \g__exsheets_solutions_questions_id_prop {#1} }
+      {
+        \prop_get:NnN \g__exsheets_solutions_names_prop
+          {#1} \l__exsheets_tmpa_tl
+        \prop_get:NnN \g__exsheets_solutions_content_prop
+          {#1} \l__exsheets_tmpb_tl
+        \prop_get:NnN \g__exsheets_solutions_questions_id_prop
+          {#1} \l__exsheets_tmpc_tl
+        \prop_get:NnN \g__exsheets_solutions_counter_prop
+          {#1} \l__exsheets_tmpd_tl
+        \group_begin:
+          \tl_set_eq:NN \CurrentQuestionID \l__exsheets_tmpc_tl
+          \__exsheets_sectioning_hook:nV {ch}
+            \l__exsheets_new_chapter_hook_tl
+          \__exsheets_sectioning_hook:nV {sec}
+            \l__exsheets_new_section_hook_tl
+        \group_end:
+        \bool_if:NTF \l__exsheets_use_saved_pattern_bool
+          {
+            \eSaveCounterPatternFrom [ exsheets ]
+              \l__exsheets_current_pattern_interpretation_tl
+              \l__exsheets_current_pattern_tl
+              \l__exsheets_tmpd_tl
+          }
+          {
+            \eSaveCounterPatternFrom [ exsheets ]
+              \l__exsheets_current_pattern_interpretation_tl
+              \l__exsheets_current_pattern_tl
+              \l__exsheets_qu_counter_pattern_tl
+          }
+        \__exsheets_print_solution:VVVV
+          \l__exsheets_current_pattern_tl
+          \l__exsheets_tmpa_tl
+          \l__exsheets_tmpc_tl
+          \l__exsheets_tmpb_tl
+      }
+  }
+
+% print by section:
+\cs_new_protected:Npn \exsheets_print_solutions_section:n #1
+  {
+    \tl_if_blank:nTF {#1}
+      {
+        \prop_map_inline:Nn \g_exsheets_question_identification_prop
+          {
+            \__exsheets_print_solutions_section:nnn
+              {##1}
+              {##2}
+              { \arabic{section} }
+          }
+      }
+      {
+        \clist_map_inline:nn {#1}
+          { \__exsheets_print_solutions_by_section:w ##1-- \q_stop }
+      }
+  }
+
+\cs_new_protected:Npn \__exsheets_print_solutions_by_section:w #1-#2-#3 \q_stop
+  {
+    % wenn #3=-, dann range-Input
+    \tl_if_eq:nnTF {#3} { - }
+      {
+        \int_zero:N \l__exsheets_tmpa_int
+        \int_set_eq:NN \l__exsheets_tmpb_int \c_ten_thousand
+        \tl_if_blank:nF {#1} { \int_set:Nn \l__exsheets_tmpa_int {#1} }
+        \tl_if_blank:nF {#2} { \int_set:Nn \l__exsheets_tmpb_int {#2} }
+        \int_do_while:nn { \l__exsheets_tmpa_int <= \l__exsheets_tmpb_int }
+          {
+            \prop_map_inline:Nn \g_exsheets_question_identification_prop
+              {
+                \__exsheets_print_solutions_section:nnn
+                  {##1} {##2} { \l__exsheets_tmpa_int }
+              }
+            \int_incr:N \l__exsheets_tmpa_int
+          }
+      }
+      {
+        \prop_map_inline:Nn \g_exsheets_question_identification_prop
+          { \__exsheets_print_solutions_section:nnn {##1} {##2} {#1} }
+      }
+  }
+
+\cs_new_protected:Npn \__exsheets_print_solutions_section:nnn #1#2#3
+  {
+    \__exsheets_read_number:w #2 \q_stop
+    \__exsheets_print_solution_if:nn {#1}
+      { \int_compare_p:n { \l__exsheets_counter_sec_int = #3 } }
+  }
+
+% print by chapter:
+\cs_new_protected:Npn \exsheets_print_solutions_chapter:n #1
+  {
+    \tl_if_blank:nTF {#1}
+      {
+        \prop_map_inline:Nn \g_exsheets_question_identification_prop
+          {
+            \__exsheets_print_solutions_chapter:nnn {##1} {##2}
+              { \arabic{chapter} }
+          }
+      }
+      {
+        \clist_map_inline:nn {#1}
+          { \__exsheets_print_solutions_by_chapter:w ##1-- \q_stop }
+      }
+  }
+
+\cs_new_protected:Npn \__exsheets_print_solutions_by_chapter:w #1-#2-#3 \q_stop
+  {
+    % wenn #3=-, dann range-Input
+    \tl_if_eq:nnTF {#3} { - }
+      {
+        \int_zero:N \l__exsheets_tmpa_int
+        \int_set_eq:NN \l__exsheets_tmpb_int \c_ten_thousand
+        \tl_if_blank:nF {#1} { \int_set:Nn \l__exsheets_tmpa_int {#1} }
+        \tl_if_blank:nF {#2} { \int_set:Nn \l__exsheets_tmpb_int {#2} }
+        \int_do_while:nn { \l__exsheets_tmpa_int <= \l__exsheets_tmpb_int }
+          {
+            \prop_map_inline:Nn \g_exsheets_question_identification_prop
+              {
+                \__exsheets_print_solutions_chapter:nnn
+                  {##1}
+                  {##2}
+                  { \l__exsheets_tmpa_int }
+              }
+            \int_incr:N \l__exsheets_tmpa_int
+          }
+      }
+      {
+        \prop_map_inline:Nn \g_exsheets_question_identification_prop
+          { \__exsheets_print_solutions_chapter:nnn {##1} {##2} {#1} }
+      }
+  }
+
+\cs_new_protected:Npn \__exsheets_print_solutions_chapter:nnn #1#2#3
+  {
+    \__exsheets_read_number:w #2 \q_stop
+    \__exsheets_print_solution_if:nn {#1}
+      { \int_compare_p:n { \l__exsheets_counter_ch_int = #3 } }
+  }
+
+% print all:
+\cs_new_protected:Npn \exsheets_print_solutions_all:
+  {
+    \prop_map_function:NN \g_exsheets_question_identification_prop
+      \__exsheets_print_solutions_all:nn
+    % \prop_show:N \g_exsheets_question_identification_prop
+  }
+
+\cs_new:Npn \__exsheets_sectioning_hook:nn #1#2
+  {
+    \bool_if:nT {
+      !\int_compare_p:n
+        {
+          \use:c { l__exsheets_current_#1_int }
+            =
+          \use:c { l__exsheets_counter_#1_int }
+        }
+      &&
+      !\int_compare_p:n
+        { \use:c { l__exsheets_counter_#1_int } = 0 }
+    }
+    {#2}
+  }
+\cs_generate_variant:Nn \__exsheets_sectioning_hook:nn { nV }
+
+\cs_new_protected:Npn \__exsheets_print_solutions_all:nn #1#2
+  { \exsheets_print_solutions_if:nnn { \c_true_bool } {#1} {#2} }
+
+% #1: condition
+% #2: numeric question ID
+% #3: question number string (stored in \g_exsheets_question_identification_prop)
+% use function in a wrapper which in turn is fed to
+%    \prop_map_function:NN \g_exsheets_question_identification_prop 
+\cs_new_protected:Npn \exsheets_print_solutions_if:nnn #1#2#3
+  {
+    \prop_if_in:NnT \g__exsheets_solutions_names_prop {#2}
+      {
+        \int_set_eq:NN
+          \l__exsheets_current_sec_int
+          \l__exsheets_counter_sec_int
+        \int_set_eq:NN
+          \l__exsheets_current_ch_int
+          \l__exsheets_counter_ch_int
+        \__exsheets_read_number:w #3 \q_stop
+        \__exsheets_print_solution_if:nn {#2} {#1}
+      }
+  }
+
+% print by ID:
+\seq_new:N \l__exsheets_solutions_byID_seq
+\cs_new_protected:Npn \exsheets_print_solutions_byID:n #1
+  {
+    \seq_set_split:Nnn \l__exsheets_solutions_byID_seq { , } {#1}
+    \seq_clear:N \l__exsheets_tmpa_seq
+    \seq_map_inline:Nn \l__exsheets_solutions_byID_seq
+      {
+        \prop_get:NnN \g__exsheets_questions_id_prop
+          {##1} \l__exsheets_tmpa_tl
+        \seq_put_right:NV \l__exsheets_tmpa_seq \l__exsheets_tmpa_tl
+      }
+    \bool_if:NT \l__exsheets_print_byID_sorted_bool
+      {
+        \seq_sort:Nn \l__exsheets_tmpa_seq
+          {
+            \int_compare:nNnTF {##1} > {##2}
+              { \sort_reversed: }
+              { \sort_ordered: }
+          }
+      }
+    \seq_map_inline:Nn \l__exsheets_tmpa_seq
+      {
+        \group_begin:
+          \tl_if_eq:nnF {##1} { \q_no_value }
+            {
+              \prop_get:NnNT \g__exsheets_solutions_names_prop
+                {##1} \l__exsheets_tmpa_tl
+                {
+                  \prop_get:NnN \g__exsheets_solutions_content_prop
+                    {##1} \l__exsheets_tmpb_tl
+                  \prop_get:NnN \g__exsheets_solutions_questions_id_prop
+                    {##1} \l__exsheets_tmpc_tl
+                  \prop_get:NnN \g__exsheets_solutions_counter_prop
+                    {##1} \l__exsheets_tmpd_tl
+                  \__exsheets_restore_number_from_and_do:Nnn
+                    \g_exsheets_question_identification_prop
+                    {##1}
+                    {
+                      \bool_if:NTF \l__exsheets_use_saved_pattern_bool
+                        {
+                          \eSaveCounterPatternFrom [ exsheets ]
+                            \l__exsheets_current_pattern_interpretation_tl
+                            \l__exsheets_current_pattern_tl
+                            \l__exsheets_tmpd_tl
+                        }
+                        {
+                          \eSaveCounterPatternFrom [ exsheets ]
+                            \l__exsheets_current_pattern_interpretation_tl
+                            \l__exsheets_current_pattern_tl
+                            \l__exsheets_qu_counter_pattern_tl
+                        }
+                      \__exsheets_print_solution:VVVV
+                        \l__exsheets_current_pattern_tl
+                        \l__exsheets_tmpa_tl
+                        \l__exsheets_tmpc_tl
+                        \l__exsheets_tmpb_tl
+                    }
+                }
+            }
+        \group_end:
+      }
+  }
+
+\cs_new_protected:Npn \__exsheets_read_number:w #1-#2-#3 \q_stop
+  {
+    \int_zero:N \l__exsheets_counter_ch_int
+    \int_zero:N \l__exsheets_counter_sec_int
+    \int_zero:N \l_exsheets_counter_qu_int
+    \tl_if_in:nnF {#1} { @@@ }
+      {
+        \tl_if_blank:nF {#1}
+          { \int_set:Nn \l__exsheets_counter_ch_int {#1} }
+      }
+    \int_set:Nn \l__exsheets_counter_sec_int {#2}
+    \int_set:Nn \l_exsheets_counter_qu_int {#3}
+  }
+
+\cs_new_protected:Npn \exsheets_solutions_print_name:nnn #1#2#3
+  {
+    \tl_set_rescan:Nnn \l__exsheets_tmpa_tl
+      { \char_set_catcode_letter:N \@ } {#1}
+    \tl_if_in:nnTF {#1} { @@@ }
+      { \__exsheets_solutions_name:nnn { } {#2} {#3} }
+      { \__exsheets_solutions_name:nnn {#1} { #2  } {#3} }
+    \tex_penalty:D \c_ten_thousand
+  }
+\cs_generate_variant:Nn \exsheets_solutions_print_name:nnn { VVV }
+
+\cs_new:Npn \__exsheets_surround_with:nnn #1#2#3 { #2#1#3 }
+\cs_generate_variant:Nn \__exsheets_surround_with:nnn { nVV }
+
+% think about the interface with \exsheetsprintsolution a bit more, especially
+% about the placement of the hooks!
+
+% #1: number
+% #2: name
+% #3: ID
+% #4: body
+\cs_new_protected:Npn \__exsheets_print_solution:nnnn #1#2#3#4
+  {
+    \group_begin:
+      \tl_set:Nn \CurrentQuestionID {#3}
+      \__exsheets_surround_with:nVV
+        {
+          \exp_args:Nnx
+          \exsheetsprintsolution
+            { \exsheets_solutions_print_name:nnn {#1} {#2} {#3} }
+            {
+              \exp_not:V \l__exsheets_solutions_pre_body_hook_tl
+              \exp_not:n {#4}
+              \exp_not:V \l__exsheets_solutions_post_body_hook_tl
+            }
+        }
+        \l__exsheets_solutions_pre_hook_tl
+        \l__exsheets_solutions_post_hook_tl
+      \exsheets_add_space:N \l__exsheets_solutions_skip_below_dim
+    \group_end:
+  }
+\cs_generate_variant:Nn \__exsheets_print_solution:nnnn { VVV, VVVV }
+
+% a user command to be redefined as needed; must have two mandatory arguments!
+% #1: heading
+% #2: body
+\cs_new:Npn \exsheetsprintsolution #1#2 { #1#2 }
+
+\cs_new:Npn \PrintSolutionsTF
+  { \bool_if:NTF \l__exsheets_solutions_print_bool }
+\cs_new:Npn \PrintSolutionsT
+  { \bool_if:NT \l__exsheets_solutions_print_bool }
+\cs_new:Npn \PrintSolutionsF
+  { \bool_if:NF \l__exsheets_solutions_print_bool }
+
+\bool_new:N      \l__exsheets_print_byID_sorted_bool
+\bool_set_true:N \l__exsheets_print_byID_sorted_bool
+
+\tl_new:N   \l__exsheets_solutions_pre_body_hook_tl
+\tl_new:N   \l__exsheets_solutions_post_body_hook_tl
+\tl_new:N   \l__exsheets_solutions_pre_hook_tl
+\tl_new:N   \l__exsheets_solutions_post_hook_tl
+
+\keys_define:nn { exsheets / solution }
+  {
+    headings        .tl_set:N   = \l__exsheets_solution_heading_instance_tl ,
+    print           .choice: ,
+    print / true    .code:n     =
+      {
+        \bool_set_true:N  \l__exsheets_solutions_print_bool
+        \bool_set_true:N  \l__exsheets_solutions_print_here_bool
+        \bool_set_false:N \l__exsheets_solutions_print_section_bool
+        \bool_set_false:N \l__exsheets_solutions_print_chapter_bool
+        \bool_set_false:N \l__exsheets_solutions_print_all_bool
+      } ,
+    print / false   .code:n     =
+      {
+        \bool_set_false:N \l__exsheets_solutions_print_bool
+      } ,
+    print           .default:n  = true ,
+    name            .tl_set:N   = \l__exsheets_solutions_name_tl ,
+    sorted          .bool_set:N = \l__exsheets_print_byID_sorted_bool ,
+    skip-below      .dim_set:N  = \l__exsheets_solutions_skip_below_dim ,
+    no-skip-below   .bool_set:N = \l__exsheets_no_skip_after_bool ,
+    pre-body-hook   .tl_set:N   = \l__exsheets_solutions_pre_body_hook_tl ,
+    post-body-hook  .tl_set:N   = \l__exsheets_solutions_post_body_hook_tl ,
+    pre-hook        .tl_set:N   = \l__exsheets_solutions_pre_hook_tl ,
+    post-hook       .tl_set:N   = \l__exsheets_solutions_post_hook_tl
+  }
+
+% ----------------------------------------------------------------------------
+% create question/solution pairs
+\cs_new_protected:Npn \__exsheets_new_qu_sol_pair:nnnnnn #1#2#3#4#5#6
+  {
+    \NewDocumentEnvironment {#1} { O{}G{} }
+      { \keys_set:nn {exsheets} {#3} \__exsheets_question: {#2,##1} {##2} }
+      { \end__exsheets_question: }
+    \NewDocumentEnvironment {#4} { O{} }
+      { \keys_set:nn {exsheets} {#6} \__exsheets_solution: {#5,##1} }
+      { \end__exsheets_solution: }
+  }
+
+\cs_new_protected:Npn \__exsheets_renew_qu_sol_pair:nnnnnn #1#2#3#4#5#6
+  {
+    \RenewDocumentEnvironment {#1} { O{}G{} }
+      { \keys_set:nn {exsheets} {#3} \__exsheets_question: {#2,##1} {##2} }
+      { \end__exsheets_question: }
+    \RenewDocumentEnvironment {#4} { O{} }
+      { \keys_set:nn {exsheets} {#6} \__exsheets_solution: {#5,##1} }
+      { \end__exsheets_solution: }
+  }
+
+\NewDocumentCommand \NewQuSolPair { mO{}O{}mO{}O{} }
+  { \__exsheets_new_qu_sol_pair:nnnnnn {#1} {#2} {#3} {#4} {#5} {#6} }
+\@onlypreamble \NewQuSolPair
+
+\NewDocumentCommand \RenewQuSolPair { mO{}O{}mO{}O{} }
+  { \__exsheets_renew_qu_sol_pair:nnnnnn {#1} {#2} {#3} {#4} {#5} {#6} }
+\@onlypreamble \RenewQuSolPair
+
+% ----------------------------------------------------------------------------
+% the `tasks' list
+\RequirePackage {tasks} [2014/07/03]
+\AddCounterPattern* [tasks] {question} {qu}
+\ReadCounterFrom    [tasks] {question} \l_exsheets_counter_qu_int
+
+% ----------------------------------------------------------------------------
+% the \blank{<words>} command
+\RequirePackage {ulem} \normalem
+
+\dim_new:N  \l__exsheets_blank_dim
+\tl_new:N   \l__exsheets_blank_linespread_tl
+\tl_set:Nn  \l__exsheets_blank_linespread_tl { 1 }
+\tl_new:N   \l__exsheets_blank_scale_tl
+\tl_set:Nn  \l__exsheets_blank_scale_tl { 1 }
+\box_new:N  \l__exsheets_blank_box
+\bool_new:N \l__exsheets_blank_width_bool
+\bool_new:N \l__exsheets_blank_linespread_bool
+
+\cs_new:Npn \exsheets_write_blank:n #1 {#1}
+\cs_set_eq:NN \exsheets_write_blank:n \uline
+
+\keys_define:nn { exsheets / blank }
+  {
+    style          .choice: ,
+    style / line   .code:n =
+      \cs_set_eq:NN \exsheets_write_blank:n \uline ,
+    style / wave   .code:n =
+      \cs_set_eq:NN \exsheets_write_blank:n \uwave ,
+    style / dline  .code:n =
+      \cs_set_eq:NN \exsheets_write_blank:n \uuline ,
+    style / dotted .code:n =
+      \cs_set_eq:NN \exsheets_write_blank:n \dotuline ,
+    style / dashed .code:n =
+      \cs_set_eq:NN \exsheets_write_blank:n \dashuline ,
+    scale          .tl_set:N = \l__exsheets_blank_scale_tl ,
+    width          .code:n =
+      {
+        \bool_set_true:N \l__exsheets_blank_width_bool
+        \dim_set:Nn \l__exsheets_blank_dim {#1}
+      } ,
+    linespread     .code:n =
+      \bool_set_true:N \l__exsheets_blank_linespread_bool
+      \tl_set:Nn \l__exsheets_blank_linespread_tl {#1}
+  }
+
+\NewDocumentCommand \blank { som }
+  {
+    \group_begin:
+      \IfNoValueF {#2} { \keys_set:nn { exsheets / blank } {#2} }
+      \mode_if_vertical:TF
+        {
+          \IfBooleanF {#1} { \noindent }
+          \exsheets_blank:n {#3}
+          \IfBooleanF {#1}
+            {
+              \bool_if:NT \l__exsheets_blank_linespread_bool
+                { \linespread { \l__exsheets_blank_linespread_tl } \selectfont }
+              \par
+            }
+        }
+        { \exsheets_blank:n {#3} }
+    \group_end:
+  }
+
+\cs_new_protected:Npn \exsheets_blank:n #1
+  {
+    \box_clear:N \l__exsheets_blank_box
+    \mode_if_math:TF
+      { \hbox_set:Nn \l__exsheets_blank_box { $ \m@th \mathpalette{}{#1} $ } }
+      { \hbox_set:Nn \l__exsheets_blank_box {#1} }
+    \bool_if:NTF \l__exsheets_inside_solution_bool
+      { \exsheets_write_blank:n {#1} }
+      {
+        \bool_if:NTF \l__exsheets_blank_width_bool
+          { \__exsheets_blank_skip:N \l__exsheets_blank_dim }
+          {
+            \__exsheets_blank_skip:n
+              { \box_wd:N \l__exsheets_blank_box }
+          }
+      }
+  }
+
+\cs_new_protected:Npn \__exsheets_blank_skip:N #1
+  {
+    \bool_if:NTF \l__exsheets_blank_width_bool
+      { \dim_set:Nn \l__exsheets_tmpa_dim {#1} }
+      {
+        \fp_set:Nn \l__exsheets_tmpa_fp
+          { \dim_to_fp:n {#1} * \l__exsheets_blank_scale_tl }
+        \dim_set:Nn \l__exsheets_tmpa_dim { \fp_to_dim:N \l__exsheets_tmpa_fp }
+      }
+    \dim_compare:nTF { \l__exsheets_tmpa_dim > 2em }
+      {
+        \mode_if_math:TF
+          { \exsheets_write_blank:n { \skip_horizontal:N \l__exsheets_tmpa_dim } }
+          {
+            \exsheets_write_blank:n { \skip_horizontal:n { 1em } }
+            \dim_sub:Nn \l__exsheets_tmpa_dim { 2em }
+            \dim_do_while:nn { \l__exsheets_tmpa_dim > \c_zero_dim }
+              {
+                \tex_penalty:D \hyphenpenalty
+                \dim_compare:nTF { \l__exsheets_tmpa_dim < 1pt }
+                  { \exsheets_write_blank:n { \skip_horizontal:N \l__exsheets_tmpa_dim } }
+                  { \exsheets_write_blank:n { \skip_horizontal:n { 1pt } } }
+                \dim_sub:Nn \l__exsheets_tmpa_dim { 1pt }
+              }
+            \exsheets_write_blank:n { \skip_horizontal:n { 1em } }
+          }
+      }
+      { \exsheets_write_blank:n { \skip_horizontal:N \l__exsheets_tmpa_dim } }
+  }
+\cs_generate_variant:Nn \__exsheets_blank_skip:N { n }
+
+% the following code from Heiko Oberdieck in d.c.t.t served as inspiration
+% and basis for the \blank command:
+% https://groups.google.com/d/msg/de.comp.text.tex/fZLwraH04jE/o1RSdFXjGuIJ
+% 
+% \makeatletter
+% \newcommand*{\luecke}{%
+%   \begingroup
+%     \setlength{\dimen@}{6cm}%
+%     \ifdim\dimen@>2em %
+%       \underline{\hspace{1em}}%
+%       \advance\dimen@ by -2em\relax
+%       \@whiledim\dimen@>0pt\do{%
+%         \penalty\hyphenpenalty
+%         \ifdim\dimen@<1pt %
+%           \underline{\hspace{\dimen@}}%
+%         \else
+%           \underline{\hspace{1pt}}%
+%         \fi
+%         \advance\dimen@ by -1pt %
+%       }%
+%       \underline{\hspace{1em}}%
+%     \else
+%       \underline{\hspace{\dimen@}}%
+%     \fi
+%   \endgroup
+%   \xspace
+% }
+% \makeatother
+
+% ----------------------------------------------------------------------------
+% \examspace
+% insert space for a student to answer a question
+\cs_new_protected:Npn \__exsheets_examspace:nn #1#2
+  {
+    \par
+    \tex_penalty:D -100 \scan_stop:
+    \dim_set:Nn \l__exsheets_tmpa_dim {#2}
+    \dim_set:Nn \l__exsheets_tmpb_dim { \pagegoal - \pagetotal - \baselineskip }
+    \dim_compare:nTF { \l__exsheets_tmpa_dim > \l__exsheets_tmpb_dim }
+      {
+        \dim_compare:nT { \l__exsheets_tmpb_dim > 0pt } { \vfil }
+        \break
+        \IfBooleanF {#1}
+          {
+            \dim_sub:Nn \l__exsheets_tmpa_dim { \l__exsheets_tmpb_dim }
+            \vspace* { \l__exsheets_tmpa_dim }
+          }
+      }
+      { \skip_vertical:N \l__exsheets_tmpa_dim }
+  }
+\NewDocumentCommand \examspace { sm }
+  { \__exsheets_examspace:nn {#1} {#2} }
+
+% ----------------------------------------------------------------------------
+% SETUP
+\NewDocumentCommand \SetupExSheets { o +m }
+  {
+    \IfNoValueTF {#1}
+      { \keys_set:nn {exsheets} {#2} }
+      { \keys_set:nn { exsheets / #1 } {#2} }
+  }
+
+% ----------------------------------------------------------------------------
+% default definitions:
+% question / solution pair:
+\NewQuSolPair{question}{solution}
+
+% properties:
+% \DeclareQuestionProperty{number}
+\DeclareQuestionProperty{counter}
+\DeclareQuestionProperty{subtitle}
+\DeclareQuestionProperty{question-body}
+\DeclareQuestionProperty{points}
+\DeclareQuestionProperty{bonus-points}
+\bool_if:NT \l__exsheets_auto_label_bool
+  {
+    \DeclareQuestionProperty{ref}
+    \DeclareQuestionProperty{pageref}
+  }
+
+% classes:
+\DeclareQuestionClass{class}{classes}
+\DeclareQuestionClass{topic}{topics}
+
+% ----------------------------------------------------------------------------
+% Sprachanpassungen
+\RequirePackage { translations }
+% translation for the exercises
+\DeclareTranslationFallback       { exsheets-exercise-name } { Exercise     }
+\DeclareTranslation { English   } { exsheets-exercise-name } { Exercise     }
+\DeclareTranslation { British   } { exsheets-exercise-name } { Exercise     }
+\DeclareTranslation { American  } { exsheets-exercise-name } { Exercise     }
+\DeclareTranslation { French    } { exsheets-exercise-name } { Exercice     }
+\DeclareTranslation { German    } { exsheets-exercise-name } { \"Ubung      }
+\DeclareTranslation { Italian   } { exsheets-exercise-name } { Esercizio    }
+\DeclareTranslation { Spanish   } { exsheets-exercise-name } { Ejercicio    }
+\DeclareTranslation { Catalan   } { exsheets-exercise-name } { Exercici     }
+\DeclareTranslation { Turkish   } { exsheets-exercise-name } { Egzersiz     }
+\DeclareTranslation { Croatian  } { exsheets-exercise-name } { Primjer      }
+\DeclareTranslation { Hungarian } { exsheets-exercise-name } { Gyakorol     }
+\DeclareTranslation { Danish    } { exsheets-exercise-name } { Opgave       }
+\DeclareTranslation { Norsk     } { exsheets-exercise-name } { Oppgave      }
+\DeclareTranslation { Portuges  } { exsheets-exercise-name } { Exerc\'\i cio }
+% translation for the question
+\DeclareTranslationFallback       { exsheets-question-name } { Question     }
+\DeclareTranslation { English   } { exsheets-question-name } { Question     }
+\DeclareTranslation { British   } { exsheets-question-name } { Question     }
+\DeclareTranslation { American  } { exsheets-question-name } { Question     }
+\DeclareTranslation { French    } { exsheets-question-name } { Question     }
+\DeclareTranslation { German    } { exsheets-question-name } { Aufgabe      }
+\DeclareTranslation { Italian   } { exsheets-question-name } { Questione    }
+\DeclareTranslation { Spanish   } { exsheets-question-name } { Pregunta     }
+\DeclareTranslation { Catalan   } { exsheets-question-name } { Q\"uesti\'o  }
+\DeclareTranslation { Turkish   } { exsheets-question-name } { Soru         }
+\DeclareTranslation { Croatian  } { exsheets-question-name } { Zadatak      }
+\DeclareTranslation { Hungarian } { exsheets-question-name } { Feladat      }
+\DeclareTranslation { Danish    } { exsheets-question-name } { Opgave       }
+\DeclareTranslation { Norsk     } { exsheets-question-name } { Oppgave      }
+\DeclareTranslation { Portuges  } { exsheets-question-name } { Quest\~ao    }
+% translation for the solutions
+\DeclareTranslationFallback       { exsheets-solution-name } { Solution     }
+\DeclareTranslation { English   } { exsheets-solution-name } { Solution     }
+\DeclareTranslation { British   } { exsheets-solution-name } { Solution     }
+\DeclareTranslation { American  } { exsheets-solution-name } { Solution     }
+\DeclareTranslation { French    } { exsheets-solution-name } { Solution     }
+\DeclareTranslation { German    } { exsheets-solution-name } { L\"osung     }
+\DeclareTranslation { Italian   } { exsheets-solution-name } { Soluzione    }
+\DeclareTranslation { Spanish   } { exsheets-solution-name } { Soluci\'on   }
+\DeclareTranslation { Catalan   } { exsheets-solution-name } { Soluci\'o    }
+\DeclareTranslation { Turkish   } { exsheets-solution-name } { \c C\"oz\"um }
+\DeclareTranslation { Croatian  } { exsheets-solution-name } { Rje\v{s}enje }
+\DeclareTranslation { Hungarian } { exsheets-solution-name } { Megold\'{a}s }
+\DeclareTranslation { Danish    } { exsheets-solution-name } { L\o sning   }
+\DeclareTranslation { Norsk     } { exsheets-solution-name } { L\o sning   }
+\DeclareTranslation { Portuges  } { exsheets-solution-name } { Solu\c c\~ao }
+% the actual translating
+\tl_set:Nn \l__exsheets_exercise_name_tl
+  { \GetTranslation { exsheets-exercise-name } }
+\tl_set:Nn \l__exsheets_questions_name_tl
+  { \GetTranslation { exsheets-question-name } }
+\tl_set:Nn \l__exsheets_solutions_name_tl
+  { \GetTranslation { exsheets-solution-name } }
+
+
+% ----------------------------------------------------------------------------
+% save total points in .aux file to make it available for \allpoints anywhere
+\AtEndDocument
+  {
+    \exsheets_write_to_aux_x:n
+      {
+        \exp_not:N \exsheets@sum@of@points
+          { \fp_eval:n { \g__exsheets_points_sum_fp } }^^J
+        \exp_not:N \exsheets@sum@of@bonus
+          { \fp_eval:n { \g__exsheets_bonus_sum_fp } }^^J
+        \exp_not:N \gdef \exp_not:N \numberofquestions
+          { \int_use:N \g__exsheets_questions_used_int }
+        % \exsheets@number@of@questions
+        %   { \int_to_arabic:V \g__exsheets_questions_id_int }
+      }
+  }
+
+% ----------------------------------------------------------------------------
+% load custom configuration
+\file_if_exist:nT {exsheets_configurations.cfg}
+  {
+    \AtBeginDocument
+      {
+        \msg_info:nn {exsheets} {loading-configurations}
+        \file_input:n {exsheets_configurations.cfg}
+      }
+  }
+
+\tex_endinput:D
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+HISTORY:
+2011/11/23 v0.1pre     - first upload to bitbucket and all changes until
+                         considered stable enough/ready to be called
+                         0.1alpha. There'll be no further descriptions until
+                         then.
+2012/06/08 v0.1alpha   - first hopefully stable version
+2012/06/11 v0.1alpha-a - added headings instances, slightly rewritten
+                         `exercises-tasks' object and `tasks' environment
+2012/06/11 v0.1alpha-b - added `multiplechoice' instance and `load-tasks'
+                         option 
+2012/06/12 v0.1alpha-c - renamed from `exercises' into `ExSheets'
+2012/06/15 v0.1alpha-d - added more flexible solution printing method
+2012/06/15 v0.1beta    - filled in some blanks in the documentation, now we
+                         need some testing!
+2012/09/07 v0.1beta-a  - adjustments to the updated l3kernel
+2012/09/08 v0.1beta-b  - sort solutions printed with the `byID' key
+2012/09/16 v0.1beta-c  - renamed option `questions-counter-format' into
+                         `counter-format'
+2012/09/19 v0.1beta-d  - added `topic' key, provide \includequestions with
+                         options `all' and `IDs'
+2012/09/24 v0.1beta-e  - added question properties and improved random
+                         question selection
+2012/09/27 v0.1        - added two headings instances, new option
+                         `headings-format' 
+                       - small changes in the definition of the
+                         `exsheets-headings' object
+                       - preliminary version of totoc options. Unfortunatly
+                         \exsheets@recover@number is not expandable => no
+                         hyperref support
+2012/09/30 v0.2beta    - version numbering gone crazy! this will now stay
+                         0.2beta until upload to CTAN (v0.2)
+                       - integrated packages `translations' and `cntformats':
+                         trnslt: provide expandable version of `translator's
+                           \translate
+                         cntfmts: outsourced previous counter formatting
+                           commands; should now be usable in other packages,
+                           too, and simplified definitions in `ExSheets'
+                       - thanks to `translations' and `cntformats' the `totoc'
+                         option now works with `hyperref'
+2012/10/05 v0.2        - removed \sumpoints and moved the functionality to
+                         \totalpoints*
+                       - changed meaning of \addpoints* and moved former
+                         functionality to \points
+                       - added bonus point functionality including \addbonus,
+                         \bonus, \bonussum, \pointssum, \currentpointssum,
+                         \currentbonussum
+                       - added grades distribution
+2012/10/05 v0.2a       - resolved bug in saving and recovering question number
+                         using \exsheets@save@number and \QuestionNumber
+2012/10/08 v0.2b       - improved the reference to chapter/solution numbers
+                         in \printsolutions
+                       - resolved bug in \printsolutions introduced in the
+                         last update
+                       - upload to CTAN
+
+2012/10/23 v0.3        - bugfix in \exref
+                       - new: \NewQuSolPair, \RenewQuSolPair, \examspace
+2012/10/24 v0.3a       - fix of headings when followed by a list
+                       - changed syntax of {tasks} list to resemble the real
+                         lists like enumerate
+2012/10/26 v0.3b       - small fix to the {tasks} environment, \NewTasks,
+                         \RenewTasks, resolve stupid bug:
+                         \ckeckedchoicebox => \checkedchoicebox
+2012/11/08 v0.4        - compatibility with KOMA-Script's `parskip' option:
+                         now no unwanted skip and no overfull hbox is produced
+                       - env {task} now supports inner environments
+2012/12/02 v0.5        - added \CurrentQuestionID
+2012/12/06 v0.5a       - bug fix: solutions had wrong numbers with
+                         counter-format=se.qu and [print] option
+2012/12/18 v0.6        - variations, Hungarian translations, corrected
+                         Catalanian translations
+2012/12/23 v0.6a       - bug fix: labels and items of {tasks} weren't joined
+                         at their baselines
+2013/01/06 v0.6b       - bug fix: ID counting fixed in \includequestions
+2013/01/19 v0.7        - extracted `tasks' environment into standalone
+                         package; this also lead to a slightly new syntax and
+                         a few new options for it
+                       - changed internals for random selection of questions:
+                         uses `pgf' instead of `lcg' and seems to be more
+                         reliable than before
+2013/01/21 v0.7a       - added option `auto-label' and questions key `label',
+                         also added question properties `ref' and `pageref'
+2013/02/17 v0.7b       - bug fix: question selection by ID now works again
+2013/03/10 v0.8        - \prop_length => \exsheets_prop_count
+                       - define unexpandable internal commands protected
+                       - translations basic dictionaries for English, German,
+                         French and Spanish
+                       - new \includequestions option `exclude'
+                       - new way of handling the `class' of questions:
+                         instead of hard-coded `classes' and `topics'
+                         individual groups like e.g. `difficulties' can be
+                         chosen; `classes' and `topics' are still provided for
+                         backwards compatibility; this introduces the new
+                         command \DeclareQuestionClass
+                       - minor changes to the debugging information layout
+                       - bug fix in number saving mechanism
+                       - \includequestions[random=<num>] now obeys class
+                         as done with \SetupExSheets{use-topics={foo,bar}}
+                       - new macro \questionsincludedlast
+2013/04/04 v0.8a       - added Portuguese translations
+2013/04/07 v0.9        - protected internal commands where appropriate
+                       - added possibility to set general options with
+                         \NewQuSolPair and \RenewQuSolPair
+2013/04/08 v0.9a       - added headings instance `empty'
+2013/04/18 v0.9b       - fixed erroneous behaviour of \includequestions when
+                         used more than once
+                       - added hook \l__exsheets_heading_points_post_hook_tl
+2013/04/21 v0.9c       - bug fix: \ForEachQuestion seems to work correctly
+                         again
+2013/04/25 v0.9d       - bug fix: \includequestions works correctly when used
+                         multiple times together with ordinary instances of
+                         the {question} environment
+                       - bug fix: points/parse=false correctly disables
+                         parsing points again
+                       - bug fix: \addpoints didn't add to the question
+                         property
+                       - new option `points/format'
+                       - \blank now works in math mode, it doesn't do
+                         linebreaks there if `ulem' doesn't allow them (which
+                         it doesn't)
+2013/05/01 v0.9e       - corrected erroneous behaviour of \examspace
+2013/05/26 v0.9f       - fixed incorrectly placed links when the `totoc'
+                         option is enabled and questions/solutions are at the
+                         top of a new page because there wasn't enough place
+                         left at the page before
+2013/05/30 v0.9g       - obey \if@filesw
+2013/06/28 v0.9h       - cleaner internal use of
+                         \exsheets_set_question_properties:n
+2013/07/17 v0.9i       - made \g__exsheets_total_bonus_fp and
+                         \g__exsheets_total_points_fp public
+                       - removed `translations' from the bundle
+2013/10/11 v0.10       - require `translations' like any other package
+                       - added `exsheets-listings' package
+                       - added Norwegian translations
+                       - changed horizontal spaces declared as `1ex' into
+                         `.3333em' in the declarations of the headings
+                         instances
+                       - added subtitles
+2013/11/07 v0.10a      - fix bug in loading headings of questions;  when
+                         included from an external file sometimes the wrong ID
+                         has been passed to the headings
+2013/11/20 v0.11       - \GetQuestionClass{}
+                       - \PrintQuestionClass(TF)
+2013/12/02 v0.12       - fix issue with \CurrentQuestionID
+                       - new options `label-format', `label-cmd', `ref-cmd'
+                         and `pageref-cmd' for `auto-label' options that
+                         allow specification of labelling command and thus
+                         compatibility with packages like `cleveref'
+                       - write question properties to aux file so they can be
+                         retrieved before the corresponding question is
+                         printed
+                       - make \GetQuestionProperty expandable
+                       - new syntax feature in points argument: a leading
+                         bang prevents the points from being added to the sum
+                         of points
+                       - added possibility for
+                         https://bitbucket.org/cgnieder/exsheets/issue/15
+                       - added \IfQuestionSubtitle(TF)
+                       - added `subtitle' property
+                       - dropped `color' option
+2013/12/08 v0.12a      - changed details in the printing mechanism of the
+                         points which seems to be more consistent
+                       - fix bug introduced in the last update: subtitles work
+                         again
+2013/12/27 v0.12b      - ensure that points are not parsed if a leading bang
+                         is inserted
+                       - fix bug in parsing the points
+2014/05/11 v0.13       - new options:
+                         * chapter-hook
+                         * section-hook
+                         These options provide hooks to add code in the list
+                         of solutions (when printed with \printsolutions[all])
+                         when solutions from a new section or chapter are
+                         printed
+2014/05/11 v0.13a      - bug fix: solutions get the counter-format that's
+                         active when the corresponding `solution' environment
+                         is placed in the source
+2014/06/27 v0.14       - new command: \ExSheetsHeading
+                       - \__exsheets_use_heading:nnnnnn =>
+                         \exsheets_use_heading:nnnnnn
+                       - new options `question/pre-hook' and
+                         `question/post-hook'
+                       - new pre-defined property `question-body'
+                       - new pre-defined property `bonus-points'
+                       - new pre-defined property `counter'
+                       - new option `question/save-to-aux'
+                       - \ForEachQuestion, \numberofquestions and
+                         \iflastquestion are now available before any
+                         questions have been typeset
+2014/07/20 v0.15       - remove `tasks' from the bundle and into a package of
+                         its own
+                       - remove `cntformats' from the bundle and into a package of
+                         its own
+                       - drop options `load-headings' and `load-tasks'
+                       - new command \IfQuestionPropertyTF
+2014/09/14 v0.16       - fix `subtitle-format' option
+                       - allow that the format given in `headings-format' and
+                         `subtitle-format' can end with a command needing an
+                         argument
+                       - add options `solution/pre-hook',
+                         `solution/post-hook', `solution/pre-body-hook' and
+                         `solution/post-body-hook' (this adds a possibility
+                         for issue #21)
+                       - add options `question/pre-body-hook' and
+                         `question/post-body-hook'
+                       - add internal interface for the printing of solutions
+                         ( \__exsheets_print_solution:nnnn )
+                       - fix issue #22
+                       - fix issue #23
+                       - use only one version number for the whole bundle
+2014/10/14 v0.17       - new option `use-saved-counter-format'
+2015/02/09 v0.18       - added correct Danish translations - thanks to Jonas
+                         Nyrup
+                       - introduce \exsheetsprintsolution, see
+                         http://tex.stackexchange.com/q/227078/ for motivation
+                       - change test in \exsheets_h_or_vspace:N to something
+                         more reliable and meaningful
+                       - new option `no-skip-below'
+2015/05/06 v0.18a      - fix bug in points mechanism
+                       - singular points name is now only used for exactly 1
+                         point
+                       - a few cosmetic changes to the points function
+                         definitions
+2015/07/04 v0.19       - add http://tex.stackexchange.com/q/222814
+                       - allow begin and end of pseudo-environments as hooks
+                         to the question an solution environments
+2015/11/18 v0.20       - add tagging feature
+                       - new: \DeclareExSheetsHeadingContainer
+2016/01/26 v0.21       - give error message when \includequestions tries to
+                         load a file which can't be found (issue)
+                       - \exsheets_print_solutions_if:nnn
+                       - \l__exsheets_counter_qu_int =>
+                         \l_exsheets_counter_qu_int
+                       - \g__exsheets_question_number_prop =>
+                         \g_exsheets_question_identification_prop
+                       - make question properties accessable when question is
+                         not printed
+2016/01/26 v0.21a      - remove deprecated \prop_get:Nn (=> \prop_item:Nn)
+2016/02/01 v0.21b      - fix annoying bug in \exsheets_print_solutions_if:nnn
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TODO:
+- points/decimal-marker, points/frac (?), points/format (?,im interface)
+- points: swedish style
+- \examspace inside {tasks} => possible? (\pagegoal-\pagetotal) gives wrong
+  values here
+- remove doubled points name if total points are unknown

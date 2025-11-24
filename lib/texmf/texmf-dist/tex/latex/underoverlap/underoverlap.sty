@@ -1,0 +1,411 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% \iffalse %%%%
+%                                                                              %
+%  Copyright (c) 2013 - Michiel Helvensteijn - www.mhelvens.net                %
+%                                                                              %
+%  http://latex-underoverlap.googlecode.com                                    %
+%                                                                              %
+%  This work may be distributed and/or modified under the conditions           %
+%  of the LaTeX Project Public License, either version 1.3 of this             %
+%  license or (at your option) any later version. The latest version           %
+%  of this license is in     http://www.latex-project.org/lppl.txt             %
+%  and version 1.3 or later is part of all distributions of LaTeX              %
+%  version 2005/12/01 or later.                                                %
+%                                                                              %
+%  This work has the LPPL maintenance status `maintained'.                     %
+%                                                                              %
+%  The Current Maintainer of this work is Michiel Helvensteijn.                %
+%                                                                              %
+%  This work consists of the files underoverlap.tex and underoverlap.sty.      %
+%                                                                              %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% \fi %%%%
+
+% \CheckSum{99}
+%
+% \CharacterTable
+%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
+%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
+%   Digits        \0\1\2\3\4\5\6\7\8\9
+%   Exclamation   \!     Double quote  \"     Hash (number) \#
+%   Dollar        \$     Percent       \%     Ampersand     \&
+%   Acute accent  \'     Left paren    \(     Right paren   \)
+%   Asterisk      \*     Plus          \+     Comma         \,
+%   Minus         \-     Point         \.     Solidus       \/
+%   Colon         \:     Semicolon     \;     Less than     \<
+%   Equals        \=     Greater than  \>     Question mark \?
+%   Commercial at \@     Left bracket  \[     Backslash     \\
+%   Right bracket \]     Circumflex    \^     Underscore    \_
+%   Grave accent  \`     Left brace    \{     Vertical bar  \|
+%   Right brace   \}     Tilde         \~}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Package Info}                                                    %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%    \begin{macrocode}
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{underoverlap}[2013/02/03 0.0.1-r1
+    construct for partly overlapping math decorations]
+%    \end{macrocode}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Packages}                                                        %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  These are the packages we'll need.
+%
+%    \begin{macrocode}
+\RequirePackage{etoolbox}
+\RequirePackage{mathtools}
+\RequirePackage{xparse}
+%    \end{macrocode}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Public Macros}                                                   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\newUOLdecorator}
+  %     \marg{control sequence} \marg{definition}
+%%%     \\\nopagebreak
+%
+%  \noindent This defines the macro \meta{control sequence} as a
+%  new decorator command that is capable of overlapping
+%  with others.
+% 
+%    \begin{macrocode}
+\NewDocumentCommand{\newUOLdecorator}{mm}{%
+    \newcommand{#1}[1]{#2}%
+    \UOLaugment{#1}%
+}
+%    \end{macrocode}
+% 
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\UOLaugment}
+  %     \marg{control sequence}
+%%%     \\\nopagebreak
+%  
+%  \noindent This augments the macro \meta{control sequence}
+%  to allow it to be overlapped.
+%  
+%    \begin{macrocode}
+\NewDocumentCommand{\UOLaugment}{m}{%
+    \cslet{\uol@oldcsname{#1}}{#1}%
+    \renewcommand{#1}{%
+        \ifbool{mmode}{%
+            \uol@construct{\csuse{\uol@oldcsname{#1}}}%
+        }{%
+            \csuse{\csuse{\uol@oldcsname{#1}}}%
+        }%
+    }%
+}
+%    \end{macrocode}
+% 
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\UOLunaugment}
+  %     \marg{original cs}
+%%%     \\\nopagebreak
+%
+%  \noindent This unaugments the macro \meta{original cs} so
+%  it will once again have its original meaning. This will
+%  only make sense if you're previously augmented that command
+%  with |\UOLaugment|.
+%  
+%    \begin{macrocode}
+\NewDocumentCommand{\UOLunaugment}{m}{%
+    \letcs{#1}{\uol@oldcsname{#1}}%
+}
+%    \end{macrocode}
+%  
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Private Macros}                                                  %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  The content inside a decoration has three parts:
+%  \begin{itemize}
+%      \item A `left' part that may overlap with the
+%            previous construct.
+%      \item A `middle' part that does not overlap.
+%      \item A `right' part that overlaps with the next construct.
+%  \end{itemize}
+%  
+%  \noindent Only the `middle' and `right' parts are passed as parameters
+%  throughout most of the following commands. The `left' part is defined
+%  by the previous \meta{UOL decorator} inside the |\uol@overlap@content|
+%  macro.
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\uol@oldcsname}
+  %     \marg{control sequence}
+%%%     \\\nopagebreak
+%  
+%  \noindent Given a control sequence, this derives the corresponding
+%  'old csname' used by this package when augmenting it.
+%  
+%    \begin{macrocode}
+\newcommand{\uol@oldcsname}[1]{%
+    uol@old@\expandafter\@gobble\string#1%
+}
+%    \end{macrocode}
+% 
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\uol@construct}
+  %     \marg{original macro}
+  %     \marg{middle}
+  %     \marg{right}
+%%%     \\\nopagebreak
+%  
+%  \noindent Scans ahead for subscript or superscript.
+%  
+%    \begin{macrocode}
+\NewDocumentCommand{\uol@construct}{mmO{}}{%
+    \let\uol@sup\empty%
+    \let\uol@sub\empty%
+    \@ifnextchar^{%
+        \uol@construct@sup{#1}{#2}{#3}%
+    }{%
+        \@ifnextchar_%
+            {\uol@construct@sub  {#1}{#2}{#3}}%
+            {\uol@construct@final{#1}{#2}{#3}}%
+    }%
+}
+%    \end{macrocode}
+% 
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\uol@construct@sup}
+  %     \marg{original macro}
+  %     \marg{middle}
+  %     \marg{right}
+%%%     \verb|^| \marg{superscript} \\\nopagebreak
+%  
+%  \noindent Processes superscript and scans ahead for subscript.
+%  
+%    \begin{macrocode}
+\def\uol@construct@sup#1#2#3^#4{%
+    \def\uol@sup{#4}%
+    \@ifnextchar_%
+        {\uol@construct@sup@sub{#1}{#2}{#3}}%
+        {\uol@construct@final  {#1}{#2}{#3}}%
+}
+%    \end{macrocode}
+% 
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\uol@construct@sub}
+  %     \marg{original macro}
+  %     \marg{middle}
+  %     \marg{right}
+%%%     \verb|_| \marg{subscript} \\\nopagebreak
+%  
+%  \noindent Processes subscript and scans ahead for superscript.
+%  
+%    \begin{macrocode}
+\def\uol@construct@sub#1#2#3_#4{%
+    \def\uol@sub{#4}%
+    \@ifnextchar^%
+        {\uol@construct@sub@sup{#1}{#2}{#3}}%
+        {\uol@construct@final  {#1}{#2}{#3}}%
+}
+%    \end{macrocode}
+% 
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\uol@construct@sub@sup}
+  %     \marg{original macro}
+  %     \marg{middle}
+  %     \marg{right}
+%%%     \verb|^| \marg{superscript} \\\nopagebreak
+%  
+%  \noindent Processes superscript and calls the 'final' command.
+%  
+%    \begin{macrocode}
+\def\uol@construct@sub@sup#1#2#3^#4{%
+    \def\uol@sup{#4}%
+    \uol@construct@final{#1}{#2}{#3}%
+}
+%    \end{macrocode}
+% 
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\uol@construct@sup@sub}
+  %     \marg{original macro}
+  %     \marg{middle}
+  %     \marg{right}
+%%%     \verb|_| \marg{subscript} \\\nopagebreak
+%  
+%  \noindent Processes subscript and calls the 'final' command.
+%  
+%    \begin{macrocode}
+\def\uol@construct@sup@sub#1#2#3_#4{%
+    \def\uol@sub{#4}%
+    \uol@construct@final{#1}{#2}{#3}%
+}
+%    \end{macrocode}
+% 
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% \begin{macro}{\uol@overlap@content}\nopagebreak
+% 
+%  \noindent This macro stores the 'overlapped' part of the
+%  math content between two augmented macros. We make sure
+%  that it is empty at the beginning of a new equation.
+% 
+%    \begin{macrocode}
+\let\uol@overlap@content\@empty
+%    \end{macrocode}
+% 
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\uol@construct@final}
+  %     \marg{original macro}
+  %     \marg{middle}
+  %     \marg{right}
+%%%     \\\nopagebreak
+%  
+%  \noindent This command typesets the result and reserves
+%  space for the overlap.
+%  
+%    \begin{macrocode}
+\newcommand{\uol@construct@final}[3]{
+%    \end{macrocode}
+%
+%  The following block will set the visible ink of the
+%  decoration without visibly setting the content itself
+%  and without moving our current position (using |\mathrlap|).
+%
+%    \begin{macrocode}
+    \mathrlap{%
+%    \end{macrocode}
+%
+%  We do several things next. Using |\mathop| we allow any
+%  subscript and superscript to be positioned directly under
+%  or over the construct, even if the original command doesn't
+%  natively support it.
+%  
+%  We call the original command with |#1| and make it initially
+%  invisible using |\phantom|.
+%  
+%  Using braces we provide the spacing most likely to be
+%  satisfactory. If it's not, the user should manually
+%  correct with math-spacing commands.
+%
+%    \begin{macrocode}
+        \displaystyle%
+        \mathop{#1{\phantom{%
+            {\uol@overlap@content}{{}#2{}}{#3}%
+        }}}%
+%    \end{macrocode}
+%
+%  The following two lines set the subscript and superscript
+%  that we collected during the previous phases.
+%
+%    \begin{macrocode}
+        ^{\mathclap{\uol@sup}}%
+        _{\mathclap{\uol@sub}}%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+    }%
+%    \end{macrocode}
+%
+%  Next, we optionally print the debug-shadow (disabled right now).
+%
+%    \begin{macrocode}
+    %\mathrlap{\textcolor{green}{\uol@overlap@content#2#3}}%
+%    \end{macrocode}
+%
+%  The following code visibly typesets the `left' and `middle' parts of the content.
+%
+%    \begin{macrocode}
+    {\uol@overlap@content}{{}#2{}}%
+%    \end{macrocode}
+%
+%  We assume that the `right' part (that overlaps with the next construct)
+%  will be visibly set by the following command, which will be \emph{its}
+%  `left' part. We store it in the |\uol@overlap@content| macro now.
+%
+%    \begin{macrocode}
+    \def\uol@overlap@content{#3}%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+}
+%    \end{macrocode}
+% 
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \makeatletter\newcount\c@CodelineNoBackup
+  % \c@CodelineNoBackup=\c@CodelineNo
+  % \begin{macro}{\UOLoverbrace} \advance\c@CodelineNo\@ne
+  % \begin{macro}{\UOLunderbrace}\advance\c@CodelineNo\@ne
+  % \begin{macro}{\UOLoverline}  \advance\c@CodelineNo\@ne
+  % \begin{macro}{\UOLunderline} \c@CodelineNo=\c@CodelineNoBackup
+%%% \makeatother\ \\[-2\baselineskip]
+%  
+%  \noindent We predefine the following commands in a
+%  straightforward way:
+%  
+%    \begin{macrocode}
+\newUOLdecorator{\UOLoverbrace} {\overbrace {#1}}
+\newUOLdecorator{\UOLunderbrace}{\underbrace{#1}}
+\newUOLdecorator{\UOLoverline}  {\overline  {#1}}
+\newUOLdecorator{\UOLunderline} {\underline {#1}}
+%    \end{macrocode}
+%
+%\end{macro}\end{macro}\end{macro}\end{macro}%%%%%%%%%%%%%%%
+

@@ -1,0 +1,144 @@
+%% Copyright 2014 Maïeul Rouquette
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Maïeul Rouquette
+% This work consists of the files handout.sty and example and documentation files.
+
+\ProvidesPackage{handout}[2015/04/16 1.2.1a Handout package]
+\RequirePackage{kvoptions,etoolbox}
+
+% Options
+\DeclareBoolOption[false]{disabled}
+\let\disablehandout\handout@disabledtrue
+\let\enablehandout\handout@disabledfalse
+
+\DeclareBoolOption[false]{numbering}
+\DeclareBoolOption[false]{sectioning}
+
+\DeclareBoolOption[true]{printing}
+
+\DeclareStringOption[.]{dir}
+
+\ProcessKeyvalOptions*
+
+% Warning tools
+\newcommand{\handout@warning}[1]{\@latex@warning{Handout: #1}}
+
+% Opening the handout file
+\newwrite\@handout
+\immediate\openout\@handout=\jobname.handout
+
+
+% The main command, to be used by people
+\newcommand{\handout}[1]{%	
+	\ifhandout@disabled\else%Only if not disabled, of course!
+		\ifhandout@numbering%
+			\stepcounter{handoutnumber}%
+			\handoutnumberintxt{\thehandoutnumber}%
+		\fi%
+		\ifhandout@printing%
+		  \immediate\write\@handout {\string\handout@input{#1}}%
+		\fi%
+	\fi%
+	\input{\handout@dir/#1}% Add the handout
+}
+
+
+% The special commands to be used by people
+
+\newcommand{\nothandout}[1]{#1}
+\newcommand{\onlyhandout}[1]{}
+\newcommand{\forhandout}[1]{%
+	\ifhandout@disabled\else%
+	  \ifhandout@printing%
+	    \immediate\write\@handout{\noexpand #1}%
+	  \fi%
+	\fi%
+}
+
+% The command written in the .handout file
+\newcommand{\handout@input}[1]{%
+	\ifhandout@numbering%
+		\stepcounter{handoutnumber}%
+		\handoutnumber{\thehandoutnumber}%
+	\fi%
+	\input{\handout@dir/#1}%
+}
+% Output the sectionning commands in the .handout file
+
+\ifhandout@sectioning%Only if needed by option
+	
+	\apptocmd{\@sect}{% 
+		\ifhandout@disabled\else%
+		  \ifhandout@printing%
+		    \immediate\write\@handout{\@backslashchar#1{\unexpanded{#8}}}%
+		  \fi%
+		\fi%
+		}{}{\handout@warning{Can't patch sectioning commands}}
+
+\fi
+% Call the handout file at the end, if need
+
+\AtEndDocument{%
+    \ifhandout@printing%
+	    \ifhandout@disabled\else
+		  \immediate\closeout\@handout%
+		  \before@handout%
+		  \ifdef{\beforehandout}{\beforehandout}{\handout@warning{No command defined to be run before handout}}
+		  \makeatletter%
+		  \input\jobname.handout%
+		  \makeatother%
+	    \fi%
+    \fi%
+}
+
+% Standard command before handout
+\newcommand{\before@handout}{%
+	% New page
+	\newpage%
+	% Reset counter
+	\setcounter{page}{1}%
+	\setcounter{footnote}{0}%
+	\ifhandout@sectioning%
+		\setcounter{section}{0}%
+		\setcounter{subsection}{0}%
+		\setcounter{subsubsection}{0}%
+	\fi
+	\ifhandout@numbering
+		\setcounter{handoutnumber}{0}%
+	\fi
+	% No new data in content or in label or index
+	\def\addcontentsline##1##2##3{}
+	\let\label\@gobble
+	\renewcommand{\index}[2][1]{}
+	 
+	% Switches onlyhandout and nothandout commands
+	\renewcommand{\nothandout}[1]{}
+	\renewcommand{\onlyhandout}[1]{##1}
+
+}
+
+\AtBeginDocument{%
+	\@ifpackageloaded{biblatex}{%
+		\apptocmd{\before@handout}{\citereset}{}{}%
+	}{}}
+
+% Handout numbering
+
+\ifhandout@numbering
+	\newcounter{handoutnumber}
+	\renewcommand{\thehandoutnumber}{\fbox{\arabic{handoutnumber}}}
+\fi
+\newcommand{\handoutnumberintxt}[1]{\handoutnumber{#1}}
+\newcommand{\handoutnumber}[1]{\marginpar{#1}}
+
+

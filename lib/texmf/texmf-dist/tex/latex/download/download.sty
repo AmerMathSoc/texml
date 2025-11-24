@@ -1,0 +1,165 @@
+%% This is file `download.sty', generated from `download.tex' (key `package').
+%% download - download files with LaTeX
+%%
+%% Copyright (C) 2012-2013 by Simon Sigurdhsson <sigurdhsson@gmail.com>
+%%
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%   http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%%
+%% The Current Maintainer of this work is Simon Sigurdhsson.
+%%
+%% This work consists of the file download.tex
+%% and the derived file download.sty.
+
+\RequirePackage{expl3,l3keys2e,pdftexcmds,xparse}
+\ProvidesExplPackage{download}
+    {2013/04/08}{1.1}{download files with LaTeX}
+\msg_new:nnnn{download}{no-write18}{Could~not~use~\string\write18!}
+    {Please~run~`latex`~with~the~`--shell-escape`~flag.}
+\msg_new:nnnn{download}{no-engine}{Could~not~find~any~engine!}
+    {Please~make~sure~one~of~the~engines~is~installed~and~in~your~PATH.}
+\msg_new:nnnn{download}{no-name}{Using~\string\download\space~with~no~filename!}
+    {This~means~I~will~download~the~file~even~if~it~already~exists.}
+\msg_new:nnn{download}{use-curl}{Using~cURL.}
+\msg_new:nnn{download}{use-wget}{Using~wget.}
+\msg_new:nnn{download}{use-ariaII}{Using~aria2.}
+\msg_new:nnn{download}{use-axel}{Using~axel.}
+\prg_new_conditional:Nnn\__download_if_shellescape:{F}{
+    \if_cs_exist:N\pdf@shellescape
+        \if_int_compare:w\pdf@shellescape=\c_one
+            \prg_return_true:
+        \else:
+            \prg_return_false:
+        \fi:
+    \else:
+        \prg_return_true:
+    \fi:
+}
+\cs_new:Npn\__download_rm:n#1{
+    \immediate\write18{rm~#1}
+}
+\prg_new_conditional:Npnn\__download_if_executable_test:n#1{TF,T,F,p}{
+    \immediate\write18{which~#1~&&~touch~\jobname.aex}
+    \file_if_exist:nTF{\jobname.aex}{
+        \__download_rm:n{\jobname.aex}
+        \prg_return_true:
+    }{
+        \prg_return_false:
+    }
+}
+\cs_new:Npn\__download_curl_do:nn#1#2{
+    \IfNoValueTF{#1}{
+        \immediate\write18{curl~-L~-s~#2}
+    }{
+        \immediate\write18{curl~-L~-s~-o~#1~#2}
+    }
+}
+\cs_new:Npn\__download_wget_do:nn#1#2{
+    \IfNoValueTF{#1}{
+        \immediate\write18{wget~-q~-nc~#2}
+    }{
+        \immediate\write18{wget~-q~-nc~-O~#1~#2}
+    }
+}
+\cs_new:Npn\__download_ariaII_do:nn#1#2{
+    \IfNoValueTF{#1}{
+        \immediate\write18{aria2c~-q~--auto-file-renaming=false~#2}
+    }{
+        \immediate\write18{aria2c~-q~--auto-file-renaming=false~-o~#1~#2}
+    }
+}
+\cs_new:Npn\__download_axel_do:nn#1#2{
+    \IfNoValueTF{#1}{
+        \immediate\write18{axel~-q~#2}
+    }{
+        \immediate\write18{axel~-q~-o~#1~#2}
+    }
+}
+\prg_new_conditional:Nnn\__download_if_auto_test:{F,TF}{
+    \__download_if_executable_test:nTF{wget}{
+        \prg_return_true:
+    }{
+        \__download_if_executable_test:nTF{curl}{
+            \prg_return_true:
+        }{
+            \__download_if_executable_test:nTF{aria2c}{
+                \prg_return_true:
+            }{
+                \__download_if_executable_test:nTF{axel}{
+                    \prg_return_true:
+                }{
+                    \prg_return_false:
+                }
+            }
+        }
+    }
+}
+\cs_new:Npn\__download_auto_do:nn#1#2{
+    \__download_if_executable_test:nTF{wget}{
+        \msg_info:nn{download}{use-wget}
+        \__download_wget_do:nn{#1}{#2}
+    }{
+        \__download_if_executable_test:nTF{curl}{
+            \msg_info:nn{download}{use-curl}
+            \__download_curl_do:nn{#1}{#2}
+        }{
+            \__download_if_executable_test:nTF{aria2c}{
+                \msg_info:nn{download}{use-ariaII}
+                \__download_ariaII_do:nn{#1}{#2}
+            }{
+                \msg_info:nn{download}{use-axel}
+                \__download_axel_do:nn{#1}{#2}
+            }
+        }
+    }
+}
+\keys_define:nn{download}{
+    engine .choice:,
+    engine / auto .code:n =
+        {\cs_gset_eq:NN\__download_do:nn\__download_auto_do:nn
+         \prg_set_conditional:Nnn\__download_if_test:{F}{
+            \__download_if_auto_test:TF
+                {\prg_return_true:}{\prg_return_false:}}},
+    engine / curl .code:n =
+        {\cs_gset_eq:NN\__download_do:nn\__download_curl_do:nn
+         \prg_set_conditional:Nnn\__download_if_test:{F}{
+            \__download_if_executable_test:nTF{curl}
+                {\prg_return_true:}{\prg_return_false:}}},
+    engine / wget .code:n =
+        {\cs_gset_eq:NN\__download_do:nn\__download_wget_do:nn
+         \prg_set_conditional:Nnn\__download_if_test:{F}{
+            \__download_if_executable_test:nTF{wget}
+                {\prg_return_true:}{\prg_return_false:}}},
+    engine / aria2 .code:n =
+        {\cs_gset_eq:NN\__download_do:nn\__download_ariaII_do:nn
+         \prg_set_conditional:Nnn\__download_if_test:{F}{
+            \__download_if_executable_test:nTF{aria2c}
+                {\prg_return_true:}{\prg_return_false:}}},
+    engine / axel .code:n =
+        {\cs_gset_eq:NN\__download_do:nn\__download_axel_do:nn
+         \prg_set_conditional:Nnn\__download_if_test:{F}{
+            \__download_if_executable_test:nTF{axel}
+                {\prg_return_true:}{\prg_return_false:}}},
+    engine .initial:n = auto,
+    engine .default:n = auto,
+}
+\ProcessKeysPackageOptions{download}
+\__download_if_shellescape:F{\msg_fatal:nn{download}{no-write18}}
+\__download_if_test:F{\msg_fatal:nn{download}{no-engine}}
+\DeclareDocumentCommand\download{om}{
+    \IfNoValueTF{#1}{
+        \msg_warning:nn{download}{no-name}
+        \__download_do:nn{#1}{#2}
+    }{
+        \file_if_exist:nTF{#1}{}{\__download_do:nn{#1}{#2}}
+    }
+}
+\endinput
+

@@ -1,0 +1,1560 @@
+%%
+%% This is file `unicode-math.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% unicode-math.dtx  (with options: `preamble')
+%% unicode-math-msg.dtx  (with options: `msg')
+%% unicode-math-usv.dtx  (with options: `usv')
+%% unicode-math.dtx  (with options: `load')
+%% unicode-math-alphabets.dtx  (with options: `alphabets')
+%% Copyright 2006-2015   Will Robertson <will.robertson@latex-project.org>
+%% Copyright 2010-2013 Philipp Stephani <st_philipp@yahoo.de>
+%% Copyright 2012-2015     Khaled Hosny <khaledhosny@eglug.org>
+%% 
+%% This package is free software and may be redistributed and/or modified under
+%% the conditions of the LaTeX Project Public License, version 1.3c or higher
+%% (your choice): <http://www.latex-project.org/lppl/>.
+%% 
+%% This work is "maintained" by Will Robertson.
+\ProvidesPackage{unicode-math}
+  [2015/09/24 v0.8c Unicode maths in XeLaTeX and LuaLaTeX]
+\usepackage{ifxetex,ifluatex}
+\ifxetex
+  \ifdim\number\XeTeXversion\XeTeXrevision in<0.9998in%
+    \PackageError{unicode-math}{%
+      Cannot run with this version of XeTeX!\MessageBreak
+      You need XeTeX 0.9998 or newer.%
+    }\@ehd
+  \fi
+\else\ifluatex
+  \ifnum\luatexversion<64%
+    \PackageError{unicode-math}{%
+      Cannot run with this version of LuaTeX!\MessageBreak
+      You need LuaTeX 0.64 or newer.%
+    }\@ehd
+  \fi
+\else
+  \PackageError{unicode-math}{%
+    Cannot be run with pdfLaTeX!\MessageBreak
+    Use XeLaTeX or LuaLaTeX instead.%
+  }\@ehd
+\fi\fi
+\RequirePackage{expl3}[2015/03/01]
+\RequirePackage{ucharcat}
+\RequirePackage{xparse}
+\RequirePackage{l3keys2e}
+\RequirePackage{fontspec}[2015/03/14]
+\RequirePackage{fix-cm} % avoid some warnings
+\RequirePackage{filehook}
+\ExplSyntaxOn
+\cs_set_protected_nopar:Npn \exp_last_unbraced:NNx { \::N \::x_unbraced \::: }
+\cs_generate_variant:Nn \fontspec_set_family:Nnn {Nx}
+\cs_generate_variant:Nn \fontspec_set_fontface:NNnn {NNx}
+\bool_new:N \l__um_ot_math_bool
+\bool_new:N \l__um_init_bool
+\bool_new:N \l__um_implicit_alph_bool
+\bool_new:N \g__um_mainfont_already_set_bool
+\bool_new:N \g__um_literal_bool
+\bool_new:N \g__um_upLatin_bool
+\bool_new:N \g__um_uplatin_bool
+\bool_new:N \g__um_upGreek_bool
+\bool_new:N \g__um_upgreek_bool
+\bool_new:N \g__um_bfliteral_bool
+\bool_new:N \g__um_bfupLatin_bool
+\bool_new:N \g__um_bfuplatin_bool
+\bool_new:N \g__um_bfupGreek_bool
+\bool_new:N \g__um_bfupgreek_bool
+\bool_new:N \g__um_upsans_bool
+\bool_new:N \g__um_sfliteral_bool
+\bool_new:N \g__um_upNabla_bool
+\bool_new:N \g__um_uppartial_bool
+\bool_new:N \g__um_literal_Nabla_bool
+\bool_new:N \g__um_literal_partial_bool
+\bool_new:N \g__um_texgreek_bool
+\bool_set_true:N \g__um_texgreek_bool
+\bool_new:N \l__um_smallfrac_bool
+\bool_new:N \g__um_literal_colon_bool
+\bool_new:N \g__um_mathrm_text_bool
+\bool_new:N \g__um_mathit_text_bool
+\bool_new:N \g__um_mathbf_text_bool
+\bool_new:N \g__um_mathsf_text_bool
+\bool_new:N \g__um_mathtt_text_bool
+\int_new:N \g__um_fam_int
+\tl_const:Nn \c__um_math_alphabet_name_latin_tl {Latin,~lowercase}
+\tl_const:Nn \c__um_math_alphabet_name_Latin_tl {Latin,~uppercase}
+\tl_const:Nn \c__um_math_alphabet_name_greek_tl {Greek,~lowercase}
+\tl_const:Nn \c__um_math_alphabet_name_Greek_tl {Greek,~uppercase}
+\tl_const:Nn \c__um_math_alphabet_name_num_tl   {Numerals}
+\tl_const:Nn \c__um_math_alphabet_name_misc_tl  {Misc.}
+\tl_new:N \l__um_mathstyle_tl
+\tl_new:N \g__um_operator_mathfont_tl
+\seq_new:N \l__um_missing_alph_seq
+\seq_new:N \l__um_mathalph_seq
+\seq_new:N \l__um_char_range_seq
+\seq_new:N \l__um_mclass_range_seq
+\seq_new:N \l__um_cmd_range_seq
+\seq_new:N \g__um_mathclasses_seq
+\seq_set_from_clist:Nn \g__um_mathclasses_seq
+  {
+    \mathord,\mathalpha,\mathbin,\mathrel,\mathpunct,
+     \mathop,
+    \mathopen,\mathclose,
+    \mathfence,\mathover,\mathunder,
+     \mathaccent,\mathbotaccent,\mathaccentwide,\mathbotaccentwide
+  }
+
+\seq_new:N \g__um_default_mathalph_seq
+\seq_new:N \g__um_named_ranges_seq
+\seq_new:N \g__um_mathstyles_seq
+\muskip_new:N \g__um_primekern_muskip
+\muskip_gset:Nn \g__um_primekern_muskip { -\thinmuskip/2 }% arbitrary
+\int_new:N \l__um_primecount_int
+\prop_new:N \g__um_supers_prop
+\prop_new:N \g__um_subs_prop
+\tl_new:N \l_not_token_name_tl
+\prg_new_conditional:Nnn \__um_glyph_if_exist:n {p,TF,T,F}
+ {
+  \etex_iffontchar:D \l__um_font #1 \scan_stop:
+    \prg_return_true:
+  \else:
+    \prg_return_false:
+  \fi:
+ }
+\cs_set:Npn \__um_set_mathcode:nnnn #1#2#3#4 {
+  \Umathcode \int_eval:n {#1} =
+    \mathchar@type#2 \csname sym#3\endcsname \int_eval:n {#4} \scan_stop:
+}
+\cs_set:Npn \__um_set_mathcode:nnn #1#2#3 {
+  \Umathcode \int_eval:n {#1} =
+    \mathchar@type#2 \csname sym#3\endcsname \int_eval:n {#1} \scan_stop:
+}
+\cs_set:Npn \__um_set_mathchar:NNnn #1#2#3#4 {
+  \Umathchardef #1 =
+    \mathchar@type#2 \csname sym#3\endcsname \int_eval:n {#4} \scan_stop:
+}
+\cs_new:Nn \__um_set_delcode:nnn {
+  \Udelcode#2 = \csname sym#1\endcsname #3 \scan_stop:
+}
+\cs_new:Nn \__um_radical:nn {
+  \Uradical \csname sym#1\endcsname #2 \scan_stop:
+}
+\cs_new:Nn \__um_delimiter:Nnn {
+  \Udelimiter \mathchar@type#1 \csname sym#2\endcsname #3 \scan_stop:
+}
+\cs_new:Nn \__um_accent:nnn {
+  \Umathaccent #1~ \mathchar@type\mathaccent \use:c { sym #2 } #3 \scan_stop:
+}
+\cs_generate_variant:Nn \__um_set_mathchar:NNnn {c}
+\cs_new:Nn \__um_char_gmake_mathactive:N
+ {
+  \global\mathcode `#1 = "8000 \scan_stop:
+ }
+\cs_new:Nn \__um_char_gmake_mathactive:n
+ {
+  \global\mathcode #1 = "8000 \scan_stop:
+ }
+\cs_new:Nn \usv_set:nnn
+ { \tl_set:cn { g__um_#1_#2_usv } {#3} }
+\cs_new:Nn \__um_to_usv:nn
+ { \use:c { g__um_#1_#2_usv } }
+\prg_new_conditional:Nnn \__um_usv_if_exist:nn {T,F,TF}
+ {
+  \cs_if_exist:cTF { g__um_#1_#2_usv }
+   \prg_return_true: \prg_return_false:
+ }
+\DeclareDocumentCommand \unimathsetup {m}
+ { \keys_set:nn {unicode-math} {#1} }
+\cs_new:Nn \__um_keys_choices:nn
+ {
+  \cs_set:Npn \__um_keys_choices_fn:nn { \__um_keys_choices_aux:nnn {#1} }
+  \use:x
+   {
+    \exp_not:N \keys_define:nn {unicode-math}
+     {
+      #1 .choice: ,
+      \__um_tl_map_dbl:nN {#2} \__um_keys_choices_fn:nn
+     }
+   }
+ }
+\cs_new:Nn \__um_keys_choices_aux:nnn { #1 / #2 .code:n = { \exp_not:n {#3} } , }
+
+\cs_new:Nn \__um_tl_map_dbl:nN
+  {
+    \__um_tl_map_dbl:Nnn #2 #1 \q_recursion_tail {}{} \q_recursion_stop
+  }
+\cs_new:Nn \__um_tl_map_dbl:Nnn
+  {
+    \quark_if_recursion_tail_stop:n {#2}
+    \quark_if_recursion_tail_stop:n {#3}
+    #1 {#2} {#3}
+    \__um_tl_map_dbl:Nnn #1
+ }
+\__um_keys_choices:nn {mathup}
+ {
+  {sym}  { \bool_set_false:N \g__um_mathrm_text_bool }
+  {text} { \bool_set_true:N  \g__um_mathrm_text_bool }
+ }
+\__um_keys_choices:nn {mathrm}
+ {
+  {sym}  { \bool_set_false:N \g__um_mathrm_text_bool }
+  {text} { \bool_set_true:N  \g__um_mathrm_text_bool }
+ }
+\__um_keys_choices:nn {mathit}
+ {
+  {sym}  { \bool_set_false:N \g__um_mathit_text_bool }
+  {text} { \bool_set_true:N  \g__um_mathit_text_bool }
+ }
+\__um_keys_choices:nn {mathbf}
+ {
+  {sym}  { \bool_set_false:N \g__um_mathbf_text_bool }
+  {text} { \bool_set_true:N  \g__um_mathbf_text_bool }
+ }
+\__um_keys_choices:nn {mathsf}
+ {
+  {sym}  { \bool_set_false:N \g__um_mathsf_text_bool }
+  {text} { \bool_set_true:N  \g__um_mathsf_text_bool }
+ }
+\__um_keys_choices:nn {mathtt}
+ {
+  {sym}  { \bool_set_false:N \g__um_mathtt_text_bool }
+  {text} { \bool_set_true:N  \g__um_mathtt_text_bool }
+ }
+\__um_keys_choices:nn {normal-style}
+ {
+       {ISO} {
+              \bool_set_false:N \g__um_literal_bool
+              \bool_set_false:N \g__um_upGreek_bool
+              \bool_set_false:N \g__um_upgreek_bool
+              \bool_set_false:N \g__um_upLatin_bool
+              \bool_set_false:N \g__um_uplatin_bool
+             }
+       {TeX} {
+              \bool_set_false:N \g__um_literal_bool
+              \bool_set_true:N  \g__um_upGreek_bool
+              \bool_set_false:N \g__um_upgreek_bool
+              \bool_set_false:N \g__um_upLatin_bool
+              \bool_set_false:N \g__um_uplatin_bool
+             }
+    {french} {
+              \bool_set_false:N \g__um_literal_bool
+              \bool_set_true:N  \g__um_upGreek_bool
+              \bool_set_true:N  \g__um_upgreek_bool
+              \bool_set_true:N  \g__um_upLatin_bool
+              \bool_set_false:N \g__um_uplatin_bool
+             }
+   {upright} {
+              \bool_set_false:N \g__um_literal_bool
+              \bool_set_true:N  \g__um_upGreek_bool
+              \bool_set_true:N  \g__um_upgreek_bool
+              \bool_set_true:N  \g__um_upLatin_bool
+              \bool_set_true:N  \g__um_uplatin_bool
+             }
+   {literal} {
+              \bool_set_true:N  \g__um_literal_bool
+             }
+ }
+\__um_keys_choices:nn {math-style}
+ {
+      {ISO} {
+             \unimathsetup { nabla=upright, partial=italic,
+              normal-style=ISO, bold-style=ISO, sans-style=italic }
+            }
+      {TeX} {
+             \unimathsetup { nabla=upright, partial=italic,
+               normal-style=TeX, bold-style=TeX, sans-style=upright }
+            }
+   {french} {
+             \unimathsetup { nabla=upright, partial=upright,
+               normal-style=french, bold-style=upright, sans-style=upright }
+            }
+  {upright} {
+             \unimathsetup { nabla=upright, partial=upright,
+               normal-style=upright, bold-style=upright, sans-style=upright }
+            }
+  {literal} {
+             \unimathsetup { colon=literal, nabla=literal, partial=literal,
+               normal-style=literal, bold-style=literal, sans-style=literal }
+            }
+ }
+\__um_keys_choices:nn {bold-style}
+ {
+      {ISO} {
+             \bool_set_false:N \g__um_bfliteral_bool
+             \bool_set_false:N \g__um_bfupGreek_bool
+             \bool_set_false:N \g__um_bfupgreek_bool
+             \bool_set_false:N \g__um_bfupLatin_bool
+             \bool_set_false:N \g__um_bfuplatin_bool
+            }
+      {TeX} {
+             \bool_set_false:N \g__um_bfliteral_bool
+             \bool_set_true:N  \g__um_bfupGreek_bool
+             \bool_set_false:N \g__um_bfupgreek_bool
+             \bool_set_true:N  \g__um_bfupLatin_bool
+             \bool_set_true:N  \g__um_bfuplatin_bool
+            }
+  {upright} {
+             \bool_set_false:N \g__um_bfliteral_bool
+             \bool_set_true:N  \g__um_bfupGreek_bool
+             \bool_set_true:N  \g__um_bfupgreek_bool
+             \bool_set_true:N  \g__um_bfupLatin_bool
+             \bool_set_true:N  \g__um_bfuplatin_bool
+            }
+  {literal} {
+             \bool_set_true:N  \g__um_bfliteral_bool
+            }
+ }
+\__um_keys_choices:nn {sans-style}
+ {
+  {italic}  { \bool_set_false:N \g__um_upsans_bool    }
+  {upright} { \bool_set_true:N  \g__um_upsans_bool    }
+  {literal} { \bool_set_true:N  \g__um_sfliteral_bool }
+ }
+\__um_keys_choices:nn {nabla}
+ {
+  {upright} {
+              \bool_set_false:N \g__um_literal_Nabla_bool
+              \bool_set_true:N  \g__um_upNabla_bool
+            }
+  {italic}  {
+              \bool_set_false:N \g__um_literal_Nabla_bool
+              \bool_set_false:N \g__um_upNabla_bool
+            }
+  {literal} { \bool_set_true:N  \g__um_literal_Nabla_bool }
+ }
+\__um_keys_choices:nn {partial}
+ {
+  {upright} {
+              \bool_set_false:N \g__um_literal_partial_bool
+              \bool_set_true:N  \g__um_uppartial_bool
+            }
+  {italic}  {
+              \bool_set_false:N \g__um_literal_partial_bool
+              \bool_set_false:N \g__um_uppartial_bool
+            }
+  {literal} { \bool_set_true:N  \g__um_literal_partial_bool }
+ }
+\__um_keys_choices:nn {vargreek-shape}
+ {
+  {unicode} { \bool_set_false:N \g__um_texgreek_bool }
+  {TeX}     { \bool_set_true:N  \g__um_texgreek_bool }
+ }
+\__um_keys_choices:nn {colon}
+ {
+  {literal} { \bool_set_true:N  \g__um_literal_colon_bool }
+  {TeX}     { \bool_set_false:N \g__um_literal_colon_bool }
+ }
+\__um_keys_choices:nn {slash-delimiter}
+ {
+  {ascii} { \tl_set:Nn \g__um_slash_delimiter_usv {"002F} }
+  {frac}  { \tl_set:Nn \g__um_slash_delimiter_usv {"2044} }
+  {div}   { \tl_set:Nn \g__um_slash_delimiter_usv {"2215} }
+ }
+\__um_keys_choices:nn {active-frac}
+ {
+   {small}
+   {
+    \cs_if_exist:NTF \tfrac
+     { \bool_set_true:N \l__um_smallfrac_bool }
+     {
+      \__um_warning:n {no-tfrac}
+      \bool_set_false:N \l__um_smallfrac_bool
+     }
+    \use:c {__um_setup_active_frac:}
+   }
+
+   {normalsize}
+   {
+    \bool_set_false:N \l__um_smallfrac_bool
+    \use:c {__um_setup_active_frac:}
+   }
+ }
+\keys_define:nn {unicode-math}
+  {
+    warnings-off .code:n =
+      {
+        \clist_map_inline:nn {#1}
+          { \msg_redirect_name:nnn { unicode-math } { ##1 } { none } }
+      }
+  }
+\__um_keys_choices:nn {trace}
+ {
+  {on}    {} % default
+  {debug} { \msg_redirect_module:nnn { unicode-math } { log } { warning } }
+  {off}   { \msg_redirect_module:nnn { unicode-math } { log } { none } }
+ }
+\unimathsetup {math-style=TeX}
+\unimathsetup {slash-delimiter=ascii}
+\unimathsetup {trace=off}
+\unimathsetup {mathrm=text,mathit=text,mathbf=text,mathsf=text,mathtt=text}
+\cs_if_exist:NT \tfrac { \unimathsetup {active-frac=small} }
+\ProcessKeysOptions {unicode-math}
+\cs_new:Nn \unimath_get_mathstyle:
+ {
+  \tl_use:N \l__um_mathstyle_tl
+ }
+
+\cs_new:Npn \__um_error:n   { \msg_error:nn   {unicode-math} }
+\cs_new:Npn \__um_warning:n { \msg_warning:nn {unicode-math} }
+\cs_new:Npn \__um_warning:nnn { \msg_warning:nnxx {unicode-math} }
+\cs_new:Npn \__um_log:n     { \msg_log:nn     {unicode-math} }
+\cs_new:Npn \__um_log:nx    { \msg_log:nnx    {unicode-math} }
+\msg_new:nnn {unicode-math} {no-tfrac}
+{
+  Small~ fraction~ command~ \protect\tfrac\ not~ defined.\\
+  Load~ amsmath~ or~ define~ it~ manually~ before~ loading~ unicode-math.
+}
+\msg_new:nnn {unicode-math} {default-math-font}
+{
+  Defining~ the~ default~ maths~ font~ as~ '\l__um_fontname_tl'.
+}
+\msg_new:nnn {unicode-math} {setup-implicit}
+{
+  Setup~ alphabets:~ implicit~ mode.
+}
+\msg_new:nnn {unicode-math} {setup-explicit}
+{
+  Setup~ alphabets:~ explicit~ mode.
+}
+\msg_new:nnn {unicode-math} {alph-initialise}
+{
+  Initialising~ \@backslashchar math#1.
+}
+\msg_new:nnn {unicode-math} {setup-alph}
+{
+  Setup~ alphabet:~ #1.
+}
+\msg_new:nnn {unicode-math} {no-alphabet}
+{
+  I~ am~ trying~ to~ set~ up~ alphabet~"#1"~ but~ there~ are~ no~ configuration~ settings~ for~ it.~
+  (See~ source~ file~ "unicode-math-alphabets.dtx"~ to~ debug.)
+}
+\msg_new:nnn { unicode-math } { no-named-range }
+ {
+  I~ am~ trying~ to~ define~ new~ alphabet~ "#2"~ in~ range~ "#1",~ but~ range~ "#1"~ hasn't~ been~ defined~ yet.
+ }
+\msg_new:nnn { unicode-math } { missing-alphabets }
+ {
+  Missing~math~alphabets~in~font~ "\fontname\l__um_font" \\ \\
+  \seq_map_function:NN \l__um_missing_alph_seq \__um_print_indent:n
+ }
+\cs_new:Nn \__um_print_indent:n { \space\space\space\space #1 \\ }
+\msg_new:nnn {unicode-math} {macro-expected}
+{
+  I've~ expected~ that~ #1~ is~ a~ macro,~ but~ it~ isn't.
+}
+\msg_new:nnn {unicode-math} {wrong-meaning}
+{
+  I've~ expected~ #1~ to~ have~ the~ meaning~ #3,~ but~ it~ has~ the~ meaning~ #2.
+}
+\msg_new:nnn {unicode-math} {patch-macro}
+{
+  I'm~ going~ to~ patch~ macro~ #1.
+}
+\msg_new:nnn { unicode-math } { mathtools-overbracket } {
+  Using~ \token_to_str:N \overbracket\ and~
+         \token_to_str:N \underbracket\ from~
+ `mathtools'~ package.\\
+  \\
+  Use~ \token_to_str:N \Uoverbracket\ and~
+       \token_to_str:N \Uunderbracket\ for~
+       original~ `unicode-math'~ definition.
+}
+\msg_new:nnn { unicode-math } { mathtools-colon } {
+  I'm~ going~ to~ overwrite~ the~ following~ commands~ from~
+  the~ `mathtools'~ package: \\ \\
+  \ \ \ \ \token_to_str:N \dblcolon,~
+  \token_to_str:N \coloneqq,~
+  \token_to_str:N \Coloneqq,~
+  \token_to_str:N \eqqcolon. \\ \\
+  Note~ that~ since~ I~ won't~ overwrite~ the~ other~ colon-like~
+  commands,~ using~ them~ will~ lead~ to~ inconsistencies.
+}
+\msg_new:nnn { unicode-math } { colonequals } {
+  I'm~ going~ to~ overwrite~ the~ following~ commands~ from~
+  the~ `colonequals'~ package: \\ \\
+  \ \ \ \ \token_to_str:N \ratio,~
+          \token_to_str:N \coloncolon,~
+          \token_to_str:N \minuscolon, \\
+  \ \ \ \ \token_to_str:N \colonequals,~
+          \token_to_str:N \equalscolon,~
+          \token_to_str:N \coloncolonequals. \\ \\
+  Note~ that~ since~ I~ won't~ overwrite~ the~ other~ colon-like~
+  commands,~ using~ them~ will~ lead~ to~ inconsistencies.~
+  Furthermore,~ changing~ \token_to_str:N \colonsep \c_space_tl
+  or~ \token_to_str:N \doublecolonsep \c_space_tl won't~ have~
+  any~ effect~ on~ the~ re-defined~ commands.
+}
+
+\usv_set:nnn {normal}  {num}  {48}
+\usv_set:nnn {normal}  {Latin}{"1D434}
+\usv_set:nnn {normal}  {latin}{"1D44E}
+\usv_set:nnn {normal}  {Greek}{"1D6E2}
+\usv_set:nnn {normal}  {greek}{"1D6FC}
+\usv_set:nnn {normal}{varTheta}  {"1D6F3}
+\usv_set:nnn {normal}{varepsilon}{"1D716}
+\usv_set:nnn {normal}{vartheta}  {"1D717}
+\usv_set:nnn {normal}{varkappa}  {"1D718}
+\usv_set:nnn {normal}{varphi}    {"1D719}
+\usv_set:nnn {normal}{varrho}    {"1D71A}
+\usv_set:nnn {normal}{varpi}     {"1D71B}
+\usv_set:nnn {normal}    {Nabla}{"1D6FB}
+\usv_set:nnn {normal}    {partial}{"1D715}
+
+\usv_set:nnn {up}  {num}  {48}
+\usv_set:nnn {up}  {Latin}{65}
+\usv_set:nnn {up}  {latin}{97}
+\usv_set:nnn {up}  {Greek}{"391}
+\usv_set:nnn {up}  {greek}{"3B1}
+\usv_set:nnn {it}  {Latin}{"1D434}
+\usv_set:nnn {it}  {latin}{"1D44E}
+\usv_set:nnn {it}  {Greek}{"1D6E2}
+\usv_set:nnn {it}  {greek}{"1D6FC}
+\usv_set:nnn {bb}  {num}  {"1D7D8}
+\usv_set:nnn {bb}  {Latin}{"1D538}
+\usv_set:nnn {bb}  {latin}{"1D552}
+\usv_set:nnn {scr} {Latin}{"1D49C}
+\usv_set:nnn {cal} {Latin}{"1D49C}
+\usv_set:nnn {scr} {latin}{"1D4B6}
+\usv_set:nnn {frak}{Latin}{"1D504}
+\usv_set:nnn {frak}{latin}{"1D51E}
+\usv_set:nnn {sf}  {num}  {"1D7E2}
+\usv_set:nnn {sfup}{num}  {"1D7E2}
+\usv_set:nnn {sfit}{num}  {"1D7E2}
+\usv_set:nnn {sfup}{Latin}{"1D5A0}
+\usv_set:nnn {sf}  {Latin}{"1D5A0}
+\usv_set:nnn {sfup}{latin}{"1D5BA}
+\usv_set:nnn {sf}  {latin}{"1D5BA}
+\usv_set:nnn {sfit}{Latin}{"1D608}
+\usv_set:nnn {sfit}{latin}{"1D622}
+\usv_set:nnn {tt}  {num}  {"1D7F6}
+\usv_set:nnn {tt}  {Latin}{"1D670}
+\usv_set:nnn {tt}  {latin}{"1D68A}
+\usv_set:nnn {bf}    {num}  {"1D7CE}
+\usv_set:nnn {bfup}  {num}  {"1D7CE}
+\usv_set:nnn {bfit}  {num}  {"1D7CE}
+\usv_set:nnn {bfup}  {Latin}{"1D400}
+\usv_set:nnn {bfup}  {latin}{"1D41A}
+\usv_set:nnn {bfup}  {Greek}{"1D6A8}
+\usv_set:nnn {bfup}  {greek}{"1D6C2}
+\usv_set:nnn {bfit}  {Latin}{"1D468}
+\usv_set:nnn {bfit}  {latin}{"1D482}
+\usv_set:nnn {bfit}  {Greek}{"1D71C}
+\usv_set:nnn {bfit}  {greek}{"1D736}
+\usv_set:nnn {bffrak}{Latin}{"1D56C}
+\usv_set:nnn {bffrak}{latin}{"1D586}
+\usv_set:nnn {bfscr} {Latin}{"1D4D0}
+\usv_set:nnn {bfcal} {Latin}{"1D4D0}
+\usv_set:nnn {bfscr} {latin}{"1D4EA}
+\usv_set:nnn {bfsf}  {num}  {"1D7EC}
+\usv_set:nnn {bfsfup}{num}  {"1D7EC}
+\usv_set:nnn {bfsfit}{num}  {"1D7EC}
+\usv_set:nnn {bfsfup}{Latin}{"1D5D4}
+\usv_set:nnn {bfsfup}{latin}{"1D5EE}
+\usv_set:nnn {bfsfup}{Greek}{"1D756}
+\usv_set:nnn {bfsfup}{greek}{"1D770}
+\usv_set:nnn {bfsfit}{Latin}{"1D63C}
+\usv_set:nnn {bfsfit}{latin}{"1D656}
+\usv_set:nnn {bfsfit}{Greek}{"1D790}
+\usv_set:nnn {bfsfit}{greek}{"1D7AA}
+\usv_set:nnn {bfsf}{Latin}{ \bool_if:NTF \g__um_upLatin_bool   \g__um_bfsfup_Latin_usv \g__um_bfsfit_Latin_usv }
+\usv_set:nnn {bfsf}{latin}{ \bool_if:NTF \g__um_uplatin_bool   \g__um_bfsfup_latin_usv \g__um_bfsfit_latin_usv }
+\usv_set:nnn {bfsf}{Greek}{ \bool_if:NTF \g__um_upGreek_bool   \g__um_bfsfup_Greek_usv \g__um_bfsfit_Greek_usv }
+\usv_set:nnn {bfsf}{greek}{ \bool_if:NTF \g__um_upgreek_bool   \g__um_bfsfup_greek_usv \g__um_bfsfit_greek_usv }
+\usv_set:nnn {bf}  {Latin}{ \bool_if:NTF \g__um_bfupLatin_bool \g__um_bfup_Latin_usv   \g__um_bfit_Latin_usv   }
+\usv_set:nnn {bf}  {latin}{ \bool_if:NTF \g__um_bfuplatin_bool \g__um_bfup_latin_usv   \g__um_bfit_latin_usv   }
+\usv_set:nnn {bf}  {Greek}{ \bool_if:NTF \g__um_bfupGreek_bool \g__um_bfup_Greek_usv   \g__um_bfit_Greek_usv   }
+\usv_set:nnn {bf}  {greek}{ \bool_if:NTF \g__um_bfupgreek_bool \g__um_bfup_greek_usv   \g__um_bfit_greek_usv   }
+\usv_set:nnn {up}{varTheta}  {"3F4}
+\usv_set:nnn {up}{Digamma}   {"3DC}
+\usv_set:nnn {up}{varepsilon}{"3F5}
+\usv_set:nnn {up}{vartheta}  {"3D1}
+\usv_set:nnn {up}{varkappa}  {"3F0}
+\usv_set:nnn {up}{varphi}    {"3D5}
+\usv_set:nnn {up}{varrho}    {"3F1}
+\usv_set:nnn {up}{varpi}     {"3D6}
+\usv_set:nnn {up}{digamma}   {"3DD}
+\usv_set:nnn {bfup}{varTheta}  {"1D6B9}
+\usv_set:nnn {bfup}{Digamma}   {"1D7CA}
+\usv_set:nnn {bfup}{varepsilon}{"1D6DC}
+\usv_set:nnn {bfup}{vartheta}  {"1D6DD}
+\usv_set:nnn {bfup}{varkappa}  {"1D6DE}
+\usv_set:nnn {bfup}{varphi}    {"1D6DF}
+\usv_set:nnn {bfup}{varrho}    {"1D6E0}
+\usv_set:nnn {bfup}{varpi}     {"1D6E1}
+\usv_set:nnn {bfup}{digamma}   {"1D7CB}
+\usv_set:nnn {it}{varTheta}  {"1D6F3}
+\usv_set:nnn {it}{varepsilon}{"1D716}
+\usv_set:nnn {it}{vartheta}  {"1D717}
+\usv_set:nnn {it}{varkappa}  {"1D718}
+\usv_set:nnn {it}{varphi}    {"1D719}
+\usv_set:nnn {it}{varrho}    {"1D71A}
+\usv_set:nnn {it}{varpi}     {"1D71B}
+\usv_set:nnn {bfit}{varTheta}  {"1D72D}
+\usv_set:nnn {bfit}{varepsilon}{"1D750}
+\usv_set:nnn {bfit}{vartheta}  {"1D751}
+\usv_set:nnn {bfit}{varkappa}  {"1D752}
+\usv_set:nnn {bfit}{varphi}    {"1D753}
+\usv_set:nnn {bfit}{varrho}    {"1D754}
+\usv_set:nnn {bfit}{varpi}     {"1D755}
+\usv_set:nnn {bfsfup}{varTheta}  {"1D767}
+\usv_set:nnn {bfsfup}{varepsilon}{"1D78A}
+\usv_set:nnn {bfsfup}{vartheta}  {"1D78B}
+\usv_set:nnn {bfsfup}{varkappa}  {"1D78C}
+\usv_set:nnn {bfsfup}{varphi}    {"1D78D}
+\usv_set:nnn {bfsfup}{varrho}    {"1D78E}
+\usv_set:nnn {bfsfup}{varpi}     {"1D78F}
+\usv_set:nnn {bfsfit}{varTheta}  {"1D7A1}
+\usv_set:nnn {bfsfit}{varepsilon}{"1D7C4}
+\usv_set:nnn {bfsfit}{vartheta}  {"1D7C5}
+\usv_set:nnn {bfsfit}{varkappa}  {"1D7C6}
+\usv_set:nnn {bfsfit}{varphi}    {"1D7C7}
+\usv_set:nnn {bfsfit}{varrho}    {"1D7C8}
+\usv_set:nnn {bfsfit}{varpi}     {"1D7C9}
+\usv_set:nnn {up}    {Nabla}{"02207}
+\usv_set:nnn {it}    {Nabla}{"1D6FB}
+\usv_set:nnn {bfup}  {Nabla}{"1D6C1}
+\usv_set:nnn {bfit}  {Nabla}{"1D735}
+\usv_set:nnn {bfsfup}{Nabla}{"1D76F}
+\usv_set:nnn {bfsfit}{Nabla}{"1D7A9}
+\usv_set:nnn {up}    {partial}{"02202}
+\usv_set:nnn {it}    {partial}{"1D715}
+\usv_set:nnn {bfup}  {partial}{"1D6DB}
+\usv_set:nnn {bfit}  {partial}{"1D74F}
+\usv_set:nnn {bfsfup}{partial}{"1D789}
+\usv_set:nnn {bfsfit}{partial}{"1D7C3}
+\usv_set:nnn {up}{B}{`\B}
+\usv_set:nnn {up}{C}{`\C}
+\usv_set:nnn {up}{D}{`\D}
+\usv_set:nnn {up}{E}{`\E}
+\usv_set:nnn {up}{F}{`\F}
+\usv_set:nnn {up}{H}{`\H}
+\usv_set:nnn {up}{I}{`\I}
+\usv_set:nnn {up}{L}{`\L}
+\usv_set:nnn {up}{M}{`\M}
+\usv_set:nnn {up}{N}{`\N}
+\usv_set:nnn {up}{P}{`\P}
+\usv_set:nnn {up}{Q}{`\Q}
+\usv_set:nnn {up}{R}{`\R}
+\usv_set:nnn {up}{Z}{`\Z}
+\usv_set:nnn {it}{B}{"1D435}
+\usv_set:nnn {it}{C}{"1D436}
+\usv_set:nnn {it}{D}{"1D437}
+\usv_set:nnn {it}{E}{"1D438}
+\usv_set:nnn {it}{F}{"1D439}
+\usv_set:nnn {it}{H}{"1D43B}
+\usv_set:nnn {it}{I}{"1D43C}
+\usv_set:nnn {it}{L}{"1D43F}
+\usv_set:nnn {it}{M}{"1D440}
+\usv_set:nnn {it}{N}{"1D441}
+\usv_set:nnn {it}{P}{"1D443}
+\usv_set:nnn {it}{Q}{"1D444}
+\usv_set:nnn {it}{R}{"1D445}
+\usv_set:nnn {it}{Z}{"1D44D}
+\usv_set:nnn {up}{d}{`\d}
+\usv_set:nnn {up}{e}{`\e}
+\usv_set:nnn {up}{g}{`\g}
+\usv_set:nnn {up}{h}{`\h}
+\usv_set:nnn {up}{i}{`\i}
+\usv_set:nnn {up}{j}{`\j}
+\usv_set:nnn {up}{o}{`\o}
+\usv_set:nnn {it}{d}{"1D451}
+\usv_set:nnn {it}{e}{"1D452}
+\usv_set:nnn {it}{g}{"1D454}
+\usv_set:nnn {it}{h}{"0210E}
+\usv_set:nnn {it}{i}{"1D456}
+\usv_set:nnn {it}{j}{"1D457}
+\usv_set:nnn {it}{o}{"1D45C}
+\usv_set:nnn {bb}    {h}{"1D559}
+\usv_set:nnn {tt}    {h}{"1D691}
+\usv_set:nnn {scr}   {h}{"1D4BD}
+\usv_set:nnn {frak}  {h}{"1D525}
+\usv_set:nnn {bfup}  {h}{"1D421}
+\usv_set:nnn {bfit}  {h}{"1D489}
+\usv_set:nnn {sfup}  {h}{"1D5C1}
+\usv_set:nnn {sfit}  {h}{"1D629}
+\usv_set:nnn {bffrak}{h}{"1D58D}
+\usv_set:nnn {bfscr} {h}{"1D4F1}
+\usv_set:nnn {bfsfup}{h}{"1D5F5}
+\usv_set:nnn {bfsfit}{h}{"1D65D}
+\usv_set:nnn {up}{dotlessi}{"00131}
+\usv_set:nnn {up}{dotlessj}{"00237}
+\usv_set:nnn {it}{dotlessi}{"1D6A4}
+\usv_set:nnn {it}{dotlessj}{"1D6A5}
+\usv_set:nnn {bb}{C}{"2102}
+\usv_set:nnn {bb}{H}{"210D}
+\usv_set:nnn {bb}{N}{"2115}
+\usv_set:nnn {bb}{P}{"2119}
+\usv_set:nnn {bb}{Q}{"211A}
+\usv_set:nnn {bb}{R}{"211D}
+\usv_set:nnn {bb}{Z}{"2124}
+\usv_set:nnn {up}{Pi}       {"003A0}
+\usv_set:nnn {up}{pi}       {"003C0}
+\usv_set:nnn {up}{Gamma}    {"00393}
+\usv_set:nnn {up}{gamma}    {"003B3}
+\usv_set:nnn {up}{summation}{"02211}
+\usv_set:nnn {it}{Pi}       {"1D6F1}
+\usv_set:nnn {it}{pi}       {"1D70B}
+\usv_set:nnn {it}{Gamma}    {"1D6E4}
+\usv_set:nnn {it}{gamma}    {"1D6FE}
+\usv_set:nnn {bb}{Pi}       {"0213F}
+\usv_set:nnn {bb}{pi}       {"0213C}
+\usv_set:nnn {bb}{Gamma}    {"0213E}
+\usv_set:nnn {bb}{gamma}    {"0213D}
+\usv_set:nnn {bb}{summation}{"02140}
+\usv_set:nnn {bbit}{D}{"2145}
+\usv_set:nnn {bbit}{d}{"2146}
+\usv_set:nnn {bbit}{e}{"2147}
+\usv_set:nnn {bbit}{i}{"2148}
+\usv_set:nnn {bbit}{j}{"2149}
+\usv_set:nnn {scr}{B}{"212C}
+\usv_set:nnn {scr}{E}{"2130}
+\usv_set:nnn {scr}{F}{"2131}
+\usv_set:nnn {scr}{H}{"210B}
+\usv_set:nnn {scr}{I}{"2110}
+\usv_set:nnn {scr}{L}{"2112}
+\usv_set:nnn {scr}{M}{"2133}
+\usv_set:nnn {scr}{R}{"211B}
+\usv_set:nnn {scr}{e}{"212F}
+\usv_set:nnn {scr}{g}{"210A}
+\usv_set:nnn {scr}{o}{"2134}
+\usv_set:nnn {cal}{B}{"212C}
+\usv_set:nnn {cal}{E}{"2130}
+\usv_set:nnn {cal}{F}{"2131}
+\usv_set:nnn {cal}{H}{"210B}
+\usv_set:nnn {cal}{I}{"2110}
+\usv_set:nnn {cal}{L}{"2112}
+\usv_set:nnn {cal}{M}{"2133}
+\usv_set:nnn {cal}{R}{"211B}
+\usv_set:nnn {frak}{C}{"212D}
+\usv_set:nnn {frak}{H}{"210C}
+\usv_set:nnn {frak}{I}{"2111}
+\usv_set:nnn {frak}{R}{"211C}
+\usv_set:nnn {frak}{Z}{"2128}
+\luatex_if_engine:T { \RequirePackage{unicode-math-luatex} }
+\xetex_if_engine:T  { \RequirePackage{unicode-math-xetex}  }
+\__um_new_alphabet_config:nnn {up} {num}
+ {
+  \__um_set_normal_numbers:nn {up} {#1}
+  \__um_set_mathalphabet_numbers:nnn {up} {up} {#1}
+ }
+
+\__um_new_alphabet_config:nnn {up} {Latin}
+ {
+  \bool_if:NTF \g__um_literal_bool { \__um_set_normal_Latin:nn {up} {#1} }
+   {
+    \bool_if:NT \g__um_upLatin_bool { \__um_set_normal_Latin:nn {up,it} {#1} }
+   }
+  \__um_set_mathalphabet_Latin:nnn {up} {up,it} {#1}
+  \__um_set_mathalphabet_Latin:nnn {literal} {up} {up}
+  \__um_set_mathalphabet_Latin:nnn {literal} {it} {it}
+ }
+
+\__um_new_alphabet_config:nnn {up} {latin}
+ {
+  \bool_if:NTF \g__um_literal_bool { \__um_set_normal_latin:nn {up} {#1} }
+   {
+    \bool_if:NT \g__um_uplatin_bool
+     {
+      \__um_set_normal_latin:nn        {up,it} {#1}
+      \__um_set_normal_char:nnn        {h} {up,it} {#1}
+      \__um_set_normal_char:nnn {dotlessi} {up,it} {#1}
+      \__um_set_normal_char:nnn {dotlessj} {up,it} {#1}
+     }
+   }
+  \__um_set_mathalphabet_latin:nnn {up} {up,it}{#1}
+  \__um_set_mathalphabet_latin:nnn {literal} {up} {up}
+  \__um_set_mathalphabet_latin:nnn {literal} {it} {it}
+ }
+
+\__um_new_alphabet_config:nnn {up} {Greek}
+ {
+  \bool_if:NTF \g__um_literal_bool { \__um_set_normal_Greek:nn {up}{#1} }
+   {
+    \bool_if:NT \g__um_upGreek_bool { \__um_set_normal_Greek:nn {up,it}{#1} }
+   }
+  \__um_set_mathalphabet_Greek:nnn {up} {up,it}{#1}
+  \__um_set_mathalphabet_Greek:nnn {literal} {up} {up}
+  \__um_set_mathalphabet_Greek:nnn {literal} {it} {it}
+ }
+
+\__um_new_alphabet_config:nnn {up} {greek}
+ {
+  \bool_if:NTF \g__um_literal_bool { \__um_set_normal_greek:nn {up} {#1} }
+   {
+    \bool_if:NT \g__um_upgreek_bool
+     {
+      \__um_set_normal_greek:nn {up,it} {#1}
+     }
+   }
+  \__um_set_mathalphabet_greek:nnn {up} {up,it} {#1}
+  \__um_set_mathalphabet_greek:nnn {literal} {up} {up}
+  \__um_set_mathalphabet_greek:nnn {literal} {it} {it}
+ }
+
+\__um_new_alphabet_config:nnn {up} {misc}
+ {
+  \bool_if:NTF \g__um_literal_Nabla_bool
+   {
+    \__um_set_normal_char:nnn {Nabla}{up}{up}
+   }
+   {
+    \bool_if:NT \g__um_upNabla_bool
+     {
+      \__um_set_normal_char:nnn {Nabla}{up,it}{up}
+     }
+   }
+  \bool_if:NTF \g__um_literal_partial_bool
+   {
+    \__um_set_normal_char:nnn {partial}{up}{up}
+   }
+   {
+    \bool_if:NT \g__um_uppartial_bool
+     {
+      \__um_set_normal_char:nnn {partial}{up,it}{up}
+     }
+   }
+  \__um_set_mathalphabet_pos:nnnn {up}  {partial} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {up}    {Nabla} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {up} {dotlessi} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {up} {dotlessj} {up,it} {#1}
+ }
+\__um_new_alphabet_config:nnn {it} {Latin}
+ {
+  \bool_if:NTF \g__um_literal_bool { \__um_set_normal_Latin:nn {it} {#1} }
+   {
+    \bool_if:NF \g__um_upLatin_bool { \__um_set_normal_Latin:nn {up,it} {#1} }
+   }
+  \__um_set_mathalphabet_Latin:nnn {it}{up,it}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {it} {latin}
+ {
+  \bool_if:NTF \g__um_literal_bool
+   {
+    \__um_set_normal_latin:nn {it} {#1}
+    \__um_set_normal_char:nnn {h}{it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_uplatin_bool
+     {
+      \__um_set_normal_latin:nn {up,it} {#1}
+      \__um_set_normal_char:nnn {h}{up,it}{#1}
+      \__um_set_normal_char:nnn {dotlessi}{up,it}{#1}
+      \__um_set_normal_char:nnn {dotlessj}{up,it}{#1}
+     }
+   }
+  \__um_set_mathalphabet_latin:nnn {it}            {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {it} {dotlessi} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {it} {dotlessj} {up,it} {#1}
+ }
+
+\__um_new_alphabet_config:nnn {it} {Greek}
+ {
+  \bool_if:NTF \g__um_literal_bool
+   {
+    \__um_set_normal_Greek:nn {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_upGreek_bool { \__um_set_normal_Greek:nn {up,it}{#1} }
+   }
+  \__um_set_mathalphabet_Greek:nnn {it} {up,it}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {it} {greek}
+ {
+  \bool_if:NTF \g__um_literal_bool
+   {
+    \__um_set_normal_greek:nn {it} {#1}
+   }
+   {
+    \bool_if:NF \g__um_upgreek_bool { \__um_set_normal_greek:nn {it,up} {#1} }
+   }
+  \__um_set_mathalphabet_greek:nnn {it} {up,it} {#1}
+ }
+
+\__um_new_alphabet_config:nnn {it} {misc}
+ {
+  \bool_if:NTF \g__um_literal_Nabla_bool
+   {
+    \__um_set_normal_char:nnn {Nabla}{it}{it}
+   }
+   {
+    \bool_if:NF \g__um_upNabla_bool
+     {
+      \__um_set_normal_char:nnn {Nabla}{up,it}{it}
+     }
+   }
+  \bool_if:NTF \g__um_literal_partial_bool
+   {
+    \__um_set_normal_char:nnn {partial}{it}{it}
+   }
+   {
+    \bool_if:NF \g__um_uppartial_bool
+     {
+      \__um_set_normal_char:nnn {partial}{up,it}{it}
+     }
+   }
+  \__um_set_mathalphabet_pos:nnnn {it} {partial} {up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {it} {Nabla}   {up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {bb} {latin}
+ {
+  \__um_set_mathalphabet_latin:nnn {bb} {up,it}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {bb} {Latin}
+ {
+  \__um_set_mathalphabet_Latin:nnn {bb} {up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {bb} {C} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bb} {H} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bb} {N} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bb} {P} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bb} {Q} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bb} {R} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bb} {Z} {up,it} {#1}
+ }
+
+\__um_new_alphabet_config:nnn {bb} {num}
+ {
+  \__um_set_mathalphabet_numbers:nnn {bb} {up}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {bb} {misc}
+ {
+  \__um_set_mathalphabet_pos:nnnn {bb}        {Pi} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bb}        {pi} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bb}     {Gamma} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bb}     {gamma} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bb} {summation} {up} {#1}
+ }
+
+\__um_new_alphabet_config:nnn {bbit} {misc}
+ {
+  \__um_set_mathalphabet_pos:nnnn {bbit} {D} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bbit} {d} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bbit} {e} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bbit} {i} {up,it} {#1}
+  \__um_set_mathalphabet_pos:nnnn {bbit} {j} {up,it} {#1}
+ }
+\__um_new_alphabet_config:nnn {scr} {Latin}
+ {
+  \__um_set_mathalphabet_Latin:nnn {scr}    {up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {scr} {B}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {scr} {E}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {scr} {F}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {scr} {H}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {scr} {I}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {scr} {L}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {scr} {M}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {scr} {R}{up,it}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {scr} {latin}
+ {
+  \__um_set_mathalphabet_latin:nnn {scr}    {up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {scr} {e}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {scr} {g}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {scr} {o}{up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {cal} {Latin}
+ {
+  \__um_set_mathalphabet_Latin:nnn {cal}  {up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {cal} {B}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {cal} {E}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {cal} {F}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {cal} {H}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {cal} {I}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {cal} {L}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {cal} {M}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {cal} {R}{up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {frak} {Latin}
+ {
+  \__um_set_mathalphabet_Latin:nnn {frak}    {up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {frak} {C}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {frak} {H}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {frak} {I}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {frak} {R}{up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {frak} {Z}{up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {frak} {latin}
+ {
+  \__um_set_mathalphabet_latin:nnn {frak} {up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {sfup} {num}
+ {
+  \__um_set_mathalphabet_numbers:nnn {sf}   {up}{#1}
+  \__um_set_mathalphabet_numbers:nnn {sfup} {up}{#1}
+ }
+\__um_new_alphabet_config:nnn {sfup} {Latin}
+ {
+  \bool_if:NTF \g__um_sfliteral_bool
+   {
+    \__um_set_normal_Latin:nn {sfup} {#1}
+    \__um_set_mathalphabet_Latin:nnn {sf} {up}{#1}
+   }
+   {
+    \bool_if:NT \g__um_upsans_bool
+     {
+      \__um_set_normal_Latin:nn {sfup,sfit} {#1}
+      \__um_set_mathalphabet_Latin:nnn {sf} {up,it}{#1}
+     }
+   }
+  \__um_set_mathalphabet_Latin:nnn {sfup} {up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {sfup} {latin}
+ {
+  \bool_if:NTF \g__um_sfliteral_bool
+   {
+    \__um_set_normal_latin:nn {sfup} {#1}
+    \__um_set_mathalphabet_latin:nnn {sf} {up}{#1}
+   }
+   {
+    \bool_if:NT \g__um_upsans_bool
+     {
+      \__um_set_normal_latin:nn {sfup,sfit} {#1}
+      \__um_set_mathalphabet_latin:nnn {sf} {up,it}{#1}
+     }
+   }
+  \__um_set_mathalphabet_latin:nnn {sfup} {up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {sfit} {Latin}
+ {
+  \bool_if:NTF \g__um_sfliteral_bool
+   {
+    \__um_set_normal_Latin:nn {sfit} {#1}
+    \__um_set_mathalphabet_Latin:nnn {sf} {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_upsans_bool
+     {
+      \__um_set_normal_Latin:nn {sfup,sfit} {#1}
+      \__um_set_mathalphabet_Latin:nnn {sf} {up,it}{#1}
+     }
+   }
+  \__um_set_mathalphabet_Latin:nnn {sfit} {up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {sfit} {latin}
+ {
+  \bool_if:NTF \g__um_sfliteral_bool
+   {
+    \__um_set_normal_latin:nn {sfit} {#1}
+    \__um_set_mathalphabet_latin:nnn {sf} {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_upsans_bool
+     {
+      \__um_set_normal_latin:nn {sfup,sfit} {#1}
+      \__um_set_mathalphabet_latin:nnn {sf} {up,it}{#1}
+     }
+   }
+  \__um_set_mathalphabet_latin:nnn {sfit} {up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {tt} {num}
+ {
+  \__um_set_mathalphabet_numbers:nnn {tt} {up}{#1}
+ }
+\__um_new_alphabet_config:nnn {tt} {Latin}
+ {
+  \__um_set_mathalphabet_Latin:nnn {tt} {up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {tt} {latin}
+ {
+  \__um_set_mathalphabet_latin:nnn {tt} {up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {bfit} {Latin}
+ {
+  \bool_if:NF \g__um_bfupLatin_bool
+   {
+    \__um_set_normal_Latin:nn {bfup,bfit} {#1}
+   }
+  \__um_set_mathalphabet_Latin:nnn {bfit} {up,it}{#1}
+  \bool_if:NTF \g__um_bfliteral_bool
+   {
+    \__um_set_normal_Latin:nn {bfit} {#1}
+    \__um_set_mathalphabet_Latin:nnn {bf} {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_bfupLatin_bool
+     {
+      \__um_set_normal_Latin:nn {bfup,bfit} {#1}
+      \__um_set_mathalphabet_Latin:nnn {bf} {up,it}{#1}
+     }
+   }
+ }
+
+\__um_new_alphabet_config:nnn {bfit} {latin}
+ {
+  \bool_if:NF \g__um_bfuplatin_bool
+   {
+    \__um_set_normal_latin:nn {bfup,bfit} {#1}
+   }
+  \__um_set_mathalphabet_latin:nnn {bfit} {up,it}{#1}
+  \bool_if:NTF \g__um_bfliteral_bool
+   {
+    \__um_set_normal_latin:nn {bfit} {#1}
+    \__um_set_mathalphabet_latin:nnn {bf} {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_bfuplatin_bool
+     {
+      \__um_set_normal_latin:nn {bfup,bfit} {#1}
+      \__um_set_mathalphabet_latin:nnn {bf} {up,it}{#1}
+     }
+   }
+ }
+
+\__um_new_alphabet_config:nnn {bfit} {Greek}
+ {
+  \__um_set_mathalphabet_Greek:nnn {bfit} {up,it}{#1}
+  \bool_if:NTF \g__um_bfliteral_bool
+   {
+    \__um_set_normal_Greek:nn {bfit}{#1}
+    \__um_set_mathalphabet_Greek:nnn {bf} {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_bfupGreek_bool
+     {
+      \__um_set_normal_Greek:nn {bfup,bfit}{#1}
+      \__um_set_mathalphabet_Greek:nnn {bf} {up,it}{#1}
+     }
+   }
+ }
+
+\__um_new_alphabet_config:nnn {bfit} {greek}
+ {
+  \__um_set_mathalphabet_greek:nnn {bfit} {up,it} {#1}
+  \bool_if:NTF \g__um_bfliteral_bool
+   {
+    \__um_set_normal_greek:nn {bfit} {#1}
+    \__um_set_mathalphabet_greek:nnn {bf} {it} {#1}
+   }
+   {
+    \bool_if:NF \g__um_bfupgreek_bool
+     {
+      \__um_set_normal_greek:nn {bfit,bfup} {#1}
+      \__um_set_mathalphabet_greek:nnn {bf} {up,it} {#1}
+     }
+   }
+ }
+
+\__um_new_alphabet_config:nnn {bfit} {misc}
+ {
+  \bool_if:NTF \g__um_literal_Nabla_bool
+   { \__um_set_normal_char:nnn {Nabla}{bfit}{#1} }
+   {
+    \bool_if:NF \g__um_upNabla_bool
+     { \__um_set_normal_char:nnn {Nabla}{bfup,bfit}{#1} }
+   }
+  \bool_if:NTF \g__um_literal_partial_bool
+   { \__um_set_normal_char:nnn {partial}{bfit}{#1} }
+   {
+    \bool_if:NF \g__um_uppartial_bool
+     { \__um_set_normal_char:nnn {partial}{bfup,bfit}{#1} }
+   }
+  \__um_set_mathalphabet_pos:nnnn {bfit} {partial} {up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {bfit} {Nabla}   {up,it}{#1}
+  \bool_if:NTF \g__um_literal_partial_bool
+   {
+    \__um_set_mathalphabet_pos:nnnn {bf} {partial} {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_uppartial_bool
+     {
+      \__um_set_mathalphabet_pos:nnnn {bf} {partial} {up,it}{#1}
+     }
+   }
+  \bool_if:NTF \g__um_literal_Nabla_bool
+   {
+    \__um_set_mathalphabet_pos:nnnn {bf} {Nabla}   {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_upNabla_bool
+     {
+      \__um_set_mathalphabet_pos:nnnn {bf} {Nabla}   {up,it}{#1}
+     }
+   }
+ }
+\__um_new_alphabet_config:nnn {bfup} {num}
+ {
+  \__um_set_mathalphabet_numbers:nnn {bf}   {up}{#1}
+  \__um_set_mathalphabet_numbers:nnn {bfup} {up}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {bfup} {Latin}
+ {
+  \bool_if:NT \g__um_bfupLatin_bool
+   {
+    \__um_set_normal_Latin:nn {bfup,bfit} {#1}
+   }
+  \__um_set_mathalphabet_Latin:nnn {bfup} {up,it}{#1}
+  \bool_if:NTF \g__um_bfliteral_bool
+   {
+    \__um_set_normal_Latin:nn {bfup} {#1}
+    \__um_set_mathalphabet_Latin:nnn {bf} {up}{#1}
+   }
+   {
+    \bool_if:NT \g__um_bfupLatin_bool
+     {
+      \__um_set_normal_Latin:nn {bfup,bfit} {#1}
+      \__um_set_mathalphabet_Latin:nnn {bf} {up,it}{#1}
+     }
+   }
+ }
+
+\__um_new_alphabet_config:nnn {bfup} {latin}
+ {
+  \bool_if:NT \g__um_bfuplatin_bool
+   {
+    \__um_set_normal_latin:nn {bfup,bfit} {#1}
+   }
+  \__um_set_mathalphabet_latin:nnn {bfup} {up,it}{#1}
+  \bool_if:NTF \g__um_bfliteral_bool
+   {
+    \__um_set_normal_latin:nn {bfup} {#1}
+    \__um_set_mathalphabet_latin:nnn {bf} {up}{#1}
+   }
+   {
+    \bool_if:NT \g__um_bfuplatin_bool
+     {
+      \__um_set_normal_latin:nn {bfup,bfit} {#1}
+      \__um_set_mathalphabet_latin:nnn {bf} {up,it}{#1}
+     }
+   }
+ }
+\__um_new_alphabet_config:nnn {bfup} {Greek}
+ {
+  \__um_set_mathalphabet_Greek:nnn {bfup} {up,it}{#1}
+  \bool_if:NTF \g__um_bfliteral_bool
+   {
+    \__um_set_normal_Greek:nn {bfup}{#1}
+    \__um_set_mathalphabet_Greek:nnn {bf} {up}{#1}
+   }
+   {
+    \bool_if:NT \g__um_bfupGreek_bool
+     {
+      \__um_set_normal_Greek:nn {bfup,bfit}{#1}
+      \__um_set_mathalphabet_Greek:nnn {bf} {up,it}{#1}
+     }
+   }
+ }
+
+\__um_new_alphabet_config:nnn {bfup} {greek}
+ {
+  \__um_set_mathalphabet_greek:nnn {bfup} {up,it} {#1}
+  \bool_if:NTF \g__um_bfliteral_bool
+   {
+    \__um_set_normal_greek:nn {bfup} {#1}
+    \__um_set_mathalphabet_greek:nnn {bf} {up} {#1}
+   }
+   {
+    \bool_if:NT \g__um_bfupgreek_bool
+     {
+      \__um_set_normal_greek:nn {bfup,bfit} {#1}
+      \__um_set_mathalphabet_greek:nnn {bf} {up,it} {#1}
+     }
+   }
+ }
+
+\__um_new_alphabet_config:nnn {bfup} {misc}
+ {
+  \bool_if:NTF \g__um_literal_Nabla_bool
+   {
+    \__um_set_normal_char:nnn {Nabla}{bfup}{#1}
+   }
+   {
+    \bool_if:NT \g__um_upNabla_bool
+     {
+      \__um_set_normal_char:nnn {Nabla}{bfup,bfit}{#1}
+     }
+   }
+  \bool_if:NTF \g__um_literal_partial_bool
+   {
+    \__um_set_normal_char:nnn {partial}{bfup}{#1}
+   }
+   {
+    \bool_if:NT \g__um_uppartial_bool
+     {
+      \__um_set_normal_char:nnn {partial}{bfup,bfit}{#1}
+     }
+   }
+  \__um_set_mathalphabet_pos:nnnn {bfup} {partial} {up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {bfup} {Nabla}   {up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {bfup} {digamma} {up}{#1}
+  \__um_set_mathalphabet_pos:nnnn {bfup} {Digamma} {up}{#1}
+  \__um_set_mathalphabet_pos:nnnn {bf}   {digamma} {up}{#1}
+  \__um_set_mathalphabet_pos:nnnn {bf}   {Digamma} {up}{#1}
+  \bool_if:NTF \g__um_literal_partial_bool
+   {
+    \__um_set_mathalphabet_pos:nnnn {bf} {partial} {up}{#1}
+   }
+   {
+    \bool_if:NT \g__um_uppartial_bool
+     {
+      \__um_set_mathalphabet_pos:nnnn {bf} {partial} {up,it}{#1}
+     }
+   }
+  \bool_if:NTF \g__um_literal_Nabla_bool
+   {
+    \__um_set_mathalphabet_pos:nnnn {bf} {Nabla}   {up}{#1}
+   }
+   {
+    \bool_if:NT \g__um_upNabla_bool
+     {
+      \__um_set_mathalphabet_pos:nnnn {bf} {Nabla}   {up,it}{#1}
+     }
+   }
+ }
+\__um_new_alphabet_config:nnn {bffrak} {Latin}
+ {
+  \__um_set_mathalphabet_Latin:nnn {bffrak} {up,it}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {bffrak} {latin}
+ {
+  \__um_set_mathalphabet_latin:nnn {bffrak} {up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {bfscr} {Latin}
+ {
+  \__um_set_mathalphabet_Latin:nnn {bfscr} {up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {bfscr} {latin}
+ {
+  \__um_set_mathalphabet_latin:nnn {bfscr} {up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {bfcal} {Latin}
+ {
+  \__um_set_mathalphabet_Latin:nnn {bfcal}  {up,it}{#1}
+ }
+\__um_new_alphabet_config:nnn {bfsfup} {num}
+ {
+  \__um_set_mathalphabet_numbers:nnn {bfsf}   {up}{#1}
+  \__um_set_mathalphabet_numbers:nnn {bfsfup} {up}{#1}
+ }
+\__um_new_alphabet_config:nnn {bfsfup} {Latin}
+ {
+  \bool_if:NTF \g__um_sfliteral_bool
+   {
+    \__um_set_normal_Latin:nn {bfsfup} {#1}
+    \__um_set_mathalphabet_Latin:nnn {bfsf} {up}{#1}
+   }
+   {
+    \bool_if:NT \g__um_upsans_bool
+     {
+      \__um_set_normal_Latin:nn {bfsfup,bfsfit} {#1}
+      \__um_set_mathalphabet_Latin:nnn {bfsf} {up,it}{#1}
+     }
+   }
+  \__um_set_mathalphabet_Latin:nnn {bfsfup} {up,it}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {bfsfup} {latin}
+ {
+  \bool_if:NTF \g__um_sfliteral_bool
+   {
+    \__um_set_normal_latin:nn {bfsfup} {#1}
+    \__um_set_mathalphabet_latin:nnn {bfsf} {up}{#1}
+   }
+   {
+    \bool_if:NT \g__um_upsans_bool
+     {
+      \__um_set_normal_latin:nn {bfsfup,bfsfit} {#1}
+      \__um_set_mathalphabet_latin:nnn {bfsf} {up,it}{#1}
+     }
+   }
+  \__um_set_mathalphabet_latin:nnn {bfsfup} {up,it}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {bfsfup} {Greek}
+ {
+  \bool_if:NTF \g__um_sfliteral_bool
+   {
+    \__um_set_normal_Greek:nn {bfsfup}{#1}
+    \__um_set_mathalphabet_Greek:nnn {bfsf} {up}{#1}
+   }
+   {
+    \bool_if:NT \g__um_upsans_bool
+     {
+      \__um_set_normal_Greek:nn {bfsfup,bfsfit}{#1}
+      \__um_set_mathalphabet_Greek:nnn {bfsf} {up,it}{#1}
+     }
+   }
+  \__um_set_mathalphabet_Greek:nnn {bfsfup} {up,it}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {bfsfup} {greek}
+ {
+  \bool_if:NTF \g__um_sfliteral_bool
+   {
+    \__um_set_normal_greek:nn {bfsfup} {#1}
+    \__um_set_mathalphabet_greek:nnn {bfsf} {up} {#1}
+   }
+   {
+    \bool_if:NT \g__um_upsans_bool
+     {
+      \__um_set_normal_greek:nn {bfsfup,bfsfit} {#1}
+      \__um_set_mathalphabet_greek:nnn {bfsf} {up,it} {#1}
+     }
+   }
+  \__um_set_mathalphabet_greek:nnn {bfsfup} {up,it} {#1}
+ }
+\__um_new_alphabet_config:nnn {bfsfup} {misc}
+ {
+  \bool_if:NTF \g__um_literal_Nabla_bool
+   {
+    \__um_set_normal_char:nnn {Nabla}{bfsfup}{#1}
+   }
+   {
+    \bool_if:NT \g__um_upNabla_bool
+     {
+      \__um_set_normal_char:nnn {Nabla}{bfsfup,bfsfit}{#1}
+     }
+   }
+  \bool_if:NTF \g__um_literal_partial_bool
+   {
+    \__um_set_normal_char:nnn {partial}{bfsfup}{#1}
+   }
+   {
+    \bool_if:NT \g__um_uppartial_bool
+     {
+      \__um_set_normal_char:nnn {partial}{bfsfup,bfsfit}{#1}
+     }
+   }
+  \__um_set_mathalphabet_pos:nnnn {bfsfup} {partial} {up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {bfsfup} {Nabla}   {up,it}{#1}
+  \bool_if:NTF \g__um_literal_partial_bool
+   {
+    \__um_set_mathalphabet_pos:nnnn {bfsf} {partial} {up}{#1}
+   }
+   {
+    \bool_if:NT \g__um_uppartial_bool
+     {
+      \__um_set_mathalphabet_pos:nnnn {bfsf} {partial} {up,it}{#1}
+     }
+   }
+  \bool_if:NTF \g__um_literal_Nabla_bool
+   {
+    \__um_set_mathalphabet_pos:nnnn {bfsf} {Nabla}   {up}{#1}
+   }
+   {
+    \bool_if:NT \g__um_upNabla_bool
+     {
+      \__um_set_mathalphabet_pos:nnnn {bfsf} {Nabla}   {up,it}{#1}
+     }
+   }
+ }
+\__um_new_alphabet_config:nnn {bfsfit} {Latin}
+ {
+  \bool_if:NTF \g__um_sfliteral_bool
+   {
+    \__um_set_normal_Latin:nn {bfsfit} {#1}
+    \__um_set_mathalphabet_Latin:nnn {bfsf} {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_upsans_bool
+     {
+      \__um_set_normal_Latin:nn {bfsfup,bfsfit} {#1}
+      \__um_set_mathalphabet_Latin:nnn {bfsf} {up,it}{#1}
+     }
+   }
+  \__um_set_mathalphabet_Latin:nnn {bfsfit} {up,it}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {bfsfit} {latin}
+ {
+  \bool_if:NTF \g__um_sfliteral_bool
+   {
+    \__um_set_normal_latin:nn {bfsfit} {#1}
+    \__um_set_mathalphabet_latin:nnn {bfsf} {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_upsans_bool
+     {
+      \__um_set_normal_latin:nn {bfsfup,bfsfit} {#1}
+      \__um_set_mathalphabet_latin:nnn {bfsf} {up,it}{#1}
+     }
+   }
+  \__um_set_mathalphabet_latin:nnn {bfsfit} {up,it}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {bfsfit} {Greek}
+ {
+  \bool_if:NTF \g__um_sfliteral_bool
+   {
+    \__um_set_normal_Greek:nn {bfsfit}{#1}
+    \__um_set_mathalphabet_Greek:nnn {bfsf} {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_upsans_bool
+     {
+      \__um_set_normal_Greek:nn {bfsfup,bfsfit}{#1}
+      \__um_set_mathalphabet_Greek:nnn {bfsf} {up,it}{#1}
+     }
+   }
+  \__um_set_mathalphabet_Greek:nnn {bfsfit} {up,it}{#1}
+ }
+
+\__um_new_alphabet_config:nnn {bfsfit} {greek}
+ {
+  \bool_if:NTF \g__um_sfliteral_bool
+   {
+    \__um_set_normal_greek:nn {bfsfit} {#1}
+    \__um_set_mathalphabet_greek:nnn {bfsf} {it} {#1}
+   }
+   {
+    \bool_if:NF \g__um_upsans_bool
+     {
+      \__um_set_normal_greek:nn {bfsfup,bfsfit} {#1}
+      \__um_set_mathalphabet_greek:nnn {bfsf} {up,it} {#1}
+     }
+   }
+  \__um_set_mathalphabet_greek:nnn {bfsfit} {up,it} {#1}
+ }
+
+\__um_new_alphabet_config:nnn {bfsfit} {misc}
+ {
+  \bool_if:NTF \g__um_literal_Nabla_bool
+   {
+    \__um_set_normal_char:nnn {Nabla}{bfsfit}{#1}
+   }
+   {
+    \bool_if:NF \g__um_upNabla_bool
+     {
+      \__um_set_normal_char:nnn {Nabla}{bfsfup,bfsfit}{#1}
+     }
+   }
+  \bool_if:NTF \g__um_literal_partial_bool
+   {
+    \__um_set_normal_char:nnn {partial}{bfsfit}{#1}
+   }
+   {
+    \bool_if:NF \g__um_uppartial_bool
+     {
+      \__um_set_normal_char:nnn {partial}{bfsfup,bfsfit}{#1}
+     }
+   }
+  \__um_set_mathalphabet_pos:nnnn {bfsfit} {partial} {up,it}{#1}
+  \__um_set_mathalphabet_pos:nnnn {bfsfit} {Nabla}   {up,it}{#1}
+  \bool_if:NTF \g__um_literal_partial_bool
+   {
+    \__um_set_mathalphabet_pos:nnnn {bfsf} {partial} {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_uppartial_bool
+     {
+      \__um_set_mathalphabet_pos:nnnn {bfsf} {partial} {up,it}{#1}
+     }
+   }
+  \bool_if:NTF \g__um_literal_Nabla_bool
+   {
+    \__um_set_mathalphabet_pos:nnnn {bfsf} {Nabla}   {it}{#1}
+   }
+   {
+    \bool_if:NF \g__um_upNabla_bool
+     {
+      \__um_set_mathalphabet_pos:nnnn {bfsf} {Nabla}   {up,it}{#1}
+     }
+   }
+ }

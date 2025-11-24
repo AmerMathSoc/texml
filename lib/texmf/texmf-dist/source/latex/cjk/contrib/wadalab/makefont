@@ -1,0 +1,108 @@
+#!/bin/sh
+#
+# Copyright (C) 1994-2015  Werner Lemberg <wl@gnu.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program in doc/COPYING; if not, write to the Free
+# Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+# MA 02110-1301 USA
+
+# Version 1.0
+#
+# This script transforms Wadalab PFA and AFM files created by the
+# wftodm program into PFB and TFM files.  All files in the current
+# directory and its subdirectories are converted.
+#
+# Additionally, it normalizes the font matrix so that the subfonts work
+# with pdfTeX; for convenience, it also inserts `closepath' commands to
+# end subpaths in glyphs.
+#
+# Note that an older version of this script (without a version number) has
+# some flaws; you should either regenerate all Wadalab subfonts or use the
+# `fixwada' script to fix PFB fonts which have already been created with
+# this older version.
+#
+# The programs t1asm, t1disasm, and afm2tfm must be in the path.
+
+for f in `find . -name '*.pfa' -print`; do
+  echo processing $f
+  name=`basename $f .pfa`
+  t1disasm < $name.pfa > $name.old
+
+  cat $name.old | \
+  awk '
+    {
+      sub(/001\.001/, "001.002")
+      sub(/\[.001 0 0 .001 0 -0.16\]/, "[.001 0 0 .001 0 0]")
+      sub(/\[0 0 1000 1000\]/, "[0 -160 1000 840]")
+
+      if (/%%Creation/) {
+        print "%%CreationDate: 2003-Feb-07"
+        next
+      }
+
+      if (/hsbw/)
+        waiting_for_Xmoveto = 1
+
+      if (waiting_for_Xmoveto) {
+        if (/rmoveto/) {
+          printf "\t%d %d rmoveto\n", $1, $2 - 160
+          waiting_for_Xmoveto = 0
+          next
+        }
+        if (/vmoveto/) {
+          printf "\t%d vmoveto\n", $1 - 160
+          waiting_for_Xmoveto = 0
+          next
+        }
+        if (/hmoveto/) {
+          printf "\t%d %d rmoveto\n", $1, -160
+          waiting_for_Xmoveto = 0
+          next
+        }
+      }
+
+      if (/moveto/)
+        print "\tclosepath"
+
+      if (/hstem/) {
+        printf "\t%d %d hstem\n", $1 - 160, $2
+        next
+      }
+
+      print
+    }
+  ' > $name.asm
+  rm $name.old
+
+  t1asm < $name.asm > $name.pfb
+  rm $name.asm
+done
+
+for f in `find . -name '*.afm' -print`; do
+  echo processing $f
+  name=`basename $f .afm`
+  mv $name.afm $name.old
+
+  cat $name.old | \
+  sed -e "
+      s/FontBBox 0 0 1000 1000/FontBBox 0 -160 1000 840/
+      s/B 0 0 1000 1000/B 0 -160 1000 840/
+  " > $name.afm
+
+  rm $name.old
+
+  afm2tfm $name.afm &> /dev/null
+done
+
+# EOF

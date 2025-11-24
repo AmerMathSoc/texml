@@ -1,0 +1,934 @@
+%%
+%% This is file `hobby.code.tex',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% hobby.dtx  (with options: `hobby')
+%% ----------------------------------------------------------------
+%% hobby --- a TikZ/PGF library for drawing smooth(ish) curves using
+%%           Hobby's algorithm (implemented in LaTeX3)
+%% E-mail: loopspace@mathforge.org
+%% Released under the LaTeX Project Public License v1.3c or later
+%% See http://www.latex-project.org/lppl.txt
+%% ----------------------------------------------------------------
+%% 
+\RequirePackage{expl3}
+\RequirePackage{xparse}
+\RequirePackage{pml3array}
+\ExplSyntaxOn
+\cs_generate_variant:Nn \fp_set:Nn {Nx}
+\cs_generate_variant:Nn \tl_if_eq:nnTF {VnTF}
+\cs_generate_variant:Nn \tl_if_eq:nnTF {xnTF}
+\tl_clear:N \l_tmpa_tl
+\tl_if_exist:NT \g__hobby_version
+{
+  \tl_set:Nn \l_tmpa_tl {
+    \ExplSyntaxOff
+    \tl_clear:N \l_tmpa_tl
+    \endinput
+  }
+}
+\tl_use:N \l_tmpa_tl
+
+\tl_new:N \g__hobby_version
+\tl_new:N \g__hobby_date
+\tl_set:Nn \g__hobby_version {1.7}
+\tl_set:Nn \g__hobby_date {2016-02-19}
+\DeclareDocumentCommand \hobbyVersion {}
+{
+  \tl_use:N \g__hobby_version
+}
+\DeclareDocumentCommand \hobbyDate {}
+{
+  \tl_use:N \g__hobby_date
+}
+\fp_new:N \g_hobby_parama_fp
+\fp_new:N \g_hobby_paramb_fp
+\fp_new:N \g_hobby_paramc_fp
+\fp_gset:Nn \g_hobby_parama_fp {2^.5}
+\fp_gset:Nn \g_hobby_paramb_fp {1/16}
+\fp_gset:Nn \g_hobby_paramc_fp {(3-5^.5)/2}
+\bool_new:N \l_hobby_closed_bool
+\bool_new:N \l_hobby_disjoint_bool
+\bool_new:N \l_hobby_save_aux_bool
+\bool_set_true:N \l_hobby_save_aux_bool
+\DeclareDocumentCommand \HobbyDisableAux {}
+{
+  \bool_set_false:N \l_hobby_save_aux_bool
+}
+\array_new:N \l_hobby_points_array
+\array_new:N \l_hobby_points_x_array
+\array_new:N \l_hobby_points_y_array
+\array_new:N \l_hobby_actions_array
+\array_new:N \l_hobby_angles_array
+\array_new:N \l_hobby_distances_array
+\array_new:N \l_hobby_tension_out_array
+\array_new:N \l_hobby_tension_in_array
+\array_new:N \l_hobby_matrix_a_array
+\array_new:N \l_hobby_matrix_b_array
+\array_new:N \l_hobby_matrix_c_array
+\array_new:N \l_hobby_matrix_d_array
+\array_new:N \l_hobby_vector_u_array
+\array_new:N \l_hobby_excess_angle_array
+\array_new:N \l_hobby_psi_array
+\array_new:N \l_hobby_theta_array
+\array_new:N \l_hobby_phi_array
+\array_new:N \l_hobby_sigma_array
+\array_new:N \l_hobby_rho_array
+\array_new:N \l_hobby_controla_array
+\array_new:N \l_hobby_controlb_array
+\fp_new:N \l_hobby_matrix_v_fp
+\fp_new:N \l_hobby_tempa_fp
+\fp_new:N \l_hobby_tempb_fp
+\fp_new:N \l_hobby_tempc_fp
+\fp_new:N \l_hobby_tempd_fp
+\fp_new:N \l_hobby_temps_fp
+\fp_new:N \l_hobby_in_curl_fp
+\fp_set:Nn \l_hobby_in_curl_fp {1}
+\fp_new:N \l_hobby_out_curl_fp
+\fp_set:Nn \l_hobby_out_curl_fp {1}
+\fp_new:N \l_hobby_in_angle_fp
+\fp_set_eq:NN \l_hobby_in_angle_fp \c_inf_fp
+\fp_new:N \l_hobby_out_angle_fp
+\fp_set_eq:NN \l_hobby_out_angle_fp \c_inf_fp
+\int_new:N \l_hobby_npoints_int
+\int_new:N \l_hobby_draw_int
+\keys_define:nn {hobby / read in all} {
+  x .fp_set:N = \l_hobby_tempa_fp,
+  y .fp_set:N = \l_hobby_tempb_fp,
+  tension~out .fp_set:N = \l_hobby_tempc_fp,
+  tension~in .fp_set:N = \l_hobby_tempd_fp,
+  excess~angle .fp_set:N = \l_hobby_temps_fp,
+  break .tl_set:N = \l_tmpb_tl,
+  blank .tl_set:N = \l_tmpa_tl,
+  tension .meta:n = { tension~out=#1, tension~in=#1 },
+  break .default:n = false,
+  blank .default:n = false,
+  invert~soft~blanks .choice:,
+  invert~soft~blanks / true .code:n = {
+    \int_gset:Nn \l_hobby_draw_int {0}
+  },
+  invert~soft~blanks / false .code:n = {
+    \int_gset:Nn \l_hobby_draw_int {1}
+  },
+  invert~soft~blanks .default:n = true,
+  tension~out .default:n = 1,
+  tension~in .default:n = 1,
+  excess~angle .default:n = 0,
+  in~angle .fp_gset:N = \l_hobby_in_angle_fp,
+  out~angle .fp_gset:N = \l_hobby_out_angle_fp,
+  in~curl .fp_gset:N = \l_hobby_in_curl_fp,
+  out~curl .fp_gset:N = \l_hobby_out_curl_fp,
+  closed .bool_gset:N = \l_hobby_closed_bool,
+  closed .default:n = true,
+  disjoint .bool_gset:N = \l_hobby_disjoint_bool,
+  disjoint .default:n = true,
+  break~default .code:n = {
+    \keys_define:nn { hobby / read in all }
+    {
+      break .default:n = #1
+    }
+  },
+  blank~default .code:n = {
+    \keys_define:nn { hobby / read in all }
+    {
+      blank .default:n = #1
+    }
+  },
+}
+\keys_define:nn { hobby / read in params} {
+  in~angle .fp_gset:N = \l_hobby_in_angle_fp,
+  out~angle .fp_gset:N = \l_hobby_out_angle_fp,
+  in~curl .fp_gset:N = \l_hobby_in_curl_fp,
+  out~curl .fp_gset:N = \l_hobby_out_curl_fp,
+  closed .bool_gset:N = \l_hobby_closed_bool,
+  closed .default:n = true,
+  disjoint .bool_gset:N = \l_hobby_disjoint_bool,
+  disjoint .default:n = true,
+  break~default .code:n = {
+    \keys_define:nn { hobby / read in all }
+    {
+      break .default:n = #1
+    }
+  },
+  blank~default .code:n = {
+    \keys_define:nn { hobby / read in all }
+    {
+      blank .default:n = #1
+    }
+  },
+  invert~soft~blanks .choice:,
+  invert~soft~blanks / true .code:n = {
+    \int_gset:Nn \l_hobby_draw_int {0}
+  },
+  invert~soft~blanks / false .code:n = {
+    \int_gset:Nn \l_hobby_draw_int {1}
+  },
+  invert~soft~blanks .default:n = true,
+}
+\cs_set:Nn \hobby_distangle:n {
+  \fp_set:Nn \l_hobby_tempa_fp {
+    (\array_get:Nn \l_hobby_points_x_array {#1 + 1})
+    - (\array_get:Nn \l_hobby_points_x_array {#1})}
+
+  \fp_set:Nn \l_hobby_tempb_fp {
+    (\array_get:Nn \l_hobby_points_y_array {#1 + 1})
+    - (\array_get:Nn \l_hobby_points_y_array {#1})}
+
+  \fp_set:Nn \l_hobby_tempc_fp { atan ( \l_hobby_tempb_fp, \l_hobby_tempa_fp ) }
+  \fp_veclen:NVV \l_hobby_tempd_fp \l_hobby_tempa_fp \l_hobby_tempb_fp
+
+  \array_push:Nx \l_hobby_angles_array {\fp_to_tl:N \l_hobby_tempc_fp}
+  \array_push:Nx \l_hobby_distances_array {\fp_to_tl:N \l_hobby_tempd_fp}
+  }
+\cs_new:Nn \fp_veclen:Nnn {
+  \fp_set:Nn #1 {((#2)^2 + (#3)^2)^.5}
+}
+\cs_generate_variant:Nn \fp_veclen:Nnn {NVV}
+\cs_new:Nn \hobby_ctrllen:Nnn {
+  \fp_set:Nn #1 {(2 - \g_hobby_parama_fp
+    * ( sin(#2) - \g_hobby_paramb_fp * sin(#3) )
+    * ( sin(#3) - \g_hobby_paramb_fp * sin(#2) )
+    * ( cos(#2) - cos(#3) ) )
+    / ( 1 + (1 - \g_hobby_paramc_fp) * cos(#3) + \g_hobby_paramc_fp * cos(#2))}
+}
+\cs_generate_variant:Nn \hobby_ctrllen:Nnn {NVV}
+\cs_new_protected:Npn \hobby_append_point_copy:n #1
+  {
+    \hobby_append_point_copy_aux:Nn \l_hobby_points_array {#1}
+    \hobby_append_point_copy_aux:Nn \l_hobby_points_x_array {#1}
+    \hobby_append_point_copy_aux:Nn \l_hobby_points_y_array {#1}
+    \hobby_append_point_copy_aux:Nn \l_hobby_tension_in_array {#1}
+    \hobby_append_point_copy_aux:Nn \l_hobby_tension_out_array {#1}
+    \hobby_append_point_copy_aux:Nn \l_hobby_excess_angle_array {#1}
+    \hobby_append_point_copy_aux:Nn \l_hobby_actions_array {#1}
+  }
+\cs_new_protected:Npn \hobby_append_point_copy_aux:Nn #1#2
+  { \array_gpush:Nx #1 { \array_get:Nn #1 {#2} } }
+\cs_new:Nn \hobby_gen_path:
+{
+\bool_if:NT \l_hobby_closed_bool {
+  \fp_compare:nTF {(\array_get:Nn \l_hobby_points_x_array {0})
+    =
+    (\array_top:N \l_hobby_points_x_array)}
+  {
+    \fp_compare:nF {
+      \array_get:Nn \l_hobby_points_y_array {0}
+      =
+      \array_top:N \l_hobby_points_y_array
+    }
+  {
+    \hobby_append_point_copy:n {0}
+  }
+  }
+  {
+    \hobby_append_point_copy:n {0}
+  }
+    \hobby_append_point_copy:n {1}
+}
+\int_gset:Nn \l_hobby_npoints_int {\array_length:N \l_hobby_points_y_array}
+\int_compare:nNnTF {\l_hobby_npoints_int} = {0} {
+}
+{
+  \int_compare:nNnTF {\l_hobby_npoints_int} = {1} {
+\hobby_distangle:n {0}
+\fp_compare:nF { \l_hobby_out_angle_fp == \c_inf_fp }
+{
+  \fp_set:Nn \l_hobby_tempa_fp { \l_hobby_out_angle_fp
+    - \array_get:Nn \l_hobby_angles_array {0}}
+    \fp_compare:nT {\l_hobby_tempa_fp > \c_pi_fp }
+    {
+      \fp_sub:Nn \l_hobby_tempa_fp {2 * \c_pi_fp}
+    }
+    \fp_compare:nT {\l_hobby_tempa_fp < -\c_pi_fp }
+    {
+      \fp_add:Nn \l_hobby_tempa_fp {2 * \c_pi_fp}
+    }
+  \array_put:Nnx \l_hobby_theta_array {0} {\fp_to_tl:N \l_hobby_tempa_fp}
+    \fp_compare:nT { \l_hobby_in_angle_fp == \c_inf_fp }
+    {
+      \array_put:Nnx \l_hobby_phi_array {1}{ \fp_to_tl:N \l_hobby_tempa_fp}
+    }
+   }
+\fp_compare:nTF { \l_hobby_in_angle_fp == \c_inf_fp }
+{
+  \fp_compare:nT { \l_hobby_out_angle_fp == \c_inf_fp }
+  {
+    \array_put:Nnx \l_hobby_phi_array {1} {0}
+    \array_put:Nnx \l_hobby_theta_array {0} {0}
+  }
+}
+{
+  \fp_set:Nn \l_hobby_tempa_fp { - \l_hobby_in_angle_fp + \c_pi_fp
++ (\array_get:Nn \l_hobby_angles_array {0})}
+  \fp_compare:nT {\l_hobby_tempa_fp > \c_pi_fp }
+  {
+    \fp_sub:Nn \l_hobby_tempa_fp {2 * \c_pi_fp}
+  }
+  \fp_compare:nT {\l_hobby_tempa_fp < -\c_pi_fp }
+  {
+    \fp_add:Nn \l_hobby_tempa_fp {2 * \c_pi_fp}
+  }
+
+  \array_put:Nnx \l_hobby_phi_array {1}
+  {\fp_to_tl:N \l_hobby_tempa_fp}
+  \fp_compare:nT { \l_hobby_out_angle_fp == \c_inf_fp }
+    {
+      \array_put:Nnx \l_hobby_theta_array {0}{ \fp_to_tl:N \l_hobby_tempa_fp}
+    }
+}
+
+  }
+  {
+    \hobby_compute_path:
+  }
+  \hobby_build_path:
+}
+}
+\cs_new:Nn \hobby_compute_path:
+{
+\int_step_function:nnnN {0} {1} {\l_hobby_npoints_int - 1} \hobby_distangle:n
+  \int_step_inline:nnnn {1} {1} {\l_hobby_npoints_int - 1} {
+    \fp_set:Nx \l_hobby_tempa_fp {
+    \array_get:Nn \l_hobby_angles_array {##1}
+    - \array_get:Nn \l_hobby_angles_array {##1 - 1}}
+    \fp_compare:nTF {\l_hobby_tempa_fp > \c_pi_fp }
+    {
+      \fp_sub:Nn \l_hobby_tempa_fp {2 * \c_pi_fp}
+    }
+    {}
+    \fp_compare:nTF {\l_hobby_tempa_fp <= -\c_pi_fp }
+    {
+      \fp_add:Nn \l_hobby_tempa_fp {2 * \c_pi_fp}
+    }
+    {}
+\array_get:NnNTF \l_hobby_excess_angle_array {##1} \l_tmpa_tl {
+  \fp_add:Nn \l_hobby_tempa_fp {2 * \c_pi_fp * \l_tmpa_tl}
+  }{}
+    \array_put:Nnx \l_hobby_psi_array {##1}{\fp_to_tl:N \l_hobby_tempa_fp}
+  }
+  \int_step_inline:nnnn {1} {1} {\l_hobby_npoints_int - 1} {
+    \array_put:Nnx \l_hobby_matrix_a_array {##1} {\fp_to_tl:n {
+       \array_get:Nn \l_hobby_tension_in_array {##1}^2
+      * \array_get:Nn \l_hobby_distances_array {##1}
+      * \array_get:Nn \l_hobby_tension_in_array {##1 + 1}
+  }}
+}
+  \int_step_inline:nnnn {1} {1} {\l_hobby_npoints_int - 1} {
+
+  \array_put:Nnx \l_hobby_matrix_b_array {##1} {\fp_to_tl:n
+{(3 * (\array_get:Nn \l_hobby_tension_in_array {##1 + 1}) - 1) *
+ (\array_get:Nn \l_hobby_tension_out_array {##1})^2 *
+(\array_get:Nn \l_hobby_tension_out_array {##1 - 1})
+* ( \array_get:Nn \l_hobby_distances_array {##1 - 1})
++
+(3 * (\array_get:Nn \l_hobby_tension_out_array {##1 - 1}) - 1)
+* (\array_get:Nn \l_hobby_tension_in_array {##1})^2
+* (\array_get:Nn \l_hobby_tension_in_array {##1 + 1})
+* (\array_get:Nn \l_hobby_distances_array {##1})}
+}
+}
+  \int_step_inline:nnnn {1} {1} {\l_hobby_npoints_int - 2} {
+
+  \array_put:Nnx \l_hobby_matrix_c_array {##1} {\fp_to_tl:n
+{(\array_get:Nn \l_hobby_tension_in_array {##1})^2
+* (\array_get:Nn \l_hobby_tension_in_array {##1 - 1})
+* (\array_get:Nn \l_hobby_distances_array {##1 - 1})
+}}
+
+}
+  \int_step_inline:nnnn {1} {1} {\l_hobby_npoints_int - 2} {
+
+  \array_put:Nnx \l_hobby_matrix_d_array {##1} {\fp_to_tl:n
+{
+- (\array_get:Nn \l_hobby_psi_array {##1 + 1})
+* (\array_get:Nn \l_hobby_tension_out_array {##1})^2
+* (\array_get:Nn \l_hobby_tension_out_array {##1 - 1})
+* (\array_get:Nn \l_hobby_distances_array {##1 - 1})
+- (3 * (\array_get:Nn \l_hobby_tension_out_array {##1 - 1}) - 1)
+* (\array_get:Nn \l_hobby_psi_array {##1})
+* (\array_get:Nn \l_hobby_tension_in_array {##1})^2
+* (\array_get:Nn \l_hobby_tension_in_array {##1 + 1})
+* (\array_get:Nn \l_hobby_distances_array {##1})
+}
+}
+}
+\bool_if:NTF \l_hobby_closed_bool {
+\array_put:Nnx \l_hobby_matrix_c_array {0} {\fp_to_tl:n {
+- (\array_get:Nn \l_hobby_distances_array {\l_hobby_npoints_int - 2})
+* (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int - 2})
+* (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int - 1})^2
+}}
+
+\array_put:Nnn \l_hobby_matrix_b_array {0} {1}
+\array_put:Nnn \l_hobby_matrix_d_array {0} {0}
+
+\array_put:Nnx \l_hobby_matrix_b_array {\l_hobby_npoints_int - 1} {\fp_to_tl:n {
+(\array_get:Nn \l_hobby_matrix_b_array {\l_hobby_npoints_int - 1})
++ 1
+}}
+
+ \array_put:Nnx \l_hobby_matrix_d_array {\l_hobby_npoints_int - 1} {\fp_to_tl:n {
+- (\array_get:Nn \l_hobby_psi_array {1})
+* (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int -1})^2
+* (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int -2})
+* (\array_get:Nn \l_hobby_distances_array {\l_hobby_npoints_int - 2})
+- (3 * (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int - 2}) - 1)
+* (\array_get:Nn \l_hobby_psi_array {\l_hobby_npoints_int - 1})
+* (\array_get:Nn \l_hobby_tension_in_array {\l_hobby_npoints_int - 1})^2
+* (\array_get:Nn \l_hobby_tension_in_array {\l_hobby_npoints_int})
+* (\array_get:Nn \l_hobby_distances_array {\l_hobby_npoints_int -1})
+}
+}
+  \array_put:Nnn \l_hobby_vector_u_array {0} {1}
+\array_put:Nnn \l_hobby_vector_u_array {\l_hobby_npoints_int - 1} {1}
+  \int_step_inline:nnnn {1} {1} {\l_hobby_npoints_int - 2} {
+  \array_put:Nnn \l_hobby_vector_u_array {##1} {0}
+  }
+\fp_set:Nn \l_hobby_matrix_v_fp {
+(\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int -1})^2
+* (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int -2})
+* (\array_get:Nn \l_hobby_distances_array {\l_hobby_npoints_int -2})
+}
+}
+{
+\fp_compare:nTF { \l_hobby_out_angle_fp == \c_inf_fp }
+{
+  \array_put:Nnx \l_hobby_matrix_b_array {0}  {\fp_to_tl:n {
+  (\array_get:Nn \l_hobby_tension_in_array {1})^3
+* \l_hobby_in_curl_fp
++
+(3 * (\array_get:Nn \l_hobby_tension_in_array {1}) - 1)
+* (\array_get:Nn \l_hobby_tension_out_array {0})^3
+}}
+
+  \array_put:Nnx \l_hobby_matrix_c_array {0} {\fp_to_tl:n {
+  (\array_get:Nn \l_hobby_tension_out_array {0})^3
++
+(3 * (\array_get:Nn \l_hobby_tension_out_array {0}) - 1)
+* (\array_get:Nn \l_hobby_tension_in_array {1})^3
+* \l_hobby_in_curl_fp
+}}
+
+  \array_put:Nnx \l_hobby_matrix_d_array {0} {\fp_to_tl:n {
+-(  (\array_get:Nn \l_hobby_tension_out_array {0})^3
++
+(3 * (\array_get:Nn \l_hobby_tension_out_array {0}) - 1)
+* (\array_get:Nn \l_hobby_tension_in_array {1})^3
+* \l_hobby_in_curl_fp)
+* (\array_get:Nn \l_hobby_psi_array {1})
+}}
+
+}
+{
+  \array_put:Nnn \l_hobby_matrix_b_array {0} {1}
+  \array_put:Nnn \l_hobby_matrix_c_array {0} {0}
+  \fp_set:Nn \l_hobby_tempa_fp { \l_hobby_out_angle_fp
+    - \array_get:Nn \l_hobby_angles_array {0}}
+    \fp_compare:nT {\l_hobby_tempa_fp > \c_pi_fp }
+    {
+      \fp_sub:Nn \l_hobby_tempa_fp {2 * \c_pi_fp}
+    }
+    \fp_compare:nT {\l_hobby_tempa_fp < -\c_pi_fp }
+    {
+      \fp_add:Nn \l_hobby_tempa_fp {2 * \c_pi_fp}
+    }
+  \array_put:Nnx \l_hobby_matrix_d_array {0} {\fp_to_tl:N \l_hobby_tempa_fp}
+}
+\fp_compare:nTF { \l_hobby_in_angle_fp == \c_inf_fp }
+{
+
+ \array_put:Nnx \l_hobby_matrix_b_array {\l_hobby_npoints_int - 1} {\fp_to_tl:n {
+\array_get:Nn \l_hobby_matrix_b_array {\l_hobby_npoints_int - 1}
+- (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int - 1})^2
+* (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int - 2})
+* (\array_get:Nn \l_hobby_distances_array {\l_hobby_npoints_int - 2})
+*
+((3 * (\array_get:Nn \l_hobby_tension_in_array {\l_hobby_npoints_int} ) - 1)
+* (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int - 1})^3 \l_tmpa_tl
+* \l_hobby_out_curl_fp
++
+(\array_get:Nn \l_hobby_tension_in_array {\l_hobby_npoints_int })^3)
+/
+((3 * (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int -2}) - 1)
+* (\array_get:Nn \l_hobby_tension_in_array {\l_hobby_npoints_int})^3
++
+( \array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int - 1})^3
+* \l_hobby_out_curl_fp)
+}}
+
+ \array_put:Nnx \l_hobby_matrix_d_array {\l_hobby_npoints_int - 1} {\fp_to_tl:n {
+- (3 * (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int - 2}) - 1)
+* (\array_get:Nn \l_hobby_psi_array {\l_hobby_npoints_int - 1})
+* (\array_get:Nn \l_hobby_tension_in_array {\l_hobby_npoints_int - 1})^2
+* (\array_get:Nn \l_hobby_tension_in_array {\l_hobby_npoints_int})
+* (\array_get:Nn \l_hobby_distances_array {\l_hobby_npoints_int - 1})
+}}
+
+}
+{
+  \fp_set:Nn \l_hobby_tempa_fp { - \l_hobby_in_angle_fp + \c_pi_fp
++ (\array_get:Nn \l_hobby_angles_array {\l_hobby_npoints_int - 1})}
+  \fp_compare:nT {\l_hobby_tempa_fp > \c_pi_fp }
+  {
+    \fp_sub:Nn \l_hobby_tempa_fp {2 * \c_pi_fp}
+  }
+  \fp_compare:nT {\l_hobby_tempa_fp < -\c_pi_fp }
+  {
+    \fp_add:Nn \l_hobby_tempa_fp {2 * \c_pi_fp}
+  }
+
+  \array_put:Nnx \l_hobby_phi_array {\l_hobby_npoints_int}
+  {\fp_to_tl:N \l_hobby_tempa_fp}
+
+   \array_put:Nnx \l_hobby_matrix_d_array  {\l_hobby_npoints_int - 1} {\fp_to_tl:n {
+ \l_hobby_tempa_fp
+ * (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int - 1})^2
+* (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int - 2})
+* (\array_get:Nn \l_hobby_distances_array {\l_hobby_npoints_int - 2})
+-
+(3 * ( \array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int - 2}) - 1)
+* (\array_get:Nn \l_hobby_psi_array {\l_hobby_npoints_int - 1})
+* (\array_get:Nn \l_hobby_tension_in_array  {\l_hobby_npoints_int - 1})^2
+* (\array_get:Nn \l_hobby_tension_in_array {\l_hobby_npoints_int})
+* (\array_get:Nn \l_hobby_distances_array  {\l_hobby_npoints_int - 1}) }}
+}
+}
+\int_step_inline:nnnn {1} {1} {\l_hobby_npoints_int - 1} {
+
+  \array_put:Nnx \l_hobby_matrix_b_array {##1} {\fp_to_tl:n {
+  (\array_get:Nn \l_hobby_matrix_b_array {##1 - 1})
+* (\array_get:Nn \l_hobby_matrix_b_array {##1})
+-
+(\array_get:Nn \l_hobby_matrix_c_array {##1 - 1})
+* (\array_get:Nn \l_hobby_matrix_a_array {##1})
+}}
+  \int_compare:nT {##1 < \l_hobby_npoints_int - 1} {
+
+  \array_put:Nnx \l_hobby_matrix_c_array {##1} {\fp_to_tl:n {
+(\array_get:Nn \l_hobby_matrix_b_array {##1 - 1})
+    * (\array_get:Nn \l_hobby_matrix_c_array {##1})
+}}
+  }
+
+  \array_put:Nnx \l_hobby_matrix_d_array {##1} {\fp_to_tl:n {
+(\array_get:Nn \l_hobby_matrix_b_array {##1 - 1})
+  * (\array_get:Nn \l_hobby_matrix_d_array {##1})
+-
+  (\array_get:Nn \l_hobby_matrix_d_array {##1 - 1})
+  * (\array_get:Nn \l_hobby_matrix_a_array {##1})
+}}
+  \bool_if:NT \l_hobby_closed_bool {
+  \array_put:Nnx \l_hobby_vector_u_array {##1} {\fp_to_tl:n {
+(\array_get:Nn \l_hobby_matrix_b_array {##1 - 1})
+* (\array_get:Nn \l_hobby_vector_u_array {##1})
+-
+(\array_get:Nn \l_hobby_vector_u_array {##1 - 1})
+* (\array_get:Nn \l_hobby_matrix_a_array {##1})
+}}
+}
+}
+ \array_put:Nnx \l_hobby_theta_array  {\l_hobby_npoints_int - 1} {\fp_to_tl:n {
+(\array_get:Nn \l_hobby_matrix_d_array  {\l_hobby_npoints_int - 1})
+/ (\array_get:Nn \l_hobby_matrix_b_array  {\l_hobby_npoints_int - 1})
+}}
+\bool_if:NT \l_hobby_closed_bool {
+ \array_put:Nnx \l_hobby_vector_u_array  {\l_hobby_npoints_int - 1} {\fp_to_tl:n {
+  (\array_get:Nn \l_hobby_vector_u_array  {\l_hobby_npoints_int - 1})
+/ (\array_get:Nn \l_hobby_matrix_b_array  {\l_hobby_npoints_int - 1})
+}}
+}
+\int_step_inline:nnnn {\l_hobby_npoints_int - 2} {-1} {0} {
+
+  \array_put:Nnx \l_hobby_theta_array {##1} {\fp_to_tl:n {
+( (\array_get:Nn \l_hobby_matrix_d_array {##1})
+  - (\array_get:Nn \l_hobby_theta_array  {##1 + 1})
+  * (\array_get:Nn \l_hobby_matrix_c_array {##1})
+) / (\array_get:Nn \l_hobby_matrix_b_array {##1})
+}}
+}
+\bool_if:NT \l_hobby_closed_bool {
+\int_step_inline:nnnn {\l_hobby_npoints_int - 2} {-1} {0} {
+  \array_put:Nnx \l_hobby_vector_u_array {##1} {\fp_to_tl:n
+{
+    ((\array_get:Nn \l_hobby_vector_u_array {##1})
+    - (\array_get:Nn \l_hobby_vector_u_array  {##1 + 1})
+    * (\array_get:Nn \l_hobby_matrix_c_array {##1})
+    ) / (\array_get:Nn \l_hobby_matrix_b_array {##1})
+}}
+}
+
+\fp_set:Nn \l_hobby_tempb_fp {
+((\array_get:Nn \l_hobby_theta_array {1})
+* \l_hobby_matrix_v_fp
+- (\array_get:Nn \l_hobby_theta_array  {\l_hobby_npoints_int - 1})
+) / (
+(\array_get:Nn \l_hobby_vector_u_array {1})
+* \l_hobby_matrix_v_fp
+- (\array_get:Nn \l_hobby_vector_u_array  {\l_hobby_npoints_int - 1})
++ 1
+)}
+
+\int_step_inline:nnnn {0} {1} {\l_hobby_npoints_int - 1} {
+
+  \array_put:Nnx \l_hobby_theta_array {##1} {\fp_to_tl:n {
+  (\array_get:Nn \l_hobby_theta_array {##1})
+  - (\array_get:Nn \l_hobby_vector_u_array {##1})
+  * \l_hobby_tempb_fp
+}}
+}
+}
+\int_step_inline:nnnn {1} {1} {\l_hobby_npoints_int - 1} {
+
+    \array_put:Nnx \l_hobby_phi_array {##1} {\fp_to_tl:n {
+      - (\array_get:Nn \l_hobby_psi_array {##1})
+      - (\array_get:Nn \l_hobby_theta_array {##1})
+  }}
+  }
+\bool_if:NTF \l_hobby_closed_bool {
+  \int_gdecr:N \l_hobby_npoints_int
+}{
+\fp_compare:nT { \l_hobby_in_angle_fp == \c_inf_fp }
+{
+ \array_put:Nnx \l_hobby_phi_array {\l_hobby_npoints_int} {\fp_to_tl:n {
+((3 * (\array_get:Nn \l_hobby_tension_in_array {\l_hobby_npoints_int}) - 1)
+* (\array_get:Nn \l_hobby_tension_out_array {\l_hobby_npoints_int - 1})^3
+* \l_hobby_out_curl_fp
++
+(\array_get:Nn \l_hobby_tension_in_array {\l_hobby_npoints_int })^3)
+/
+((3 * (\array_get:Nn \l_hobby_tension_out_array  {\l_hobby_npoints_int -2}) - 1)
+* (\array_get:Nn \l_hobby_tension_in_array {\l_hobby_npoints_int})^3 \l_tmpa_tl
++
+(\array_get:Nn \l_hobby_tension_out_array  {\l_hobby_npoints_int - 1})^3
+* \l_hobby_out_curl_fp)
+*
+(\array_get:Nn \l_hobby_theta_array  {\l_hobby_npoints_int -1})
+}}
+}
+}
+}
+\cs_new:Nn \hobby_build_path:
+{
+\int_step_inline:nnnn {0} {1} {\l_hobby_npoints_int - 1} {
+
+  \fp_set:Nn \l_hobby_tempa_fp {\array_get:Nn \l_hobby_theta_array {##1}}
+
+  \fp_set:Nn \l_hobby_tempb_fp {\array_get:Nn \l_hobby_phi_array  {##1 + 1}}
+
+  \hobby_ctrllen:NVV \l_hobby_temps_fp \l_hobby_tempa_fp \l_hobby_tempb_fp
+
+   \array_put:Nnx \l_hobby_sigma_array {##1 + 1} {\fp_to_tl:N \l_hobby_temps_fp}
+
+  \hobby_ctrllen:NVV \l_hobby_temps_fp \l_hobby_tempb_fp \l_hobby_tempa_fp
+
+   \array_put:Nnx \l_hobby_rho_array {##1} {\fp_to_tl:N \l_hobby_temps_fp}
+
+  }
+\int_step_inline:nnnn {0} {1} {\l_hobby_npoints_int - 1} {
+\array_gput:Nnx \l_hobby_controla_array  {##1 + 1} {x = \fp_eval:n  {
+(\array_get:Nn \l_hobby_points_x_array {##1})
++
+  (\array_get:Nn \l_hobby_distances_array {##1}) *
+  (\array_get:Nn \l_hobby_rho_array {##1}) *
+cos ( (\array_get:Nn \l_hobby_angles_array {##1})
++
+  (\array_get:Nn \l_hobby_theta_array {##1}))
+/3
+}, y = \fp_eval:n {
+( \array_get:Nn \l_hobby_points_y_array {##1}) +
+  (\array_get:Nn \l_hobby_distances_array {##1}) *
+  (\array_get:Nn \l_hobby_rho_array {##1}) *
+sin ( (\array_get:Nn \l_hobby_angles_array {##1})
++
+  (\array_get:Nn \l_hobby_theta_array {##1}))
+/3
+}
+}
+}
+\int_step_inline:nnnn {1} {1} {\l_hobby_npoints_int} {
+  \array_gput:Nnx \l_hobby_controlb_array {##1} {
+    x = \fp_eval:n {\array_get:Nn \l_hobby_points_x_array {##1}
+- (\array_get:Nn \l_hobby_distances_array  {##1 - 1})
+* (\array_get:Nn \l_hobby_sigma_array {##1})
+* cos((\array_get:Nn \l_hobby_angles_array  {##1 - 1})
+- (\array_get:Nn \l_hobby_phi_array {##1}))/3
+}, y = \fp_eval:n {
+  (\array_get:Nn \l_hobby_points_y_array {##1})
+- (\array_get:Nn \l_hobby_distances_array  {##1 - 1})
+* (\array_get:Nn \l_hobby_sigma_array {##1})
+* sin((\array_get:Nn \l_hobby_angles_array  {##1 - 1})
+- (\array_get:Nn \l_hobby_phi_array {##1}))/3
+} }
+ }
+}
+\NewDocumentCommand \hobbyinit {m m m} {
+  \hobby_set_cmds:nnn#1#2#3
+  \hobby_clear_path:
+}
+\NewDocumentCommand \hobbyaddpoint { m } {
+    \keys_set:nn { hobby/read in all }
+    {
+      tension~out,
+      tension~in,
+      excess~angle,
+      blank,
+      break,
+      #1
+    }
+    \tl_if_eq:VnTF {\l_tmpa_tl} {true}
+     {\tl_set:Nn \l_tmpa_tl {2}}
+     {
+       \tl_if_eq:VnTF {\l_tmpa_tl} {soft}
+       {\tl_set:Nn \l_tmpa_tl {0}}
+       {\tl_set:Nn \l_tmpa_tl {1}}
+     }
+    \tl_if_eq:VnTF {\l_tmpb_tl} {true}
+     {\tl_put_right:Nn \l_tmpa_tl {1}}
+     {\tl_put_right:Nn \l_tmpa_tl {0}}
+    \array_gpush:Nx \l_hobby_actions_array {\l_tmpa_tl}
+    \array_gpush:Nx \l_hobby_tension_out_array {\fp_to_tl:N \l_hobby_tempc_fp}
+    \array_gpush:Nx \l_hobby_tension_in_array {\fp_to_tl:N \l_hobby_tempd_fp}
+    \array_gpush:Nx \l_hobby_excess_angle_array {\fp_to_tl:N \l_hobby_temps_fp}
+    \array_gpush:Nx \l_hobby_points_array {
+      x = \fp_use:N \l_hobby_tempa_fp,
+      y = \fp_use:N \l_hobby_tempb_fp }
+    \array_gpush:Nx \l_hobby_points_x_array {\fp_to_tl:N \l_hobby_tempa_fp}
+    \array_gpush:Nx \l_hobby_points_y_array {\fp_to_tl:N \l_hobby_tempb_fp}
+}
+\NewDocumentCommand \hobbysetparams { m } {
+  \keys_set:nn { hobby / read in params }
+  {
+    #1
+  }
+}
+\cs_new:Npn \hobby_moveto:nnn #1#2#3 {}
+\cs_new:Npn \hobby_curveto:nnn #1#2#3 {}
+\cs_new:Npn \hobby_close:n #1 {}
+\cs_generate_variant:Nn \hobby_moveto:nnn {VVV,nnV}
+\cs_generate_variant:Nn \hobby_curveto:nnn {VVV}
+\cs_generate_variant:Nn \hobby_close:n {V}
+\cs_new:Nn \hobby_set_cmds:nnn {
+  \cs_gset_eq:NN \hobby_moveto:nnn #1
+  \cs_gset_eq:NN \hobby_curveto:nnn #2
+  \cs_gset_eq:NN \hobby_close:n #3
+}
+\NewDocumentCommand \hobbygenpath { } {
+  \array_if_empty:NF \l_hobby_points_array {
+    \hobby_gen_path:
+  }
+}
+\NewDocumentCommand \hobbygenifnecpath { m } {
+  \tl_if_exist:cTF {g_hobby_#1_path}
+  {
+    \tl_use:c {g_hobby_#1_path}
+  }
+  {
+    \hobby_gen_path:
+  }
+  \hobby_save_path:n {#1}
+  \hobby_save_path_to_aux:x {#1}
+}
+\NewDocumentCommand \hobbygenuseifnecpath { m } {
+  \tl_if_exist:cTF {g_hobby_#1_path}
+  {
+    \tl_use:c {g_hobby_#1_path}
+  }
+  {
+    \hobby_gen_path:
+  }
+  \hobby_save_path:n {#1}
+  \hobby_save_path_to_aux:x {#1}
+  \hobby_use_path:
+}
+\NewDocumentCommand \hobbyusepath { m } {
+  \hobbysetparams{#1}
+  \hobby_use_path:
+}
+\NewDocumentCommand \hobbysavepath { m } {
+  \hobby_save_path:n {#1}
+}
+\NewDocumentCommand \hobbyrestorepath { m } {
+  \tl_if_exist:cT {g_hobby_#1_path} {
+    \tl_use:c {g_hobby_#1_path}
+  }
+}
+\NewDocumentCommand \hobbyshowpath { m } {
+  \tl_if_exist:cT {g_hobby_#1_path} {
+    \tl_show:c {g_hobby_#1_path}
+  }
+}
+\NewDocumentCommand \hobbygenusepath { } {
+  \array_if_empty:NF \l_hobby_points_array {
+    \hobby_gen_path:
+    \hobby_use_path:
+  }
+}
+\NewDocumentCommand \hobbyclearpath { } {
+  \hobby_clear_path:
+}
+\tl_new:N \l_tmpc_tl
+\cs_new:Nn \hobby_use_path: {
+  \bool_if:NT \l_hobby_disjoint_bool {
+    \array_get:NnN \l_hobby_points_array {0} \l_tmpa_tl
+    \hobby_moveto:nnV {} {} \l_tmpa_tl
+  }
+  \int_step_inline:nnnn {1} {1} {\l_hobby_npoints_int} {
+    \array_get:NnN \l_hobby_controla_array {##1} \l_tmpa_tl
+    \array_get:NnN \l_hobby_controlb_array {##1} \l_tmpb_tl
+    \array_get:NnN \l_hobby_points_array {##1} \l_tmpc_tl
+    \array_get:NnN \l_hobby_actions_array {##1} \l_tmpd_tl
+    \int_compare:nNnTF {\tl_item:Nn \l_tmpd_tl {1}} = {\l_hobby_draw_int} {
+      \hobby_curveto:VVV \l_tmpa_tl \l_tmpb_tl \l_tmpc_tl
+    }{
+      \bool_gset_false:N \l_hobby_closed_bool
+      \hobby_moveto:VVV \l_tmpa_tl \l_tmpb_tl \l_tmpc_tl
+    }
+    \tl_if_eq:xnTF {\tl_item:Nn \l_tmpd_tl {2}} {1} {
+      \bool_gset_false:N \l_hobby_closed_bool
+      \hobby_moveto:VVV \l_tmpa_tl \l_tmpb_tl \l_tmpc_tl
+    }{}
+  }
+  \bool_if:NT \l_hobby_closed_bool {
+    \array_get:NnN \l_hobby_points_array {0} \l_tmpa_tl
+    \hobby_close:V \l_tmpa_tl
+  }
+}
+\cs_new:Nn \hobby_save_path:n {
+  \tl_clear:N \l_tmpa_tl
+  \tl_put_right:Nn \l_tmpa_tl {\int_gset:Nn \l_hobby_npoints_int}
+  \tl_put_right:Nx \l_tmpa_tl {{\int_use:N \l_hobby_npoints_int}}
+  \bool_if:NTF \l_hobby_disjoint_bool {
+    \tl_put_right:Nn \l_tmpa_tl {\bool_gset_true:N}
+  }{
+    \tl_put_right:Nn \l_tmpa_tl {\bool_gset_false:N}
+  }
+  \tl_put_right:Nn \l_tmpa_tl {\l_hobby_disjoint_bool}
+  \bool_if:NTF \l_hobby_closed_bool {
+    \tl_put_right:Nn \l_tmpa_tl {\bool_gset_true:N}
+  }{
+    \tl_put_right:Nn \l_tmpa_tl {\bool_gset_false:N}
+  }
+  \tl_put_right:Nn \l_tmpa_tl {\l_hobby_closed_bool}
+  \tl_put_right:Nn \l_tmpa_tl {\array_gclear:N \l_hobby_points_array}
+  \array_map_inline:Nn \l_hobby_points_array {
+    \tl_put_right:Nn \l_tmpa_tl {
+      \array_gput:Nnn \l_hobby_points_array {##1} {##2}
+    }
+  }
+  \tl_put_right:Nn \l_tmpa_tl {\array_gclear:N \l_hobby_actions_array}
+  \array_map_inline:Nn \l_hobby_actions_array {
+    \tl_put_right:Nn \l_tmpa_tl {
+      \array_gput:Nnn \l_hobby_actions_array {##1} {##2}
+    }
+  }
+  \tl_put_right:Nn \l_tmpa_tl {\array_gclear:N \l_hobby_controla_array}
+  \array_map_inline:Nn \l_hobby_controla_array {
+    \tl_put_right:Nn \l_tmpa_tl {
+      \array_gput:Nnn \l_hobby_controla_array {##1} {##2}
+    }
+  }
+  \tl_put_right:Nn \l_tmpa_tl {\array_gclear:N \l_hobby_controlb_array}
+  \array_map_inline:Nn \l_hobby_controlb_array {
+    \tl_put_right:Nn \l_tmpa_tl {
+      \array_gput:Nnn \l_hobby_controlb_array {##1} {##2}
+    }
+  }
+  \tl_gclear_new:c {g_hobby_#1_path}
+  \tl_gset_eq:cN {g_hobby_#1_path} \l_tmpa_tl
+}
+\int_set:Nn \l_tmpa_int {\char_value_catcode:n {`@}}
+\char_set_catcode_letter:N @
+\cs_new:Npn \hobby_save_path_to_aux:n #1 {
+  \bool_if:nT {
+    \tl_if_exist_p:c {g_hobby_#1_path}
+    &&
+    ! \tl_if_exist_p:c {g_hobby_#1_path_saved}
+    &&
+    \l_hobby_save_aux_bool
+  }
+  {
+    \tl_clear:N \l_tmpa_tl
+    \tl_put_right:Nn \l_tmpa_tl {
+      \ExplSyntaxOn
+      \tl_gclear_new:c {g_hobby_#1_path}
+      \tl_gput_right:cn {g_hobby_#1_path}
+    }
+    \tl_put_right:Nx \l_tmpa_tl {
+      {\tl_to_str:c {g_hobby_#1_path}}
+    }
+    \tl_put_right:Nn \l_tmpa_tl {
+      \ExplSyntaxOff
+    }
+    \protected@write\@auxout{}{
+      \tl_to_str:N \l_tmpa_tl
+    }
+    \tl_new:c {g_hobby_#1_path_saved}
+  }
+}
+\char_set_catcode:nn {`@} {\l_tmpa_int}
+\cs_generate_variant:Nn \hobby_save_path_to_aux:n {x}
+\cs_new:Nn \hobby_clear_path:
+{
+\array_gclear:N \l_hobby_points_array
+\array_gclear:N \l_hobby_points_x_array
+\array_gclear:N \l_hobby_points_y_array
+\array_gclear:N \l_hobby_angles_array
+\array_gclear:N \l_hobby_actions_array
+\array_gclear:N \l_hobby_distances_array
+\array_gclear:N \l_hobby_tension_out_array
+\array_gclear:N \l_hobby_tension_in_array
+\array_gclear:N \l_hobby_excess_angle_array
+\array_gclear:N \l_hobby_matrix_a_array
+\array_gclear:N \l_hobby_matrix_b_array
+\array_gclear:N \l_hobby_matrix_c_array
+\array_gclear:N \l_hobby_matrix_d_array
+\array_gclear:N \l_hobby_vector_u_array
+\array_gclear:N \l_hobby_psi_array
+\array_gclear:N \l_hobby_theta_array
+\array_gclear:N \l_hobby_phi_array
+\array_gclear:N \l_hobby_sigma_array
+\array_gclear:N \l_hobby_rho_array
+\array_gclear:N \l_hobby_controla_array
+\array_gclear:N \l_hobby_controlb_array
+\bool_gset_false:N \l_hobby_closed_bool
+\bool_gset_false:N \l_hobby_disjoint_bool
+
+  \int_gset:Nn \l_hobby_npoints_int {-1}
+  \int_gset:Nn \l_hobby_draw_int {1}
+  \fp_gset_eq:NN \l_hobby_in_angle_fp \c_inf_fp
+  \fp_gset_eq:NN \l_hobby_out_angle_fp \c_inf_fp
+  \fp_gset_eq:NN \l_hobby_in_curl_fp \c_one_fp
+  \fp_gset_eq:NN \l_hobby_out_curl_fp \c_one_fp
+}
+\ExplSyntaxOff
+%% 
+%% Copyright (C) 2012 by Andrew Stacey <loopspace@mathforge.org>
+%% 
+%% This file may be distributed and/or modified under the conditions
+%% of the LaTeX Project Public License, either version 1.3 of this
+%% license or (at your option) any later version.
+%% The latest version of this license is in:
+%% 
+%%    http://www.latex-project.org/lppl.txt
+%% 
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%% 
+%% This work is "maintained" (as per LPPL maintenance status) by
+%% Andrew Stacey.
+%% 
+%% This work consists of the files  hobby.dtx
+%%                                  hobby_doc.tex
+%% and the derived files            hobby.code.tex
+%%                                  pgflibraryhobby.code.tex
+%%                                  tikzlibraryhobby.code.tex
+%%                                  pml3array.sty
+%%                                  hobby.ins
+%%                                  hobby.pdf
+%%                                  hobby_code.pdf
+%%                                  README.txt
+%% 
+%%
+%% End of file `hobby.code.tex'.

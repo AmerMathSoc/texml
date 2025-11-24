@@ -1,0 +1,109 @@
+%
+% bxucs.sty
+%
+
+%%%% package declaration
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{bxucs}[2008/03/28 v0.2 BX Unicode output]
+
+%%%% preparation
+\RequirePackage{bxbase}
+
+%%%% error messages
+\def\bxus@pkgname{bxucs}
+\def\bxus@error{\PackageError\bxus@pkgname}
+\def\bxus@err@inf#1{\bxus@error
+  {extra characters after number}%
+  {I ignore such characters}}
+\def\bxus@err@nousf{\bxus@error
+  {Unicode subfont encoding not declared\MessageBreak
+   for family '\f@family'}\@ehc}
+
+%%%% declare encoding 'USF'
+% There must be at least one valid font shape in USF encoding and is set
+% in \DeclareFontSubstitution properly; otherwise an error will occur at
+% the beginning of document.  Here we use the value of 'error font' as
+% dummy default font of USF encoding.
+\DeclareFontEncoding{USF}{}{}
+\bgroup \escapechar\m@ne \error@fontshape
+  \DeclareFontFamily{USF}{\f@family}{}
+  \global\expandafter\let
+  \csname USF/\f@family/\f@series/\f@shape\expandafter\endcsname
+  \csname \f@encoding/\f@family/\f@series/\f@shape\endcsname
+  \xdef\bx@nxt{\noexpand\DeclareFontSubstitution
+    {USF}{\f@family}{\f@series}{\f@shape}}
+\egroup \bx@nxt
+
+%%%% \USFDeclareFontShape{<family>}{<list>}
+% <list> is a range list of available Unicode-row-numbers.
+\def\USFDeclareFontShape#1#2{%
+  \edef\bx@nxt{\uppercase{\def\noexpand\bxus@dfs@range{#2}}}%
+  \edef\bxus@dfs@fam{#1}\bx@nxt
+  \ifx\bxus@dfs@range\@empty \def\bxus@dfs@range{00-FF}\fi
+  \afterassignment\bxus@decl@fontshape\def\bxus@dfs@body##1}
+\def\bxus@decl@fontshape{%
+  \DeclareFontFamily{USF}{\bxus@dfs@fam}{\relax}% make last arg non-empty
+  {\let\bxus@do\bxus@dfs@do\bxus@hexrange\bxus@dfs@range}}
+\def\bxus@dfs@do{%
+  \bxToHexTwo\@tempcnta \bxToLower\bxHex\edef\guz{\bxRes}%
+  \global\expandafter\let
+    \csname bxus@U/\bxus@dfs@fam/\bxRes\endcsname=t%
+  \DeclareFontFamily{USF}{\bxus@dfs@fam=U\bxRes}{}%
+  \bxDebug{font family \bxus@dfs@fam=U\bxRes\space loaded}%
+  \edef\USFShape{%
+    \noexpand\DeclareFontShape{USF}{\bxus@dfs@fam=U\bxRes}}%
+  \bxus@dfs@body\bxRes}
+
+%%%% \bx@Ux@ucs
+\def\bx@Ux@ucs{% code value is given in \bxUcv
+  \bxus@loadfontdef
+  \ifnum\bxUcv<\p@% \p@ equals 65536
+    \bxToHexFour\bxUcv \expandafter\bxus@uxh@a\bxHex\@nil
+  \else \expandafter\bx@UI \fi}
+
+%%%% \bx@Uxh@ucs
+\def\bx@Uxh@ucs#1{%
+  \bxus@loadfontdef\edef\bxHex{#1}%
+  \expandafter\bxus@uxh@a\bxHex\@nil}
+\def\bxus@uxh@a#1#2#3#4\@nil{%
+  \bxDebug{char "\bxHex}%
+  \lowercase{\bxus@uxh@b{#1#2}}{#3#4}}
+\def\bxus@uxh@b#1#2{%
+  \bgroup
+    \expandafter\ifx\csname bxus@U/\f@family/#1\endcsname\relax\else
+      \fontencoding{USF}\fontfamily{\f@family=U#1}\selectfont
+      \@tempcnta="#2\relax\bxus@chkchr
+      \ifbxOk \char\@tempcnta \aftergroup\@gobble \fi
+    \fi
+  \egroup \bxus@uxh@x} % this \bxus@uxh@x may be gobbled
+\def\bxus@uxh@x{%
+  \bxDebug{fallback}\bx@UIh\bxHex}
+
+%%%% \bxus@chkchr
+\def\bxus@chkchr{%
+  \iffontchar\font\@tempcnta \bxOktrue \else \bxOkfalse \fi}
+\ifnum\bxEngineTypeY=\z@
+\def\bxus@chkchr{\bxOktrue}
+\fi
+
+%%%% \bxus@loadfontdef
+\def\bxus@loadfontdef{%
+  \expandafter\ifx\csname USF+\f@family\endcsname\relax
+    \begingroup \let\typeout\@font@info \escapechar\m@ne
+      \def\f@encoding{USF}\try@load@fontshape
+    \endgroup\fi
+  \expandafter\ifx\csname USF+\f@family\endcsname\@empty
+    \bxus@err@nousf \expandafter\bxus@skiptonil\fi}
+\def\bxus@skiptonil#1\@nil{}
+
+%%%% \bxus@hexrange{<range-list>}
+\def\bxus@hexrange#1{%
+  \@for\bxus@u:=#1\do{\expandafter\bxus@hexrange@a\bxus@u--\@nil}}
+\def\bxus@hexrange@a#1-#2-#3\@nil{%
+  \if-#2-\@tempcnta"#1\relax\bxus@do
+  \else\@tempcnta"#1\@tempcntb"#2\relax\expandafter\bxus@hexrange@b\fi}
+\def\bxus@hexrange@b{%
+  \@whilenum\@tempcnta<\@tempcntb\do{\bxus@do\advance\@tempcnta\@ne}%
+  \bxus@do}
+
+%% EOF

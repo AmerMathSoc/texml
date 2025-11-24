@@ -1,0 +1,1439 @@
+%%
+%% This is file `chessboard.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% chessboard-src.dtx  (with options: `chessboard')
+%% 
+%% chessboard: a package to print chessboards
+%% Copyright 2006-2014 Ulrike Fischer (chess@nililand.de)
+%% -------------------------------------------
+%% 
+%% This file can be redistributed and/or modified under the terms of
+%% the LaTeX Project Public License distributed from CTAN archives in
+%% the directory macros/latex/base/lppl.txt; either version 1 of the
+%% License, or (at your option) any later version.
+%% 
+%% For error reports see documentation.
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{chessboard}[2014/05/01 version v1.7 print chessboards]
+%%$Date: 2011/03/23 08:42:57 $$Version: 66142533647c $
+
+\DeclareOption{skaknew}{}%
+\ProcessOptions
+
+\ifx\eTeXversion\@undefined
+  \PackageError{chessboard}
+    {This package may only be run using an\MessageBreak
+     etex in extended mode}
+    {Perhaps you forgot the `*' when making the format with (e)initex.}
+\fi
+
+\ifnum\eTeXversion<2
+  \PackageError{chessboard}
+    {This package requires e-TeX V 2}
+    {You are probably using the obsolete e-TeX V 1.}
+\fi
+
+\RequirePackage{chessfss}[2006/03/31]
+
+\RequirePackage{xkeyval}%
+\RequirePackage{xifthen}%
+\RequirePackage{ifpdf}%
+\RequirePackage{tikz}%
+\usepgfmodule{shapes}
+\ifpdf\else
+\RequirePackage{pst-node}%
+\fi
+
+%%%%%%%
+%% naming conventions
+%%%%%%%
+%% internal commands start with board@
+%% counters starts with cnt@board
+%% length starts with len@board
+%% xkeyval commands gets the prefix UFCB (for chess key)
+%% and the families gloinit/locinit, gloset/locset or glofill/locfill
+%% ARGEND is used to end/delimiters inputs
+%%%%%%%%
+
+%%%%
+%% New lengths
+%%%
+
+\newlength\len@board@tempx
+\newlength\len@board@tempy
+
+\newcommand\board@do@getsquaresize[1]{%#1=game
+ \cfss@getsquaresize{\csname board@#1@refpiece\endcsname}}
+
+\newcommand\board@do@globalgetsquaresize[1]{%#1=game
+ \cfss@globalgetsquaresize{\csname board@#1@refpiece\endcsname}}
+
+%%  \settowidth{\global\len@cfss@squarewidth}{\csname board@#1@refpiece\endcsname}%
+%%  \settodepth{\global\len@cfss@squaredepth}{\csname board@#1@refpiece\endcsname}%
+%%  \settoheight{\global\len@cfss@squaretotalheight}{\raisebox{\depth}{\csname board@#1@refpiece\endcsname}}}%
+%%
+
+%%%
+%% New counters
+%%%
+
+%% counters for interating throught files and ranks
+%% Temporary counters, never rely on a value when not set at the start of the loop/command!
+\newcounter{cnt@board@file}%
+\newcounter{cnt@board@rank}%
+\newcounter{cnt@board}%
+
+%% User counters for printing the file and rank numbers.
+\newcounter{filelabel}%
+\renewcommand\thefilelabel{\alph{filelabel}}%
+\newcounter{ranklabel}%
+\renewcommand\theranklabel{\arabic{ranklabel}}
+
+%%%%%
+%% various tools
+%%%%%
+
+%% New setkeys command for inner keys, stolen from xkeyval.tex
+
+\def\board@do@setsinglekeys{\XKV@testopta{\XKV@testoptc\board@XKVsetsinglekeys}}%
+\def\board@XKVsetsinglekeys[#1]#2{%
+  \XKV@checksanitizea{#2}\XKV@resb
+  \let\XKV@naa\@empty
+  \XKV@for@o\XKV@resb\XKV@tempa{%
+    \expandafter\XKV@g@tkeyname\XKV@tempa=\@nil\XKV@tempa
+    \XKV@addtolist@x\XKV@naa\XKV@tempa}%
+  \expandafter\XKV@s@tkeys\expandafter{\XKV@resb}{#1}}%
+
+\newcommand\board@do@setsavedkey[2]{%#1 = argument (so that it can be better expanded)
+                                    % #2=key
+ \board@do@setsinglekeys*[UFCB]{locfill}{#2=#1}}%
+
+%%% local addto
+
+\newcommand{\board@do@l@addto@macro}[2]{%
+  \edef#1{\unexpanded\expandafter{#1#2}}}
+
+%%% alphabetic numbering with zero, adapted from latex.ltx
+
+\newcommand\zeroalph{}
+
+\def\zeroalph#1{\expandafter\@zeroalph\csname c@#1\endcsname}%
+
+\def\@zeroalph#1{%
+  \ifcase#1Z\or a\or b\or c\or d\or e\or f\or g\or h\or i\or j\or
+   k\or l\or m\or n\or o\or p\or q\or r\or s\or t\or u\or v\or w\or x\or
+    y\or z\else\@ctrerr\fi}%
+
+%% expanded @namedef
+\def\board@enamedef#1{\expandafter\edef\csname #1\endcsname}%
+
+%% new tests
+
+\newtest{\board@test@isonactivecolor}[2]{%filenr, ranknr b2={2}{2}
+ \(\board@test@iswhitefield{#1}{#2}
+ \AND
+ \boolean{UFCB@locfill@useonwhite}\)
+ \OR
+ \(
+ \(\NOT\board@test@iswhitefield{#1}{#2}\)
+ \AND
+ \boolean{UFCB@locfill@useonblack}\)}
+
+\newtest{\board@test@iswhitefield}[2]{%filenr, ranknr b2={2}{2}
+ \isodd{\number\numexpr #1+#2\relax}}
+
+\newtest{\board@test@isfieldintrimarea}[2]{%%filenr, ranknr
+ \NOT \(#1<\board@val@starttrimfilenum\) \AND
+ \NOT  \(#1>\board@val@stoptrimfilenum\) \AND
+ \NOT \(#2>\board@val@starttrimranknum\) \AND
+ \NOT  \(#2<\board@val@stoptrimranknum\)}
+
+\newtest{\board@test@isareaintrimarea}[4]{%%startfilenr, ranknr
+                                          %%stopfilenr, ranknr
+ \NOT \(#1<\board@val@starttrimfilenum\) \AND
+ \NOT  \(#3>\board@val@stoptrimfilenum\) \AND
+ \NOT \(#2>\board@val@starttrimranknum\) \AND
+ \NOT  \(#4<\board@val@stoptrimranknum\)}
+
+%%%%%
+%% converting commands
+%%%%%
+
+%%% command to get a (input) char from a number
+\newcommand*\board@conv@numbertochar[1]{{\uccode`!=#1\relax\uppercase{\gdef\board@temp@char{!}}}}%
+
+%% converts a filechar to a number and stores the value in counter #2
+%% in simple case use  \number `#1
+\newcommand*\board@conv@filechartonumber[2]{%
+  \setcounter{#2}{\number`#1 }%
+    \ifthenelse
+     {\value{#2} = 90}%
+     % char =Z
+     {\addtocounter{#2}{-90}}%
+     {\ifthenelse
+       {\value{#2} >96 \AND \value{#2} <123}%
+       %char a-z
+       {\addtocounter{#2}{-96}}%
+         {\PackageError{chessboard}%
+           {Wrong field input}%
+           {chars for files should be Z (for zero) or between a-z}}}}%
+
+%% converts a char to the lower case (to set white and black pieces)
+\newcommand*\board@conv@chartolowerchar[1]{% #1 char
+  \setcounter{cnt@board}{\number`#1 }%
+    \ifthenelse
+     {\value{cnt@board} > 64 \AND \value{cnt@board} < 91}%
+     % char between A-Z
+     {\addtocounter{cnt@board}{+32}%
+      \board@conv@numbertochar{\the\c@cnt@board}}%
+     {\def\board@temp@char{#1}}}%
+
+%% converts a char to the upper case (to set white and black pieces)
+\newcommand*\board@conv@chartoupperchar[1]{% #1 char,
+  \setcounter{cnt@board}{\number`#1 }%
+    \ifthenelse
+     {\value{cnt@board} > 96 \AND \value{cnt@board} < 123}%
+     % char between a-z
+     {\addtocounter{cnt@board}{-32}%
+      \board@conv@numbertochar{\the\c@cnt@board}}%
+     {\def\board@temp@char{#1}}}%
+
+%%%%%
+%% splitting commands
+%%%%%
+
+%% split piece positions like Ka1, Qb3 or Rz20:
+%% use as \board@split@pieceposition Ka10ARGEND
+\def\board@split@pieceposition#1#2#3ARGEND{%
+  \edef\board@temp@curpiece{#1}%
+  \edef\board@temp@curfilechar{#2}%
+  \edef\board@temp@curranknum{\number#3}%
+  \board@conv@filechartonumber{#2}{cnt@board}%
+  \edef\board@temp@curfilenum{\the\value{cnt@board}}}%
+
+%% split fields like a1, b3 or z20:
+%% use as \board@split@field a1ARGEND
+\def\board@split@field#1#2ARGEND{%
+  \edef\board@temp@curfilechar{#1}%
+  \edef\board@temp@curranknum{\number#2}%
+  \board@conv@filechartonumber{#1}{cnt@board}%
+  \edef\board@temp@curfilenum{\the\value{cnt@board}}}%
+
+%% split area like a1-b3
+\def\board@split@area#1-#2ARGEND{%
+  \expandafter\board@split@field#1ARGEND%
+  \let\board@temp@curstartfilenum\board@temp@curfilenum
+  \let\board@temp@curstartranknum\board@temp@curranknum
+  \let\board@temp@curstartfilechar\board@temp@curfilechar
+  \edef\board@temp@curstartfield{\board@temp@curstartfilechar\board@temp@curstartranknum}%
+  \expandafter\board@split@field#2ARGEND%
+  \let\board@temp@curstopfilenum\board@temp@curfilenum
+  \let\board@temp@curstopranknum\board@temp@curranknum%
+  \let\board@temp@curstopfilechar\board@temp@curfilechar
+  \edef\board@temp@curstopfield{\board@temp@curstopfilechar\board@temp@curstopranknum}%
+  }%
+
+%% split and sorts areas like a1-b3
+\def\board@split@areasort#1-#2ARGEND{%
+  \expandafter\board@split@field#1ARGEND%
+  \let\board@temp@curstartfilenum\board@temp@curfilenum
+  \let\board@temp@curstartranknum\board@temp@curranknum
+  \let\board@temp@curstartfilechar\board@temp@curfilechar
+  \expandafter\board@split@field#2ARGEND%
+  \ifthenelse%
+   {\board@temp@curstartfilenum<\board@temp@curfilenum}%
+   {\let\board@temp@curstopfilenum\board@temp@curfilenum
+    \let\board@temp@curstopfilechar\board@temp@curfilechar}%
+   {\let\board@temp@curstopfilenum\board@temp@curstartfilenum
+    \let\board@temp@curstopfilechar\board@temp@curstartfilechar
+    \let\board@temp@curstartfilenum\board@temp@curfilenum
+    \let\board@temp@curstartfilechar\board@temp@curfilechar}%
+  \ifthenelse%
+   {\board@temp@curstartranknum>\board@temp@curranknum}%
+   {\let\board@temp@curstopranknum\board@temp@curranknum}%
+   {\let\board@temp@curstopranknum\board@temp@curstartranknum
+    \let\board@temp@curstartranknum\board@temp@curranknum}%
+  \edef\board@temp@curstartfield{\board@temp@curstartfilechar\board@temp@curstartranknum}%
+  \edef\board@temp@curstopfield{\board@temp@curstopfilechar\board@temp@curstopranknum}%
+  }%
+
+\newcommand\board@do@cliparea[1]{%
+    \expandafter\board@split@areasort#1ARGEND%
+    \ifthenelse%
+    {\board@temp@curstartfilenum<\board@val@startprintfilenum}%
+    {\let\board@temp@curstartfilechar\board@val@startprintfilechar%
+     \let\board@temp@curstartfilenum\board@val@startprintfilenum}%
+    {}%
+    \ifthenelse%
+    {\board@temp@curstartranknum>\board@val@startprintranknum}%
+    {\let\board@temp@curstartranknum\board@val@startprintranknum}%
+    {}%
+    \ifthenelse%
+    {\board@temp@curstopranknum<\board@val@stopprintranknum}%
+    {\let\board@temp@curstopranknum\board@val@stopprintranknum}%
+    {}%
+    \ifthenelse%
+    {\board@temp@curstopfilenum>\board@val@stopprintfilenum}%
+    {\let\board@temp@curstopfilechar\board@val@stopprintfilechar
+     \let\board@temp@curstopfilenum\board@val@stopprintfilenum}%
+    {}%
+    \ifthenelse{\board@temp@curstopfilenum<\board@temp@curstartfilenum}%
+    {\edef\board@temp@curcliparea{}}%
+    {\ifthenelse{\board@temp@curstartranknum<\board@temp@curstopranknum}%
+     {\edef\board@temp@curcliparea{}}%
+     {\edef\board@temp@curcliparea{%
+      \board@temp@curstartfilechar\board@temp@curstartranknum-%
+      \board@temp@curstopfilechar\board@temp@curstopranknum}}}}
+
+%%% Making lists
+
+\newcommand\board@do@getfieldcolorlists{%
+  \setcounter{cnt@board@file}{\board@val@startprintfilenum}%
+  \def\board@val@blackfieldlist{}%
+  \def\board@val@whitefieldlist{}%
+  \whiledo%
+   {\value{cnt@board@file}< \numexpr\board@val@stopprintfilenum+1\relax}%
+   {\setcounter{cnt@board@rank}{\board@val@stopprintranknum}%
+    \whiledo%
+     {\value{cnt@board@rank}<\numexpr\board@val@startprintranknum + 1\relax}%
+     {\setcounter{cnt@board}{\numexpr \the\c@cnt@board@file+\the\c@cnt@board@rank\relax}%
+      \ifthenelse%
+       {\isodd{\value{cnt@board}}}
+       {\ifthenelse%
+         {\equal{\board@val@whitefieldlist}{}}%
+         {\edef\board@val@whitefieldlist{\zeroalph{cnt@board@file}\arabic{cnt@board@rank}}}%
+         {\edef\board@temp@curfield{\zeroalph{cnt@board@file}\arabic{cnt@board@rank}}%
+          \expandafter\board@do@l@addto@macro\expandafter\board@val@whitefieldlist\expandafter{\expandafter,\board@temp@curfield}}}%
+       {\ifthenelse%
+         {\equal{\board@val@blackfieldlist}{}}%
+         {\edef\board@val@blackfieldlist{\zeroalph{cnt@board@file}\arabic{cnt@board@rank}}}%
+         {\edef\board@temp@curfield{\zeroalph{cnt@board@file}\arabic{cnt@board@rank}}%
+          \expandafter\board@do@l@addto@macro\expandafter\board@val@blackfieldlist\expandafter{\expandafter,\board@temp@curfield}}}%
+      \addtocounter{cnt@board@rank}{1}}%
+    \addtocounter{cnt@board@file}{1}}}%
+
+%% getting the list of fields where pieces resides
+%% added 2007-12-11, version 1.5.
+%% the piecelists are stored in cblist<english! char of piece>
+
+\newcommand\board@do@getpiecelists{%
+ \setcounter{cnt@board@file}{\board@val@minfilenum}%
+ \setcounter{cnt@board@rank}{\board@val@minranknum}%
+ \edef\board@temp@curlist{%
+ \csname board@\board@val@game @piececharlist\endcsname}%
+ \@for\board@temp@piecechar:=\board@temp@curlist
+  \do {%
+   \expandafter\xdef\csname cblist\board@temp@piecechar\endcsname{}%
+   \expandafter\xdef\csname board@temp@\board@temp@piecechar @comma\endcsname{}}%
+ \xdef\cblistempty{}%
+ \def\board@temp@empty@comma{}%
+ \whiledo
+  {\value{cnt@board@file}<\numexpr \board@val@maxfilenum+1\relax}%
+  {\whiledo
+   {\value{cnt@board@rank}<\numexpr \board@val@maxranknum+1\relax}%
+   {\edef\board@temp@piecechar{%
+     \csname
+       board@val@f\the\c@cnt@board@file r\the\c@cnt@board@rank @piecechar\endcsname}%
+   \edef\board@temp@curlist{%
+    \csname cblist\board@temp@piecechar\endcsname}%
+   \edef\board@temp@comma{%
+    \csname board@temp@\board@temp@piecechar @comma\endcsname}%
+   \expandafter\xdef\csname cblist\board@temp@piecechar \endcsname{%
+    \board@temp@curlist
+    \board@temp@comma
+    \alph{cnt@board@file}\the\c@cnt@board@rank}%
+   \expandafter\def
+     \csname board@temp@\board@temp@piecechar @comma\endcsname
+     {,}%
+   \stepcounter{cnt@board@rank}}%
+   \setcounter{cnt@board@rank}{\board@val@minranknum}%
+   \stepcounter{cnt@board@file}}}
+
+%%splitting an FEN in pieces,
+%%% use as \board@split@fen <arg>X X X X X X ARGEND
+%%% or as \board@split@fen <arg> X X X X X X ARGEND
+\def\board@split@fen#1 #2 #3 #4 #5 #6 #7ARGEND{%
+  \def\board@val@position{#1}%
+  \ifthenelse{\equal{#2}{X}}%
+   {}%
+   {\def\board@val@mover{#2}}%
+  \ifthenelse{\equal{#3}{X}}%
+   {}%
+   {\def\board@val@castling{#3}}%
+  \ifthenelse{\equal{#4}{X}}%
+   {}%
+   {\def\board@val@enpassant{#4}}%
+  \ifthenelse{\equal{#5}{X}}%
+   {}%
+   {\def\board@val@halfmove{#5}}%
+  \ifthenelse{\equal{#6}{X}}%
+   {}%
+   {\def\board@val@fullmove{#6}}%
+    }%
+
+\input{chessboard-keys-main.sty}%
+\input{chessboard-keys-pgf.sty}%
+\input{chessboard-pgf.sty}
+
+%%% command to store the piece for a field
+%%% the input char of the piece is translated to english first
+%%% the char is stored in the command
+%%% board@val@f<filenum>r<ranknum>@piecechar
+
+\newcommand\board@do@storepieceonfield[3]{%#1 piece #2file #3 rank
+  \ifcsname board@val@lang\board@val@curlang @#1\endcsname
+    \expandafter\edef\csname board@val@f#2r#3@piecechar\endcsname{%
+      \csname board@val@lang\board@val@curlang @#1\endcsname}%
+  \else
+    \PackageError{chessboard}%
+      {Char #1 unknown in input language  \board@val@curlang!}%
+      {You either misspelled the char for the piece or forgot to define it for the current language}%
+  \fi}%
+
+%%% Command to get the piece of a field. Don't know if needed
+
+\newcommand\board@do@getpieceoffield[2]{%#1 file, #2 rank
+    \@nameuse{board@val@f#1r#2@piecechar}}%
+
+%%% Commands to print (or not print) the piece of a field:
+
+%%% prints an empty field
+\newcommand\board@do@printfieldempty[2]{%fileNr, rankNr
+  \ifthenelse%
+     {\board@test@iswhitefield{#1}{#2}}%white field
+     {\@nameuse{board@\board@val@game @piece@empty@white}}%
+     {\@nameuse{board@\board@val@game @piece@empty@black}}}
+
+%%% the command to print the content of a single field
+\newcommand\board@do@printfieldcontent[2]{%% 1=fileNr 2=rankNr
+   \ifcsname board@val@f#1r#2@piecechar\endcsname
+    \ifthenelse{\board@test@iswhitefield{#1}{#2}}%white field
+               {\@nameuse{board@the@piece@\@nameuse{board@val@f#1r#2@piecechar}@white}}%
+               {\@nameuse{board@the@piece@\@nameuse{board@val@f#1r#2@piecechar}@black}}%
+
+%%               {\@nameuse{board@\board@val@game @piece@\@nameuse{board@val@f#1r#2@piecechar}@white}}%
+%%               {\@nameuse{board@\board@val@game @piece@\@nameuse{board@val@f#1r#2@piecechar}@black}}%
+   \else
+    \board@do@printfieldempty{#1}{#2}%
+   \fi}%
+
+%%% the command to print a fieldbox
+\newcommand\board@do@printfieldbox[2]{% 1=fileNr 2=rank
+  \def\board@temp@curfilenum{#1}%
+  \def\board@temp@curranknum{#2}%
+  \raisebox{\len@cfss@squaredepth}[\len@cfss@squaretotalheight][0pt]{%
+    \makebox[\len@cfss@squarewidth][r]{%
+      %% can be used to color only the piece in fonts with masks
+      % deleted 01.06.2006
+      %\def\cfss@piececolor{\csname board@val@f#1r#2@color\endcsname}%
+      %\csname board@val@f#1r#2@color\endcsname
+      \csname board@val@f#1r#2@emph\endcsname % eg. for color, bfseries
+       \makebox[\len@cfss@squarewidth]{%
+         \vphantom{\csname board@\board@val@game @refpiece\endcsname}%
+         \ifcsname board@the@f#1r#2\endcsname
+           \csname board@the@f#1r#2\endcsname
+         \else
+           \board@do@printfieldcontent{#1}{#2}%
+         \fi}}}}%
+
+%%% command to print a rank/row from firstfile to lastfile
+\newcommand\board@do@printrank[3]%#1 rank/rownumber #2 firstfile, #3 lastfile
+ {\begingroup
+  \ifUFCB@locset@labelleft
+  \board@do@printlabelleftfield{#1}%
+  \fi
+  \ifthenelse{#2<#3}%
+   {\setcounter{cnt@board@file}{#2}%% #2<#3: 1->n/normal
+    \whiledo%
+     {\value{cnt@board@file}<#3
+      \OR
+      \value{cnt@board@file}=#3}%
+     {\board@do@printfieldbox{\number\value{cnt@board@file}}{#1}%
+      \stepcounter{cnt@board@file}}}%
+   {\setcounter{cnt@board@file}{#2}%% #2>#3 n->1/inverse
+    \whiledo%
+     {\value{cnt@board@file}>#3
+      \OR
+      \value{cnt@board@file}=#3}%
+     {\board@do@printfieldbox{\number\value{cnt@board@file}}{#1}%
+      \addtocounter{cnt@board@file}{-1}}}%
+    \ifUFCB@locset@labelright
+    \board@do@printlabelrightfield{#1}%
+    \fi
+    \endgroup}%
+
+%%% command to hide /show a fields content:
+
+\newcommand*\board@do@showfield[2]{%
+  \@namedef{board@the@f#1r#2}{\board@do@printfieldcontent{#1}{#2}}}
+
+\newcommand*\board@do@showarea[1]{%
+ \expandafter\board@split@areasort#1ARGEND%
+ %% initialisation
+ \setcounter{cnt@board@file}{\board@temp@curstartfilenum}%
+ \setcounter{cnt@board@rank}{\board@temp@curstartranknum}%
+ %
+ \whiledo
+  {\value{cnt@board@rank}>\numexpr \board@temp@curstopranknum-1\relax}%
+  {\setcounter{cnt@board@file}{\board@temp@curstartfilenum}%
+   \whiledo
+    {\value{cnt@board@file}<\numexpr \board@temp@curstopfilenum+1\relax}%
+    {\board@do@showfield{\number\value{cnt@board@file}}{\number\value{cnt@board@rank}}%
+     \addtocounter{cnt@board@file}{1}%
+     }%
+   \addtocounter{cnt@board@rank}{-1}}}%
+
+\newcommand*\board@do@hidefield[2]{%
+  \@namedef{board@the@f#1r#2}{%
+  \board@do@printfieldempty{#1}{#2}}}
+
+\newcommand*\board@do@hidearea[1]{%
+ \expandafter\board@split@areasort#1ARGEND%
+ %% initialisation
+ \setcounter{cnt@board@file}{\board@temp@curstartfilenum}%
+ \setcounter{cnt@board@rank}{\board@temp@curstartranknum}%
+ %
+ \whiledo
+  {\value{cnt@board@rank}>\numexpr \board@temp@curstopranknum-1\relax}%
+  {\setcounter{cnt@board@file}{\board@temp@curstartfilenum}%
+   \whiledo
+    {\value{cnt@board@file}<\numexpr \board@temp@curstopfilenum+1\relax}%
+    {\board@do@hidefield{\number\value{cnt@board@file}}{\number\value{cnt@board@rank}}%
+     \addtocounter{cnt@board@file}{1}%
+     }%
+   \addtocounter{cnt@board@rank}{-1}}}%
+
+%% Command to hide a piece type
+
+\newcommand*\board@do@hidetype[1]{% char or empty
+  \ifthenelse%
+   {\equal{#1}{empty}}%
+   {\def\board@temp@char{empty}}%
+   {\board@do@strip #1 ARGEND}%
+  \ifcsname board@val@lang\board@val@curlang @\board@temp@char\endcsname
+   \edef\board@temp@curpiece{%
+      \csname board@val@lang\board@val@curlang @\board@temp@char\endcsname}%
+  \else
+    \PackageError{chessboard}%
+      {Char #1 unknown in input language \board@val@curlang!}%
+      {You either misspelled the char for the piece or forgot to define it for the current language}%
+  \fi
+  \@namedef{board@the@piece@\board@temp@curpiece @white}{%
+   \@nameuse{board@\board@val@game @piece@empty@white}}%
+  \@namedef{board@the@piece@\board@temp@curpiece @black}{%
+   \@nameuse{board@\board@val@game @piece@empty@black}}}%
+
+\newcommand*\board@do@hidetypelist[1]{% charlist
+ \@for\board@temp@char:=#1\do
+ {\expandafter\board@do@hidetype\expandafter{\board@temp@char}}}
+
+%% Command to show a piece type
+
+\def\board@do@strip #1#2ARGEND{\def\board@temp@char{#1}}
+
+\newcommand*\board@do@showtype[1]{% char or empty
+  \ifthenelse%
+   {\equal{#1}{empty}}%
+   {\def\board@temp@char{empty}}%
+   {\board@do@strip #1 ARGEND}%
+  \ifcsname board@val@lang\board@val@curlang @\board@temp@char\endcsname
+   \edef\board@temp@curpiece{%
+      \csname board@val@lang\board@val@curlang @\board@temp@char\endcsname}%
+  \else
+    \PackageError{chessboard}%
+      {Char #1 unknown in input language  \board@val@curlang!}%
+      {You either misspelled the char for the piece or forgot to define it for the current language}%
+  \fi
+  \board@enamedef{board@the@piece@\board@temp@curpiece @white}{%
+   \noexpand\@nameuse{board@\noexpand\board@val@game @piece@\board@temp@curpiece @white}}%
+  \board@enamedef{board@the@piece@\board@temp@curpiece @black}{%
+   \noexpand\@nameuse{board@\noexpand\board@val@game @piece@\board@temp@curpiece @black}}}%
+
+\newcommand*\board@do@showtypelist[1]{% charlist
+ \@for\board@temp@char:=#1\do
+ {\expandafter\board@do@showtype\expandafter{\board@temp@char}}}
+
+%%% Clear area
+
+\newcommand\board@do@cleararea[1]{%
+ \expandafter\board@split@areasort#1ARGEND%
+ %% initialisation
+ \setcounter{cnt@board@file}{\board@temp@curstartfilenum}%
+ \setcounter{cnt@board@rank}{\board@temp@curstartranknum}%
+ %
+ \whiledo
+  {\value{cnt@board@rank}>\numexpr \board@temp@curstopranknum-1\relax}%
+  {\setcounter{cnt@board@file}{\board@temp@curstartfilenum}%
+   \whiledo
+    {\value{cnt@board@file}<\numexpr \board@temp@curstopfilenum+1\relax}%
+    {\board@do@storepieceonfield{empty}{\number\value{cnt@board@file}}{\number\value{cnt@board@rank}}%
+     \addtocounter{cnt@board@file}{1}}%
+   \addtocounter{cnt@board@rank}{-1}}}%
+
+%%%%%%
+%% Scanning a FEN (only the first part) to set the fields
+%%%%%%
+
+\def\@usenone@until@nil#1\@nil{}%
+
+\newcommand\board@scan@fen[1]{%
+  \setcounter{cnt@board@rank}{\board@val@startfenranknum}%
+  \setcounter{cnt@board@file}{\board@val@startfenfilenum}%
+  \expandafter\board@scan@fennext#1\relax\@nil}%
+
+\newcommand\board@scan@fennext[1]{%
+  \ifx#1\relax \expandafter\@usenone@until@nil \fi
+  \afterassignment\board@fork@feninput\count@ 0#1}%
+
+\newcommand\board@fork@feninput{%
+  \ifnum\count@=\z@
+    \expandafter\board@do@process@fenchar
+  \else
+    \expandafter\board@do@process@fennumber
+  \fi}%
+
+\newcommand\board@do@process@fennumber{%
+  \whiledo%
+   {\the\count@>0}%
+   {\ifthenelse%
+     {\(\value{cnt@board@file}>\board@val@startfillfilenum
+        \OR
+        \value{cnt@board@file}=\board@val@startfillfilenum\)
+      \AND
+      \(\value{cnt@board@file}<\board@val@stopfillfilenum
+        \OR
+        \value{cnt@board@file}=\board@val@stopfillfilenum\)
+      \AND
+      \(\value{cnt@board@rank}<\board@val@startfillranknum
+        \OR
+        \value{cnt@board@rank}=\board@val@startfillranknum\)
+      \AND
+      \(\value{cnt@board@rank}>\board@val@stopfillranknum
+        \OR
+        \value{cnt@board@rank}=\board@val@stopfillranknum\)}
+     {\board@do@storepieceonfield{empty}{\the\value{cnt@board@file}}{\the\value{cnt@board@rank}}}%
+     {}%
+    \addtocounter{cnt@board@file}{1}%
+    \advance\count@-1\relax}%
+  \board@scan@fennext}%
+
+\newcommand\board@do@process@fenchar[1]{%
+  \ifthenelse%
+   {\equal{#1}{/}}%
+   {\setcounter{cnt@board@file}{\board@val@startfenfilenum}% new row
+    \addtocounter{cnt@board@rank}{-1}}%
+   {\ifthenelse%
+     %{\value{cnt@board@file}>\board@val@stopfillfilenum}%
+     {\(\value{cnt@board@file}>\board@val@startfillfilenum
+        \OR
+        \value{cnt@board@file}=\board@val@startfillfilenum\)
+      \AND
+      \(\value{cnt@board@file}<\board@val@stopfillfilenum
+        \OR
+        \value{cnt@board@file}=\board@val@stopfillfilenum\)
+      \AND
+      \(\value{cnt@board@rank}<\board@val@startfillranknum
+        \OR
+        \value{cnt@board@rank}=\board@val@startfillranknum\)
+      \AND
+      \(\value{cnt@board@rank}>\board@val@stopfillranknum
+        \OR
+        \value{cnt@board@rank}=\board@val@stopfillranknum\)}
+    %
+     {\board@do@storepieceonfield{#1}{\the\value{cnt@board@file}}{\the\value{cnt@board@rank}}%
+      \addtocounter{cnt@board@file}{1}}%
+     {\addtocounter{cnt@board@file}{1}}%
+   }%
+  \board@scan@fennext}%
+
+%%% Command to add pieces
+
+\newcommand\board@do@addpieces[1]{% List
+  \@for\board@temp@curpiecepos:=#1\do
+    {\expandafter\board@split@pieceposition\board@temp@curpiecepos ARGEND%
+     \board@do@storepieceonfield{\board@temp@curpiece}{\board@temp@curfilenum}{\board@temp@curranknum}}}%
+
+\newcommand\board@do@addwhitepieces[1]{% List
+  \@for\board@temp@curpiecepos:=#1\do
+    {\expandafter\board@split@pieceposition\board@temp@curpiecepos ARGEND%
+     \expandafter\board@conv@chartoupperchar\board@temp@curpiece
+     \board@do@storepieceonfield{\board@temp@char}{\board@temp@curfilenum}{\board@temp@curranknum}}}%
+
+\newcommand\board@do@addblackpieces[1]{% List
+  \@for\board@temp@curpiecepos:=#1\do
+    {\expandafter\board@split@pieceposition\board@temp@curpiecepos ARGEND%
+     \expandafter\board@conv@chartolowerchar\board@temp@curpiece
+     \board@do@storepieceonfield{\board@temp@char}{\board@temp@curfilenum}{\board@temp@curranknum}}}%
+
+%%% Command  to save fen
+
+%%% goes through board and get the fen description of the position
+
+\newcommand*\board@do@getposition{%
+  \setcounter{cnt@board@rank}{\board@val@startstoreranknum}%
+  \board@do@getrankposition{\value{cnt@board@rank}}%
+  \edef\board@val@position{\board@temp@currankposition}%
+  \whiledo%
+   {\value{cnt@board@rank}>\numexpr \board@val@stopstoreranknum\relax}%
+   {\addtocounter{cnt@board@rank}{-1}%
+    \board@do@getrankposition{\value{cnt@board@rank}}%
+    \edef\board@val@position{\board@val@position/\board@temp@currankposition}}}%
+
+\newcommand*\board@do@getrankposition[1]{%
+  \setcounter{cnt@board@file}{\board@val@startstorefilenum}%
+  \setcounter{cnt@board}{0}%
+  \edef\board@temp@currankposition{}%
+  \whiledo%
+   {\value{cnt@board@file}<\numexpr \board@val@stopstorefilenum+1\relax}%
+   {\ifthenelse%
+     {\equal{\csname board@val@f\the\c@cnt@board@file r#1@piecechar\endcsname}{empty}}%
+     {\stepcounter{cnt@board}}%
+     {\ifthenelse%
+       {\value{cnt@board}>0}%
+       {\edef\board@temp@currankposition{%
+          \board@temp@currankposition
+          \arabic{cnt@board}%
+          \csname board@val@f\the\c@cnt@board@file r\the\c@cnt@board@rank @piecechar\endcsname}%
+        \setcounter{cnt@board}{0}}%
+       {\edef\board@temp@currankposition{%
+          \board@temp@currankposition
+          \csname board@val@f\the\c@cnt@board@file r\the\c@cnt@board@rank @piecechar\endcsname}}}%
+    \addtocounter{cnt@board@file}{1}}%
+  \ifthenelse%
+   {\value{cnt@board}>0}%
+   {\edef\board@temp@currankposition{%
+      \board@temp@currankposition
+      \arabic{cnt@board}}}%
+   {}}%
+
+%% stores the fen in chessgame.<name> (as in skak.sty the \storegame command
+
+\newcommand*\board@do@storefen[1]{%
+  \def\board@temp@curfen{}%
+  \board@do@getposition
+  \edef\board@temp@curfen{\board@val@position\space
+                          \board@val@mover\space
+                          \board@val@castling\space
+                          \board@val@enpassant\space
+                          \board@val@halfmove\space
+                          \board@val@fullmove}%
+  \expandafter\xdef\csname chessgame.#1\endcsname{\board@temp@curfen}}%
+
+%% stores the fen in a file, as in skak.sty the \savegame command
+\newcommand*\board@do@savefen[1]{%
+  \def\board@temp@curfen{}%
+  \board@do@getposition
+  \edef\board@temp@curfen{\board@val@position\space
+                          \board@val@mover\space
+                          \board@val@castling\space
+                          \board@val@enpassant\space
+                          \board@val@halfmove\space
+                          \board@val@fullmove}%
+  \toks0=\expandafter{\board@temp@curfen}%
+  \immediate\openout0=#1.fen%
+  \immediate\write0{\the\toks0}%
+  \immediate\closeout0}%
+
+\newcommand*\board@do@loadfen[1]{%
+   \immediate\openin0=#1.fen\relax
+   \ifeof0
+   \PackageError{chessboard}{File #1.fen not found}{}%
+   \else
+   \immediate\read0 to \board@temp@curfen%
+   \fi
+   \immediate\closein0\relax}
+
+%%%%
+%% Decoration
+%%%%
+
+%%% the command to print the mover
+
+\newcommand\board@do@printtopmover{%
+  \raisebox%
+   {\dimexpr
+     \numexpr\board@val@startprintranknum-\board@val@stopprintranknum+1\relax\len@cfss@squaretotalheight
+     -\board@val@movertoplift
+     -\height
+   \relax}[0pt][0pt]%
+   {\makebox[0pt][l]{%
+     \hspace*{\board@val@movertopshift}%
+     \fontsize{\board@val@moversize}{\board@val@moversize}\selectfont
+     \ifthenelse%
+      {\equal{\board@val@mover}{w}}%
+      {\ifUFCB@locset@inverse
+       \board@val@moverwhitetop
+       \fi}%
+      {\ifUFCB@locset@inverse\else
+       \board@val@moverblacktop
+       \fi}}}}%
+
+\newcommand\board@do@printbottommover{%#1=color}
+  \raisebox%
+   {\board@val@moverbottomlift}[0pt][0pt]%
+   {\makebox[0pt][l]{%
+     \hspace*{\board@val@moverbottomshift}%
+     \fontsize{\board@val@moversize}{\board@val@moversize}\selectfont
+    \ifthenelse%
+     {\equal{\board@val@mover}{w}}%
+     {\ifUFCB@locset@inverse
+      \else
+       \board@val@moverwhitebottom
+      \fi}%
+     {\ifUFCB@locset@inverse
+       \board@val@moverblackbottom
+      \fi}}}}%
+
+\newcommand\cbDefineMoverStyle[6][]{%
+ % #1 can be used for checks
+ %#2name, #3=white top, #4=white bottom, #5=black top, #6=black bottom
+    \@namedef{board@val@moverstyle@#2}{%
+     #1\relax
+     \def\board@val@moverwhitetop{#3}%
+     \def\board@val@moverwhitebottom{#4}%
+     \def\board@val@moverblacktop{#5}%
+     \def\board@val@moverblackbottom{#6}}}%
+
+\cbDefineMoverStyle%
+    {circle}
+    {$\circ$}
+    {$\circ$}
+    {$\bullet$}
+    {$\bullet$}
+
+\cbDefineMoverStyle%
+    {square}
+    {\tikz \draw[color=black] (0,0) rectangle (0.65em,0.65em);}
+    {\tikz \draw[color=black] (0,0) rectangle (0.65em,0.65em);}
+    {\tikz \fill[color=black] (0,0) rectangle (0.65em,0.65em);}
+    {\tikz \fill[color=black] (0,0) rectangle (0.65em,0.65em);}
+
+\cbDefineMoverStyle%
+ {triangle}
+ {\tikz \draw[color=black] (0.6ex,0pt)--(0,1.25ex)--(1.2ex,1.25ex) --cycle;}
+ {\tikz \draw[color=black] (0.6ex,1.25ex)--(0,0)--(1.2ex,0) --cycle;}
+ {\tikz \fill[color=black] (0.6ex,0pt)--(0,1.25ex)--(1.2ex,1.25ex) --cycle;}
+ {\tikz \fill[color=black] (0.6ex,1.25ex)--(0,0)--(1.2ex,0) --cycle;}
+
+\cbDefineMoverStyle%
+ %#1: optional, can be used for checks
+ %#2=style name, #3=white top, #4=white bottom, #5=black top, #6=black bottom
+    [\@ifundefined%
+      {rotatebox}%
+      {\PackageError{chessboard}%
+        {You must load the package graphics or graphicx
+         if you want to use the mover style squarearrow}{}}%
+      {}%
+     \@ifundefined%
+      {ding}%
+      {\PackageError{chessboard}%
+        {You must load the package pifont
+         if you want to use the mover style squarearrow}{}}%
+      {}]
+    {squarearrow}% #2
+    {\rotatebox{-90}{$\square$\,\ding{222}}}%
+    {\rotatebox{90}{$\square$\,\ding{222}}}%
+    {\rotatebox{-90}{$\blacksquare$\,\ding{222}}}%
+    {\rotatebox{90}{$\blacksquare$\,\ding{222}}}%
+
+%%% the command to print the labels text
+
+\newcommand\board@do@printlabelleftfield[1]{%rank
+ \begingroup
+  \setcounter{ranklabel}{#1}%
+  \raisebox{\board@val@labelleftlift}[\len@cfss@squaretotalheight][0pt]{%
+    \makebox[0pt][r]{%
+     \makebox[\board@val@labelleftwidth][l]{%
+       \cfss@sidefont
+       \board@val@labelleftfont
+       \selectfont
+       \board@val@labelleftformat}}}%
+ \endgroup}%
+
+\newcommand\board@do@printlabelrightfield[1]{%rank
+ \begingroup
+  \setcounter{ranklabel}{#1}%
+  \raisebox{\board@val@labelrightlift}[\len@cfss@squaretotalheight][0pt]{%
+    \makebox[0pt][l]{%
+     \makebox[\board@val@labelrightwidth][r]{%
+      \cfss@sidefont
+      \board@val@labelrightfont
+      \selectfont
+      \board@val@labelrightformat}}}%
+ \endgroup}%
+
+\newcommand\board@do@printlabelbottomfield{%
+  \raisebox{-\board@val@labelbottomlift}[0pt][0pt]{\makebox[\len@cfss@squarewidth][c]{\board@val@labelbottomformat}}}%
+
+\newcommand\board@do@printlabeltopfield{%
+  \raisebox{\dimexpr\len@cfss@squaretotalheight+\board@val@labeltoplift\relax}[0pt][0pt]%
+   {\makebox[\len@cfss@squarewidth][c]{\board@val@labeltopformat}}}%
+
+\newcommand\board@do@printlabelbottom[2]{%#1 firstfile, #2 lastfile
+  \begingroup
+  \cfss@sidefont
+  \board@val@labelbottomfont
+  \selectfont
+  \makebox[0pt][r]{%
+    \setcounter{cnt@board@file}{#1}%
+    \whiledo%
+      {\board@print@sign\value{cnt@board@file}<\board@print@sign#2
+       \OR
+       \value{cnt@board@file}=#2}%
+      {\setcounter{filelabel}{\value{cnt@board@file}}%
+       \board@do@printlabelbottomfield%
+       \addtocounter{cnt@board@file}{\board@print@sign1}}}%
+  \endgroup}%
+
+\newcommand\board@do@printlabeltop[2]{%#1 firstfile, #2 lastfile
+  \begingroup
+  \cfss@sidefont
+  \board@val@labeltopfont
+  \selectfont
+  \makebox[0pt][l]{%
+    \setcounter{cnt@board@file}{#1}%
+    \whiledo%
+     {\board@print@sign\value{cnt@board@file}<\board@print@sign#2
+      \OR
+      \value{cnt@board@file}=#2}%
+     {\setcounter{filelabel}{\value{cnt@board@file}}%
+      \board@do@printlabeltopfield%
+      \addtocounter{cnt@board@file}{\board@print@sign1}}}%
+  \endgroup}%
+
+%%%%%
+%% highlighting
+
+%%% emphasize piece
+
+\newcommand\board@do@store@pieceemph[2]{%#1filenum, #2ranknum
+  \@ifundefined{board@val@pieceemph}%
+    {\def\board@val@pieceemph{}}%
+    {}%
+  \toks@=\expandafter{\board@val@pieceemph}%
+  \ifUFCB@locfill@coloremph
+    \@temptokena=\expandafter{\board@val@fontcolorstack}%
+  \board@enamedef{%
+     board@val@f#1r#2@emph}{%
+      \the\toks@\the\@temptokena}%
+  \else
+   \board@enamedef{%
+     board@val@f#1r#2@emph}{%
+     \the\toks@}%
+   \fi}%
+
+\newcommand\board@do@empharea[1]{%
+ \expandafter\board@split@areasort#1ARGEND%
+ %% initialisation
+ \setcounter{cnt@board@file}{\board@temp@curstartfilenum}%
+ \setcounter{cnt@board@rank}{\board@temp@curstartranknum}%
+ %
+ \whiledo
+  {\value{cnt@board@rank}>\numexpr \board@temp@curstopranknum-1\relax}%
+  {\setcounter{cnt@board@file}{\board@temp@curstartfilenum}%
+   \whiledo
+    {\value{cnt@board@file}<\numexpr \board@temp@curstopfilenum+1\relax}%
+    {\board@do@store@pieceemph{\number\value{cnt@board@file}}{\number\value{cnt@board@rank}}%
+     \addtocounter{cnt@board@file}{1}}%
+   \addtocounter{cnt@board@rank}{-1}}}%
+
+%%% border of board
+
+\newcommand\board@print@border{%
+  \raisebox{0pt}[0pt][0pt]{%
+   \makebox[0pt][r]{%bottom
+    \board@val@borderbottomcolor
+    \rule[-\board@val@borderbottomwidth]%
+      {\dimexpr
+        \ifUFCB@locset@borderleft
+         \board@val@borderleftwidth +
+        \fi
+        \numexpr\board@val@stopprintfilenum-\board@val@startprintfilenum+1\relax\len@cfss@squarewidth
+        \ifUFCB@locset@borderright
+         +\board@val@borderrightwidth
+        \fi
+      \relax}%
+      {\ifUFCB@locset@borderbottom\board@val@borderbottomwidth\else0pt\fi}%
+    \ifUFCB@locset@borderright
+     \hspace*{-\board@val@borderrightwidth}%
+    \fi}%
+   \makebox[0pt][r]{%left
+    \board@val@borderleftcolor
+    \rule[\ifUFCB@locset@borderbottom-\board@val@borderbottomwidth\else0pt\fi]%
+      {\ifUFCB@locset@borderleft
+        \board@val@borderleftwidth
+       \else
+        0pt%
+       \fi}
+      {\dimexpr
+        \ifUFCB@locset@borderbottom\board@val@borderbottomwidth +\fi
+        \numexpr\board@val@startprintranknum-\board@val@stopprintranknum+1\relax\len@cfss@squaretotalheight
+        \ifUFCB@locset@bordertop
+         +\board@val@bordertopwidth
+        \fi
+       \relax}%
+     \hspace*{\numexpr\board@val@stopprintfilenum-\board@val@startprintfilenum+1\relax\len@cfss@squarewidth}%
+     }%
+     %%
+   \makebox[0pt][r]{%top
+    \board@val@bordertopcolor
+    \rule[\numexpr\board@val@startprintranknum-\board@val@stopprintranknum+1\relax\len@cfss@squaretotalheight]%
+      {\dimexpr
+        \ifUFCB@locset@borderleft
+         \board@val@borderleftwidth +
+        \fi
+        \numexpr\board@val@stopprintfilenum-\board@val@startprintfilenum+1\relax\len@cfss@squarewidth
+        \ifUFCB@locset@borderright
+         +\board@val@borderrightwidth
+        \fi
+      \relax}%
+      {\ifUFCB@locset@bordertop\board@val@bordertopwidth\else0pt\fi}%
+     \ifUFCB@locset@borderright
+      \hspace*{-\board@val@borderrightwidth}%
+     \fi}%
+     %%
+   \makebox[0pt][l]{%right
+     \board@val@borderrightcolor
+     \rule[\ifUFCB@locset@borderbottom-\board@val@borderbottomwidth\else0pt\fi]%
+      {\ifUFCB@locset@borderright
+        \board@val@borderrightwidth
+       \else
+        0pt%
+       \fi}%
+      {\dimexpr
+        \ifUFCB@locset@borderbottom\board@val@borderbottomwidth +\fi
+        \numexpr\board@val@startprintranknum-\board@val@stopprintranknum+1\relax\len@cfss@squaretotalheight
+        \ifUFCB@locset@bordertop
+         +\board@val@bordertopwidth
+        \fi
+       \relax}%
+     }}}
+
+\newcommand\board@do@setpsnode{%
+  \ifpdf\else
+   \ifUFCB@locset@psset
+    \ifUFCB@locset@inverse
+     \pnode(%
+      \dimexpr -1.5\len@cfss@squarewidth +
+       \board@val@startprintfilenum\len@cfss@squarewidth\relax,
+      \dimexpr
+       \board@val@startprintranknum\len@cfss@squaretotalheight
+        -7.5\len@cfss@squaretotalheight\relax){BM}
+    \else
+     \pnode(%
+      \dimexpr 7.5\len@cfss@squarewidth
+       -\board@val@stopprintfilenum\len@cfss@squarewidth\relax,
+      \dimexpr
+       -\board@val@stopprintranknum\len@cfss@squaretotalheight
+       +1.5\len@cfss@squaretotalheight\relax){BM}
+    \fi
+   \fi
+  \fi}
+
+%%%%%%%
+%% the main commands
+%%%%%%
+
+%%% The command that holds saved keys
+
+\def\board@val@savedkeylist{@null=@null}%
+
+\newcommand\storechessboardstyle[2]{%#1 name, #2 key-list
+    \@namedef{board@val@style#1keylist}{#2}}%
+
+\newcommand\setchessboard[1]{%changed 2007-07-03
+     \def\board@temp@keylist{}%
+     \setkeys[UFCB]{@start}{board@expand={#1}}%
+     \toks@=\expandafter{\board@temp@keylist}%
+     \edef\board@temp@command{%
+        \noexpand\setkeys*[UFCB]{gloinit}{\the\toks@}}%
+     \board@temp@command
+     \setrmkeys*[UFCB]{gloset}%
+     \setrmkeys[UFCB]{glofill}}%
+
+\newcommand\chessboard[1][]{%
+ \begingroup
+  \normallineskip=1pt\relax\normallineskiplimit=0pt\relax%14.3.2011
+  \savekeys[UFCB]{locset}{\global{psset},\global{psskak},\global{inverse}}%
+%%% Initialisation
+%% combine the the global keys and the keys in argument
+ \let\board@temp@keylist\board@val@savedkeylist
+ \setkeys[UFCB]{@start}{board@expand={#1}}%
+ \toks@=\expandafter{\board@temp@keylist}%
+ \edef\board@temp@command{%
+  \noexpand\setkeys*[UFCB]{locinit}{\the\toks@}}%
+ \board@temp@command
+ %\show\XKV@rm
+ \expandafter\board@do@showtypelist\expandafter{\csname board@\board@val@game @piececharlist\endcsname,empty}%
+%% fills the board with the current position
+%% getting the fen of the current position with the fencalculate command of the current game:
+  \csname board@\board@val@game @do@fencalculate\endcsname
+%% saving the current language
+  \let\board@val@savelang\board@val@curlang
+%% setting the fen of the current position and saving it
+  \board@do@setsinglekeys*[UFCB]{locfill}{%
+   language=english,
+   setfen=\board@val@fencalculate,
+   storefen=current,
+   language=\board@val@savelang}%
+   %\show\XKV@rm  %test
+%% setting the set keys
+  \setrmkeys*[UFCB]{locset}%
+  \edef\printarea{%
+   \board@val@startprintfilechar\board@val@startprintranknum-%
+   \board@val@stopprintfilechar\board@val@stopprintranknum}%
+  \edef\board{%
+   \board@val@maxfilechar\board@val@maxranknum-%
+   \board@val@minfilechar\board@val@minranknum}%
+  \ifUFCB@locset@inverse
+   \gdef\board@print@sign{-}%
+  \else
+   \gdef\board@print@sign{}%
+  \fi
+%% to get the size of the fields
+  \ifUFCB@locset@psset
+   \expandafter\board@do@globalgetsquaresize\expandafter{\board@val@game}%
+  \else
+   \expandafter\board@do@getsquaresize\expandafter{\board@val@game}%
+  \fi
+%% switch to board font an set ex and em
+  \cfss@boardfont
+  \fontdimen5\font=0.5\len@cfss@squarewidth
+  \fontdimen6\font=\len@cfss@squarewidth
+%% initialisation of the pgf-pictures with the anchor and shifts
+  \board@pgf@init
+  \board@do@getfieldcolorlists
+%% setting the fill keys
+   % \show\XKV@rm %test
+  \setrmkeys[UFCB]{locfill}%
+%%% starting to print
+  \ifUFCB@locinit@print
+%% setting the default font colors
+  \board@val@boardfontcolors
+%% the left margin
+   \ifUFCB@locset@marginleft
+    \makebox[\board@val@marginleftwidth]{}%
+   \fi
+%% the background picture
+   \ifUFCB@locset@pgf
+    \makebox[0pt]{%
+     \begin{pgfpicture}%
+      \board@pgf@background
+      \begin{pgfscope}%
+       \board@pgf@extrabackground
+      \end{pgfscope}%
+     \end{pgfpicture}}%
+   \fi
+%% the board
+   \ifUFCB@locset@inverse
+    \setcounter{cnt@board@rank}{\board@val@stopprintranknum}% inv.
+    \parbox[b]{\numexpr\board@val@stopprintfilenum-\board@val@startprintfilenum+1\relax\len@cfss@squarewidth}%
+     {\parindent0pt\relax\baselineskip=\len@cfss@squaretotalheight\relax%
+      \nointerlineskip
+%% top margin
+      \ifUFCB@locset@margintop
+       \rule{0pt}{\dimexpr\len@cfss@squaretotalheight+\board@val@margintopwidth\relax}%
+      \fi
+      \ifUFCB@locset@labeltop
+       \board@do@printlabeltop{\board@val@stopprintfilenum}{\board@val@startprintfilenum}%
+      \fi
+%% the pieces and side labels
+      \whiledo
+       {\value{cnt@board@rank}<\numexpr\board@val@startprintranknum+1\relax}% inv
+       {\board@do@printrank%
+         {\number\value{cnt@board@rank}}%
+         {\board@val@stopprintfilenum}%
+         {\board@val@startprintfilenum}%
+        \hspace{0pt}%
+        \addtocounter{cnt@board@rank}{1}}%inv
+%% bottom label
+      \ifUFCB@locset@labelbottom
+       \board@do@printlabelbottom{\board@val@stopprintfilenum}{\board@val@startprintfilenum}%
+      \fi}% end parbox
+   \else %not inverse
+    \setcounter{cnt@board@rank}{\board@val@startprintranknum}%
+    \parbox[b]{\numexpr\board@val@stopprintfilenum-\board@val@startprintfilenum+1\relax\len@cfss@squarewidth}%
+     {\parindent0pt\relax\baselineskip=\len@cfss@squaretotalheight\relax%
+      \nointerlineskip
+%% top margin
+      \ifUFCB@locset@margintop
+       \rule{0pt}{\dimexpr\len@cfss@squaretotalheight+\board@val@margintopwidth\relax}%
+      \fi
+      \ifUFCB@locset@labeltop
+       \board@do@printlabeltop{\board@val@startprintfilenum}{\board@val@stopprintfilenum}%
+      \fi
+%% the pieces and side labels
+      \whiledo
+       {\value{cnt@board@rank}>\numexpr\board@val@stopprintranknum-1\relax}%
+       {\board@do@printrank%
+         {\number\value{cnt@board@rank}}%
+         {\board@val@startprintfilenum}%
+         {\board@val@stopprintfilenum}%
+        \hspace{0pt}%
+        \addtocounter{cnt@board@rank}{-1}}%
+%% bottom label
+      \ifUFCB@locset@labelbottom
+       \board@do@printlabelbottom{\board@val@startprintfilenum}{\board@val@stopprintfilenum}%
+      \fi}% end second parbox
+   \fi %end if inverse
+%%the markground picture
+   \ifUFCB@locset@pgf
+    \makebox[0pt]{%
+     \begin{pgfpicture}%
+      \board@pgf@markground
+      \begin{pgfscope}%
+       \csname board@pgf@extramarkground\endcsname
+      \end{pgfscope}%
+     \end{pgfpicture}}%
+   \fi % end pgf
+     \board@do@setpsnode
+ %%
+ % Border
+ %%%
+   \board@print@border
+ %% Mover
+   \ifUFCB@locset@showmover
+    \ifcsname board@val@moverstyle@\board@val@moverstyle\endcsname
+     \csname board@val@moverstyle@\board@val@moverstyle\endcsname
+    \else
+     \PackageWarning{chessboard}%
+      {Moverstyle '\board@val@moverstyle'  is not defined, I will use
+       type square instead}%
+     \board@val@moverstyle@square
+    \fi
+    \board@do@printbottommover%
+    \board@do@printtopmover
+   \fi
+ %%
+   \ifUFCB@locset@marginbottom
+    \rule[-\board@val@marginbottomwidth]{0pt}{\board@val@marginbottomwidth}% bottom margin
+   \fi
+   \ifUFCB@locset@marginright
+    \makebox[\board@val@marginrightwidth]{}%right margin
+   \fi
+  \fi %end if print
+ \endgroup%% Attention! Keys after the group must be global!
+ \ifpdf
+ \else
+  \ifthenelse%
+   {\boolean{\XKV@UFCB@locset@psset@value}}%
+   {\psset{xunit=\len@cfss@squarewidth,yunit=\len@cfss@squaretotalheight}}%
+   {}%
+  \ifthenelse%
+   {\boolean{\XKV@UFCB@locset@psskak@value}}%
+   {\let\set@special@psmarkers\board@skak@set@special@psmarkers%
+    \@ifundefined{theps@inverse}{}{%
+     \ifthenelse%
+      {\boolean{\XKV@UFCB@locset@inverse@value}}%
+      {\setcounter{ps@inverse}{180}}%
+      {\setcounter{ps@inverse}{0}}}}%
+   {}%
+ \fi %end ifpdf
+ }% end chessboard
+
+%%% Changing the  input language
+
+\newcommand\cbDefineLanguage[1]{%
+  \ifcsname board@val@lang#1\endcsname
+   \PackageWarning{chessboard}%
+     {Language #1 already defined}%
+  \else
+   \global\@namedef{board@val@lang#1}{}%
+   \global\@namedef{board@val@lang#1@empty}{empty}%
+  \fi}%
+
+\newcommand\cbDefineTranslation[3]{%#1 language, #2 english, #3 translation
+    \global\@namedef{board@val@lang#1@#3}{#2}}%
+
+\cbDefineLanguage{german}%
+\cbDefineTranslation{german}{K}{K}%
+\cbDefineTranslation{german}{Q}{D}%
+\cbDefineTranslation{german}{R}{T}%
+\cbDefineTranslation{german}{B}{L}%
+\cbDefineTranslation{german}{N}{S}%
+\cbDefineTranslation{german}{P}{B}%
+\cbDefineTranslation{german}{k}{k}%
+\cbDefineTranslation{german}{q}{d}%
+\cbDefineTranslation{german}{r}{t}%
+\cbDefineTranslation{german}{b}{l}%
+\cbDefineTranslation{german}{n}{s}%
+\cbDefineTranslation{german}{p}{b}%
+
+\cbDefineLanguage{english}%
+\cbDefineTranslation{english}{K}{K}%
+\cbDefineTranslation{english}{Q}{Q}%
+\cbDefineTranslation{english}{R}{R}%
+\cbDefineTranslation{english}{B}{B}%
+\cbDefineTranslation{english}{N}{N}%
+\cbDefineTranslation{english}{P}{P}%
+\cbDefineTranslation{english}{k}{k}%
+\cbDefineTranslation{english}{q}{q}%
+\cbDefineTranslation{english}{r}{r}%
+\cbDefineTranslation{english}{b}{b}%
+\cbDefineTranslation{english}{n}{n}%
+\cbDefineTranslation{english}{p}{p}%
+
+%%% command to add pieces to the list
+
+\newcommand\board@add@chartocolorpiececharlist[3]{% #1 game, #2 color, #3 char
+ \ifcsname board@#1@#2piececharlist\endcsname
+  \ifthenelse%
+   {\equal{\csname board@#1@#2piececharlist\endcsname}{}}
+   {\@namedef{board@#1@#2piececharlist}{#3}}
+   {\expandafter\g@addto@macro\csname board@#1@#2piececharlist\endcsname{,#3}}%
+ \else
+   \@namedef{board@#1@piececharlist}{#3}%
+ \fi}%
+
+\newcommand\board@add@chartopiececharlist[2]{% #1 game, #2 char
+ \ifcsname board@#1@piececharlist\endcsname
+  \ifthenelse%
+   {\equal{\csname board@#1@piececharlist\endcsname}{}}%
+   {\@namedef{board@#1@piececharlist}{#2}}%
+   {\expandafter\g@addto@macro\csname board@#1@piececharlist\endcsname{,#2}}%
+ \else
+   \@namedef{board@#1@piececharlist}{#2}%
+ \fi}%
+
+%%% Adding new pieces
+\newcommand\cbDefineNewPiece[5][skak]{%#1=optional=game, #2=color, #3=char, #4=on white, #5=on black
+ \ifcsname board@#1@piece@#3@white\endcsname
+  \PackageError{chessboard}{Piece #3 already defined!}{}%
+ \else
+  \board@add@chartocolorpiececharlist{#1}{#2}{#3}%
+  \board@add@chartopiececharlist{#1}{#3}%
+  \expandafter\gdef\csname board@#1@piece@#3@white\endcsname{#4}%
+  \expandafter\gdef\csname board@#1@piece@#3@black\endcsname{#5}%
+  \cbDefineTranslation{english}{#3}{#3}%
+ \fi}%
+
+%%% Adding new pieces
+\newcommand\cbReDefineNewPiece[5][skak]{%#1=optional=game, #2=color, #3=char, #4=on white, #5=on black
+ \ifcsname board@#1@piece@#3@white\endcsname
+ \else
+   \PackageWarning{chessboard}{Piece #3 not yet defined! I will define it now}{}%
+ \fi
+ \board@add@chartocolorpiececharlist{#1}{#2}{#3}%
+ \board@add@chartopiececharlist{#1}{#3}%
+ \expandafter\gdef\csname board@#1@piece@#3@white\endcsname{#4}%
+ \expandafter\gdef\csname board@#1@piece@#3@black\endcsname{#5}%
+ \cbDefineTranslation{english}{#3}{#3}}%
+
+%%% Initialization the piece commands.
+%% game: skak
+
+\newcommand\board@skak@piece@empty@white{\cfss@WhiteEmptySquare}%
+\newcommand\board@skak@piece@empty@black{\cfss@BlackEmptySquare}%
+\newcommand\board@skak@piece@K@white{\cfss@WhiteKingOnWhite}%
+\newcommand\board@skak@piece@K@black{\cfss@WhiteKingOnBlack}%
+\newcommand\board@skak@piece@k@white{\cfss@BlackKingOnWhite}%
+\newcommand\board@skak@piece@k@black{\cfss@BlackKingOnBlack}%
+\newcommand\board@skak@piece@Q@white{\cfss@WhiteQueenOnWhite}%
+\newcommand\board@skak@piece@Q@black{\cfss@WhiteQueenOnBlack}%
+\newcommand\board@skak@piece@q@white{\cfss@BlackQueenOnWhite}%
+\newcommand\board@skak@piece@q@black{\cfss@BlackQueenOnBlack}%
+\newcommand\board@skak@piece@R@white{\cfss@WhiteRookOnWhite}%
+\newcommand\board@skak@piece@R@black{\cfss@WhiteRookOnBlack}%
+\newcommand\board@skak@piece@r@white{\cfss@BlackRookOnWhite}%
+\newcommand\board@skak@piece@r@black{\cfss@BlackRookOnBlack}%
+\newcommand\board@skak@piece@B@white{\cfss@WhiteBishopOnWhite}%
+\newcommand\board@skak@piece@B@black{\cfss@WhiteBishopOnBlack}%
+\newcommand\board@skak@piece@b@white{\cfss@BlackBishopOnWhite}%
+\newcommand\board@skak@piece@b@black{\cfss@BlackBishopOnBlack}%
+\newcommand\board@skak@piece@N@white{\cfss@WhiteKnightOnWhite}%
+\newcommand\board@skak@piece@N@black{\cfss@WhiteKnightOnBlack}%
+\newcommand\board@skak@piece@n@white{\cfss@BlackKnightOnWhite}%
+\newcommand\board@skak@piece@n@black{\cfss@BlackKnightOnBlack}%
+\newcommand\board@skak@piece@P@white{\cfss@WhitePawnOnWhite}%
+\newcommand\board@skak@piece@P@black{\cfss@WhitePawnOnBlack}%
+\newcommand\board@skak@piece@p@white{\cfss@BlackPawnOnWhite}%
+\newcommand\board@skak@piece@p@black{\cfss@BlackPawnOnBlack}%
+
+\newcommand\board@skak@refpiece{%
+ \begingroup
+  \fontsize{\cfss@boardfontsize}{\cfss@boardfontsize}%
+  \BlackEmptySquare
+ \endgroup}%
+
+\newcommand\board@skak@piececharlist{K,Q,R,B,N,P,k,q,r,b,n,p}%
+\newcommand\board@skak@whitepiececharlist{K,Q,R,B,N,P}%
+\newcommand\board@skak@blackpiececharlist{k,q,r,b,n,p}%
+
+\AtBeginDocument{%
+ \@ifpackageloaded{skak}%
+   {\def\board@skak@do@fencalculate{%
+     \Fen@calculate
+     \let\board@val@fencalculate\temp@board}%
+    \def\board@skak@set@special@psmarkers#1#2{%
+     \get@translation#1%
+     \setcounter{fileFrom}{\value{fileTo}}%
+     \setcounter{rankFrom}{\value{rankTo}}%
+     \get@translation#2%
+     \rput(BM){\pnode(-\arabic{fileFrom},\arabic{rankFrom}){From}}%
+     \rput(BM){\pnode(-\arabic{fileTo},\arabic{rankTo}){To}}}}%
+   {\def\board@skak@do@fencalculate{%
+     \def\board@val@fencalculate{8/8/8/8/8/8/8/8}}}}%
+
+%%% Initialization keys
+
+\setkeys*[UFCB]{gloinit}{print,
+                        game=skak,
+                        maxfield=h8,
+                        zero=false,
+                        moverdefault=W,
+                        castlingdefault=KQkq,
+                        enpassantdefault=-,
+                        halfmovedefault=0,
+                        fullmovedefault=1}%
+
+\setkeys*[UFCB]{gloset}{normalboard,
+                       inverse=false,
+                       startprint=\board@val@minfilechar\board@val@maxranknum,
+                       stopprint=\board@val@maxfilechar\board@val@minranknum,
+                       padding=0pt,
+                       psset=false,
+                       psskak=false,
+                       pgf,
+                       %labels
+                       labelleft,labelbottom,
+                       labelfont={}, %defaults from chessfss used
+                       hlabelformat=\arabic{ranklabel},
+                       vlabelformat=\alph{filelabel},
+                       hlabellift=0.35em,
+                       hlabelwidth=1ex,
+                       labelbottomlift=1.1\baselineskip,
+                       labeltoplift=0.2\baselineskip,
+                       %margin
+                       margin,
+                       marginwidth=1em,
+                       border,
+                       borderwidth=0.04em,
+                       bordercolor=black,
+                       %mover
+                       showmover,
+                       moversize=1em,%0.5\len@cfss@squaretotalheight,
+                       moverstyle=square,
+                       moverlift=0pt,
+                       movershift=1ex,
+                       }%
+
+\def\board@pgf@linewidth{0.1em}
+\def\board@pgf@arrow{latex}
+\def\board@pgf@colorbackpadding{0pt}
+\def\board@val@boardfontcolors{}
+\def\board@val@fontcolorstack{}
+\def\board@pgf@corner{0pt}
+\def\board@pgf@shortenstart{0pt}
+\def\board@pgf@shortenend{0pt}
+\def\board@pgf@padding{0pt}
+\setkeys[UFCB]{bez}{x1=1/3,x2=2/3,y1=1,y2=1,clockwise}
+\def\currentfontcolors{\board@val@fontcolorstack}
+\setkeys*[UFCB]{glofill}{language=english,trimtocolor=false,trimarea=\board,trim,usepgf=all,pgfstyle=none}%
+\board@do@setsinglekeys*[UFCB]{locfill}{language=english}%
+
+\endinput
+%%
+%% End of file `chessboard.sty'.

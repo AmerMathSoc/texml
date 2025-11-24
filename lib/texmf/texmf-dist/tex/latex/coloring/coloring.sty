@@ -1,0 +1,115 @@
+% -*- coding: utf-8 -*-
+
+\ProvidesPackage{coloring}[2016/05/11 v0.2]
+
+\RequirePackage{xcolor,etoolbox,xparse,l3regex}
+
+\makeatletter
+
+\def\colorring@hack#1{\@ifundefined{\string\color@#1}{\coloringdefine{#1}}{\relax}}
+
+% hacking \definecolor and \colorlet in xcolor
+\pretocmd{\@declaredcolor}{\colorring@hack{#1}}{}{}
+\pretocmd{\XC@col@rlet}{\colorring@hack{#4}}{}{}
+
+% hacking \define@key{beamerthc}{fg} and \define@key{beamerthc}{bg} in beamer
+\catcode`\#=12
+\def\coloring@hack@beamer{%
+  \pretocmd{\KV@beamerthc@fg}{\colorring@hack{#1}}{}{}%
+  \pretocmd{\KV@beamerthc@bg}{\colorring@hack{#1}}{}{}%
+}
+\catcode`\#=6
+\@ifclassloaded{beamer}{\coloring@hack@beamer}{}{}
+
+\makeatother
+
+\ExplSyntaxOn
+
+% local variables for gray colors
+\tl_new:N \l_coloring_gray_tl
+
+% local variables for rgb colors
+\tl_new:N \l_coloring_r_tl
+\tl_new:N \l_coloring_g_tl
+\tl_new:N \l_coloring_b_tl
+
+% local variables for hsb/hsv colors
+\int_new:N \l_coloring_h_int
+\tl_new:N \l_coloring_s_tl
+\tl_new:N \l_coloring_v_tl
+
+\clist_new:N \l_coloring_hue_name_clist
+\clist_set:Nn \l_coloring_hue_name_clist
+  {
+    red,     % 0
+    brown,   % 30
+    yellow,  % 60
+    olive,   % 90
+    green,   % 120
+    teal,    % 150
+    cyan,    % 180
+    azure,   % 210
+    blue,    % 240
+    violet,  % 270
+    magenta, % 300
+    purple   % 330
+  }
+
+\NewDocumentCommand \coloringdefine { m }
+{
+  % define gray colors
+  \coloring_define_gray:n { #1 }
+  % define rgb colors
+  \coloring_define_rgb:n { #1 }
+  % define hsb colors
+  \int_set:Nn \l_coloring_h_int { 0 }
+  \clist_map_inline:Nn \l_coloring_hue_name_clist
+    {
+      \coloring_define_hsb:nnn { \l_coloring_h_int } { ##1 } { #1 }
+      \int_add:Nn \l_coloring_h_int { 30 }
+    }
+}
+
+\cs_new_protected_nopar:Npn \coloring_define_gray:n #1
+{
+  \regex_extract_once:nnNT { \A gray([0-9x]) \Z } { #1 } \l_coloring_temp_seq
+    {
+      \seq_pop_right:NN \l_coloring_temp_seq \l_coloring_gray_tl
+      \coloring_set_value:N \l_coloring_gray_tl
+      \definecolor {#1} {gray} {\l_coloring_gray_tl}
+    }
+}
+
+\cs_new_protected_nopar:Npn \coloring_define_rgb:n #1
+{
+  \regex_extract_once:nnNT { \A rgb([0-9x])([0-9x])([0-9x]) \Z } { #1 } \l_coloring_temp_seq
+    {
+      \seq_pop_right:NN \l_coloring_temp_seq \l_coloring_b_tl
+      \seq_pop_right:NN \l_coloring_temp_seq \l_coloring_g_tl
+      \seq_pop_right:NN \l_coloring_temp_seq \l_coloring_r_tl
+      \coloring_set_value:N \l_coloring_b_tl
+      \coloring_set_value:N \l_coloring_g_tl
+      \coloring_set_value:N \l_coloring_r_tl
+      \definecolor {#1} {rgb} {\l_coloring_r_tl, \l_coloring_g_tl, \l_coloring_b_tl}
+    }
+}
+
+\cs_new_protected_nopar:Npn \coloring_define_hsb:nnn #1 #2 #3
+{
+  \regex_extract_once:nnNT { \A #2([0-9x])([0-9x]) \Z } { #3 } \l_coloring_temp_seq
+    {
+      \seq_pop_right:NN \l_coloring_temp_seq \l_coloring_v_tl
+      \seq_pop_right:NN \l_coloring_temp_seq \l_coloring_s_tl
+      \coloring_set_value:N \l_coloring_v_tl
+      \coloring_set_value:N \l_coloring_s_tl
+      \definecolor {#3} {Hsb} {\int_use:N #1, \l_coloring_s_tl, \l_coloring_v_tl}
+    }
+}
+
+\cs_new_protected_nopar:Npn \coloring_set_value:N #1
+{
+  \tl_set:Nn \l_tmpa_tl { x }
+  \tl_if_eq:NNTF #1 \l_tmpa_tl { \tl_set:Nn #1 {1} } { \tl_set:Nx #1 {.#1} }
+}
+
+\ExplSyntaxOff

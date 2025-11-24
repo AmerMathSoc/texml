@@ -1,0 +1,156 @@
+% \iffalse
+%%
+%% File: ncccropmark.dtx Copyright (C) 2002--2004 by Alexander I. Rozhenko
+%%
+%<package>\NeedsTeXFormat{LaTeX2e}
+%<package>\ProvidesPackage{ncccropmark}
+%<package>         [2004/11/29 v1.1 Cropmarks (NCC)]
+%
+% \changes{v1.02}{2002/01/31}{This version is uploaded to CTAN}
+% \changes{v1.03}{2002/02/08}{The package is renamed to ncccropbox}
+% \changes{v1.1}{2004/11/29}{Bug fix on misusing the bottom skip instead of top one}
+% \changes{v1.1}{2004/11/29}{Documentation was prepared}
+%
+%<*driver>
+\let\makeindex\relax
+\documentclass{ltxdoc}
+\usepackage{ncccropmark,watermark}
+\GetFileInfo{ncccropmark.sty}
+\begin{document}
+\title{The \textsf{ncccropmark} package\thanks{This file
+        has version number \fileversion, last
+        revised \filedate.}}
+\author{Alexander I. Rozhenko\\rozhenko@oapmg.sscc.ru}
+\date{\filedate}
+\maketitle
+\DocInput{ncccropmark.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \watermark{\cropmark[f]{10mm}{10mm}{10mm}{10mm}{5mm}
+%            \cropmark[f]{10mm}{10mm}{10mm}{10mm}{-5mm}}
+% \thiswatermark{\cropmark[f]{10mm}{10mm}{10mm}{10mm}{5mm}}
+%
+% \section{User Interface}
+%
+% \DescribeMacro{cropmark}
+% The package implements the command
+% \begin{quote}
+% |\cropmark|\oarg{fields}\marg{left}\marg{right}\marg{top}\marg{bottom}\marg{length}
+% \end{quote}
+% useful as a watermark. The command was desired for use together with the
+% |watermark| package. It must be called inside the picture environment
+% (a watermark content is prepared in such a way).
+%
+% The optional \meta{fields} parameter contains a combination of letters
+% |h| (header), |f| (footer), and |m| (marginal notes).
+% It determines the additional fields of paper area to be taken into account
+% in crop area when the crop-mark is typed out. If the optional parameter is omitted,
+% the crop area coincides with the text area only.
+%
+% Next four parameters mean padding values for crop-mark corners with respect to
+% the crop area and the last parameter is equal to crop lines length.
+% Its positive value means crop-mark corners looking on the crop area.
+% Otherwise, the corners look outside of the crop area.
+% To prepare crosses, you need to use the crop-mark twice with positive
+% and negative values.
+%
+% In two-side mode the left and right padding are swapped for
+% every even page.
+%
+% For example, |\watermark{\cropmark[f]{10mm}{10mm}{10mm}{10mm}{5mm}}|
+% means a crop-mark indented on 10mm in all directions from the crop area
+% containing the text area and the page footer. You can see the result
+% on this page. The crosses on the next page were prepared with
+% the following command:
+% \begin{quote}
+% |\watermark{\cropmark[f]{10mm}{10mm}{10mm}{10mm}{5mm}|\\
+% |           \cropmark[f]{10mm}{10mm}{10mm}{10mm}{-5mm}}|
+% \end{quote}
+% \StopEventually{}
+%
+% \section{The Implementation}
+% This package requires the |ncccropbox| package to prepare a
+% crop-mark and the |tocenter| package to calculate crop-area
+% dimensions.
+%    \begin{macrocode}
+%<*package>
+\RequirePackage{ncccropbox,tocenter}
+%    \end{macrocode}
+%
+% \begin{macro}{\cropmark}
+% We suppose here that the |\cropmark| will be
+% used at the beginning of header. The |\NCC@pos| command
+% from the |tocenter| package parses the \meta{fields} parameter
+% and prepares |\NCC@h|\marg{register}, |\NCC@f|\marg{register},
+% and |\NCC@m|\marg{register} commands to adjust values of skip
+% registers. See the |tocenter| package for more details.
+%    \begin{macrocode}
+\newcommand*{\cropmark}[6][]{\NCC@pos{#1}%
+%    \end{macrocode}
+% At the first, we calculate the width of crop-box and the
+% left skip from the beginning of header.
+% The |\@tempswatrue| means reverse left and right paddings.
+%    \begin{macrocode}
+  \@tempswafalse
+  \if@twoside \ifodd\c@page \else \@tempswatrue \fi\fi
+%    \end{macrocode}
+% Set |\@tempdima| to the left padding and |\@tempdimb| to the right
+% padding.
+%    \begin{macrocode}
+  \if@tempswa
+    \setlength{\@tempdima}{#3}%
+    \setlength{\@tempdimb}{#2}%
+  \else
+    \setlength{\@tempdima}{#2}%
+    \setlength{\@tempdimb}{#3}%
+  \fi
+%    \end{macrocode}
+% Adjust values of |\@tempdima| and |\@tempdimb| with margin
+% widths:
+%    \begin{macrocode}
+  \if@twocolumn
+    \NCC@m\@tempdima \NCC@m\@tempdimb
+  \else
+    \if@tempswa
+      \if@reversemargin \NCC@m\@tempdimb \else \NCC@m\@tempdima \fi
+    \else
+      \if@reversemargin \NCC@m\@tempdima \else \NCC@m\@tempdimb \fi
+    \fi
+  \fi
+%    \end{macrocode}
+% Calculate the left skip in |\@tempskipa| and the crop-box width
+% in  |\@tempdima|:
+%    \begin{macrocode}
+  \@tempskipa -\@tempdima
+  \advance\@tempdima\@tempdimb
+  \advance\@tempdima\textwidth
+%    \end{macrocode}
+% Now we calculate the height of crop-box in the |\@tempdimb| register
+% and the bottom skip in the |\@tempskipb| register:
+%    \begin{macrocode}
+  \@tempdimb\headsep
+  \advance\@tempdimb\textheight
+  \NCC@f\@tempdimb
+  \addtolength{\@tempdimb}{#5}%
+  \@tempskipb -\@tempdimb
+  \advance\@tempdimb -\headsep
+  \NCC@h\@tempdimb
+  \addtolength{\@tempdimb}{#4}%
+%    \end{macrocode}
+% All necessary calculations are done. Put the crop-box at
+% the relative position |\@tempskipa,\@tempskipb|:
+%    \begin{macrocode}
+  \begingroup
+    \croplinelength{#6}%
+    \lineskip\z@
+    \@killglue\raise\@tempskipb
+      \hb@xt@\z@{\kern\@tempskipa
+        \cropbox[\@tempdima][\@tempdimb]{}\hss}\hss%
+  \endgroup
+}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+\endinput

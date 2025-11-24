@@ -1,0 +1,678 @@
+%% xob-font.sty
+%%
+%% Copyright (c) 2014 Kangsoo Kim <karnes at ktug org>
+%%
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3c
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%  http://www.latex-project.org/lppl.txt
+%% and version 1.3c or later is part of all distributions of LaTeX
+%% version 2006/05/20 or later.
+%%
+%%
+%%  oblivoir hangul/hanja font setting.
+%%  part of oblivoir
+%%
+\ProvidesPackage{xob-font}[2014/06/24 v0.6 select hangul/hanja fonts for oblivoir]
+
+%%% obsolete options: retain \if@.. conditions for backward compatibility
+\newif\if@nowin\@nowinfalse
+\newif\if@latinquote\@latinquotefalse
+\newif\if@unfont\@unfontfalse
+\DeclareOption{nowinname}{}
+\DeclareOption{latinquote}{}
+\DeclareOption{unfonts}{\@unfonttrue}
+\DeclareOption{nounfonts}{\@unfontfalse}
+
+%%% active optoins
+\newif\if@oldhangul\@oldhangulfalse
+\DeclareOption{oldhangul}{\@oldhangultrue}
+\newif\if@gremph\@gremphtrue
+\DeclareOption{gremph}{\@gremphtrue}
+\DeclareOption{itemph}{\@gremphfalse}
+
+\newif\if@nanumfonts\@nanumfontsfalse
+\newif\if@nanumxfonts\@nanumxfontsfalse
+\DeclareOption{nanum}{\@nanumfontstrue}
+\DeclareOption{nanumx}{\@nanumfontstrue\@nanumxfontstrue}
+\newif\if@hcrfonts\@hcrfontsfalse
+\DeclareOption{hcr}{\@hcrfontstrue\@oldhangultrue}
+
+\ProcessOptions
+\relax
+
+\RequirePackage{xparse}
+\@ifclassloaded{oblivoir}{}{%
+	\RequirePackage{fontspec}
+	\RequirePackage{kotex}
+}
+
+\ExplSyntaxOn
+
+\xetex_if_engine:T
+{
+	\RequirePackage{xetexko-space}
+	\RequirePackage{xetexko-font}
+}
+
+\if@gremph    \bool_set_false:N \ital_fake_bool    \else \bool_set_true:N  \ital_fake_bool    \fi
+\if@oldhangul \bool_set_true:N  \hangulscript_bool \else \bool_set_false:N \hangulscript_bool \fi
+
+\bool_set_false:N \bold_prov_bool
+\bool_set_false:N \in_hanja_mode
+\bool_set_false:N \mono_mode
+
+\DeclareDocumentCommand \setmonoscale { m }
+{
+	\tl_set:Nn \_mono_scale { #1 }
+}
+
+\setmonoscale{0.95}
+
+\DeclareDocumentCommand \treat_feature_name_options { d() d() m o }
+{
+	\tl_set:Nn \_regu_font_name { #3 }
+	
+	\IfValueTF { #1 } 
+	{ 
+	  \tl_set:Nn  \_bold_font_name { #1 } \bool_set_true:N  \bold_prov_bool
+	}
+	{
+	  \tl_clear:N \_bold_font_name        \bool_set_false:N \bold_prov_bool 
+	}
+	
+	\IfValueTF { #2 } 
+	{
+		\tl_if_eq:nnTF { #2 } { * }
+			{ \tl_set_eq:NN \_ital_font_name \_regu_font_name }
+			{ \tl_set:Nn \_ital_font_name { #2 } }
+	}
+	{
+		\tl_set_eq:NN \_ital_font_name \_regu_font_name 
+	}
+	\IfValueTF { #4 } 
+	{ \tl_set:Nn  \_additional_feature_str { #4 } } 
+	{ \tl_clear:N \_additional_feature_str        }
+	
+	\bool_if:nTF { \mono_mode || \in_hanja_mode }
+	{
+		\tl_clear:N \_font_feature_str
+	}
+	{
+		\tl_set:Nn  \_font_feature_str { Ligatures = TeX, }
+	}
+
+	\bool_if:nT \ital_fake_bool
+	{
+	  \tl_if_eq:NNTF \_ital_font_name \_regu_font_name
+	  {
+	  	\tl_put_right:Nn \_font_feature_str { AutoFakeSlant, }
+	  }
+	  {
+	    \tl_put_right:Nn \_font_feature_str { ItalicFeatures = { FakeSlant = { 0.15 } }, }
+	  }
+	  \tl_put_right:Nn \_font_feature_str { BoldItalicFeatures = { FakeSlant = { 0.15 } }, }
+	}
+
+	\bool_if:nT \bold_prov_bool
+	{
+	  \tl_put_right:Nn \_font_feature_str { BoldFont = \_bold_font_name,
+	                                        BoldItalicFont = \_bold_font_name,
+	                                        ItalicFont = \_ital_font_name, }
+	}
+
+	\bool_if:nF \in_hanja_mode
+	{
+		\bool_if:nT \hangulscript_bool
+		{ \tl_put_right:Nn \_font_feature_str { Script = Hangul, } }
+	}
+	
+	\bool_if:nT \mono_mode
+	{
+		\tl_put_right:Nn \_font_feature_str { Scale = \_mono_scale, } 
+	}
+}
+
+\DeclareDocumentCommand \set_kor_sub_hanja_font { m d() d() m o }
+{
+	\bool_set_true:N \in_hanja_mode
+%	\treat_feature_name_options ( #2 ) ( #3 ) { #4 } [ #5 ]
+	\IfValueTF { #2 }
+	{
+		\IfValueTF { #3 }
+		{
+			\treat_feature_name_options ( #2 ) ( #3 ) { #4 } [ #5 ]
+		}
+		{
+			\treat_feature_name_options ( #2 ) { #4 } [ #5 ]
+		}
+	}
+	{
+		\treat_feature_name_options { #4 } [ #5 ]
+	}
+	\setmainhanjafont [ \_font_feature_str, \_additional_feature_str ] { \_regu_font_name }
+	
+	\luatex_if_engine:T
+	{
+		\tl_if_exist:NT \hanjabyhanjafont
+		{
+			\AtBeginDocument { \hanjabyhanjafont 1 }
+		}
+	}
+}
+
+\DeclareDocumentCommand \setkorfont { m d() d() m o d() }
+{
+	\bool_set_false:N \in_hanja_mode
+
+	\str_if_eq:nnTF { #1 } { mono }
+	{ \bool_set_true:N \mono_mode }
+	{ \bool_set_false:N \mono_mode }
+
+	%%% when regular fontname contains "HCR", input [ Script=Hangul ] to font features.
+	\tl_if_in:nnT { #4 } { HCR }
+	{ \bool_set_true:N \hangulscript_bool }
+	\tl_if_in:nnT { #4 } { hcr }
+	{ \bool_set_true:N \hangulscript_bool }
+%	\tl_if_in:nnT { #4 } { HAN }
+%	{ \bool_set_true:N \hangulscript_bool }
+	%%% the following three \tl_if_in's for \setkomainfont
+	\tl_if_in:NnT { #4 } { HCR }
+	{ \bool_set_true:N \hangulscript_bool }
+	\tl_if_in:NnT { #4 } { hcr }
+	{ \bool_set_true:N \hangulscript_bool }
+%	\tl_if_in:NnT { #4 } { HAN }
+%	{ \bool_set_true:N \hangulscript_bool }
+	
+	\IfValueTF { #2 }
+	{
+		\IfValueTF { #3 }
+		{
+			\treat_feature_name_options ( #2 ) ( #3 ) { #4 } [ #5 ]
+		}
+		{
+			\treat_feature_name_options ( #2 ) { #4 } [ #5 ]
+		}
+	}
+	{
+		\treat_feature_name_options { #4 } [ #5 ]
+	}
+
+	\cs:w set #1 hangulfont \cs_end:
+	    [ \_font_feature_str, \_additional_feature_str ] { \_regu_font_name }
+
+    %%% \set_kor_sub_hanja_font will take more optional arguments,
+    %%% hence, this codes have to be located at the end of code block.
+	\IfValueT { #6 }
+	{
+		\set_kor_sub_hanja_font { #1 } ( #6 )
+	}
+}
+
+%%% new \setko(main|sans|mono)font
+%\bool_new:N \setko_bold_process \bool_set_false:N \setko_bold_process
+
+\NewDocumentCommand \process_set_korob_hanja { m o d() d() d() o }
+{
+	\IfValueTF { #2 }
+	{
+		\tl_set:Nn       \ko_hanja_base_font_name { #2 }
+		\tl_set_eq:NN    \ko_hanja_regu_font_name \ko_hanja_base_font_name
+		\tl_put_right:Nn \ko_hanja_regu_font_name { #3 }
+		\IfValueTF { #4 }
+		{
+			\tl_if_empty:nTF { #4 }
+			{
+				\tl_set_eq:NN    \ko_hanja_bold_font_name \ko_hanja_regu_font_name
+			}
+			{
+				\tl_set_eq:NN    \ko_hanja_bold_font_name \ko_hanja_base_font_name
+				\tl_put_right:Nn \ko_hanja_bold_font_name { #4 }
+			}
+			\bool_set_false:N    \setko_hanja_bold_process
+		}
+		{
+%			\tl_clear:N \ko_hanja_bold_font_name
+			\bool_set_true:N \setko_hanja_bold_process
+		}
+		\IfValueTF { #5 }
+		{
+			\tl_if_empty:nTF { #5 } 
+			{
+				\tl_set_eq:NN    \ko_hanja_ital_font_name \ko_hanja_regu_font_name
+			}
+			{
+				\tl_set_eq:NN    \ko_hanja_ital_font_name \ko_hanja_base_font_name
+				\tl_put_right:Nn \ko_hanja_ital_font_name { #5 }
+			}
+		}
+		{
+			\tl_set_eq:NN \ko_hanja_ital_font_name \ko_hanja_regu_font_name
+		}
+	}
+	{
+		\tl_clear:N \ko_hanja_base_font_name
+		\tl_set:Nn \ko_hanja_regu_font_name { #3 }
+
+		\IfValueTF { #4 }
+		{
+			\tl_set:Nn \ko_hanja_bold_font_name { #4 }
+			\bool_set_false:N \setko_hanja_bold_process
+		}
+		{
+%			\tl_clear:N \ko_hanja_bold_font_name
+			\bool_set_true:N \setko_hanja_bold_process
+		}
+		
+		\IfValueTF { #5 }
+		{
+			\tl_set:Nn \ko_hanja_ital_font_name { #5 }
+		}
+		{
+			\tl_set_eq:NN \ko_hanja_ital_font_name \ko_hanja_regu_font_name
+		}
+	}
+	
+	\IfValueTF { #6 }
+	{
+		\tl_set:Nn \ko_hanja_features { #6 }
+	}
+	{
+		\tl_clear:N \ko_hanja_features
+	}
+
+	\bool_if:nTF \setko_bold_process
+	{
+		\bool_if:nTF \setko_hanja_bold_process
+		{
+			\cs:w setkor #1 font \cs_end:
+				{ \ko_regu_font_name }
+				[ \ko_features ]
+			\bool_if:nTF \ital_fake_bool
+			{
+				\cs:w set #1 hanjafont \cs_end:
+					[ \ko_hanja_features, AutoFakeSlant, BoldItalicFeatures={FakeSlant={0.15}} ]
+					{ \ko_hanja_regu_font_name }
+			}
+			{
+				\cs:w set #1 hanjafont \cs_end:
+					[ \ko_hanja_features ]
+					{ \ko_hanja_regu_font_name }
+			}
+		}
+		{
+			\cs:w setkor #1 font \cs_end:
+				{ \ko_regu_font_name       }
+				[ \ko_features             ]
+				( \ko_hanja_bold_font_name )
+				( \ko_hanja_ital_font_name )
+				{ \ko_hanja_regu_font_name }
+				[ \ko_hanja_features       ]
+		}
+	}
+	{
+		\bool_if:nTF \setko_hanja_bold_process
+		{
+			\cs:w setkor #1 font \cs_end:
+				( \ko_bold_font_name       )
+				( \ko_ital_font_name       )
+				{ \ko_regu_font_name       }
+			\bool_if:nTF \ital_fake_bool
+			{
+				\cs:w set #1 hanjafont \cs_end:
+					[ \ko_hanja_features, AutoFakeSlant, BoldItalicFeatures={FakeSlant={0.15}} ]
+					{ \ko_hanja_regu_font_name }
+			}
+			{
+				\cs:w set #1 hanjafont \cs_end:
+					[ \ko_hanja_features ]
+					{ \ko_hanja_regu_font_name }
+			}
+		}
+		{
+			\cs:w setkor #1 font \cs_end:
+				( \ko_bold_font_name       )
+				( \ko_ital_font_name       )
+				{ \ko_regu_font_name       }
+				[ \ko_features             ]
+				( \ko_hanja_bold_font_name )
+				( \ko_hanja_ital_font_name )
+				{ \ko_hanja_regu_font_name }
+				[ \ko_hanja_features       ]
+		}
+	}
+	
+	\luatex_if_engine:T
+	{
+		\tl_if_exist:NT \hanjabyhanjafont
+		{
+			\AtBeginDocument { \hanjabyhanjafont 1 }
+		}
+	}
+}
+
+\NewDocumentCommand \process_korob_only_hangul { m }
+{
+	\bool_if:nTF \setko_bold_process
+	{
+		\cs:w setkor #1 font \cs_end:
+			{ \ko_regu_font_name }
+			[ \ko_features       ]
+	}
+	{
+		\cs:w setkor #1 font \cs_end:
+			( \ko_bold_font_name )
+			( \ko_ital_font_name )
+			{ \ko_regu_font_name }
+			[ \ko_features       ]
+	}
+}
+
+\DeclareDocumentCommand \setkorfontxob { m o d() d() d() o o d() }
+{
+	\IfValueTF { #2 }
+	{	\tl_set:Nn       \ko_base_font_name { #2 }
+		\tl_set_eq:NN    \ko_regu_font_name \ko_base_font_name
+		\tl_put_right:Nn \ko_regu_font_name { #3 }
+		\IfValueTF { #4 }
+		{
+			\tl_if_empty:nTF { #4 }
+			{
+				\tl_set_eq:NN    \ko_bold_font_name \ko_regu_font_name
+			}
+			{
+				\tl_set_eq:NN    \ko_bold_font_name \ko_base_font_name
+				\tl_put_right:Nn \ko_bold_font_name { #4 }
+			}
+			\bool_set_false:N \setko_bold_process
+		}
+		{
+%			\tl_set_eq:NN \ko_bold_font_name \ko_regu_font_name
+			\bool_set_true:N \setko_bold_process
+		}
+		\IfValueTF { #5 }
+		{
+			\tl_if_empty:nTF { #5}
+			{
+				\tl_set_eq:NN    \ko_ital_font_name \ko_regu_font_name
+			}
+			{
+				\tl_set_eq:NN    \ko_ital_font_name \ko_base_font_name
+				\tl_put_right:Nn \ko_ital_font_name { #5 }
+			}
+		}
+		{
+			\tl_set_eq:NN \ko_ital_font_name \ko_regu_font_name
+		}
+	}
+	{
+		\tl_clear:N \ko_base_font_name
+		\tl_set:Nn \ko_regu_font_name { #3 }
+
+		\IfValueTF { #4 }
+		{
+			\tl_set:Nn        \ko_bold_font_name { #4 }
+			\bool_set_false:N \setko_bold_process
+		}
+		{
+%			\tl_set_eq:NN    \ko_bold_font_name   \ko_regu_font_name
+			\bool_set_true:N \setko_bold_process
+		}
+		
+		\IfValueTF { #5 }
+		{
+			\tl_set:Nn    \ko_ital_font_name { #5 }
+		}
+		{
+			\tl_set_eq:NN \ko_ital_font_name \ko_regu_font_name
+		}
+		
+	}
+	
+	\IfValueTF { #6 }
+	{
+		\tl_set:Nn \ko_features { #6 }
+	}
+	{
+		\tl_clear:N \ko_features 
+	}
+
+	\IfValueTF { #7 }
+	{
+		\IfValueTF { #8 }
+		{
+			\process_set_korob_hanja { #1 } [ #7 ] ( #8 )
+		}
+		{
+			\process_set_korob_hanja { #1 } [ #7 ]
+		}
+	}
+	{
+		\IfValueTF { #8 }
+		{
+			\process_set_korob_hanja { #1 } ( #8 )
+		}
+		{
+			\process_korob_only_hangul { #1 }
+		}
+	}
+}
+
+%%% bracket version.
+\bool_set_false:N \ext_loc_bool
+
+\DeclareDocumentCommand \set_kor_font_orig_method_sub_hanja { m o m }
+{
+	\IfValueTF { #2 }
+	{
+		\cs:w set #1 hanjafont \cs_end: [ #2, \ext_loc_feature ] { #3 }
+	}
+	{
+		\cs:w set #1 hanjafont \cs_end: [ \ext_loc_feature ]{ #3 }
+	}
+	\bool_set_false:N \ext_loc_bool
+}
+
+\DeclareDocumentCommand \setkorfontorigmethod { m o m o }
+{
+	\bool_if:nTF \ext_loc_bool
+	{
+		\tl_set:Nn \ext_loc_feature { ExternalLocation, }
+	}
+	{
+		\tl_clear:N \ext_loc_feature
+	}
+	\IfValueTF { #2 }
+	{
+		\cs:w set #1 hangulfont \cs_end: [ #2, \ext_loc_feature ] { #3 }
+	}
+	{
+		\cs:w set #1 hangulfont \cs_end: [ \ext_loc_feature ] { #3 }
+	}
+	
+	\IfValueTF { #4 }
+	{
+		\set_kor_font_orig_method_sub_hanja { #1 } [ #4 ]
+	}
+	{
+		\bool_set_false:N \ext_loc_bool
+	}
+}
+
+%%% starred version.
+\DeclareDocumentCommand \setkorfontorigstar { s m }
+{
+	\bool_set_true:N \ext_loc_bool
+	\setkorfontorigmethod { #2 }
+}
+
+%%% \setobmainfont
+\DeclareDocumentCommand \setxoblatinfont { m o d() d() d() o }
+{
+	\IfValueTF { #2 }
+	{
+		\tl_set:Nn \latin_base_font_name { #2 }
+		\tl_set_eq:NN \latin_regu_font_name \latin_base_font_name
+		\tl_put_right:Nn \latin_regu_font_name { #3 }
+		\IfValueTF { #4 }
+		{
+			\tl_if_empty:nTF { #4 }
+			{
+				\tl_set_eq:NN \latin_bold_font_name \latin_regu_font_name
+			}
+			{
+				\tl_set_eq:NN \latin_bold_font_name \latin_base_font_name
+				\tl_put_right:Nn \latin_bold_font_name { #4 }
+			}
+			\bool_set_false:N \setlatin_bold_process
+		}
+		{
+			\bool_set_true:N \setlatin_bold_process
+		}
+		\IfValueTF { #5 }
+		{
+			\tl_if_empty:nTF { #5}
+			{
+				\tl_set_eq:NN \latin_ital_font_name \latin_regu_font_name
+			}
+			{
+				\tl_set_eq:NN \latin_ital_font_name \latin_base_font_name
+				\tl_put_right:Nn \latin_ital_font_name { #5 }
+			}
+			\bool_set_false:N \setlatin_ital_process
+		}
+		{
+			\bool_set_true:N \setlatin_ital_process
+		}
+	}
+	{
+		\tl_clear:N \latin_base_font_name
+		\tl_set:Nn \latin_regu_font_name { #3 }
+
+		\IfValueTF { #4 }
+		{
+			\tl_set:Nn \latin_bold_font_name { #4 }
+			\bool_set_false:N \setlatin_bold_process
+		}
+		{
+			\bool_set_true:N \setlatin_bold_process
+		}
+		
+		\IfValueTF { #5 }
+		{
+			\tl_set:Nn \latin_ital_font_name { #5 }
+			\bool_set_false:N \setlatin_ital_process
+		}
+		{
+			\bool_set_true:N \setlatin_ital_process
+		}
+
+	}
+	
+	\tl_if_eq:nnTF { #1 } { mono }
+	{
+		\bool_set_true:N \latin_mono_mode
+	}
+	{
+		\bool_set_false:N \latin_mono_mode
+	}
+	
+	\bool_if:nTF \latin_mono_mode
+	{
+		\tl_clear:N \latin_feature
+	}
+	{
+		\tl_set:Nn \latin_feature { Ligatures=TeX, }
+	}
+	
+	\bool_if:nF \setlatin_bold_process
+	{
+		\tl_put_right:Nn \latin_feature {
+			BoldFont = { \latin_bold_font_name },
+		}
+	}
+	
+	\bool_if:nF \setlatin_ital_process
+	{
+		\tl_put_right:Nn \latin_feature {
+			ItalicFont = { \latin_ital_font_name },
+		}
+	}
+	
+	\IfValueT { #6 }
+	{
+		\tl_put_right:Nn \latin_feature { #6 }
+	}
+
+	\cs:w set #1 font \cs_end:
+		[ \latin_feature ]
+		{ \latin_regu_font_name }	
+	
+}
+
+\ExplSyntaxOff
+
+%%% starred version commands are provided for backward compatibility.
+\protected\def\setkormainfont{%
+	\@ifstar{\setkorfontorigstar*{main}}{%
+	\@ifnextchar[{\setkorfontorigmethod{main}}{\setkorfont{main}}}}
+\protected\def\setkorsansfont{%
+	\@ifstar{\setkorfontorigstar*{sans}}{%
+	\@ifnextchar[{\setkorfontorigmethod{sans}}{\setkorfont{sans}}}}
+\protected\def\setkormonofont{%
+	\@ifstar{\setkorfontorigstar*{mono}}{%
+	\@ifnextchar[{\setkorfontorigmethod{mono}}{\setkorfont{mono}}}}
+
+%%% newly defined commands:
+%%% \setkomainfont[BASENAME](Regu)(Bold)(Ital)[Feature]%
+%%%				  [HJBASENAME](HJREGU)(HJBOLD)(HJITAL)[HJFeatures]
+%%% no spaces allowed between optional arguments, e.g., [...]*nospace*[...]
+\protected\def\setkomainfont{\setkorfontxob{main}}
+\protected\def\setkosansfont{\setkorfontxob{sans}}
+\protected\def\setkomonofont{\setkorfontxob{mono}}
+
+%%% \setobmainfont(regu)[features] = \setmainfont[features]{regu}
+\protected\def\setobmainfont{\setxoblatinfont{main}}
+\protected\def\setobsansfont{\setxoblatinfont{sans}}
+\protected\def\setobmonofont{\setxoblatinfont{mono}}
+
+%%% [unfonts] will be deprecated shortly.
+\if@unfont
+	\if@gremph
+		\setkomainfont(UnBatang.ttf)(UnBatangBold.ttf)(UnGraphic.ttf)[Script=Hangul]%
+					  (UnBatang.ttf)(UnBatangBold.ttf)(UnBatang.ttf)[Script=Hangul]
+	\else
+		\setkomainfont(UnBatang.ttf)(UnBatangBold.ttf)(UnBatang.ttf)[Script=Hangul]
+	\fi
+		\setkosansfont[UnDotum](.ttf)(Bold.ttf)(.ttf)
+		\setmonoscale{1.05}
+		\setkomonofont(UnTaza.ttf)
+\fi
+
+\if@nanumfonts
+	\if@nanumxfonts
+		\setkomainfont(NanumMyeongjo)(*ExtraBold)(*)[](NanumGothic)(*Bold)
+	\else
+		\setkomainfont(NanumMyeongjo)(*Bold)(*)[](NanumGothic)(*Bold)
+	\fi
+	\setkosansfont(NanumGothic)(*Bold)(*)
+	\setkomonofont(NanumGothic)
+\fi
+
+%%% [hcr] adds [Script=Hangul] feature automatically.
+\if@hcrfonts
+	\setkomainfont(HCRBatangLVT)(*-Bold)(*)
+	\setkosansfont(HCRDotumLVT)(*-Bold)(*)
+	\setkomonofont(HCRDotumLVT)
+\fi
+
+\endinput
+
+%%% end of file `xob-font.sty`
+%% CHANGES
+%% v0.6 : HCR auto insert Script=Hangul, HAN disabled
+%% v0.5 : [nanum] sets Bold, [nanumx] sets ExtraBold for NanumMyeongjo
+%% v0.4 : hangul_bold_exist && hanja_bold_no_exist bug fixed.
+%% v0.3 : \setobmainfont ( = \setmainfont ) introduced.
+%% v0.2 : do not insert [ Ligatures=TeX ] in mono_mode

@@ -1,0 +1,5373 @@
+% \iffalse meta comment
+% File: kerntest.dtx Copyright (C) 2004 Harald Harders
+% \fi
+%
+% \iffalse
+%
+%<*driver>
+\listfiles
+\documentclass[ngerman,english,a4paper]{ltxdoc}
+\usepackage[T1]{fontenc}
+\usepackage[latin1]{inputenc}
+\IfFileExists{fix-cm.sty}{\usepackage{fix-cm}}{}
+\usepackage{longtable}
+\usepackage{graphicx}
+\let\origverbatim\verbatim
+\let\endorigverbatim\endverbatim
+\usepackage{verbatim}
+\usepackage{babel}
+\usepackage{calc}
+\usepackage{url}
+\IfFileExists{booktabs.sty}{\usepackage{booktabs}}{%
+  \GenericWarning{kerntest.dtx}{Package file booktabs.sty not
+    found. Documentation formatting will be poor}%
+  \def\toprule\hline
+  \def\midrule\hline
+  \def\bottomrule\hline
+}
+\IfFileExists{krntst-v.tex}{%
+  \input{krntst-v.tex}
+  \GetFileInfo{krntst-v.tex}
+}{%
+  \ClassError{kerntest}{File krntst-v.tex not found, please run `latex
+    kerntest.ins' first.}{No additional help}%
+  \def\fileversion{\textbf{??}}%
+  \def\filedate{\textbf{??}}%
+}
+\title{The \texttt{kerntest} package}
+\author{Harald Harders\\\texttt{h.harders@tu-bs.de}}
+\date{Version \fileversion\ (\filedate), printed \today}
+\makeatletter
+\newlength\tempdima
+\newlength\tempdimb
+\renewenvironment{table}[1][]{%
+  \@float{table}[#1]%
+  \centering%
+  \setlength{\tempdima}{\abovecaptionskip}%
+  \setlength{\abovecaptionskip}{\belowcaptionskip}%
+  \setlength{\belowcaptionskip}{\tempdima}%
+}{%
+  \end@float
+}
+\def\meta@font@select{\normalfont\itshape}
+%%
+\def\DescribeOpt{\leavevmode\@bsphack\begingroup\MakePrivateLetters
+  \Describe@Opt}
+\def\Describe@Opt#1{\endgroup
+              \marginpar{\raggedleft\PrintDescribeOpt{#1}}%
+              \SpecialOptIndex{#1}\@esphack\ignorespaces}
+\def\SpecialOptIndex#1{\@bsphack
+    \index{#1\actualchar{\protect\ttfamily#1}
+           (class option)\encapchar usage}%
+    \index{class options:\levelchar{\protect\ttfamily#1}\encapchar
+           usage}\@esphack}
+\@ifundefined{PrintDescribeOpt}
+   {\def\PrintDescribeOpt#1{\strut \MacroFont #1\ }}{}
+\@ifundefined{PrintOptName}
+   {\def\PrintOptName#1{\strut \MacroFont #1\ }}{}
+%%
+\makeatother
+%%
+\newenvironment{fontbox}{%
+  \begin{quote}
+    \usefont{T1}{ptm}{m}{n}\fontsize{25}{12}\selectfont
+    \fboxsep-0.5\fboxrule
+}{%
+  \end{quote}
+  \ignorespacesafterend
+}
+\newcommand\timesfont[1]{{\usefont{T1}{ptm}{m}{n}#1}}
+%%
+\newcommand\getkern[2]{%
+  \settowidth\tempdima{#1#2}%
+  \settowidth\tempdimb{#1\kern0pt#2}%
+  \setlength\tempdima{\tempdima-\tempdimb-\fboxrule}%
+}
+%%
+\EnableCrossrefs
+\CodelineIndex
+\DoNotIndex{\def,\edef,\let,\newcommand,\newenvironment,\newcounter}
+\DoNotIndex{\setcounter,\space,\if,\else,\fi,\empty,\@empty,\ifx,\fi}
+\DoNotIndex{\ifnum,\fi,\expandafter,\csname,\endcsname,\the}
+\DoNotIndex{\MessageBreak,\message,\newlength,\newif,\xdef,\newcount}
+\DoNotIndex{\begingroup,\endgroup,\,,\@tempcnta,\@tempdima,\advance}
+\DoNotIndex{\ensuremath,\filedate,\fileversion,\docdate}
+\DoNotIndex{\mathit,\mathrm,\mathsf,\nprt@tmp,\nprt@tmpnum,\relax}
+\DoNotIndex{\protect,\renewcommand,\setlength,\settowidth,\stepcounter}
+\DoNotIndex{\string}
+\CodelineNumbered
+\RecordChanges
+\CheckSum{6031}
+\begin{document}
+ \DocInput{kerntest.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \changes{1.00}{2004/04/01}{Total new implementation}%
+% \changes{1.10}{2004/04/06}{Add option `writeall'}%
+% \changes{1.11}{2004/04/06}{Added more literature to bibliography}%
+% \changes{1.20}{2004/04/11}{Allow to give glyphs by number (decimal,
+%   hex, octal) or by PostScript name}%
+% \changes{1.20}{2004/04/11}{Write glyph name to table}%
+% \changes{1.20}{2004/04/11}{Find and complain inconsistent kerning
+%   data}%
+% \changes{1.20}{2004/04/11}{Introduce glyph classes to set the
+%   kerning for similar glyph shapes by once}%
+% \changes{1.20}{2004/04/11}{Reduce left margin}%
+% \changes{1.30}{2004/04/12}{Add encodings OT1, T2A, T2B, and LY1}%
+% \changes{1.30}{2004/04/12}{Template for OT1 encoding}%
+% \changes{1.30}{2004/04/12}{Parameter-dependent encodings (for
+%   example with or without ligatures)}%
+% \changes{1.30}{2004/04/12}{New option |designsize| for giving the
+% design size of the font explicitely}%
+% \changes{1.31}{2004/04/13}{Use \cs{setleftkerning} and
+%   \cs{setrightkerning} instead of writing every kerning pair}%
+% \changes{1.32}{2004/04/14}{Allow to set relative kerning widths in
+%   glyph classes}%
+%
+% \maketitle
+% \begin{abstract}
+% \noindent
+% This class makes it easy to generate tables that show many different
+% kerning pairs of an arbitrary font, usable by \LaTeX.
+% It shows the kerning values that are used by the the font by default.
+%
+% In addition, this class enables the user to alternate the kernings
+% and to observe the results.
+% Kerning pairs can be defined for groups of similar glyphs at once.
+% Automatically, an |mtx| file is generated that can be loaded by
+% |fontinst| to introduce the user-made kernings into the virtual font
+% for \LaTeX.
+% \end{abstract}
+%
+% \tableofcontents
+%
+% \section*{Copyright}
+% Copyright 2004 Harald Harders.
+%
+% This program can be redistributed and/or modified under the terms
+% of the LaTeX Project Public License Distributed from CTAN
+% archives in directory macros/latex/base/lppl.txt; either
+% version 1.3 of the License, or any later version.
+%
+% \section{Introduction}
+%
+% Every glyph of a font is surrounded by a bouding box.
+% Have a look at these glyphs:
+% \begin{fontbox}
+% ^^A  \fbox{\raisebox{0pt}[\fontdimen12\font][\fontdimen11\font]{A}}
+%   \fbox{A} \fbox{m} \fbox{f}
+%   \itshape\fbox{A} \fbox{m} \fbox{f}
+% \end{fontbox}
+% As can be seen in this example, the glyphs may extend the bounding
+% box.
+%
+% Normally, one character is placed after the other by simply putting
+% the bounding boxes directly after each other:
+% \begin{fontbox}
+%   \fbox{A}\kern-\fboxrule
+%   \fbox{H}\kern-\fboxrule\fbox{V}\kern-\fboxrule
+%   \fbox{A}\kern-\fboxrule\fbox{m}\kern-\fboxrule
+%   \fbox{f}\kern-\fboxrule\fbox{T}
+%
+%   \itshape
+%   \fbox{A}\kern-\fboxrule
+%   \fbox{H}\kern-\fboxrule\fbox{V}\kern-\fboxrule
+%   \fbox{A}\kern-\fboxrule\fbox{m}\kern-\fboxrule
+%   \fbox{f}\kern-\fboxrule\fbox{T}
+% \end{fontbox}
+% In most cases, this works great, but sometimes the distance between
+% two glyphs is ugly then.
+% Here, for instance, have a look at
+% ``\timesfont{V\kern0pt A}'', ``\timesfont{f\kern0pt T}'',
+% ``\timesfont{\itshape V\kern0pt A}'', and
+% ``\timesfont{\itshape f\kern0pt T}''.
+% To improve these cases, the bounding boxes are moved together or
+% away from another, as shown in the next example.
+% This is called kerning.
+% To be able to do the kerning, the font contains a table of pairs of
+% glyphs and the distance to move the second one.
+% \begin{fontbox}
+%   \fbox{A}\getkern{A}{H}\kern\tempdima
+%   \fbox{H}\getkern{H}{V}\kern\tempdima
+%   \fbox{V}\getkern{V}{A}\kern\tempdima
+%   \fbox{A}\getkern{A}{m}\kern\tempdima
+%   \fbox{m}\getkern{m}{f}\kern\tempdima
+%   \fbox{f}\getkern{f}{T}\kern\tempdima
+%   \fbox{T}
+%
+%   \itshape
+%   \fbox{A}\getkern{A}{H}\kern\tempdima
+%   \fbox{H}\getkern{H}{V}\kern\tempdima
+%   \fbox{V}\getkern{V}{A}\kern\tempdima
+%   \fbox{A}\getkern{A}{m}\kern\tempdima
+%   \fbox{m}\getkern{m}{f}\kern\tempdima
+%   \fbox{f}\getkern{f}{T}\kern\tempdima
+%   \fbox{T}
+% \end{fontbox}
+% What you see here is the original kerning of the Times Roman
+% installed in your \TeX\ system.
+% The V--A pairs are improved; but the f still touches the T which is
+% not wanted.
+% The Times Roman font misses this kerning pair.
+% Better were this:
+% \begin{fontbox}
+%   \fbox{A}\getkern{A}{H}\kern\tempdima
+%   \fbox{H}\getkern{H}{V}\kern\tempdima
+%   \fbox{V}\getkern{V}{A}\kern\tempdima
+%   \fbox{A}\getkern{A}{m}\kern\tempdima
+%   \fbox{m}\getkern{m}{f}\kern\tempdima
+%   \fbox{f}\kern0.06em
+%   \fbox{T}
+%
+%   \itshape
+%   \fbox{A}\getkern{A}{H}\kern\tempdima
+%   \fbox{H}\getkern{H}{V}\kern\tempdima
+%   \fbox{V}\getkern{V}{A}\kern\tempdima
+%   \fbox{A}\getkern{A}{m}\kern\tempdima
+%   \fbox{m}\getkern{m}{f}\kern\tempdima
+%   \fbox{f}\kern0.07em
+%   \fbox{T}
+% \end{fontbox}
+% 
+% Most fonts are missing many of these kerning pairs that are
+% necessary for a good typography.
+% Especially if you are writing in a language other than English, many
+% kernig pairs are missing.
+% Have a look at this example with quotation marks used in German,
+% with the original kerning of the Times:
+% \begin{fontbox}
+%   \fbox{,,}\getkern{,,}{T}\kern\tempdima
+%   \fbox{T}\getkern{T}{A}\kern\tempdima
+%   \fbox{A}\getkern{A}{``}\kern\tempdima
+%   \fbox{``}
+%   \fbox{>>}\getkern{>>}{V}\kern\tempdima
+%   \fbox{V}\getkern{V}{a}\kern\tempdima
+%   \fbox{a}\getkern{a}{V}\kern\tempdima
+%   \fbox{V}\getkern{V}{<<}\kern\tempdima
+%   \fbox{<<}
+% \end{fontbox}
+% As you can see, there is no kerning at all.
+%
+% And here comes, what this class is intended to do:
+% It is difficult to calculate the necessary kerning automatically.
+% Thus, it can be helpful to generate some kerning pairs and to try
+% different amounts of kernings. 
+% Compare the different kernings in this example (this time without
+% the bounding boxes):
+% \begin{fontbox}
+%   A``
+%   A\kern-0.04em``
+%   A\kern-0.08em``
+%   A\kern-0.12em``
+%   A\kern-0.16em``
+%   A\kern-0.20em``
+%   A\kern-0.24em``
+%   A\kern-0.28em``
+%   A\kern-0.32em``
+%   A\kern-0.36em``
+% \end{fontbox}
+% The first one is without kerning.
+% The kerning in the last one ($-0.35\,\mathrm{em}$) is surely too
+% much since both glyphs touch each other.
+% It really isn't easy to find the ``perfect'' kerning.
+% One remark here: It is worse to have a too tight kerning than too
+% less kerning. Thus please do as little kerning as you think can work
+% well.
+%
+% With the |kerntest| class, it is easy to try out different values.
+% How this can be done is described in the next section.
+%
+%
+% \section{Usage of the class}
+%
+% \subsection{Introduction}
+%
+% In the simplest case, you can use the package like this:
+% \verbatiminput{t1-ptm-m-n-shortexample.tex}
+% You have to define the font family to be tested in the optional
+% argument of the \cs{documentclass} command.
+% The syntax is |family=|\meta{font family}, while \meta{font
+% family} is the typical abbreviation according to Karl Berry's name
+% scheme~\cite{berry1999a}, e.g., |cmr| for Computer Modern Roman,
+% |ptm| for Times Roman, |phv| for Helvetica, |pmnj| for Adobe Minion
+% with old-style numbers, |pmnx| for Adobe Minion with expert
+% characters.
+%
+% The options |extraname=shortexample| and |footer=false| are not so
+% important and described later.
+%
+% \DescribeEnv{kerntable}%
+% The kerning table is generated by the |kerntable| environment which
+% is represented by a |longtable| environment internally.
+% \DescribeMacro{\testkern}%
+% Each line of this environment has to contain one \cs{testkern}
+% command with five arguments:
+% \begin{enumerate}
+% \item The first one contains the name or character number of the
+%   left character in the table (see Fig.~\ref{fig:shortexample}).
+%   Which glyph corresponds to a given value depends on the used
+%   encoding, default is the cork encoding |T1|.
+%   The glyph can be specified by giving a decimal number (|0| to
+%   |255|), a hexadecimal number (|"0| to |"FF|), an octal
+%   number (|'0| to |'377|), or by giving the PostScript glyph
+%   name, e.g., |grave|, |guillemotright|, |A|, |Aring|.
+%   It does not work to give \LaTeX\ sequences as |<<|,
+%   |\guillemotright|, etc.
+% \item The second argument gives the kerning of the characters
+%   defined in the first and in the third argument.
+%   The used unit are Postscript Type\,1 font units which have the
+%   length of 0.001\,em.
+%   It is not allowed to specify another unit.
+%
+%   If the second argument is ``|-|'' the original kerning of the
+%   font is shown (first line of the example).
+%
+%   If a value is given (second line) the original kerning is
+%   overwritten by the given value.
+%   Negative values reduce the distance of the glyphs, positive values
+%   increase it.
+% \item The third argument specifies the second glyph.
+% \item The fourth argument is the kerning between the second and the
+%   third glyph and works exactly as the second argument.
+% \item The fifth argument specifies the third glyph.
+% \end{enumerate}
+% After the \cs{testkern} command, an arbitrary (but short) comment
+% may be added.
+% Often, it is good to write the name of the glyph here.
+% With |t1-XXX-m-n.tex| and |ts1-XXX-m-n.tex|, two templates are given
+% that contains all glyph names for the |T1| and |TS1| encodings.
+%
+% Each line in the |kerntable| environment (even the last one) has to
+% end with a |\\| or \cs{tabularnewline}.
+% 
+% The output of this file is shown in Fig.~\ref{fig:shortexample}.
+% \begin{figure}
+%   \centering
+%   \fboxsep=1mm
+%   \makebox[\textwidth][c]{%
+%     \fbox{\includegraphics[scale=0.8]{t1-ptm-m-n-shortexample}}}
+%   \caption{Example for a part of a kerning table (explanations in the
+%     text)}
+%   \label{fig:shortexample}
+% \end{figure}
+% In the first column, the number of the middle character (argument
+% |#3| of the \cs{testkern} command is listed, followed by the
+% PostScript glyph name. 
+% In the third column, the combination of characters is printed with
+% original kerning for both pairs, while the forth column shows the
+% newly suggested kerning.
+% In the fifth column, both variants are printed over each other (the
+% old one grey, the new one black).
+% The next two columns show the values of the two kerning pairs in
+% Postscript font units (normally, 0.001\,em).
+% If the user has not given a new kerning the original value is
+% printed in grey.
+% If the user has defined a new kerning, this new value is printed in
+% black.
+% If, in this case, the old kerning is unequal zero, it is printed in
+% parentheses before the new value (second line of the example).
+% The rest of each line are examples and comments.
+%
+%
+% \subsection{Most features by example}
+%
+% The next example shows some more switches that can be defined by the
+% user:\label{page:example}
+% \verbatiminput{t1-ptm-bx-n-example.tex}
+% Have a look at the results in Fig~\ref{fig:example} before the
+% switches are explained.
+% \begin{figure}
+%   \centering
+%   \fboxsep=1mm
+%   \makebox[\textwidth][c]{%
+%     \fbox{\includegraphics[scale=0.8]{t1-ptm-bx-n-example}}}
+%   \caption{Example for a part of a kerning table (explanations in the
+%     text).
+%     The labels marked with a star are described in
+%     Section~\ref{sec:advanced}.}%
+%   \label{fig:example}
+% \end{figure}
+%
+% \DescribeMacro{\kernsetup}%
+% All class options except |family| can either be given as class
+% option in the optional argument of the \cs{documentclass} command or
+% as argument of the \cs{kernsetup} command.
+% The |family| class option has to be given in the \cs{documentclass}
+% command.
+% Here comes a list of all class options:
+% \begin{description}
+% \item [|encoding=|\meta{font encoding}:] 
+% \DescribeOpt{encoding}%
+%   Font encoding (default: |T1|).
+%   Currently, |OT1|, |T1|, |TS1|, |T2A|, |T2B|, and
+%   |LY1|\footnote{While the other encodings are generated starting
+%   from |.etx| files, the LY1 encoding has been extracted from
+%   |texnansi.enc|. Some glyphs may have incorrect names.} are
+%   supported.
+% \item [|family=|\meta{font family}:]
+% \DescribeOpt{family}%
+%   Abbreviation of the font-family name according to Karl Berry's
+%   scheme~\cite{berry1999a}.
+%   This option is mandatory in the optional argument of the
+%   \cs{documentclass} command.
+% \item [|series=|\meta{font series}:]
+% \DescribeOpt{series}%
+%   Abbreviation for the series of the font (default: |m|), e.g., |m|
+%   for medium, |sb| for semibold, |b| for bold, |bx| for bold
+%   extended.
+% \item [|shape=|\meta{font shape}:]
+% \DescribeOpt{shape}%
+%   Abbreviation for the font shape (default: |n|), e.g., |n| for
+%   upright, |it| for italic, |sl| for slanted, |sc| for small caps,
+%   |scit| for italic small caps.
+% \item [|size=|\meta{font size}:]
+% \DescribeOpt{size}%
+%   Size of the tested font (default: |17.28pt|) in arbitrary units. 
+%   This sets the \cs{baselineskip} to 1.2 times the given value.
+%   The |size| option does not change the size of the legend text
+%   which is fixed to 10\,pt.
+% \item [|baselineskip=|\meta{baselineskip}:]
+% \DescribeOpt{baselineskip}%
+%   Sets the \cs{baselineskip} explicitly.
+%   To take effect, it has to be given after the option |size|
+%   (default: |1.2*17.28pt|).
+% \item [|designsize=|\meta{design size}:]
+% \DescribeOpt{designsize}%
+%   For calculating the kerning data, a PostScript font unit is used
+%   which is 1/1000 of the font's design size.
+%   Unfortunately, it is not possible to get this size reliably in
+%   \LaTeX.
+%   For most fonts, 1\,em corresponds to the design size.
+%   But in some cases, it is not true:
+%   \begin{enumerate}
+%   \item Some fonts have a different em length, for example, the
+%     Computer Modern fonts.
+%     Then, the size given by the option |size| corresponds to the
+%     design size, but 1\,em does not.
+%   \item If the font is scaled by the |.fd| file, 1\,em is also
+%     scaled and may correspond to the design size while the size
+%     given with |size| does not.
+%   \end{enumerate}
+%   Since in most cases, 1\,em is the correct design size, this is the
+%   default.
+%   If it is not, you can give the correct design size by using the
+%   option |designsize|, for example, |designsize=0.9em|,
+%   |designsize=17pt|.
+% \item [|example=|\meta{text}:]
+% \DescribeOpt{example}%
+%   Alters the example text for columns 5 and 6 (default: |example|).
+% \item [|papersize=|\meta{papersize}]
+% \DescribeOpt{papersize}%
+%   Tells the |geometry| package which pagesize to use.
+%   Supported are all pagesizes handled by |geometry|, e.g.,
+%   |a4paper|, |letter|, |legal| (no default).
+% \item [|extraname=|\meta{fontname extension}:]
+% \DescribeOpt{extraname}%
+%   Normally, the heading of each page of output as well as the
+%   filename of the |mtx| file are generated automatically by appending
+%   encoding, font family, font series, and font shape, e.g.,
+%   |t1-cmr-m-n.mtx|.
+%   If you use this option, |-|\meta{fontname extension} is added both
+%   to the headings and to the filename.
+%   For example, |extraname=test1| leads to |t1-cmr-m-n-test1.mtx|.
+%   This is useful if you want to generate different |mtx| files that
+%   normally got the same name.\footnote{This is why the first example
+%     used this option.}
+% \item [|color=|{\ensuremath\langle}|true|/|false|{\ensuremath\rangle}:]
+% \DescribeOpt{color}%
+%   Switches on color output (default: |false|).
+%   New values are printed in red, while the old ones are printed
+%   black instead of black/grey.
+% \item [|copyquotation=|{\ensuremath
+%\langle}|true|/|false|{\ensuremath\rangle}:]
+% \DescribeOpt{copyquotation}%
+%   If a kerning pair containing a double quotation mark, including
+%   guillemots, is set, write also the corresponding single one to the
+%   |mtx| file.
+% \item [|writeall=|{\ensuremath
+%\langle}|true|/|false|{\ensuremath\rangle}:]
+% \DescribeOpt{writeall}%
+%   Write also the original kerning data to the |mtx| file.
+% \item [|footer=|{\ensuremath
+%\langle}|true|/|false|{\ensuremath\rangle}:]
+% \DescribeOpt{footer}%
+%   Switch on or off the footline.\footnote{This option seems only to
+%   work in the \cs{documentclass} options. Don't ask me why.}
+% \end{description}
+%
+% It has been mentioned some times that an |mtx| file is generated
+% automatically.
+% |mtx| files contain the font metrics during the fontinst process.
+% Amongst other things, they contain the kerning data.
+% For example, the |mtx| file generated by the last example looks like this:
+% \verbatiminput{t1-ptm-bx-n-example.mtx}
+% Only new or changed kerning values are inserted (e.g.,
+% |quotedblleft|--|A| is not included).
+%
+% \DescribeMacro{\mtxcomment}
+% Using the \cs{mtxcomment}\marg{comment} command, you can write the
+% given argument as comment into the |mtx| file.
+%
+%
+% \subsection{Encoding-dependent parameters}%
+%
+% Some encodings may have slight differences depending on the used
+% shape.
+% For example, typewriter fonts may have ligatures but they are
+% normally not used.
+% Thus, the encodings do not have some glyphs when used with
+% typewriter fonts (e.g., |ff|, |fi|, |ffi|, |fl|, |ffl| are
+% missing).
+%
+% \DescribeMacro{\encodingsetup}%
+% The class provides an interface to give the necessary parameters to
+% these encodings.
+% Use the command \cs{encodingsetup} that takes a comma-separated list
+% of options as argument (as \cs{kernsetup}).
+%
+% Here are the encoding-specific options:
+% \begin{description}
+% \item [T1 encoding:]\strut
+%   \begin{description}
+%   \item [|ligaturing=|\meta{number}:]
+%   \DescribeOpt{ligaturing}%
+%     Level of how many ligatures are used (|-2|, |-1|, |0|, or |1|,
+%     default |1|).
+%     Here is the description from |t1.etx| (version 1.923, 2002/10/29):
+%     \begin{enumerate}
+%       \item[$1$]
+%         All the standard ligature glyphs (\texttt{fi}, \texttt{fl}, 
+%         \texttt{ff}, \texttt{ffi}, \texttt{ffl}, \texttt{IJ}, and 
+%         \texttt{ij}) are included and the normal ligaturing instructions 
+%         (those for the \texttt{f}-ligatures) are included.
+%       \item[$0$]
+%         All the standard ligature glyphs are included, but none of their 
+%         ligaturing instructions.
+%       \item[$-1$]
+%         The seven slots normally used for ligatures are left empty.
+%       \item[$-2$]
+%         The seven slots normally used for ligatures are left empty, as 
+%         are the slots normally used for \texttt{c}, \texttt{f}, 
+%         \texttt{s}, \texttt{i}, and \texttt{I}.
+%     \end{enumerate}
+%   \end{description}
+% \item [OT1 encoding:]\strut
+%   \begin{description}
+%   \item [|ligaturing=|\meta{number}:]
+%   \DescribeOpt{ligaturing}%
+%     Level of how many ligatures are used (|0|, |1|, or |2|,
+%     default |2|).
+%     Please refer to |ot1.etx| for more details.
+%   \item [|italicizing=|{\ensuremath
+%\langle}|true|/|false|{\ensuremath\rangle}:]
+%   \DescribeOpt{italicizing}%
+%     Use |dollar| when |false| and |sterling| when |true| (default:
+%     |false|).
+%   \end{description}
+% \end{description}
+%
+%
+% \subsection{Advanced features}%
+% \label{sec:advanced}%
+%
+% In most fonts, different glyphs need the same kerning because their
+% left or right edges are very similar, for example, the kerning on
+% the left sides of 
+% \symbol{66}, \symbol{68}, \symbol{132}, \symbol{208}, \symbol{69},
+% \symbol{133}, \symbol{134}, \symbol{200}, \symbol{201}, \symbol{202},
+% \symbol{203}, \symbol{070}, \symbol{072}, \symbol{073},
+% \symbol{157}, \symbol{204}, \symbol{205}, \symbol{206},
+% \symbol{207}, \symbol{156}, \symbol{074}, \symbol{075},
+% \symbol{076}, \symbol{136}, \symbol{137}, \symbol{138},
+% \symbol{078}, \symbol{139}, \symbol{140}, \symbol{209},
+% \symbol{080}, \symbol{082}, \symbol{143}, \symbol{144},
+% \symbol{141}, and \symbol{222}
+% should be equal.
+%
+% \DescribeMacro{\defglyphclass}%
+% \DescribeMacro{\newglyphclass}%
+% \DescribeMacro{\renewglyphclass}%
+% \DescribeMacro{\provideglyphclass}%
+% This can be reached by using so called ``glyph classes''.
+% A new glyph class can be defined using one of the commands
+% \cs{defglyphclass}, \cs{newglyphclass}, \cs{renewglyphclass}, and
+% \cs{provideglyphclass}.
+% The differences are similar to these of the commands
+% \cs{newcommand}, \cs{renewcommand}, etc.
+% They all have the syntax
+% \cs{defglyphclass}\marg{side}\marg{name}\marg{glyphlist}.
+% \meta{side} specifies the side of the glyphs on which the kerning
+% shall be equal (|left| or |right|). 
+% The parameter \meta{name} specifies the name of the glyph list, the
+% list above could be named ``|H|'' because they all have a similar
+% shape as the H.
+% The third argument, \meta{glyphlist}, contains a comma-separated
+% list of all glyphs (PostScript names or numbers---as usual).
+% For example, the above list is build by this command:\footnote{Due
+%   to a problem between the |ltxdoc| and |verbatim| packages, the
+%   \texttt{\%} signs appear at the beginning of each line. Just
+%   delete them in mind.}
+%\begin{verbatim}
+%\newglyphclass{left}{H}{B,D,Dcaron,Eth,E,Ecaron,Eogonek,Egrave,%
+%  Eacute,Ecircumflex,Edieresis,F,H,I,Idotaccent,Igrave,Iacute,%
+%  Icircumflex,Idieresis,IJ,J,K,L,Lacute,Lcaron,Lslash,N,Nacute,%
+%  Ncaron,Ntilde,P,R,Racute,Rcaron,Ng,Thorn}\end{verbatim}
+%
+% You can specify arbitrary glyph classes.
+% If you, for example, use the |copyquotation| option glyph classes
+% are made containing one double and one single quotation mark each.
+%
+% When you write a kerning table using the |kerntable| environment and
+% it happens that you change the kerning for a glyph that is member of
+% a glyph class, the kernings for all other glyphs of the same glyph
+% class are automatically changed on the specific side.
+% This can be seen in the example on Page~\pageref{page:example} and
+% in Figure~\ref{fig:example}:
+%
+% |period| and |comma| build a glyph pair on both sides.
+% In the first line of the table, left and right kerning between the
+% period and the quotation marks are changed by the user.
+% The kerning between the comma and quotation marks is then set
+% automatically; the user does not have to specify them again (the
+% kerning data contain a simple |-| in the second line).
+% If you specify the same value explicitly, a warning is generated.
+% If you specify conflicting values, the programme generates an error
+% message (not shown).
+% 
+% Automatically generated kerning pairs are marked by $\ast$ behind
+% the value (as can be seen in the second and 12th line of the
+% example).
+% Repeated values are marked by $^\dagger$.
+%
+% There is one shortcoming:
+% If you don't specify the kerning for a glyph class at the first
+% occurance of this glyph, the correct kerning data are not shown for
+% the occurances before the position you have specified the kerning.
+% In the example, the kerning between the members of the glyph class
+% ``A'' (A, \"A, and \AA) and the right German quotation mark
+% (\textquotedblleft), is not specified for the first char of the
+% glyph class, \"A, but for the second one, A.
+% Thus, the kerning of $-150$ is shown for ``A'' and for ``\AA'', but
+% not for ``\"A''.
+% But nevertheless, the kerning data written to the |mtx| files are
+% correct.
+%
+% All glyphs, given by \cs{defglyphclass} get the same kerning by
+% default.
+% You can specify different scale factors by appending
+% |[|\meta{scale}|]| to each glyph name; while a factor of |1000| is
+% the default and means ``the same kerningn width''.
+%
+% For example,
+%\begin{verbatim}
+%\defglyphclass{right}{A}{A,Aring[800],Adieresis[1200],Abreve}\end{verbatim}
+% defines a glyph class containing ``A'', ``\AA'', ``\"A'', and ``\u A''.
+% All kernings on the right side of ``\AA'' have a width of 80\,%\ of
+% these ``A'' has.
+% ``\"A'' is kerned 120\,\% of ``A''.
+% ``\u A'' is again kerned as ``A''.
+%
+% You can also specify a different scaling for the first glyph in the
+% glyph class.
+% But then, all values are scaled in order to reach a factor of |1000|
+% for the first entry.
+% For example,
+%\begin{verbatim}
+%\defglyphclass{right}{A}{A[500],Aring[400],Adieresis[600],Abreve[500]}\end{verbatim}
+% is identical to the example above.
+%
+% The effect of scaled kernings can be seen in the example on
+% Page~\pageref{page:example} and in Figure~\ref{fig:example} where
+% ``\u A'' has half the scaling of ``A'' and ``\AA''.
+%
+% If two glyphs with scalings different from |1000| meet each other
+% both scaling factors are multiplicated.
+%
+% There are some interesting commands to handle these glyph classes.
+% Please have a look in Section~\ref{sec:glyphclasses} for their
+% description.
+%
+%
+% \section{Configuration file}
+%
+% If you are too lazy to put the same options into every source file
+% you may write all options except |family| into the configuration
+% file |kerntest.cfg| and put it into the \LaTeX\ path.
+% If it is present, it is loaded automatically.
+%
+%
+%
+% \section{Kerning pairs that are often missing}
+%
+% This section shows some kerning pairs that are often missing, even
+% in expensive fonts. 
+% This problem arises since most fonts are merely designed for the
+% English language.
+%
+% \subsection{Character combinations}
+%
+% Some glyphs need a kerning to many other glyphs, including ``A'',
+% ``T'', ``V'', ``W'', and ``Y''.
+% For the ordinary lowercase letters, these kernings are included in
+% most fonts (if the lowercase letter is on the right of the capital).
+% But often, glyphs of other Languages than English are forgotten,
+% e.g., ``T\c c'', ``V\'e'', etc. 
+% But you may not simply copy all kernings of, for instance, ``Ta'' to
+% ``T\"a'', ``T\'a'', ``T\aa'', ``T\c a'' etc.
+% Often, these glyphs have parts that force the kerning to be reduced
+% or even deleted.
+%
+% Most character pairs with the uppercase letters (``A'', ``T'',
+% ``V'', ``W'', ``Y'') after a lowercase letters are not kerned in the
+% fonts.
+% In most cases, this should not be a problem because these
+% combinations are never printed. (Nowadays, its getting more and more
+% important to have these kernings since it is a fashion to use
+% uppercase letters within words, e.g., ``ServicePoint''.\footnote{The
+% German railway company really uses this term!})
+% But some combinations really should be kerned: ``eV''
+% (electronvolt), ``mV'' (millivolt).
+%
+% \subsection{Quotation marks}
+%
+% Most fonts don't provide kerning for quotation marks other than the
+% English ones.
+% In English, ``Hello'' is used (``66--99'').
+% French uses << and >>: <<Bonjour>>.
+% In German, the three possibilities ,,Hallo`` (``99--66''),
+% >>Hallo<<, and >>Hallo<< are used.
+% In Italian, <<Ciao>> or ``Ciao,, are possible.
+% Swedish uses >>Hi>> or ''Hi''~\cite{forssman2002a}.
+% For all non-English possibilities, most fonts have no kerning
+% information.
+% Thus, you should generate five tables for every font, hopefully
+% containing all possibilities (\char019H\char020,
+% \char020H\char019, \char016H\char017, \char018H\char016,
+% \char017H\char018):
+% |\testkern{019}{-}{|\meta{glyph}|}{-}{020}|,
+% |\testkern{020}{-}{|\meta{glyph}|}{-}{019}|,
+% |\testkern{016}{-}{|\meta{glyph}|}{-}{017}|,
+% |\testkern{018}{-}{|\meta{glyph}|}{-}{016}|,
+% |\testkern{017}{-}{|\meta{glyph}|}{-}{018}|, 
+% where \meta{glyph} stands for all 256 glyphs contained in a T1
+% encoded font.
+%
+% All problems mentioned for the double quotation marks apply also for
+% their single variants (\glq, \grq, ', \flq, and \frq). 
+% In most cases, they need the same kerning as their double
+% counterparts.
+%
+% There are two templates enclosed to build these kerning tables:
+% |t1-XXX-m-n.tex| and |ts1-XXX-m-n.tex|.
+% Hopefully, the names tell you which one to use.
+% They contain some comments that should help to use them.
+%
+% One (repeated) remark:
+% Please don't overdo the kerning if you adjust it.
+% In most cases, good is less than you think on first sight.
+% You can also orientate on predefined kernings. 
+% For example, the kerning for A`` should be similar to A''.
+%
+% But you are still not save to get the correct kerning when your font
+% knows them.
+% This is due to the fact that there are multiple possibilities to
+% access the quotation marks.
+% For example, << can be produced by |<<|, \cs{guillemotleft}, and
+% even by \cs{symbol\{19\}} (if you are using T1 encoding).
+% If you use |inputenc.sty| you may use the characters directly,
+% e.g.,~|«|.
+% And after loading |babel.sty|, you can use \cs{flqq} and when writing
+% German |"<|.
+%
+% These possibilities are not equivalent.
+%
+% \begin{sloppypar}
+% The direct commands \cs{textquotedblleft}, \cs{textquotedblright},
+% \cs{quotedblbase}, \cs{guillemotleft}, \cs{guillemotright},
+% \cs{textquoteleft}, \cs{textquoteright}, \cs{quotesinglbase},
+% \cs{guilsinglleft}, and \cs{guilsinglright} work properly; they kern
+% on their left and their right side.
+% \end{sloppypar}
+% The directly written quotation marks (|«|, |»|, etc.) also work
+% correctly because the corresponding encoding file (e.g.,
+% |latin1.def|) translates them to the direct commands.
+%
+% The ligatures |``| and |''| seem also to work correctly.
+% But the ligature |,,| kerns correctly on its right side, but on its
+% left side, it kerns as a comma.
+% This may also be correct but it needn't be always the case.
+% |<<| and |>>| do not kern at all on their left side.\footnote{I
+%   believe they kern as |<| reps.\ |>|. But these characters don't
+%   have any kerning information in most cases.}
+%
+% Looking at the |babel| commands, only \cs{grqq} and \cs{grq} surely
+% work correct.
+% The others (\cs{glqq}, \cs{glq}, \cs{flqq}, \cs{flq}, \cs{frqq},
+% \cs{frq}) are defined differently and thus do not guarantee to kern
+% correctly.
+% On 2003/04/01, I have posted a bug report.
+% Let's see what happens.
+%
+% The |babel| shortcuts |"`|, |"'|, |"<|, and |">| work as good as the
+% corresponding commands.
+%
+% If you want a correct behaviour of all |babel| quotation marks, just
+% copy the definition of \cs{grqq} (it contains of three command
+% definitions!) from |babel.def| into your code and change it
+% according to produce the other quotation marks.
+%
+% 
+% \section{An example of how to optimize a font}
+%
+% In this section, a very simple example is shown how to install a
+% single font shape with fontinst~\cite{fontinst1998a} and how to
+% change kernings for it. 
+% If you really want to understand what happens read the fontinst
+% manual~\cite{fontinst1998a}, ``\TeX\ Unbound'' by Alan
+% Hoenig~\cite{hoenig1998a}, or ``The Font Installation Guide'' by
+% Philipp Lehman~\cite{lehman2003a}.
+%
+% Ghostscript contains the font ``Century Schoolbook~L Roman'' which
+% is shipped as files |c059013l.afm| and |c059013l.pfb|.
+% Please copy these files into a temporary directory.
+%
+% According to Karl Berry's scheme, the fontname is |uncr8a|.
+% But this font is already prepared on most \TeX\ systems.
+% Thus we take the fontname |9ncr8a| here.
+% This will be the name for the result file.
+%
+% Then, run \TeX\ (not \LaTeX) on the script |schoolb1.tex| which does
+% most work to install a new font:
+% \verbatiminput{schoolb1.tex}
+% This run creates some files with the extensions |.pl| and |.vpl|.
+% They have to be converted to |tfm| and |vf| files as follows:
+% \verbatiminput{convert.sh}
+% Now, you can delete the temporary files with the extensions |.mtx|,
+% |.pl|, and |.vpl|.
+% 
+% The new font is ready for use with \LaTeX, now (only for T1 and TS1
+% encoding, OT1 encoding has been left out).
+% Just run \LaTeX\ on the test file |testschoolb.tex|.
+% But you are not yet able to use dvips or \textsc{pdf}\LaTeX\
+% because they need a |map| file.
+% The corresponding one, |schoolb.map| looks like this:
+% \verbatiminput{schoolb.map}
+% With help of this map file, the |dvi| file can be converted to
+% Postscript using dvips:
+% |dvips -u +./schoolb.map -o testeschoolb-1.ps testschoolb|
+% Unfortunately, you cannot use \textsc{pdf}\LaTeX\ without adding the
+% contents of |schoolb.map| to the global |map| file.
+%
+% When viewing the result in |testschoolb-1.ps|
+% (Fig.~\ref{fig:centuryschool1}), you see that this specific font
+% already has most kernings that are missing in other fonts.
+% \begin{figure}
+%   \centering
+%   \fboxsep=1mm
+%   \makebox[\textwidth][c]{%
+%     \fbox{\includegraphics[scale=1.0]{testschoolb-1}}}
+%   \caption{Font example for Century Schoolbook L with original kerning}
+%   \label{fig:centuryschool1}
+% \end{figure}
+% The only really forgotten kernings are A``, A`, \u A``, and
+% \quotesinglbase V.
+%
+% Emagine that many kernings were unsatisfactory.
+% Then, we generate a kerning table containing the glyph combinations
+% we do not like:
+% \verbatiminput{t1-9nc-m-n-1.tex}
+% \begin{figure}
+%   \centering
+%   \fboxsep=1mm
+%   \makebox[\textwidth][c]{%
+%     \fbox{\includegraphics[scale=0.8]{t1-9nc-m-n-1}}}
+%   \caption{Kerning table for Century Schoolbook L}
+%   \label{fig:centuryschool1-table}
+% \end{figure}
+% This leads to the output shown in
+% Fig.~\ref{fig:centuryschool1-table} and to the |mtx| file
+% |t1-9nc-m-n-1.mtx|:
+% \verbatiminput{t1-9nc-m-n-1.mtx}
+% Using this file, you can repeat the |fontinst| run with a slightly
+% changed script |schoolb2.tex|:
+% \verbatiminput{schoolb2.tex}
+% The only change amongst |schoolb1.tex| is the added entry
+% |t1-9nc-m-n-1,| at the beginning of the second argument of the
+% \cs{installfont\{9ncr8t\}} command.
+% This includes the new kernings into the generated font.
+% After repeating also the |pltotf| and |vptovf| calls, you can use
+% the font with the new kernings.
+% Running \LaTeX\ and dvips again on |testschoolb.tex| gives the
+% output of Fig.~\ref{fig:centuryschool2}.
+% \begin{figure}
+%   \centering
+%   \fboxsep=1mm
+%   \makebox[\textwidth][c]{%
+%     \fbox{\includegraphics[scale=1.0]{testschoolb-1}}}\\[\medskipamount]
+%   \makebox[\textwidth][c]{%
+%     \fbox{\includegraphics[scale=1.0]{testschoolb-2}}}
+%   \caption{Font example for Century Schoolbook L with original (top)
+%     and modified (bottom) kerning.
+%     The kerning is much too strong.
+%     Here, it only shows the effect of altering the kerning.}
+%   \label{fig:centuryschool2}
+% \end{figure}
+% Here, the kerning values are much too strong.
+% The only aim of this was to show a clear difference between original
+% and modified kerning.
+% Have a look at the \u A kernings.
+% They have been set to be half as large as the A kernings on both
+% sides.
+%
+% The last thing to do is to install the font files into the
+% corresponding paths of your \TeX\ distribution and to append the map
+% information to the global map files (normally by using |updmap|).
+%
+%
+% \begin{thebibliography}{9}
+%
+% \newcommand\ctanurl[1]{\url{ftp://ftp.dante.de/tex-archive/#1}}%
+%
+% \bibitem{berry1999a}
+% Karl Berry.
+% \newblock Fontname, May 2003.
+% \newblock \ctanurl{info/fontname/}.
+%
+% \bibitem{forssman2002a}
+% Friedrich Forssman, Ralf de Jong.
+% \newblock Detailtypografie, Verlag Hermann Schmidt, Mainz, Germany,
+% 2002.
+%
+% \bibitem{hoenig1998a}
+% Alan Hoenig.
+% \newblock \TeX\ Unbound---\LaTeX\ \&\ \TeX\ Strategies for Fonts,
+% Graphics, \&\ More, Oxford University Press, 1998.
+%
+% \bibitem{fontinst1998a}
+% Alan Jeffry, Rowland McDonnell.
+% \newblock fontinst---Font installation software for \TeX, June 1998.
+% \newblock \ctanurl{fonts/utilities/fontinst/}.
+%
+% \bibitem{lehman2003a}
+% Philipp Lehman.
+% \newblock The Font Installation Guide, August 2003.
+% \newblock \ctanurl{info/Type1fonts/fontinstallationguide.pdf}.
+%
+%\end{thebibliography}
+%
+% \StopEventually{\PrintChanges \PrintIndex}
+%
+% \section{The implementation}
+%
+% Heading of all files.
+%    \begin{macrocode}
+%<class>\ProvidesClass{kerntest}
+%<mtx&t1>\ProvidesFile{t1mtx.clo}
+%<mtx&ts1>\ProvidesFile{ts1mtx.clo}
+%<mtx&ot1>\ProvidesFile{ot1mtx.clo}
+%<mtx&t2a>\ProvidesFile{t2amtx.clo}
+%<mtx&t2b>\ProvidesFile{t2bmtx.clo}
+%<mtx&ly1>\ProvidesFile{ly1mtx.clo}
+%<version>\ProvidesFile{krntst-v.tex}
+%<class|mtx|version>  [2004/04/14  v1.32  Generate kerning tables]
+%    \end{macrocode}
+%
+% \subsection{Class file}
+%
+% Use a standard class as base.
+%    \begin{macrocode}
+%<*class>
+\LoadClass[10pt]{article}
+%    \end{macrocode}
+% Use most of the space on the paper.
+%    \begin{macrocode}
+\RequirePackage[top=18mm,left=15mm,right=15mm,bottom=20mm]{geometry}
+%    \end{macrocode}
+% \changes{1.32}{2004/04/14}{Do not scale Helvetica by default because
+%   this breaks testing Helvetica}%
+% Font for the legends.
+%    \begin{macrocode}
+\renewcommand*\familydefault{\sfdefault}
+\RequirePackage{helvet}
+%    \end{macrocode}
+% More required packages.
+%    \begin{macrocode}
+\RequirePackage{calc}
+\RequirePackage{longtable}
+\RequirePackage{array}
+\RequirePackage{color}
+\RequirePackage{ifthen}
+\RequirePackage{keyval}
+%    \end{macrocode}
+% Layout settings.
+%    \begin{macrocode}
+\pagestyle{myheadings}
+\def\@oddfoot{Kerning data, marked with $\ast$, are automatically reused
+  from values given before.
+  Repeated values are marked by $\dagger$.\hfill}
+\def\@evenfoot{\@oddfoot}
+\setlength{\parindent}{0mm}
+%    \end{macrocode}
+% Declare lengths for the font size and the baselineskip.
+%    \begin{macrocode}
+\newlength\krntst@size
+\newlength\krntst@baselineskip
+%    \end{macrocode}
+% Set the default values for the class options.
+%    \begin{macrocode}
+\def\krntst@encoding{T1}
+\def\krntst@series{m}
+\def\krntst@shape{n}
+\setlength\krntst@size{17.28pt}
+\setlength\krntst@baselineskip{1.2\krntst@size}
+\def\krntst@example{example}
+\def\krntst@extraname{}
+\definecolor{oldcolor}{gray}{0.5}
+\definecolor{newcolor}{gray}{0}
+\newboolean{krntst@writeall}
+%    \end{macrocode}
+% The design size is given as command rather than as length because it
+% shall not be calculated to a real length (in pt), but it shall scale
+% with the chosen font.
+%    \begin{macrocode}
+\newcommand\krntst@designsize{1em}
+%    \end{macrocode}
+% Process the class options using the |keyval| package.
+%    \begin{macrocode}
+\def\ProcessOptionsWithKV#1{%
+  \let\@tempc\relax
+  \let\KVo@tempa\@empty
+  \edef\KVo@tempa{%
+    \noexpand\setkeys{#1}{%
+      \@ptionlist{\@currname.\@currext}%
+    }%
+  }%
+  \KVo@tempa
+  \let\CurrentOption\@empty
+}
+%    \end{macrocode}
+% Define the keys for the class options and the \cs{kernsetup}
+% command.
+%    \begin{macrocode}
+\define@key{krntst}{encoding}{\def\krntst@encoding{#1}}
+\define@key{krntst}{family}{\def\krntst@family{#1}}
+\define@key{krntst}{series}{\def\krntst@series{#1}}
+\define@key{krntst}{shape}{\def\krntst@shape{#1}}
+\define@key{krntst}{size}{%
+  \setlength\krntst@size{#1}%
+  \setlength\krntst@baselineskip{1.2\krntst@size}%
+}
+\define@key{krntst}{baselineskip}{\setlength\krntst@baselineskip{#1}}
+\define@key{krntst}{designsize}{\def\krntst@designsize{#1}}%
+\define@key{krntst}{example}{\def\krntst@example{#1}}
+\define@key{krntst}{papersize}{\geometry{#1}}
+\define@key{krntst}{extraname}{\def\krntst@extraname{-#1}}
+\define@key{krntst}{color}[true]{%
+  \csname if#1\endcsname
+    \definecolor{oldcolor}{gray}{0}%
+    \definecolor{newcolor}{rgb}{1,0,0}%
+  \else
+    \definecolor{oldcolor}{gray}{0.5}%
+    \definecolor{newcolor}{gray}{0}%
+  \fi
+}
+%    \end{macrocode}
+% Do the copying of quotation marks by introducing glyph classes.
+%    \begin{macrocode}
+\define@key{krntst}{copyquotation}[true]{%
+  \csname if#1\endcsname
+    \newglyphclass{left}{leftguillemots}{guillemotleft,guilsinglleft}%
+    \newglyphclass{right}{leftguillemots}{guillemotleft,guilsinglleft}%
+    \newglyphclass{left}{rightguillemots}{guillemotright,guilsinglright}%
+    \newglyphclass{right}{rightguillemots}{guillemotright,guilsinglright}%
+    \newglyphclass{left}{leftquotes}{quotedblleft,quoteleft}%
+    \newglyphclass{right}{leftquotes}{quotedblleft,quoteleft}%
+    \newglyphclass{left}{rightquotes}{quotedblright,quoteright}%
+    \newglyphclass{right}{rightquotes}{quotedblright,quoteright}%
+    \newglyphclass{left}{basequotes}{quotedblbase,quotesinglbase}%
+    \newglyphclass{right}{basequotes}{quotedblbase,quotesinglbase}%
+  \fi
+}
+\define@key{krntst}{writeall}[true]{%
+  \setboolean{krntst@writeall}{#1}%
+  \ClassWarningNoLine{kerntest}{You are writing the new and the
+    original kerning data\MessageBreak
+    to the mtx file (option `writeall'). Normally, it is\MessageBreak
+    not necessary to write original data}%
+}
+\define@key{krntst}{footer}[true]{%
+  \csname if#1\endcsname
+  \else
+    \def\@oddfoot{}%
+    \def\@evenfoot{\@oddfoot}%
+  \fi
+}
+%    \end{macrocode}
+% \begin{macro}{\kernsetup}
+% Define the macro \cs{kernsetup} and make it available only in the
+% preamble.
+%    \begin{macrocode}
+\newcommand\kernsetup{\setkeys{krntst}}
+\@onlypreamble\kernsetup
+%    \end{macrocode}
+% \end{macro}
+% \changes{1.10}{2004/04/06}{Load configuration file if available}%
+% Read in the configuration file if available.
+% Do it before processing the options to allow the options to
+% overwrite the configuration file entries.
+%    \begin{macrocode}
+\AtEndOfClass{%
+  \InputIfFileExists{kerntest.cfg}{%
+    \message{Configuration file `kerntest.cfg' loaded.}%
+  }{%
+    \message{No configuration file `kerntest.cfg' found.}%
+  }
+%    \end{macrocode}
+% Now, process the class options.
+%    \begin{macrocode}
+  \ProcessOptionsWithKV{krntst}
+%    \end{macrocode}
+% This has to do something with a problem in |keyval.sty|.
+% I do not really know what it does exactly.
+%    \begin{macrocode}
+  \let\@unprocessedoptions\relax
+}
+%    \end{macrocode}
+% Generate an error message if the class option |family| has not been
+% given in the \cs{documentclass} command.
+%    \begin{macrocode}
+\ifx\krntst@family\relax
+  \ClassError{kerntest}{Class option family not or incorrect
+    given\@gobble}{%
+    You have to specify the font family by using the
+    class\MessageBreak
+    option family=<fontfamily>}%
+  \stop
+\fi
+%    \end{macrocode}
+% Redefine the |family| option to be unusable in the \cs{kernsetup}
+% command.
+%    \begin{macrocode}
+\AtEndOfClass{%
+  \define@key{krntst}{family}{%
+    \ClassError{kerntest}{Option `family' used outside
+      \string\documentclass\space command}{%
+      The option `family=<fontfamily>' has to be specified in the
+      optional argument\MessageBreak
+      of the \string\documentclass\space command.}%
+  }
+}
+%    \end{macrocode}
+% \begin{macro}{\mtxcomment}
+% Define a command that writes a comment to the |mtx| file.
+%    \begin{macrocode}
+\newcommand\mtxcomment[1]{%
+  \protected@write\mtxfile{}{\@percentchar\space #1}%
+}
+%    \end{macrocode}
+% \end{macro}
+% Define a command that is used to access the font for the legends.
+%    \begin{macrocode}
+\newcommand\krntst@helpfont{\normalfont\normalsize}
+%    \end{macrocode}
+% An internal counter that stores the slot of a glyph.
+%    \begin{macrocode}
+\newcounter{@glyphslot}%
+%    \end{macrocode}
+% The following commands have to be done at \cs{begin\{document\}} to
+% ensure that all \cs{kernsetup} calls have been made before.
+%    \begin{macrocode}
+\AtBeginDocument{%
+%    \end{macrocode}
+% Load all used encodings and |T1| for the legends.
+% If |T1| is used, it is loaded twice; it does not seem to be bad.
+%    \begin{macrocode}
+  \RequirePackage[\krntst@encoding,T1]{fontenc}
+%    \end{macrocode}
+% Load the file that provides the Postscript glyph names.
+% The trick to make it lowercase ist stolen from the |fontenc|
+% package.
+%    \begin{macrocode}
+  \edef\reserved@f{%
+    \lowercase{\def\noexpand\reserved@f{\krntst@encoding mtx.clo}}}%
+  \reserved@f
+  \InputIfFileExists\reserved@f{}{%
+    \ClassWarningNoLine{kerntest}{Postscript name file `\reserved@f'
+      not found.\MessageBreak 
+      The kerning table will be okay, but the generated mtx file will
+      not be usable}%
+    \newcommand\getpsname[1]{unknown character `##1'}%
+  }%
+%    \end{macrocode}
+% \changes{1.32}{2004/04/14}{Direct access on glyph names instead of
+%   parsing \cs{getpsname}}%
+% Generate macros of the form \cs{slotnumber@glyph@\meta{glyphname}}
+% that return the slot number for each glyph.
+% This is faster than parsing \cs{getpsname} for the searched glyph
+% (on the cost of memory).
+%    \begin{macrocode}
+  \setcounter{@glyphslot}{0}%
+  \whiledo{\the\c@@glyphslot<256}{%
+    \expandafter\edef
+    \csname slotnumber@glyph@\getpsname{\the\c@@glyphslot}\endcsname{%
+      \the\c@@glyphslot}%
+    \stepcounter{@glyphslot}%
+  }%
+%    \end{macrocode}
+% Initialise some font-specific things.
+% This is done in a group to save the normal legend font outside the
+% kerning table. 
+%    \begin{macrocode}
+  \begingroup
+%    \end{macrocode}
+% Switch to the font that shall be tested to see if the desired font
+% size is possible etc.
+%    \begin{macrocode}
+    \usefont{\krntst@encoding}{\krntst@family}{\krntst@series}{\krntst@shape}%
+    \fontsize{\krntst@size}{\krntst@baselineskip}\selectfont%
+%    \end{macrocode}
+% Set the Postscript font unit to 0.001 of the design size which is
+% 1\,em, normally.
+%    \begin{macrocode}
+    \psunit=\krntst@designsize\relax
+    \global\psunit=0.001\psunit
+%    \end{macrocode}
+% Give some feedback.
+%    \begin{macrocode}
+    \typeout{Requested: \krntst@encoding-\krntst@family-%
+      \krntst@series-\krntst@shape, size \the\krntst@size}%
+    \typeout{Using:\space\space\space\space\space \f@encoding-\f@family-%
+      \f@series-\f@shape, size \f@size pt}%
+    \expandafter\ifdim\the\krntst@size=\f@size pt\relax
+    \else
+      \ClassWarningNoLine{kerntest}{Using different font size than
+        requested}%
+    \fi
+    \setlength{\@tempdima}{\krntst@designsize}%
+    \typeout{Postscript font unit for design size \the\@tempdima:
+      \the\psunit}%
+    \expandafter\ifdim\the\@tempdima=\f@size pt\relax
+    \else
+      \ClassWarningNoLine{kerntest}{The design size (\the\@tempdima,
+        1em by default,\MessageBreak
+        or given value from option `designsize') of the
+        font\MessageBreak
+        is not equal to the LaTeX font size (\f@size pt).\MessageBreak
+        This can have two reasons:\MessageBreak
+        1. The font does not define 1em to be the design
+        size\MessageBreak
+        \space\space\space (for example, Computer
+        Modern).\MessageBreak
+        2. The font is implicitely scaled by the fd-file\MessageBreak
+        \space\space\space (for example, when using
+        helvet.sty).\MessageBreak
+        This can cause the PostScript font unit length to
+        be\MessageBreak 
+        incorrect.
+        You may set the design size for calculation\MessageBreak
+        of the font unit explicitely by using the class\MessageBreak
+        option `designsize'}%
+    \fi
+%    \end{macrocode}
+% Define the name for the headings and the |mtx| file (lowercase trick
+% again taken from |fontenc.sty|).
+%    \begin{macrocode}
+    \edef\mtxfilename{%
+      \lowercase{\gdef\noexpand\mtxfilename{%
+          \f@encoding-\f@family-\f@series-\f@shape\krntst@extraname}}}%
+    \mtxfilename
+%    \end{macrocode}
+% Set the page headings.
+%    \begin{macrocode}
+    \markboth{\upshape Font \mtxfilename}{\upshape Font \mtxfilename}%
+%    \end{macrocode}
+% Don't change the page headings by \cs{section} etc.
+%    \begin{macrocode}
+%    \global\def\markboth#1#2{}%
+%    \global\def\markright#1{}%
+%    \end{macrocode}
+% Open the |mtx| file.
+%    \begin{macrocode}
+    \typeout{^^JWriting mtx file `\mtxfilename.mtx'^^J}%
+    \immediate\openout\mtxfile\mtxfilename.mtx
+%    \end{macrocode}
+% Write a nice header to the |mtx| file.
+%    \begin{macrocode}
+    \protected@write\mtxfile{}{\@percentchar\@percentchar}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      This is file `\mtxfilename.mtx',}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      generated on \number\year/\number\month/\number\day\space
+      by kerntest.cls, (c) 2004 Harald Harders.}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      The original source file was:}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      \jobname\space (.tex?) with these font options:}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      Encoding: \f@encoding}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      Family: \space\space\f@family}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      Series: \space\space\f@series}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      Shape: \space\space\space\f@shape}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      User-defined name: \krntst@extraname}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar}%
+    \protected@write\mtxfile{}{\string\relax}%
+    \protected@write\mtxfile{}{\string\metrics}%
+    \protected@write\mtxfile{}{\string\needsfontinstversion{1.926}}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      Kerning data for single characters and}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      the first members of the glyph classes.}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      After each \string\setkern\space entry, the glyph classes}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+      for both glyphs are given (./. means no class).}%
+    \protected@write\mtxfile{}{\@percentchar\@percentchar}%
+  \endgroup
+}
+%    \end{macrocode}
+% Declare the output handle for the |mtx| file.
+%    \begin{macrocode}
+\newwrite\mtxfile
+%    \end{macrocode}
+% Round a length to an integer value. 
+% I am sure this can be done easier, but it works.
+%    \begin{macrocode}
+\def\krntst@round#1.#2#3#4\@empty{%
+  \setlength\@tempdimc{#1pt}%
+  \if#2.%
+  \else
+    \ifnum#2>4
+      \ifnum#1#2<0
+        \addtolength\@tempdimc{-1.1pt}%
+      \else
+        \addtolength\@tempdimc{1.1pt}%
+      \fi
+    \fi
+  \fi
+  \edef\rnd@tempa{\strip@pt\@tempdimc}%
+  \expandafter\krntst@@round\rnd@tempa.000\@empty
+}
+%    \end{macrocode}
+% Calculate the rounded length.
+%    \begin{macrocode}
+\def\krntst@@round#1.#2#3\@empty{\def\kernlen{#1}}
+%    \end{macrocode}
+% \begin{macro}{\round}
+% The user routine for rounding lengths.
+% The rounded length is \emph{not} returned but saved in the macro
+% \cs{kernlen}.
+%    \begin{macrocode}
+\newcommand*\round[1]{%
+  \setlength\@tempdimc{#1}%
+  \edef\rnd@tempa{\strip@pt\@tempdimc}%
+  \expandafter\krntst@round\rnd@tempa.000\@empty
+}
+%    \end{macrocode}
+% \end{macro}
+% Define the Postscript font length.
+%    \begin{macrocode}
+\newlength\psunit
+%    \end{macrocode}
+% \begin{macro}{\getpsunit}
+% Saves the rounded length of arbitrary unit in Postscript font units
+% in the dimension \cs{@tempdima}.
+% It has to be used with \cs{strip@pt} to get rid of the unit ``pt''
+% which is wrong of course.
+%    \begin{macrocode}
+\newcommand\getpsunit[1]{%
+  \setlength\@tempdima{1pt*\ratio{#1}{\psunit}}%
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\getkern}
+% Get the kerning between the arguments |#1| and |#2|.
+% This is done by typesetting |#1#2| with the natural kerning and with
+% supressed kerning (|#1\kern 0pt#2|).
+% The difference of the box widths is the kerning.
+% Return an integer value in Postscript font units.
+%    \begin{macrocode}
+\newcommand\getkern[2]{%
+  \settowidth\@tempdima{#1#2}%
+  \settowidth\@tempdimb{#1\kern0pt#2}%
+%    \end{macrocode}
+% The next line works better than deviding |\@tempdima-\@tempdimb| by
+% |0.001em| because rounding errors are avoided.
+%    \begin{macrocode}
+  \setlength\@tempdima{1pt*\ratio{(\@tempdima-\@tempdimb)*1000}{1em}}%
+  \round{\@tempdima}%
+}
+%    \end{macrocode}
+% \end{macro}
+% The internal routine for \cs{saveslotnumber}.
+% Finds out if a slot number or the Postscript name is given and saves
+% the slot number in the counter |@glyphslot|.
+%    \begin{macrocode}
+\def\@saveslotnumber#1#2\@empty{%
+  \if#1"\relax
+    \setcounter{@glyphslot}{#1#2}%
+  \else
+    \if#1'\relax
+      \setcounter{@glyphslot}{#1#2}%
+    \else
+      \ifnum9<1#1\relax
+        \setcounter{@glyphslot}{#1#2}%
+      \else
+        \begingroup\expandafter\expandafter\expandafter\endgroup
+        \expandafter\ifx\csname slotnumber@glyph@#1#2\endcsname\relax
+          \setcounter{@glyphslot}{-1}%
+        \else
+          \setcounter{@glyphslot}{\csname slotnumber@glyph@#1#2\endcsname}%
+        \fi
+      \fi
+    \fi
+  \fi
+  \ifnum\the\c@@glyphslot>255\relax
+    \setcounter{@glyphslot}{-1}%
+  \fi
+}
+%    \end{macrocode}
+% \begin{macro}{\saveslotnumber}
+% Saves the slot number of a glyph given as second argument (by
+% PostScript name or its slot number in decimals, octal, or
+% hexadecimals) in the counter specified in the first argument.
+%    \begin{macrocode}
+\DeclareRobustCommand*\saveslotnumber[2]{%
+  \expandafter\@saveslotnumber#2\@empty
+  \setcounter{#1}{\the\c@@glyphslot}%
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\getslotnumber}
+% Returns the slot number of a given glyph (by PostScript name or its
+% slot number in decimals, octal, or hexadecimals) in a decimal number.
+%    \begin{macrocode}
+\newcommand\getslotnumber[1]{%
+  \expandafter\@saveslotnumber#1\@empty
+  \ifnum\the\c@@glyphslot<0\relax
+    \textbf{???}%
+  \else
+    \ifnum\c@@glyphslot<100\relax0\fi
+    \ifnum\c@@glyphslot<10\relax0\fi
+    \the\c@@glyphslot
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\printglyph}
+% Print the glyph with the given PostScript name or slot number (in
+% decimals, octal, or hexadecimals; as usual in \LaTeX).
+% Unfortunately, no kerning appears on the left side of the printed
+% glyph.
+% For example, |\printglyph{A}V| is kerned, but |A\printglyph{V}|
+% isn't.
+% You can solve this by saving the slot number first and by using it
+% later, for example:
+%\begin{verbatim}
+%\newcounter{slotV}%
+%\saveslotnumber{slotV}{V}%
+%A\char\arabic{slotV}
+%\end{verbatim}
+%    \begin{macrocode}
+\newcommand*\printglyph[1]{%
+  \expandafter\@saveslotnumber#1\@empty
+  \char\the\c@@glyphslot
+}
+%    \end{macrocode}
+% \end{macro}
+% A help macro for comparing arguments with ``|-|''.
+%    \begin{macrocode}
+\edef\@minussign{-}%
+%    \end{macrocode}
+% Counters storing the slot numbers for the three glyphs used within
+% one line of the |kerntable| environment.
+%    \begin{macrocode}
+\newcounter{@slota}
+\newcounter{@slotb}
+\newcounter{@slotc}
+%    \end{macrocode}
+% \begin{macro}{\testkern}
+% The main macro of the class.
+% It takes 5 arguments:\\
+% \marg{glyph 1}\marg{kerning 1--2}\marg{glyph 2}\marg{kerning
+% 2--3}\marg{glyph 3}.\\
+% The glyphs are given by their number, not the glyphs itself.
+%    \begin{macrocode}
+\newcommand\testkern[5]{%
+%    \end{macrocode}
+% Save the kerning arguments globally because otherwise they got lost
+% from tabular cell to tabular cell.
+%    \begin{macrocode}
+  \xdef\@kernlena{#2}%
+  \xdef\@kernlenb{#4}%
+%    \end{macrocode}
+% Get the slot numbers for the three characters and save them in the
+% counters |@slota|, |@slotb|, and |@slotc|.
+%    \begin{macrocode}
+  \saveslotnumber{@slota}{#1}%
+  \ifnum\the\c@@slota<0%
+    \ClassError{kerntest}{Used unknown glyph `#1'}{%
+      You may have misspelled the glyph or you have taken an invalid
+      number.}%
+    \setcounter{@slota}{0}%
+  \fi
+  \saveslotnumber{@slotb}{#3}%
+  \ifnum\the\c@@slotb<0%
+    \ClassError{kerntest}{Used unknown glyph `#3'}{%
+      You may have misspelled the glyph or you have taken an invalid
+      number.}%
+    \setcounter{@slotb}{0}%
+  \fi
+  \saveslotnumber{@slotc}{#5}%
+  \ifnum\the\c@@slotc<0%
+    \ClassError{kerntest}{Used unknown glyph `#5'}{%
+      You may have misspelled the glyph or you have taken an invalid
+      number.}%
+    \setcounter{@slotc}{0}%
+  \fi
+%    \end{macrocode}
+% Find out if there are old kerning data for one of the two glyph
+% pairs.
+%
+% First pair.
+%
+% The better form of \cs{@ifundefined} that does not define its
+% argument as side-effect.
+%    \begin{macrocode}
+  \begingroup\expandafter\expandafter\expandafter\endgroup
+  \expandafter\ifx\csname kt@kerning@\getpsname{\the\c@@slota}@%
+  \getpsname{\the\c@@slotb}\endcsname\relax
+%    \end{macrocode}
+% No old kerning.
+% Thus don't do any kerning later.
+%    \begin{macrocode}
+    \gdef\oldkerna{}%
+  \else
+%    \end{macrocode}
+% Old kerning exists.
+% Save the old kerning to apply it later.
+%    \begin{macrocode}
+    \gdef\oldkerna{%
+      \kern
+      \csname kt@kerning@\getpsname{\the\c@@slota}@%
+      \getpsname{\the\c@@slotb}\endcsname
+      \psunit
+    }%
+%    \end{macrocode}
+% If no new kerning ist given just tell the user that he reuses a
+% kerning.
+%    \begin{macrocode}
+    \ifx\@kernlena\@minussign
+      \typeout{Kerning pair for \getpsname{\the\c@@slota}-%
+        \getpsname{\the\c@@slotb} reused (value
+        \csname kt@kerning@\getpsname{\the\c@@slota}@%
+        \getpsname{\the\c@@slotb}\endcsname).}%
+    \else
+%    \end{macrocode}
+% Old kerning exists and new kerning, too.
+% Test if the old and new kernings are identical.
+%    \begin{macrocode}
+      \ifnum\@kernlena=\csname kt@kerning@\getpsname{\the\c@@slota}@%
+      \getpsname{\the\c@@slotb}\endcsname\relax
+%    \end{macrocode}
+% Yes.
+% Nevertheless, generate a warning.
+%    \begin{macrocode}
+        \ClassWarning{kerntest}{Kerning for
+          \getpsname{\the\c@@slota}-\getpsname{\the\c@@slotb}\MessageBreak
+          repeated (value #2)}% 
+      \else
+%    \end{macrocode}
+% No.
+% Produce an erroe message.
+%    \begin{macrocode}
+        \ClassError{kerntest}{Conflicting kerning for
+          \getpsname{\the\c@@slota}-\getpsname{\the\c@@slotb}\MessageBreak
+          (new value #2 != old value
+          \csname kt@kerning@\getpsname{\the\c@@slota}@%
+          \getpsname{\the\c@@slotb}\endcsname)%
+        }{% 
+          You have given the kerning for the specified glyph pair
+          twice with different\MessageBreak
+          values. This may also appear when using glyph classes.
+          You have to give the\MessageBreak
+          kerning only once per glyph class.\MessageBreak
+          You may leave out the second kerning pair, or you may
+          give\MessageBreak
+          the kerning `-'. Then, the old value is reused.
+        }%
+      \fi
+    \fi
+  \fi
+%    \end{macrocode}
+% Second pair.
+%    \begin{macrocode}
+  \begingroup\expandafter\expandafter\expandafter\endgroup
+  \expandafter\ifx\csname kt@kerning@\getpsname{\the\c@@slotb}@%
+  \getpsname{\the\c@@slotc}\endcsname\relax
+    \gdef\oldkernb{}%
+  \else
+    \gdef\oldkernb{%
+      \kern
+      \csname kt@kerning@\getpsname{\the\c@@slotb}@%
+      \getpsname{\the\c@@slotc}\endcsname
+      \psunit
+    }%
+%
+    \ifx\@kernlenb\@minussign
+      \typeout{Kerning pair for \getpsname{\the\c@@slotb}-%
+        \getpsname{\the\c@@slotc} reused (value
+        \csname kt@kerning@\getpsname{\the\c@@slotb}@%
+        \getpsname{\the\c@@slotc}\endcsname).}%
+    \else
+      \ifnum\@kernlenb=\csname kt@kerning@\getpsname{\the\c@@slotb}@%
+      \getpsname{\the\c@@slotc}\endcsname\relax
+        \ClassWarning{kerntest}{Kerning for
+          \getpsname{\the\c@@slotb}-\getpsname{\the\c@@slotc}\MessageBreak
+          repeated (value #4)}% 
+      \else
+        \ClassError{kerntest}{Conflicting kerning for
+          \getpsname{\the\c@@slotb}-\getpsname{\the\c@@slotc}\MessageBreak
+          (new value #4 != old value
+          \csname kt@kerning@\getpsname{\the\c@@slotb}@%
+          \getpsname{\the\c@@slotc}\endcsname)%
+        }{% 
+          You have given the kerning for the specified glyph pair
+          twice with different\MessageBreak
+          values. This may also appear when using glyph classes.
+          You have to give the\MessageBreak
+          kerning only once per glyph class.\MessageBreak
+          You may leave out the second kerning pair, or you may
+          give\MessageBreak
+          the kerning `-'. Then, the old value is reused.
+        }%
+      \fi
+    \fi
+  \fi
+%    \end{macrocode}
+% First, type the slot number of glyph~2.
+%    \begin{macrocode}
+  \krntst@helpfont\getslotnumber{#3}%
+  &
+%    \end{macrocode}
+% Type the postscript name of glyph~2.
+%    \begin{macrocode}
+  \krntst@helpfont\getpsname{\the\c@@slotb}%
+  &
+%    \end{macrocode}
+% Print the three glyphs with original kerning.
+%    \begin{macrocode}
+  \char\the\c@@slota\char\c@@slotb\char\c@@slotc%
+  &
+%    \end{macrocode}
+% Print glyph~1.
+%    \begin{macrocode}
+  \char\the\c@@slota%
+%    \end{macrocode}
+% If a kerning is given, apply it; otherwise do nothing.
+%    \begin{macrocode}
+  \ifx\@kernlena\@minussign
+    \oldkerna
+  \else
+    \kern#2\psunit
+  \fi
+%    \end{macrocode}
+% Print glyph~2.
+%    \begin{macrocode}
+  \char\the\c@@slotb%
+%    \end{macrocode}
+% If a kerning is given, apply it; otherwise do nothing.
+%    \begin{macrocode}
+  \ifx\@kernlenb\@minussign
+    \oldkernb
+  \else
+    \kern#4\psunit
+  \fi
+%    \end{macrocode}
+% Print glyph~3.
+%    \begin{macrocode}
+  \char\the\c@@slotc%
+  &
+%    \end{macrocode}
+% Do the same as in columns 2 and 3, but twice at the same place.
+% First, natural kerning.
+%    \begin{macrocode}
+  \color{oldcolor}%
+  \makebox[0pt][l]{\char\the\c@@slota\char\the\c@@slotb\char\the\c@@slotc}%
+%    \end{macrocode}
+% Second, newly given kerning.
+% Switch the color depending if a kerning has been given.
+%    \begin{macrocode}
+  \ifx\@kernlena\@minussign
+    \ifthenelse{\equal{\oldkerna}{}}{}{\color{newcolor}}%
+  \else
+    \color{newcolor}%
+  \fi
+  \ifx\@kernlenb\@minussign
+    \ifthenelse{\equal{\oldkernb}{}}{}{\color{newcolor}}%
+  \else
+    \color{newcolor}%
+  \fi
+  \char\the\c@@slota%
+  \ifx\@kernlena\@minussign
+    \oldkerna
+  \else
+    \kern#2\psunit
+  \fi
+  \char\the\c@@slotb%
+  \ifx\@kernlenb\@minussign
+    \oldkernb
+  \else
+    \kern#4\psunit
+  \fi
+  \char\the\c@@slotc%
+  &
+%    \end{macrocode}
+% Get the value of the natural kerning.
+% This has to be done with the tested font switched on to get the
+% right values.
+% This value is saved in \cs{kernlen} for later use.
+%    \begin{macrocode}
+  \getkern{\char\the\c@@slota}{\char\the\c@@slotb}%
+%    \end{macrocode}
+% Switch to the legend font.
+%    \begin{macrocode}
+  \krntst@helpfont
+%    \end{macrocode}
+% If no kerning is given (\marg{kerning 1--2}|=-|) print out the
+% original kerning.
+% The part \cs{ifdim}\ldots\cs{fi} adds a |-| if the kerning is
+% negative.
+% Together with the negative kerning, this gives a ``--'' instead of a
+% ``-''.
+%    \begin{macrocode}
+  \ifx\@kernlena\@minussign
+    \ifthenelse{\equal{\oldkerna}{}}{%
+      \textcolor{oldcolor}{\small
+        \ifdim\kernlen pt<0pt-\fi
+        \ifdim\kernlen pt>0pt+\fi
+        \kernlen}%
+    }{%
+      \ifnum\kernlen=0\relax
+      \else
+        \textcolor{oldcolor}{\small(%
+          \ifdim\kernlen pt<0pt-\fi
+          \ifdim\kernlen pt>0pt+\fi
+          \kernlen)}%
+      \fi
+      ~\textcolor{newcolor}{\large
+        \ifnum
+        \csname kt@kerning@\getpsname{\the\c@@slota}@%
+        \getpsname{\the\c@@slotb}\endcsname<0-\fi
+        \csname kt@kerning@\getpsname{\the\c@@slota}@%
+        \getpsname{\the\c@@slotb}\endcsname
+        \makebox[0pt][l]{$^\ast$}%
+      }%
+    }%
+%    \end{macrocode}
+% Write old kerning to |mtx| file.
+%    \begin{macrocode}
+    \ifthenelse{\boolean{krntst@writeall}\and\not\equal{\kernlen}{0}}{%
+      \writemtxkern[original kerning]{\the\c@@slota}{%
+        \ifdim\kernlen pt>0pt+\fi\kernlen}{\the\c@@slotb}%
+      }{}%
+%    \end{macrocode}
+% If a kerning is given print the new kerning (same trick with
+% negative numbers).
+%    \begin{macrocode}
+  \else
+%    \end{macrocode}
+% If there were original kerning data, print the in parenthesis first.
+%    \begin{macrocode}
+    \ifdim\kernlen pt=0pt
+    \else
+      \textcolor{oldcolor}{\small(%
+        \ifdim\kernlen pt<0pt-\fi
+        \ifdim\kernlen pt>0pt+\fi
+        \kernlen)}
+    \fi
+    \textcolor{newcolor}{\large
+      \ifnum#2<0-\fi#2%
+      \ifthenelse{\equal{\oldkerna}{}}{%
+      }{\makebox[0mm][l]{$^\dagger$}}%
+    }%
+%    \end{macrocode}
+% Write the new kerning information into the |mtx| file.
+%    \begin{macrocode}
+    \ifthenelse{\equal{\oldkerna}{}}{%
+      \writemtxkern{\the\c@@slota}{#2}{\the\c@@slotb}%
+    }{}%
+  \fi
+  &
+%    \end{macrocode}
+% Do the same for the second kerning pair.
+%    \begin{macrocode}
+  \getkern{\char\the\c@@slotb}{\char\the\c@@slotc}%
+  \krntst@helpfont
+  \ifx\@kernlenb\@minussign
+    \ifthenelse{\equal{\oldkernb}{}}{%
+      \textcolor{oldcolor}{\small
+        \ifdim\kernlen pt<0pt-\fi
+        \ifdim\kernlen pt>0pt+\fi
+        \kernlen}%
+    }{%
+      \ifnum\kernlen=0\relax
+      \else
+        \textcolor{oldcolor}{\small(%
+          \ifdim\kernlen pt<0pt-\fi
+          \ifdim\kernlen pt>0pt+\fi
+          \kernlen)}%
+      \fi
+      ~\textcolor{newcolor}{\large
+        \ifnum
+        \csname kt@kerning@\getpsname{\the\c@@slotb}@%
+        \getpsname{\the\c@@slotc}\endcsname<0-\fi
+        \csname kt@kerning@\getpsname{\the\c@@slotb}@%
+        \getpsname{\the\c@@slotc}\endcsname
+        \makebox[0pt][l]{$^\ast$}%
+      }%
+    }%
+    \ifthenelse{\boolean{krntst@writeall}\and\not\equal{\kernlen}{0}}{%
+      \writemtxkern[original kerning]{\the\c@@slotb}{%
+        \ifdim\kernlen pt>0pt+\fi\kernlen}{\the\c@@slotc}%
+    }{}%
+  \else
+    \ifdim\kernlen pt=0pt
+    \else
+      \textcolor{oldcolor}{\small(%
+        \ifdim\kernlen pt<0pt-\fi
+        \ifdim\kernlen pt>0pt+\fi
+        \kernlen)}
+    \fi
+    \textcolor{newcolor}{\large
+      \ifnum#4<0-\fi#4%
+      \ifthenelse{\equal{\oldkernb}{}}{%
+        }{\makebox[0mm][l]{$^\dagger$}}%
+    }%
+    \ifthenelse{\equal{\oldkernb}{}}{%
+      \writemtxkern{\the\c@@slotb}{#4}{\the\c@@slotc}%
+    }{}%
+  \fi
+  &
+%    \end{macrocode}
+% Print the example with natural kerning.
+%    \begin{macrocode}
+  \char\the\c@@slota\char\the\c@@slotb
+  \krntst@example
+  \char\the\c@@slotb\char\the\c@@slotc
+  &
+%    \end{macrocode}
+% Print the example with new kerning.
+%    \begin{macrocode}
+  \char\the\c@@slota%
+  \ifx\@kernlena\@minussign
+  \else
+    \kern#2\psunit
+  \fi
+  \char\the\c@@slotb\krntst@example\char\the\c@@slotb
+  \ifx\@kernlenb\@minussign
+  \else
+    \kern#4\psunit
+  \fi
+  \char\the\c@@slotc%
+  &
+%    \end{macrocode}
+% Switch to legend font for the comments that may appear.
+%    \begin{macrocode}
+  \krntst@helpfont\ignorespaces
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{environment}{kerntable}
+% The kerning table environment.
+%    \begin{macrocode}
+\newenvironment{kerntable}{%
+%    \end{macrocode}
+% Switch to the tested font.
+%    \begin{macrocode}
+  \usefont{\krntst@encoding}{\krntst@family}{\krntst@series}{\krntst@shape}%
+  \fontsize{\krntst@size}{\krntst@baselineskip}\selectfont%
+%    \end{macrocode}
+% Start a |longtable| environment for the kerning samples.
+%    \begin{macrocode}
+  \begin{longtable}[l]{@{}lll@{~}l@{~}l@{~}rrlll@{}}
+%    \end{macrocode}
+% Type the header of the table.
+%    \begin{macrocode}
+    \krntst@helpfont slot& 
+    \krntst@helpfont name& 
+    \krntst@helpfont orig&
+    \krntst@helpfont new&
+    \krntst@helpfont both&
+    \krntst@helpfont k.\,1&
+    \krntst@helpfont k.\,2&
+    \krntst@helpfont orig.&
+    \krntst@helpfont new&
+    \krntst@helpfont comment\\
+    \endhead
+%    \end{macrocode}
+% Repeat it as footer.
+%    \begin{macrocode}
+    \krntst@helpfont slot& 
+    \krntst@helpfont name& 
+    \krntst@helpfont orig&
+    \krntst@helpfont new&
+    \krntst@helpfont both&
+    \krntst@helpfont k.\,1&
+    \krntst@helpfont k.\,2&
+    \krntst@helpfont orig.&
+    \krntst@helpfont new&
+    \krntst@helpfont comment\\
+    \endfoot
+  }{%
+%    \end{macrocode}
+% And now the end of the table.
+%    \begin{macrocode}
+  \end{longtable}%
+  \ignorespacesafterend
+}
+%    \end{macrocode}
+% \end{environment}
+% \begin{macro}{\writemtxkern}
+% \changes{1.32}{2004/04/14}{Speed up \cs{writemtxkern}}%
+% \changes{1.10}{2004/04/06}{Handle optional comment}%
+% Write an entry into the |mtx| file.
+% This command copies double quotes to single quotes if requested
+% (only if no optional argument is given).
+%    \begin{macrocode}
+\newif\if@tempswb
+\newcommand\writemtxkern[4][\@empty]{%
+%    \end{macrocode}
+% Store the glyph names of both glyphs in \cs{@firstglyphname} and
+% \cs{@secondglyphname}.
+%    \begin{macrocode}
+  \expandafter\@saveslotnumber#2\@empty
+  \edef\@firstglyphname{\getpsname{\c@@glyphslot}}%
+  \expandafter\@saveslotnumber#4\@empty
+  \edef\@secondglyphname{\getpsname{\c@@glyphslot}}%
+%    \end{macrocode}
+% Test if a comment has been given. 
+%    \begin{macrocode}
+  \ifthenelse{\equal{#1}{\@empty}}{%
+%    \end{macrocode}
+% Get the corresponding glyph class for the first character and save
+% it in \cs{rightkern}.
+% If none, \cs{rightkern} is set to \cs{@empty}.
+%    \begin{macrocode}
+    \edef\rightkern{\getclassofglyph{right}{\@firstglyphname}}%
+%    \end{macrocode}
+% If the glyph is in no glyph class, make a temporary glyph class
+% \cs{rightkern} which contains only this glyph.
+% Define the comment \cs{textright} for the |mtx| file.
+%    \begin{macrocode}
+    \ifthenelse{\equal{\rightkern}{\@empty}}{%
+      \edef\textright{./.}%
+      \def\rightkern{@firstglyphname}%
+    }{%
+      \edef\textright{\expandafter\@getclassname\rightkern\@empty}%
+    }%
+%    \end{macrocode}
+% Get the corresponding glyph class for the second character and save
+% it in \cs{leftkern}.
+% If none, \cs{leftkern} is set to \cs{@empty}.
+%    \begin{macrocode}
+    \edef\leftkern{\getclassofglyph{left}{\@secondglyphname}}%
+%    \end{macrocode}
+% If the glyph is in no glyph class, make a temporary glyph class
+% \cs{leftkern} which contains only this glyph.
+% Define the comment \cs{leftright} for the |mtx| file.
+%    \begin{macrocode}
+    \ifthenelse{\equal{\leftkern}{\@empty}}{%
+      \edef\textleft{./.}%
+      \def\leftkern{@secondglyphname}%
+    }{%
+      \edef\textleft{\expandafter\@getclassname\leftkern\@empty}%
+    }%
+%    \end{macrocode}
+% Set the kernig data for all kerning pairs that can be found in both
+% glyph classes \cs{rightkern} and \cs{leftkern}.
+%    \begin{macrocode}
+    \@tempswbtrue
+    \@forallinclass{\rightkern}{first}{%
+      \@forallinclass{\leftkern}{second}{%
+%    \end{macrocode}
+% Write the kerning data to the |mtx| file, but only for the first
+% members of the glyph classes. 
+% The others are set in the |mtx| file by \cs{setrightkerning} and
+% \cs{setleftkerning}.
+%    \begin{macrocode}
+        \if@tempswb
+          \protected@write\mtxfile{}{%
+            \string\setkern
+            {\first}{\second}{#3}%
+            \@percentchar\space\space\textright\space-- \textleft
+          }% protected@write
+          \@tempswbfalse
+        \fi
+%    \end{macrocode}
+% Define a command \cs{kt@kerning@\meta{first glyph}@\meta{second
+% glyph}} that contains the kerning for later testing on conflicting
+% values.
+% Scale the kerning data according to the given values in
+% \cs{defglyphclass}.
+%    \begin{macrocode}
+        \setcounter{@tmpscale}{#3*\first@scaling*\second@scaling/1000000}%
+        \typeout{\first-\second: \the@tmpscale}%
+        \expandafter\xdef\csname kt@kerning@\first @\second\endcsname{%
+          \the@tmpscale}%
+%        \expandafter\xdef\csname kt@kerning@\first @\second\endcsname{#3}%
+      }% forallinclass second
+    }% forallinclass first
+  }{%
+%    \end{macrocode}
+% If an optional argument has been given, just write this kerning pair
+% without any tests.
+%    \begin{macrocode}
+    \protected@write\mtxfile{}{%
+      \string\setkern
+      {\@firstglyphname}{\@secondglyphname}{#3}%
+      \@percentchar\space\space #1%
+    }%
+%    \end{macrocode}
+% Nevertheless, generate the command for testing on conflicting values.
+%    \begin{macrocode}
+    \expandafter\xdef
+      \csname kt@kerning@\@firstglyphname@\@secondglyphname\endcsname{#3}%
+  }%
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsubsection{Glyph classes}%
+% \label{sec:glyphclasses}%
+%
+% \begin{macro}{\defglyphclass}
+% The macro
+% \cs{defglyphclass}\marg{side}\marg{name}\marg{glyphlist}
+% defines a class of glyphs that have the same kerning on the same
+% \meta{side} which has to be ``|left|'' or ``|right|''.
+% \meta{name} is the name of the glyph class while \meta{glyphlist} is
+% a comma-separated list of all glyphs that have the same kerning on
+% their \meta{side} side.
+%    \begin{macrocode}
+\newcounter{@tmpscale}
+\newcounter{@firstscale}
+\newcommand\defglyphclass[3]{%
+%    \end{macrocode}
+% Do it at \cs{begin\{document\}} because otherwise it is not clear
+% which encoding is used and thus the glyphs are not yet known.
+%    \begin{macrocode}
+  \AtBeginDocument{%
+%    \end{macrocode}
+% Test if a list of glyph classes exists for the chosen \meta{side}.
+%    \begin{macrocode}
+    \@ifundefined{glyphclasslist@#1}{%
+%    \end{macrocode}
+% No glyph class of the current \meta{side} has been defined, yet.
+% Install a new one.
+%    \begin{macrocode}
+      \expandafter\def\csname glyphclasslist@#1\endcsname{%
+        glyphclass@#1@#2}%
+    }{%
+%    \end{macrocode}
+% The needed glyph-class list exists.
+% Test if there is an old glyph class with the same name (\meta{side}
+% and \meta{name}).
+%    \begin{macrocode}
+      \begingroup
+      \@tempswatrue
+      \forallclasses{#1}{@tmpcls}{%
+        \ifthenelse{\equal{\@tmpcls}{glyphclass@#1@#2}}{%
+          \@tempswafalse
+        }{}%
+      }%
+%    \end{macrocode}
+% If this is not the case, append the new glyph class to the glyph
+% class list.
+%    \begin{macrocode}
+      \if@tempswa
+        \expandafter\xdef\csname glyphclasslist@#1\endcsname{%
+          \csname glyphclasslist@#1\endcsname,glyphclass@#1@#2}%
+      \fi
+      \endgroup
+    }%
+%    \end{macrocode}
+% Define the macro \cs{glyphclass@\meta{side}@\meta{name}} that stores
+% the \meta{glyphlist} for this glyph class.
+% At this stage it is defined empty in order to avoid that error
+% messages are generated for ``already used glyphs''.
+%    \begin{macrocode}
+    \expandafter\def\csname glyphclass@#1@#2\endcsname{}%
+%    \end{macrocode}
+% Store the new \meta{glyphlist} in a temporary variable
+% \cs{tmpglyphclass}.
+% To do this, all glyphs of the list are converted to Postscript glyph
+% names and tested if they are valid.
+% Also, it is tested if a glyph is contained double.
+% \changes{1.32}{2004/04/14}{Speed up \cs{defglyphclass}}%
+%    \begin{macrocode}
+    \edef\@tempa{#3}%
+    \@tempswbtrue
+    \@forallinclass{@tempa}{@tmpglyph}{%
+      \saveslotnumber{@glyphslot}{\@tmpglyph}%
+      \ifnum\the\c@@glyphslot<0%
+        \ClassError{kerntest}{Used unknown glyph `\@tmpglyph'}{%
+          You may have misspelled the glyph or you have taken an invalid
+          number.
+          This incorrect glyph is ignored.}%
+        \edef\thisglyphname{???}%
+      \else
+        \edef\thisglyphname{\getpsname{\the\c@@glyphslot}}%
+        \if@tempswb
+          \global\@tempswbfalse
+          \setcounter{@firstscale}{\@tmpglyph@scaling}%
+        \fi
+        \setcounter{@tmpscale}{1000*\@tmpglyph@scaling/\the@firstscale}%
+%    \end{macrocode}
+% Now, it has to be tested if none of the glyphs of the new glyph list
+% are in this or another list already.
+% If so, generate an error message.
+% Save the error state in \cs{@tempswa} to be able to add the glyph
+% only if it is in no other glyph class.
+%    \begin{macrocode}
+        \@tempswatrue
+        \forallclasses{#1}{@tmpcls}{%
+          \@ifglyphinclass{\@tmpcls}{\@tmpglyph}{%
+            \@tempswafalse
+            \ClassError{kerntest}{Glyph `\@tmpglyph'
+              (`\thisglyphname',\MessageBreak
+              glyph class #1/#2) already\MessageBreak
+              in glyph
+              class (\expandafter\@getclassname\@tmpcls\@empty)%
+            }{%
+              Each glyph may only be once in one glyph class for
+              each side.
+            }%
+          }{}%
+        }%
+%    \end{macrocode}
+% Append this glyph to the current glyph list.
+%    \begin{macrocode}
+        \if@tempswa
+          \ifthenelse{\equal{\csname glyphclass@#1@#2\endcsname}{}}{%
+            \expandafter\edef\csname glyphclass@#1@#2\endcsname{%
+              \thisglyphname[\the@tmpscale]}%
+            \edef\firstglyphinclass{\thisglyphname}%
+          }{%
+            \expandafter\edef\csname glyphclass@#1@#2\endcsname{%
+              \csname glyphclass@#1@#2\endcsname,%
+              \thisglyphname[\the@tmpscale]}%
+          }%
+%    \end{macrocode}
+% Generate a macro \cs{glyphclass@glyph@}\meta{glyphname} which saves
+% the corresponding glyph class for each glyph for faster access.
+%    \begin{macrocode}
+          \expandafter\edef
+          \csname glyphclass@glyph@#1@\thisglyphname\endcsname{%
+            glyphclass@#1@#2}%
+        \fi
+      \fi
+    }%
+%    \end{macrocode}
+% Some feedback.
+%    \begin{macrocode}
+    \typeout{Glyph class `#1/#2' (\csname glyphclass@#1@#2\endcsname)
+      defined.}%
+  }%
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\newglyphclass}
+% The macro
+% \cs{newglyphclass} works as \cs{defglyphclass} but defines a new
+% glyph class.
+% It produces an error if the class already exists.
+%    \begin{macrocode}
+\newcommand\newglyphclass[3]{%
+%    \end{macrocode}
+% Test if this glyph class already exists and generate an error
+% message if so.
+% If not, call \cs{defglyphclass} to save the new glyph class.
+%    \begin{macrocode}
+  \AtBeginDocument{%
+    \@tempswatrue
+    \forallclasses{#1}{@tmpcls}{%
+      \ifthenelse{\equal{\@tmpcls}{glyphclass@#1@#2}}{%
+        \ClassError{kerntest}{Class `#1/#2' already exists}{%
+          The command is ignored.}%
+        \@tempswafalse
+      }{}%
+    }%
+    \if@tempswa
+      \defglyphclass{#1}{#2}{#3}%
+    \fi
+  }%
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\renewglyphclass}
+% The macro
+% \cs{renewglyphclass} works as \cs{newglyphclass} but redefines an
+% existing one.
+%    \begin{macrocode}
+\newcommand\renewglyphclass[3]{%
+%    \end{macrocode}
+% Test if this glyph class does not exist and generate an error
+% message if so.
+% If it exists, call \cs{defglyphclass} to redefine the glyph class.
+%    \begin{macrocode}
+  \AtBeginDocument{%
+    \@tempswafalse
+    \forallclasses{#1}{@tmpcls}{%
+      \ifthenelse{\equal{\@tmpcls}{glyphclass@#1@#2}}{%
+        \@tempswatrue
+      }{}%
+    }%
+    \if@tempswa
+      \defglyphclass{#1}{#2}{#3}%
+    \else
+      \ClassError{kerntest}{Class `#1/#2' does not exists}{%
+        The command is ignored.}%
+    \fi
+  }%
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\provideglyphclass}
+% The macro
+% \cs{provideglyphclass} works as \cs{newglyphclass} but does only do
+% its job if the glyph class does not exist right now.
+%    \begin{macrocode}
+\newcommand\provideglyphclass[3]{%
+%    \end{macrocode}
+% Test if this glyph class already exists.
+% If not, call \cs{defglyphclass} to save the new glyph class.
+%    \begin{macrocode}
+  \AtBeginDocument{%
+    \@tempswatrue
+    \forallclasses{#1}{@tmpcls}{%
+      \ifthenelse{\equal{\@tmpcls}{glyphclass@#1@#2}}{%
+        \@tempswafalse
+      }{}%
+    }%
+    \if@tempswa
+      \defglyphclass{#1}{#2}{#3}%
+    \fi
+  }%
+}
+%    \end{macrocode}
+% \end{macro}
+% Type out the human readable name \meta{side}/\meta{name} for a glyph
+% class, giving the name of the corresponding macro.
+% No test on a correct name is made.
+%    \begin{macrocode}
+\def\@getclassname#1@#2@#3\@empty{#2/#3}
+%    \end{macrocode}
+% \begin{macro}{\getclassofglyph}
+% Syntax: \cs{getclassofglyph}\marg{side}\marg{glyph name}.
+%
+% Return the name of the glyph class, that contains the argument.
+% If it is not contained in any class, \cs{@empty} is returned.
+% The glyph name has to be given as argument.
+%    \begin{macrocode}
+\newcommand*\getclassofglyph[2]{%
+  \expandafter\ifx\csname glyphclass@glyph@#1@#2\endcsname\relax
+    \@empty
+  \else
+    \csname glyphclass@glyph@#1@#2\endcsname
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+% An internal boolean for searching glyph classes.
+%    \begin{macrocode}
+\newif\if@glyphfound
+%    \end{macrocode}
+% \begin{macro}{\ifglyphinclass}
+% \changes{1.32}{2004/04/14}{Speed up \cs{ifglyphinclass}}%
+% Syntax:
+% \cs{ifglyphinclass\marg{side}\marg{name}\marg{glyph}\marg{yes}\marg{no}}.
+% Tests if the glyph \meta{glyph} is contained in the glyph class
+% \meta{side}/\meta{name}.
+% Depending on that, \meta{yes} or \meta{no} are executed.
+% The work is done by \cs{@ifglyphinclass} described later.
+%    \begin{macrocode}
+\newcommand\ifglyphinclass[5]{%
+  \@ifundefined{glyphclass@#1@#2}{%
+    \ClassError{kerntest}{Glyph class #1/#2 not available}{}%
+  }{%
+    \edef\@tempa{#3}%
+    \saveslotnumber{@tempcnta}{\@tempa}%
+    \ifnum\the\c@@tempcnta<0%
+      \ClassError{kerntest}{Used unknown glyph `#2'}{%
+        You may have misspelled the glyph or you have taken an invalid
+        number.}%
+    \else
+      \ifthenelse{\equal{glyphclass@#1@#2}{%
+          \getclassofglyph{#1}{\getpsname{\the\c@@tempcnta}}}}{%
+        #4%
+      }{%
+        #5%
+      }%
+    \fi
+%    \@ifglyphinclass{glyphclass@#1@#2}{#3}{#4}{#5}%
+  }%
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\@ifglyphinclass}
+% \changes{1.32}{2004/04/14}{Speed up \cs{@ifglyphinclass}}%
+% Syntax:
+% \cs{@ifglyphinclass\marg{macro}\marg{glyph}\marg{yes}\marg{no}}.
+% Tests if the glyph \meta{glyph} is contained in the glyph class
+% with the macro name \cs{\meta{macro}}.
+% Depending on that, \meta{yes} or \meta{no} are executed.
+%    \begin{macrocode}
+\newcounter{@tempcnta}
+\newcommand\@ifglyphinclass[4]{%
+  \@ifundefined{#1}{%
+    \ClassError{kerntest}{Glyph class #1 not available}{}%
+  }{%
+%    \end{macrocode}
+% Extract the name of the side from the class macro name.
+%    \begin{macrocode}
+    \def\krntst@side##1@##2@##3\@empty{\edef\krntst@side{##2}}%
+    \expandafter\krntst@side#1\@empty
+%    \end{macrocode}
+% Extract the name of the side from the class macro name.
+%    \begin{macrocode}
+    \edef\@tempa{#2}%
+%    \end{macrocode}
+% Find out if the glyph is valid.
+%    \begin{macrocode}
+    \saveslotnumber{@tempcnta}{\@tempa}%
+    \ifnum\the\c@@tempcnta<0\relax
+      \ClassError{kerntest}{Used unknown glyph `#2'}{%
+        You may have misspelled the glyph or you have taken an invalid
+        number.}%
+    \else
+%    \end{macrocode}
+% Test if the corrosponding class to the glyph is the requested one.
+%    \begin{macrocode}
+      \ifthenelse{\equal{#1}{%
+          \getclassofglyph{\krntst@side}{\getpsname{\the\c@@tempcnta}}}}{%
+        #3%
+      }{%
+        #4%
+      }%
+    \fi
+  }%
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\forallinclasses}
+% Syntax:
+% \cs{forallinclass\marg{side}\marg{name}\marg{glyph}\marg{action}}
+%
+% The commands in \meta{action} are executed once for every glyph of
+% the glyph class \meta{side}/\meta{name}.
+% In each run, the specific glyph is stored in the macro
+% \cs{\meta{glyph}} which has to be given without leading backslash.
+% This routine can be nested if \meta{glyph} is different for both
+% layers, e.g.,
+%\begin{verbatim}
+%\forallinclass{left}{H}{outer}{%
+%  \forallinclass{left}{H}{inner}{%
+%    glyph pair: ``\outer''--``\inner''\\
+%  }%
+%}
+%\end{verbatim}
+%    \begin{macrocode}
+\newcommand\forallinclass[4]{%
+  \@forallinclass{glyphclass@#1@#2}{#3}{#4}%
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\@forallinclasses}
+% Syntax:
+% \cs{@forallinclass\marg{macro}\marg{glyph}\marg{action}}
+%
+% The internal command for \cs{forallinclasses}.
+% Takes the macro name for the glyph class instead of the side and the
+% name.
+%    \begin{macrocode}
+\newcommand\@forallinclass[3]{%
+%    \end{macrocode}
+% Redefine \cs{stoploop} to use the current glyph variable as default.
+%    \begin{macrocode}
+  \renewcommand\stoploop[1][#2]{%
+    \expandafter\edef\csname ##1\endcsname{}%
+  }%
+%    \end{macrocode}
+% Get the first glyph of the glyph list. 
+% It is stored in \cs{\meta{glyph}}.
+%    \begin{macrocode}
+  \begingroup\expandafter\expandafter\expandafter\endgroup
+  \expandafter\ifx\csname #1\endcsname\relax
+    \edef\kt@tempa{}%
+  \else
+    \edef\kt@tempa{\csname #1\endcsname}%
+  \fi
+  \expandafter\@nextglyphinclass\kt@tempa,\@empty{#2}%
+%    \end{macrocode}
+% If this glyph is not empty, the end of the glyph class has not been
+% reached.
+% Then, enter the loop.
+%    \begin{macrocode}
+  \whiledo{\not\equal{\csname #2\endcsname}{}}{%
+%    \end{macrocode}
+% Execute the loop commands.
+%    \begin{macrocode}
+    #3%
+%    \end{macrocode}
+% Get the next glyph of the glyph list. 
+% It is stored in \cs{\meta{glyph}}.
+% The if clause is necessary to handle \cs{stoploop}.
+%    \begin{macrocode}
+    \ifthenelse{\equal{\csname #2\endcsname}{}}{%
+    }{%
+      \edef\kt@tempa{\csname #2@rest\endcsname}%
+      \expandafter\@nextglyphinclass\kt@tempa,\@empty{#2}%
+    }%
+  }%
+}  
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\@nextglyphinclass}
+% Everything before the first comma in the list is the next glyph in
+% the glyph class.
+% Store it in the macro given at the end of the argument list
+% (\cs{\meta{\#3}}.
+% Store the rest of the glyph class in \cs{\meta{\#3}@rest} for later
+% work on it.
+%    \begin{macrocode}
+\def\@@parseglyphname#1[#2]#3\@empty#4{%
+  \expandafter\edef\csname#4\endcsname{#1}%
+  \expandafter\xdef\csname#4@scaling\endcsname{#2}%
+%  \typeout{--> `#1' mit [\csname #4@scaling\endcsname], ignoriert: `#3', Name: `#4'}%
+}
+\def\@nextglyphinclass#1,#2\@empty#3{%
+  \expandafter\edef\csname#3@rest\endcsname{#2}%
+  \expandafter\@@parseglyphname#1[1000]\@empty{#3}%
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\forallclasses}
+% Syntax:
+% \cs{forallclasses\marg{side}\marg{glyph class}\marg{action}}
+%
+% The commands in \meta{action} are executed once for every glyph
+% class of the glyph-class list \meta{side}.
+% In each run, the specific glyph class is stored in the macro
+% \cs{\meta{glyph class}} which has to be given without leading
+% backslash.
+% This routine can be nested if \meta{glyph class} is different for both
+% layers.
+% (Same as \cs{forallinclass}).
+%    \begin{macrocode}
+\newcommand\forallclasses[3]{%
+  \renewcommand\stoploop[1][#2]{%
+    \expandafter\edef\csname ##1\endcsname{}%
+  }%
+  \begingroup\expandafter\expandafter\expandafter\endgroup
+  \expandafter\ifx\csname glyphclasslist@#1\endcsname\relax
+  \edef\kt@tempa{}%
+  \else
+    \edef\kt@tempa{\csname glyphclasslist@#1\endcsname}%
+  \fi
+  \expandafter\@nextclass\kt@tempa,\@empty{#2}%
+  \whiledo{\not\equal{\csname #2\endcsname}{}}{%
+    #3%
+    \ifthenelse{\equal{\csname #2\endcsname}{}}{%
+    }{%
+      \edef\kt@tempa{\csname #2@rest\endcsname}%
+      \expandafter\@nextclass\kt@tempa,\@empty{#2}%
+    }%
+  }%
+}  
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\stoploop}
+% Stops the execution of \cs{forallclasses} or \cs{forallinclass}.
+% The optional argument gives the stop variable.
+% By this, also the outer loop can be stopped from the inner one.
+%    \begin{macrocode}
+\newcommand\stoploop[1][]{%
+  \expandafter\edef\csname #1\endcsname{}%
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\@nextglyphinclass}
+% Everything before the first comma in the list is the next glyph
+% class in the glyph-class list.
+% Store it in the macro given at the end of the argument list
+% (\cs{\meta{\#3}}.
+% Store the rest of the glyph-class list in \cs{\meta{\#3}@rest} for
+% later work on it.
+%    \begin{macrocode}
+\def\@nextclass#1,#2\@empty#3{%
+  \expandafter\edef\csname #3@rest\endcsname{#2}%
+  \expandafter\edef\csname #3\endcsname{#1}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsubsection{Extra commands for special encodings}
+%
+% Setup command for the different encodings.
+%    \begin{macrocode}
+\newcommand\encodingsetup[1]{%
+  \AtBeginDocument{%
+    \typeout{Setup for font encoding. 
+      This differs from encoding to encoding.}%
+    \setkeys{krnenc}{#1}%
+  }%
+}
+\@onlypreamble\encodingsetup
+%    \end{macrocode}
+%
+% \subsection{Footer of \texttt{mtx} file}
+%
+%
+% Write a footer to the |mtx| file.
+% This is done as last action of the class in order to ensure that all
+% other things have been done before.
+%    \begin{macrocode}
+\AtEndDocument{%
+%    \end{macrocode}
+% First, write the kerning data for the glyph classes.
+%    \begin{macrocode}
+  \typeout{Writing kerning factors for glyph classes to mtx file}%
+  \protected@write\mtxfile{}{\@percentchar\@percentchar}%
+  \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+    Kerning factors for the different glyph classes.}%
+  \protected@write\mtxfile{}{\@percentchar\@percentchar}%
+%    \end{macrocode}
+% Define a command that does the output for the different sides.
+%    \begin{macrocode}
+  \def\@writeclass#1{%
+    \forallclasses{#1}{@tmpcls}{%
+      \typeout{\space\space for class 
+        \expandafter\@getclassname\@tmpcls\@empty}%
+%    \end{macrocode}
+% The first glyph is the referent glyph of the class.
+% If the inner loop is executed the first time, set
+% \cs{firstglyphinclass} to this value.
+%    \begin{macrocode}
+      \@tempswatrue
+      \@forallinclass{\@tmpcls}{@tmpglyph}{%
+        \if@tempswa
+          \edef\firstglyphinclass{\@tmpglyph}%
+          \@tempswafalse
+        \else
+%    \end{macrocode}
+% For the other members of this class, write the
+% \cs{set\meta{side}kerning} commands to the |mtx| file.
+%    \begin{macrocode}
+          \protected@write\mtxfile{}{%
+            \string\set#1kerning%
+            {\@tmpglyph}{\firstglyphinclass}{\@tmpglyph@scaling}%
+            \@percentchar\space\space 
+            \expandafter\@getclassname\@tmpcls\@empty
+          }%
+        \fi
+      }%
+    }%
+  }%
+%    \end{macrocode}
+% The sides |left| and |right| are defined.
+%    \begin{macrocode}
+  \@writeclass{left}%
+  \protected@write\mtxfile{}{\@percentchar\@percentchar}%
+  \@writeclass{right}%
+%    \end{macrocode}
+% Write a real footer.
+%    \begin{macrocode}
+  \protected@write\mtxfile{}{\@percentchar\@percentchar}%
+  \protected@write\mtxfile{}{\string\endmetrics}%
+  \protected@write\mtxfile{}{\@percentchar\@percentchar}%
+  \protected@write\mtxfile{}{\@percentchar\@percentchar\space
+    End of file `\mtxfilename.mtx'.}%
+  \closeout\mtxfile
+  \typeout{^^JWritten mtx file `\mtxfilename.mtx'^^J}%
+}
+%</class>
+%    \end{macrocode}
+%
+%
+% \subsection{Class option files}
+%
+% To be able to write correct |mtx| files, the class has to know which
+% glyph number has which Postscript name.
+% This is done by the \cs{getpsname} macro which depends on the used
+% encoding.
+% This is done by loading different class option files.
+% 
+% \subsubsection{T1 encoding}
+%
+% The |T1| encoding.
+% The data are taken from |t1.etx|.
+%    \begin{macrocode}
+%<*mtx&t1>
+\makeatletter
+%    \end{macrocode}
+% Set options to switch to other font shapes.
+%    \begin{macrocode}
+\define@key{krnenc}{ligaturing}[1]{%
+  \typeout{T1 encoding: ligaturing = #1}%
+  \ifnum#1<0\relax
+    \expandafter\def\csname krntst@T1@027\endcsname{.notdef.027}%
+    \expandafter\def\csname krntst@T1@028\endcsname{.notdef.028}%
+    \expandafter\def\csname krntst@T1@029\endcsname{.notdef.029}%
+    \expandafter\def\csname krntst@T1@030\endcsname{.notdef.030}%
+    \expandafter\def\csname krntst@T1@031\endcsname{.notdef.031}%
+    \expandafter\def\csname krntst@T1@156\endcsname{.notdef.156}%
+    \expandafter\def\csname krntst@T1@188\endcsname{.notdef.188}%
+  \else
+    \expandafter\def\csname krntst@T1@027\endcsname{ff}%
+    \expandafter\def\csname krntst@T1@028\endcsname{fi}%
+    \expandafter\def\csname krntst@T1@029\endcsname{fl}%
+    \expandafter\def\csname krntst@T1@030\endcsname{ffi}%
+    \expandafter\def\csname krntst@T1@031\endcsname{ffl}%
+    \expandafter\def\csname krntst@T1@156\endcsname{IJ}%
+    \expandafter\def\csname krntst@T1@188\endcsname{ij}%
+  \fi
+  \ifnum#1<-1\relax
+    \expandafter\def\csname krntst@T1@073\endcsname{.notdef.073}%
+    \expandafter\def\csname krntst@T1@099\endcsname{.notdef.099}%
+    \expandafter\def\csname krntst@T1@102\endcsname{.notdef.102}%
+    \expandafter\def\csname krntst@T1@105\endcsname{.notdef.105}%
+    \expandafter\def\csname krntst@T1@115\endcsname{.notdef.115}%
+  \else
+    \expandafter\def\csname krntst@T1@073\endcsname{I}%
+    \expandafter\def\csname krntst@T1@099\endcsname{c}%
+    \expandafter\def\csname krntst@T1@102\endcsname{f}%
+    \expandafter\def\csname krntst@T1@105\endcsname{i}%
+    \expandafter\def\csname krntst@T1@115\endcsname{s}%
+  \fi
+}
+\typeout{^^JValid values for T1 encoding:}%
+\typeout{ligaturing: -2, -1, 0, 1}%
+\typeout{Defaults for T1 encoding:}%
+\setkeys{krnenc}{ligaturing=1}%
+\typeout{}%
+\makeatother
+%    \end{macrocode}
+% Now, set \cs{getpsname}.
+%    \begin{macrocode}
+\newcommand\getpsname[1]{%
+  \ifcase#1%
+  grave\or% 000
+  acute\or% 001
+  circumflex\or% 002
+  tilde\or% 003
+  dieresis\or% 004
+  hungarumlaut\or% 005
+  ring\or% 006
+  caron\or% 007
+  breve\or% 008
+  macron\or% 009
+  dotaccent\or% 010
+  cedilla\or% 011
+  ogonek\or% 012
+  quotesinglbase\or% 013
+  guilsinglleft\or% 014
+  guilsinglright\or% 015
+  quotedblleft\or% 016
+  quotedblright\or% 017
+  quotedblbase\or% 018
+  guillemotleft\or% 019
+  guillemotright\or% 020
+  rangedash\or% 021
+  punctdash\or% 022
+  compwordmark\or% 023
+  perthousandzero\or% 024
+  dotlessi\or% 025
+  dotlessj\or% 026
+  \csname krntst@T1@027\endcsname\or % 027
+  \csname krntst@T1@028\endcsname\or % 028
+  \csname krntst@T1@029\endcsname\or % 029
+  \csname krntst@T1@030\endcsname\or % 030
+  \csname krntst@T1@031\endcsname\or % 031
+  visiblespace\or% 032
+  exclam\or% 033
+  quotedbl\or% 034
+  numbersign\or% 035
+  dollar\or% 036
+  percent\or% 037
+  ampersand\or% 038
+  quoteright\or% 039
+  parenleft\or% 040
+  parenright\or% 041
+  asterisk\or% 042
+  plus\or% 043
+  comma\or% 044
+  hyphen\or% 045
+  period\or% 046
+  slash\or% 047
+  zero\or% 048
+  one\or% 049
+  two\or% 050
+  three\or% 051
+  four\or% 052
+  five\or% 053
+  six\or% 054
+  seven\or% 055
+  eight\or% 056
+  nine\or% 057
+  colon\or% 058
+  semicolon\or% 059
+  less\or% 060
+  equal\or% 061
+  greater\or% 062
+  question\or% 063
+  at\or% 064
+  A\or% 065
+  B\or% 066
+  C\or% 067
+  D\or% 068
+  E\or% 069
+  F\or% 070
+  G\or% 071
+  H\or% 072
+  \csname krntst@T1@073\endcsname\or % 073
+  J\or% 074
+  K\or% 075
+  L\or% 076
+  M\or% 077
+  N\or% 078
+  O\or% 079
+  P\or% 080
+  Q\or% 081
+  R\or% 082
+  S\or% 083
+  T\or% 084
+  U\or% 085
+  V\or% 086
+  W\or% 087
+  X\or% 088
+  Y\or% 089
+  Z\or% 090
+  bracketleft\or% 091
+  backslash\or% 092
+  bracketright\or% 093
+  asciicircum\or% 094
+  underscore\or% 095
+  quoteleft\or% 096
+  a\or% 097
+  b\or% 098
+  \csname krntst@T1@099\endcsname\or % 099
+  d\or% 100
+  e\or% 101
+  \csname krntst@T1@102\endcsname\or % 102
+  g\or% 103
+  h\or% 104
+  \csname krntst@T1@105\endcsname\or % 105
+  j\or% 106
+  k\or% 107
+  l\or% 108
+  m\or% 109
+  n\or% 110
+  o\or% 111
+  p\or% 112
+  q\or% 113
+  r\or% 114
+  \csname krntst@T1@115\endcsname\or % 115
+  t\or% 116
+  u\or% 117
+  v\or% 118
+  w\or% 119
+  x\or% 120
+  y\or% 121
+  z\or% 122
+  braceleft\or% 123
+  bar\or% 124
+  braceright\or% 125
+  asciitilde\or% 126
+  hyphenchar\or% 127
+  Abreve\or% 128
+  Aogonek\or% 129
+  Cacute\or% 130
+  Ccaron\or% 131
+  Dcaron\or% 132
+  Ecaron\or% 133
+  Eogonek\or% 134
+  Gbreve\or% 135
+  Lacute\or% 136
+  Lcaron\or% 137
+  Lslash\or% 138
+  Nacute\or% 139
+  Ncaron\or% 140
+  Ng\or% 141
+  Ohungarumlaut\or% 142
+  Racute\or% 143
+  Rcaron\or% 144
+  Sacute\or% 145
+  Scaron\or% 146
+  Scedilla\or% 147
+  Tcaron\or% 148
+  Tcedilla\or% 149
+  Uhungarumlaut\or% 150
+  Uring\or% 151
+  Ydieresis\or% 152
+  Zacute\or% 153
+  Zcaron\or% 154
+  Zdotaccent\or% 155
+  \csname krntst@T1@156\endcsname\or % 156
+  Idotaccent\or% 157
+  dbar\or% 158
+  section\or% 159
+  abreve\or% 160
+  aogonek\or% 161
+  cacute\or% 162
+  ccaron\or% 163
+  dcaron\or% 164
+  ecaron\or% 165
+  eogonek\or% 166
+  gbreve\or% 167
+  lacute\or% 168
+  lcaron\or% 169
+  lslash\or% 170
+  nacute\or% 171
+  ncaron\or% 172
+  ng\or% 173
+  ohungarumlaut\or% 174
+  racute\or% 175
+  rcaron\or% 176
+  sacute\or% 177
+  scaron\or% 178
+  scedilla\or% 179
+  tcaron\or% 180
+  tcedilla\or% 181
+  uhungarumlaut\or% 182
+  uring\or% 183
+  ydieresis\or% 184
+  zacute\or% 185
+  zcaron\or% 186
+  zdotaccent\or% 187
+  \csname krntst@T1@188\endcsname\or % 188
+  exclamdown\or% 189
+  questiondown\or% 190
+  sterling\or% 191
+  Agrave\or% 192
+  Aacute\or% 193
+  Acircumflex\or% 194
+  Atilde\or% 195
+  Adieresis\or% 196
+  Aring\or% 197
+  AE\or% 198
+  Ccedilla\or% 199
+  Egrave\or% 200
+  Eacute\or% 201
+  Ecircumflex\or% 202
+  Edieresis\or% 203
+  Igrave\or% 204
+  Iacute\or% 205
+  Icircumflex\or% 206
+  Idieresis\or% 207
+  Eth\or% 208
+  Ntilde\or% 209
+  Ograve\or% 210
+  Oacute\or% 211
+  Ocircumflex\or% 212
+  Otilde\or% 213
+  Odieresis\or% 214
+  OE\or% 215
+  Oslash\or% 216
+  Ugrave\or% 217
+  Uacute\or% 218
+  Ucircumflex\or% 219
+  Udieresis\or% 220
+  Yacute\or% 221
+  Thorn\or% 222
+  SS\or% 223
+  agrave\or% 224
+  aacute\or% 225
+  acircumflex\or% 226
+  atilde\or% 227
+  adieresis\or% 228
+  aring\or% 229
+  ae\or% 230
+  ccedilla\or% 231
+  egrave\or% 232
+  eacute\or% 233
+  ecircumflex\or% 234
+  edieresis\or% 235
+  igrave\or% 236
+  iacute\or% 237
+  icircumflex\or% 238
+  idieresis\or% 239
+  eth\or% 240
+  ntilde\or% 241
+  ograve\or% 242
+  oacute\or% 243
+  ocircumflex\or% 244
+  otilde\or% 245
+  odieresis\or% 246
+  oe\or% 247
+  oslash\or% 248
+  ugrave\or% 249
+  uacute\or% 250
+  ucircumflex\or% 251
+  udieresis\or% 252
+  yacute\or% 253
+  thorn\or% 254
+  germandbls\fi% 255
+}
+%</mtx&t1>
+%    \end{macrocode}
+%
+% \subsubsection{TS1 encoding}
+%
+% The |TS1| encoding.
+% The data are taken from |ts1.etx|.
+%
+% For unknown slots, a strange Postscript name is returned, but no
+% warning is generated.
+%    \begin{macrocode}
+%<*mtx&ts1>
+\newcommand\getpsname[1]{%
+  \ifcase#1%
+  capitalgrave\or% 000
+  capitalacute\or% 001
+  capitalcircumflex\or% 002
+  capitaltilde\or% 003
+  capitaldieresis\or% 004
+  capitalhungarumlaut\or% 005
+  capitalring\or% 006
+  capitalcaron\or% 007
+  capitalbreve\or% 008
+  capitalmacron\or% 009
+  capitaldotaccent\or% 010
+  cedilla\or% 011
+  ogonek\or% 012
+  quotesinglbase\or% 013
+  .notdef.014\or% 014
+  .notdef.015\or% 015
+  .notdef.016\or% 016
+  .notdef.017\or% 017
+  quotedblbase\or% 018
+  .notdef.019\or% 019
+  .notdef.020\or% 020
+  twelveudash\or% 021
+  threequartersemdash\or% 022
+  capitalcompwordmark\or% 023
+  arrowleft\or% 024
+  arrowright\or% 025
+  tieaccentlowercase\or% 026
+  tieaccentcapital\or% 027
+  newtieaccentlowercase\or% 028
+  newtieaccentcapital\or% 029
+  ascendercompwordmark\or% 030
+  blank\or% 031
+  .notdef.032\or% 032
+  .notdef.033\or% 033
+  .notdef.034\or% 034
+  .notdef.035\or% 035
+  dollar\or% 036
+  .notdef.037\or% 037
+  .notdef.038\or% 038
+  quotesingle\or% 039
+  .notdef.040\or% 040
+  .notdef.041\or% 041
+  asteriskcentered\or% 042
+  .notdef.043\or% 043
+  comma\or% 044
+  hyphendbl\or% 045
+  period\or% 046
+  fraction\or% 047
+  zerooldstyle\or% 048
+  oneoldstyle\or% 049
+  twooldstyle\or% 050
+  threeoldstyle\or% 051
+  fouroldstyle\or% 052
+  fiveoldstyle\or% 053
+  sixoldstyle\or% 054
+  sevenoldstyle\or% 055
+  eightoldstyle\or% 056
+  nineoldstyle\or% 057
+  .notdef.058\or% 058
+  .notdef.059\or% 059
+  angbracketleft\or% 060
+  minus\or% 061
+  angbracketright\or% 062
+  .notdef.063\or% 063
+  .notdef.064\or% 064
+  .notdef.065\or% 065
+  .notdef.066\or% 066
+  .notdef.067\or% 067
+  .notdef.068\or% 068
+  .notdef.069\or% 069
+  .notdef.070\or% 070
+  .notdef.071\or% 071
+  .notdef.072\or% 072
+  .notdef.073\or% 073
+  .notdef.074\or% 074
+  .notdef.075\or% 075
+  .notdef.076\or% 076
+  Omegainv\or% 077
+  .notdef.078\or% 078
+  bigcircle\or% 079
+  .notdef.080\or% 080
+  .notdef.081\or% 081
+  .notdef.082\or% 082
+  .notdef.083\or% 083
+  .notdef.084\or% 084
+  .notdef.085\or% 085
+  .notdef.086\or% 086
+  Omega\or% 087
+  .notdef.088\or% 088
+  .notdef.089\or% 089
+  .notdef.090\or% 090
+  openbracketleft\or% 091
+  .notdef.092\or% 092
+  openbracketright\or% 093
+  arrowup\or% 094
+  arrowdown\or% 095
+  asciigrave\or% 096
+  .notdef.097\or% 097
+  born\or% 098
+  divorced\or% 099
+  died\or% 100
+  .notdef.101\or% 101
+  .notdef.102\or% 102
+  .notdef.103\or% 103
+  .notdef.104\or% 104
+  .notdef.105\or% 105
+  .notdef.106\or% 106
+  .notdef.107\or% 107
+  leaf\or% 108
+  married\or% 109
+  musicalnote\or% 110
+  .notdef.111\or% 111
+  .notdef.112\or% 112
+  .notdef.113\or% 113
+  .notdef.114\or% 114
+  .notdef.115\or% 115
+  .notdef.116\or% 116
+  .notdef.117\or% 117
+  .notdef.118\or% 118
+  .notdef.119\or% 119
+  .notdef.120\or% 120
+  .notdef.121\or% 121
+  .notdef.122\or% 122
+  .notdef.123\or% 123
+  .notdef.124\or% 124
+  .notdef.125\or% 125
+  tildelow\or% 126
+  hyphendblchar\or% 127
+  asciibreve\or% 128
+  asciicaron\or% 129
+  asciiacutedbl\or% 130
+  asciigravedbl\or% 131
+  dagger\or% 132
+  daggerdbl\or% 133
+  bardbl\or% 134
+  perthousand\or% 135
+  bullet\or% 136
+  centigrade\or% 137
+  dollaroldstyle\or% 138
+  centoldstyle\or% 139
+  florin\or% 140
+  colonmonetary\or% 141
+  won\or% 142
+  naira\or% 143
+  guarani\or% 144
+  peso\or% 145
+  lira\or% 146
+  recipe\or% 147
+  interrobang\or% 148
+  interrobangdown\or% 149
+  dong\or% 150
+  trademark\or% 151
+  pertenthousand\or% 152
+  pilcrow\or% 153
+  baht\or% 154
+  numero\or% 155
+  discount\or% 156
+  estimated\or% 157
+  openbullet\or% 158
+  servicemark\or% 159
+  quillbracketleft\or% 160
+  quillbracketright\or% 161
+  cent\or% 162
+  sterling\or% 163
+  currency\or% 164
+  yen\or% 165
+  brokenbar\or% 166
+  section\or% 167
+  asciidieresis\or% 168
+  copyright\or% 169
+  ordfeminine\or% 170
+  copyleft\or% 171
+  logicalnot\or% 172
+  circledP\or% 173
+  registered\or% 174
+  asciimacron\or% 175
+  degree\or% 176
+  plusminus\or% 177
+  twosuperior\or% 178
+  threesuperior\or% 179
+  asciiacute\or% 180
+  mu\or% 181
+  paragraph\or% 182
+  periodcentered\or% 183
+  referencemark\or% 184
+  onesuperior\or% 185
+  ordmasculine\or% 186
+  radical\or% 187
+  onequarter\or% 188
+  onehalf\or% 189
+  threequarters\or% 190
+  euro\or% 191
+  .notdef.192\or% 192
+  .notdef.193\or% 193
+  .notdef.194\or% 194
+  .notdef.195\or% 195
+  .notdef.196\or% 196
+  .notdef.197\or% 197
+  .notdef.198\or% 198
+  .notdef.199\or% 199
+  .notdef.200\or% 200
+  .notdef.201\or% 201
+  .notdef.202\or% 202
+  .notdef.203\or% 203
+  .notdef.204\or% 204
+  .notdef.205\or% 205
+  .notdef.206\or% 206
+  .notdef.207\or% 207
+  .notdef.208\or% 208
+  .notdef.209\or% 209
+  .notdef.210\or% 210
+  .notdef.211\or% 211
+  .notdef.212\or% 212
+  .notdef.213\or% 213
+  multiply\or% 214
+  .notdef.215\or% 215
+  .notdef.216\or% 216
+  .notdef.217\or% 217
+  .notdef.218\or% 218
+  .notdef.219\or% 219
+  .notdef.220\or% 220
+  .notdef.221\or% 221
+  .notdef.222\or% 222
+  .notdef.223\or% 223
+  .notdef.224\or% 224
+  .notdef.225\or% 225
+  .notdef.226\or% 226
+  .notdef.227\or% 227
+  .notdef.228\or% 228
+  .notdef.229\or% 229
+  .notdef.230\or% 230
+  .notdef.231\or% 231
+  .notdef.232\or% 232
+  .notdef.233\or% 233
+  .notdef.234\or% 234
+  .notdef.235\or% 235
+  .notdef.236\or% 236
+  .notdef.237\or% 237
+  .notdef.238\or% 238
+  .notdef.239\or% 239
+  .notdef.240\or% 240
+  .notdef.241\or% 241
+  .notdef.242\or% 242
+  .notdef.243\or% 243
+  .notdef.244\or% 244
+  .notdef.245\or% 245
+  divide\or% 246
+  .notdef.247\or% 247
+  .notdef.248\or% 248
+  .notdef.249\or% 249
+  .notdef.250\or% 250
+  .notdef.251\or% 251
+  .notdef.252\or% 252
+  .notdef.253\or% 253
+  .notdef.254\or% 254
+  .notdef.255\fi% 255
+}
+%</mtx&ts1>
+%    \end{macrocode}
+%
+% \subsubsection{OT1 encoding}
+%
+% The |OT1| encoding.
+% The data are taken from |ot1.etx|.
+%
+% For unknown slots, a strange Postscript name is returned, but no
+% warning is generated.
+%
+% The OT1 encoding uses different font names depending on
+% upright/italic and ligatures.
+% This is handled using the \cs{OT1@}\meta{slot} commands that are set
+% for an upright roman font by default.
+%
+% Set the default glyph names.
+%    \begin{macrocode}
+%<*mtx&ot1>
+\makeatletter
+%    \end{macrocode}
+% Set options to switch to other font shapes.
+%    \begin{macrocode}
+\define@key{krnenc}{ligaturing}[2]{%
+  \typeout{OT1 encoding: ligaturing = #1}%
+  \ifnum#1=2\relax
+    \expandafter\def\csname krntst@OT1@011\endcsname{ff}%
+    \expandafter\def\csname krntst@OT1@012\endcsname{fi}%
+    \expandafter\def\csname krntst@OT1@013\endcsname{fl}%
+    \expandafter\def\csname krntst@OT1@014\endcsname{ffi}%
+    \expandafter\def\csname krntst@OT1@015\endcsname{ffl}%
+    \expandafter\def\csname krntst@OT1@060\endcsname{exclamdown}%
+    \expandafter\def\csname krntst@OT1@062\endcsname{questiondown}%
+  \else
+    \expandafter\def\csname krntst@OT1@011\endcsname{arrowup}%
+    \expandafter\def\csname krntst@OT1@012\endcsname{arrowdown}%
+    \expandafter\def\csname krntst@OT1@013\endcsname{quotesingle}%
+    \expandafter\def\csname krntst@OT1@014\endcsname{exclamdown}%
+    \expandafter\def\csname krntst@OT1@015\endcsname{questiondown}%
+    \expandafter\def\csname krntst@OT1@060\endcsname{less}%
+    \expandafter\def\csname krntst@OT1@062\endcsname{greater}%
+  \fi
+  \ifnum#1=0\relax
+    \expandafter\def\csname krntst@OT1@032\endcsname{visiblespace}%
+    \expandafter\def\csname krntst@OT1@034\endcsname{quotedbl}%
+    \expandafter\def\csname krntst@OT1@092\endcsname{backslash}%
+    \expandafter\def\csname krntst@OT1@095\endcsname{underscore}%
+    \expandafter\def\csname krntst@OT1@123\endcsname{braceleft}%
+    \expandafter\def\csname krntst@OT1@124\endcsname{bar}%
+    \expandafter\def\csname krntst@OT1@125\endcsname{braceright}%
+  \else
+    \expandafter\def\csname krntst@OT1@032\endcsname{lslashslash}%
+    \expandafter\def\csname krntst@OT1@034\endcsname{quotedblright}%
+    \expandafter\def\csname krntst@OT1@092\endcsname{quotedblleft}%
+    \expandafter\def\csname krntst@OT1@095\endcsname{dotaccent}%
+    \expandafter\def\csname krntst@OT1@123\endcsname{rangedash}%
+    \expandafter\def\csname krntst@OT1@124\endcsname{punctdash}%
+    \expandafter\def\csname krntst@OT1@125\endcsname{hungarumlaut}%
+  \fi
+}
+\define@key{krnenc}{italicizing}[true]{%
+  \typeout{OT1 encoding: italicizing = #1}%
+  \csname if#1\endcsname
+    \expandafter\def\csname krntst@OT1@036\endcsname{sterling}%
+  \else
+    \expandafter\def\csname krntst@OT1@036\endcsname{dollar}
+  \fi
+}
+\typeout{^^JValid values for OT1 encoding:}%
+\typeout{ligaturing: 0, 1, 2}%
+\typeout{italicizing: false, true}%
+\typeout{Defaults for OT1 encoding:}%
+\setkeys{krnenc}{ligaturing=2,italicizing=false}%
+\typeout{}%
+\makeatother
+%    \end{macrocode}
+% Now, set \cs{getpsname}.
+%    \begin{macrocode}
+\newcommand\getpsname[1]{%
+  \ifcase#1%
+  Gamma\or % 000
+  Delta\or % 001
+  Theta\or % 002
+  Lambda\or % 003
+  Xi\or % 004
+  Pi\or % 005
+  Sigma\or % 006
+  Upsilon\or % 007
+  Phi\or % 008
+  Psi\or % 009
+  Omega\or % 010
+  \csname krntst@OT1@011\endcsname\or % 011
+  \csname krntst@OT1@012\endcsname\or % 012
+  \csname krntst@OT1@013\endcsname\or % 013
+  \csname krntst@OT1@014\endcsname\or % 014
+  \csname krntst@OT1@015\endcsname\or % 015
+  dotlessi\or % 016
+  dotlessj\or % 017
+  grave\or % 018
+  acute\or % 019
+  caron\or % 020
+  breve\or % 021
+  macron\or % 022
+  ringfitted\or % 023
+  cedilla\or % 024
+  germandbls\or % 025
+  ae\or % 026
+  oe\or % 027
+  oslash\or % 028
+  AE\or % 029
+  OE\or % 030
+  Oslash\or % 031
+  \csname krntst@OT1@032\endcsname\or % 032
+  exclam\or % 033
+  \csname krntst@OT1@034\endcsname\or % 034
+  numbersign\or % 035
+  \csname krntst@OT1@036\endcsname\or % 036
+  percent\or % 037
+  ampersand\or % 038
+  quoteright\or % 039
+  parenleft\or % 040
+  parenright\or % 041
+  asterisk\or % 042
+  plus\or % 043
+  comma\or % 044
+  hyphen\or % 045
+  period\or % 046
+  slash\or % 047
+  zero\or % 048
+  one\or % 049
+  two\or % 050
+  three\or % 051
+  four\or % 052
+  five\or % 053
+  six\or % 054
+  seven\or % 055
+  eight\or % 056
+  nine\or % 057
+  colon\or % 058
+  semicolon\or % 059
+  \csname krntst@OT1@060\endcsname\or % 060
+  equal\or % 061
+  \csname krntst@OT1@062\endcsname\or % 062
+  question\or % 063
+  at\or % 064
+  A\or % 065
+  B\or % 066
+  C\or % 067
+  D\or % 068
+  E\or % 069
+  F\or % 070
+  G\or % 071
+  H\or % 072
+  I\or % 073
+  J\or % 074
+  K\or % 075
+  L\or % 076
+  M\or % 077
+  N\or % 078
+  O\or % 079
+  P\or % 080
+  Q\or % 081
+  R\or % 082
+  S\or % 083
+  T\or % 084
+  U\or % 085
+  V\or % 086
+  W\or % 087
+  X\or % 088
+  Y\or % 089
+  Z\or % 090
+  bracketleft\or % 091
+  \csname krntst@OT1@092\endcsname\or % 092
+  bracketright\or % 093
+  circumflex\or % 094
+  \csname krntst@OT1@095\endcsname\or % 095
+  quoteleft\or % 096
+  a\or % 097
+  b\or % 098
+  c\or % 099
+  d\or % 100
+  e\or % 101
+  f\or % 102
+  g\or % 103
+  h\or % 104
+  i\or % 105
+  j\or % 106
+  k\or % 107
+  l\or % 108
+  m\or % 109
+  n\or % 110
+  o\or % 111
+  p\or % 112
+  q\or % 113
+  r\or % 114
+  s\or % 115
+  t\or % 116
+  u\or % 117
+  v\or % 118
+  w\or % 119
+  x\or % 120
+  y\or % 121
+  z\or % 122
+  \csname krntst@OT1@123\endcsname\or % 123
+  \csname krntst@OT1@124\endcsname\or % 124
+  \csname krntst@OT1@125\endcsname\or % 125
+  tilde\or % 126
+  dieresis\or % 127
+  .notdef.128\or % 128
+  .notdef.129\or % 129
+  .notdef.130\or % 130
+  .notdef.131\or % 131
+  .notdef.132\or % 132
+  .notdef.133\or % 133
+  .notdef.134\or % 134
+  .notdef.135\or % 135
+  .notdef.136\or % 136
+  .notdef.137\or % 137
+  Lslash\or % 138
+  .notdef.139\or % 139
+  .notdef.140\or % 140
+  .notdef.141\or % 141
+  .notdef.142\or % 142
+  .notdef.143\or % 143
+  .notdef.144\or % 144
+  .notdef.145\or % 145
+  .notdef.146\or % 146
+  .notdef.147\or % 147
+  .notdef.148\or % 148
+  .notdef.149\or % 149
+  .notdef.150\or % 150
+  .notdef.151\or % 151
+  .notdef.152\or % 152
+  .notdef.153\or % 153
+  .notdef.154\or % 154
+  .notdef.155\or % 155
+  .notdef.156\or % 156
+  .notdef.157\or % 157
+  .notdef.158\or % 158
+  .notdef.159\or % 159
+  .notdef.160\or % 160
+  .notdef.161\or % 161
+  .notdef.162\or % 162
+  .notdef.163\or % 163
+  .notdef.164\or % 164
+  .notdef.165\or % 165
+  .notdef.166\or % 166
+  .notdef.167\or % 167
+  .notdef.168\or % 168
+  .notdef.169\or % 169
+  lslash\or % 170
+  .notdef.171\or % 171
+  .notdef.172\or % 172
+  .notdef.173\or % 173
+  .notdef.174\or % 174
+  .notdef.175\or % 175
+  .notdef.176\or % 176
+  .notdef.177\or % 177
+  .notdef.178\or % 178
+  .notdef.179\or % 179
+  .notdef.180\or % 180
+  .notdef.181\or % 181
+  .notdef.182\or % 182
+  .notdef.183\or % 183
+  .notdef.184\or % 184
+  .notdef.185\or % 185
+  .notdef.186\or % 186
+  .notdef.187\or % 187
+  .notdef.188\or % 188
+  .notdef.189\or % 189
+  .notdef.190\or % 190
+  .notdef.191\or % 191
+  .notdef.192\or % 192
+  .notdef.193\or % 193
+  .notdef.194\or % 194
+  .notdef.195\or % 195
+  .notdef.196\or % 196
+  .notdef.197\or % 197
+  .notdef.198\or % 198
+  .notdef.199\or % 199
+  .notdef.200\or % 200
+  .notdef.201\or % 201
+  .notdef.202\or % 202
+  .notdef.203\or % 203
+  .notdef.204\or % 204
+  .notdef.205\or % 205
+  .notdef.206\or % 206
+  .notdef.207\or % 207
+  .notdef.208\or % 208
+  .notdef.209\or % 209
+  .notdef.210\or % 210
+  .notdef.211\or % 211
+  .notdef.212\or % 212
+  .notdef.213\or % 213
+  .notdef.214\or % 214
+  .notdef.215\or % 215
+  .notdef.216\or % 216
+  .notdef.217\or % 217
+  .notdef.218\or % 218
+  .notdef.219\or % 219
+  .notdef.220\or % 220
+  .notdef.221\or % 221
+  .notdef.222\or % 222
+  .notdef.223\or % 223
+  .notdef.224\or % 224
+  .notdef.225\or % 225
+  .notdef.226\or % 226
+  .notdef.227\or % 227
+  .notdef.228\or % 228
+  .notdef.229\or % 229
+  .notdef.230\or % 230
+  .notdef.231\or % 231
+  .notdef.232\or % 232
+  .notdef.233\or % 233
+  .notdef.234\or % 234
+  .notdef.235\or % 235
+  .notdef.236\or % 236
+  .notdef.237\or % 237
+  .notdef.238\or % 238
+  .notdef.239\or % 239
+  .notdef.240\or % 240
+  .notdef.241\or % 241
+  .notdef.242\or % 242
+  .notdef.243\or % 243
+  .notdef.244\or % 244
+  .notdef.245\or % 245
+  .notdef.246\or % 246
+  .notdef.247\or % 247
+  .notdef.248\or % 248
+  .notdef.249\or % 249
+  .notdef.250\or % 250
+  .notdef.251\or % 251
+  .notdef.252\or % 252
+  .notdef.253\or % 253
+  .notdef.254\or % 254
+  .notdef.255\fi % 255
+}
+%</mtx&ot1>
+%    \end{macrocode}
+%
+% \subsubsection{T2A encoding}
+%
+% The |T2A| encoding.
+% The data are taken from |t2a.etx|.
+%
+% For unknown slots, a strange Postscript name is returned, but no
+% warning is generated.
+%    \begin{macrocode}
+%<*mtx&t2a>
+\newcommand\getpsname[1]{%
+  \ifcase#1%
+  grave\or% 000
+  acute\or% 001
+  circumflex\or% 002
+  tilde\or% 003
+  dieresis\or% 004
+  hungarumlaut\or% 005
+  ring\or% 006
+  caron\or% 007
+  breve\or% 008
+  macron\or% 009
+  dotaccent\or% 010
+  cedilla\or% 011
+  ogonek\or% 012
+  CYRpalochka\or% 013
+  angleleft\or% 014
+  angleright\or% 015
+  quotedblleft\or% 016
+  quotedblright\or% 017
+  cyrflex\or% 018
+  dblgrave\or% 019
+  cyrbreve\or% 020
+  rangedash\or% 021
+  cyrdash\or% 022
+  compwordmark\or% 023
+  perthousandzero\or% 024
+  dotlessi\or% 025
+  dotlessj\or% 026
+  ff\or% 027
+  fi\or% 028
+  fl\or% 029
+  ffi\or% 030
+  ffl\or% 031
+  visiblespace\or% 032
+  exclam\or% 033
+  quotedbl\or% 034
+  numbersign\or% 035
+  dollar\or% 036
+  percent\or% 037
+  ampersand\or% 038
+  quoteright\or% 039
+  parenleft\or% 040
+  parenright\or% 041
+  asterisk\or% 042
+  plus\or% 043
+  comma\or% 044
+  hyphen\or% 045
+  period\or% 046
+  slash\or% 047
+  zero\or% 048
+  one\or% 049
+  two\or% 050
+  three\or% 051
+  four\or% 052
+  five\or% 053
+  six\or% 054
+  seven\or% 055
+  eight\or% 056
+  nine\or% 057
+  colon\or% 058
+  semicolon\or% 059
+  less\or% 060
+  equal\or% 061
+  greater\or% 062
+  question\or% 063
+  at\or% 064
+  A\or% 065
+  B\or% 066
+  C\or% 067
+  D\or% 068
+  E\or% 069
+  F\or% 070
+  G\or% 071
+  H\or% 072
+  I\or% 073
+  J\or% 074
+  K\or% 075
+  L\or% 076
+  M\or% 077
+  N\or% 078
+  O\or% 079
+  P\or% 080
+  Q\or% 081
+  R\or% 082
+  S\or% 083
+  T\or% 084
+  U\or% 085
+  V\or% 086
+  W\or% 087
+  X\or% 088
+  Y\or% 089
+  Z\or% 090
+  bracketleft\or% 091
+  backslash\or% 092
+  bracketright\or% 093
+  asciicircum\or% 094
+  underscore\or% 095
+  quoteleft\or% 096
+  a\or% 097
+  b\or% 098
+  c\or% 099
+  d\or% 100
+  e\or% 101
+  f\or% 102
+  g\or% 103
+  h\or% 104
+  i\or% 105
+  j\or% 106
+  k\or% 107
+  l\or% 108
+  m\or% 109
+  n\or% 110
+  o\or% 111
+  p\or% 112
+  q\or% 113
+  r\or% 114
+  s\or% 115
+  t\or% 116
+  u\or% 117
+  v\or% 118
+  w\or% 119
+  x\or% 120
+  y\or% 121
+  z\or% 122
+  braceleft\or% 123
+  bar\or% 124
+  braceright\or% 125
+  asciitilde\or% 126
+  hyphenchar\or% 127
+  CYRGUP\or% 128
+  CYRGHCRS\or% 129
+  CYRDJE\or% 130
+  CYRTSHE\or% 131
+  CYRSHHA\or% 132
+  CYRZHDSC\or% 133
+  CYRZDSC\or% 134
+  CYRLJE\or% 135
+  CYRYI\or% 136
+  CYRKDSC\or% 137
+  CYRKBEAK\or% 138
+  CYRKVCRS\or% 139
+  CYRAE\or% 140
+  CYRNDSC\or% 141
+  CYRNG\or% 142
+  CYRDZE\or% 143
+  CYROTLD\or% 144
+  CYRSDSC\or% 145
+  CYRUSHRT\or% 146
+  CYRY\or% 147
+  CYRYHCRS\or% 148
+  CYRHDSC\or% 149
+  CYRDZHE\or% 150
+  CYRCHVCRS\or% 151
+  CYRCHRDSC\or% 152
+  CYRIE\or% 153
+  CYRSCHWA\or% 154
+  CYRNJE\or% 155
+  CYRYO\or% 156
+  numero\or% 157
+  currency\or% 158
+  section\or% 159
+  cyrgup\or% 160
+  cyrghcrs\or% 161
+  cyrdje\or% 162
+  cyrtshe\or% 163
+  cyrshha\or% 164
+  cyrzhdsc\or% 165
+  cyrzdsc\or% 166
+  cyrlje\or% 167
+  cyryi\or% 168
+  cyrkdsc\or% 169
+  cyrkbeak\or% 170
+  cyrkvcrs\or% 171
+  cyrae\or% 172
+  cyrndsc\or% 173
+  cyrng\or% 174
+  cyrdze\or% 175
+  cyrotld\or% 176
+  cyrsdsc\or% 177
+  cyrushrt\or% 178
+  cyry\or% 179
+  cyryhcrs\or% 180
+  cyrhdsc\or% 181
+  cyrdzhe\or% 182
+  cyrchvcrs\or% 183
+  cyrchrdsc\or% 184
+  cyrie\or% 185
+  cyrschwa\or% 186
+  cyrnje\or% 187
+  cyryo\or% 188
+  quotedblbase\or% 189
+  guillemotleft\or% 190
+  guillemotright\or% 191
+  CYRA\or% 192
+  CYRB\or% 193
+  CYRV\or% 194
+  CYRG\or% 195
+  CYRD\or% 196
+  CYRE\or% 197
+  CYRZH\or% 198
+  CYRZ\or% 199
+  CYRI\or% 200
+  CYRISHRT\or% 201
+  CYRK\or% 202
+  CYRL\or% 203
+  CYRM\or% 204
+  CYRN\or% 205
+  CYRO\or% 206
+  CYRP\or% 207
+  CYRR\or% 208
+  CYRS\or% 209
+  CYRT\or% 210
+  CYRU\or% 211
+  CYRF\or% 212
+  CYRH\or% 213
+  CYRC\or% 214
+  CYRCH\or% 215
+  CYRSH\or% 216
+  CYRSHCH\or% 217
+  CYRHRDSN\or% 218
+  CYRERY\or% 219
+  CYRSFTSN\or% 220
+  CYREREV\or% 221
+  CYRYU\or% 222
+  CYRYA\or% 223
+  cyra\or% 224
+  cyrb\or% 225
+  cyrv\or% 226
+  cyrg\or% 227
+  cyrd\or% 228
+  cyre\or% 229
+  cyrzh\or% 230
+  cyrz\or% 231
+  cyri\or% 232
+  cyrishrt\or% 233
+  cyrk\or% 234
+  cyrl\or% 235
+  cyrm\or% 236
+  cyrn\or% 237
+  cyro\or% 238
+  cyrp\or% 239
+  cyrr\or% 240
+  cyrs\or% 241
+  cyrt\or% 242
+  cyru\or% 243
+  cyrf\or% 244
+  cyrh\or% 245
+  cyrc\or% 246
+  cyrch\or% 247
+  cyrsh\or% 248
+  cyrshch\or% 249
+  cyrhrdsn\or% 250
+  cyrery\or% 251
+  cyrsftsn\or% 252
+  cyrerev\or% 253
+  cyryu\or% 254
+  cyrya\fi% 255
+}
+%</mtx&t2a>
+%    \end{macrocode}
+%
+% \subsubsection{T2A encoding}
+%
+% The |T2B| encoding.
+% The data are taken from |t2b.etx|.
+%
+% For unknown slots, a strange Postscript name is returned, but no
+% warning is generated.
+%    \begin{macrocode}
+%<*mtx&t2b>
+\newcommand\getpsname[1]{%
+  \ifcase#1%
+  grave\or% 000
+  acute\or% 001
+  circumflex\or% 002
+  tilde\or% 003
+  dieresis\or% 004
+  hungarumlaut\or% 005
+  ring\or% 006
+  caron\or% 007
+  breve\or% 008
+  macron\or% 009
+  dotaccent\or% 010
+  cedilla\or% 011
+  ogonek\or% 012
+  CYRpalochka\or% 013
+  angleleft\or% 014
+  angleright\or% 015
+  quotedblleft\or% 016
+  quotedblright\or% 017
+  cyrflex\or% 018
+  dblgrave\or% 019
+  cyrbreve\or% 020
+  rangedash\or% 021
+  cyrdash\or% 022
+  compwordmark\or% 023
+  perthousandzero\or% 024
+  dotlessi\or% 025
+  dotlessj\or% 026
+  ff\or% 027
+  fi\or% 028
+  fl\or% 029
+  ffi\or% 030
+  ffl\or% 031
+  visiblespace\or% 032
+  exclam\or% 033
+  quotedbl\or% 034
+  numbersign\or% 035
+  dollar\or% 036
+  percent\or% 037
+  ampersand\or% 038
+  quoteright\or% 039
+  parenleft\or% 040
+  parenright\or% 041
+  asterisk\or% 042
+  plus\or% 043
+  comma\or% 044
+  hyphen\or% 045
+  period\or% 046
+  slash\or% 047
+  zero\or% 048
+  one\or% 049
+  two\or% 050
+  three\or% 051
+  four\or% 052
+  five\or% 053
+  six\or% 054
+  seven\or% 055
+  eight\or% 056
+  nine\or% 057
+  colon\or% 058
+  semicolon\or% 059
+  less\or% 060
+  equal\or% 061
+  greater\or% 062
+  question\or% 063
+  at\or% 064
+  A\or% 065
+  B\or% 066
+  C\or% 067
+  D\or% 068
+  E\or% 069
+  F\or% 070
+  G\or% 071
+  H\or% 072
+  I\or% 073
+  J\or% 074
+  K\or% 075
+  L\or% 076
+  M\or% 077
+  N\or% 078
+  O\or% 079
+  P\or% 080
+  Q\or% 081
+  R\or% 082
+  S\or% 083
+  T\or% 084
+  U\or% 085
+  V\or% 086
+  W\or% 087
+  X\or% 088
+  Y\or% 089
+  Z\or% 090
+  bracketleft\or% 091
+  backslash\or% 092
+  bracketright\or% 093
+  asciicircum\or% 094
+  underscore\or% 095
+  quoteleft\or% 096
+  a\or% 097
+  b\or% 098
+  c\or% 099
+  d\or% 100
+  e\or% 101
+  f\or% 102
+  g\or% 103
+  h\or% 104
+  i\or% 105
+  j\or% 106
+  k\or% 107
+  l\or% 108
+  m\or% 109
+  n\or% 110
+  o\or% 111
+  p\or% 112
+  q\or% 113
+  r\or% 114
+  s\or% 115
+  t\or% 116
+  u\or% 117
+  v\or% 118
+  w\or% 119
+  x\or% 120
+  y\or% 121
+  z\or% 122
+  braceleft\or% 123
+  bar\or% 124
+  braceright\or% 125
+  asciitilde\or% 126
+  hyphenchar\or% 127
+  CYRGDSCHCRS\or% 128
+  CYRGHCRS\or% 129
+  CYRGDSC\or% 130
+  CYRGHK\or% 131
+  CYRSHHA\or% 132
+  CYRZHDSC\or% 133
+  CYRDELTA\or% 134
+  CYRABHDZE\or% 135
+  CYRLJE\or% 136
+  CYRKDSC\or% 137
+  CYRLDSC\or% 138
+  CYRKHK\or% 139
+  CYRLHK\or% 140
+  CYRNDSC\or% 141
+  CYRNG\or% 142
+  CYRNHK\or% 143
+  CYROTLD\or% 144
+  CYRSACRS\or% 145
+  CYRUSHRT\or% 146
+  CYRY\or% 147
+  CYRHHCRS\or% 148
+  CYRHDSC\or% 149
+  CYRHHK\or% 150
+  CYRCHLDSC\or% 151
+  CYRCHRDSC\or% 152
+  CYRNJE\or% 153
+  CYRSCHWA\or% 154
+  CYREPS\or% 155
+  CYRYO\or% 156
+  numero\or% 157
+  currency\or% 158
+  section\or% 159
+  cyrgdschcrs\or% 160
+  cyrghcrs\or% 161
+  cyrgdsc\or% 162
+  cyrghk\or% 163
+  cyrshha\or% 164
+  cyrzhdsc\or% 165
+  cyrdelta\or% 166
+  cyrabhdze\or% 167
+  cyrlje\or% 168
+  cyrkdsc\or% 169
+  cyrldsc\or% 170
+  cyrkhk\or% 171
+  cyrlhk\or% 172
+  cyrndsc\or% 173
+  cyrng\or% 174
+  cyrnhk\or% 175
+  cyrotld\or% 176
+  cyrsacrs\or% 177
+  cyrushrt\or% 178
+  cyry\or% 179
+  cyrhhcrs\or% 180
+  cyrhdsc\or% 181
+  cyrhhk\or% 182
+  cyrchldsc\or% 183
+  cyrchrdsc\or% 184
+  cyrnje\or% 185
+  cyrschwa\or% 186
+  cyreps\or% 187
+  cyryo\or% 188
+  quotedblbase\or% 189
+  guillemotleft\or% 190
+  guillemotright\or% 191
+  CYRA\or% 192
+  CYRB\or% 193
+  CYRV\or% 194
+  CYRG\or% 195
+  CYRD\or% 196
+  CYRE\or% 197
+  CYRZH\or% 198
+  CYRZ\or% 199
+  CYRI\or% 200
+  CYRISHRT\or% 201
+  CYRK\or% 202
+  CYRL\or% 203
+  CYRM\or% 204
+  CYRN\or% 205
+  CYRO\or% 206
+  CYRP\or% 207
+  CYRR\or% 208
+  CYRS\or% 209
+  CYRT\or% 210
+  CYRU\or% 211
+  CYRF\or% 212
+  CYRH\or% 213
+  CYRC\or% 214
+  CYRCH\or% 215
+  CYRSH\or% 216
+  CYRSHCH\or% 217
+  CYRHRDSN\or% 218
+  CYRERY\or% 219
+  CYRSFTSN\or% 220
+  CYREREV\or% 221
+  CYRYU\or% 222
+  CYRYA\or% 223
+  cyra\or% 224
+  cyrb\or% 225
+  cyrv\or% 226
+  cyrg\or% 227
+  cyrd\or% 228
+  cyre\or% 229
+  cyrzh\or% 230
+  cyrz\or% 231
+  cyri\or% 232
+  cyrishrt\or% 233
+  cyrk\or% 234
+  cyrl\or% 235
+  cyrm\or% 236
+  cyrn\or% 237
+  cyro\or% 238
+  cyrp\or% 239
+  cyrr\or% 240
+  cyrs\or% 241
+  cyrt\or% 242
+  cyru\or% 243
+  cyrf\or% 244
+  cyrh\or% 245
+  cyrc\or% 246
+  cyrch\or% 247
+  cyrsh\or% 248
+  cyrshch\or% 249
+  cyrhrdsn\or% 250
+  cyrery\or% 251
+  cyrsftsn\or% 252
+  cyrerev\or% 253
+  cyryu\or% 254
+  cyrya\fi% 255
+}
+%</mtx&t2b>
+%    \end{macrocode}
+%
+% \subsubsection{LY1 encoding}
+%
+% The |LY1| encoding.
+% The data are taken from |texnansi.enc|.
+%
+% For unknown slots, a strange Postscript name is returned, but no
+% warning is generated.
+%    \begin{macrocode}
+%<*mtx&ly1>
+\newcommand\getpsname[1]{%
+  \ifcase#1%
+  .notdef.000\or % 000
+  Euro\or % 001
+  .notdef.002\or % 002
+  .notdef.003\or % 003
+  fraction\or % 004
+  dotaccent\or % 005
+  hungarumlaut\or % 006
+  ogonek\or % 007
+  fl\or % 008
+  .notdef.009\or % 009
+  cwm\or % 010
+  ff\or % 011
+  fi\or % 012
+  .notdef.013\or % 013
+  ffi\or % 014
+  ffl\or % 015
+  dotlessi\or % 016
+  dotlessj\or % 017
+  grave\or % 018
+  acute\or % 019
+  caron\or % 020
+  breve\or % 021
+  macron\or % 022
+  ring\or % 023
+  cedilla\or % 024
+  germandbls\or % 025
+  ae\or % 026
+  oe\or % 027
+  oslash\or % 028
+  AE\or % 029
+  OE\or % 030
+  Oslash\or % 031
+  space\or % 032
+  exclam\or % 033
+  quotedbl\or % 034
+  numbersign\or % 035
+  dollar\or % 036
+  percent\or % 037
+  ampersand\or % 038
+  quoteright\or % 039
+  parenleft\or % 040
+  parenright\or % 041
+  asterisk\or % 042
+  plus\or % 043
+  comma\or % 044
+  hyphen\or % 045
+  period\or % 046
+  slash\or % 047
+  zero\or % 048
+  one\or % 049
+  two\or % 050
+  three\or % 051
+  four\or % 052
+  five\or % 053
+  six\or % 054
+  seven\or % 055
+  eight\or % 056
+  nine\or % 057
+  colon\or % 058
+  semicolon\or % 059
+  less\or % 060
+  equal\or % 061
+  greater\or % 062
+  question\or % 063
+  at\or % 064
+  A\or % 065
+  B\or % 066
+  C\or % 067
+  D\or % 068
+  E\or % 069
+  F\or % 070
+  G\or % 071
+  H\or % 072
+  I\or % 073
+  J\or % 074
+  K\or % 075
+  L\or % 076
+  M\or % 077
+  N\or % 078
+  O\or % 079
+  P\or % 080
+  Q\or % 081
+  R\or % 082
+  S\or % 083
+  T\or % 084
+  U\or % 085
+  V\or % 086
+  W\or % 087
+  X\or % 088
+  Y\or % 089
+  Z\or % 090
+  bracketleft\or % 091
+  backslash\or % 092
+  bracketright\or % 093
+  circumflex\or % 094
+  underscore\or % 095
+  quoteleft\or % 096
+  a\or % 097
+  b\or % 098
+  c\or % 099
+  d\or % 100
+  e\or % 101
+  f\or % 102
+  g\or % 103
+  h\or % 104
+  i\or % 105
+  j\or % 106
+  k\or % 107
+  l\or % 108
+  m\or % 109
+  n\or % 110
+  o\or % 111
+  p\or % 112
+  q\or % 113
+  r\or % 114
+  s\or % 115
+  t\or % 116
+  u\or % 117
+  v\or % 118
+  w\or % 119
+  x\or % 120
+  y\or % 121
+  z\or % 122
+  braceleft\or % 123
+  bar\or % 124
+  braceright\or % 125
+  tilde\or % 126
+  dieresis\or % 127
+  Lslash\or % 128
+  quotesingle\or % 129
+  quotesinglbase\or % 130
+  florin\or % 131
+  quotedblbase\or % 132
+  ellipsis\or % 133
+  dagger\or % 134
+  daggerdbl\or % 135
+  circumflex\or % 136
+  perthousand\or % 137
+  Scaron\or % 138
+  guilsinglleft\or % 139
+  OE\or % 140
+  Zcaron\or % 141
+  asciicircum\or % 142
+  minus\or % 143
+  lslash\or % 144
+  quoteleft\or % 145
+  quoteright\or % 146
+  quotedblleft\or % 147
+  quotedblright\or % 148
+  bullet\or % 149
+  endash\or % 150
+  emdash\or % 151
+  tilde\or % 152
+  trademark\or % 153
+  scaron\or % 154
+  guilsinglright\or % 155
+  oe\or % 156
+  zcaron\or % 157
+  asciitilde\or % 158
+  Ydieresis\or % 159
+  nbspace\or % 160
+  exclamdown\or % 161
+  cent\or % 162
+  sterling\or % 163
+  currency\or % 164
+  yen\or % 165
+  brokenbar\or % 166
+  section\or % 167
+  dieresis\or % 168
+  copyright\or % 169
+  ordfeminine\or % 170
+  guillemotleft\or % 171
+  logicalnot\or % 172
+  sfthyphen\or % 173
+  registered\or % 174
+  macron\or % 175
+  degree\or % 176
+  plusminus\or % 177
+  twosuperior\or % 178
+  threesuperior\or % 179
+  acute\or % 180
+  mu\or % 181
+  paragraph\or % 182
+  periodcentered\or % 183
+  cedilla\or % 184
+  onesuperior\or % 185
+  ordmasculine\or % 186
+  guillemotright\or % 187
+  onequarter\or % 188
+  onehalf\or % 189
+  threequarters\or % 190
+  questiondown\or % 191
+  Agrave\or % 192
+  Aacute\or % 193
+  Acircumflex\or % 194
+  Atilde\or % 195
+  Adieresis\or % 196
+  Aring\or % 197
+  AE\or % 198
+  Ccedilla\or % 199
+  Egrave\or % 200
+  Eacute\or % 201
+  Ecircumflex\or % 202
+  Edieresis\or % 203
+  Igrave\or % 204
+  Iacute\or % 205
+  Icircumflex\or % 206
+  Idieresis\or % 207
+  Eth\or % 208
+  Ntilde\or % 209
+  Ograve\or % 210
+  Oacute\or % 211
+  Ocircumflex\or % 212
+  Otilde\or % 213
+  Odieresis\or % 214
+  multiply\or % 215
+  Oslash\or % 216
+  Ugrave\or % 217
+  Uacute\or % 218
+  Ucircumflex\or % 219
+  Udieresis\or % 220
+  Yacute\or % 221
+  Thorn\or % 222
+  germandbls\or % 223
+  agrave\or % 224
+  aacute\or % 225
+  acircumflex\or % 226
+  atilde\or % 227
+  adieresis\or % 228
+  aring\or % 229
+  ae\or % 230
+  ccedilla\or % 231
+  egrave\or % 232
+  eacute\or % 233
+  ecircumflex\or % 234
+  edieresis\or % 235
+  igrave\or % 236
+  iacute\or % 237
+  icircumflex\or % 238
+  idieresis\or % 239
+  eth\or % 240
+  ntilde\or % 241
+  ograve\or % 242
+  oacute\or % 243
+  ocircumflex\or % 244
+  otilde\or % 245
+  odieresis\or % 246
+  divide\or % 247
+  oslash\or % 248
+  ugrave\or % 249
+  uacute\or % 250
+  ucircumflex\or % 251
+  udieresis\or % 252
+  yacute\or % 253
+  thorn\or % 254
+  ydieresis\fi % 255
+}
+%</mtx&ly1>
+%    \end{macrocode}
+%
+%
+% \subsection{Templates}
+%
+% Generate template files for T1 and TS1 encoding.
+% They should be self-describing.
+%
+% \subsubsection{T1 encoding}
+%
+%    \begin{macrocode}
+%<*template&t1>
+\listfiles
+%% Replace the `XXX' in the next line by the 3- or 4-character long
+%% abbreviation for your font.
+\documentclass[family=XXX]{kerntest}
+
+%% Replace the settings by these you want to test.
+\kernsetup{encoding=T1,series=m,shape=n,example=hello}
+\kernsetup{size=14.40pt,baselineskip=16.5pt,papersize=a4paper}
+
+%% The next line can be used to add a name suffix to the output |mtx| file.
+%% \kernsetup{extraname=normal}
+
+%% Set encoding parameters.
+%% Set ligaturing: 1=all, 0=all, -1=some, -2=none
+%% \encodingsetup{ligaturing=1}
+
+%% If you are using a font with different design sizes and if you want
+%% to test one design size scaled to another one, you may input a
+%% modified fd file for your font. To generate this new fd file, just
+%% copy the original one, rename it, and modify the entries for the
+%% font shapes to use the design size you want to test.
+%% \input{t1XXX-1200.fd}
+
+%% The following lines show some possible glyph classes. You should
+%% add all classes you need. 
+\newglyphclass{right}{A}{A,Aogonek}
+\newglyphclass{right}{Abreve}{Abreve,Aacute,Acircumflex,%
+  Atilde,Adieresis}
+\newglyphclass{right}{Aring}{Agrave,Aring}
+
+\newglyphclass{left}{A}{A,Aogonek}
+\newglyphclass{left}{Abreve}{Abreve,Agrave,Acircumflex,%
+  Atilde,Adieresis}
+\newglyphclass{left}{Aring}{Aacute,Aring}
+
+\newglyphclass{right}{C}{C,Cacute,Ccaron,Ccedilla}
+\newglyphclass{left}{C}{C,Cacute,Ccaron,Ccedilla}
+
+\newglyphclass{right}{D}{D,Dcaron,Eth}
+
+\newglyphclass{right}{E}{E,Ecaron,Eogonek,Egrave,Eacute,Ecircumflex,%
+  Edieresis,AE,OE}
+
+\newglyphclass{right}{G}{G,Gbreve}
+\newglyphclass{left}{G}{G,Gbreve}
+
+\newglyphclass{left}{H}{B,D,Dcaron,Eth,E,Ecaron,Eogonek,Egrave,%
+  Eacute,Ecircumflex,Edieresis,F,H,I,Idotaccent,Igrave,Iacute,%
+  Icircumflex,Idieresis,IJ,J,K,L,Lacute,Lcaron,N,Nacute,Ncaron,%
+  Ntilde,P,R,Racute,Rcaron,Ng,Thorn}
+
+\newglyphclass{right}{H}{H,I,Idotaccent,Igrave,Iacute,%
+  Icircumflex,Idieresis,IJ,J,N,Nacute,Ncaron,Ntilde}
+
+\newglyphclass{right}{O}{O,Ohungarumlaut,Ograve,Oacute,Ocircumflex,%
+  Otilde,Odieresis,Oslash}
+\newglyphclass{left}{O}{O,Ohungarumlaut,Ograve,Oacute,Ocircumflex,%
+  Otilde,Odieresis,OE,Oslash}
+
+\newglyphclass{right}{R}{R,Racute,Rcaron}
+
+\newglyphclass{right}{S}{S,Sacute,Scaron,Scedilla,SS,dollar}
+\newglyphclass{left}{S}{S,Sacute,Scaron,Scedilla,SS,dollar}
+
+\newglyphclass{right}{T}{T,Tcaron,Tcedilla}
+\newglyphclass{left}{T}{T,Tcaron,Tcedilla}
+
+\newglyphclass{right}{U}{U,Uhungarumlaut,Uring,Ugrave,Uacute,%
+  Ucircumflex,Udieresis}
+\newglyphclass{left}{U}{U,Uhungarumlaut,Uring,Ugrave,Uacute,%
+  Ucircumflex,Udieresis}
+
+\newglyphclass{right}{Y}{Y,Yacute,Ydieresis}%
+\newglyphclass{left}{Y}{Y,Yacute,Ydieresis}%
+
+\newglyphclass{left}{Z}{Z,Zacute,Zcaron,Zdotaccent}
+\newglyphclass{right}{Z}{Z,Zacute,Zcaron,Zdotaccent}
+
+\newglyphclass{left}{a}{a,aogonek,ae}
+\newglyphclass{left}{abreve}{abreve,agrave,acircumflex,atilde,adieresis,aring}
+\newglyphclass{right}{a}{a,aogonek}
+\newglyphclass{right}{abreve}{abreve,aacute,acircumflex,atilde,adieresis,aring}
+
+\newglyphclass{left}{c}{c,ccedilla}
+\newglyphclass{right}{c}{c,ccedilla}
+
+\newglyphclass{left}{d}{d,dbar,dcaron}
+
+\newglyphclass{left}{e}{e,eogonek}
+\newglyphclass{left}{egrave}{ecaron,ecircumflex}
+\newglyphclass{right}{e}{e,eogonek,ae,oe}
+\newglyphclass{right}{egrave}{ecaron,ecircumflex}
+
+\newglyphclass{left}{f}{f,ff,fi,fl,ffi,ffl}
+\newglyphclass{right}{f}{f,ff}
+
+\newglyphclass{right}{i}{i,fi,ffi,dotlessi}
+\newglyphclass{left}{i}{i,ij,dotlessi}
+
+\newglyphclass{right}{l}{fl,ffl,l,lacute}
+\newglyphclass{left}{l}{l,lacute,lcaron}
+
+\newglyphclass{right}{m}{m,n}
+\newglyphclass{left}{m}{m,n}
+\newglyphclass{right}{nacute}{nacute,ncaron}
+\newglyphclass{left}{nacute}{nacute,ncaron}
+
+\newglyphclass{right}{ograve}{ograve,ocircumflex}
+\newglyphclass{right}{ohungarumlaut}{ohungarumlaut,oacute,otilde,%
+  odieresis}
+\newglyphclass{left}{oacute}{oacute,ocircumflex,oe}
+\newglyphclass{left}{ohungarumlaut}{ohungarumlaut,ograve,otilde,%
+  odieresis}
+
+\newglyphclass{left}{t}{t,tcaron,tcedilla}
+
+
+\begin{document}
+
+%% This table of characters is sorted by similar glyphs, not by the
+%% encoding.
+%% Replace `{LLL}' and `{RRR}' in columns 1 resp. 5 by these glyphs
+%% that shall be tested.
+%% Good pairs to use for LLL and RRR test are 016, 017 (English
+%% quotation marks `` and ''); 018, 016 (German quotation marks ,, and
+%% ``); 019, 020 (French Guillemets << and >>); 020, 019 (French
+%% Guillemets in German notation >> and <<).
+%% You may also take the Postscript names for all glyphs.
+\begin{kerntable}
+  \testkern{LLL}{-}{000}{-}{RRR} \\ % grave
+  \testkern{LLL}{-}{001}{-}{RRR} \\ % acute
+  \testkern{LLL}{-}{002}{-}{RRR} \\ % circumflex
+  \testkern{LLL}{-}{003}{-}{RRR} \\ % tilde
+  \testkern{LLL}{-}{004}{-}{RRR} \\ % dieresis
+  \testkern{LLL}{-}{005}{-}{RRR} \\ % hungarumlaut
+  \testkern{LLL}{-}{006}{-}{RRR} \\ % ring
+  \testkern{LLL}{-}{007}{-}{RRR} \\ % caron
+  \testkern{LLL}{-}{008}{-}{RRR} \\ % breve
+  \testkern{LLL}{-}{009}{-}{RRR} \\ % macron
+  \testkern{LLL}{-}{010}{-}{RRR} \\ % dotaccent
+  \testkern{LLL}{-}{011}{-}{RRR} \\ % cedilla
+  \testkern{LLL}{-}{012}{-}{RRR} \\ % ogonek
+  \testkern{LLL}{-}{126}{-}{RRR} \\ % asciitilde
+  \testkern{LLL}{-}{094}{-}{RRR} \\ % asciicircum
+  \testkern{LLL}{-}{042}{-}{RRR} \\ % asterisk
+  \testkern{LLL}{-}{023}{-}{RRR} \\ % compwordmark
+  \testkern{LLL}{-}{032}{-}{RRR} \\ % visiblespace
+  \testkern{LLL}{-}{014}{-}{RRR} \\ % guilsinglleft
+  \testkern{LLL}{-}{015}{-}{RRR} \\ % guilsinglright
+  \testkern{LLL}{-}{019}{-}{RRR} \\ % guillemotleft
+  \testkern{LLL}{-}{020}{-}{RRR} \\ % guillemotright
+  \testkern{LLL}{-}{096}{-}{RRR} \\ % quoteleft
+  \testkern{LLL}{-}{039}{-}{RRR} \\ % quoteright
+  \testkern{LLL}{-}{013}{-}{RRR} \\ % quotesinglbase
+  \testkern{LLL}{-}{016}{-}{RRR} \\ % quotedblleft
+  \testkern{LLL}{-}{017}{-}{RRR} \\ % quotedblright
+  \testkern{LLL}{-}{018}{-}{RRR} \\ % quotedblbase
+  \testkern{LLL}{-}{034}{-}{RRR} \\ % quotedbl
+  \testkern{LLL}{-}{046}{-}{RRR} \\ % period
+  \testkern{LLL}{-}{044}{-}{RRR} \\ % comma
+  \testkern{LLL}{-}{058}{-}{RRR} \\ % colon
+  \testkern{LLL}{-}{059}{-}{RRR} \\ % semicolon
+  \testkern{LLL}{-}{033}{-}{RRR} \\ % exclam
+  \testkern{LLL}{-}{063}{-}{RRR} \\ % question
+  \testkern{LLL}{-}{189}{-}{RRR} \\ % exclamdown
+  \testkern{LLL}{-}{190}{-}{RRR} \\ % questiondown
+  \testkern{LLL}{-}{045}{-}{RRR} \\ % hyphen
+  \testkern{LLL}{-}{127}{-}{RRR} \\ % hyphenchar
+  \testkern{LLL}{-}{021}{-}{RRR} \\ % rangedash
+  \testkern{LLL}{-}{022}{-}{RRR} \\ % punctdash
+  \testkern{LLL}{-}{095}{-}{RRR} \\ % underscore
+  \testkern{LLL}{-}{043}{-}{RRR} \\ % plus
+  \testkern{LLL}{-}{061}{-}{RRR} \\ % equal
+  \testkern{LLL}{-}{060}{-}{RRR} \\ % less
+  \testkern{LLL}{-}{062}{-}{RRR} \\ % greater
+  \testkern{LLL}{-}{047}{-}{RRR} \\ % slash
+  \testkern{LLL}{-}{092}{-}{RRR} \\ % backslash
+  \testkern{LLL}{-}{040}{-}{RRR} \\ % parenleft
+  \testkern{LLL}{-}{041}{-}{RRR} \\ % parenright
+  \testkern{LLL}{-}{091}{-}{RRR} \\ % bracketleft
+  \testkern{LLL}{-}{093}{-}{RRR} \\ % bracketright
+  \testkern{LLL}{-}{123}{-}{RRR} \\ % braceleft
+  \testkern{LLL}{-}{125}{-}{RRR} \\ % braceright
+  \testkern{LLL}{-}{124}{-}{RRR} \\ % bar
+  \testkern{LLL}{-}{035}{-}{RRR} \\ % numbersign
+  \testkern{LLL}{-}{037}{-}{RRR} \\ % percent
+  \testkern{LLL}{-}{024}{-}{RRR} \\ % perthousandzero
+  \testkern{LLL}{-}{038}{-}{RRR} \\ % ampersand
+  \testkern{LLL}{-}{159}{-}{RRR} \\ % section
+  \testkern{LLL}{-}{064}{-}{RRR} \\ % at
+  \testkern{LLL}{-}{191}{-}{RRR} \\ % sterling
+  \testkern{LLL}{-}{048}{-}{RRR} \\ % zero
+  \testkern{LLL}{-}{049}{-}{RRR} \\ % one
+  \testkern{LLL}{-}{050}{-}{RRR} \\ % two
+  \testkern{LLL}{-}{051}{-}{RRR} \\ % three
+  \testkern{LLL}{-}{052}{-}{RRR} \\ % four
+  \testkern{LLL}{-}{053}{-}{RRR} \\ % five
+  \testkern{LLL}{-}{054}{-}{RRR} \\ % six
+  \testkern{LLL}{-}{055}{-}{RRR} \\ % seven
+  \testkern{LLL}{-}{056}{-}{RRR} \\ % eight
+  \testkern{LLL}{-}{057}{-}{RRR} \\ % nine
+  \testkern{LLL}{-}{065}{-}{RRR} \\ % A
+  \testkern{LLL}{-}{128}{-}{RRR} \\ % Abreve
+  \testkern{LLL}{-}{129}{-}{RRR} \\ % Aogonek
+  \testkern{LLL}{-}{192}{-}{RRR} \\ % Agrave
+  \testkern{LLL}{-}{193}{-}{RRR} \\ % Aacute
+  \testkern{LLL}{-}{194}{-}{RRR} \\ % Acircumflex
+  \testkern{LLL}{-}{195}{-}{RRR} \\ % Atilde
+  \testkern{LLL}{-}{196}{-}{RRR} \\ % Adieresis
+  \testkern{LLL}{-}{197}{-}{RRR} \\ % Aring
+  \testkern{LLL}{-}{198}{-}{RRR} \\ % AE
+  \testkern{LLL}{-}{066}{-}{RRR} \\ % B
+  \testkern{LLL}{-}{067}{-}{RRR} \\ % C
+  \testkern{LLL}{-}{130}{-}{RRR} \\ % Cacute
+  \testkern{LLL}{-}{131}{-}{RRR} \\ % Ccaron
+  \testkern{LLL}{-}{199}{-}{RRR} \\ % Ccedilla
+  \testkern{LLL}{-}{068}{-}{RRR} \\ % D
+  \testkern{LLL}{-}{132}{-}{RRR} \\ % Dcaron
+  \testkern{LLL}{-}{208}{-}{RRR} \\ % Eth
+  \testkern{LLL}{-}{069}{-}{RRR} \\ % E
+  \testkern{LLL}{-}{133}{-}{RRR} \\ % Ecaron
+  \testkern{LLL}{-}{134}{-}{RRR} \\ % Eogonek
+  \testkern{LLL}{-}{200}{-}{RRR} \\ % Egrave
+  \testkern{LLL}{-}{201}{-}{RRR} \\ % Eacute
+  \testkern{LLL}{-}{202}{-}{RRR} \\ % Ecircumflex
+  \testkern{LLL}{-}{203}{-}{RRR} \\ % Edieresis
+  \testkern{LLL}{-}{070}{-}{RRR} \\ % F
+  \testkern{LLL}{-}{071}{-}{RRR} \\ % G
+  \testkern{LLL}{-}{135}{-}{RRR} \\ % Gbreve
+  \testkern{LLL}{-}{072}{-}{RRR} \\ % H
+  \testkern{LLL}{-}{073}{-}{RRR} \\ % I
+  \testkern{LLL}{-}{157}{-}{RRR} \\ % Idotaccent
+  \testkern{LLL}{-}{204}{-}{RRR} \\ % Igrave
+  \testkern{LLL}{-}{205}{-}{RRR} \\ % Iacute
+  \testkern{LLL}{-}{206}{-}{RRR} \\ % Icircumflex
+  \testkern{LLL}{-}{207}{-}{RRR} \\ % Idieresis
+  \testkern{LLL}{-}{156}{-}{RRR} \\ % IJ
+  \testkern{LLL}{-}{074}{-}{RRR} \\ % J
+  \testkern{LLL}{-}{075}{-}{RRR} \\ % K
+  \testkern{LLL}{-}{076}{-}{RRR} \\ % L
+  \testkern{LLL}{-}{136}{-}{RRR} \\ % Lacute
+  \testkern{LLL}{-}{137}{-}{RRR} \\ % Lcaron
+  \testkern{LLL}{-}{138}{-}{RRR} \\ % Lslash
+  \testkern{LLL}{-}{077}{-}{RRR} \\ % M
+  \testkern{LLL}{-}{078}{-}{RRR} \\ % N
+  \testkern{LLL}{-}{139}{-}{RRR} \\ % Nacute
+  \testkern{LLL}{-}{140}{-}{RRR} \\ % Ncaron
+  \testkern{LLL}{-}{209}{-}{RRR} \\ % Ntilde
+  \testkern{LLL}{-}{079}{-}{RRR} \\ % O
+  \testkern{LLL}{-}{142}{-}{RRR} \\ % Ohungarumlaut
+  \testkern{LLL}{-}{210}{-}{RRR} \\ % Ograve
+  \testkern{LLL}{-}{211}{-}{RRR} \\ % Oacute
+  \testkern{LLL}{-}{212}{-}{RRR} \\ % Ocircumflex
+  \testkern{LLL}{-}{213}{-}{RRR} \\ % Otilde
+  \testkern{LLL}{-}{214}{-}{RRR} \\ % Odieresis
+  \testkern{LLL}{-}{215}{-}{RRR} \\ % OE
+  \testkern{LLL}{-}{216}{-}{RRR} \\ % Oslash
+  \testkern{LLL}{-}{080}{-}{RRR} \\ % P
+  \testkern{LLL}{-}{081}{-}{RRR} \\ % Q
+  \testkern{LLL}{-}{082}{-}{RRR} \\ % R
+  \testkern{LLL}{-}{143}{-}{RRR} \\ % Racute
+  \testkern{LLL}{-}{144}{-}{RRR} \\ % Rcaron
+  \testkern{LLL}{-}{083}{-}{RRR} \\ % S
+  \testkern{LLL}{-}{145}{-}{RRR} \\ % Sacute
+  \testkern{LLL}{-}{146}{-}{RRR} \\ % Scaron
+  \testkern{LLL}{-}{147}{-}{RRR} \\ % Scedilla
+  \testkern{LLL}{-}{223}{-}{RRR} \\ % SS
+  \testkern{LLL}{-}{036}{-}{RRR} \\ % dollar
+  \testkern{LLL}{-}{084}{-}{RRR} \\ % T
+  \testkern{LLL}{-}{148}{-}{RRR} \\ % Tcaron
+  \testkern{LLL}{-}{149}{-}{RRR} \\ % Tcedilla
+  \testkern{LLL}{-}{085}{-}{RRR} \\ % U
+  \testkern{LLL}{-}{150}{-}{RRR} \\ % Uhungarumlaut
+  \testkern{LLL}{-}{151}{-}{RRR} \\ % Uring
+  \testkern{LLL}{-}{217}{-}{RRR} \\ % Ugrave
+  \testkern{LLL}{-}{218}{-}{RRR} \\ % Uacute
+  \testkern{LLL}{-}{219}{-}{RRR} \\ % Ucircumflex
+  \testkern{LLL}{-}{220}{-}{RRR} \\ % Udieresis
+  \testkern{LLL}{-}{086}{-}{RRR} \\ % V
+  \testkern{LLL}{-}{087}{-}{RRR} \\ % W
+  \testkern{LLL}{-}{088}{-}{RRR} \\ % X
+  \testkern{LLL}{-}{089}{-}{RRR} \\ % Y
+  \testkern{LLL}{-}{152}{-}{RRR} \\ % Ydieresis
+  \testkern{LLL}{-}{221}{-}{RRR} \\ % Yacute
+  \testkern{LLL}{-}{090}{-}{RRR} \\ % Z
+  \testkern{LLL}{-}{153}{-}{RRR} \\ % Zacute
+  \testkern{LLL}{-}{154}{-}{RRR} \\ % Zcaron
+  \testkern{LLL}{-}{155}{-}{RRR} \\ % Zdotaccent
+  \testkern{LLL}{-}{141}{-}{RRR} \\ % Ng
+  \testkern{LLL}{-}{222}{-}{RRR} \\ % Thorn
+  \testkern{LLL}{-}{097}{-}{RRR} \\ % a
+  \testkern{LLL}{-}{160}{-}{RRR} \\ % abreve
+  \testkern{LLL}{-}{161}{-}{RRR} \\ % aogonek
+  \testkern{LLL}{-}{224}{-}{RRR} \\ % agrave
+  \testkern{LLL}{-}{225}{-}{RRR} \\ % aacute
+  \testkern{LLL}{-}{226}{-}{RRR} \\ % acircumflex
+  \testkern{LLL}{-}{227}{-}{RRR} \\ % atilde
+  \testkern{LLL}{-}{228}{-}{RRR} \\ % adieresis
+  \testkern{LLL}{-}{229}{-}{RRR} \\ % aring
+  \testkern{LLL}{-}{230}{-}{RRR} \\ % ae
+  \testkern{LLL}{-}{098}{-}{RRR} \\ % b
+  \testkern{LLL}{-}{099}{-}{RRR} \\ % c
+  \testkern{LLL}{-}{162}{-}{RRR} \\ % cacute
+  \testkern{LLL}{-}{163}{-}{RRR} \\ % ccaron
+  \testkern{LLL}{-}{231}{-}{RRR} \\ % ccedilla
+  \testkern{LLL}{-}{100}{-}{RRR} \\ % d
+  \testkern{LLL}{-}{158}{-}{RRR} \\ % dbar
+  \testkern{LLL}{-}{164}{-}{RRR} \\ % dcaron
+  \testkern{LLL}{-}{101}{-}{RRR} \\ % e
+  \testkern{LLL}{-}{165}{-}{RRR} \\ % ecaron
+  \testkern{LLL}{-}{166}{-}{RRR} \\ % eogonek
+  \testkern{LLL}{-}{232}{-}{RRR} \\ % egrave
+  \testkern{LLL}{-}{233}{-}{RRR} \\ % eacute
+  \testkern{LLL}{-}{234}{-}{RRR} \\ % ecircumflex
+  \testkern{LLL}{-}{235}{-}{RRR} \\ % edieresis
+  \testkern{LLL}{-}{102}{-}{RRR} \\ % f
+  \testkern{LLL}{-}{027}{-}{RRR} \\ % ff
+  \testkern{LLL}{-}{028}{-}{RRR} \\ % fi
+  \testkern{LLL}{-}{029}{-}{RRR} \\ % fl
+  \testkern{LLL}{-}{030}{-}{RRR} \\ % ffi
+  \testkern{LLL}{-}{031}{-}{RRR} \\ % ffl
+  \testkern{LLL}{-}{103}{-}{RRR} \\ % g
+  \testkern{LLL}{-}{167}{-}{RRR} \\ % gbreve
+  \testkern{LLL}{-}{104}{-}{RRR} \\ % h
+  \testkern{LLL}{-}{105}{-}{RRR} \\ % i
+  \testkern{LLL}{-}{025}{-}{RRR} \\ % dotlessi
+  \testkern{LLL}{-}{236}{-}{RRR} \\ % igrave
+  \testkern{LLL}{-}{237}{-}{RRR} \\ % iacute
+  \testkern{LLL}{-}{238}{-}{RRR} \\ % icircumflex
+  \testkern{LLL}{-}{239}{-}{RRR} \\ % idieresis
+  \testkern{LLL}{-}{188}{-}{RRR} \\ % ij
+  \testkern{LLL}{-}{106}{-}{RRR} \\ % j
+  \testkern{LLL}{-}{026}{-}{RRR} \\ % dotlessj
+  \testkern{LLL}{-}{107}{-}{RRR} \\ % k
+  \testkern{LLL}{-}{108}{-}{RRR} \\ % l
+  \testkern{LLL}{-}{168}{-}{RRR} \\ % lacute
+  \testkern{LLL}{-}{169}{-}{RRR} \\ % lcaron
+  \testkern{LLL}{-}{170}{-}{RRR} \\ % lslash
+  \testkern{LLL}{-}{109}{-}{RRR} \\ % m
+  \testkern{LLL}{-}{110}{-}{RRR} \\ % n
+  \testkern{LLL}{-}{171}{-}{RRR} \\ % nacute
+  \testkern{LLL}{-}{172}{-}{RRR} \\ % ncaron
+  \testkern{LLL}{-}{241}{-}{RRR} \\ % ntilde
+  \testkern{LLL}{-}{111}{-}{RRR} \\ % o
+  \testkern{LLL}{-}{174}{-}{RRR} \\ % ohungarumlaut
+  \testkern{LLL}{-}{242}{-}{RRR} \\ % ograve
+  \testkern{LLL}{-}{243}{-}{RRR} \\ % oacute
+  \testkern{LLL}{-}{244}{-}{RRR} \\ % ocircumflex
+  \testkern{LLL}{-}{245}{-}{RRR} \\ % otilde
+  \testkern{LLL}{-}{246}{-}{RRR} \\ % odieresis
+  \testkern{LLL}{-}{247}{-}{RRR} \\ % oe
+  \testkern{LLL}{-}{248}{-}{RRR} \\ % oslash
+  \testkern{LLL}{-}{112}{-}{RRR} \\ % p
+  \testkern{LLL}{-}{113}{-}{RRR} \\ % q
+  \testkern{LLL}{-}{114}{-}{RRR} \\ % r
+  \testkern{LLL}{-}{175}{-}{RRR} \\ % racute
+  \testkern{LLL}{-}{176}{-}{RRR} \\ % rcaron
+  \testkern{LLL}{-}{115}{-}{RRR} \\ % s
+  \testkern{LLL}{-}{177}{-}{RRR} \\ % sacute
+  \testkern{LLL}{-}{178}{-}{RRR} \\ % scaron
+  \testkern{LLL}{-}{179}{-}{RRR} \\ % scedilla
+  \testkern{LLL}{-}{116}{-}{RRR} \\ % t
+  \testkern{LLL}{-}{180}{-}{RRR} \\ % tcaron
+  \testkern{LLL}{-}{181}{-}{RRR} \\ % tcedilla
+  \testkern{LLL}{-}{117}{-}{RRR} \\ % u
+  \testkern{LLL}{-}{182}{-}{RRR} \\ % uhungarumlaut
+  \testkern{LLL}{-}{183}{-}{RRR} \\ % uring
+  \testkern{LLL}{-}{249}{-}{RRR} \\ % ugrave
+  \testkern{LLL}{-}{250}{-}{RRR} \\ % uacute
+  \testkern{LLL}{-}{251}{-}{RRR} \\ % ucircumflex
+  \testkern{LLL}{-}{252}{-}{RRR} \\ % udieresis
+  \testkern{LLL}{-}{118}{-}{RRR} \\ % v
+  \testkern{LLL}{-}{119}{-}{RRR} \\ % w
+  \testkern{LLL}{-}{120}{-}{RRR} \\ % x
+  \testkern{LLL}{-}{121}{-}{RRR} \\ % y
+  \testkern{LLL}{-}{184}{-}{RRR} \\ % ydieresis
+  \testkern{LLL}{-}{253}{-}{RRR} \\ % yacute
+  \testkern{LLL}{-}{122}{-}{RRR} \\ % z
+  \testkern{LLL}{-}{185}{-}{RRR} \\ % zacute
+  \testkern{LLL}{-}{186}{-}{RRR} \\ % zcaron
+  \testkern{LLL}{-}{187}{-}{RRR} \\ % zdotaccent
+  \testkern{LLL}{-}{240}{-}{RRR} \\ % eth
+  \testkern{LLL}{-}{173}{-}{RRR} \\ % ng
+  \testkern{LLL}{-}{254}{-}{RRR} \\ % thorn
+  \testkern{LLL}{-}{255}{-}{RRR} \\ % germandbls
+\end{kerntable}
+
+\end{document}
+%</template&t1>
+%    \end{macrocode}
+%
+% \subsubsection{TS1 encoding}
+%
+%    \begin{macrocode}
+%<*template&ts1>
+\listfiles
+%% Replace the `XXX' in the next line by the 3- or 4-character long
+%% abbreviation for your font.
+\documentclass[family=XXX]{kerntest}
+
+%% Replace the settings by these you want to test.
+\kernsetup{encoding=TS1,series=m,shape=n,example=hello}
+\kernsetup{size=14.40pt,baselineskip=16.5pt,papersize=a4paper}
+
+%% The next line can be used to add a name suffix to the output |mtx| file.
+%% \kernsetup{extraname=normal}
+
+%% If you are using a font with different design sizes and if you want
+%% to test one design size scaled to another one, you may input a
+%% modified fd file for your font. To generate this new fd file, just
+%% copy the original one, rename it, and modify the entries for the
+%% font shapes to use the design size you want to test.
+%% \input{t1XXX-1200.fd}
+
+\begin{document}
+
+%% This table of characters is sorted by similar glyphs, not by the
+%% encoding.
+%% Replace `{LLL}' and `{RRR}' in columns 1 resp. 5 by these glyphs
+%% that shall be tested.
+\begin{kerntable}
+  \testkern{LLL}{-}{000}{-}{RRR} \\ % capitalgrave
+  \testkern{LLL}{-}{001}{-}{RRR} \\ % capitalacute
+  \testkern{LLL}{-}{002}{-}{RRR} \\ % capitalcircumflex
+  \testkern{LLL}{-}{003}{-}{RRR} \\ % capitaltilde
+  \testkern{LLL}{-}{004}{-}{RRR} \\ % capitaldieresis
+  \testkern{LLL}{-}{005}{-}{RRR} \\ % capitalhungarumlaut
+  \testkern{LLL}{-}{006}{-}{RRR} \\ % capitalring
+  \testkern{LLL}{-}{007}{-}{RRR} \\ % capitalcaron
+  \testkern{LLL}{-}{008}{-}{RRR} \\ % capitalbreve
+  \testkern{LLL}{-}{009}{-}{RRR} \\ % capitalmacron
+  \testkern{LLL}{-}{010}{-}{RRR} \\ % capitaldotaccent
+  \testkern{LLL}{-}{011}{-}{RRR} \\ % cedilla
+  \testkern{LLL}{-}{012}{-}{RRR} \\ % ogonek
+  \testkern{LLL}{-}{013}{-}{RRR} \\ % quotesinglbase
+  \testkern{LLL}{-}{014}{-}{RRR} \\
+  \testkern{LLL}{-}{015}{-}{RRR} \\
+  \testkern{LLL}{-}{016}{-}{RRR} \\
+  \testkern{LLL}{-}{017}{-}{RRR} \\
+  \testkern{LLL}{-}{018}{-}{RRR} \\ % quotedblbase
+  \testkern{LLL}{-}{019}{-}{RRR} \\
+  \testkern{LLL}{-}{020}{-}{RRR} \\
+  \testkern{LLL}{-}{021}{-}{RRR} \\ % twelveudash
+  \testkern{LLL}{-}{022}{-}{RRR} \\ % threequartersemdash
+  \testkern{LLL}{-}{023}{-}{RRR} \\ % capitalcompwordmark
+  \testkern{LLL}{-}{024}{-}{RRR} \\ % arrowleft
+  \testkern{LLL}{-}{025}{-}{RRR} \\ % arrowright
+  \testkern{LLL}{-}{026}{-}{RRR} \\ % tieaccentlowercase
+  \testkern{LLL}{-}{027}{-}{RRR} \\ % tieaccentcapital
+  \testkern{LLL}{-}{028}{-}{RRR} \\ % newtieaccentlowercase
+  \testkern{LLL}{-}{029}{-}{RRR} \\ % newtieaccentcapital
+  \testkern{LLL}{-}{030}{-}{RRR} \\ % ascendercompwordmark
+  \testkern{LLL}{-}{031}{-}{RRR} \\ % blank
+  \testkern{LLL}{-}{032}{-}{RRR} \\
+  \testkern{LLL}{-}{033}{-}{RRR} \\
+  \testkern{LLL}{-}{034}{-}{RRR} \\
+  \testkern{LLL}{-}{035}{-}{RRR} \\
+  \testkern{LLL}{-}{036}{-}{RRR} \\ % dollar
+  \testkern{LLL}{-}{037}{-}{RRR} \\
+  \testkern{LLL}{-}{038}{-}{RRR} \\
+  \testkern{LLL}{-}{039}{-}{RRR} \\ % quotesingle
+  \testkern{LLL}{-}{040}{-}{RRR} \\
+  \testkern{LLL}{-}{041}{-}{RRR} \\
+  \testkern{LLL}{-}{042}{-}{RRR} \\ % asteriskcentered
+  \testkern{LLL}{-}{043}{-}{RRR} \\
+  \testkern{LLL}{-}{044}{-}{RRR} \\ % comma
+  \testkern{LLL}{-}{045}{-}{RRR} \\ % hyphendbl
+  \testkern{LLL}{-}{046}{-}{RRR} \\ % period
+  \testkern{LLL}{-}{047}{-}{RRR} \\ % fraction
+  \testkern{LLL}{-}{048}{-}{RRR} \\ % zerooldstyle
+  \testkern{LLL}{-}{049}{-}{RRR} \\ % oneoldstyle
+  \testkern{LLL}{-}{050}{-}{RRR} \\ % twooldstyle
+  \testkern{LLL}{-}{051}{-}{RRR} \\ % threeoldstyle
+  \testkern{LLL}{-}{052}{-}{RRR} \\ % fouroldstyle
+  \testkern{LLL}{-}{053}{-}{RRR} \\ % fiveoldstyle
+  \testkern{LLL}{-}{054}{-}{RRR} \\ % sixoldstyle
+  \testkern{LLL}{-}{055}{-}{RRR} \\ % sevenoldstyle
+  \testkern{LLL}{-}{056}{-}{RRR} \\ % eightoldstyle
+  \testkern{LLL}{-}{057}{-}{RRR} \\ % nineoldstyle
+  \testkern{LLL}{-}{058}{-}{RRR} \\
+  \testkern{LLL}{-}{059}{-}{RRR} \\
+  \testkern{LLL}{-}{060}{-}{RRR} \\ % angbracketleft
+  \testkern{LLL}{-}{061}{-}{RRR} \\ % minus
+  \testkern{LLL}{-}{062}{-}{RRR} \\ % angbracketright
+  \testkern{LLL}{-}{063}{-}{RRR} \\
+  \testkern{LLL}{-}{064}{-}{RRR} \\
+  \testkern{LLL}{-}{065}{-}{RRR} \\
+  \testkern{LLL}{-}{066}{-}{RRR} \\
+  \testkern{LLL}{-}{067}{-}{RRR} \\
+  \testkern{LLL}{-}{068}{-}{RRR} \\
+  \testkern{LLL}{-}{069}{-}{RRR} \\
+  \testkern{LLL}{-}{070}{-}{RRR} \\
+  \testkern{LLL}{-}{071}{-}{RRR} \\
+  \testkern{LLL}{-}{072}{-}{RRR} \\
+  \testkern{LLL}{-}{073}{-}{RRR} \\
+  \testkern{LLL}{-}{074}{-}{RRR} \\
+  \testkern{LLL}{-}{075}{-}{RRR} \\
+  \testkern{LLL}{-}{076}{-}{RRR} \\
+  \testkern{LLL}{-}{077}{-}{RRR} \\ % Omegainv
+  \testkern{LLL}{-}{078}{-}{RRR} \\
+  \testkern{LLL}{-}{079}{-}{RRR} \\ % bigcircle
+  \testkern{LLL}{-}{080}{-}{RRR} \\
+  \testkern{LLL}{-}{081}{-}{RRR} \\
+  \testkern{LLL}{-}{082}{-}{RRR} \\
+  \testkern{LLL}{-}{083}{-}{RRR} \\
+  \testkern{LLL}{-}{084}{-}{RRR} \\
+  \testkern{LLL}{-}{085}{-}{RRR} \\
+  \testkern{LLL}{-}{086}{-}{RRR} \\
+  \testkern{LLL}{-}{087}{-}{RRR} \\ % Omega
+  \testkern{LLL}{-}{088}{-}{RRR} \\
+  \testkern{LLL}{-}{089}{-}{RRR} \\
+  \testkern{LLL}{-}{090}{-}{RRR} \\
+  \testkern{LLL}{-}{091}{-}{RRR} \\ % openbracketleft
+  \testkern{LLL}{-}{092}{-}{RRR} \\
+  \testkern{LLL}{-}{093}{-}{RRR} \\ % openbracketright
+  \testkern{LLL}{-}{094}{-}{RRR} \\ % arrowup
+  \testkern{LLL}{-}{095}{-}{RRR} \\ % arrowdown
+  \testkern{LLL}{-}{096}{-}{RRR} \\ % asciigrave
+  \testkern{LLL}{-}{097}{-}{RRR} \\
+  \testkern{LLL}{-}{098}{-}{RRR} \\ % born
+  \testkern{LLL}{-}{099}{-}{RRR} \\ % divorced
+  \testkern{LLL}{-}{100}{-}{RRR} \\ % died
+  \testkern{LLL}{-}{101}{-}{RRR} \\
+  \testkern{LLL}{-}{102}{-}{RRR} \\
+  \testkern{LLL}{-}{103}{-}{RRR} \\
+  \testkern{LLL}{-}{104}{-}{RRR} \\
+  \testkern{LLL}{-}{105}{-}{RRR} \\
+  \testkern{LLL}{-}{106}{-}{RRR} \\
+  \testkern{LLL}{-}{107}{-}{RRR} \\
+  \testkern{LLL}{-}{108}{-}{RRR} \\ % leaf
+  \testkern{LLL}{-}{109}{-}{RRR} \\ % married
+  \testkern{LLL}{-}{110}{-}{RRR} \\ % musicalnote
+  \testkern{LLL}{-}{111}{-}{RRR} \\
+  \testkern{LLL}{-}{112}{-}{RRR} \\
+  \testkern{LLL}{-}{113}{-}{RRR} \\
+  \testkern{LLL}{-}{114}{-}{RRR} \\
+  \testkern{LLL}{-}{115}{-}{RRR} \\
+  \testkern{LLL}{-}{116}{-}{RRR} \\
+  \testkern{LLL}{-}{117}{-}{RRR} \\
+  \testkern{LLL}{-}{118}{-}{RRR} \\
+  \testkern{LLL}{-}{119}{-}{RRR} \\
+  \testkern{LLL}{-}{120}{-}{RRR} \\
+  \testkern{LLL}{-}{121}{-}{RRR} \\
+  \testkern{LLL}{-}{122}{-}{RRR} \\
+  \testkern{LLL}{-}{123}{-}{RRR} \\
+  \testkern{LLL}{-}{124}{-}{RRR} \\
+  \testkern{LLL}{-}{125}{-}{RRR} \\
+  \testkern{LLL}{-}{126}{-}{RRR} \\ % tildelow
+  \testkern{LLL}{-}{127}{-}{RRR} \\ % hyphendblchar
+  \testkern{LLL}{-}{128}{-}{RRR} \\ % asciibreve
+  \testkern{LLL}{-}{129}{-}{RRR} \\ % asciicaron
+  \testkern{LLL}{-}{130}{-}{RRR} \\ % asciiacutedbl
+  \testkern{LLL}{-}{131}{-}{RRR} \\ % asciigravedbl
+  \testkern{LLL}{-}{132}{-}{RRR} \\ % dagger
+  \testkern{LLL}{-}{133}{-}{RRR} \\ % daggerdbl
+  \testkern{LLL}{-}{134}{-}{RRR} \\ % bardbl
+  \testkern{LLL}{-}{135}{-}{RRR} \\ % perthousand
+  \testkern{LLL}{-}{136}{-}{RRR} \\ % bullet
+  \testkern{LLL}{-}{137}{-}{RRR} \\ % centigrade
+  \testkern{LLL}{-}{138}{-}{RRR} \\ % dollaroldstyle
+  \testkern{LLL}{-}{139}{-}{RRR} \\ % centoldstyle
+  \testkern{LLL}{-}{140}{-}{RRR} \\ % florin
+  \testkern{LLL}{-}{141}{-}{RRR} \\ % colonmonetary
+  \testkern{LLL}{-}{142}{-}{RRR} \\ % won
+  \testkern{LLL}{-}{143}{-}{RRR} \\ % naira
+  \testkern{LLL}{-}{144}{-}{RRR} \\ % guarani
+  \testkern{LLL}{-}{145}{-}{RRR} \\ % peso
+  \testkern{LLL}{-}{146}{-}{RRR} \\ % lira
+  \testkern{LLL}{-}{147}{-}{RRR} \\ % recipe
+  \testkern{LLL}{-}{148}{-}{RRR} \\ % interrobang
+  \testkern{LLL}{-}{149}{-}{RRR} \\ % interrobangdown
+  \testkern{LLL}{-}{150}{-}{RRR} \\ % dong
+  \testkern{LLL}{-}{151}{-}{RRR} \\ % trademark
+  \testkern{LLL}{-}{152}{-}{RRR} \\ % pertenthousand
+  \testkern{LLL}{-}{153}{-}{RRR} \\ % pilcrow
+  \testkern{LLL}{-}{154}{-}{RRR} \\ % baht
+  \testkern{LLL}{-}{155}{-}{RRR} \\ % numero
+  \testkern{LLL}{-}{156}{-}{RRR} \\ % discount
+  \testkern{LLL}{-}{157}{-}{RRR} \\ % estimated
+  \testkern{LLL}{-}{158}{-}{RRR} \\ % openbullet
+  \testkern{LLL}{-}{159}{-}{RRR} \\ % servicemark
+  \testkern{LLL}{-}{160}{-}{RRR} \\ % quillbracketleft
+  \testkern{LLL}{-}{161}{-}{RRR} \\ % quillbracketright
+  \testkern{LLL}{-}{162}{-}{RRR} \\ % cent
+  \testkern{LLL}{-}{163}{-}{RRR} \\ % sterling
+  \testkern{LLL}{-}{164}{-}{RRR} \\ % currency
+  \testkern{LLL}{-}{165}{-}{RRR} \\ % yen
+  \testkern{LLL}{-}{166}{-}{RRR} \\ % brokenbar
+  \testkern{LLL}{-}{167}{-}{RRR} \\ % section
+  \testkern{LLL}{-}{168}{-}{RRR} \\ % asciidieresis
+  \testkern{LLL}{-}{169}{-}{RRR} \\ % copyright
+  \testkern{LLL}{-}{170}{-}{RRR} \\ % ordfeminine
+  \testkern{LLL}{-}{171}{-}{RRR} \\ % copyleft
+  \testkern{LLL}{-}{172}{-}{RRR} \\ % logicalnot
+  \testkern{LLL}{-}{173}{-}{RRR} \\ % circledP
+  \testkern{LLL}{-}{174}{-}{RRR} \\ % registered
+  \testkern{LLL}{-}{175}{-}{RRR} \\ % asciimacron
+  \testkern{LLL}{-}{176}{-}{RRR} \\ % degree
+  \testkern{LLL}{-}{177}{-}{RRR} \\ % plusminus
+  \testkern{LLL}{-}{178}{-}{RRR} \\ % twosuperior
+  \testkern{LLL}{-}{179}{-}{RRR} \\ % threesuperior
+  \testkern{LLL}{-}{180}{-}{RRR} \\ % asciiacute
+  \testkern{LLL}{-}{181}{-}{RRR} \\ % mu
+  \testkern{LLL}{-}{182}{-}{RRR} \\ % paragraph
+  \testkern{LLL}{-}{183}{-}{RRR} \\ % periodcentered
+  \testkern{LLL}{-}{184}{-}{RRR} \\ % referencemark
+  \testkern{LLL}{-}{185}{-}{RRR} \\ % onesuperior
+  \testkern{LLL}{-}{186}{-}{RRR} \\ % ordmasculine
+  \testkern{LLL}{-}{187}{-}{RRR} \\ % radical
+  \testkern{LLL}{-}{188}{-}{RRR} \\ % onequarter
+  \testkern{LLL}{-}{189}{-}{RRR} \\ % onehalf
+  \testkern{LLL}{-}{190}{-}{RRR} \\ % threequarters
+  \testkern{LLL}{-}{191}{-}{RRR} \\ % euro
+  \testkern{LLL}{-}{192}{-}{RRR} \\
+  \testkern{LLL}{-}{193}{-}{RRR} \\
+  \testkern{LLL}{-}{194}{-}{RRR} \\
+  \testkern{LLL}{-}{195}{-}{RRR} \\
+  \testkern{LLL}{-}{196}{-}{RRR} \\
+  \testkern{LLL}{-}{197}{-}{RRR} \\
+  \testkern{LLL}{-}{198}{-}{RRR} \\
+  \testkern{LLL}{-}{199}{-}{RRR} \\
+  \testkern{LLL}{-}{200}{-}{RRR} \\
+  \testkern{LLL}{-}{201}{-}{RRR} \\
+  \testkern{LLL}{-}{202}{-}{RRR} \\
+  \testkern{LLL}{-}{203}{-}{RRR} \\
+  \testkern{LLL}{-}{204}{-}{RRR} \\
+  \testkern{LLL}{-}{205}{-}{RRR} \\
+  \testkern{LLL}{-}{206}{-}{RRR} \\
+  \testkern{LLL}{-}{207}{-}{RRR} \\
+  \testkern{LLL}{-}{208}{-}{RRR} \\
+  \testkern{LLL}{-}{209}{-}{RRR} \\
+  \testkern{LLL}{-}{210}{-}{RRR} \\
+  \testkern{LLL}{-}{211}{-}{RRR} \\
+  \testkern{LLL}{-}{212}{-}{RRR} \\
+  \testkern{LLL}{-}{213}{-}{RRR} \\
+  \testkern{LLL}{-}{214}{-}{RRR} \\ % multiply
+  \testkern{LLL}{-}{215}{-}{RRR} \\
+  \testkern{LLL}{-}{216}{-}{RRR} \\
+  \testkern{LLL}{-}{217}{-}{RRR} \\
+  \testkern{LLL}{-}{218}{-}{RRR} \\
+  \testkern{LLL}{-}{219}{-}{RRR} \\
+  \testkern{LLL}{-}{220}{-}{RRR} \\
+  \testkern{LLL}{-}{221}{-}{RRR} \\
+  \testkern{LLL}{-}{222}{-}{RRR} \\
+  \testkern{LLL}{-}{223}{-}{RRR} \\
+  \testkern{LLL}{-}{224}{-}{RRR} \\
+  \testkern{LLL}{-}{225}{-}{RRR} \\
+  \testkern{LLL}{-}{226}{-}{RRR} \\
+  \testkern{LLL}{-}{227}{-}{RRR} \\
+  \testkern{LLL}{-}{228}{-}{RRR} \\
+  \testkern{LLL}{-}{229}{-}{RRR} \\
+  \testkern{LLL}{-}{230}{-}{RRR} \\
+  \testkern{LLL}{-}{231}{-}{RRR} \\
+  \testkern{LLL}{-}{232}{-}{RRR} \\
+  \testkern{LLL}{-}{233}{-}{RRR} \\
+  \testkern{LLL}{-}{234}{-}{RRR} \\
+  \testkern{LLL}{-}{235}{-}{RRR} \\
+  \testkern{LLL}{-}{236}{-}{RRR} \\
+  \testkern{LLL}{-}{237}{-}{RRR} \\
+  \testkern{LLL}{-}{238}{-}{RRR} \\
+  \testkern{LLL}{-}{239}{-}{RRR} \\
+  \testkern{LLL}{-}{240}{-}{RRR} \\
+  \testkern{LLL}{-}{241}{-}{RRR} \\
+  \testkern{LLL}{-}{242}{-}{RRR} \\
+  \testkern{LLL}{-}{243}{-}{RRR} \\
+  \testkern{LLL}{-}{244}{-}{RRR} \\
+  \testkern{LLL}{-}{245}{-}{RRR} \\
+  \testkern{LLL}{-}{246}{-}{RRR} \\ % divide
+  \testkern{LLL}{-}{247}{-}{RRR} \\
+  \testkern{LLL}{-}{248}{-}{RRR} \\
+  \testkern{LLL}{-}{249}{-}{RRR} \\
+  \testkern{LLL}{-}{250}{-}{RRR} \\
+  \testkern{LLL}{-}{251}{-}{RRR} \\
+  \testkern{LLL}{-}{252}{-}{RRR} \\
+  \testkern{LLL}{-}{253}{-}{RRR} \\
+  \testkern{LLL}{-}{254}{-}{RRR} \\
+  \testkern{LLL}{-}{255}{-}{RRR} \\
+\end{kerntable}
+
+\end{document}
+%</template&ts1>
+%    \end{macrocode}
+%
+% \subsubsection{OT1 encoding}
+%
+%    \begin{macrocode}
+%<*template&ot1>
+\listfiles
+%% Replace the `XXX' in the next line by the 3- or 4-character long
+%% abbreviation for your font.
+\documentclass[family=XXX]{kerntest}
+
+%% Replace the settings by these you want to test.
+\kernsetup{encoding=OT1,series=m,shape=n,example=hello}
+\kernsetup{size=14.40pt,baselineskip=16.5pt,papersize=a4paper}
+
+%% The next line can be used to add a name suffix to the output mtx file.
+%% \kernsetup{extraname=normal}
+
+%% Set encoding parameters.
+%% Set ligaturing: 2=all, 1=some, 0=none
+%% \encodingsetup{ligaturing=2}
+%% Normal: dollar, Italic: sterling
+%% \encodingsetup{italicizing=false}
+
+%% If you are using a font with different design sizes and if you want
+%% to test one design size scaled to another one, you may input a
+%% modified fd file for your font. To generate this new fd file, just
+%% copy the original one, rename it, and modify the entries for the
+%% font shapes to use the design size you want to test.
+%% \input{ot1XXX-1200.fd}
+
+%% The following lines show some possible glyph classes. You should
+%% add all classes you need. 
+\newglyphclass{right}{E}{E,AE,OE}
+
+\newglyphclass{left}{H}{B,D,F,H,I,J,K,L,N,P,R}
+
+\newglyphclass{right}{H}{H,I,J,N}
+
+\newglyphclass{right}{S}{S,dollar}
+\newglyphclass{left}{S}{S,dollar}
+
+\newglyphclass{left}{a}{a,ae}
+\newglyphclass{right}{e}{e,ae,oe}
+
+\newglyphclass{left}{f}{f,ff,fi,fl,ffi,ffl}
+\newglyphclass{right}{f}{f,ff}
+
+\newglyphclass{right}{i}{i,fi,ffi,dotlessi}
+\newglyphclass{left}{i}{i,dotlessi}
+
+\newglyphclass{right}{l}{fl,ffl,l}
+
+\newglyphclass{right}{m}{m,n}
+\newglyphclass{left}{m}{m,n}
+
+\newglyphclass{left}{o}{o,oe}
+
+\begin{document}
+
+%% This table of characters is sorted by similar glyphs, not by the
+%% encoding.
+%% Replace `{LLL}' and `{RRR}' in columns 1 resp. 5 by these glyphs
+%% that shall be tested.
+\begin{kerntable}
+  \testkern{LLL}{-}{018}{-}{RRR} \\ % grave
+  \testkern{LLL}{-}{019}{-}{RRR} \\ % acute
+  \testkern{LLL}{-}{094}{-}{RRR} \\ % circumflex
+  \testkern{LLL}{-}{126}{-}{RRR} \\ % tilde
+  \testkern{LLL}{-}{127}{-}{RRR} \\ % dieresis
+  \testkern{LLL}{-}{125}{-}{RRR} \\ % hungarumlaut/braceright
+  \testkern{LLL}{-}{023}{-}{RRR} \\ % ringfitted
+  \testkern{LLL}{-}{020}{-}{RRR} \\ % caron
+  \testkern{LLL}{-}{021}{-}{RRR} \\ % breve
+  \testkern{LLL}{-}{022}{-}{RRR} \\ % macron
+  \testkern{LLL}{-}{095}{-}{RRR} \\ % dotaccent/underscore
+  \testkern{LLL}{-}{024}{-}{RRR} \\ % cedilla
+  \testkern{LLL}{-}{042}{-}{RRR} \\ % asterisk
+  \testkern{LLL}{-}{032}{-}{RRR} \\ % lslashslash/visiblespace
+  \testkern{LLL}{-}{096}{-}{RRR} \\ % quoteleft
+  \testkern{LLL}{-}{039}{-}{RRR} \\ % quoteright
+  \testkern{LLL}{-}{092}{-}{RRR} \\ % quotedblleft
+  \testkern{LLL}{-}{034}{-}{RRR} \\ % quotedblright/quotedbl
+  \testkern{LLL}{-}{046}{-}{RRR} \\ % period
+  \testkern{LLL}{-}{044}{-}{RRR} \\ % comma
+  \testkern{LLL}{-}{058}{-}{RRR} \\ % colon
+  \testkern{LLL}{-}{059}{-}{RRR} \\ % semicolon
+  \testkern{LLL}{-}{033}{-}{RRR} \\ % exclam
+  \testkern{LLL}{-}{063}{-}{RRR} \\ % question
+  \testkern{LLL}{-}{060}{-}{RRR} \\ % exclamdown/less
+  \testkern{LLL}{-}{062}{-}{RRR} \\ % questiondown/greater
+  \testkern{LLL}{-}{045}{-}{RRR} \\ % hyphen
+  \testkern{LLL}{-}{123}{-}{RRR} \\ % rangedash/braceleft
+  \testkern{LLL}{-}{124}{-}{RRR} \\ % punctdash/bar
+  \testkern{LLL}{-}{043}{-}{RRR} \\ % plus
+  \testkern{LLL}{-}{061}{-}{RRR} \\ % equal
+  \testkern{LLL}{-}{047}{-}{RRR} \\ % slash
+  \testkern{LLL}{-}{040}{-}{RRR} \\ % parenleft
+  \testkern{LLL}{-}{041}{-}{RRR} \\ % parenright
+  \testkern{LLL}{-}{091}{-}{RRR} \\ % bracketleft
+  \testkern{LLL}{-}{093}{-}{RRR} \\ % bracketright
+  \testkern{LLL}{-}{035}{-}{RRR} \\ % numbersign
+  \testkern{LLL}{-}{037}{-}{RRR} \\ % percent
+  \testkern{LLL}{-}{038}{-}{RRR} \\ % ampersand
+  \testkern{LLL}{-}{064}{-}{RRR} \\ % at
+  \testkern{LLL}{-}{048}{-}{RRR} \\ % zero
+  \testkern{LLL}{-}{049}{-}{RRR} \\ % one
+  \testkern{LLL}{-}{050}{-}{RRR} \\ % two
+  \testkern{LLL}{-}{051}{-}{RRR} \\ % three
+  \testkern{LLL}{-}{052}{-}{RRR} \\ % four
+  \testkern{LLL}{-}{053}{-}{RRR} \\ % five
+  \testkern{LLL}{-}{054}{-}{RRR} \\ % six
+  \testkern{LLL}{-}{055}{-}{RRR} \\ % seven
+  \testkern{LLL}{-}{056}{-}{RRR} \\ % eight
+  \testkern{LLL}{-}{057}{-}{RRR} \\ % nine
+  \testkern{LLL}{-}{065}{-}{RRR} \\ % A
+  \testkern{LLL}{-}{029}{-}{RRR} \\ % AE
+  \testkern{LLL}{-}{066}{-}{RRR} \\ % B
+  \testkern{LLL}{-}{067}{-}{RRR} \\ % C
+  \testkern{LLL}{-}{068}{-}{RRR} \\ % D
+  \testkern{LLL}{-}{069}{-}{RRR} \\ % E
+  \testkern{LLL}{-}{070}{-}{RRR} \\ % F
+  \testkern{LLL}{-}{071}{-}{RRR} \\ % G
+  \testkern{LLL}{-}{072}{-}{RRR} \\ % H
+  \testkern{LLL}{-}{073}{-}{RRR} \\ % I
+  \testkern{LLL}{-}{074}{-}{RRR} \\ % J
+  \testkern{LLL}{-}{075}{-}{RRR} \\ % K
+  \testkern{LLL}{-}{076}{-}{RRR} \\ % L
+  \testkern{LLL}{-}{138}{-}{RRR} \\ % Lslash
+  \testkern{LLL}{-}{077}{-}{RRR} \\ % M
+  \testkern{LLL}{-}{078}{-}{RRR} \\ % N
+  \testkern{LLL}{-}{079}{-}{RRR} \\ % O
+  \testkern{LLL}{-}{030}{-}{RRR} \\ % OE
+  \testkern{LLL}{-}{031}{-}{RRR} \\ % Oslash
+  \testkern{LLL}{-}{080}{-}{RRR} \\ % P
+  \testkern{LLL}{-}{081}{-}{RRR} \\ % Q
+  \testkern{LLL}{-}{082}{-}{RRR} \\ % R
+  \testkern{LLL}{-}{083}{-}{RRR} \\ % S
+  \testkern{LLL}{-}{036}{-}{RRR} \\ % dollar/sterling
+  \testkern{LLL}{-}{084}{-}{RRR} \\ % T
+  \testkern{LLL}{-}{085}{-}{RRR} \\ % U
+  \testkern{LLL}{-}{086}{-}{RRR} \\ % V
+  \testkern{LLL}{-}{087}{-}{RRR} \\ % W
+  \testkern{LLL}{-}{088}{-}{RRR} \\ % X
+  \testkern{LLL}{-}{089}{-}{RRR} \\ % Y
+  \testkern{LLL}{-}{090}{-}{RRR} \\ % Z
+  \testkern{LLL}{-}{097}{-}{RRR} \\ % a
+  \testkern{LLL}{-}{026}{-}{RRR} \\ % ae
+  \testkern{LLL}{-}{098}{-}{RRR} \\ % b
+  \testkern{LLL}{-}{099}{-}{RRR} \\ % c
+  \testkern{LLL}{-}{100}{-}{RRR} \\ % d
+  \testkern{LLL}{-}{101}{-}{RRR} \\ % e
+  \testkern{LLL}{-}{102}{-}{RRR} \\ % f
+  \testkern{LLL}{-}{011}{-}{RRR} \\ % ff/arrowup
+  \testkern{LLL}{-}{012}{-}{RRR} \\ % fi/arrowdown
+  \testkern{LLL}{-}{013}{-}{RRR} \\ % fl/quotesingle
+  \testkern{LLL}{-}{014}{-}{RRR} \\ % ffi/exclamdown
+  \testkern{LLL}{-}{015}{-}{RRR} \\ % ffl/questiondown
+  \testkern{LLL}{-}{103}{-}{RRR} \\ % g
+  \testkern{LLL}{-}{104}{-}{RRR} \\ % h
+  \testkern{LLL}{-}{105}{-}{RRR} \\ % i
+  \testkern{LLL}{-}{016}{-}{RRR} \\ % dotlessi
+  \testkern{LLL}{-}{025}{-}{RRR} \\ % germandbls
+  \testkern{LLL}{-}{106}{-}{RRR} \\ % j
+  \testkern{LLL}{-}{017}{-}{RRR} \\ % dotlessj
+  \testkern{LLL}{-}{107}{-}{RRR} \\ % k
+  \testkern{LLL}{-}{108}{-}{RRR} \\ % l
+  \testkern{LLL}{-}{170}{-}{RRR} \\ % lslash
+  \testkern{LLL}{-}{109}{-}{RRR} \\ % m
+  \testkern{LLL}{-}{110}{-}{RRR} \\ % n
+  \testkern{LLL}{-}{111}{-}{RRR} \\ % o
+  \testkern{LLL}{-}{027}{-}{RRR} \\ % oe
+  \testkern{LLL}{-}{028}{-}{RRR} \\ % oslash
+  \testkern{LLL}{-}{112}{-}{RRR} \\ % p
+  \testkern{LLL}{-}{113}{-}{RRR} \\ % q
+  \testkern{LLL}{-}{114}{-}{RRR} \\ % r
+  \testkern{LLL}{-}{115}{-}{RRR} \\ % s
+  \testkern{LLL}{-}{116}{-}{RRR} \\ % t
+  \testkern{LLL}{-}{117}{-}{RRR} \\ % u
+  \testkern{LLL}{-}{118}{-}{RRR} \\ % v
+  \testkern{LLL}{-}{119}{-}{RRR} \\ % w
+  \testkern{LLL}{-}{120}{-}{RRR} \\ % x
+  \testkern{LLL}{-}{121}{-}{RRR} \\ % y
+  \testkern{LLL}{-}{122}{-}{RRR} \\ % z
+  \testkern{LLL}{-}{000}{-}{RRR} \\ % Gamma
+  \testkern{LLL}{-}{001}{-}{RRR} \\ % Delta
+  \testkern{LLL}{-}{002}{-}{RRR} \\ % Theta
+  \testkern{LLL}{-}{003}{-}{RRR} \\ % Lambda
+  \testkern{LLL}{-}{004}{-}{RRR} \\ % Xi
+  \testkern{LLL}{-}{005}{-}{RRR} \\ % Pi
+  \testkern{LLL}{-}{006}{-}{RRR} \\ % Sigma
+  \testkern{LLL}{-}{007}{-}{RRR} \\ % Upsilon
+  \testkern{LLL}{-}{008}{-}{RRR} \\ % Phi
+  \testkern{LLL}{-}{009}{-}{RRR} \\ % Psi
+  \testkern{LLL}{-}{010}{-}{RRR} \\ % Omega
+\iffalse
+  \testkern{LLL}{-}{128}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{129}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{130}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{131}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{132}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{133}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{134}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{135}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{136}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{137}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{139}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{140}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{141}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{142}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{143}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{144}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{145}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{146}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{147}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{148}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{149}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{150}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{151}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{152}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{153}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{154}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{155}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{156}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{157}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{158}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{159}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{160}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{161}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{162}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{163}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{164}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{165}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{166}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{167}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{168}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{169}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{171}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{172}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{173}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{174}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{175}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{176}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{177}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{178}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{179}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{180}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{181}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{182}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{183}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{184}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{185}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{186}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{187}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{188}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{189}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{190}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{191}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{192}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{193}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{194}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{195}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{196}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{197}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{198}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{199}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{200}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{201}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{202}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{203}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{204}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{205}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{206}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{207}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{208}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{209}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{210}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{211}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{212}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{213}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{214}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{215}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{216}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{217}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{218}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{219}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{220}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{221}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{222}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{223}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{224}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{225}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{226}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{227}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{228}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{229}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{230}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{231}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{232}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{233}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{234}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{235}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{236}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{237}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{238}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{239}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{240}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{241}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{242}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{243}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{244}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{245}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{246}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{247}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{248}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{249}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{250}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{251}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{252}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{253}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{254}{-}{RRR} \\ % .notdef.
+  \testkern{LLL}{-}{255}{-}{RRR} \\ % .notdef.
+\fi
+\end{kerntable}
+
+\end{document}
+%</template&ot1>
+%    \end{macrocode}
+%
+% That's it.
+%
+% \Finale
+

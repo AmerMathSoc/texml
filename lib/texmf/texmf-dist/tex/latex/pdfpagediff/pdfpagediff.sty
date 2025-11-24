@@ -1,0 +1,261 @@
+%%                                   
+%%
+%% This is file 'pdfpagediff.sty'.
+%%
+%% File: pdfpagediff.sty Copyright (c) 2010-2015, C. V. Radhakrishnan
+%%       JWRA 34, Jagathy, Trivandrum 695014
+%%       http://www.cvr.cc  Email: <cvr@cvr.cc>
+%%       
+%% This package may be distributed under the terms of the LaTeX Project 
+%% Public License, as described in lppl.txt in the base LaTeX distribution.
+%% Either version 1.0 or, at your option, any later version.
+%%
+%% $Id: pdfpagediff.sty,v 1.4 2015/07/24 09:39:20 cvr Exp cvr $
+%% 
+\NeedsTeXFormat{LaTeX2e}
+\def\Fileversion$#1: #2 ${\gdef\fileversion{#2}}
+\def\Filedate$#1: #2 #3 ${\gdef\filedate{#2}}
+\Fileversion$Revision: 1.4 $
+\Filedate$Date: 2015/07/24 09:39:20 $
+\ProvidesPackage{pdfpagediff}
+   [\filedate\space\fileversion\space Page diff of 2 PDFs (CVR)]
+\PackageWarningNoLine{pdfpagediff}
+   {****************************************\MessageBreak
+    Package pdfpagediff v,\fileversion\space loaded\MessageBreak
+    [Page diff of two PDFs (CVR)]\MessageBreak
+    ****************************************}
+%
+% Load needed packages:
+% 
+\RequirePackage[margin=0pt,headsep=0pt,headheight=0pt,footskip=0pt]{geometry}
+\RequirePackage{graphicx,color}
+\pagestyle{empty}
+
+\@ifundefined{pdfoutput}
+   {\PackageError{pdfpagediff}
+            {You're either not using pdfLaTeX\MessageBreak
+             or have turn off PDF output.\MessageBreak
+             'pdfpagediff' only works with pdfLaTeX\MessageBreak
+             and PDF output}
+            {Use 'pdflatex' instead of 'latex'\MessageBreak
+             and set output to PDF (usage: \pdfoutput = 1)!}
+    \endinput
+   }
+   {\ifnum\pdfoutput=\z@
+      \PackageError{pdfpagediff}
+            {PdfTeX is set to DVI output, but\MessageBreak
+             PDF is required for 'pdfpagediff' package}
+            {Set output to PDF. (usage: \pdfoutput = 1)}
+      \expandafter\endinput
+    \fi}
+
+\def\obj{\immediate\pdfobj}
+
+\def\objref#1{\space\expandafter\doobjref\number#1\relax}
+\def\doobjref#1\relax{#1 0 R}
+
+\def\objrefs#1{%
+ \ifx#1\relax
+  \space
+ \else
+  \objref{#1}\expandafter\objrefs
+ \fi}
+
+\def\lastobjref{\objref\pdflastobj}
+\def\thisobjref{\objref{\numexpr\pdflastobj+1\relax}}
+\def\nextobjref{\objref{\numexpr\pdflastobj+2\relax}} % eTeX needed
+
+%
+% We will make two layers
+%
+\def\FirstDoc#1{\gdef\@FirstDoc{#1}}
+\def\SecondDoc#1{\gdef\@SecondDoc{#1}}
+\def\@FirstDoc{First}
+\def\@SecondDoc{Second}
+
+\def\openlayer{ BDC}
+\def\closelayer{ EMC}
+
+\obj{<< /Type /OCG /Name (\@FirstDoc) >>}
+\def\PPDonercname{/OC1}            
+\edef\PPDoneobjnum{\the\pdflastobj} 
+\edef\PPDone{ /OC \PPDonercname}       
+
+\obj{<< /Type /OCG /Name (\@SecondDoc) >>}
+\def\PPDtworcname{/OC2}
+\edef\PPDtwoobjnum{\the\pdflastobj}
+\edef\PPDtwo{ /OC \PPDtworcname}
+
+\obj{%
+<<
+ \PPDonercname\space\objref\PPDoneobjnum     \space
+ \PPDtworcname\space\objref\PPDtwoobjnum     \space
+>>
+}
+
+\edef\layersnames{\lastobjref}
+
+\edef\next{\pdfpageresources={/Properties \layersnames}}
+\next
+
+\edef\layersorder{\objrefs\PPDoneobjnum\PPDtwoobjnum\relax}
+\edef\layerson{\objrefs\PPDoneobjnum\relax}
+\edef\layersoff{\objrefs\PPDtwoobjnum\relax}
+
+\obj{%
+<<
+ /Order [\layersorder] \space
+ /ON    [\layerson   ] \space
+% /OFF   [\layersoff  ] \space
+ /ON    [\layersoff  ] \space
+>>
+}
+
+\edef\layersconfig{\lastobjref}
+
+\obj{%
+<<
+/S /SetOCGState
+/State [ /ON \objrefs\PPDoneobjnum\PPDtwoobjnum\relax ]
+>>}
+
+\edef\layersOn{\lastobjref}
+
+\pdfcatalog{%
+/OCProperties
+<<
+ /OCGs [\layersorder ]\space
+ /D     \layersconfig \space
+>>
+}
+
+\parindent=0pt
+
+\newcounter{cpages}
+\newcounter{pages}
+\newdimen\vlength
+\newdimen\hoddlength
+\newdimen\hevenlength
+
+\vlength=-12pt
+\hoddlength=0pt
+\hevenlength=0pt
+
+%
+% Let's load substr package to parse various kinds of page numbers
+% 
+\RequirePackage{substr}
+
+\def\buildPageList#1{\IfSubStringInString{,}{#1}%
+  {\processComma{#1}}{\processOther{#1}}}
+
+\def\processNormal#1{\pdf@addtolist{#1}}
+
+\def\processComma#1{\@for\@comma:=#1\do{%
+   {\IfSubStringInString{-}{\@comma}%
+    {{\expandafter\@processHyphen\@comma\END}}%
+    {\processNormal{\@comma}}%
+   }%
+  }%
+}
+
+\def\processOther#1{\IfSubStringInString{-}{#1}%
+  {\processHyphen{#1}}{\processNormal{#1}}}
+
+\def\processHyphen#1{\@processHyphen#1\END}
+\def\@processHyphen#1-#2\END{\def\next{#2}\ifx\next\@empty
+   \@tempcntb=\pdflastpage \else \@tempcntb=#2\fi
+   \@tempcnta=#1
+   \global\advance\@tempcntb by 1
+   \loop\ifnum\@tempcnta<\@tempcntb
+    \pdf@addtolist{\the\@tempcnta}
+    \advance\@tempcnta by 1
+    \repeat}
+
+\let\pdf@pagelist\@empty
+
+\gdef\pdf@addtolist#1{%
+  \let\savepdf@pagelist\pdf@pagelist
+  \ifnum#1<\numexpr\pdflastpage+1
+    \xdef\pdf@pagelist{\ifx\savepdf@pagelist\@empty
+    \else\savepdf@pagelist,\fi#1}\fi}
+
+\def\findPages#1{\pdfximage{#1}%
+  \@tempcntb=\the\pdflastximagepages\relax
+  \edef\lastpage{\the\@tempcntb}%
+}
+
+\newif\ifFiles \Filestrue
+
+\def\layerPages{\@ifnextchar[{\@@layerPages}{\@@layerPages[1-]}}%]
+
+\long\def\@@layerPages[#1]#2#3{%
+  \filename@parse{#2}%
+  \IfFileExists{\filename@base.pdf}%
+   {\xdef\PPDfirstdoc{\filename@base.pdf}}{\global\Filesfalse}
+  \filename@parse{#3}%
+  \IfFileExists{\filename@base.pdf}%
+   {\xdef\PPDseconddoc{\filename@base.pdf}}{\global\Filesfalse}% 
+  \ifFiles
+   \findPages{\PPDfirstdoc}  \edef\PPDfirstlastpage{\lastpage}%
+   \findPages{\PPDseconddoc} \edef\PPDsecondlastpage{\lastpage}%
+   \ifnum\PPDfirstlastpage<\PPDsecondlastpage
+     \xdef\pdflastpage{\PPDfirstlastpage}\else%
+   \ifnum\PPDsecondlastpage<\PPDfirstlastpage
+     \xdef\pdflastpage{\PPDsecondlastpage}\else
+   \ifnum\PPDfirstlastpage=\PPDsecondlastpage
+      \xdef\pdflastpage{\PPDfirstlastpage}\fi\fi\fi
+   \buildPageList{#1}%
+%
+    \@for\pdfpage:=\pdf@pagelist\do{{%
+    {\placepages}}}%
+  \else
+  \PackageError{pdfpagediff}{Not all PDF docs are available, exiting ...}{}
+  \expandafter\enddocument\fi
+}
+
+\long\def\placepages{%
+  \vbox to\z@{\pdfliteral{\PPDone\openlayer}%
+     \includegraphics[page=\pdfpage]{\PPDfirstdoc}%
+     \pdfliteral{\closelayer}\vspace{-\textheight}\vfill}%
+   \par\vskip\vlength
+   \vbox to\z@{\pdfliteral{\PPDtwo\openlayer}%
+     \ifodd\thecpages \hspace*{\hoddlength}\else
+      \hspace*{\hevenlength}\fi
+     \includegraphics[page=\pdfpage]{\PPDseconddoc}%
+     \pdfliteral{\closelayer}\vspace{-\textheight}\vfill}%
+  \clearpage
+} 
+
+%%
+%% For River Valley to adjust horizontal or vertical shifts
+%% between documents. This happens while making CRC's
+%% when the first version starts from odd page while
+%% second version might start from even page since
+%% \openright is not followed by all journals.
+%%
+\def\definejnldata{\@ifstar{\starjnldata}{\normaljnldata}}
+\def\normaljnldata#1#2#3#4{\@namedef{#1normal}{\vlength=#2
+    \hoddlength=#3  \hevenlength=#4}}
+\def\starjnldata#1#2#3#4{\@namedef{#1even}{\vlength=#2
+    \hoddlength=#3  \hevenlength=#4}}
+%
+% \definedata{<jid>}{<vlength>}{<hodd>}{<heven>}
+% 
+\definejnldata{aml}{-12pt}{0pt}{0pt}
+\definejnldata*{aml}{-7pt}{-4pt}{4pt}
+
+\def\nameUse#1{\@nameuse{#1}%
+  \typeout{[vlength = \the\vlength]}%
+  \typeout{[hoddlength = \the\hoddlength]}%
+  \typeout{[hevenlength = \the\hevenlength]}%
+}
+%%
+%% An example of usage will be:
+%% \nameUse{amlnormal} or \nameUse{amleven}
+%% 
+\endinput
+
+%%
+%% End of file, 'pdfpagediff.sty'
+%% 

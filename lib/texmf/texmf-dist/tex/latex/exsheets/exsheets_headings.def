@@ -1,0 +1,468 @@
+% --------------------------------------------------------------------------
+% the EXSHEETS package
+% 
+%   Yet another package for the creation of exercise sheets
+% 
+% --------------------------------------------------------------------------
+% Clemens Niederberger
+% Web:    https://bitbucket.org/cgnieder/exsheets/
+% E-Mail: contact@mychemistry.eu
+% --------------------------------------------------------------------------
+% Copyright 2011-2016 Clemens Niederberger
+% 
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+% 
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Clemens Niederberger.
+% --------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% --------------------------------------------------------------------------
+% HEADINGS FOR QUESTIONS AND SOLUTIONS
+% the 6 base coffins:
+\ProvidesFile{exsheets_headings.def}
+  [
+    \c_exsheets_date_tl \c_space_tl
+    v\c_exsheets_version_tl \c_space_tl
+    ExSheets~ headings~ object]
+
+% the object variables:
+\bool_new:N   \l__exsheets_heading_runin_bool
+\bool_new:N   \l__exsheets_heading_inline_bool
+\bool_new:N   \l__exsheets_heading_indent_first_bool
+\bool_new:N   \l__exsheets_heading_toc_reversed_bool
+
+\dim_new:N    \l__exsheets_heading_above_dim
+\dim_new:N    \l__exsheets_heading_below_dim
+\fp_new:N     \l__exsheets_heading_scale_fp
+
+\tl_new:N     \l__exsheets_heading_main_tl
+\tl_new:N     \l__exsheets_heading_pre_code_tl
+\tl_new:N     \l__exsheets_heading_post_code_tl
+
+\tl_new:N     \l__exsheets_heading_title_format_tl
+\tl_new:N     \l__exsheets_heading_title_pre_code_tl
+\tl_set:Nn    \l__exsheets_heading_title_pre_code_tl { \use:n }
+\tl_new:N     \l__exsheets_heading_title_post_code_tl
+
+\tl_new:N     \l__exsheets_heading_number_format_tl
+\tl_new:N     \l__exsheets_heading_number_pre_code_tl
+\tl_set:Nn    \l__exsheets_heading_number_pre_code_tl { \use:n }
+\tl_new:N     \l__exsheets_heading_number_post_code_tl
+
+\tl_new:N     \l__exsheets_heading_subtitle_format_tl
+\tl_new:N     \l__exsheets_heading_subtitle_pre_code_tl
+\tl_set:Nn    \l__exsheets_heading_subtitle_pre_code_tl { \use:n }
+\tl_new:N     \l__exsheets_heading_subtitle_post_code_tl
+
+\tl_new:N     \l__exsheets_heading_points_format_tl
+\tl_new:N     \l__exsheets_heading_points_pre_code_tl
+\tl_set:Nn    \l__exsheets_heading_points_pre_code_tl { \use:n }
+\tl_new:N     \l__exsheets_heading_points_post_code_tl
+\tl_new:N     \l__exsheets_heading_points_post_hook_tl
+
+\tl_new:N     \l__exsheets_heading_joined_coffins_tl
+\tl_new:N     \l__exsheets_heading_attached_coffins_tl
+\seq_new:N    \l__exsheets_heading_joined_coffins_seq
+\seq_new:N    \l__exsheets_heading_attached_coffins_seq
+
+% internal object functions:
+% the following is shamelessly adapted from the `needspace' package by
+% Peter Wilson and Herries Press
+\cs_new:Npn \exsheets_needspace:n #1
+  {
+    \group_begin:
+      \dim_set:Nn \l__exsheets_tmpa_dim { #1 }
+      \skip_vertical:n { \c_zero_dim + \l__exsheets_tmpa_dim }
+      \tex_penalty:D -100
+      \skip_vertical:n { \c_zero_dim - \l__exsheets_tmpa_dim }
+      \skip_vertical:N \l__exsheets_tmpa_dim
+      \tex_penalty:D 9999
+      \skip_vertical:n { - \l__exsheets_tmpa_dim }
+      \skip_vertical:N \c_zero_dim
+    \group_end:
+  }
+
+\AtBeginDocument
+  {
+    \cs_if_exist:NF \needspace
+      { \cs_set_eq:NN \needspace \exsheets_needspace:n }
+  }
+
+\cs_generate_variant:Nn \seq_set_split:Nnn { NnV }
+
+\cs_new:Npn \__exsheets_join:N #1
+  {
+    \seq_map_inline:Nn #1
+      {
+        \tl_if_blank:nF { ##1 }
+          { \exp_after:wN \__exsheets_join_coffin_sequence:w ##1 }
+      }
+  }
+\cs_new:Npn \__exsheets_join_coffin_sequence:w #1[#2,#3] #4[#5,#6] (#7,#8)
+  { \__exsheets_join_coffins:nnnnnnnn {#1}{#2}{#3}{#4}{#5}{#6}{#7}{#8} }
+
+\cs_new:Npn \__exsheets_join_coffins:nnnnnnnn #1#2#3#4#5#6#7#8
+  {
+    \coffin_join:cnncnnnn
+      { l__exsheets_heading_#1_coffin } {#2} {#3}
+      { l__exsheets_heading_#4_coffin } {#5} {#6}
+      {#7}
+      {#8}
+  }
+\cs_new:Npn \__exsheets_attach:N #1
+  {
+    \seq_map_inline:Nn #1
+      {
+        \tl_if_blank:nF {##1}
+          { \exp_after:wN \__exsheets_attach_coffin_sequence:w ##1 }
+      }
+  }
+\cs_new:Npn \__exsheets_attach_coffin_sequence:w #1[#2,#3]#4[#5,#6](#7,#8)
+  { \__exsheets_attach_coffins:nnnnnnnn {#1}{#2}{#3}{#4}{#5}{#6}{#7}{#8} }
+
+\cs_new:Npn \__exsheets_attach_coffins:nnnnnnnn #1#2#3#4#5#6#7#8
+  {
+    \coffin_attach:cnncnnnn
+      { l__exsheets_heading_#1_coffin } {#2} {#3}
+      { l__exsheets_heading_#4_coffin } {#5} {#6}
+      {#7}
+      {#8}
+  }
+
+\prop_new:N \l__exsheets_heading_coffins_prop
+
+\prg_new_conditional:Npnn \exsheets_if_heading_coffin:n #1 {T,F,TF}
+  {
+    \coffin_if_exist:cTF {l__exsheets_heading_#1_coffin}
+      { \prg_return_true: }
+      { \prg_return_false: }
+  }
+
+\cs_new_protected:Npn \exsheets_new_heading_coffin:n #1
+  { \coffin_new:c {l__exsheets_heading_#1_coffin} }
+
+\cs_new_protected:Npn \exsheets_set_heading_coffin:nn #1#2
+  {
+    \exsheets_if_heading_coffin:nF {#1}
+      { \exsheets_new_heading_coffin:n {#1} }
+    \prop_put:Nnn \l__exsheets_heading_coffins_prop {#1} {#2}
+  }
+
+\NewDocumentCommand \DeclareExSheetsHeadingContainer {m+m}
+  { \exsheets_set_heading_coffin:nn {#1} {#2} }
+
+\exsheets_new_heading_coffin:n {main}
+\exsheets_new_heading_coffin:n {pre}
+\exsheets_new_heading_coffin:n {post}
+\exsheets_new_heading_coffin:n {title}
+\exsheets_new_heading_coffin:n {number}
+\exsheets_new_heading_coffin:n {points}
+\exsheets_new_heading_coffin:n {subtitle}
+
+% the `exsheets-heading' object:
+%   #1 = title,
+%   #2 = number,
+%   #3 = points
+%   #4 = bonus
+%   #5 = id
+\DeclareObjectType {exsheets-heading} {5}
+
+% the `default' template interface:
+\DeclareTemplateInterface {exsheets-heading} {default} {5}
+  {
+    inline             : boolean   = false ,
+    runin              : boolean   = false ,
+    indent-first       : boolean   = false ,
+    toc-reversed       : boolean   = false ,
+    vscale             : real      = 1     ,
+    above              : length    = 2pt   ,
+    below              : length    = 2pt   ,
+    main               : tokenlist =       ,
+    pre-code           : tokenlist =       ,
+    post-code          : tokenlist =       ,
+    title-format       : tokenlist =       ,
+    title-pre-code     : tokenlist =       ,
+    title-post-code    : tokenlist =       ,
+    number-format      : tokenlist =       ,
+    number-pre-code    : tokenlist =       ,
+    number-post-code   : tokenlist =       ,
+    subtitle-format    : tokenlist =       ,
+    subtitle-pre-code  : tokenlist =       ,
+    subtitle-post-code : tokenlist =       ,
+    points-format      : tokenlist =       ,
+    points-pre-code    : tokenlist =       ,
+    points-post-code   : tokenlist =       ,
+    join               : tokenlist =       ,
+    attach             : tokenlist =
+  }
+
+% the `default' template code:
+\DeclareTemplateCode {exsheets-heading} {default} {5}
+  {
+    inline             = \l__exsheets_heading_inline_bool           ,
+    runin              = \l__exsheets_heading_runin_bool            ,
+    indent-first       = \l__exsheets_heading_indent_first_bool     ,
+    toc-reversed       = \l__exsheets_heading_toc_reversed_bool     ,
+    vscale             = \l__exsheets_heading_scale_fp              ,
+    above              = \l__exsheets_heading_above_dim             ,
+    below              = \l__exsheets_heading_below_dim             ,
+    main               = \l__exsheets_heading_main_tl               ,
+    pre-code           = \l__exsheets_heading_pre_code_tl           ,
+    post-code          = \l__exsheets_heading_post_code_tl          ,
+    title-format       = \l__exsheets_heading_title_format_tl       ,
+    title-pre-code     = \l__exsheets_heading_title_pre_code_tl     ,
+    title-post-code    = \l__exsheets_heading_title_post_code_tl    ,
+    number-format      = \l__exsheets_heading_number_format_tl      ,
+    number-pre-code    = \l__exsheets_heading_number_pre_code_tl    ,
+    number-post-code   = \l__exsheets_heading_number_post_code_tl   ,
+    subtitle-format    = \l__exsheets_heading_title_format_tl       ,
+    subtitle-pre-code  = \l__exsheets_heading_subtitle_pre_code_tl  ,
+    subtitle-post-code = \l__exsheets_heading_subtitle_post_code_tl ,
+    points-format      = \l__exsheets_heading_points_format_tl      ,
+    points-pre-code    = \l__exsheets_heading_points_pre_code_tl    ,
+    points-post-code   = \l__exsheets_heading_points_post_code_tl   ,
+    join               = \l__exsheets_heading_joined_coffins_tl     ,
+    attach             = \l__exsheets_heading_attached_coffins_tl
+  }
+  {
+    \AssignTemplateKeys
+    \bool_if:NT \l__exsheets_heading_inline_bool
+      { \cs_set_eq:NN \exsheets_par: \scan_stop: }
+    \seq_set_split:NnV \l__exsheets_heading_joined_coffins_seq { ; }
+      \l__exsheets_heading_joined_coffins_tl
+    \seq_set_split:NnV \l__exsheets_heading_attached_coffins_seq { ; }
+      \l__exsheets_heading_attached_coffins_tl
+    \bool_if:nTF
+      { \l__exsheets_heading_runin_bool || \l__exsheets_heading_inline_bool }
+      {
+        \hcoffin_set:Nn \l__exsheets_heading_main_coffin
+          {
+            \tl_if_blank:VTF \l__exsheets_heading_main_tl
+              { \tl_use:N \l__exsheets_heading_title_format_tl \strut }
+              { \tl_use:N \l__exsheets_heading_main_tl }
+          }
+      }
+      {
+        \hcoffin_set:Nn \l__exsheets_heading_main_coffin
+          {
+            \parbox { \linewidth }
+              {
+                \tl_if_blank:VTF \l__exsheets_heading_main_tl
+                  { \tl_use:N \l__exsheets_heading_title_format_tl \strut }
+                  { \tl_use:N \l__exsheets_heading_main_tl }
+              }
+          }
+      }
+    \hcoffin_set:Nn \l__exsheets_heading_title_coffin
+      {
+        \tl_use:N \l__exsheets_heading_title_format_tl
+        \strut
+        \tl_use:N \l__exsheets_heading_title_pre_code_tl
+          { \tl_use:N \l_exsheets_heading_title_user_format_tl {#1} }
+        \tl_use:N \l__exsheets_heading_title_post_code_tl
+      }
+    \hcoffin_set:Nn \l__exsheets_heading_number_coffin
+      {
+        \tl_if_blank:VTF \l__exsheets_heading_number_format_tl
+          { \tl_use:N \l__exsheets_heading_title_format_tl }
+          { \tl_use:N \l__exsheets_heading_number_format_tl }
+        \strut
+        \tl_use:N \l__exsheets_heading_number_pre_code_tl
+          { \tl_use:N \l_exsheets_heading_title_user_format_tl {#2} }
+        \tl_use:N \l__exsheets_heading_number_post_code_tl
+      }
+    \hcoffin_set:Nn \l__exsheets_heading_subtitle_coffin
+      {
+        \exsheets_if_question_subtitle:T
+          {
+            \tl_if_blank:VTF \l__exsheets_heading_subtitle_format_tl
+              { \tl_use:N \l__exsheets_heading_title_format_tl }
+              { \tl_use:N \l__exsheets_heading_subtitle_format_tl }
+            \strut
+            \tl_use:N \l__exsheets_heading_subtitle_pre_code_tl
+            {
+              \group_begin:
+                \tl_use:N \l_exsheets_heading_subtitle_user_format_tl
+                { \exsheets_get_question_property:nn {subtitle} {#5} }
+              \group_end:
+            }
+            \tl_use:N \l__exsheets_heading_subtitle_post_code_tl
+          }
+      }
+    \hcoffin_set:Nn \l__exsheets_heading_points_coffin
+      {
+        \bool_if:NTF \l__exsheets_parse_points_bool
+          {
+            \bool_if:nF
+              { \fp_compare_p:n { #3 = 0 } && \fp_compare_p:n { #4 = 0 } }
+              {
+                \tl_use:N \l__exsheets_heading_points_format_tl
+                \group_begin:
+                  \tl_use:N \l__exsheets_heading_title_format_tl \strut
+                \group_end:
+                \tl_use:N \l__exsheets_heading_points_pre_code_tl
+                  {
+                    \tl_use:N \tl_use:N \l__exsheets_points_format_tl
+                      {
+                        \fp_compare:nF { #3 = 0 }
+                          {
+                            \bool_if:nTF
+                              {
+                                \l__exsheets_points_separate_bonus_bool ||
+                                \fp_compare_p:n { #4 = 0 }
+                              }
+                              {
+                                \exsheets_parse_points:n {#3}
+                                \exsheets_points_name:n  {#3}
+                              }
+                              { \exsheets_parse_points:n {#3} }
+                          }
+                        \fp_compare:nF { #4 = 0 }
+                          {
+                            \tl_use:N \l__exsheets_points_pre_bonus_marker_tl
+                            \bool_if:nTF
+                              {
+                                \l__exsheets_points_separate_bonus_bool ||
+                                \fp_compare_p:n { #3 = 0 }
+                              }
+                              {
+                                \exsheets_print_bonus:n {#4}
+                                \tl_use:N \l__exsheets_points_post_bonus_marker_tl
+                              }
+                              {
+                                \exsheets_parse_bonus:n {#4}
+                                \tl_use:N \l__exsheets_points_post_bonus_marker_tl
+                                \exsheets_points_name:n { #3 + #4 }
+                              }
+                          }
+                      }
+                  }
+                \tl_use:N \l__exsheets_heading_points_post_code_tl
+              }
+          }
+          {% points/parse = false
+            \tl_use:N \l__exsheets_heading_points_format_tl
+            \group_begin:
+              \tl_use:N \l__exsheets_heading_title_format_tl \strut
+            \group_end:
+            \tl_if_eq:xnF {#3} {0}
+              {
+                \tl_use:N \l__exsheets_heading_points_pre_code_tl
+                  { \exsheets_print_points:n {#3} }
+                \tl_use:N \l__exsheets_heading_points_post_code_tl
+              }
+          }
+      }
+    % this allows users to provide their own point system while also using
+    % exsheets' positioning mechanism:
+    \tl_use:N \l__exsheets_heading_points_post_hook_tl
+    \bool_if:nT
+      { !\l__exsheets_heading_runin_bool && !\l__exsheets_heading_inline_bool }
+      {
+        \coffin_resize:Nnn \l__exsheets_heading_main_coffin { \linewidth }
+          {
+            \fp_to_decimal:N \l__exsheets_heading_scale_fp
+            \coffin_ht:N \l__exsheets_heading_main_coffin +
+            \l__exsheets_heading_below_dim
+          }
+      }
+    \hcoffin_set:Nn \l__exsheets_heading_pre_coffin
+      { \tl_use:N \l__exsheets_heading_pre_code_tl }
+    \hcoffin_set:Nn \l__exsheets_heading_post_coffin
+      { \tl_use:N \l__exsheets_heading_post_code_tl }
+    \coffin_join:NnnNnnnn
+      \l__exsheets_heading_main_coffin {l} {t}
+      \l__exsheets_heading_pre_coffin  {l} {b} {0pt} {0pt}
+    \coffin_join:NnnNnnnn
+      \l__exsheets_heading_main_coffin {l} {b}
+      \l__exsheets_heading_post_coffin {l} {t} {0pt} {0pt}
+    \prop_map_inline:Nn \l__exsheets_heading_coffins_prop
+      { \hcoffin_set:cn {l__exsheets_heading_##1_coffin} {##2} }
+    \__exsheets_join:N \l__exsheets_heading_joined_coffins_seq
+    \__exsheets_attach:N \l__exsheets_heading_attached_coffins_seq
+    \bool_if:NTF \l__exsheets_heading_inline_bool
+      { \exsheets_questions_debug:n {#5} }
+      {
+        \skip_vertical:N \l__exsheets_heading_above_dim
+        \exsheets_needspace:n
+          {
+            \coffin_ht:N \l__exsheets_heading_main_coffin +
+            \coffin_dp:N \l__exsheets_heading_main_coffin +
+            \l__exsheets_heading_below_dim +
+            \baselineskip
+          }
+        \exsheets_questions_debug:n {#5}
+        \noindent
+      }
+    \skip_set:Nn \parfillskip { 0pt plus 1fil }
+    \bool_if:nT
+      { \l__exsheets_questions_totoc_bool && \l__exsheets_inside_question_bool }
+      {
+        \use:c {phantomsection}
+        \addcontentsline { toc } { \l__exsheets_questions_toclevel_tl }
+          {
+            \bool_if:NTF \l__exsheets_heading_toc_reversed_bool
+              { #2 \ #1 }
+              { #1 \ #2 }
+          }
+      }
+    \bool_if:nT
+      { \l__exsheets_solutions_totoc_bool && !\l__exsheets_inside_question_bool }
+      {
+        \use:c {phantomsection}
+        \addcontentsline { toc } { \l__exsheets_solutions_toclevel_tl }
+          {
+            \bool_if:NTF \l__exsheets_heading_toc_reversed_bool
+              { #2 \ #1 }
+              { #1 \ #2 }
+          }
+      }
+    \coffin_typeset:Nnnnn \l__exsheets_heading_main_coffin
+      { H } { l } { 0pt }{ 0pt }
+    \bool_if:nT
+      { !\l__exsheets_heading_runin_bool && !\l__exsheets_heading_inline_bool }
+      {
+        \skip_vertical:N \l__exsheets_heading_below_dim
+        \dim_compare:nF { \parskip = 0pt }
+          { \skip_vertical:n { -\parskip } }
+        \bool_if:NTF \l__exsheets_heading_indent_first_bool
+          { \@afterindenttrue\@afterheading }
+          { \@afterindentfalse\@afterheading }
+      }
+  }
+
+% the two basic instances:
+% BLOCK:
+\DeclareInstance { exsheets-heading } { block } { default }
+  {
+    join             = { title[r,B] number[l,B] (1ex,0pt) } ,
+    attach           =
+      {
+        main[l,vc] title[l,vc] (0pt,0pt) ;
+        main[r,vc] points[l,vc] (\marginparsep,0pt)
+      }
+  }
+
+% RUNIN:
+\DeclareInstance { exsheets-heading } { runin } { default }
+  {
+    runin            = true ,
+    number-post-code = \c_space_tl ,
+    attach           =
+      { main[l,vc] points[l,vc] (\linewidth + \marginparsep,0pt) } ,
+    join             =
+      {
+        main[r,vc] title[r,vc] (0pt,0pt) ;
+        main[r,vc] number[l,vc] (1ex,0pt)
+      }
+  }
+
+\tex_endinput:D

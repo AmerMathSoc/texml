@@ -1,0 +1,2411 @@
+%<*xskak>
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{xskak}[2015/01/02 version v1.4 extended chess typesetting and parsing]
+%%$Date: 2015/01/02 13:51:58 $$Version: c80394b06dd1 $
+
+
+\newif\ifxskakpdfmatch
+
+\ifcsname pdfmatch\endcsname
+ \xskakpdfmatchtrue
+\else
+ \xskakpdfmatchfalse
+\fi
+
+\DeclareOption{nopdfmatch}{\xskakpdfmatchfalse}
+\providecommand\xskak@val@skakversion{skak}
+\DeclareOption{skak14}{\def\xskak@val@skakversion{skak14}}
+\DeclareOption{skak15}{\def\xskak@val@skakversion{skak15}}
+\DeclareOption{small}{\AtEndOfClass{\smallboard}}
+\ProcessOptions
+
+\RequirePackage{\xskak@val@skakversion}[2005/06/29]
+\expandafter\edef\csname ver@skak.sty\endcsname{\csname ver@\xskak@val@skakversion.sty\endcsname}
+
+\RequirePackage{xifthen}
+\RequirePackage{etoolbox}
+\RequirePackage{chessboard}[2007/12/20]
+\RequirePackage{xskak-keys}
+\newcommand\chessdiagramname{\ (Diagram)\ }
+\RequirePackage{xskak-nagdef}
+
+%%%%%%%%%%%%%%%%%%%%%
+%% Naming conventions
+%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%
+%%%%% Initialisation
+
+
+\newcommand\xskak@val@gameid{game}
+\newcommand\xskak@val@movenr{1}
+\newcommand\xskak@val@player{w}
+\newcommand\xskak@val@type{}
+
+\newcommand\xskak@val@defaultmovenr{1}
+\newcommand\xskak@val@defaultplayer{w}
+\newcommand\xskak@val@defaultmoveid{1w}
+
+\newcommand\xskak@val@defaultid{game}
+\newcommand\xskak@val@defaultfen{rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1}
+
+\newcommand\xskak@val@currenttag{}
+
+\newcommand\xskak@list@gametypes{%
+ initfen,%
+ initplayer,%
+ initmovenr,%
+ initmoveid,%
+ lastfen,%
+ lastplayer,%
+ lastmovenr,%
+ lastmoveid,%
+ nextplayer,%
+ nextmovenr,%
+ nextmoveid,%
+ diagramlist,%
+ gameid,%
+ parentid%NEW records game id of parent if the game is a variation, the last move of the parent=initmoveid
+ }
+
+\newcommand\xskak@list@movetypes{%
+ movenr,%
+ player,%
+ moveid,%
+ pgnpiece,%
+ piece,%
+ piecechar,%
+ castling,%
+ longcastling,%
+ capture,%
+ check,%
+ mate,%
+ lostpiece,%
+ lostpiecechar,%
+ pgnlostpiece,%
+ movefrom,%
+ pgnmovefrom,%
+ moveto,%
+ move,%
+ enpassant,%
+ enpassantsquare,%
+ promotion,%
+ promotionpiece,%
+ promotionpiecechar,%
+ addpieces,%
+ clearfields,%
+ comments,%
+ nextfen,%
+ pastfen,%
+ nag,%
+ san,%
+ lan,%
+ opennr,%
+ vars,% NEW, records game id of child variations
+ varnum% NEW, records number of child variations
+ }
+
+%% setting pgn infos
+\newcommand\xskaknewpgninfo[2][]{%#1 default value, #2 keyname
+ \ifcsname UFCB@locfill@#2\endcsname
+  \PackageError{xskak}%
+      {(pgn) key #1 is already defined! Use another name}{}%
+ \else
+  \expandafter\newcommand\csname xskak@val@default#2\endcsname{#1}%
+  \define@key[UFXS]{setpgn}{#2}[\csname xskak@val@default#2\endcsname]{%
+   \expandafter\xdef\csname Xskak\xskak@val@gameid #2\endcsname{##1}}%
+  \define@key[UFCB]{locfill}{#2}[]{}%
+  \define@key[UFXS]{set}{default#2}{%
+   \expandafter\xdef\csname xskak@val@default#2\endcsname{##1}}%
+  \@ifundefined{xskak@list@setpgn}%
+   {\gdef\xskak@list@setpgn{#2}}%
+   {\g@addto@macro\xskak@list@setpgn{,#2}}%
+    \g@addto@macro\xskak@list@gametypes{,#2}%
+ \fi
+ }%
+
+\xskaknewpgninfo[*]{result}
+\xskaknewpgninfo[]{site}
+\xskaknewpgninfo[]{event}
+\xskaknewpgninfo[]{date}
+\xskaknewpgninfo[]{round}
+\xskaknewpgninfo[]{white}
+\xskaknewpgninfo[]{black}
+\xskaknewpgninfo[]{blackelo}
+\xskaknewpgninfo[]{whiteelo}
+
+%%% From skak.sty
+\providecommand\CheckTest{}
+\providecommand\MateTest{}
+
+%%% For the benefit of texmate
+\AtBeginDocument{\providecommand\fenposition[1]{}}
+
+%%% new booleans
+\newboolean{xskakboolcastling}
+\newboolean{xskakboollongcastling}
+\newboolean{xskakboolenpassant}
+\newboolean{xskakboolcapture}
+\newboolean{xskakboolcheck}
+\newboolean{xskakboolmate}
+\newboolean{xskakboolpromotion}
+\newboolean{xskakboolcomment}
+\newboolean{xskakboolnag}
+\newboolean{xskakboolvar}
+
+%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%
+
+%% Variables
+\newcommand\xskakcomment[1]{{#1}}
+\newcommand\xskakmovehyphen{\hbox{--\hspace{1pt}}} %or movehyphen from skak?
+\newcommand*\xskakenpassanttext{\,e.p.}
+
+%% set various variables like gameid and move
+\newcommand\xskakset[1]{%
+ \setkeys[UFXS]{set}{#1}}
+
+%% getting the move data
+\newcommand*\xskakget[1]{%
+ \if\xskak@strequal{movenr}{#1}%
+  \xskak@val@movenr
+ \else
+  \if\xskak@strequal{player}{#1}%
+   \xskak@val@player
+  \else
+   \if\xskak@strequal{moveid}{#1}%
+    \xskak@val@movenr\xskak@val@player
+   \else
+    \if\xskak@strequal{level}{#1}%
+     \xskak@val@curlevel
+    \else
+     \ifcsname xskak@tag@\xskak@val@currenttag @#1\endcsname
+       \csname xskak@tag@\xskak@val@currenttag @#1\endcsname
+     \else
+      \ifcsname Xskak.\xskak@val@gameid.\xskak@val@movenr.\xskak@val@player.#1\endcsname
+       \csname Xskak.\xskak@val@gameid.\xskak@val@movenr.\xskak@val@player.#1\endcsname
+      \else
+       \PackageError{xskak}%
+        {\csname Xskak.\xskak@val@gameid.\xskak@val@movenr.\xskak@val@player.#1\endcsname isn't defined}{}%
+      \fi
+     \fi
+    \fi
+   \fi
+  \fi
+ \fi}
+
+%% getting game data
+\newcommand*\xskakgetgame[1]{%
+ \ifcsname Xskak\xskak@val@gameid#1\endcsname
+  \csname Xskak\xskak@val@gameid#1\endcsname
+ \else
+  \PackageError{xskak}%
+   {\csname Xskak\xskak@val@gameid#1\endcsname isn't defined}{}%
+ \fi}
+
+%% getting ref data -> do it through xskakget and xskakgetgame
+
+%% starting a new game
+
+\newcommand\newchessgame[1][]{%
+  \setkeys*[UFXS]{new}{id,moveid}%
+  \setkeys*[UFXS]{new}{#1}%
+   \@for\xskak@temp@gametype:=\xskak@list@gametypes\do
+   {\expandafter\xdef
+      \csname Xskak\xskak@val@gameid\xskak@temp@gametype\endcsname{}}%
+  \expandafter\xdef\csname Xskak\xskak@val@gameid gameid\endcsname{\xskak@val@gameid}%
+  \toks@=\expandafter{\xskak@list@setpgn}%
+  \edef\xskak@temp@command{%
+  \noexpand\setkeys*[UFXS]{setpgn}{\the\toks@}}%
+  \xskak@temp@command
+  %\setkeys*[UFXS]{setpgn}{result}%
+  \setkeys*[UFXS]{setpgn}{#1}%
+  \chessboard[maxfield=h8,zero=false,print=false,
+    setfen=\xskak@val@defaultfen,%
+    #1,
+    mover=\xskak@val@player,
+    fullmove=\xskak@val@movenr,
+    storefen=@tempgame]%
+   \edef\temp{\csname chessgame.@tempgame\endcsname}%16.10.2008 for skak1.5
+   \expandafter\fenboard\expandafter{\temp}%16.10.2008 for skak1.5
+   \storegame{@tempgame}%16.10.2008 for skak1.5
+   \restoregame{@tempgame}%16.10.2008 for skak1.5
+   \edef\@tempa{\csname chessgame.@tempgame\endcsname}%
+   \expandafter\fenposition\expandafter{\@tempa}% for texmate
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid initfen\endcsname{\csname chessgame.@tempgame\endcsname}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid lastfen\endcsname{\csname chessgame.@tempgame\endcsname}%
+   \expandafter\xdef
+    \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.pastfen\endcsname
+      {\csname chessgame.@tempgame\endcsname}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid initplayer\endcsname{\WhiteToMove{w}{b}}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid initmovenr\endcsname{\the\c@move}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid initmoveid\endcsname{\the\c@move\WhiteToMove{w}{b}}%
+   \xskak@do@getpreviousmoveid{\the\c@move}{\WhiteToMove{w}{b}}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid lastplayer\endcsname{\WhiteToMove{b}{w}}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid lastmovenr\endcsname{\xskak@temp@movenr}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid lastmoveid\endcsname{\xskak@temp@movenr\WhiteToMove{b}{w}}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid nextplayer\endcsname{\WhiteToMove{w}{b}}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid nextmovenr\endcsname{\the\c@move}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid nextmoveid\endcsname{\the\c@move\WhiteToMove{w}{b}}%
+   \expandafter\xdef\csname %new 1.6. Initialization of nag
+     Xskak.\xskak@val@gameid.%
+     \csname Xskak\xskak@val@gameid lastmovenr\endcsname.%
+     \csname Xskak\xskak@val@gameid lastplayer\endcsname.nag\endcsname{}}
+
+%% continuing a game
+\newcommand\resumechessgame[1][]{%
+  \def\xskak@temp@player{%
+   \csname Xskak\xskak@val@gameid nextplayer\endcsname}%
+  \def\xskak@temp@movenr{%
+   \csname Xskak\xskak@val@gameid nextmovenr\endcsname}%
+  \setkeys*[UFXS]{res}{#1}%
+  \xdef\xskak@val@player{\xskak@temp@player}%
+  \xdef\xskak@val@movenr{\xskak@temp@movenr}%
+  \ifthenelse
+    {\xskak@test@lessorequal
+        {\xskak@val@movenr}%
+        {\xskak@val@player}%
+        {\csname Xskak\xskak@val@gameid nextmovenr\endcsname}%
+        {\csname Xskak\xskak@val@gameid nextplayer\endcsname}%
+    }%
+    {\chessboard[maxfield=h8,zero=false,print=false,
+    #1,
+    setfen=\xskakget{pastfen},
+    mover=\xskak@val@player,
+    fullmove=\xskak@val@movenr,
+    storefen=@tempgame
+    ]%
+    \restoregame{@tempgame}%
+   \edef\@tempa{\csname chessgame.@tempgame\endcsname}%
+   \expandafter\fenposition\expandafter{\@tempa}% for texmate
+   \xskak@do@getpreviousmoveid{\the\c@move}{\WhiteToMove{w}{b}}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid lastplayer\endcsname{\WhiteToMove{b}{w}}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid lastmovenr\endcsname{\xskak@temp@movenr}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid lastmoveid\endcsname{\xskak@temp@movenr\WhiteToMove{b}{w}}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid nextplayer\endcsname{\WhiteToMove{w}{b}}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid nextmovenr\endcsname{\the\c@move}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid nextmoveid\endcsname{\the\c@move\WhiteToMove{w}{b}}%
+    }%
+    {\PackageError{xskak}{Move "\xskak@val@movenr\xskak@val@player" is
+     not in game \xskak@val@gameid}{}}}
+
+%% export games
+\newcommand\xskak@messages{}
+\newcommand\xskakexportgames[1][]{%
+ \begingroup
+ \def\xskak@messages{}%
+ \setkeys[UFXS]{export}{file=xskakgames,games=\xskak@val@defaultid,#1}%
+  \immediate\openout\@unused=\xskak@val@exportfile
+  \immediate\write\@unused{%
+  \@percentchar This are games exported with xskak.sty^^J%
+  \@percentchar The options were: #1 ^^J%
+  \@percentchar \the\day.\the\month.\the\year}%
+  \expandafter\xskak@do@sanitizelist\expandafter{\xskak@val@exportgames}%
+  \@for\xskak@temp@game:=\xskak@temp@list\do
+  {%
+  \@ifundefined{Xskak\xskak@temp@game initfen}%
+   {\expandafter\g@addto@macro\expandafter\xskak@messages\expandafter{\expandafter"\xskak@temp@game"\space}}%
+   {\immediate\write\@unused{%
+    \@percentchar ^^J%
+    \@percentchar Start of game \xskak@temp@game ^^J%
+    \@percentchar}%
+    \@for\xskak@temp@gametype:=\xskak@list@gametypes\do
+       {\toks@=\expandafter\expandafter\expandafter{\csname Xskak\xskak@temp@game\xskak@temp@gametype\endcsname}%
+       \immediate\write\@unused{%
+        \unexpanded{\expandafter\def\csname}Xskak%
+             \xskak@temp@game\xskak@temp@gametype\noexpand\endcsname{\the\toks@}\noexpand\relax}%
+       }%
+    \expandafter\let\expandafter\xskak@temp@movenr
+     \csname Xskak\xskak@temp@game initmovenr\endcsname
+    \expandafter\let\expandafter\xskak@temp@player
+     \csname Xskak\xskak@temp@game initplayer\endcsname
+    \whiledo% loop through moves
+      {\xskak@test@moveidingame{\xskak@temp@movenr}{\xskak@temp@player}{\xskak@temp@game}}%
+      {\@for\xskak@temp@movetype:=\xskak@list@movetypes \do
+       {\toks@=\expandafter\expandafter\expandafter{%
+         \csname Xskak.\xskak@temp@game.\xskak@temp@movenr.\xskak@temp@player.\xskak@temp@movetype\endcsname}%
+        \immediate\write\@unused{%
+          \unexpanded{\expandafter\def\csname}Xskak.%
+            \xskak@temp@game.\xskak@temp@movenr.\xskak@temp@player.\xskak@temp@movetype
+             \noexpand\endcsname{\the\toks@}\noexpand\relax}%
+       }%
+       %% nextmove
+       \xskak@do@getnextmoveid{\xskak@temp@movenr}{\xskak@temp@player}%
+      }%
+    \immediate\write\@unused{\unexpanded{\def\xskakcurrentgameid}{\xskak@temp@game}\noexpand\xskakendgamedata}%
+  }}%
+  %
+  \immediate\closeout\@unused\relax
+  \ifx\xskak@messages\@empty
+   \else
+  \PackageWarning{xskak}{games \xskak@messages\space didn't exist. I
+    skipped them}{}%
+  \fi
+  \endgroup
+  }%
+
+\newcommand\xskakendgamedata{}
+\newcommand\xskakcurrentgameid{}
+
+%% looping through a game.
+\newcommand\xskakloop[2][]{%
+ %\show\xskakstart
+ \gdef\xskak@val@loopstep{1}%
+ \savekeys[UFXS]{loop}{\global{showlast}}%
+ \setkeys[UFXS]{loop}{showlast=false,#1}% getting the id
+ \xdef\xskak@val@movenr{%
+  \csname Xskak\xskak@val@gameid initmovenr\endcsname}%
+ \xdef\xskak@val@player{%
+  \csname Xskak\xskak@val@gameid initplayer\endcsname}%
+ \xdef\xskak@val@stopmovenr{%
+  \csname Xskak\xskak@val@gameid lastmovenr\endcsname}%
+ \xdef\xskak@val@stopplayer{%
+  \csname Xskak\xskak@val@gameid lastplayer\endcsname}%
+ \setkeys[UFXS]{loop}{#1}% getting the rest.
+ %%
+ \whiledo%
+  {\xskak@test@lessorequal
+     {\xskak@val@movenr}{\xskak@val@player}%
+     {\xskak@val@stopmovenr}{\xskak@val@stopplayer}}%
+  {% test if move in game:
+   \ifthenelse%
+    {\xskak@test@moveidingame{\xskak@val@movenr}{\xskak@val@player}{\xskak@val@gameid}}%
+    {#2%
+     \count@=\xskak@val@loopstep\relax
+     \whiledo{\the\count@>0}%
+      {\xskak@do@getnextmoveid{\xskak@val@movenr}{\xskak@val@player}%
+       \advance\count@ by -1%
+       \global\let\xskak@val@movenr\xskak@temp@movenr
+       \global\let\xskak@val@player\xskak@temp@player}%
+     }%
+     {\PackageError{xskak}%
+       {move {\xskak@val@movenr}{\xskak@val@player} is not in game
+        \xskak@val@gameid}{}}}%
+    \ifthenelse{\boolean{\XKV@UFXS@loop@showlast@value}}%
+     {\ifthenelse
+      {\equal{\xskak@val@movenr\xskak@val@player}{\xskak@val@stopmovenr\xskak@val@stopplayer}}%
+      {}%stop already processed.
+      {\let\xskak@val@movenr\xskak@val@stopmovenr
+       \let\xskak@val@player\xskak@val@stopplayer
+       #2}}%
+      {}}
+%%% test if a number/color combination is in the game:
+
+\newtest\xskaktestmoveid[2]{%number, w or b
+  \xskak@test@lessorequal
+   {\csname Xskak\xskak@val@gameid initmovenr\endcsname}%
+   {\csname Xskak\xskak@val@gameid initplayer\endcsname}%
+   {#1}{#2}%
+  \AND
+  \xskak@test@lessorequal
+   {#1}{#2}%
+   {\csname Xskak\xskak@val@gameid lastmovenr\endcsname}%
+   {\csname Xskak\xskak@val@gameid lastplayer\endcsname}}
+
+\newtest\xskak@test@moveidingame[3]{%number, w or b, gameid
+  \xskak@test@lessorequal
+   {\csname Xskak#3initmovenr\endcsname}%
+   {\csname Xskak#3initplayer\endcsname}%
+   {#1}{#2}%
+  \AND
+  \xskak@test@lessorequal
+   {#1}{#2}%
+   {\csname Xskak#3lastmovenr\endcsname}%
+   {\csname Xskak#3lastplayer\endcsname}}
+
+%%%%%%%%%%%%%%%%%%
+%% Helper commands
+%%%%%%%%%%%%%%%%%%
+
+%%% help command for testing
+
+\newcommand\xskak@matetest{}
+ \let\xskak@matetest\mate
+
+%%% special fencalculate
+%%% Use only inside dothemove to get the correct color and movenumber!}
+%02.01.2015: Patching the promotionpieces in Rank 1 + 8
+\def\xskak@specialfencalculate{%
+ %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotionpiece\endcsname
+  \Fen@Rank{8}%%
+  \Promotion{%
+   \WhiteToMove{%
+    \patchcmd{\temp@rank}
+     {P}
+     {\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotionpiece\endcsname}
+     {}
+     {\show\MistMist}}{}%
+   }{}%
+   \edef\temp@board{\temp@rank/}%
+  \Fen@Rank{7}\edef\temp@board{\temp@board\temp@rank/}%
+  \Fen@Rank{6}\edef\temp@board{\temp@board\temp@rank/}%
+  \Fen@Rank{5}\edef\temp@board{\temp@board\temp@rank/}%
+  \Fen@Rank{4}\edef\temp@board{\temp@board\temp@rank/}%
+  \Fen@Rank{3}\edef\temp@board{\temp@board\temp@rank/}%
+  \Fen@Rank{2}\edef\temp@board{\temp@board\temp@rank/}%
+  \Fen@Rank{1}%
+  \Promotion{%
+   \WhiteToMove{}
+    {\patchcmd{\temp@rank}
+     {p}
+     {\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotionpiece\endcsname}
+     {}
+     {\show\MistMist}}{}}{}%
+   \edef\temp@board{\temp@board\temp@rank}%
+  \edef\temp@board{\temp@board\space\WhiteToMove{b}{w}}%
+  \edef\temp@board{\temp@board\space\PrintCastling\space\EnPassantSquare}%
+  \edef\temp@board{\temp@board\space\arabic{halfmove}\space\the\count@}}
+
+%%% Get the previous movenumber/color.
+\newcommand\xskak@do@getpreviousmoveid[2]{%1. move number, 2. color
+ \if#2w%
+  \edef\xskak@temp@movenr{\the\numexpr #1-1\relax}%
+  \def\xskak@temp@player{b}%
+ \else
+  \edef\xskak@temp@movenr{#1}%
+  \def\xskak@temp@player{w}%
+ \fi}
+
+%%% Get the next movenumber/color.
+\newcommand\xskak@do@getnextmoveid[2]{%1. move number, 2. color
+ \if#2b\relax
+  \edef\xskak@temp@movenr{\the\numexpr #1+1\relax}%
+  \def\xskak@temp@player{w}%
+ \else
+  \edef\xskak@temp@movenr{#1}%
+  \def\xskak@temp@player{b}%
+ \fi}
+
+%%% splits a move id like 10b or 8w:
+
+\def\xskak@do@storeplayer#1\@nnil{\def\xskak@temp@player{#1}}
+
+\def\xskak@split@moveid#1{\afterassignment\xskak@do@storeplayer\count@=#1\@nnil
+                        \edef\xskak@temp@movenr{\the\count@}}
+
+%%% tests
+%% moveidA < = moveidB
+\newtest\xskak@test@lessorequal[4]{%movenr/playerA movenr/playerB
+ \(#1<#3\)%
+ \OR
+ \(#1=#3%
+   \AND
+   \(\equal{#2}{#4}%
+     \OR
+     \equal{#4}{b}%
+   \)%
+  \)}%
+
+\newcommand\xskak@do@sanitizelist[1]{%
+ \def\xskak@temp@list{}%
+ \@for\xskak@temp@listentry:=#1\do
+ {\edef\xskak@temp@cmd{%
+   \noexpand\setkeys[UFXS]{inner}{stripspace=\xskak@temp@listentry}}%
+  \xskak@temp@cmd
+  \ifx\xskak@temp@list\@empty
+   \expandafter\def\expandafter\xskak@temp@list\expandafter{\xskak@temp@output}%
+  \else
+   \expandafter\board@do@l@addto@macro\expandafter\xskak@temp@list\expandafter{\expandafter,\xskak@temp@output}%
+  \fi}}
+
+\define@key[UFXS]{inner}{stripspace}{\def\xskak@temp@output{#1}}
+
+\def\xskak@strequal#1{\number\xskak@strequalstart{}{}#1\relax}
+\def\xskak@strequalstart#1#2#3{\if#3\relax\xskak@strequalstop\fi
+     \xskak@strequalstart{\if#3#1}{#2\fi}}
+\def\xskak@strequalstop\fi\xskak@strequalstart#1#2#3{\fi#1#3\relax'#213 }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%% Core: Store Move Informations
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% move related informations
+%%%%   <type>          <value>
+%%%%   vars            list of game id of variations. Is set to empty by \xskak@do@dothemove. Can be
+%%%%                   change by variation games to notify the "parent" about its "child"
+%%%%   varnum          record the number of variations of the move. Set to 0 by \xskak@do@dothemove.
+%%%%   pgnpiece        K,Q,R,B or N (independent from language). Is empty for Pawn and Castling moves
+%%%%   piece           K,Q,R,B,N or P or k,q,r,b,n or p (for black). Is empty for Castling
+%%%%   piecechar       K,Q,R,B,N or p. Is empty for Castling
+%%%%   castling        sets the boolean xskakboolcastling, is true for short *and* long castling
+%%%%   longcastling    sets the boolean xskakboollongcastling
+%%%%   capture         sets the boolean xskakboolcapture
+%%%%   check           sets the boolean xskakboolcheck
+%%%%   mate            sets the boolean xskakboolmate
+%%%%   lostpiece       In case of a capture move: K,Q,R,B,N or P or k,q,r,b,n or p(independent from language).
+%%%%   lostpiecechar   In case of a capture move: K,Q,R,B,N or p, empty else
+%%%%   pgnlostpiece    in case of a capture move: K,Q,R,B, or N (independent from language)
+%%%%   movefrom        a field, in case of castling: field of king and rook (e.g. e1,h1)
+%%%%   pgnmovefrom     the additional movefrom description in the pgn-notation for ambiguous
+%%%%                   moves and pawn captures.
+%%%%   moveto          a field, in case of castling empty
+%%%%   move            movefrom-moveto, in case of castling two moves: e.g. e1-f1,h1-f1
+%%%%   enpassant       sets the boolean xskakboolenpassant to true
+%%%%                   if the current move is an ep, else to false
+%%%%   enpassantsquare a field, after e.g. e4 the value is e3. Indicates if the next
+%%%%                   pawn move can be a ep.
+%%%%   promotion       sets the boolean xskakboolpromotion
+%%%%   promotionpiece  Q,R,B,N or q,r,b,n (undependant from language) or empty
+%%%%   promotionpiecechar Q,R,B,N (undependant from language) or empty
+%%%%   addpieces       contains the (list of) piece(s) that should be put on the board
+%%%%                   e.g. {kg8,rf8} in case of black short castling
+%%%%   clearfields     the list of fields that should be emptied on board
+%%%%   comments        contains the short comments after a move (!,? \withattack{} etc)
+%%%%   nextfen             the fen position after the current move (halfmoves, castling are perhaps wrong)
+%%%%   pastfen        the fen position *before* the current move (identical to the fen after the previous move)
+%%%%   nag             larger comments after (between) move.
+%%%%   san             standard algebraic notation of the move.
+%%%%                   e.g. \textsymfigsymbol{R}a2, e\capturesymbol d5,
+%%%%                   \castlingchar\castlinghyphen\castlingchar
+%%%%   lan             long algebraic notation of the move.
+%%%%   opennr          The number representation for an open move e.g. 2...
+%%% Game related informations. Don't use @ or "." to simplify use by the user
+%%%%   gameid         stores the gameid (for easier retrieving)
+%%%%   initfen       The fen before the first move. Set by \newchessgame
+%%%%   initplayer    w or b, The color of the next (first) player.
+%%%%                  (must be identical to the color in the initfen).
+%%%%                  Also set by \newchessgame
+%%%%   initmovenr    The number of the first move (must be identical to the fullmove number in the initfen)
+%%%%                  Also set by \newchessgame
+%%%%   lastfen            The fen after the last move, set during parsing.
+%%%%   lastplayer     The fen color of the last move, set during parsing
+%%%%                  = color of the fen before the last move!
+%%%%                  not identical to color in fen!
+%%%%   lastmovenr     The number of the last move, set during parsing.
+%%%%   lastmoveid     combination of lastmovenr+lastplayer
+%%%%   nextplayer     The fen color of the player which should move next, set during parsing
+%%%%                  = color of the fen
+%%%%   nextmovenr     The number of the next move, identical to number in fen
+%%%%   nextmoveid     combination of nextmovenr+nextmoveplayer
+%%%%  diagramlist     A comma separated list of MovenrPlayer (e.g. 3b,20w). Records the moves with an $d or $D after the move
+
+%% save the original skak definition
+\let\xskak@oriDoTheMove\DoTheMove
+
+%% define a new DoTheMove:
+\def\xskak@do@dothemove#1{% move the piece from #1 to \MoveToFile\MoveToRank
+  %%%%% Store the move and board informations, will be used to retrieve the pieces deleted
+  \Fen@calculate
+  \setkeys[UFCB]{locinit}{maxfield=h8,zero=false}%
+  \setkeys[UFCB]{locfill}{setfen=\temp@board}%
+  %\expandafter\show\csname board@val@f4r4@piecechar\endcsname
+  %===========%
+  %% vars + varnum
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.vars\endcsname{}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.vars\endcsname
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.varnum\endcsname{0}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.varnum\endcsname
+  %===========%
+  %% pgnpiece
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.pgnpiece\endcsname{%
+     \EqStr{\PieceNameToMove}{Z}{}{\PieceNameToMove}}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.pgnpiece\endcsname
+  %===========%
+  %% piece
+  \edef\@tempa{\PieceNameToMove}%
+  \expandafter\board@conv@chartolowerchar\@tempa
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.piece\endcsname{%
+       \Castling%
+         {}%
+         {\EqStr{\PieceNameToMove}{Z}%
+           {\WhiteToMove{P}{p}}%
+           {\WhiteToMove%
+             {\PieceNameToMove}%
+             {\board@temp@char}}}}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.piece\endcsname
+  %===========%
+  %% piecechar
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.piecechar\endcsname{%
+       \Castling%
+         {}%
+         {\EqStr{\PieceNameToMove}{Z}%
+           {p}%
+           {\PieceNameToMove}}}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.piecechar\endcsname
+  %===========%
+  %% lostpiece
+  % the values for enpassant move are corrected in the enpassant commands!
+  \expandafter\board@conv@filechartonumber\MoveToFile{cnt@board@file}%
+  \def\@tempa{empty}%
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.lostpiece\endcsname{%
+      \expandafter\ifx
+          \csname board@val@f\the\c@cnt@board@file r\MoveToRank @piecechar\endcsname
+          \@tempa
+      \else
+         \expandafter\ifx
+            \csname board@val@f\the\c@cnt@board@file r\MoveToRank @piecechar\endcsname
+            \relax
+         \else
+            \csname board@val@f\the\c@cnt@board@file r\MoveToRank @piecechar\endcsname
+         \fi
+      \fi}%
+  %===========%
+  %% pgnlostpiece
+  \def\board@temp@char{P}%
+  \edef\@tempa{\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.lostpiece\endcsname}%
+  \expandafter\if
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.lostpiece\endcsname\@empty
+  \else
+     \expandafter\board@conv@chartoupperchar\@tempa%
+  \fi
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.pgnlostpiece\endcsname{%
+       \if\board@temp@char P%
+       \else
+       \board@temp@char
+       \fi}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.pgnlostpiece\endcsname
+  %===========%
+  %% Opennr
+  %%
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.opennr\endcsname{%
+      \the\c@move\WhiteToMove
+        {\noexpand\whiteopen\noexpand\beforewhite}%
+        {\noexpand\blackopen\noexpand\beforeblack}}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.opennr\endcsname
+  %===========%
+  %% MoveFrom-field
+  %% expanded to set also castling from fields e.g. e1,h1 for short white castling
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.movefrom\endcsname{%
+      \Castling
+        {\LongCastling%
+         {\WhiteToMove{e1,a1}{e8,a8}}%
+         {\WhiteToMove{e1,h1}{e8,h8}}}%
+        {#1}}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.movefrom\endcsname
+  %===========%
+  %% pgnmovefrom
+  \expandafter\xdef
+   \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.pgnmovefrom\endcsname{%
+    \EqStr{\FileDiscriminator}{Z}%
+     {}{\FileDiscriminator}%
+    \EqStr{\RankDiscriminator}{Z}%
+     {}{\RankDiscriminator}%
+     }%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.pgnmovefrom\endcsname
+  %===========%
+  %% MoveTo-field
+  %% added castling test: White O-O -> g1,f1
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.moveto\endcsname{%
+       \Castling
+        {\LongCastling
+         {\WhiteToMove{c1,d1}{c8,d8}}%
+         {\WhiteToMove{g1,f1}{g8,f8}}}%
+        {\MoveToFile\MoveToRank}}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.moveto\endcsname
+  %===========%
+  %% Move
+  %% two moves for castling
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.move\endcsname{%
+      \Castling
+        {\LongCastling%
+         {\WhiteToMove{e1-c1,a1-d1}{e8-c8,a8-d8}}%
+         {\WhiteToMove{e1-g1,h1-f1}{e8-g8,h8-f8}}}%
+        {\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.movefrom\endcsname
+         -\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.moveto\endcsname}}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.move\endcsname
+  %===========%
+  %% Castling
+  % new naming
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.castling\endcsname{%
+        \Castling{\noexpand\setboolean{xskakboolcastling}{true}}%
+                 {\noexpand\setboolean{xskakboolcastling}{false}}}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.castling\endcsname
+  %===========%
+  %% Longcastling
+  % new naming
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.longcastling\endcsname{%
+        \LongCastling{\noexpand\setboolean{xskakboollongcastling}{true}}%
+                     {\noexpand\setboolean{xskakboollongcastling}{false}}}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.longcastling\endcsname
+  %% Capture
+  %% new naming, changed to boolean!
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.capture\endcsname{%
+       \Capture{\noexpand\setboolean{xskakboolcapture}{true}}%
+               {\noexpand\setboolean{xskakboolcapture}{false}}}%
+  %===========%
+  %% Check?
+  %%new naming, changed to boolean
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.check\endcsname{%
+        \ifx\CheckTest\@empty
+          \noexpand\setboolean{xskakboolcheck}{false}%
+        \else
+          \noexpand\setboolean{xskakboolcheck}{true}%
+        \fi}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.check\endcsname
+  %===========%
+  %% Mate?
+  %%new naming, changed to boolean
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.mate\endcsname{%
+        \ifx\MateTest\xskak@matetest\relax
+           \noexpand\setboolean{xskakboolmate}{true}%
+        \else
+           \noexpand\setboolean{xskakboolmate}{false}%
+         \fi}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.mate\endcsname
+  %===========%
+  %% Enpassantsquare
+  %%new naming
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.enpassantsquare\endcsname
+        {\EnPassantSquare}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.enpassantsquare\endcsname
+  %===========%
+  %% Enpassantcheck
+  %% new naming, changed to boolean
+  \begingroup
+    \WhiteToMove%
+     {\ifthenelse%
+      {\equal{\csname Xskak.\xskak@val@gameid.\the\c@move.w.piecechar\endcsname}{p}}
+      {% pawn move:
+        \ifthenelse%white enpassant
+         {\equal
+          {\csname Xskak.\xskak@val@gameid.\the\c@move.w.moveto\endcsname}%
+          {\csname Xskak.\xskak@val@gameid.\the\numexpr\the\c@move-1\relax.b.enpassantsquare\endcsname}}%
+         {\expandafter\xdef
+            \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.enpassant\endcsname
+               {\noexpand\setboolean{xskakboolenpassant}{true}}%
+          \expandafter\xdef
+            \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.lostpiece\endcsname{p}}%
+         {\expandafter\xdef
+            \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.enpassant\endcsname
+              {\noexpand\setboolean{xskakboolenpassant}{false}}}}%
+        {\expandafter\xdef
+            \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.enpassant\endcsname
+              {\noexpand\setboolean{xskakboolenpassant}{false}}}%
+         }%
+     {\ifthenelse
+      {\equal{\csname Xskak.\xskak@val@gameid.\the\c@move.b.moveto\endcsname}{p}}
+      {%pawn move:
+       \ifthenelse%black enpassant
+         {\equal
+          {\csname Xskak.\xskak@val@gameid.\the\c@move.b.moveto\endcsname}%
+          {\csname Xskak.\xskak@val@gameid.\the\c@move.w.enpassantsquare\endcsname}}%
+         {\expandafter\xdef
+            \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.enpassant\endcsname
+              {\noexpand\setboolean{xskakboolenpassant}{true}}%
+          \expandafter\xdef
+            \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.lostpiece\endcsname{P}}%
+         {\expandafter\xdef
+            \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.enpassant\endcsname
+                 {\noexpand\setboolean{xskakboolenpassant}{false}}}}%
+         {\expandafter\xdef
+            \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.enpassant\endcsname
+              {\noexpand\setboolean{xskakboolenpassant}{false}}}}%
+         %
+           \endgroup
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.enpassant\endcsname
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.lostpiece\endcsname
+  %===========%
+  %% lostpiecechar
+  \edef\@tempa{\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.lostpiece\endcsname}%
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.lostpiecechar\endcsname{%
+      \if\@tempa P%
+        p%
+      \else
+       \if\@tempa p%
+        p%
+       \else
+        \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.pgnlostpiece\endcsname
+       \fi
+      \fi}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.lostpiecechar\endcsname
+  %===========%
+  %% Promotion
+  %%new naming, added boolean
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotionpiecechar\endcsname{%
+        \Promotion{\PromotionPieceName}{}}%
+  \edef\@tempa{\PromotionPieceName}%
+  \if\@tempa\@empty\else
+   \WhiteToMove{\let\board@temp@char\@tempa}{\expandafter\board@conv@chartolowerchar\@tempa}%
+  \fi
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotionpiece\endcsname{%
+        \Promotion{\board@temp@char}{}}%
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotion\endcsname{%
+        \Promotion%
+          {\noexpand\setboolean{xskakboolpromotion}{true}}%
+          {\noexpand\setboolean{xskakboolpromotion}{false}}}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotion\endcsname
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotionpiece\endcsname
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotionpiecechar\endcsname
+  %=============%
+  %% san
+  \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.check\endcsname
+  \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.mate\endcsname
+  \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.enpassant\endcsname
+  \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotion\endcsname
+  \expandafter\protected@xdef
+   \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.san\endcsname{%
+    \Castling
+     {\LongCastling
+      {\unexpanded{\castlingchar\castlinghyphen\castlingchar\castlinghyphen\castlingchar}}%
+      {\unexpanded{\castlingchar\castlinghyphen\castlingchar}}}%
+     {\if\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.piecechar\endcsname p\else
+      \noexpand\textsymfigsymbol{\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.piecechar\endcsname}%
+      \fi
+      \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.pgnmovefrom\endcsname
+      \Capture{\noexpand\capturesymbol}{}%
+      \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.moveto\endcsname
+      \ifxskakboolpromotion
+      \noexpand\textsymfigsymbol{\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotionpiecechar\endcsname}%
+      \fi
+      \ifxskakboolenpassant
+      \noexpand\xskakenpassanttext
+      \fi}%move from below 2008-10-10
+      \ifxskakboolcheck
+      \noexpand\checksymbol
+      \fi
+      \ifxskakboolmate
+      \noexpand\mate
+      \fi
+      }%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.san\endcsname
+  %=============%
+  %% lan
+  \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.check\endcsname
+  \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.mate\endcsname
+  \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.enpassant\endcsname
+  \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotion\endcsname
+  \expandafter\protected@xdef
+   \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.lan\endcsname{%
+    \Castling
+     {\LongCastling
+      {\unexpanded{\castlingchar\castlinghyphen\castlingchar\castlinghyphen\castlingchar}}%
+      {\unexpanded{\castlingchar\castlinghyphen\castlingchar}}}%
+     {\if\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.piecechar\endcsname p\else
+      \noexpand\textsymfigsymbol{\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.piecechar\endcsname}%
+      \fi
+      \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.movefrom\endcsname
+      \Capture{\noexpand\capturesymbol}{\noexpand\xskakmovehyphen}%
+      \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.moveto\endcsname
+      \ifxskakboolpromotion
+      \noexpand\textsymfigsymbol{\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.promotionpiecechar\endcsname}%
+      \fi
+      \ifxskakboolenpassant
+      \noexpand\xskakenpassanttext
+      \fi}%move from below 2008-10-10
+      \ifxskakboolcheck
+      \noexpand\checksymbol
+      \fi
+      \ifxskakboolmate
+      \noexpand\mate
+      \fi
+      }%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.lan\endcsname
+  %===========%
+  %% addpieces
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.addpieces\endcsname{%
+       \Castling%
+         {\LongCastling%
+           {\WhiteToMove{Kc1,Re1}{kc8,re8}}%
+           {\WhiteToMove{Kg1,Rf1}{kg8,rf8}}}%
+         {\Promotion%
+           {\PromotionPieceName\MoveToFile\MoveToRank}%
+           {\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.piece\endcsname
+            \MoveToFile\MoveToRank}%
+          }}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.addpieces\endcsname
+  %===========%
+  %% clearfields
+  \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.enpassant\endcsname
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.clearfields\endcsname{%
+       \Castling%
+         {\LongCastling%
+           {e\WhiteToMove{1}{8},a\WhiteToMove{1}{8}}%
+           {e\WhiteToMove{1}{8},h\WhiteToMove{1}{8}}}%
+         {\ifxskakboolenpassant%
+             \WhiteToMove
+              {\csname Xskak.\xskak@val@gameid.\the\numexpr\the\c@move-1\relax.b.moveto\endcsname,#1}%
+              {\csname Xskak.\xskak@val@gameid.\the\c@move.w.moveto\endcsname,#1}%
+           \else
+               #1%
+           \fi}}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.clearfields\endcsname
+  %============%
+  %% comments
+  \toks@=\expandafter{\MoveRest}%
+  \expandafter\xdef
+     \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.comments\endcsname{%
+        \the\toks@}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.comments\endcsname
+  %============%
+  %% lastplayer, nextplayer, lastmovenr, nextmovenr
+  \expandafter\xdef
+    \csname Xskak\xskak@val@gameid lastplayer\endcsname{\WhiteToMove{w}{b}}%
+  \expandafter\xdef
+    \csname Xskak\xskak@val@gameid nextplayer\endcsname{\WhiteToMove{b}{w}}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid lastmovenr\endcsname{\the\c@move}%
+   \expandafter\xdef
+    \csname Xskak\xskak@val@gameid lastmoveid\endcsname{\the\c@move\WhiteToMove{w}{b}}%
+   \WhiteToMove{%
+    \expandafter\xdef
+     \csname Xskak\xskak@val@gameid nextmovenr\endcsname{\the\c@move}%
+    \expandafter\xdef
+     \csname Xskak\xskak@val@gameid nextmoveid\endcsname{\the\c@move b}}%
+    {\expandafter\xdef
+      \csname Xskak\xskak@val@gameid nextmovenr\endcsname{\the\numexpr\the\c@move+1\relax}%
+     \expandafter\xdef
+      \csname Xskak\xskak@val@gameid nextmoveid\endcsname{\the\numexpr\the\c@move+1\relax w}}%
+   %=============%
+   % Initialization of the nag-commands (are filled later by \Mainline)%
+   \expandafter\xdef\csname
+     Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.nag\endcsname{}%
+  \edef\oldpiece{\Get{\MoveToFile\MoveToRank}}%
+  \Set{\MoveTo}{\Get{#1}}\Set{#1}{E}%
+  \gdef\MoveFrom{#1}%
+  %===========%
+  %%fen position _after_ the move
+  \count@=\value{move}%
+  \WhiteToMove{}{\advance\count@ by 1\relax}%
+  \xskak@specialfencalculate
+  \expandafter\global\expandafter\let
+   \csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.nextfen\endcsname\temp@board
+  \xskak@do@getnextmoveid{\the\c@move}{\WhiteToMove{w}{b}}%
+  %% fen before next move
+  \expandafter\xdef
+    \csname
+     Xskak.\xskak@val@gameid.\xskak@temp@movenr.\xskak@temp@player.pastfen\endcsname{\temp@board}%
+  %% current last fen of game
+  \expandafter\xdef
+     \csname
+     Xskak\xskak@val@gameid lastfen\endcsname{\temp@board}%
+  %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.\WhiteToMove{w}{b}.nextfen\endcsname
+}
+
+%% overwrite the original skak definition:
+\let\DoTheMove\xskak@do@dothemove
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% enabling parsing of comments
+%%% comments a NAG ($<number>) or text in \xskakcomment{...}
+%%% NAG and comments must have spaces between them!
+
+%% tests is the argument is a NAG
+\def\xskak@test@nag#1#2XX{%
+       \ifthenelse{\equal{#1}{$}}%
+         {\setboolean{xskakboolnag}{true}}{\setboolean{xskakboolnag}{false}}}
+
+%% tests if the argument is \xskakcomment{...}
+\def\xskak@test@comment#1=\xskakcomment#2=={%
+       \def\@tempa{#1}%
+       \ifx\@tempa\empty%#1 beginnt mit \xskakcomment
+        \setboolean{xskakboolcomment}{true}%
+       \else
+        \setboolean{xskakboolcomment}{false}%
+       \fi}
+
+%% saving old version of \Mainline:
+\let\xskak@oriMainline\Mainline
+
+%% define a new own Mainline command
+\def\xskak@do@parsemainline(#1 #2){%
+ \let\xskak@save@nag\gdef
+ \ifxskakboolnag
+  \let\xskak@save@nag\g@addto@macro
+ \fi
+ \ifxskakboolcomment
+  \let\xskak@save@nag\g@addto@macro
+ \fi
+ \xskak@test@comment=#1=\xskakcomment==%
+ \ifxskakboolcomment
+  \ExecuteMoves{% mainline
+   \WhiteToMove
+     {\expandafter\xskak@save@nag
+       \csname Xskak.\xskak@val@gameid.\the\numexpr\the\c@move-1\relax.b.nag\endcsname
+       {{\xskak@beforecomment{#1}}}%
+     %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\numexpr\the\c@move-1\relax.b.nag\endcsname
+     }%
+     {%
+      \expandafter\xskak@save@nag
+       \csname Xskak.\xskak@val@gameid.\the\c@move.w.nag\endcsname
+       {{\xskak@beforecomment{#1}}}%
+     %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.w.nag\endcsname
+     }}%
+     {}%variation
+  \PrintMoves{{\xskak@beforecomment{#1}}}{}%
+  \xskak@do@parsemainline(#2)%
+ \else
+ \xskak@test@nag#1YXX%
+ \ifthenelse%
+  {\boolean{xskakboolnag}}%
+  {\ExecuteMoves{% mainline%
+   \WhiteToMove
+     {\ifthenelse{\equal{#1}{$D} \OR \equal{#1}{$d}}%
+        {\expandafter\ifx
+          \csname Xskak\xskak@val@gameid diagramlist\endcsname\@empty
+          \expandafter\xdef
+             \csname Xskak\xskak@val@gameid diagramlist\endcsname
+           {\the\numexpr\the\c@move-1\relax b}%
+         \else
+          \toks@=\expandafter\expandafter\expandafter{%
+           \csname Xskak\xskak@val@gameid diagramlist\endcsname}%
+          \expandafter\xdef
+           \csname Xskak\xskak@val@gameid diagramlist\endcsname
+           {\the\toks@,\the\numexpr\the\c@move-1\relax b}%
+          \fi
+        }%
+        {\expandafter\xskak@save@nag
+          \csname Xskak.\xskak@val@gameid.\the\numexpr\the\c@move-1\relax.b.nag\endcsname
+          {{\xskak@beforeNAG{\csname#1\endcsname}}}}%
+     %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\numexpr\the\c@move-1\relax.b.nag\endcsname
+     }%
+     {\ifthenelse{\equal{#1}{$D} \OR \equal{#1}{$d}}%
+        {\expandafter\ifx
+          \csname Xskak\xskak@val@gameid diagramlist\endcsname\@empty
+          \expandafter\xdef
+             \csname Xskak\xskak@val@gameid diagramlist\endcsname
+           {\the\c@move w}%
+         \else
+          \toks@=\expandafter\expandafter\expandafter{%
+           \csname Xskak\xskak@val@gameid diagramlist\endcsname}%
+          \expandafter\xdef
+           \csname Xskak\xskak@val@gameid diagramlist\endcsname
+           {\the\toks@,\the\c@move w}%
+          \fi
+        }%
+        {\expandafter\xskak@save@nag
+          \csname Xskak.\xskak@val@gameid.\the\c@move.w.nag\endcsname
+          {{\xskak@beforeNAG{\csname#1\endcsname}}}}%
+     %\expandafter\show\csname Xskak.\xskak@val@gameid.\the\c@move.w.nag\endcsname
+     }}%
+   {}%variation
+   \PrintMoves{{\xskak@beforeNAG{\csname#1\endcsname}}}{}%
+    \xskak@do@parsemainline(#2)}%
+  {\EqStr{ }{#1}%
+    {\xskak@do@parsemainline(#2)}%
+    {%
+     \EqStr{Z}{#1}%
+      {}%
+      {\NumberNext%
+       {\EatNumber{#1}% sets \NumberOK, \ExpectedColour
+                                % executes a move not separated from the
+                                % number with a space, eg, 1.e4
+                                %{\gdef\NumberNext{\False}\Mainline(#2)}%
+                                %\gdef\NumberNext{\False}%
+        \xskak@do@parsemainline(#2)}%
+       {\Fen@calculate% 16.10.2008 skak1.5
+        \expandafter\xdef\csname chessgame.skak.temp.previous\endcsname{\temp@board}%16.10.2008 skak1.5
+       \MakeMoveMainline{#1}%
+        \xskak@do@parsemainline(#2)}}}}%
+    \fi}
+
+%% overwrite the skak version:
+%% currently needed as \runmoves use \Mainline
+\let\Mainline\xskak@do@parsemainline
+
+%% Printing
+%%% Styles
+
+%% helper command. Copies the commands around
+\newcommand\xskak@do@copystyleitem[2]{% #1<type> to #2<type>
+ %use empty #2 to copy to the skak original commands
+ %use empty #1 to copy from the original skak commands
+ %use xskak@styleitem@<name>@ to copy a named style item
+ \ifcsname #1beforeblack\endcsname
+  \expandafter\global\expandafter\let
+     \csname #2whiteopen\expandafter\endcsname
+     \csname #1whiteopen\endcsname
+  \expandafter\global\expandafter\let
+     \csname #2blackopen\expandafter\endcsname
+     \csname #1blackopen\endcsname
+  \expandafter\global\expandafter\let
+     \csname #2beforewhite\expandafter\endcsname
+     \csname #1beforewhite\endcsname
+  \expandafter\global\expandafter\let
+     \csname #2beforeblack\expandafter\endcsname
+     \csname #1beforeblack\endcsname
+  \expandafter\global\expandafter\let
+     \csname #2afterwhite\expandafter\endcsname
+     \csname #1afterwhite\endcsname
+  \expandafter\global\expandafter\let
+     \csname #2afterblack\expandafter\endcsname
+     \csname #1afterblack\endcsname
+  \expandafter\global\expandafter\let
+     \csname #2beforenumber\expandafter\endcsname
+     \csname #1beforenumber\endcsname
+  \expandafter\global\expandafter\let
+     \csname #2opencommands\expandafter\endcsname
+     \csname #1opencommands\endcsname
+  \expandafter\global\expandafter\let
+     \csname #2closecommands\expandafter\endcsname
+     \csname #1closecommands\endcsname
+  %% two specific xskak command for the comments:
+  \expandafter\global\expandafter\let
+     \csname #2xskak@beforecomment\expandafter\endcsname
+     \csname #1xskak@beforecomment\endcsname
+  \expandafter\global\expandafter\let
+     \csname #2xskak@beforeNAG\expandafter\endcsname
+     \csname #1xskak@beforeNAG\endcsname
+ \else
+  \PackageError{xskak}{style template #1 doesn't exist!}{}%
+ \fi}
+
+%% new style items
+ \def\xskak@temp@name{xskak@styleitem@@empty@}%
+ \setkeys[UFXS]{styleitem}{%
+   opencommands={},
+   beforenumber={},
+   whiteopen={},
+   blackopen={},
+   beforewhite={},
+   afterwhite={},
+   beforeblack={},
+   afterblack={},
+   closecommands={},
+   beforecomment={},
+   beforeNAG={}}
+
+\newcommand\xskak@beforeNAG{}
+
+\newcommand\xskaknewstyleitem[2][]{%
+ \ifcsname xskak@styleitem@#2@beforeblack\endcsname
+  \PackageWarning{xskak}{Style item #2 already exists.
+                         I overwrite  it!}{}%
+ \fi
+ \def\xskak@temp@name{xskak@styleitem@#2@}%
+ \setkeys*[UFXS]{styleiteminit}{%
+  template=@empty, %empty everything
+  #1}%             %use a possible template.
+ \setrmkeys[UFXS]{styleitem}}
+
+%%% styles
+
+
+
+\newcommand*\xskak@do@splitlevel[1]{%
+     \def\xskak@temp@levelprefix{#1}%
+     \def\xskak@temp@levelpostfix{}%
+     \def\xskak@temp@levelnumber{0}}
+
+\ifxskakpdfmatch
+   \renewcommand*\xskak@do@splitlevel[1]{%
+    \ifnum\pdfmatch {([^0-9]*)([0-9]+)(.*)}{#1}=1 %
+     \edef\xskak@temp@levelprefix{\expandafter\strip@prefix\pdflastmatch1}%
+     \edef\xskak@temp@levelpostfix{\expandafter\strip@prefix\pdflastmatch3}%
+     \edef\xskak@temp@levelnumber{\expandafter\strip@prefix\pdflastmatch2}%
+    \else
+     \edef\xskak@temp@levelprefix{#1}%
+     \edef\xskak@temp@levelpostfix{}%
+     \edef\xskak@temp@levelnumber{0}%
+    \fi}%
+\fi
+
+\newcommand\xskaknewstyle[2][]{%
+ \begingroup
+ \def\xskak@temp@name{xskak@style@#2@}%
+ \ifcsname\xskak@temp@name 1@item\endcsname
+  \PackageError{xskak}{style #2 already exists}{}%
+ \else
+  \setkeys[UFXS]{style}{level=1,styleitem=@empty,#1}%
+ \fi
+ \endgroup
+}
+
+\newcommand\xskakaddtostyle[2][]{%
+ \def\xskak@temp@name{xskak@style@#2@}%
+ \ifcsname\xskak@temp@name 1@item\endcsname
+  \setkeys[UFXS]{style}{#1}%
+ \else
+  \PackageError{xskak}{style #2 doesn't exist}{}%
+ \fi
+}
+
+%% using and setting styles:
+\newcommand\xskak@use@varstyle[1]{%
+  \ifcsname xskak@style@\xskak@val@stylename @#1@item\endcsname
+   %use xskak@styleitem@<name>@ to copy a named style item
+   \edef\@tempa{%
+      xskak@styleitem@%
+      \csname xskak@style@\xskak@val@stylename @#1@item\endcsname%=<name>
+       @}%
+   \xskak@do@copystyleitem{%
+   \@tempa}{}%
+  \else
+    \ifxskakpdfmatch
+     \xskak@do@splitlevel{#1}%
+     \ifnum\xskak@temp@levelnumber>0\relax
+        \ifnum\xskak@temp@levelnumber=1\relax
+          \xskak@use@varstyle{1}%
+        \else
+          \xskak@use@varstyle{%
+             \xskak@temp@levelprefix
+             \the\numexpr\xskak@temp@levelnumber-1\relax
+             \xskak@temp@levelpostfix}%
+        \fi
+     \else
+      \PackageError{xskak}{Unknown level #1}{}%
+     \fi
+    \else
+       \ifnum#1=1\relax
+          \xskak@use@varstyle{1}%
+        \else
+          \xskak@use@varstyle{%
+             \the\numexpr#1-1\relax}%
+        \fi
+    \fi
+  \fi
+}
+
+%% default styles A,B,C,@empty
+
+\xskaknewstyleitem[%
+ whiteopen=\space,
+ blackopen=\ldots,
+ afterwhite=\space,
+ afterblack=\space]{styleB}
+
+\xskaknewstyleitem[%
+ whiteopen=.,
+ blackopen=. -,
+ beforewhite=\space,
+ beforeblack={,\space}]{styleA}
+
+\xskaknewstyleitem[%
+ opencommands={\begin{tabbing}%
+    \hspace{.2\linewidth}\=\hspace{.2\linewidth}\=%
+    \hspace{.2\linewidth}\= \kill},
+ closecommands={\end{tabbing}},
+ blackopen=\>\ldots,
+ beforenumber=\>,
+ beforewhite=\>,
+ beforeblack=\>,
+ afterblack=\\]{styleC}
+
+\xskaknewstyleitem[%
+ whiteopen={.\,},
+ blackopen={\ldots\,},
+ afterwhite={\ },
+ afterblack={\ }]{UF}
+
+\xskaknewstyleitem[%
+ opencommands =\begingroup\normalcolor\ttfamily\textbackslash opencommands\endgroup\ ,
+ closecommands=\begingroup\normalcolor\ttfamily\textbackslash closecommands\endgroup\ ,
+ whiteopen    =\begingroup\normalcolor\ttfamily\textbackslash whiteopen\endgroup\ ,
+ blackopen    =\begingroup\normalcolor\ttfamily\textbackslash blackopen\endgroup\ ,
+ beforenumber =\begingroup\normalcolor\ttfamily\textbackslash beforenumber\endgroup\ ,
+ beforewhite  =\begingroup\normalcolor\ttfamily\textbackslash beforewhite\endgroup\ ,
+ afterwhite   =\begingroup\normalcolor\ttfamily\textbackslash afterwhite\endgroup\ ,
+ beforeblack  =\begingroup\normalcolor\ttfamily\textbackslash beforeblack\endgroup\ ,
+ afterblack   =\begingroup\normalcolor\ttfamily\textbackslash afterblack\endgroup\ ,
+ beforecomment=\begingroup\normalcolor\ttfamily\textbackslash beforecomment\endgroup\ ,
+ beforeNAG=\color{green}\begingroup\normalcolor\ttfamily\textbackslash beforeNAG\endgroup\ ,
+ ]{showcommands}
+
+\xskaknewstyle[level= 1,styleitem=styleB,font=\bfseries,
+               level= 3,font=\itshape]{styleB}
+
+\xskaknewstyle[level= 1,styleitem=styleA,font=\bfseries,
+               level= 3,font=\itshape]{styleA}
+
+\xskaknewstyle[level= 1,styleitem=styleC,font=\bfseries,
+               level= 2,styleitem=styleB,
+               level= 3,font=\itshape]{styleC}
+
+\xskaknewstyle[level= 1,styleitem=@empty,font=\bfseries]{@empty}
+
+\xskaknewstyle[level= 1,styleitem=UF,font=\bfseries,
+               level= 3,font=\itshape]{UF}
+
+\xskaknewstyle[level= 1,styleitem=showcommands,font=\begingroup\ttfamily\textbackslash mainlinestyle\endgroup\ ,
+               level= 2,font=\begingroup\ttfamily\textbackslash variationstyle\endgroup\ ]{test}
+
+%% default level and style
+\xskakset{style=styleB,level=1}
+
+%%%%%%%%%%%%%%%%%%%%%
+\gdef\xskak@do@printmove{\xskakget{san}}
+
+\newcommand\printchessgame[1][]{%
+ \setkeys*[UFXS]{print}{#1}%set style and level
+ \leavevmode%UF 2012-09-10 to allow wrapping around wrapfigure
+ \begingroup
+ \setkeys*[UFXS]{xprint}{#1}%% getting the id
+ \xdef\xskak@val@movenr{%
+  \csname Xskak\xskak@val@gameid initmovenr\endcsname}%
+ \xdef\xskak@val@player{%
+  \csname Xskak\xskak@val@gameid initplayer\endcsname}%
+ \xdef\xskak@val@stopmovenr{%
+  \csname Xskak\xskak@val@gameid lastmovenr\endcsname}%
+ \xdef\xskak@val@stopplayer{%
+  \csname Xskak\xskak@val@gameid lastplayer\endcsname}%
+ \setkeys*[UFXS]{xprint}{#1}%% using the rest of the keys
+  \ifthenelse%
+    {\xskak@test@moveidingame{\xskak@val@movenr}{\xskak@val@player}{\xskak@val@gameid}}%
+    {}%
+    {\PackageWarning{xskak}{init move
+      \xskak@val@movenr\xskak@val@player\space
+       is not in the game.%
+     \MessageBreak The first move is used instead.}{}%
+     \xdef\xskak@val@movenr{%
+      \csname Xskak\xskak@val@gameid initmovenr\endcsname}%
+     \xdef\xskak@val@player{%
+      \csname Xskak\xskak@val@gameid initplayer\endcsname}}%
+  %%
+  \ifthenelse%
+    {\xskak@test@moveidingame{\xskak@val@stopmovenr}{\xskak@val@stopplayer}{\xskak@val@gameid}}%
+    {}%
+    {\PackageWarning{xskak}{stop move
+      \xskak@val@stopmovenr\xskak@val@stopplayer\space
+      is not in the game.\MessageBreak The last move is used instead.}{}%
+     \xdef\xskak@val@stopmovenr{%
+       \csname Xskak\xskak@val@gameid lastmovenr\endcsname}%
+     \xdef\xskak@val@stopplayer{%
+       \csname Xskak\xskak@val@gameid lastplayer\endcsname}}%
+  %%
+  \ifthenelse%
+   {\xskak@test@lessorequal
+     {\xskak@val@movenr}{\xskak@val@player}%
+     {\xskak@val@stopmovenr}{\xskak@val@stopplayer}}%
+   %at least one move to print:
+   {\mainlinestyle
+    \opencommands
+    %% handle the first move
+    \ifthenelse{\equal{\xskak@val@player}{w}}%
+     %first move is a white move. Will be handled in the loop
+     {\beforenumber
+      \xskak@val@movenr
+      \whiteopen
+      \beforewhite
+      \xskak@do@printmove%
+      \xdef\xskak@val@player{b}}%
+     %first move is a black one:
+     {\beforenumber
+      \xskak@val@movenr
+      \blackopen
+      \beforeblack
+      \xskak@do@printmove
+  %    \afterblack
+      \xdef\xskak@val@movenr{\the\numexpr\xskak@val@movenr +1\relax}%
+      \xdef\xskak@val@player{w}}%
+    %% loop through the res
+    \whiledo
+     {\xskak@test@lessorequal
+       {\xskak@val@movenr}{\xskak@val@player}%
+       {\xskak@val@stopmovenr}{\xskak@val@stopplayer}}%
+     {\ifthenelse
+       {\equal{\xskak@val@player}{w}}%
+       {\afterblack
+        \beforenumber
+        \xskak@val@movenr
+        \whiteopen
+        \beforewhite
+        \xskak@do@printmove
+        }
+       {\afterwhite
+        \beforeblack
+        \xskak@do@printmove
+        %\afterblack
+        }%
+      \xskak@do@getnextmoveid{\xskak@val@movenr}{\xskak@val@player}%
+       \global\let\xskak@val@movenr\xskak@temp@movenr
+       \global\let\xskak@val@player\xskak@temp@player}%
+      \closecommands
+    }%
+  {}% no move
+ \endgroup
+ }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%% Corrections/changes of skak commands %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% changed \mainline and \variation for style/level handling
+%%% (added optional argument)
+
+\renewcommand\mainline[1][]{%
+ \setkeys[UFXS]{print}{#1}%
+ \begingroup\catcode`\#=12 \@mainline}
+
+\DeclareRobustCommand{\variation}[1][]{%
+ \setkeys[UFXS]{print}{#1}%
+ \begingroup\catcode`\#=12 \@variation}
+
+\newcommand\variationmovemode{\shortmoves}
+
+%added \shortmoves as \variation doesn't work in longmoves-mode
+\def\@variation#1{\endgroup\gdef\NumberNext{\True}%
+  \gdef\AfterBlack{\False}%
+  \gdef\PrintMoves{\True}%
+  \gdef\ExecuteMoves{\False}%
+  \gdef\StoreLastMove{\False}%
+  {\variationstyle\opencommands%
+   \variationmovemode
+   \xskak@do@parsemainline(#1 Z )%
+   \closecommands}}
+
+%%% Read/store commands
+%% changed to avoid the use of to much write/read registers
+%% ?? What did I mean? changed \FenBoard to \fenboard in \loadgame/restoregame
+%% ?? What did I mean? to avoid problems with the redefinition in texmate
+
+\def\savegame#1{% writes the board as fen to #1.fen
+  \immediate\openout0=#1.fen%
+  \Fen@calculate%
+  \immediate\write0{\temp@board}%
+  \immediate\closeout0}
+
+\def\loadgame#1{%
+  \def\load@read{}%
+  \openin0=#1.fen\relax%
+  \read0 to \load@read%
+  \closein0%
+  \expandafter\fenboard\expandafter{\load@read}}
+
+%%% ParseCastlingA changed so that comments are no longer lost:
+%%% -> bug report 2008-10-10
+
+\def\@setmoverestcastling(#1ZVW){\gdef\MoveRest{#1}}
+
+\def\ParseCastlingA(#1#2#3){%
+  \MyEqualB{#1#2}{-O}%
+  {\gdef\LongCastling{\True}%
+   \ParseCastlingAA(#3)}%
+  {\ParseCastlingAA(#1#2#3)}}
+
+\newcommand\ParseCastlingAA{}
+
+\def\ParseCastlingAA(#1#2#3){%
+ \EqStr{Z}{#1}%
+  {}% we are done!
+  {\EqStr{#1}{+}% chess ?
+     {\protected@xdef\CheckTest{\checksymbol}%
+      \ParseCastlingAA(#2#3)}%
+     {\EqStr{#1}{##}% mate?
+       {\protected@xdef\MateTest{\mate}%
+        \ParseCastlingAA(#2#3)}%
+       {\@setmoverestcastling(#1#2#3)}}}}
+
+
+%%%% ExecutePawnMove changed:
+%%%% moved \xdef of EnPassantSquare before DoTheMove
+%%%% I hope it doesn't break something
+
+\def\ExecutePawnMove{% relies on the info obtained by ParseMove
+  \setcounter{halfmove}{0}%
+  \Capture%
+  {\EqPiece{E}{\Get{\MoveTo}}%
+    {\Set{\MoveToFile\FromRank}{E}}%
+    {}%
+    \xdef\EnPassantSquare{-}% U.F. moved before \DoTheMove
+    \DoTheMove{\FileDiscriminator\FromRank}%
+    }%
+  {\EqPiece{E}{\Get{\MoveToFile\FromRank}}%
+    {\xdef\EnPassantSquare{\MoveToFile\FromRank}% two square move
+      \DoTheMove{\MoveToFile\InitialRank}}%
+    {\xdef\EnPassantSquare{-}%
+      \DoTheMove{\MoveToFile\FromRank}% one square move
+      }}%
+  \Promotion%
+  {\Set{\MoveTo}{\PieceNameToPiece{\PromotionPieceName}{\WhiteToMove}}}%
+  {}}
+
+%%% the internal longmove command changed to get correct pawn moves:
+
+\def\xskak@do@printmove@algebraic{%
+ \csname Xskak.\xskak@val@gameid.%
+        \WhiteToMove{\the\numexpr\the\c@move-1\relax}{\the\c@move}.%
+        \WhiteToMove{b}{w}.lan\endcsname
+ \csname Xskak.\xskak@val@gameid.%
+        \WhiteToMove{\the\numexpr\the\c@move-1\relax}{\the\c@move}.%
+        \WhiteToMove{b}{w}.comments\endcsname{}}
+
+\let\skaklongmoves\longmoves %added 16.10.2008
+
+\def\longmoves{%
+\let\printmove=\xskak@do@printmove@algebraic
+\gdef\xskak@do@printmove{\xskakget{lan}}}
+
+\def\shortmoves{%
+\let\printmove=\printmove@san
+\gdef\xskak@do@printmove{\xskakget{san}}}
+
+%</xskak>
+%<*xskak-keys>
+\ProvidesFile{xskak-keys.sty}[2015/01/02 version v1.4 key definitions for xskak.sty]
+%%$Date: 2011/03/17 16:54:07 $$Version: 041ab49ae0e2 $
+
+
+%%%%%%%%%%%%%%%%%%%%%
+%%%% Keys
+%%%%%%%%%%%%%%%%%%%%%
+%% \newchessgame: fam: new
+\define@key[UFXS]{new}{id}[\xskak@val@defaultid]{\xdef\xskak@val@gameid{#1}}
+
+\define@key[UFXS]{new}{movenr}{\xdef\xskak@val@movenr{#1}}
+
+\define@key[UFXS]{new}{player}{\xdef\xskak@val@player{#1}}
+
+\define@key[UFXS]{new}{moveid}[\xskak@val@defaultmovenr\xskak@val@defaultplayer]{%
+ \edef\@tempa{#1}%
+ \xskak@split@moveid{\@tempa}%
+ \global\let\xskak@val@movenr\xskak@temp@movenr
+ \global\let\xskak@val@player\xskak@temp@player}
+
+\define@key[UFXS]{new}{newvar}[\xskak@val@gameid]{%
+ \xdef\xskak@val@refgameid{#1}%
+ \xdef\xskak@val@movenr{\csname Xskak#1lastmovenr\endcsname}%
+ \xdef\xskak@val@player{\csname Xskak#1lastplayer\endcsname}}%
+
+
+
+\define@key[UFXS]{new}{reftag}{%
+ \xdef\xskak@val@currenttag{#1}}
+
+\define@key[UFXS]{new}{refid}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFXS@new@id{\csname xskak@tag@#1@refid\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFXS]{new}{refpastmovenr}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFXS@new@movenr{\csname xskak@tag@#1@refpastmovenr\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFXS]{new}{refnextmovenr}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFXS@new@movenr{\csname xskak@tag@#1@refnextmovenr\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFXS]{new}{refpastplayer}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFXS@new@movenr{\csname xskak@tag@#1@refpastmovenr\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFXS]{new}{refnextplayer}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFXS@new@player{\csname xskak@tag@#1@refnextplayer\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFXS]{new}{refpastmoveid}{%
+  \ifcsname xskak@tag@#1@refid\endcsname
+   \UFXS@new@moveid{%
+    \csname xskak@tag@#1@refpastmovenr\endcsname
+    \csname xskak@tag@#1@refpastplayer\endcsname}%
+  \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFXS]{new}{refnextmoveid}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi
+ \UFXS@new@moveid{%
+  \csname xskak@tag@#1@refnextmovenr\endcsname
+  \csname xskak@tag@#1@refnextplayer\endcsname}}
+
+\define@key[UFXS]{new}{refpast}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi
+ \UFXS@new@refpastmoveid{#1}%
+ \UFXS@new@refid{#1}}
+
+\define@key[UFXS]{new}{refnext}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFXS@new@refnextmoveid{#1}%
+  \UFXS@new@refid{#1}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+%% \xskakset: fam set
+\define@key[UFXS]{set}{id}[\xskak@val@defaultid]{\UFXS@new@id{#1}}
+
+\define@key[UFXS]{set}{movenr}{\UFXS@new@moveid{#1}}
+
+\define@key[UFXS]{set}{player}{\UFXS@new@player{#1}}
+
+\define@key[UFXS]{set}{moveid}[\xskak@val@defaultmovenr\xskak@val@defaultplayer]{%
+ \UFXS@new@moveid{#1}}%
+
+\define@key[UFXS]{set}{stepmoveid}[1]{%
+  \count@=#1\relax
+   \ifthenelse{\the\count@>0}
+     {\whiledo{\the\count@>0}%
+       {\xskak@do@getnextmoveid{\xskak@val@movenr}{\xskak@val@player}%
+        \advance\count@ by -1%
+        \global\let\xskak@val@movenr\xskak@temp@movenr
+        \global\let\xskak@val@player\xskak@temp@player}%
+     }%
+     {\ifthenelse{\the\count@=0}%
+       {}%
+       {\whiledo{\the\count@<0}%
+        {\xskak@do@getpreviousmoveid{\xskak@val@movenr}{\xskak@val@player}%
+         \advance\count@ by 1%
+         \global\let\xskak@val@movenr\xskak@temp@movenr
+         \global\let\xskak@val@player\xskak@temp@player}%
+         \ifthenelse{\the\count@<1}%
+          {\PackageWarning{xskak}{Move number below 1!}{}}%
+          {}}}}
+
+\define@key[UFXS]{set}{lastmoveid}[\xskak@val@gameid]{%
+  \ifcsname Xskak#1initfen\endcsname
+   \xdef\xskak@val@gameid{#1}%
+  \else\PackageError{xskak}{Game with the id #1 doesn't exist.}{}%
+  \fi
+  \xdef\xskak@val@movenr{\csname Xskak\xskak@val@gameid lastmovenr\endcsname}%
+  \xdef\xskak@val@player{\csname Xskak\xskak@val@gameid lastplayer\endcsname}}%
+
+\define@key[UFXS]{set}{defaultmoveid}{%
+ \edef\@tempa{#1}\xskak@split@moveid{\@tempa}%
+ %\xdef\xskak@val@movedefaultid{#1}%
+ \xdef\xskak@val@defaultmovenr{\xskak@temp@movenr}%
+ \xdef\xskak@val@defaultplayer{\xskak@temp@player}}
+
+\define@key[UFXS]{set}{defaultmovenr}{%
+ \xdef\xskak@val@defaultmovenr{#1}}
+
+\define@key[UFXS]{set}{defaultplayer}{%
+ \xdef\xskak@val@defaultplayer{#1}}
+
+\define@key[UFXS]{set}{defaultid}{\gdef\xskak@val@defaultid{#1}}
+
+\define@key[UFXS]{set}{defaultfen}{\gdef\xskak@val@defaultfen{#1}}
+
+\define@key[UFXS]{set}{tag}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+   \PackageWarning{xskak}{Overwrite tag name #1}{}%
+ \fi
+ \expandafter\xdef
+  \csname xskak@tag@#1@refid\endcsname{\xskak@val@gameid}%
+ \ifnum\the\c@move=0
+   \PackageWarning{xskak}{You haven't started a game yet. I won't set a tag!}{}%
+ \else
+  \expandafter\xdef
+   \csname xskak@tag@#1@refnextmovenr\endcsname{\the\c@move}%
+  \expandafter\xdef
+   \csname xskak@tag@#1@refnextplayer\endcsname{\WhiteToMove{w}{b}}%
+  \expandafter\xdef
+   \csname xskak@tag@#1@refpastplayer\endcsname{\WhiteToMove{b}{w}}%
+  \expandafter\xdef
+   \csname xskak@tag@#1@refnextmoveid\endcsname{\the\c@move\WhiteToMove{w}{b}}%
+  \WhiteToMove
+   {\expandafter\xdef
+    \csname xskak@tag@#1@refpastmovenr\endcsname{\the\numexpr\the\c@move-1\relax}}
+   {\expandafter\xdef
+    \csname xskak@tag@#1@refpastmovenr\endcsname{\the\c@move}}
+  \expandafter\xdef
+   \csname xskak@tag@#1@refpastmoveid\endcsname{%
+   \csname xskak@tag@#1@refpastmovenr\endcsname
+   \csname xskak@tag@#1@refpastplayer\endcsname}%
+ \fi
+  }
+
+\define@key[UFXS]{set}{reftag}{%
+ \UFXS@new@reftag{#1}}
+
+
+\define@key[UFXS]{set}{refid}{%
+ \UFXS@new@refid{#1}}
+
+\define@key[UFXS]{set}{refpastmovenr}{%
+ \UFXS@new@refpastmovenr{#1}}
+
+\define@key[UFXS]{set}{refnextmovenr}{%
+ \UFXS@new@refnextmovenr{#1}}
+
+\define@key[UFXS]{set}{refpastplayer}{%
+  \UFXS@new@refpastplayer{#1}}
+
+\define@key[UFXS]{set}{refnextplayer}{%
+  \UFXS@new@refnextplayer{#1}}
+
+\define@key[UFXS]{set}{refpastmoveid}{%
+   \UFXS@new@refpastmoveid{#1}}
+
+\define@key[UFXS]{set}{refnextmoveid}{%
+  \UFXS@new@refnextmoveid{#1}}
+
+\define@key[UFXS]{set}{refpast}{%
+  \UFXS@new@refpast{#1}}
+
+\define@key[UFXS]{set}{refnext}{%
+  \UFXS@new@refnext{#1}}
+
+\define@key[UFXS]{set}{style}{%
+ \ifcsname xskak@style@#1@1@item\endcsname
+  \def\xskak@val@stylename{#1}%
+  \def\mainlinestyle{%
+   \xskak@use@varstyle{\xskak@val@curlevel}%
+   \xskak@do@splitlevel{\xskak@val@curlevel}%
+   \ifnum\xskak@temp@levelnumber=0\relax
+   \else
+    \csname xskak@style@#1@\xskak@temp@levelnumber @xfont\endcsname
+   \fi
+   \csname xskak@style@#1@\xskak@val@curlevel @font\endcsname}%
+  \let\variationstyle\mainlinestyle
+ \else
+  \PackageError{xskak}{Style #1 doesn't exist!}{}
+ \fi}
+
+\define@key[UFXS]{set}{gstyle}{%
+ \ifcsname xskak@style@#1@1@item\endcsname
+  \xdef\xskak@val@stylename{#1}%
+  \gdef\mainlinestyle{%
+   \xskak@use@varstyle{\xskak@val@curlevel}%
+   \xskak@do@splitlevel{\xskak@val@curlevel}%
+   \ifnum\xskak@temp@levelnumber=0\relax
+   \else
+    \csname xskak@style@#1@\xskak@temp@levelnumber @xfont\endcsname
+   \fi
+   \csname xskak@style@#1@\xskak@val@curlevel @font\endcsname}%
+  \global\let\variationstyle\mainlinestyle
+ \else
+  \PackageError{xskak}{Style #1 doesn't exist!}{}
+ \fi}
+
+
+\define@key[UFXS]{set}{level}{%
+ \edef\xskak@val@curlevel{#1}}%
+
+\define@key[UFXS]{set}{glevel}{%
+ \xdef\xskak@val@curlevel{#1}}%
+
+\define@key[UFXS]{set}{invar}[]{%
+ \ifxskakpdfmatch
+  \xskak@do@splitlevel{\xskak@val@curlevel}%
+  \ifnum\xskak@temp@levelnumber=0\relax
+   \PackageWarning{xskak}{key invar ignored}{}%
+  \else
+   \edef\xskak@val@curlevel{%
+          \xskak@temp@levelprefix
+          \the\numexpr\xskak@temp@levelnumber+1\relax
+          \xskak@temp@levelpostfix}%
+  \fi
+ \else
+ %% no pdfmatch. Will give an error if the level is not a number
+   \edef\xskak@val@curlevel{%
+          \the\numexpr\xskak@val@curlevel+1\relax}%
+ \fi}
+
+\define@key[UFXS]{set}{ginvar}[]{%
+ \ifxskakpdfmatch
+  \xskak@do@splitlevel{\xskak@val@curlevel}%
+  \ifnum\xskak@temp@levelnumber=0\relax
+   \PackageWarning{xskak}{key ginvar ignored}{}%
+  \else
+   \xdef\xskak@val@curlevel{%
+          \xskak@temp@levelprefix
+          \the\numexpr\xskak@temp@levelnumber+1\relax
+          \xskak@temp@levelpostfix}%
+  \fi
+ \else
+ %% no pdfmatch. Will give an error if the level is not a number
+   \xdef\xskak@val@curlevel{%
+          \the\numexpr\xskak@val@curlevel+1\relax}%
+ \fi}
+
+\define@key[UFXS]{set}{outvar}[]{%
+ \ifxskakpdfmatch
+  \xskak@do@splitlevel{\xskak@val@curlevel}%
+   \ifnum\xskak@temp@levelnumber=0\relax
+    \PackageWarning{xskak}{key outvar ignored}{}%
+   \else
+     \ifnum\xskak@temp@levelnumber=1\relax
+      \PackageWarning{xskak}{Level has already  value 1}{}%
+     \else
+       \edef\xskak@val@curlevel{%
+          \xskak@temp@levelprefix
+          \the\numexpr\xskak@temp@levelnumber-1\relax
+          \xskak@temp@levelpostfix}%
+     \fi
+  \fi
+ \else
+   \ifnum\xskak@val@curlevel=1\relax
+     \PackageWarning{xskak}{Level has already  value 1}{}%
+   \else
+     \edef\xskak@val@curlevel{%
+          \the\numexpr\xskak@val@curlevel-1}%
+   \fi
+ \fi}
+
+\define@key[UFXS]{set}{goutvar}[]{%
+ \ifxskakpdfmatch
+  \xskak@do@splitlevel{\xskak@val@curlevel}%
+   \ifnum\xskak@temp@levelnumber=0\relax
+    \PackageWarning{xskak}{key goutvar ignored}{}%
+   \else
+     \ifnum\xskak@temp@levelnumber=1\relax
+      \PackageWarning{xskak}{Level has already  value 1}{}%
+     \else
+       \xdef\xskak@val@curlevel{%
+          \xskak@temp@levelprefix
+          \the\numexpr\xskak@temp@levelnumber-1\relax
+          \xskak@temp@levelpostfix}%
+     \fi
+  \fi
+ \else
+   \ifnum\xskak@val@curlevel=1\relax
+     \PackageWarning{xskak}{Level has already  value 1}{}%
+   \else
+     \xdef\xskak@val@curlevel{%
+          \the\numexpr\xskak@val@curlevel-1}%
+   \fi
+ \fi}
+
+%% \resumechessgame: fam res
+\define@key[UFXS]{res}{id}{\UFXS@new@id{#1}}
+
+\define@key[UFXS]{res}{movenr}{\def\xskak@temp@movenr{#1}}
+
+\define@key[UFXS]{res}{player}{\def\xskak@temp@player{#1}}
+
+\define@key[UFXS]{res}{moveid}{\edef\@tempa{#1}\xskak@split@moveid{\@tempa}}
+
+\define@key[UFXS]{res}{newvar}[\xskak@val@gameid]{%
+ \xdef\xskak@val@refgameid{#1}%
+ \xdef\xskak@val@gameid{#1}%
+ \def\xskak@temp@movenr{\csname Xskak\xskak@val@gameid lastmovenr\endcsname}%
+ \def\xskak@temp@player{\csname Xskak\xskak@val@gameid lastplayer\endcsname}}%
+
+
+\define@key[UFXS]{res}{reftag}{%
+ \UFXS@new@reftag{#1}}
+
+\define@key[UFXS]{res}{refid}{%
+ \UFXS@new@refid{#1}}
+
+\define@key[UFXS]{res}{refpastmovenr}{%
+ \UFXS@new@refpastmovenr{#1}}
+
+\define@key[UFXS]{res}{refnextmovenr}{%
+ \UFXS@new@refnextmovenr{#1}}
+
+\define@key[UFXS]{res}{refpastplayer}{%
+  \UFXS@new@refpastplayer{#1}}
+
+\define@key[UFXS]{res}{refnextplayer}{%
+  \UFXS@new@refnextplayer{#1}}
+
+\define@key[UFXS]{res}{refpastmoveid}{%
+   \UFXS@new@refpastmoveid{#1}}
+
+\define@key[UFXS]{res}{refnextmoveid}{%
+  \UFXS@new@refnextmoveid{#1}}
+
+\define@key[UFXS]{res}{refpast}{%
+  \UFXS@new@refpast{#1}}
+
+\define@key[UFXS]{res}{refnext}{%
+  \UFXS@new@refnext{#1}}
+
+%% pgn-keys are defined during definition.
+
+%%% xskakexportgames
+\define@key[UFXS]{export}{file}{\edef\xskak@val@exportfile{#1.xsk}}
+\define@key[UFXS]{export}{games}{\edef\xskak@val@exportgames{#1}}
+
+%%% xskakloop
+\define@key[UFXS]{loop}{id}{\UFXS@new@id{#1}}
+
+\define@key[UFXS]{loop}{reftag}{%
+ \UFXS@new@reftag{#1}}
+
+\define@key[UFXS]{loop}{refid}{%
+ \UFXS@new@refid{#1}}
+
+\define@key[UFXS]{loop}{initmoveid}{%
+ \xskak@split@moveid{#1}%
+ \global\let\xskak@val@movenr\xskak@temp@movenr
+ \global\let\xskak@val@player\xskak@temp@player
+ }
+\define@key[UFXS]{loop}{initmovenr}{%
+ \xdef\xskak@val@movenr{#1}}
+
+\define@key[UFXS]{loop}{initplayer}{%
+ \xdef\xskak@val@player{#1}}
+
+\define@key[UFXS]{loop}{stopmoveid}{%
+ \xskak@split@moveid{#1}%
+ \global\let\xskak@val@stopmovenr\xskak@temp@movenr
+ \global\let\xskak@val@stopplayer\xskak@temp@player
+ }
+\define@key[UFXS]{loop}{stopmovenr}{%
+ \xdef\xskak@val@stopmovenr{#1}}
+
+\define@key[UFXS]{loop}{stopplayer}{%
+ \xdef\xskak@val@stopplayer{#1}}
+
+\define@key[UFXS]{loop}{step}{\xdef\xskak@val@loopstep{#1}}
+
+\define@boolkey[UFXS]{loop}{showlast}[true]{}
+
+%%
+%% style items.
+
+%% keys
+\define@key[UFXS]{styleitem}{whiteopen}{%
+ \expandafter\gdef\csname\xskak@temp@name whiteopen\endcsname{#1}}
+\define@key[UFXS]{styleitem}{blackopen}{%
+ \expandafter\gdef\csname\xskak@temp@name blackopen\endcsname{#1}}
+\define@key[UFXS]{styleitem}{opencommands}{%
+ \expandafter\gdef\csname\xskak@temp@name opencommands\endcsname{#1}}
+\define@key[UFXS]{styleitem}{closecommands}{%
+ \expandafter\gdef\csname\xskak@temp@name closecommands\endcsname{#1}}
+\define@key[UFXS]{styleitem}{beforenumber}{%
+ \expandafter\gdef\csname\xskak@temp@name beforenumber\endcsname{#1}}
+\define@key[UFXS]{styleitem}{beforewhite}{%
+ \expandafter\gdef\csname\xskak@temp@name beforewhite\endcsname{#1}}
+\define@key[UFXS]{styleitem}{afterwhite}{%
+ \expandafter\gdef\csname\xskak@temp@name afterwhite\endcsname{#1}}
+\define@key[UFXS]{styleitem}{beforeblack}{%
+ \expandafter\gdef\csname\xskak@temp@name beforeblack\endcsname{#1}}
+\define@key[UFXS]{styleitem}{afterblack}{%
+ \expandafter\gdef\csname\xskak@temp@name afterblack\endcsname{#1}}
+\define@key[UFXS]{styleitem}{beforecomment}{%
+ \expandafter\gdef\csname\xskak@temp@name xskak@beforecomment\endcsname{#1}}
+\define@key[UFXS]{styleitem}{beforeNAG}{%
+ \expandafter\gdef\csname\xskak@temp@name xskak@beforeNAG\endcsname{#1}}
+
+\define@key[UFXS]{styleiteminit}{template}{% from #1 to current style. Make sure to have set temp@name correctly!
+ \xskak@do@copystyleitem{xskak@styleitem@#1@}{\xskak@temp@name}}
+
+%% style
+
+\define@key[UFXS]{style}{level}[1]{%
+  \def\xskak@val@curlevel{#1}}
+
+\define@key[UFXS]{style}{font}{%
+ \expandafter\gdef\csname\xskak@temp@name\xskak@val@curlevel @font\endcsname{#1}}
+
+\define@key[UFXS]{style}{styleitem}{%
+ \ifcsname xskak@styleitem@#1@whiteopen\endcsname
+  \expandafter\xdef
+   \csname\xskak@temp@name\xskak@val@curlevel @item\endcsname{#1}%
+ \else
+  \PackageError{xskak}{style item #1 doesn't exist!}{}%
+ \fi}
+
+\define@key[UFXS]{style}{xfont}{%
+ \xskak@do@splitlevel{\xskak@val@curlevel}%
+ \ifnum\xskak@temp@levelnumber=0\relax
+  \PackageWarning{xskak}{key xfont ignored (no number found)}{}%
+ \else
+  \expandafter\gdef\csname\xskak@temp@name\xskak@temp@levelnumber @xfont\endcsname{#1}%
+ \fi}
+
+%% printing
+%% style and level for all printing commands
+
+\define@key[UFXS]{print}{style}{%
+ \UFXS@set@style{#1}}
+
+\define@key[UFXS]{print}{gstyle}{%
+ \UFXS@set@gstyle{#1}}
+
+\define@key[UFXS]{print}{level}{%
+ \edef\xskak@val@curlevel{#1}}%
+
+\define@key[UFXS]{print}{glevel}{%
+ \xdef\xskak@val@curlevel{#1}}%
+
+\define@key[UFXS]{print}{invar}[]{%
+  \UFXS@set@invar{#1}}
+
+\define@key[UFXS]{print}{outvar}[]{%
+ \UFXS@set@outvar{#1}}
+
+%% keys only for \printchessgame
+\define@key[UFXS]{xprint}{id}{\def\xskak@val@gameid{#1}}
+\define@key[UFXS]{xprint}{initmoveid}{%
+ \xskak@split@moveid{#1}%
+ \let\xskak@val@movenr\xskak@temp@movenr
+ \let\xskak@val@player\xskak@temp@player
+ }
+\define@key[UFXS]{xprint}{initmovenr}{%
+ \def\xskak@val@movenr{#1}}
+
+\define@key[UFXS]{xprint}{initplayer}{%
+ \def\xskak@val@player{#1}}
+
+\define@key[UFXS]{xprint}{stopmoveid}{%
+ \xskak@split@moveid{#1}%
+ \let\xskak@val@stopmovenr\xskak@temp@movenr
+ \let\xskak@val@stopplayer\xskak@temp@player
+ }
+\define@key[UFXS]{xprint}{stopmovenr}{%
+ \def\xskak@val@stopmovenr{#1}}
+
+\define@key[UFXS]{xprint}{stopplayer}{%
+ \def\xskak@val@stopplayer{#1}}
+
+\define@key[UFXS]{xprint}{reftag}{%
+ \UFXS@new@reftag{#1}}
+
+\define@key[UFXS]{xprint}{refid}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFXS@print@id{\csname xskak@tag@#1@refid\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+%% new keys for chessboard. Move to chessboard.sty??
+%% empty keys to avoid errors:
+
+\define@key[UFCB]{locfill}{tag}{}%
+\define@key[UFCB]{locfill}{ref}{}%
+\define@key[UFCB]{locfill}{defaultid}{}%
+\define@key[UFCB]{locfill}{defaultmoveid}{}%
+\define@key[UFCB]{locfill}{defaultfen}{}%
+
+%% real keys (should also be defined in fam glofill):
+\define@key[UFCB]{locfill}{id}[\xskak@val@defaultid]{%
+ \ifcsname Xskak#1initfen\endcsname
+   \edef\xskak@val@gameid{#1}%
+ \else
+  \PackageError{xskak}{Game with the id #1 doesn't exist.}{}%
+ \fi}%
+
+\define@key[UFCB]{glofill}{id}[\xskak@val@defaultid]{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,id=#1}}%
+
+\define@key[UFCB]{locfill}{moveid}{%
+ \edef\@tempa{#1}\xskak@split@moveid{\@tempa}%
+ \let\xskak@val@movenr\xskak@temp@movenr
+ \let\xskak@val@player\xskak@temp@player}%
+
+\define@key[UFCB]{glofill}{moveid}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,moveid=#1}}%
+
+\define@key[UFCB]{locfill}{stepmoveid}[1]{%
+  \count@=#1\relax
+   \ifthenelse{\the\count@>0}
+     {\whiledo{\the\count@>0}%
+       {\xskak@do@getnextmoveid{\xskak@val@movenr}{\xskak@val@player}%
+        \advance\count@ by -1%
+        \let\xskak@val@movenr\xskak@temp@movenr
+        \let\xskak@val@player\xskak@temp@player}%
+     }%
+     {\ifthenelse{\the\count@=0}%
+       {}%
+       {\whiledo{\the\count@<0}%
+        {\xskak@do@getpreviousmoveid{\xskak@val@movenr}{\xskak@val@player}%
+         \advance\count@ by 1%
+         \let\xskak@val@movenr\xskak@temp@movenr
+         \let\xskak@val@player\xskak@temp@player}%
+         \ifthenelse{\the\count@<1}%
+          {\PackageWarning{xskak}{Move number below 1!}{}}%
+          {}}}}
+
+\define@key[UFCB]{glofill}{stepmoveid}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,stepmoveid=#1}}%
+
+\define@key[UFCB]{locfill}{player}{\def\xskak@val@player{#1}}%
+
+\define@key[UFCB]{glofill}{player}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,player=#1}}%
+
+\define@key[UFCB]{locfill}{movenr}{\def\xskak@val@movenr{#1}}%
+
+\define@key[UFCB]{glofill}{movenr}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,movenr=#1}}%
+
+\define@key[UFCB]{locfill}{newvar}[\xskak@val@refgameid]{%
+ \UFCB@locfill@setfen{%
+  \csname Xskak.#1.%
+    \csname Xskak#1lastmovenr\endcsname.%
+    \csname Xskak#1lastplayer\endcsname.%
+    pastfen\endcsname}%
+ }%
+
+\define@key[UFCB]{glofill}{newvar}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,newvar=#1}}%
+
+\define@key[UFCB]{locfill}{reftag}{%
+ \edef\xskak@val@currenttag{#1}}
+
+\define@key[UFCB]{glofill}{reftag}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,reftag=#1}}%
+
+\define@key[UFCB]{locfill}{lastmoveid}[\xskak@val@gameid]{%
+ \ifcsname Xskak#1initfen\endcsname
+  \edef\xskak@val@gameid{#1}%
+ \else
+  \PackageError{xskak}{Game with the id #1 doesn't exist.}{}%
+ \fi
+ \edef\xskak@val@movenr{\csname Xskak#1lastmovenr\endcsname}%
+ \edef\xskak@val@player{\csname Xskak#1lastplayer\endcsname}%
+ }%
+
+\define@key[UFCB]{glofill}{lastmoveid}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,lastmoveid=#1}}%
+
+\define@key[UFCB]{locfill}{refid}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFCB@locfill@id{\csname xskak@tag@#1@refid\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFCB]{glofill}{refid}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,refid=#1}}%
+
+\define@key[UFCB]{locfill}{refpastmovenr}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFCB@locfill@movenr{\csname xskak@tag@#1@refpastmovenr\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFCB]{glofill}{refpastmovenr}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,refpastmovenr=#1}}%
+
+\define@key[UFCB]{locfill}{refnextmovenr}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi
+ \UFCB@locfill@movenr{\csname xskak@tag@#1@refnextmovenr\endcsname}}
+
+\define@key[UFCB]{glofill}{refnextmovenr}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,refnextmovenr=#1}}%
+
+\define@key[UFCB]{locfill}{refpastplayer}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFCB@locfill@player{\csname xskak@tag@#1@refpastplayer\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFCB]{glofill}{refpastplayer}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,refpastplayer=#1}}%
+
+\define@key[UFCB]{locfill}{refnextplayer}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFCB@locfill@player{\csname xskak@tag@#1@refnextplayer\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFCB]{glofill}{refnextplayer}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,refnextplayer=#1}}%
+
+\define@key[UFCB]{locfill}{refpastmoveid}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFCB@locfill@moveid{\csname xskak@tag@#1@refpastmoveid\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFCB]{glofill}{refpastmoveid}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,refpastmoveid=#1}}%
+
+\define@key[UFCB]{locfill}{refnextmoveid}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFCB@locfill@moveid{\csname xskak@tag@#1@refnextmoveid\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFCB]{glofill}{refnextmoveid}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,refnextmoveid=#1}}%
+
+\define@key[UFCB]{locfill}{refpast}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFCB@locfill@movenr{\csname xskak@tag@#1@refpastmovenr\endcsname}%
+  \UFCB@locfill@id{\csname xskak@tag@#1@refid\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFCB]{glofill}{refpast}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,refpast=#1}}%
+
+\define@key[UFCB]{locfill}{refnext}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFCB@locfill@movenr{\csname xskak@tag@#1@refnextmovenr\endcsname}%
+  \UFCB@locfill@id{\csname xskak@tag@#1@refid\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFCB]{glofill}{refnext}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,refnext=#1}}%
+
+\define@key[UFCB]{locfill}{refpast}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFCB@locfill@movenr{\csname xskak@tag@#1@refpastmovenr\endcsname}%
+  \UFCB@locfill@id{\csname xskak@tag@#1@refid\endcsname}%
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFCB]{glofill}{refpast}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,refpast=#1}}%
+
+\define@key[UFCB]{locfill}{reffen}{%
+ \ifcsname xskak@tag@#1@refid\endcsname
+  \UFCB@locfill@addfen{%
+  \csname
+   Xskak.%
+   \csname xskak@tag@#1@refid\endcsname.%
+   \csname xskak@tag@#1@refnextmovenr\endcsname.%
+   \csname xskak@tag@#1@refnextplayer\endcsname.%
+   pastfen%
+  \endcsname}
+ \else
+   \PackageError{xskak}{Unknown tag #1}{}%
+ \fi}
+
+\define@key[UFCB]{glofill}{reffen}{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,reffen=#1}}%
+
+%% currently not described. Perhaps delete. Perhaps change name to adapt to ref-keys?
+\define@key[UFCB]{locfill}{setgame}[\xskak@val@gameid]{%
+ \ifcsname Xskak#1initfen\endcsname
+  \edef\xskak@val@gameid{#1}%
+ \else
+  \PackageError{xskak}{Game with the id #1 doesn't exist.}{}%
+ \fi
+ \edef\board@temp@curfen{\csname Xskak#1lastfen\endcsname}%
+ \board@do@setsinglekeys*[UFCB]{locfill}{language=english, setfen=\board@temp@curfen, language=\board@val@savelang}}%
+
+\define@key[UFCB]{glofill}{setgame}[\xskak@val@gameid]{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,showgame=#1}}%
+
+%% currently not described. Perhaps delete. Perhaps change name to adapt to ref-keys?
+\define@key[UFCB]{locfill}{addgame}[\xskak@val@gameid]{%
+ \ifcsname Xskak#1initfen\endcsname
+   \edef\xskak@val@gameid{#1}%
+ \else\PackageError{xskak}{Game with the id #1 doesn't exist.}{}%
+ \fi
+ \edef\board@temp@curfen{\csname Xskak#1lastfen\endcsname}%
+ \board@do@setsinglekeys*[UFCB]{locfill}{language=english, addfen=\board@temp@curfen, language=\board@val@savelang}}%
+
+\define@key[UFCB]{glofill}{addgame}[\xskak@val@gameid]{%
+    \board@do@l@addto@macro\board@val@savedkeylist{,showgame=#1}}%
+
+%</xskak-keys>
+%<*xskak-nagdef>
+\ProvidesFile{xskak-nagdef.sty}[2015/01/02 version v1.4 nag definitions for xskak.sty]
+%%$Date: 2011/03/17 16:54:07 $$Version: 041ab49ae0e2 $
+
+\expandafter\def\csname $1\endcsname{!}
+\expandafter\def\csname $2\endcsname{?}
+\expandafter\def\csname $3\endcsname{!!}
+\expandafter\def\csname $4\endcsname{??}
+\expandafter\def\csname $5\endcsname{!?}
+\expandafter\def\csname $6\endcsname{?!}
+\expandafter\def\csname $7\endcsname{\onlymove}
+\expandafter\def\csname $8\endcsname{\onlymove}
+\expandafter\def\csname $9\endcsname{}
+\expandafter\def\csname $10\endcsname{\equal}
+\expandafter\def\csname $11\endcsname{\equal}
+\expandafter\def\csname $12\endcsname{\equal}
+\expandafter\def\csname $13\endcsname{\unclear}
+\expandafter\def\csname $14\endcsname{\wbetter}
+\expandafter\def\csname $15\endcsname{\bbetter}
+\expandafter\def\csname $16\endcsname{\wupperhand}
+\expandafter\def\csname $17\endcsname{\bupperhand}
+\expandafter\def\csname $18\endcsname{\wdecisive}
+\expandafter\def\csname $19\endcsname{\bdecisive}
+\expandafter\def\csname $20\endcsname{\wdecisive}
+\expandafter\def\csname $21\endcsname{\bdecisive}
+\expandafter\def\csname $22\endcsname{\zugzwang}
+\expandafter\def\csname $23\endcsname{\zugzwang}
+\expandafter\def\csname $24\endcsname{\moreroom}
+\expandafter\def\csname $25\endcsname{\moreroom}
+\expandafter\def\csname $26\endcsname{\moreroom}
+\expandafter\def\csname $27\endcsname{\moreroom}
+\expandafter\def\csname $28\endcsname{\moreroom}
+\expandafter\def\csname $29\endcsname{\moreroom}
+\expandafter\def\csname $30\endcsname{\devadvantage}
+\expandafter\def\csname $31\endcsname{\devadvantage}
+\expandafter\def\csname $32\endcsname{\devadvantage}
+\expandafter\def\csname $33\endcsname{\devadvantage}
+\expandafter\def\csname $34\endcsname{\devadvantage}
+\expandafter\def\csname $35\endcsname{\devadvantage}
+\expandafter\def\csname $36\endcsname{\withinit}
+\expandafter\def\csname $37\endcsname{\withinit}
+\expandafter\def\csname $38\endcsname{\withinit}
+\expandafter\def\csname $39\endcsname{\withinit}
+\expandafter\def\csname $40\endcsname{\withattack}
+\expandafter\def\csname $41\endcsname{\withattack}
+\expandafter\def\csname $42\endcsname{\without\compensation}
+\expandafter\def\csname $43\endcsname{\without\compensation}
+\expandafter\def\csname $44\endcsname{\compensation}
+\expandafter\def\csname $45\endcsname{\compensation}
+\expandafter\def\csname $46\endcsname{\compensation}
+\expandafter\def\csname $47\endcsname{\compensation}
+\expandafter\def\csname $70\endcsname{\weakpt\cfss@symking}
+\expandafter\def\csname $71\endcsname{\weakpt\cfss@symking}
+\expandafter\def\csname $74\endcsname{\weakpt\cfss@symking}
+\expandafter\def\csname $75\endcsname{\weakpt\cfss@symking}
+\expandafter\def\csname $86\endcsname{\weakpt\cfss@symknight}
+\expandafter\def\csname $87\endcsname{\weakpt\cfss@symknight}
+\expandafter\def\csname $90\endcsname{\weakpt\cfss@symbishop}
+\expandafter\def\csname $91\endcsname{\weakpt\cfss@symbishop}
+\expandafter\def\csname $94\endcsname{\weakpt\cfss@symbishop}
+\expandafter\def\csname $95\endcsname{\weakpt\cfss@symbishop}
+\expandafter\def\csname $98\endcsname{\weakpt\cfss@symqueen}
+\expandafter\def\csname $99\endcsname{\weakpt\cfss@symqueen}
+\expandafter\def\csname $130\endcsname{\counterplay}
+\expandafter\def\csname $130\endcsname{\counterplay}
+\expandafter\def\csname $131\endcsname{\counterplay}
+\expandafter\def\csname $132\endcsname{\counterplay}
+\expandafter\def\csname $133\endcsname{\counterplay}
+\expandafter\def\csname $134\endcsname{\counterplay}
+\expandafter\def\csname $135\endcsname{\counterplay}
+\expandafter\def\csname $136\endcsname{\timelimit}
+\expandafter\def\csname $137\endcsname{\timelimit}
+\expandafter\def\csname $138\endcsname{\timelimit}
+\expandafter\def\csname $139\endcsname{\timelimit}
+\expandafter\def\csname $140\endcsname{\space\withidea}
+\expandafter\def\csname $142\endcsname{\space\betteris}
+\expandafter\def\csname $145\endcsname{\chesscomment}
+\expandafter\def\csname $146\endcsname{\novelty}
+\expandafter\def\csname $D\endcsname{\chessdiagramname}
+\expandafter\def\csname $d\endcsname{}
+
+%</xskak-nagdef>

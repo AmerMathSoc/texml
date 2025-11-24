@@ -1,0 +1,409 @@
+%\NewConfigure{ncxtable}{}
+
+%Configure date meta info
+\def\:zeropadtwo#1{%
+  \ifnum #1<10 0\fi 
+    #1%    Then output the argument
+}% --- \zeroPadTwo ---
+\def\time:round:corr{\ifnum\the\numexpr\the\time-\the\time/60*60\relax<0 1\else 0\fi}
+\def\:iso:date{%
+	\the\year-%
+	\:zeropadtwo{\the\month}-%
+	\:zeropadtwo{\the\day}% 
+	%Timestamp will be zero seconds
+	T\:zeropadtwo{\the\numexpr(\the\time/60)-\time:round:corr\relax}:%
+	\:zeropadtwo{\the\numexpr\the\time-((\the\time/60)-\time:round:corr)*60\relax}:%
+	00Z}
+
+%General configuration
+\Configure{DOCTYPE}{\HCode{<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">}}
+
+\NewConfigure{EpubVersion}{1}
+\Configure{EpubVersion}{2.0}
+
+\NewConfigure{UniqueIdentifier}{1}
+\Configure{UniqueIdentifier}{http://example.com/\jobname}
+
+
+% allow configuration of the document language. babel's main language is used by default
+% use this only if it doesn't work
+\NewConfigure{DocumentLanguage}[1]{\def\GetLanguage{#1}}
+
+
+\NewConfigure{OpfScheme}{1}
+\Configure{OpfScheme}{URI}
+
+\NewConfigure{OpfMetadata}[1]{
+  \ifx\relax#1\relax%
+    \edef\a:OpfMetadata{}
+  \else
+    \edef\a:OpfMetadata{\a:OpfMetadata\HCode{\Hnewline}#1}
+  \fi
+}
+\Configure{OpfMetadata}{}
+
+% This commands add filenames to opf item list and spine 
+\edef\opf:htmlfiles{}
+\newcount\opf:htmlid
+\def\opf:registerfilename#1{%
+  \ifcsdef{opf:entry#1}{}{%
+    \global\advance\opf:htmlid by1\relax
+    %\ifcsdef{opf:entry#1}{}{\csxdef{opf:entry#1}{Neni opf}}
+    \csxdef{opf:entry#1}{file\the\opf:htmlid}
+    \xdef\opf:htmlfiles{\opf:htmlfiles, #1}
+  }
+}
+
+\newcommand\OpfRegisterFile[1][\FileName]{\opf:registerfilename{#1}}
+
+\NewConfigure{OpfManifest}[1]{%
+  \ifx\relax#1\relax%
+    \edef\a:OpfManifest{}
+  \else
+    \edef\a:OpfManifest{\a:OpfManifest\HCode{\Hnewline}#1}
+  \fi
+}
+\Configure{OpfManifest}{}
+
+% This is for add properties like toc or cover image in opf manifest
+% Property must be added from document usinf \opf:add:property, current output filename is used
+\NewConfigure{OpfItemProperties}{2}
+\Configure{OpfItemProperties}{}{}
+\def\opf:properties#1{%
+\ifcsdef{opf:properties:#1}{
+\a:OpfItemProperties\csuse{opf:properties:#1}\b:OpfItemProperties%
+}{}%
+}
+\def\opf:add:property#1{%
+ \ifcsdef{opf:properties:\FileName #1}{}{%
+  \csxdef{opf:properties:\FileName #1}{#1}% 
+  \ifcsdef{opf:properties:\FileName}{%
+    \edef\:opf:prop:tmp{\csuse{opf:properties:\FileName}}
+    \csxdef{opf:properties:\FileName}{\:opf:prop:tmp\space #1}
+  }{\csxdef{opf:properties:\FileName}{#1}}
+ }
+}
+
+% enable simple configuration from the .cfg file
+\newcommand\OpfAddProperty[1]{\opf:add:property{#1}}
+
+%Set property only once
+\def\opf:set:property#1{}
+
+% This code will refister \maketitle page to the opf file list
+\let\oldmktl\a:mktl
+\def\a:mktl{\oldmktl\opf:registerfilename{\FileName}}
+
+% guide element is used in epub2, it is similar to epub3 properties
+% in epub3, it is deprecated, but it can be present
+\edef\opf:guide{\HCode{<guide>\Hnewline}}
+
+% register file to the guide. first argument is optional filename, current 
+% output name  is used when empty. second is title and third type
+
+\NewConfigure{OpfGuide}{4}
+\newcommand\OpfGuide[3][]{%
+  \ifx\relax#1\relax \let\opf:guide:file\FileName\else\def\opf:guide:file{#1}\fi
+  \edef\opf:guide{\opf:guide\a:OpfGuide#3\b:OpfGuide#2\c:OpfGuide\opf:guide:file\d:OpfGuide}
+}
+
+\Configure{OpfGuide}{\HCode{<reference type="}}{\HCode{" title="}}{\HCode{" href="}}{\HCode{" />\Hnewline}}
+
+% is NavMap used anywhere?
+\NewConfigure{NavMap}{2}
+\NewConfigure{NavSection}{4}
+%Interface for setting xmlns
+\edef\t4ht:xmlns{}
+\NewConfigure{xmlns}[2]{%
+  \ifx\relax#2\relax%
+    \edef\t4ht:xmlns{}%
+  \else%
+    %\def\:prefix:xmlns{\ifx\relax#1\relax\else:#1\fi}
+    \edef\t4ht:xmlns{\t4ht:xmlns xmlns\ifx\relax#1\relax\else :#1\fi="#2"}%
+  \fi%
+}
+
+\NewConfigure{CoverImage}{2}
+\Configure{CoverImage}{%
+\ifvmode\IgnorePar\fi\EndP\HCode{<div class="cover-image">\Hnewline}
+}{\HCode{</div>\Hnewline}\par}
+\def\CoverMetadata#1{%
+\special{t4ht+@File: #1}%
+\Configure{OpfMetadata}
+{\HCode{<meta name="cover" content="cover-image" />\Hnewline}}
+\Configure{OpfManifest}
+{\HCode{<item id="cover-image" 
+href="#1" media-type="\a:CoverMimeType" />}}
+}
+\renewcommand\coverimage[2][]{%
+\edef\CoverImageName{#2}%
+\CoverMetadata{#2}
+\a:CoverImage%
+\includegraphics[#1]{#2}%
+\b:CoverImage%
+}
+
+\NewConfigure{CoverMimeType}{1}
+\Configure{CoverMimeType}{image/png}
+
+\TocAt-{part,chapter,section,subsection,subsubsection}
+\Configure{crosslinks*}{}
+
+\NewConfigure{NcxDoctype}{1}
+\Configure{NcxDoctype}{\HCode{<!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN"\Hnewline
+  "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">\Hnewline}}
+
+%Get sanitized value of \title
+%\def\Title{\Ref{TITLE+}}
+% If title contains macros, SafeTitle should be configured 
+% in the custom cfg file
+\NewConfigure{SafeTitle}[1]{\gdef\Title{#1}}
+
+% add main html as first file in the OPF
+\opf:registerfilename{\jobname.\:html} % 
+\:CheckOption{epub}
+\if:Option
+%\Configure{crosslinks+}{}{}{}{}
+
+% add explicit table of contents to OPF
+\let\old:toc\a:tableofcontents
+\def\a:tableofcontents{\old:toc\OpfRegisterFile}
+
+
+\def\patch:sec:register#1{%
+\csgappto{c:#1}{\OpfRegisterFile}%
+}
+\patch:sec:register{part}
+\patch:sec:register{chapter}
+\patch:sec:register{section}
+\patch:sec:register{subsection}
+\patch:sec:register{subsubsection}
+\patch:sec:register{likechapter}
+\patch:sec:register{likesection}
+\patch:sec:register{likesubsection}
+\patch:sec:register{likesubsubsection}
+
+% Support for SVG isn't ready
+%\Configure{Picture}{.svg}
+\Configure{Picture}{.png}
+\Configure{PicDisplay}
+  {\edef\MathPar{\ifvmode par-\fi}\IgnorePar\endgraf\EndP
+   \HCode{<div class="\MathPar math-display">}}
+  {\HCode{</div>}}  {}  {class="\MathPar math-display" }
+\Configure{()}{$}{$}
+\fi
+\:CheckOption{kindle} \if:Option
+\Configure{Picture}{.png}
+\fi
+
+%%
+% We must test, it tableofcontents is empty, if yes, we must take special care to navmap
+\newbool{tocnoempty}
+
+\newcount\navpoint
+\def\stepnavpoint{\advance\navpoint by1\relax\the\navpoint}
+
+% define points for breaking section units to html pages
+% we need to break long documents to smaller chunks, because e-readers are 
+% generally pretty weak devices
+% use no-cut option if you don't want to break sections, or if you
+% use your own cutting scheme in your .cfg file
+\:CheckOption{no-cut}\if:Option\else
+\ifdef\chapter{%
+  %\CutAt{chapter}\CutAt{likechapter}
+  % copied from tex4ht-html4.tex
+  \CutAt{chapter,likechapter,appendix,part} 
+  \CutAt{likechapter,appendix,part} 
+  \CutAt{appendix,chapter,likechapter,part} 
+}{%
+  %\CutAt{section}\CutAt{likesection}}
+ \CutAt{section,likesection,part}
+ \CutAt{likesection,part}
+
+}
+\fi
+
+% Commands for support of hiearchical table of contents
+% Support for: chapter, section, subsection
+
+\def\resettoclevels#1{%
+  \def\do##1{\csgdef{nav##1finish}{}}
+  \docsvlist{#1}
+}
+\def\usetoclevels#1{%
+  \def\do##1{\csuse{nav##1finish}}%
+  \docsvlist{#1}%
+}
+\def\finishtoclevel#1{%
+  \csgdef{nav#1finish}{\d:NavSection}
+}
+\def\closelevels#1{
+  \usetoclevels{#1}
+  \resettoclevels{#1}
+}
+% 1 - section type 2 - closed sections 
+
+\def\navsection#1#2{
+  \ConfigureToc{#1}%
+  {\closelevels{#2}%
+  \a:NavSection\Ncx:Mark}
+  {\c:NavSection}
+  {}
+  {\b:NavSection%
+    \finishtoclevel{#1}%
+  }
+}
+
+% As reported by Nat Kuhn on http://tex.stackexchange.com/q/209312/2891
+% zeroes were printed as section numbers when secnumdepth counter was set to negative value
+% so just strip then out
+% \TitleMark does similar thing, but this solution is simpler, I hope it works correctly
+\def\Ncx:Mark#1{%
+  \edef\:temp{#1}
+  \def\z@ro{0}
+  \ifx\:temp\z@ro\else#1\fi
+}
+
+
+%
+\def\ncx:head{%
+\HCode{<head>\Hnewline}
+\HCode{<meta name="dtb:uid" content="\a:UniqueIdentifier"/>\Hnewline}
+\HCode{<meta name="dtb:depth" content="3"/>\Hnewline}
+\HCode{<meta name="dtb:totalPageCount" content="0"/>\Hnewline}
+\HCode{<meta name="dtb:maxPageNumber" content="0"/>\Hnewline}
+\HCode{</head>\Hnewline}
+}
+
+\def\ncx:title{%
+  \HCode{<docTitle>\Hnewline<text>}\Title\HCode{</text>\Hnewline</docTitle>\Hnewline}
+}
+
+% Get filename from tableofcontents anchor
+\def\ncx:hfile#1{\Ref{)F\Ref{)Q#1}F-}}
+
+\def\:tempa{%
+\EndP
+\HtmlParOff
+\setcounter{tocdepth}{3}
+\special{t4ht>\jobname.ncx}
+% We don't want crosslinks in xml
+% Basic sctructure of the ncx file
+\NoFonts
+{\HCode{<?xml version="1.0"?>\Hnewline}}
+{\a:NcxDoctype}
+{\Tg<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">}{}
+% To print document map, we customize the tableofcontents. We don't want TOC title,
+% so:
+\let\contentsname=\empty
+\Configure{tableofcontents}{\boolfalse{tocnoempty}\Tg<navMap>}{%
+	\usetoclevels{part,chapter,likechapter,section,likesection,subsection,likesubsection,subsubsection,likesubsubsection}%
+	\ifbool{tocnoempty}{}%
+	{\HCode{<navPoint id="mainentry" playOrder="1">
+	  <navLabel><text>Document</text></navLabel>
+	  <content src="\jobname.\:html" />
+	  </navPoint>}}%
+	\Tg</navMap>}{}{}{}  
+% We need to configure TocLink
+% in navmapsrc is link to the file and anchor, where chapter or section is located
+\def\navmapsrc{}  
+\Configure{TocLink}{\def\navmapsrc{\ncx:hfile{##2}\:sharp ##2}\opf:registerfilename{\ncx:hfile{##2}}##4}
+% Configuraion of entries
+\resettoclevels{part,chapter,section,subsection,subsubsection}
+\navsection{part}{part,chapter,likechapter,section,likesection,subsection,likesubsection,subsubsection,likesubsubsection}
+\navsection{chapter}{chapter,likechapter,section,likesection,subsection,likesubsection,subsubsection,likesubsubsection}
+\navsection{likechapter}{chapter,likechapter,section,likesection,subsection,likesubsection,subsubsection,likesubsubsection}
+\navsection{section}{section,likesection,subsection,likesubsection,subsubsection,likesubsubsection}
+\navsection{likesection}{section,likesection,subsection,likesubsection,subsubsection,likesubsubsection}
+\navsection{subsection}{subsection,likesubsection,subsubsection,likesubsubsection}
+\navsection{likesubsection}{subsection,likesubsection,subsubsection,likesubsubsection}
+\navsection{subsubsection}{subsubsection,likesubsubsection}
+\navsection{likesubsubsection}{subsubsection,likesubsubsection}
+ \HtmlParOff
+ \Configure{toTocLink}{}{}
+ \Configure{NavSection}{\booltrue{tocnoempty}\HCode{\Hnewline<navPoint id="navPoint-}%
+  \stepnavpoint\HCode{" playOrder="}%
+  \the\navpoint\HCode{">\Hnewline<navLabel>\Hnewline<text>}%
+}{\HCode{</text>\Hnewline%
+  </navLabel>\Hnewline}%
+ \HCode{<content src="\navmapsrc" />}%
+}{ }{\HCode{</navPoint>\Hnewline}}
+% Meta inf
+\ncx:head
+% Book title
+\ncx:title
+\tableofcontents%[part,chapter,likechapter,section,likesection,subsection,likesubsection]%
+%Hack to get close tag working
+\HCode{</ncx>}
+\EndNoFonts
+\special{t4ht<\jobname.ncx}
+ \HtmlParOn
+}
+\let\ncxtable\:tempa
+%\else
+%\fi
+
+\def\print:opf:scheme#1{ opf:scheme="#1"}
+\def\:tempa{%
+\bgroup
+\setcounter{tocdepth}{3}
+% Basic sctructure of the opf file
+\special{t4ht>content.opf}
+\NoFonts
+\HtmlParOff
+{\HCode{<?xml version="1.0"?>\Hnewline}}
+\HCode{<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="dcidid"
+   version="\a:EpubVersion">\Hnewline}
+{\HCode{<metadata\Hnewline xmlns:dc="http://purl.org/dc/elements/1.1/"\Hnewline  xmlns:opf="http://www.idpf.org/2007/opf">\Hnewline}}
+{\HCode{<dc:title>}\Title\HCode{</dc:title>\Hnewline}}
+{\HCode{<dc:language>}\GetLanguage\HCode{</dc:language>\Hnewline}}
+%Add interface for such things
+{\HCode{<dc:identifier id="dcidid" \print:opf:scheme\a:OpfScheme>\a:UniqueIdentifier}\HCode{</dc:identifier>\Hnewline}}
+\def\and{<\HCode{/dc:creator>\Hnewline<dc:creator>}}
+{\HCode{<dc:creator>}\Author\HCode{</dc:creator>\Hnewline}}
+%{\HCode{<dc:contributor>\HP:file</dc:contributor>\Hnewline}}
+{\HCode{<dc:date>}\:iso:date\HCode{</dc:date>}}
+\a:OpfMetadata
+\Tg</metadata>
+% To print document map, we customize the tableofcontents. We don't want TOC title,
+% so:
+\let\contentsname=\empty
+%\Configure{tableofcontents}{\Tg<navMap>}{\usetoclevels{part,chapter,section,subsection,subsubsection}\Tg</navMap>}{}{}{}  
+% We need to configure TocLink
+% in navmapsrc is link to the file and anchor, where chapter or section is located
+\def\navmapsrc{}
+\HCode{\Hnewline<manifest>\Hnewline}
+\HCode{<item id="ncx" href="\jobname.ncx" media-type="application/x-dtbncx+xml" />\Hnewline}
+\HCode{<item id="stylesheet" href="\jobname.css" media-type="text/css"/>\Hnewline}
+\renewcommand\do[1]{\HCode{<item id="\csuse{opf:entry##1}" \opf:properties{##1}	href="##1" media-type="application/xhtml+xml" />\Hnewline}}
+\expandafter\docsvlist\expandafter{\opf:htmlfiles}
+\a:OpfManifest
+%\Tg<manifest>
+\special{t4ht<content.opf}
+\special{t4ht>content-part2.opf}
+\HCode{</manifest>\Hnewline}
+\renewcommand\do[1]{\HCode{<itemref idref="\csuse{opf:entry##1}" />\Hnewline}}
+\HCode{\Hnewline<spine toc="ncx">\Hnewline}
+\expandafter\docsvlist\expandafter{\opf:htmlfiles}
+% Next line is pattern to be replaced by lua code
+\HCode{\Hnewline$\string{spine\string}\Hnewline}
+\HCode{</spine>\Hnewline}
+% insert guide
+\opf:guide
+\HCode{</guide>}
+% Hack to get close tag working
+\HCode{</package>}
+\special{t4ht<content-part2.opf}
+\HtmlParOn
+\EndNoFonts
+\egroup
+%Hack!!
+%\Configure{BODY}{}{\Tg</body>}
+%\Configure{HTML}{}{\HCode{\Hnewline</html>\Hnewline}}%<!-- -->\Hnewline}}
+}
+\let\opftable\:tempa
+
+\:CheckOption{epub3}
+\if:Option
+\input tex4ebook-epub3.4ht
+\fi

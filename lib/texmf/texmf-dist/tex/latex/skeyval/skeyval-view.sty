@@ -1,0 +1,425 @@
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++%
+% This is file 'skeyval-view.sty', version 1.3, 2013/05/15.                %
+%                                                                          %
+% This package and accompanying files may be distributed and/or            %
+% modified under the conditions of the LaTeX Project Public License,       %
+% either version 1.3 of this license or any later version. The latest      %
+% version of this license is in http://www.latex-project.org/lppl.txt      %
+% and version 1.3 or later is part of all distributions of LaTeX           %
+% version 2005/12/01 or later.                                             %
+%                                                                          %
+% The LPPL maintenance status of this software is 'author-maintained'.     %
+%                                                                          %
+% This software is provided 'as it is', without warranty of any kind,      %
+% either expressed or implied, including, but not limited to, the          %
+% implied warranties of merchantability and fitness for a particular       %
+% purpose.                                                                 %
+%                                                                          %
+% The following files constitute the skeyval bundle and must be            %
+% distributed as a whole:                                                  %
+%                                                                          %
+%  README, skeyval.sty, skeyval-core.tex, skeyval-for.tex,                 %
+%  skeyval-view.sty, skeyval-ltxpatch.sty, skeyval-ltxcmds.tex,            %
+%  skeyval-pstkey.sty, skeyval-pstkey.tex, skeyval-testclass.cls,          %
+%  skeyval-testpkg.sty, skeyval-pokayoke1, skeyval-pokayoke2,              %
+%  skeyval-view-pokayoke1.                                                 %
+%                                                                          %
+% Copyright (c) 2010-2013 Ahmed Musa (amusa22@gmail.com).                  %
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++%
+
+\begingroup
+\catcode035 06 % #
+\catcode064 11 % @
+\catcode123 01 % {
+\catcode125 02 % }
+\catcode044 12 % ,
+\def\skv@prova{\endgroup
+  \def\do##1,{%
+    \ifx\do##1\else
+      \catcode##1\string=\the\catcode##1\relax
+      \expandafter\do
+    \fi
+  }%
+  \edef\skv@view@restorecodes{\do35,64,123,125,61,59,13,\do,}%
+}
+\skv@prova
+
+\edef\skv@view@restorecodes{%
+  \unexpanded\expandafter{\skv@view@restorecodes}%
+  \endlinechar\the\endlinechar\relax
+}
+\endlinechar13 %
+\catcode035 06 % #
+\catcode064 11 % @
+\catcode123 01 % {
+\catcode125 02 % }
+\catcode061 12 % =
+\catcode044 12 % ,
+\def\do#1=#2,{%
+  \ifx\do#1\else
+    \edef\skv@view@restorecodes{%
+      \unexpanded\expandafter{\skv@view@restorecodes}%
+      \catcode#1=\the\catcode#1\relax
+    }%
+    \catcode#1=#2\relax
+    \expandafter\do
+  \fi
+}
+\do 032=10,033=12,036=03,038=04,040=12,041=12,042=12,043=12,%
+  059=12,045=12,047=12,058=12,063=12,091=12,093=12,126=13,\do=,%
+
+\NeedsTeXFormat{LaTeX2e}[2011/06/27]
+\ProvidesPackage{skeyval-view}
+  [2013/05/15 v1.3 Viewer utility for skeyval package (AM)]
+\@ifpackageloaded{skeyval}{}{\RequirePackage{skeyval}}
+\directkeys*{%
+  .path=SKVV/skvview,
+  .holder prefix=skvv@,
+  .initialize keys after define=false,
+  .every unknown option={
+    \PackageWarning{skeyval-view}{Unknown option '\CurrentOption' ignored}%
+  },
+  .new options={
+    % LaTeX's options processor will zap the option names. So these keys
+    % can't have spaces between their parts.
+    .ord/{xcolor-options,load-xcolor-with}//
+      \edef\skvv@xcoloroptions{\unexpanded{#1}}
+      \skvstripouterbraces{1}\skvv@xcoloroptions,
+    .bool/tabulate/true
+  },
+  .execute options={
+    tabulate=true,xcolor-options=false,load-xcolor-with=false
+  },
+  .copy class options and process options
+}
+\skvnewregisters\toks{\skvv@toksa}
+\AtEndOfPackage{%
+  \let\ifskvv@tempsw\ifskvv@tabulate
+  \skvv@tabulatefalse
+  \skvdisablekeys[SKVV]{skvview}{xcolor-options,load-xcolor-with}%
+  \let\ifskvv@tabulate\ifskvv@tempsw
+}
+
+\@ifpackageloaded{longtable}{}{\RequirePackage{longtable}}
+\@ifpackageloaded{xcolor}{}{\RequirePackage[\skvv@xcoloroptions]{xcolor}}
+\skvnewbools[skvv@]{colii,coliii,coliv,colv}
+\newwrite\skvv@out
+\skvnewnumbers[skvv@]{depth,nra}
+
+\directkeys*{
+  .path=SKVV/skvview,
+  .holder prefix=skvv@,
+  .initialize keys after define=false,
+  .define keys={
+    .ord/{file,wcolsep,weol}/\@nil/
+      \skvcsedef{skvv@\skvcurrentkey}{\unexpanded{#1}}
+      \skvaftercsname{\skvstripouterbraces{1}}{skvv@\skvcurrentkey}
+      \skvaftercsname\skvdespacecontent{skvv@\skvcurrentkey}
+    ,
+    .ord/{prefix,family,type,default,columns}/\@nil/
+      \skvcsedef{skvv@\skvcurrentkey}{\unexpanded{#1}}
+      \skvaftercsname{\skvstripouterbraces{1}}{skvv@\skvcurrentkey}
+      \skvaftercsname\skvcsvnormalize{skvv@\skvcurrentkey}
+    ,
+    .bool/{view,vlabels,wlabels}/true,
+    .ord/length of default/20/\def\skvv@lengthofdefa{#1},
+    .cmd/color/black,
+  },
+  .set keys={
+    prefix,family,type,default,file,columns,wcolsep=&,weol=\\,
+    view,vlabels=false,wlabels=false,color,length of default
+  },
+  .links={
+    show/view,
+    key type/type,
+    {prefixes,only those with prefix,only those with prefixes}/prefix,
+    {families,only those in family,only those in families}/family,
+    {defaults,only those with default,only those with defaults}/default,
+    view output/view,
+    write to file/file,
+    {view labels,show labels}/vlabels,
+    {view wlabels,show wlabels}/wlabels,
+    wend of line/weol,
+    wcolumn separation/wcolsep,
+    word length of default/length of default
+  },
+  .style={
+    only those without default/default=[none],
+  },
+}
+
+% Use \setupviewkeys to change viewing specifications without actually
+% displaying (or writing to file) the key list:
+%
+\skvrobustdef*\setupviewkeys{\skvsetkeys[SKVV]{skvview}}
+
+\let\skvv@db\@empty
+\skvrobustdef*\skvv@dotabulate#1#2#3{%
+  \ifskvv@tabulate
+    \begingroup
+    \edef\skv@tempa{\detokenize{#3}}%
+    \skv@getshortformofcontent\skvv@lengthofdefa\skv@tempa\skv@ival
+    \skvxaddtolist{,}\skvv@db{%
+      #1=\ifx\skvcurrentprefix\@empty\else
+      \skvcurrentprefix\fi=\skvcurrentfamily=#2=\skv@ival
+    }%
+    \skvaftergroupdef\skvv@db\endgroup
+  \fi
+}
+\protected\def\skv@ordkey@a#1#2[#3]#4{%
+  \skvifstrcmpTF{#3}{^skv^}{%
+    \skvv@dotabulate{#2}{ordinary}{[none]}%
+  }{%
+    \skv@definedefault{#2}{#3}%
+    \skvv@dotabulate{#2}{ordinary}{#3}%
+  }%
+  % Pointers on key #2 have been stripped in \skv@ordkey.
+  % The pointer '.hp' may be used to set a holder prefix for the key.
+  \skvxifinTF{\detokenize{.hp}}{\detokenize{#4}}{%
+    \def\skv@prova##1.hp##2##3\skv@ord@nil{%
+      \let\skv@gobble@or@iden\@iden
+      \edef\skv@hp{\unexpanded{##2}}%
+      \edef\skv@callback{\unexpanded{##1##3}}%
+    }%
+    \skv@prova#4\skv@ord@nil
+  }{%
+    \let\skv@gobble@or@iden\@gobble
+    \edef\skv@callback{\unexpanded{#4}}%
+  }%
+  \csname skvcs#1def\endcsname{\skv@header#2.@cbk}{%
+    % This can be called in #3 access the value of ordinary key.
+    % No prefix is used here, to reduce macro name:
+    \skv@gobble@or@iden{\skvcslet{\skv@hp#2}\noexpand\skvcurrentvalue}%
+    \skvexpandonce\skv@callback
+  }%
+}
+\protected\def\skv@cmdkey#1#2[#3]#4{%
+  \skv@strippointersfromkey{#2}%
+  \skvifdefboolTF{skv@st}{%
+    \skv@definedefault\skvcurrentkey{#3}%
+    \skvv@dotabulate\skvcurrentkey{command}{#3}%
+  }{%
+    \skvv@dotabulate\skvcurrentkey{command}{[none]}%
+  }%
+  % This is to allow the key name to be expanded before possibly zapping
+  % spaces in key name:
+  \edef\skv@prova{#1\skvcurrentkey}%
+  \edef\skv@prova{\expandafter\skv@zapornot\expandafter
+    {\expandafter\skv@zapsw\expandafter}\expandafter{\skv@prova}}%
+  \skvcsedef{\skv@header\skvcurrentkey.@cbk}{%
+    \skvcslet{\skv@prova}\noexpand\skvcurrentvalue
+    \unexpanded{#4}%
+  }%
+}
+\protected\def\skv@choicekey@g{%
+  \skvcommaparse*\skv@currlist\skv@prova{%
+    \skvexpbracenext\skv@strippointersfromkey\skv@prova
+    \ifx\skv@default\skv@rej
+      \skvv@dotabulate\skvcurrentkey{choice}{[none]}%
+    \else
+      \skvexpanded{%
+        \noexpand\skvv@dotabulate
+          {\skvxonce\skvcurrentkey}{choice}{\skvxonce\skv@default}%
+        \noexpand\skv@definedefault
+          {\skvxonce\skvcurrentkey}{\skvxonce\skv@default}%
+      }%
+    \fi
+    \skvcsedef{\skv@header\skvcurrentkey.@cbk}{%
+      \skvcslet{\skv@hp\skvcurrentkey}\noexpand\skvcurrentvalue
+      \the\skv@temptoks
+    }%
+  }%
+}
+\protected\def\skv@boolkey@c#1#2#3#4{%
+  \if\skv@typetogkey
+    \skvdeftog{\skv@zapornot{\skv@zapsw}{#2}}%
+  \else
+    \skvcsnewif{\skv@zapornot{\skv@zapsw}{#2}}%
+  \fi
+  \skvifdefboolTF{skv@st}{%
+    \skv@definedefault{#1}{#3}%
+    \skvv@dotabulate{#1}{\if\skv@typetogkey toggle\else bool\fi}{#3}%
+  }{%
+    \skvv@dotabulate{#1}{\if\skv@typetogkey toggle\else bool\fi}{[none]}%
+  }%
+  \edef\skv@tempa##1##2{%
+    \noexpand\skv@sttrue
+    \ifskv@pl\noexpand\skv@pltrue\else\noexpand\skv@plfalse\fi
+    \skv@checkchoice[\noexpand\skv@value]{##1}{true,false}##2%
+  }%
+  \skv@temptoks\expandafter{\skv@tempa{##1}{#4}}%
+  \skvcsedef{\skv@header#1.@cbk}{\the\skv@temptoks}%
+}
+% #2=styles, #3=default, #4=callback
+\protected\def\skv@appendslots@a#1#2[#3]#4{%
+  \skvcommaparse{#1}\skv@prova{%
+    \skvexpbracenext\skv@strippointersfromkey\skv@prova
+    \skvexpanded{%
+      \skvifstrcmpTF{#3}{^skv^}{%
+        % When using \skvaddslots, signal keys will otherwise be added
+        % in the database twice (while treating prepended and appended
+        % slots).
+        \ifskv@addslots@appending\else
+          \skvv@dotabulate{\skvcurrentkey}{slot/style}{[none]}%
+        \fi
+      }{%
+        \skv@definedefault{\skvcurrentkey}{\unexpanded{#3}}%
+        \ifskv@addslots@appending\else
+          \skvv@dotabulate{\skvcurrentkey}{slot/style}{\unexpanded{#3}}%
+        \fi
+      }%
+      \skv@appendslots@b{\skvcurrentkey}\unexpanded{{#2}{#4}}%
+    }%
+  }%
+}
+
+\skvbuildmacrostack\skvv@state{%
+  \do\skvv@prefix\do\skvv@family\do\skvv@type\do\skvv@default
+  \do\skvv@file\do\skvv@columns\do\skvv@wcolsep\do\skvv@weol
+  \do\skvv@color\do\ifskvv@view\do\ifskvv@vlabels\do\ifskvv@wlabels
+}{2}
+
+\skvnewdef*\skvv@@view{%
+  \ifskvv@tabulate
+    0\ifskvv@view 0\else 1\fi
+  \else
+    01%
+  \fi
+}
+\skvrobustdef*\skvv@skvview#1{%
+  \skvsetkeys[SKVV]{skvview}{#1}%
+  \ifx\skvv@default\@nnil\else\@onelevel@sanitize\skvv@default\fi
+  \ifx\skvv@columns\@nnil
+    \skvsetnumber\skvv@nra5\relax
+    \skvv@coliitrue\skvv@coliiitrue\skvv@colivtrue\skvv@colvtrue
+  \else
+    \skvsetnumber\skvv@nra\@ne
+    \skvxifinTF{,prefix,}{,\skvv@columns,}{%
+      \skvadvanceno\skvv@nra\@ne\skvv@coliitrue
+    }{%
+      \skvv@coliifalse
+    }%
+    \skvxifinTF{,family,}{,\skvv@columns,}{%
+      \skvadvanceno\skvv@nra\@ne\skvv@coliiitrue
+    }{%
+      \skvv@coliiifalse
+    }%
+    \skvxifinTF{,type,}{,\skvv@columns,}{%
+      \skvadvanceno\skvv@nra\@ne\skvv@colivtrue
+    }{%
+      \skvxifinTF{,key type,}{,\skvv@columns,}{%
+        \skvadvanceno\skvv@nra\@ne\skvv@colivtrue
+      }{%
+        \skvv@colivfalse
+      }%
+    }%
+    \skvxifinTF{,default,}{,\skvv@columns,}{%
+      \skvadvanceno\skvv@nra\@ne\skvv@colvtrue
+    }{%
+      \skvv@colvfalse
+    }%
+  \fi
+  \if\skvv@@view
+    \protected@edef\skv@prova{%
+      \noexpand\begin{longtable}[l]{*\skvv@nra l}%
+        \\\noexpand\hline
+        \normalfont Key
+        \ifskvv@colii&\normalfont Prefix\fi
+        \ifskvv@coliii&\normalfont Family\fi
+        \ifskvv@coliv&\normalfont Type\fi
+        \ifskvv@colv&\normalfont Default\fi
+        \\\noexpand\hline
+      \noexpand\endfirsthead\noexpand\multicolumn{\skvv@nra}{l}{%
+        \normalfont\emph{Continued from previous page}}%
+      \\\noexpand\hline
+      \normalfont Key
+      \ifskvv@colii&\normalfont Prefix\fi
+      \ifskvv@coliii&\normalfont Family\fi
+      \ifskvv@coliv&\normalfont Type\fi
+      \ifskvv@colv&\normalfont Default\fi
+      \\\noexpand\hline\noexpand
+      \endhead\noexpand\hline
+      \noexpand\multicolumn{\skvv@nra}{r}{%
+        \normalfont\emph{Continued on next page}}%
+      \\\noexpand\endfoot\noexpand\hline
+      \noexpand\endlastfoot
+    }%
+    \skvv@toksa\expandafter{\skv@prova}%
+  \fi
+  \ifx\skvv@file\@nnil\else
+    \immediate\openout\skvv@out\skvv@file
+  \fi
+  \skvcommaloop*\skvv@db\skv@prova{%
+    \skv@swatrue
+    \expandafter\skvv@skvview@a\skv@prova\skv@nil
+  }%
+  \if\skvv@@view
+    \skvaddtotoks\skvv@toksa{\end{longtable}}%
+    \begingroup
+    \color{\skvv@color}%
+    \ttfamily\the\skvv@toksa
+    \endgroup
+  \fi
+  \ifx\skvv@file\@nnil\else\immediate\closeout\skvv@out\fi
+}
+\skvnewdef*\skvv@skvview@a#1=#2=#3=#4=#5\skv@nil{%
+  \skvv@ifin{#2}\skvv@prefix
+  \skvv@ifin{#3}\skvv@family
+  \skvv@ifin{#4}\skvv@type
+  \skvv@ifin{#5}\skvv@default
+  \ifskv@swa
+    \if\skvv@@view
+      \edef\skv@prova{%
+        #1\ifskvv@colii&#2\fi\ifskvv@coliii&#3\fi
+        \ifskvv@coliv&#4\fi\ifskvv@colv&#5\fi
+        \ifskvv@vlabels\noexpand\label{#2/#3/#1}\fi
+      }%
+      \skvoaddtotoks\skvv@toksa{\skv@prova\\}%
+    \fi
+    \ifx\skvv@file\@nnil\else
+      \immediate\write\skvv@out{%
+        #1\ifskvv@colii\skvv@wcolsep#2\fi
+        \ifskvv@coliii\skvv@wcolsep#3\fi
+        \ifskvv@coliv\skvv@wcolsep#4\fi
+        \ifskvv@colv\skvv@wcolsep#5\fi
+        \ifskvv@wlabels\string\label{#2/#3/#1}\fi
+        \skvexpandonce\skvv@weol
+      }%
+    \fi
+  \fi
+}
+\skvrobustdef*\skvv@ifin#1#2{%
+  \ifx#2\@nnil\else
+    \skvxifinTF{,\detokenize{#1},}{,\skvoxdetok{#2},}{}\skv@swafalse
+  \fi
+}
+\directkeys*{
+  .path=SKVV/skvvshow,
+  .holder prefix=skvvs@,
+  .initialize keys after define,
+  .new keys={
+    .ord/{.show,.show table}//
+      \skvifdefboolTF{skvindef}{}{
+        \edef\skvvs@show{\unexpanded{#1}}
+        \skvstripouterbraces{2}\skvvs@show
+        \ifx\skvvs@show\@empty\else\skvafterfi
+          \skvpushstate\skvv@state\skvv@depth
+          \skvexpbracenext\skvv@skvview\skvvs@show
+          \skvpopstate\skvv@state\skvv@depth
+        \fi
+      },
+    .ord/.exec code/\@nil/
+      \edef\skvvs@execcode{\unexpanded{#1}}
+      \ifx\skvvs@execcode\@nnil\else
+        \expandafter\skvvs@execcode
+      \fi
+  },
+}
+
+\skvrobustdef*\skvviewkeys{\skvsetkeys[SKVV]{skvvshow}}
+\skvnewlet\skvshowkeys\skvviewkeys
+
+\skv@view@restorecodes
+\endinput
+
+%% End of file 'skeyval-view.sty'.

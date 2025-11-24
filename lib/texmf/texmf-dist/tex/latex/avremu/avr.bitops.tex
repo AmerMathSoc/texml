@@ -1,0 +1,300 @@
+%% Copyright (C) 2014 Christian Dietrich <stettberger@dokucode.de>
+%% -------------------------------------------------------
+%% 
+%% This package may be distributed and/or modified under the conditions
+%% of the LaTeX Project Public License, either version 1.3c of this
+%% license or (at your option) any later version.  The latest version of
+%% this license is in
+%% 
+%%    http://www.latex-project.org/lppl.txt
+%% 
+%% and version 1.3c or later is part of all distributions of LaTeX
+%% version 2008/05/04 or later.
+%
+% This file contains the basic binary operations
+%
+
+\def\avr@zeroes{00000000}
+\def\avr@ones{11111111}
+
+\def\avr@bin@map#1#2#3{% BitMacro, Bitstring, Output Macro
+  \def\avr@bin@foreach@helper##1##2##3##4##5##6##7##8##9\@nnil{%
+    #1{##1}#1{##2}#1{##3}#1{##4}#1{##5}#1{##6}#1{##7}#1{##8}%
+    \ifx&##9&\else%
+      \avr@bin@foreach@helper ##9\@nnil%
+    \fi%
+  }%
+  \edef\@tempa{#2}%
+  \edef#3{\expandafter\avr@bin@foreach@helper \@tempa\@nnil}%
+}
+
+
+
+\def\avr@bin@zipmap#1#2#3#4{% Bitmacro{A}{B}, A, B, OutputMacro
+  \def\avr@bin@zipmap@helper##1##2##3;##4##5##6;{%
+    #1{##1}{##4}#1{##2}{##5}%
+    \ifx&##3&%
+      \ifx&##6&\else\avr@error{Wrong Arguments to ZipMap}\fi%
+    \else%
+      \avr@bin@zipmap@helper ##3;##6;%
+    \fi%
+  }%
+  \edef\@tempa{#2;#3;}%
+  \edef#4{\expandafter\avr@bin@zipmap@helper\@tempa}%
+}
+
+\csdef{avr@bit@negate@0}{1}
+\csdef{avr@bit@negate@1}{0}
+\def\avr@bit@negate#1{\csuse{avr@bit@negate@#1}}
+% \avr@bin@negate{A}{\result} -> \result = ~A
+\def\avr@bin@negate{\avr@bin@map{\avr@bit@negate}}
+
+\def\avr@bit@id#1{#1}
+% \avr@bin@id{A}{\result} -> \result = A
+\def\avr@bin@id{\avr@bin@map{\avr@bit@id}}
+
+\csdef{avr@bit@mask@00}{.}
+\csdef{avr@bit@mask@01}{0}
+\csdef{avr@bit@mask@10}{.}
+\csdef{avr@bit@mask@11}{1}
+\def\avr@bit@mask#1#2{\csuse{avr@bit@mask@#1#2}}
+% \avr@bin@mask{value}{mask}{\result} -> \result = ...
+\def\avr@bin@mask{\avr@bin@zipmap{\avr@bit@mask}}
+
+\csdef{avr@bit@and@00}{0}
+\csdef{avr@bit@and@01}{0}
+\csdef{avr@bit@and@10}{0}
+\csdef{avr@bit@and@11}{1}
+\def\avr@bit@and#1#2{\csuse{avr@bit@and@#1#2}}
+% \avr@bin@and{A}{B}{\result} -> \result = A & B
+\def\avr@bin@and{\avr@bin@zipmap{\avr@bit@and}}
+
+\csdef{avr@bit@or@00}{0}
+\csdef{avr@bit@or@01}{1}
+\csdef{avr@bit@or@10}{1}
+\csdef{avr@bit@or@11}{1}
+\def\avr@bit@or#1#2{\csuse{avr@bit@or@#1#2}}
+% \avr@bin@or{A}{B}{\result} -> \result = A | B
+\def\avr@bin@or{\avr@bin@zipmap{\avr@bit@or}}
+
+\csdef{avr@bit@xor@00}{0}
+\csdef{avr@bit@xor@01}{1}
+\csdef{avr@bit@xor@10}{1}
+\csdef{avr@bit@xor@11}{0}
+\def\avr@bit@xor#1#2{\csuse{avr@bit@xor@#1#2}}
+% \avr@bin@xor{A}{B}{\result} -> \result = A | B
+\def\avr@bin@xor{\avr@bin@zipmap{\avr@bit@xor}}
+
+% \avr@bin@getbit bs:byte, bitnum, \result -> \result = (bs >> bitnum)& 1
+\def\avr@bin@getbit#1#2#3{%
+  \avr@count@tmpa=7%
+  \advance\avr@count@tmpa by -#2\relax%
+  \def\avr@bin@getbit@helper##1##2\@nnil{%
+    \ifnum \avr@count@tmpa = 0%
+      \def#3{##1}%
+    \else%
+      \advance\avr@count@tmpa by -1\relax%
+      \avr@bin@getbit@helper##2\@nnil%
+    \fi%
+  }%
+  \edef\@tmpa{#1}%
+  \expandafter\avr@bin@getbit@helper\@tmpa\@nnil%
+}
+
+\def\avr@bin@setbit#1#2#3#4{%
+  \def\@tempa{}%
+  \avr@count@tmpa=7%
+  \advance\avr@count@tmpa by -#2\relax%
+  \def\avr@bin@setbit@helper##1##2\@nnil{%
+    \ifnum \avr@count@tmpa = 0%
+      \xdef\@tempa{\@tempa #3##2}%
+    \else%
+      \advance\avr@count@tmpa by -1\relax%
+      \xdef\@tempa{\@tempa ##1}%
+      \avr@bin@setbit@helper##2\@nnil%
+    \fi%
+  }%
+  \edef\@tmpb{#1}%
+  \expandafter\avr@bin@setbit@helper\@tmpb\@nnil%
+  \edef#4{\@tempa}%
+}
+
+% \avr@bin@btw bs:byte, \result -> \result = 00000000+bs
+\def\avr@bin@btw#1#2{\xdef#2{00000000#1}}
+\def\avr@bin@btw@sign#1#2{%
+  \avr@bin@getbit{#1}{7}{\@tmpa}%
+  \xdef#2{\@tmpa\@tmpa\@tmpa\@tmpa\@tmpa\@tmpa\@tmpa\@tmpa#1}%
+}
+
+\def\avr@bin@word@low#1#2{%
+  \edef\@tempa{#1}%
+  \edef#2{\expandafter\avr@bin@word@low@helper\@tempa\@nnil}%
+}
+\def\avr@bin@word@low@helper#1#2#3#4#5#6#7#8#9\@nnil{#9}
+
+\def\avr@bin@word@high#1#2{%
+  \edef\@tempa{#1}%
+  \edef#2{\expandafter\avr@bin@word@high@helper\@tempa\@nnil}%
+}
+\def\avr@bin@word@high@helper#1#2#3#4#5#6#7#8#9\@nnil{%
+  #1#2#3#4#5#6#7#8%
+}
+
+% \avr@bin@wtb bs:word, \result = ((uint8_t) bs)
+\def\avr@bin@wtb{\avr@bin@word@low}
+
+% \avr@bin@shiftleft bs:(byte|word), count, \result, \carry
+% -> \result = bs << count; \carry = (bs >> count) & 1
+\def\avr@bin@shiftleft#1#2#3#4{%
+  \avr@count@tmpa=#2\relax%
+  \edef#4{0}%
+  \def\avr@bin@shiftleft@helper##1##2\@nnil{%
+    \ifnum \avr@count@tmpa = 0%
+      \edef#3{##1##2}%
+    \else%
+      \edef#4{##1}%
+      \advance \avr@count@tmpa by -1\relax%
+      \avr@bin@shiftleft@helper ##20\@nnil%
+    \fi%
+   }%
+   \edef\@tempa{#1}%
+   \expandafter\avr@bin@shiftleft@helper\@tempa\@nnil%
+}
+
+\def\avr@bin@shiftleft@barrel#1#2#3#4{%
+  \avr@count@tmpa=#2\relax%
+  \edef#4{0}%
+  \def\avr@bin@shiftleft@helper##1##2\@nnil{%
+    \ifnum \avr@count@tmpa = 0%
+      \edef#3{##1##2}%
+    \else%
+      \edef#4{##1}%
+      \advance \avr@count@tmpa by -1\relax%
+      \avr@bin@shiftleft@helper ##2##1\@nnil%
+    \fi%
+   }%
+   \edef\@tempa{#1}%
+   \expandafter\avr@bin@shiftleft@helper\@tempa\@nnil%
+}
+
+
+% Delete LSB: bs, \result, \carry
+\def\avr@bin@lsb@del#1#2#3{%
+  \def\avr@bin@lsb@del@helper##1##2\@nnil{%
+    \ifx&##2&%
+      \edef#3{##1}%
+    \else%
+      \xdef#2{#2##1}% Append bit to result
+      \avr@bin@lsb@del@helper ##2\@nnil%
+    \fi%
+  }%
+  \edef\@tempa{#1}%
+  \def#2{}%
+  \expandafter\avr@bin@lsb@del@helper\@tempa\@nnil%
+}
+
+% Get LSB: bs, \result
+\def\avr@bin@lsb@get#1#2{%
+  \def\avr@bin@lsb@get@helper##1##2\@nnil{%
+    \ifx&##2&%
+      \edef#2{##1}%
+    \else%
+      \avr@bin@lsb@get@helper ##2\@nnil%
+    \fi%
+  }%
+  \edef\@tempa{#1}%
+  \expandafter\avr@bin@lsb@get@helper\@tempa\@nnil%
+}
+
+% Delete MSB: bs, \result,\carry
+\def\avr@bin@msb@del#1#2#3{%
+  \def\avr@bin@msb@del@helper##1##2\@nnil{%
+    \edef#3{##1}%
+    \edef#2{##2}%
+  }%
+  \edef\@tempa{#1}%
+  \expandafter\avr@bin@msb@del@helper\@tempa\@nnil%
+}
+
+% Get MSB: bs, \carry
+\def\avr@bin@msb@get#1#2{%
+  \def\avr@bin@msb@get@helper##1##2\@nnil{%
+    \edef#2{##1}%
+  }%
+  \edef\@tempa{#1}%
+  \expandafter\avr@bin@msb@get@helper\@tempa\@nnil%
+}
+
+% Get Higher Nibble: bs, \result
+\def\avr@bin@nibble@high#1#2{%
+  \def\avr@bin@nibble@helper##1##2##3##4##5\@nnil{%
+    \edef#2{##1##2##3##4}%
+  }%
+  \edef\@tempa{#1}%
+  \expandafter\avr@bin@nibble@helper\@tempa\@nnil%
+}
+
+% Get Lower Nibble: bs, \result
+\def\avr@bin@nibble@low#1#2{%
+  \def\avr@bin@nibble@helper##1##2##3##4##5\@nnil{%
+    \edef#2{##5}%
+  }%
+  \edef\@tempa{#1}%
+  \expandafter\avr@bin@nibble@helper\@tempa\@nnil%
+}
+
+\def\avr@bin@shiftright#1#2#3#4{%
+  \def\avr@bin@shiftright@helper##1\@nnil{%
+    \ifnum \avr@count@tmpa = 0%
+      \edef#3{##1}%
+    \else%
+      \avr@bin@lsb@del{##1}{\avr@bin@shiftright@bs}{\avr@bin@shiftright@carry}%
+      \edef#4{\avr@bin@shiftright@carry}%
+      \advance \avr@count@tmpa by -1\relax%
+      \edef\@tempa{0\avr@bin@shiftright@bs}%
+      \expandafter\avr@bin@shiftright@helper\@tempa\@nnil%
+    \fi%
+  }%
+  \edef\@tempa{#1}%
+  \edef#4{0}%
+  \avr@count@tmpa=#2\relax%
+  \expandafter\avr@bin@shiftright@helper\@tempa\@nnil%
+}
+
+\def\avr@bin@shiftright@arith#1#2#3#4{%
+  \def\avr@bin@shiftright@helper##1\@nnil{%
+    \ifnum \avr@count@tmpa = 0%
+      \edef#3{##1}%
+    \else%
+      \avr@bin@msb@get{##1}{\avr@bin@shiftright@sign}%
+      \avr@bin@lsb@del{##1}{\avr@bin@shiftright@bs}{\avr@bin@shiftright@carry}%
+      \edef#4{\avr@bin@shiftright@carry}%
+      \advance \avr@count@tmpa by -1\relax%
+      \edef\@tempa{\avr@bin@shiftright@sign \avr@bin@shiftright@bs}%
+      \expandafter\avr@bin@shiftright@helper\@tempa\@nnil%
+    \fi%
+  }%
+  \edef\@tempa{#1}%
+  \edef#4{0}%
+  \avr@count@tmpa=#2\relax%
+  \expandafter\avr@bin@shiftright@helper\@tempa\@nnil%
+}
+
+\def\avr@bin@shiftright@barrel#1#2#3#4{%
+  \def\avr@bin@shiftright@helper##1\@nnil{%
+    \ifnum \avr@count@tmpa = 0%
+      \edef#3{##1}%
+    \else%
+      \avr@bin@lsb@get{##1}{\avr@bin@shiftright@sign}%
+      \avr@bin@lsb@del{##1}{\avr@bin@shiftright@bs}{\avr@bin@shiftright@carry}%
+      \edef#4{\avr@bin@shiftright@carry}%
+      \advance \avr@count@tmpa by -1\relax%
+      \edef\@tempa{\avr@bin@shiftright@sign \avr@bin@shiftright@bs}%
+      \expandafter\avr@bin@shiftright@helper\@tempa\@nnil%
+    \fi%
+  }%
+  \edef\@tempa{#1}%
+  \edef#4{0}%
+  \avr@count@tmpa=#2\relax%
+  \expandafter\avr@bin@shiftright@helper\@tempa\@nnil%
+}

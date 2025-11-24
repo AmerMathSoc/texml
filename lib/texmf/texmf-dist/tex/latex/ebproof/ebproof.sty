@@ -1,0 +1,552 @@
+% The ebproof package - Formal proofs in the style of sequent calculus
+
+%% ebproof.sty
+%% Copyright 2015 Emmanuel Beffara <manu@beffara.org>
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+%
+% The Current Maintainer of this work is Emmanuel Beffara.
+%
+% This work consists of the files ebproof.sty and ebproof.tex.
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{ebproof}[2015/03/13 v1.1 EB's proof trees]
+
+% The |pgfkeys| package is used for the parameters in proof construction.
+
+\RequirePackage{pgfkeys}
+
+%%% Registers and internal parameters
+
+\newif\ifebproof@updown \ebproof@updownfalse
+\newif\ifebproof@center \ebproof@centertrue
+
+%%% Parameters
+
+\def\ebproofset#1{\pgfqkeys{/ebproof}{#1}}
+
+\ebproofset{
+%
+% general shape
+%
+center/.is if=ebproof@center,
+proof style/.is choice,
+proof style/upwards/.code={\ebproof@updownfalse},
+proof style/downwards/.code={\ebproof@updowntrue},
+%
+% spacing
+%
+separation/.initial=1.5em,
+rule margin/.initial=.7ex,
+%
+% shape of inference lines
+%
+rule thickness/.initial=.4pt,
+rule separation/.initial=2pt,
+rule dash length/.initial=.2em,
+rule dash space/.initial=.3em,
+rule code/.initial=,
+%
+% templates
+%
+template/.initial=$\inserttext$,
+left template/.initial=$\inserttext\mathrel{}$,
+right template/.initial=$\mathrel{}\inserttext$,
+%
+% labels
+%
+left label/.initial=,
+right label/.initial=,
+left label template/.initial=\inserttext,
+right label template/.initial=\inserttext,
+label separation/.initial=0.5em,
+}
+
+% Rule styles
+
+\pgfqkeys{/ebproof/rule style}{
+.is choice,
+.search also=/ebproof,
+simple/.style={/ebproof/rule code={%
+  \hrule height \pgfkeysvalueof{/ebproof/rule thickness}\relax
+  }},
+%
+no rule/.style={/ebproof/rule code=},
+%
+double/.style={/ebproof/rule code={%
+  \hrule height \pgfkeysvalueof{/ebproof/rule thickness}
+  \kern\pgfkeysvalueof{/ebproof/rule separation}%
+  \hrule height \pgfkeysvalueof{/ebproof/rule thickness}
+  }},
+%
+dashed/.style={/ebproof/rule code={%
+  \hbox to \hsize{%
+    \@tempdima=\pgfkeysvalueof{/ebproof/rule dash space}%
+    \divide\@tempdima2%
+    \kern-\@tempdima%
+    \cleaders\hbox{%
+      \kern\@tempdima%
+      \vrule
+        height \pgfkeysvalueof{/ebproof/rule thickness}
+        width \pgfkeysvalueof{/ebproof/rule dash length}%
+      \kern\@tempdima
+    }\hfill
+    \kern-\@tempdima
+    }%
+  }},
+%
+simple % use the 'simple' rule style by default
+}
+
+%%% Storage
+
+% Proof trees are represented as a data structure that consists of the
+% following data:
+%
+% - box :   the tree itself, as a box, with the base line on that of
+%           the conclusion
+% - left :  the distance from the left of the box to the left of the
+%           conclusion
+% - right : the distance from the right of the box to the right of the
+%           conclusion
+% - axis :  the distance from the left of the box to the vertical axis
+%           of the conclusion
+%
+% TeX does not actually provide data structures, so we have to encode things.
+% First we provide local allocators, for temporary allocation of registers in
+% a group. Dimensions are initialized to 0pt.
+
+\def\ebproof@localdimen#1{%
+  \advance\count11\@ne% \count11 is the number of the last allocated \dimen
+  \expandafter\dimendef\csname#1\endcsname=\count11%
+  \csname#1\endcsname=0pt\relax}
+
+% For boxes, the allocator must be used as
+%
+%   \ebproof@localbox{NAME}=\hbox{...}
+%
+% in order to set the value of the box.
+
+\def\ebproof@localbox#1{%
+  \advance\count14\@ne% \count14 is the number of the last allocated \box
+  \expandafter\chardef\csname#1\endcsname\count14%
+  \setbox\csname#1\endcsname}
+
+% From this we deduce an allocator for data structures. This allocator
+% receives a base name |A| and defines the registers |\A@box|, |\A@left|,
+% |\A@right| and |\A@axis|. The macro is used like |\ebproof@localbox|, by
+% providing a value for the box.
+
+\def\ebproof@alloc#1{%
+  \ebproof@localdimen{#1@left}%
+  \ebproof@localdimen{#1@right}%
+  \ebproof@localdimen{#1@axis}%
+  \ebproof@localbox{#1@box}}
+
+% Logically, such structures are stored on a stack. However, TeX does not
+% provide data structures, so we encode them using what we actually have. A
+% stack for boxes is implemented using a global hbox |\ebproof@box@stack| that
+% contains all the boxes successively, and the |\lastbox| primitive allows us
+% to pop elements from there. A macro |\ebproof@stack| is used to store the
+% dimensions textually: the empty stack is an empty macro, and a non-empty
+% stack is represented as |{left}{right}{axis}{tail}|. We maintain a counter
+% |\ebproof@level| with the number of elements on the stack, for consistency
+% checks.
+
+\newcount\ebproof@level
+\newbox\ebproof@box@stack
+\newbox\ebproof@box@temp
+
+% Clear the stack.
+
+\def\ebproof@clear{%
+  \global\ebproof@level=0%
+  \global\setbox\ebproof@box@stack=\box\voidb@x%
+  \gdef\ebproof@stack{}}
+
+% Push an allocated structure (by name) on the stack.
+
+\def\ebproof@push#1{%
+  \global\advance\ebproof@level1\relax
+  \global\setbox\ebproof@box@stack=\hbox{%
+    \unhbox\ebproof@box@stack\copy\csname#1@box\endcsname}%
+  \xdef\ebproof@stack{%
+    {\the\csname#1@left\endcsname}%
+    {\the\csname#1@right\endcsname}%
+    {\the\csname#1@axis\endcsname}%
+    {\ebproof@stack}}}
+
+% Allocate a structure and pop its value from the top of the stack.
+
+\def\ebproof@pop#1{%
+  \ifnum\ebproof@level>0\relax
+    \global\advance\ebproof@level-1\relax
+    \global\setbox\ebproof@box@stack=\hbox{%
+      \unhbox\ebproof@box@stack
+      \global\setbox\ebproof@box@temp=\lastbox}%
+    \ebproof@alloc{#1}=\box\ebproof@box@temp%
+    \begingroup\def\pop##1##2##3##4{\endgroup%
+      \csname#1@left\endcsname=##1\relax
+      \csname#1@right\endcsname=##2\relax
+      \csname#1@axis\endcsname=##3\relax
+      \gdef\ebproof@stack{##4}}%
+    \expandafter\pop\ebproof@stack
+  \else
+    \PackageError{ebproof}{%
+      Missing premiss in a proof tree}{}%
+    \ebproof@alloc{#1}=\box\voidb@x%
+  \fi}
+
+
+%%% Making boxes
+
+% Push a box with the axis in the middle.
+
+\def\ebproof@pushsimple#1{%
+  \begingroup
+  \ebproof@alloc{A}=\hbox{#1}%
+  \A@axis=.5\wd\A@box
+  \ebproof@push{A}%
+  \endgroup}
+
+% Push a box made of two halves, with the axis between the halves.
+
+\def\ebproof@pushsplit#1#2{%
+  \begingroup
+  \ebproof@alloc{A}=\hbox{#1}%
+  \A@axis=\wd\A@box
+  \setbox\A@box=\hbox{\unhbox\A@box#2}%
+  \ebproof@push{A}%
+  \endgroup}
+
+% Join horizontally the two elements at the top of the stack.
+
+\def\ebproof@joinh{%
+  \begingroup
+  \ebproof@pop{A}%
+  \ebproof@pop{B}%
+  \ebproof@alloc{C}=\hbox{%
+    \box\B@box
+    \kern\pgfkeysvalueof{/ebproof/separation}%
+    \box\A@box}%
+  \C@left=\B@left
+  \C@right=\A@right
+  \C@axis=\wd\C@box
+  \advance\C@axis\B@left
+  \advance\C@axis-\A@right
+  \divide\C@axis2\relax
+  \ebproof@push{C}%
+  \endgroup}
+
+% An $n$-ary version of the horizontal join.
+
+\def\ebproof@joinh@multi#1{%
+  \begingroup
+  \countdef\c=1
+  \c=#1\relax%
+  \ifnum\c=0
+    \ebproof@alloc{X}=\hbox{}%
+    \ebproof@push{X}%
+  \else
+    \ebproof@joinh@loop
+  \fi
+  \endgroup}
+\def\ebproof@joinh@loop{%
+  \ifnum\c>1
+    \ebproof@joinh
+    \advance\c-1
+    \expandafter\ebproof@joinh@loop
+  \fi}
+
+% Append the last element to the right of the previous one, without changing
+% its alignment.
+
+\def\ebproof@joinright{%
+  \begingroup
+  \ebproof@pop{A}%
+  \ebproof@pop{B}%
+  \ebproof@alloc{C}=\hbox{%
+    \box\B@box
+    \kern\pgfkeysvalueof{/ebproof/separation}%
+    \copy\A@box}%
+  \C@left=\B@left
+  \C@right=\B@right
+  \advance\C@right\wd\A@box
+  \advance\C@right\pgfkeysvalueof{/ebproof/separation}%
+  \ebproof@push{C}%
+  \endgroup}
+
+% Join vertically the two elements at the top of the stack, with a horizontal
+% rule of the appropriate size.
+
+\def\ebproof@joinv{%
+  \begingroup
+  \ebproof@pop{A}%
+  \ebproof@pop{B}%
+  %
+  \ebproof@alloc{C}=\box\voidb@x%
+  \ebproof@localdimen{A@shift}%
+  \ebproof@localdimen{B@shift}%
+  \ebproof@localdimen{R@shift}%
+  \ebproof@localdimen{R@raise}%
+  \ebproof@localdimen{R@width}%
+  \ebproof@localdimen{C@width}%
+  \ebproof@localdimen{tmp}%
+  %
+  % The placement of the boxes and the axis of the result
+  \ifdim\A@axis>\B@axis
+    \A@shift=0pt%
+    \B@shift=\A@axis
+    \advance\B@shift-\B@axis
+    \C@axis=\A@axis
+  \else
+    \A@shift=\B@axis
+    \advance\A@shift-\A@axis
+    \B@shift=0pt%
+    \C@axis=\B@axis
+  \fi
+  % The paddings of the result
+  \C@left=\A@left
+  \advance\C@left\A@shift
+  \C@right=\A@right
+  \tmp=\wd\B@box
+  \advance\tmp\B@shift
+  \advance\tmp-\wd\A@box
+  \advance\tmp-\A@shift
+  \ifdim\tmp>0pt%
+    \C@width=\wd\B@box
+    \advance\C@width\B@shift
+    \advance\C@right\tmp
+  \else
+    \C@width=\wd\A@box
+    \advance\C@width\A@shift
+  \fi
+  % The position of the rule
+  \R@shift=\A@left
+  \advance\R@shift\A@shift
+  \tmp=\B@left
+  \advance\tmp\B@shift
+  \ifdim\R@shift>\tmp
+    \R@shift=\tmp
+  \fi
+  % The width of the rule
+  \R@width=\wd\A@box
+  \advance\R@width\A@shift
+  \advance\R@width-\A@right
+  \tmp=\wd\B@box
+  \advance\tmp\B@shift
+  \advance\tmp-\B@right
+  \ifdim\tmp>\R@width
+    \R@width=\tmp
+  \fi
+  \advance\R@width-\R@shift
+  % Make the rule box
+  \ebproof@localbox{R@box}=\vbox{%
+    \hsize=\R@width
+    \hrule width \R@width height 0pt\relax
+    \kern\pgfkeysvalueof{/ebproof/rule margin}%
+    \pgfkeysgetvalue{/ebproof/rule code}{\@rulecode}%
+    \ifx\@rulecode\@empty\else
+      \@rulecode
+      \unskip% so that only one margin is inserted if no rule is drawn
+      \kern\pgfkeysvalueof{/ebproof/rule margin}%
+    \fi
+  }%
+  % Make the label boxes
+  \ebproof@localbox{LEFT}=\hbox{%
+    \def\inserttext{\pgfkeysvalueof{/ebproof/left label}}%
+    \pgfkeysvalueof{/ebproof/left label template}}%
+  \ebproof@localbox{RIGHT}=\hbox{%
+    \def\inserttext{\pgfkeysvalueof{/ebproof/right label}}%
+    \pgfkeysvalueof{/ebproof/right label template}}%
+  % Shift things if the left box is wider than |\R@shift|
+  \ifvoid\LEFT\else
+    \tmp=\wd\LEFT
+    \advance\tmp\pgfkeysvalueof{/ebproof/label separation}
+    \ifdim\tmp>\R@shift
+      \advance\tmp-\R@shift
+      \advance\A@shift\tmp
+      \advance\B@shift\tmp
+      \advance\C@left\tmp
+      \advance\C@axis\tmp
+      \advance\C@width\tmp
+      \R@shift=0pt\relax
+    \else
+      \advance\R@shift-\tmp
+    \fi
+  \fi
+  % Compute how the rule box must be shifted so that labels are aligned
+  \ebproof@localbox{RC@box}=\hbox{$\vcenter{\copy\R@box}$}%
+  \R@raise=\ht\R@box
+  \advance\R@raise-\ht\RC@box
+  % Make the complete rule box
+  \setbox\RC@box=\hbox{%
+    \ifvoid\LEFT\else
+      \box\LEFT
+      \kern\pgfkeysvalueof{/ebproof/label separation}
+    \fi
+    \box\RC@box
+    \ifvoid\RIGHT\else
+      \kern\pgfkeysvalueof{/ebproof/label separation}
+      \box\RIGHT
+    \fi}
+  % Adapt the dimensions on the right if the total rule width is too large
+  \tmp=\wd\RC@box
+  \advance\tmp\R@shift
+  \ifdim\tmp>\C@width
+    \advance\tmp-\C@width
+    \advance\C@right\tmp
+  \fi
+  % Cancel the labels' height and depth
+  \setbox\RC@box=\hbox{\raise\R@raise\box\RC@box}
+  \ht\RC@box=\ht\R@box
+  \dp\RC@box=\dp\R@box
+  % Make the box
+  \ifebproof@updown
+    \setbox\C@box=\vtop{%
+      \moveright\A@shift\box\A@box
+      \hrule height 0pt
+      \moveright\R@shift\box\RC@box%
+      \hrule height 0pt
+      \moveright\B@shift\box\B@box}%
+  \else
+    \setbox\C@box=\vbox{%
+      \moveright\B@shift\box\B@box
+      \hrule height 0pt
+      \moveright\R@shift\box\RC@box%
+      \hrule height 0pt
+      \moveright\A@shift\box\A@box}%
+  \fi
+  \ebproof@push{C}%
+  \endgroup}
+
+%%% Modifying boxes
+
+% Alter a proof with a command that does not affect the size. Typically useful
+% with |\color| commands.
+
+\def\ebproof@alter#1{%
+  \begingroup
+  \ebproof@pop{A}%
+  \setbox\A@box=\hbox{{#1\box\A@box}}%
+  \ebproof@push{A}%
+  \endgroup}
+
+% Insert |\left| and |\right| delimiters without changing the alignment
+
+\def\ebproof@delims#1#2{%
+  \begingroup
+  \ebproof@pop{TREE}%
+  \ebproof@localbox{@SHIFTED}=%
+    \hbox{$\vcenter{\copy\TREE@box}$}%
+  \ebproof@localbox{@LEFT}=%
+    \hbox{$#1\vrule height \ht\@SHIFTED depth \dp\@SHIFTED width 0pt\right.$}%
+  \ebproof@localbox{@RIGHT}=%
+    \hbox{$\left.\vrule height \ht\@SHIFTED depth \dp\@SHIFTED width 0pt#2$}%
+  \ebproof@localdimen{dy}
+  \dy=\dp\@SHIFTED
+  \advance\dy-\dp\TREE@box
+  \ebproof@alloc{A}=%
+    \hbox{\raise\dy\hbox{\copy\@LEFT\box\@SHIFTED\copy\@RIGHT}}%
+  \A@left=\wd\@LEFT \advance\A@left\TREE@left
+  \A@right=\wd\@RIGHT \advance\A@right\TREE@right
+  \A@axis=\wd\@LEFT \advance\A@axis\TREE@axis
+  \ebproof@push{A}%
+  \endgroup}
+
+%%% High-level commands
+
+% Push a box with default formatting, using explicit alignment if the code
+% contains a |&| character
+
+\def\ebproof@hypo@parse#1&#2&#3\ebproof@hypo@stop{
+  {\def\ARG{#3}\ifx\ARG\@empty
+      \aftergroup\iftrue\@gobble\fi
+      \else\aftergroup\iffalse\@gobble\fi\fi}%
+  % The above code has produced \iftrue or \iffalse here.
+    \ebproof@pushsimple%
+      {\def\inserttext{#1}\pgfkeysvalueof{/ebproof/template}}%
+  \else
+    \ebproof@pushsplit
+      {\def\inserttext{#1}\pgfkeysvalueof{/ebproof/left template}}%
+      {\def\inserttext{#2}\pgfkeysvalueof{/ebproof/right template}}%
+  \fi}
+
+\newcommand\ebproof@hypo[2][]{%
+  {\ebproofset{#1}\ebproof@hypo@parse#2&&\ebproof@hypo@stop}}
+
+% Build a n-ary rule
+
+\def\ebproof@infer{%
+  \@ifnextchar[{\ebproof@infer@}{\ebproof@infer@[]}}
+\def\ebproof@infer@[#1]#2{%
+  \@ifnextchar[%
+    {\ebproof@infer@with@label{#1}{#2}}%
+    {\ebproof@infer@@{#1}{#2}}}
+\def\ebproof@infer@with@label#1#2[#3]{%
+  \ebproof@infer@@{#1,right label={#3}}{#2}}
+\def\ebproof@infer@@#1#2#3{{%
+  \pgfqkeys{/ebproof/rule style}{.search also=/ebproof,#1}%
+  \ebproof@joinh@multi{#2}%
+  \ebproof@hypo{#3}%
+  \ebproof@joinv}}
+
+% Ellipsis with vertical dots
+
+\def\ebproof@ellipsis#1#2{{%
+  \ebproofset{rule code=}%
+  \ebproof@pushsplit{}{%
+    \setbox0=\vbox{\kern1.2ex\hbox{\ignorespaces#1}\hrule height 0pt\kern1.2ex}%
+    \vbox to\ht0{\xleaders\vbox to .8ex{\vss\hbox{.}\vss}\vfill}%
+    \rlap{ \box0}}%
+  \ebproof@joinv
+  \ebproof@hypo{#2}%
+  \ebproof@joinv}}
+
+%%% Environment interface
+
+\ebproof@clear
+
+\def\ebproof@begin{%
+  \edef\ebproof@start@level{\the\ebproof@level}%
+  \setbox1=\vbox\bgroup
+  \let\Hypo=\ebproof@hypo
+  \let\Infer=\ebproof@infer
+  \let\Ellipsis=\ebproof@ellipsis
+  \let\Alter=\ebproof@alter
+  \let\Delims=\ebproof@delims}
+\def\ebproof@end{%
+  \egroup
+  \ebproof@pop{X}%
+  \ifnum\ebproof@level=\ebproof@start@level\else
+    \PackageError{ebproof}{Malformed proof tree}{%
+      Some hypotheses were declared but not used in this tree.}%
+  \fi
+  \ifebproof@center
+    \hbox{$\vcenter{\hbox{\box\X@box}}$}%
+  \else
+    \box\X@box
+  \fi
+  \global\setbox\ebproof@box@temp=\box1}
+
+\newenvironment{prooftree}[1][]{%
+  \pgfqkeys{/ebproof/proof style}{.search also=/ebproof,#1}%
+  \leavevmode\ebproof@begin
+}{%
+  \ebproof@end}
+
+\newenvironment{prooftree*}[1][]{%
+  \center
+  \pgfqkeys{/ebproof/proof style}{.search also=/ebproof,#1}%
+  \leavevmode\ebproof@begin
+}{%
+  \ebproof@end
+  \endcenter}

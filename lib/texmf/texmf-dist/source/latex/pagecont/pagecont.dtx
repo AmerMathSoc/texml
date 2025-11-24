@@ -1,0 +1,207 @@
+% \iffalse
+% File: ordinalpt.dtx
+% Copyright (C) 2007 Miguel V. S. Frasson (mvsfrasson@gmail.com)
+%
+% This package may be distributed under the terms of the LaTeX
+% Project Public License, as described in lppl.txt in the base
+% LaTeX distribution, either version 1.2 or (at your option)
+% any later version.
+%
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{doc}
+\usepackage{ae}
+\usepackage{url}
+
+\begin{document}
+  \DocInput{pagecont.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \StopEventually
+%
+% \changes{1.0}{2009/05/26}{initial version}
+%
+% \MakeShortVerb+
+%
+% \title{\textsf{pagecont}: Page numbering continuation between documents}
+% \author{Miguel V.\ S.\ Frasson}
+% \date{2009--05--26 version 1.0}
+%
+% \maketitle
+%
+% \tableofcontents
+%
+% \section{Introduction}
+%
+% The package \textsf{pagecont} implements the functionality that
+% several documents can be typeset independently with page numbers in
+% sequence, like if they were a single document.
+%
+% \section{Usage}
+%
+% \begin{itemize}
+%
+% \item Ensure that all files run without errors.
+%
+% \item In the first document call the package with option `+first+'.
+%   \begin{quote}
+%     +\usepackage[first]{pagecont}+
+%   \end{quote}
+% \item In other documents, just call the package.
+%   \begin{quote}
+%     +\usepackage{pagecont}+
+%   \end{quote}
+% \item Run as many times as needed every document, but in the
+% sequence of documents; that is, run (as many times needed) the first
+% document, then run (as many times needed) the second, and so on.
+%
+% \end{itemize}
+%
+% At every run, the output files are produced normally, but the first
+% page of the second document is 1 plus the last page of the previous
+% one, and so on.
+%
+% \section{Idea of implementation}
+%    
+% At the end of documents, a file (default is `+pagecont.pco+') is
+% saved with the current file information plus last file last page.
+% If the filename saved is the same, uses the last file last page.  If
+% it is not the same, then you are compiling another file, so the last
+% page saved plus 1 is to be used as new first page.
+%
+% If the file saved does not exist, then no page is set, like if this
+% document is the first one.  
+%
+% \section{User options}
+%
+% \DescribeEnv{first}
+% The document that uses the option +first+ does not set pages.  It is
+% safer to use this option, because afterwards one starts again to
+% process the documents from the beginning, and if the file where the
+% info is saved exists, the page numbering will continue from the
+% number saved in the last run.
+%
+% \DescribeEnv{savefile=\textit{filename}}
+% With option `\texttt{savefile=\textit{filename}}' you can override
+% the default save file, which is +pagecont.pco+.
+%
+% \section{Code}
+%
+% Identidication of the package.
+%    \begin{macrocode}
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{pagecont}%
+    [2009/05/26 v1 Page numbering continuation between documents]
+%    \end{macrocode}
+%
+% Using package \textsf{keyval}.
+%    \begin{macrocode}
+  \RequirePackage{keyval}
+%    \end{macrocode}
+%
+% \DescribeEnv{first}
+% Declaring option \texttt{first}, which sets a switch when executed.
+%    \begin{macrocode}
+\newif\ifPGC@first
+\PGC@firstfalse
+\DeclareOption{first}{\PGC@firsttrue}
+%    \end{macrocode}
+%
+% \DescribeEnv{savefile=\textit{filename}}
+% Declaring option \texttt{savefile=\textit{filename}}, using the
+% \textsf{keyval} package.
+%    \begin{macrocode}
+\newcommand{\PGC@savefile}{pagecont.pco}
+\define@key{PGC@}{savefile}{\renewcommand{\PGC@savefile}{#1}}
+\newcommand{\PGC@kvsetkeys}[1]{\setkeys{PGC@}{#1}}
+\DeclareOption*{\expandafter\PGC@kvsetkeys\expandafter{\CurrentOption}}
+%    \end{macrocode}
+%
+% Processing options.
+%    \begin{macrocode}
+\ProcessOptions
+%    \end{macrocode}
+%
+% \DescribeMacro{\PGC@info}
+% The macro +\PGC@info+, which is the content of the file
+% +\PGC@savefile+, has 3 args. The first is the jobname of the file
+% that saved the file.  When called (at package call), it compares the
+% saved jobname and the actual +\jobname+.  If they are the same, then
+% we should use the last page of last document (with different
+% jobname).  This last page is the second arg of +\PGC@info+.  If the
+% jobnames are different, the last page of last run, the third arg of
+% +\PGC@info+, is used as new start for counter \texttt{page}.
+%
+% \DescribeMacro{\PGC@lastfilelastpage}
+% The second argument of +\PGC@info+ is saved in the macro
+% +\PGC@lastfilelastpage+, which is originally set to be 0.  This
+% macro will be used when saving the file, at +\end{document}+ time.
+%
+%    \begin{macrocode}
+\newcommand{\PGC@lastfilelastpage}{0}
+\newcommand{\PGC@info}[3]{%
+%    \end{macrocode}
+% The primitive +\jobname+ outputs chars with
+% catcode 12 (other), so it is needed a hack using +\meaning+ to
+% compare the two strings.  See
+% \url{http://www.tex.ac.uk/cgi-bin/texfaq2html?label=compjobnam}.
+%    \begin{macrocode}
+  \edef\PGC@jobname{\jobname}%
+  \def\PGC@jobnamesaved{#1}%
+  \edef\PGC@jobnamesaved{\expandafter\strip@prefix\meaning\PGC@jobnamesaved}%
+  \ifx\PGC@jobname\PGC@jobnamesaved
+    \renewcommand{\PGC@lastfilelastpage}{#2}%
+    \setcounter{page}{#2}%
+  \else
+    \renewcommand{\PGC@lastfilelastpage}{#3}%
+    \setcounter{page}{#3}%
+  \fi
+%    \end{macrocode}
+% Increments counter page to be the number after the last page of last
+% document. 
+%    \begin{macrocode}
+\addtocounter{page}{1}}
+%    \end{macrocode}
+%
+% \DescribeMacro{\PGC@savefile}
+% \DescribeMacro{\PGC@saveinfo}
+% Now the macro for saving information into file +\PGC@savefile+.
+% The macro +\PGC@saveinfo+ writes to file with filename
+% +\PGC@savefile+ the line
+% \begin{quote}\ttfamily
+%   \string\PGC@info+{+\textit{jobname}+}{+\textit{lastfile-lastpage}+}{+\textit{lastpage}+}+
+% \end{quote}
+% where \texttt{\textit{jobname}}, \texttt{\textit{lastfile-lastpage}}
+% and \texttt{\textit{lastpage}} are the full expansions of
+% +\jobname+, +\PGC@lastfilelastpage+ and +\arabic{page}+,
+% respectively.
+%    \begin{macrocode}
+\newcommand{\PGC@saveinfo}{%
+  \newwrite\PGC@file
+  \expandafter\openout\expandafter\PGC@file\PGC@savefile\relax
+  \write\PGC@file
+     {\string\PGC@info{\jobname}{\PGC@lastfilelastpage}{\arabic{page}}}}
+%    \end{macrocode}
+%
+% At +\end{document}+, save all to file, by the +\PGC@saveinfo+ macro.
+%    \begin{macrocode}
+\AtEndDocument{\PGC@saveinfo}
+%    \end{macrocode}
+%
+% Finally, starts action by including file `+\PGC@savefile+', when file
+% is not marked as first of the series.
+%    \begin{macrocode}
+\ifPGC@first
+\else
+  \IfFileExists{\PGC@savefile}{\input{\PGC@savefile}}{}
+\fi
+%    \end{macrocode}
+% End of file.
+%    \begin{macrocode}
+\endinput
+%    \end{macrocode}
+

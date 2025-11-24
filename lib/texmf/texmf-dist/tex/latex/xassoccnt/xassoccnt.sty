@@ -1,0 +1,2306 @@
+%% LaTeX package xassoccnt - version 0.9 (2016/06/19 -- 08/11/05)
+%% Source file for xassoccnt.sty
+%%
+%%
+%% -------------------------------------------------------------------------------------------
+%% Copyright (c) 2016 by Dr. Christian Hupfer <christian dot hupfer at yahoo dot de>
+%% -------------------------------------------------------------------------------------------
+%%
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%   http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%%
+%%
+%% This work has the LPPL maintenance status `author-maintained`
+%%
+%%
+
+\def\xassoccntpackageversion{0.9}
+\NeedsTeXFormat{LaTeX2e}[1995/12/01]
+
+\ProvidesPackage{xassoccnt}[2016/06/19 - v\xassoccntpackageversion]
+\RequirePackage{graphicx}
+\RequirePackage{xcolor}
+\RequirePackage{xparse}
+\RequirePackage{l3keys2e}
+
+\ExplSyntaxOn
+
+% First some local or global values
+
+\bool_new:N \l__xassoccnt_hyperrefpackage_loaded_bool
+
+\str_const:Nn \c__xassoccnt_modulename_str {xassoccnt}
+
+\bool_new:N \l__xassoccnt_calcpackage_loaded
+
+\int_new:N \l__xassoccnt_initialcountervalue_int
+\int_new:N \g__xassoccnt_lastcountervalue_int
+
+\bool_new:N \g__xassoccnt_autodefine_counters  % --> global document option
+\bool_new:N \g__xassoccnt_nonumberofruns_bool  % --> global document option
+
+\clist_new:N \l__xassoccnt_exclude_clist   % clist for 
+\clist_new:N \l__xassoccnt_onlycounters_clist  % clist for the \SetDocumentCounter command
+
+\bool_new:N \l__xassoccnt_autodefine_none
+\bool_new:N \l__xassoccnt_autodefine_drivercounter
+\bool_new:N \l__xassoccnt_autodefine_allcounters
+\bool_new:N \l__xassoccnt_autodefine_associatedcounter
+
+\bool_new:N \l__xassoccnt_cascade_suspension_bool
+
+\bool_new:N \l__xassoccnt_countertype_general
+\bool_new:N \l__xassoccnt_countertype_driver
+\bool_new:N \l__xassoccnt_countertype_associated
+\bool_new:N \l__xassoccnt_countertype_total
+
+\bool_new:N \l__xassoccnt_is_supertotalcounter_bool
+
+\bool_new:N \l_xassoccnt_resetperiodiccounters_bool 
+\bool_new:N \l_xassoccnt_wrapperiodiccounters_bool 
+
+\seq_new:N \l__xassoccnt_counterreset_seq
+
+%%%
+\int_new:N \g__xassoccnt_backupcalls_int
+\int_new:N \l__xassoccnt_backuptmpa_int
+\seq_new:N  \l__xassoccnt_counternamesbackup_seq
+\seq_new:N  \l__xassoccnt_countervaluesbackup_seq
+\seq_new:N \l__xassoccnt_backupresetlist_seq
+\bool_new:N \l__xassoccnt_counternamestarred_bool % Not needed actually
+
+\seq_new:N \g__xassoccnt_counternamesbackuplist_seq
+
+
+
+
+\cs_new:Nn \__xassoccnt_toggle_bool:n {%
+  \bool_if:nTF{#1}{\bool_set_false:n {#1}}{\bool_set_false:n {#1}}
+}
+
+\cs_generate_variant:Nn \__xassoccnt_toggle_bool:n { c }
+
+
+\cs_new:Nn \__xassoccnt_toggle_autodefine:n {%
+  \clist_set:Nn \l_tmpa_clist {#1}
+  \clist_map_inline:Nn \l_tmpa_clist {\__xassoccnt_toggle_bool:c {l__xassoccnt_autodefine_##1} }
+}
+
+\cs_new:Nn \__xassoccnt_set_false:n {%
+  \clist_set:Nn \l_tmpa_clist {#1}
+  \clist_map_inline:Nn \l_tmpa_clist {\bool_set_false:c {##1} }
+}
+
+\cs_new:Nn \__xassoccnt_set_true:n {%
+  \clist_set:Nn \l_tmpa_clist {#1}
+  \clist_map_inline:Nn \l_tmpa_clist {\bool_set_true:c {##1} }
+}
+
+
+
+\keys_define:nn {xassoccnt}
+{
+  initial               .code:n={ \int_set:Nn \l__xassoccnt_initialcountervalue_int {#1}},
+  sloppy                .bool_set:N=\l__xassoccnt_sloppy_newcounter,
+  autodefinecounters    .bool_set:N=\g__xassoccnt_autodefine_counters,
+  nonumberofruns        .code:n={\bool_gset_true:N \g__xassoccnt_nonumberofruns_bool},
+  nonumberofruns        .value_forbidden:n = true,
+  % Choice keys
+  autodefine .choice:,
+  autodefine / all        .code:n= {\bool_set_true:N \l__xassoccnt_autodefine_allcounters 
+                                    \__xassoccnt_set_true:n {l__xassoccnt_autodefine_drivercounter,
+                                                              l__xassoccnt_autodefine_associateddrivercounter } 
+                                    \bool_set_false:N \l__xassoccnt_autodefine_none },
+  autodefine / driver     .code:n= {\bool_set_true:N \l__xassoccnt_autodefine_drivercounter},
+  autodefine / associated .code:n= {\bool_set_true:N \l__xassoccnt_autodefine_associatedcounter 
+                                    \__xassoccnt_set_false:n {l__xassoccnt_autodefine_allcounters,l__xassoccnt_autodefine_none}},
+  autodefine / none       .code:n= {\bool_set_true:N \l__xassoccnt_autodefine_none 
+                                    \__xassoccnt_set_false:n {l__xassoccnt_autodefine_allcounters,
+                                                              l__xassoccnt_autodefine_associatedcounter, 
+                                                              l__xassoccnt_autodefine_drivercounter}},
+  autodefine .initial:n= {none}, % No autodefinition by default
+
+  associatedtoo .code:n={ \clist_clear:N \l__xassoccnt_onlycounters_clist},
+  associatedtoo .bool_set:N={\l__xassoccnt_setcounter_associated},
+  associatedtoo .initial:n={false},
+  onlycounters  .code:n={\bool_set_false:N \l__xassoccnt_setcounter_associated 
+                         \clist_set:Nn \l__xassoccnt_onlycounters_clist {#1} },
+
+  exclude       .clist_set:N=\l__xassoccnt_exclude_clist,                    
+  cascade       .bool_set:N={\l__xassoccnt_cascade_suspension_bool},
+
+%% For later purposes
+  countertype .choice:,
+  countertype / general     .code:n= {\bool_set_true:N \l__xassoccnt_countertype_general  
+                                      \__xassoccnt_set_false:n {l__xassoccnt_countertype_driver, 
+                                                                 l__xassoccnt_countertype_total,
+                                                                 l__xassoccnt_countertype_associated
+                                                                }
+                                                              },
+%\bool_set_false:N \l__xassoccnt_countertype_driver \bool_set_false:N \l__xassoccnt_countertype_associated  },
+  countertype / driver      .code:n= {\bool_set_true:N \l__xassoccnt_countertype_driver
+                                          \__xassoccnt_set_false:n {l__xassoccnt_countertype_general, 
+                                                                     l__xassoccnt_countertype_total,
+                                                                     l__xassoccnt_countertype_associated
+                                                                }
+                                                              },
+%    \bool_set_false:N \l__xassoccnt_countertype_assocciated \bool_set_false:N \l__xassoccnt_countertype_general },
+  countertype / associated  .code:n= {\bool_set_true:N \l__xassoccnt_countertype_associated  
+    \__xassoccnt_set_false:n {l__xassoccnt_countertype_general, 
+                               l__xassoccnt_countertype_total,
+                               l__xassoccnt_countertype_driver
+                             }
+  },
+  countertype / total       .code:n= {\bool_set_true:N \l__xassoccnt_countertype_total 
+     \__xassoccnt_set_false:n {l__xassoccnt_countertype_driver, 
+                                l__xassoccnt_countertype_general,
+                                l__xassoccnt_countertype_associated
+                              }
+                            },
+  countertype               .initial:n={ general },
+
+  supertotal  .bool_set:N={\l__xassoccnt_is_supertotalcounter_bool },
+
+  resetbackup .bool_set:N={\l__xassoccnt_resetbackupcounters_bool },
+
+%  resetperiodic .bool_set:N={ \l_xassoccnt_resetperiodiccounters_bool }
+}
+
+\keys_define:nn {xassoccnt_periodiccounter} {%
+  reset  .bool_set:N={ \l_xassoccnt_resetperiodiccounters_bool },
+  wrap   .bool_set:N={ \l_xassoccnt_wrapperiodiccounters_bool }
+}
+
+\keys_set:nn{xassoccnt}{nonumberofruns}
+
+\ProcessKeysOptions{xassoccnt}
+
+
+\msg_new:nnn{xassoccnt}{counteralreadyexists}{%
+  Error:~Counter~#1~already~exists\\
+}
+
+\msg_new:nnn{xassoccnt}{nameisnocounter}{%
+  Error:~Entity~#1~does~not~name~a~counter\\
+}
+
+
+
+\msg_new:nnn{xassoccnt}{crossassociation}{%
+  Error:~You~can't~cross-associate~two~counters\\
+  Here:~The~counters~#1~and~#2~should~not~be~associated~to~each~other~since~one~is~already~associated~to~the~other~one%
+}
+
+\msg_new:nnn{xassoccnt}{selfassociation}{%
+  Warning:~An~accidental(?)~self-association~of~counter~"#1"~was~detected\\
+  This~will~be~ignored!
+}
+
+
+\msg_new:nnn{xassoccnt}{addwithoutdeclaration}{%
+  Warning:~An~accidental(?)~addition~of~associated~counter(s)~without~DeclareAssociatedCounters~was~detected~for\\
+  the~driver~counter~"#1"~and~following~driven~counters:\\
+  ---~#2~---
+}
+
+\msg_new:nnn{xassoccnt}{addcoupledcountergroupundefined}{%
+  Warning:~There~is~no~coupled~counter~group~named~#2~\\
+  The~addition~operation~is~ignored!\\
+  ---~#1~---
+}
+
+\msg_new:nnn{xassoccnt}{clearcoupledcountergroupundefined}{%
+  Warning:~There~is~no~coupled~counter~group~named~#2~\\
+  The~clearing~operation~is~ignored!\\
+  ---~#1~---
+}
+
+
+\msg_new:nnn{xassoccnt}{removingcoupledcountergroupundefined}{%
+  Warning:~There~is~no~coupled~counter~group~named~#2~\\
+  The~removing~operation~is~ignored!\\
+  ---~#1~---
+}
+
+
+
+
+\msg_new:nnn{xassoccnt}{backupcollectionundefined}{%
+  Error:~Backup~collection~#1~not~defined\\
+  Use~\DeclareBackupCollection~to~define~the~collection
+}
+
+
+\msg_new:nnn{xassoccnt}{incompatiblepackagenonfatal}{%
+  Warning:~Package~"#1"~is~loaded~--~this~is~not~recommended~for~\c__xassoccnt_modulename_str\\
+}
+
+\msg_new:nnn{xassoccnt}{packageloadedafterfatal}{%
+  Error:~Package~"#1"~is~loaded~after~\c__xassoccnt_modulename_str~\\
+  This~is~an~error! 
+}
+
+
+\msg_new:nnn{xassoccnt}{containeralreadyexists}{%
+  Error:~Container~named~#1~already~exists\\
+}
+
+
+
+\cs_new:Nn \__xassoccnt_intinc:n {\int_gincr:N \l_xassoccnt_resetlist_counter}%
+
+\int_new:N \l_xassoccnt_resetlist_counter
+
+\cs_new:Nn \xassoccnt_countersinresetlist:n {%
+  \begingroup
+  \int_zero:N \l_xassoccnt_resetlist_counter
+  \cs_set_eq:NN \@elt \__xassoccnt_intinc:n
+  \use:c{ cl@#1 }
+  \endgroup
+}
+
+\cs_new:Nn \xassoccnt_report_resetlist:n {%
+  \__xassoccnt_getresetlist:n {#1} 
+  \seq_show:N \l__xassoccnt_counterreset_seq%
+}
+
+
+\cs_set_eq:NN \xassoccnt_standardstepcounter    \stepcounter
+\cs_set_eq:NN \xassoccnt_standardrefstepcounter \refstepcounter
+\cs_set_eq:NN \xassoccnt_standardaddtocounter   \addtocounter
+\cs_set_eq:NN \xassoccnt_standardsetcounter     \setcounter
+
+
+
+% Needed for Backup/Restore features 
+
+\AtBeginDocument{%
+  \@ifpackageloaded{hyperref}{%
+    \bool_set_true:N \l__xassoccnt_hyperrefpackage_loaded_bool%
+  }{}%
+}
+
+
+
+% A little patch for perpage
+
+\@ifpackageloaded{perpage}{%
+  \msg_warning:nnn{xassoccnt}{incompatiblepackagenonfatal}{perpage}% Warning
+  \def\pp@cl@end@iii\xassoccnt_standardstepcounter#1{}
+}{}
+
+\AtEndOfPackage{
+  \PackageInfo{xassoccnt}{2016/06/19 - v\xassoccntpackageversion -- stepping counters simultaneously and other features}
+  \@ifpackageloaded{calc}{%
+    \msg_warning:nnn{xassoccnt}{incompatiblepackagenonfatal}{calc}% Warning
+    \bool_set_true:N \l__xassoccnt_calcpackage_loaded
+  }{}%
+}
+
+\AtBeginDocument{%
+  % Recheck if `calc` isn't loaded after this package
+  \@ifpackageloaded{calc}{%
+    \bool_if:nF { \l__xassoccnt_calcpackage_loaded } {%
+      \msg_error:nnn{xassoccnt}{packageloadedafterfatal}{calc}% Error!
+    }%
+  }{}%
+}
+
+
+\cs_new_nopar:Nn \__xassoccnt_laststeppedcounter: {}
+\cs_new_nopar:Nn \__xassoccnt_lastrefsteppedcounter: {}
+\cs_new_nopar:Nn \__xassoccnt_lastaddtocounter: {}
+\cs_new_nopar:Nn \__xassoccnt_lastsetcounter: {}
+\cs_new_nopar:Nn \__xassoccnt_lastsetdocumentcounter: {}
+
+
+\cs_new:Nn \xassoccnt_counter_container:n {%
+  \seq_new:c{\__xassoccnt_generate_countercontainername:n{#1}}%
+  \cs_new_nopar:cn {__xassoccnt_#1container:} {\__xassoccnt_generate_countercontainername:n{#1}}%
+}
+
+\cs_new:Nn \__xassoccnt_generate_countercontainername:n {%
+  g_xassoccnt_#1cnt_seq%
+}
+
+\str_const:Nn \c_xassoccnt_undefined_str {undefined}
+\str_const:Nn \c_xassoccnt_mastername_str {master}
+\str_const:Nn \c_xassoccnt_associatedname_str {associated}
+\str_const:Nn \c_xassoccnt_suspendedname_str {suspended}
+
+\clist_new:N  \__g_xassoccnt_countercontainer_clist
+\clist_set:Nn \__g_xassoccnt_countercontainer_clist {%
+  \c_xassoccnt_undefined_str,
+  \c_xassoccnt_mastername_str,
+  \c_xassoccnt_associatedname_str,
+  \c_xassoccnt_suspendedname_str
+}
+
+% Now generate the containers and the accessing functions
+\clist_map_function:NN \__g_xassoccnt_countercontainer_clist \xassoccnt_counter_container:n  
+
+\cs_new:Nn       \__xassoccnt_drivercontainer:n     {g_xassoccnt_#1cnt_seq}
+
+\cs_new:Nn \__xassoccnt_containerremoveduplicates:N { \seq_gremove_duplicates:N #1 }
+
+\cs_generate_variant:Nn \__xassoccnt_containerremoveduplicates:N { c }
+
+\cs_new_nopar:Nn \__xassoccnt_container_removeduplicates:n { \seq_gremove_duplicates:c{\__xassoccnt_generate_countercontainername:n{#1}}}
+\cs_new_nopar:Nn \__xassoccnt_container_removecounter:nn   { \seq_gremove_all:cn{\__xassoccnt_generate_countercontainername:n{#1}}{#2} }
+\cs_new_nopar:Nn \__xassoccnt_container_putright:nn        { \seq_put_right:cn{\__xassoccnt_generate_countercontainername:n{#1}}{#2} } 
+\cs_new_nopar:Nn \__xassoccnt_container_gputright:nn        { \seq_gput_right:cn{\__xassoccnt_generate_countercontainername:n{#1}}{#2} } 
+\cs_new_nopar:Nn \__xassoccnt_container_removeassociated:nn   { \seq_gremove_all:cn{\__xassoccnt_drivercontainer:n{#1}}{#2}}
+\cs_new_nopar:Nn \__xassoccnt_container_gclear:n {\seq_gclear:N #1 }
+\cs_new_nopar:Nn \__xassoccnt_container_clear:n {\seq_clear:N #1 }
+
+
+\seq_new:N \g__xassoccnt_totalcounter_container
+\prop_new:N \g_xassoccnt_totalcounter_prop
+\seq_new:N \g__xassoccnt_supertotalcounter_container
+
+
+\seq_new:N \g_xassoccnt_periodiccounter_container_seq
+\prop_new:N \g_xassoccnt_periodiccounter_prop
+
+
+\cs_new_nopar:Nn \__xassoccnt_container_perdriver_new:n  { 
+  \seq_if_exist:cF{ \__xassoccnt_drivercontainer:n {#1} }
+  { % Generate only if there is no driver container sequence so far!
+    \seq_new:c{\__xassoccnt_drivercontainer:n{#1} }
+  }
+}
+
+
+\cs_generate_variant:Nn \__xassoccnt_container_gclear:n { c }
+\cs_generate_variant:Nn \__xassoccnt_container_clear:n { c }
+  
+\cs_new:Nn \__xassoccnt_container_set_from_clist:NN {\seq_set_from_clist:NN #1 #2}
+\cs_generate_variant:Nn \__xassoccnt_container_set_from_clist:NN { cN, cc, Nc }
+
+\cs_new:Nn \__xassoccnt_gcombine_container:NN {%
+  \seq_concat:NNN  \l_tmpb_seq #1 #2
+  \seq_gset_eq:NN #1 \l_tmpb_seq 
+}
+
+\cs_generate_variant:Nn \__xassoccnt_gcombine_container:NN { cc }
+
+\cs_new:Nn \__xassoccnt_gcombineunique_container:NN {%
+  \__xassoccnt_gcombine_container:NN #1 #2
+  \__xassoccnt_containerremoveduplicates:N #1 
+}
+
+\cs_generate_variant:Nn \__xassoccnt_gcombineunique_container:NN { cc }
+
+\cs_new:Nn \__xassoccnt_adddrivercounter:nn{ %
+  \__xassoccnt_setupcontainers:n{#2}%
+}
+  
+
+\cs_new:Nn \__xassoccnt_removedrivercounter:nn{%
+  \__xassoccnt_container_gclear:c{\__xassoccnt_drivercontainer:n{#2}} % Clear the per-counter container first
+  \__xassoccnt_container_removecounter:nn{\c_xassoccnt_mastername_str}{#2} % Remove the counter #2 from the master container
+  \cs_undefine:c{\__xassoccnt_drivercontainer:n{#2}}
+}
+
+\cs_new:Nn \__xassoccnt_autodefine_associatedcounters:nn {%
+  \bool_if:nTF{ \g__xassoccnt_autodefine_counters }{%
+    \seq_map_inline:Nn #2 { \__xassoccnt_newcounter_ltx:nnn {sloppy}{##1}{} }
+  }{%
+    \keys_set:nn{xassoccnt}{#1}
+    \bool_if:nF{ \l__xassoccnt_autodefine_none }{%
+      % No, some autodefine key has been specified
+      \bool_if:nTF { \l__xassoccnt_autodefine_allcounters }
+      {% 
+        \seq_map_inline:Nn #2 { \__xassoccnt_newcounter_ltx:nnn {sloppy}{##1}{} }  %loop through the list and do not complain if the counter ##1 already exists
+      }{%
+        \bool_if:nT { \l__xassoccnt_autodefine_associatedcounter }{%
+          \seq_map_inline:Nn #2 { \__xassoccnt_newcounter_ltx:nnn {sloppy}{##1}{}}
+        }
+      }
+    }
+  }
+}
+
+\cs_new:Nn \__xassoccnt_autodefine_drivercounter:nn {%
+  \keys_set:nn{ xassoccnt } {#1}
+  \bool_if:nTF{ \g__xassoccnt_autodefine_counters }{%
+    \__xassoccnt_newcounter_ltx:nnn{#1,sloppy}{#2}{}%
+  }{%
+    \bool_if:nT {\l__xassoccnt_autodefine_drivercounter || \l__xassoccnt_autodefine_allcounters } {%
+      \__xassoccnt_newcounter_ltx:nnn{#1}{#2}{}
+    }
+  }
+}
+
+
+\cs_new_nopar:Nn \__xassoccnt_expand_totalcountername:n {%
+  xassoccnt@total@#1%
+}
+
+
+
+  
+\cs_new:Nn \__xassoccnt_translate_counterlist:n {%
+  \clist_clear:N \l_tmpb_clist
+  \clist_set:Nx \l_tmpa_clist {#1}% 
+  \clist_map_inline:Nn \l_tmpa_clist {%
+    \__xassoccnt_is_totalcounter:nTF { ##1 } 
+    { \clist_gput_right:Nx \l_tmpb_clist { \__xassoccnt_expand_totalcountername:n {##1} } }
+    { \clist_gput_right:Nn \l_tmpb_clist {##1} }
+  }
+  \clist_set_eq:NN \l_tmpa_clist \l_tmpb_clist
+}
+
+\cs_new:Nn \__xassoccnt_addassociatedcounters:nnn {%
+  \keys_set:nn{xassoccnt}{#1}
+  \clist_set:Nx \l_tmpa_clist {#3}
+  \clist_if_in:NnT \l_tmpa_clist {#2} {%   Prevent self-association
+    \msg_warning:nnn{xassoccnt}{selfassociation}{#2}% Warning
+    \clist_gremove_all:Nn \l_tmpa_clist {#2}%
+  }%
+  \clist_remove_duplicates:N \l_tmpa_clist%
+  \__xassoccnt_container_set_from_clist:NN \l_tmpa_seq \l_tmpa_clist
+  \seq_if_in:cnF{\__xassoccnt_mastercontainer:}{#2}{%
+    \__xassoccnt_adddrivercounter:nn{#1}{#2}%  Generate the driver counter container
+    \msg_warning:nnnn{xassoccnt}{addwithoutdeclaration}{#2}{#3} % Warning --> associated some counter without declaring in the preamble 
+  }%
+  \__xassoccnt_gcombineunique_container:cc{\__xassoccnt_drivercontainer:n{#2}}{l_tmpa_seq}
+  \__xassoccnt_gcombineunique_container:cc{\__xassoccnt_generate_countercontainername:n{\c_xassoccnt_associatedname_str}}{l_tmpa_seq}
+  % Do only define if really needed
+  \__xassoccnt_autodefine_associatedcounters:nn {#1} {\l_tmpa_seq }
+}
+
+
+\cs_new:Nn \xassoccnt_removesuspendedcounters:nn{%
+  \seq_if_exist:cTF{\__xassoccnt_suspendedcontainer:}{%
+    \seq_if_in:cnT{\__xassoccnt_suspendedcontainer:}{#2}{%
+       \__xassoccnt_container_removecounters:nn{suspended}{#2}
+     }%
+   }%   
+}
+
+
+\cs_new:Nn \__xassoccnt_setupcontainers:n{%
+  \__xassoccnt_container_putright:nn{master}{#1}
+  \__xassoccnt_container_removeduplicates:n{master}%
+  \__xassoccnt_container_perdriver_new:n{#1}%
+}
+
+
+\cs_new:Nn \__xassoccnt_newcounter_ltx:nn{%
+  \keys_set:nn {xassoccnt}{sloppy=false,initial=\c_zero,#1}
+  \cs_if_exist:cTF{c@#2}{%
+    \bool_if:nF {\l__xassoccnt_sloppy_newcounter }{
+      \msg_error:nnn{xassoccnt}{counteralreadyexists}{#2}% Warning
+    }
+  }{%
+    \newcounter{#2}%
+    \xassoccnt_standardsetcounter{#2}{\l__xassoccnt_initialcountervalue_int}
+  }%
+}
+
+\cs_new:Nn \__xassoccnt_newcounter_ltx:nnn{%
+  \keys_set:nn {xassoccnt}{sloppy=false,initial=\c_zero,#1}
+  \str_set:Nx \l_tmpa_str {#3}
+  \__xassoccnt_latexcounter_exists:nTF{#2}{%
+    \bool_if:nF {\l__xassoccnt_sloppy_newcounter }{
+      \msg_error:nnn{xassoccnt}{counteralreadyexists}{#2}% Warning
+    }
+  }{%
+    \str_if_empty:NTF \l_tmpa_str {%
+      \newcounter{#2}%
+    }{%
+      \newcounter{#2}[#3]%
+    }%
+    \xassoccnt_standardsetcounter{#2}{\l__xassoccnt_initialcountervalue_int}
+  }
+}
+
+
+
+
+\cs_new:Nn \xassoccnt_declareassociatedcounters:nnn {% 
+  \__xassoccnt_container_if_in:cnTF{\__xassoccnt_generate_countercontainername:n{\c_xassoccnt_mastername_str}:}{#2}{%
+    % Not contained in the driver counter list
+    \__xassoccnt_addassociatedcounters:nnn{#1}{#2}{#3}%
+  }{%
+    % Check first if there is a potential cross association
+    \__xassoccnt_adddrivercounter:nn{#1}{#2}%
+    \xassoccnt_is_associatedtocounter:nnTF{#3}{#2}{%
+      \msg_fatal:nnnn{xassoccnt}{crossassociation}{#2}{#3}% Fatal message
+      % Not necessary unless the fatal message above is removed 
+      \__xassoccnt_container_removecounter:cn{\__xassoccnt_generate_countercontainername:n{\c_xassoccnt_mastername_str}:}{#2}
+    }{% No, we don't try to cross-associate two counters
+      \__xassoccnt_addassociatedcounters:nnn{#1}{#2}{#3}%
+    }%
+  }%
+  \__xassoccnt_container_removeduplicates:n{\__xassoccnt_drivercontainer:n{#2}}
+  \__xassoccnt_autodefine_drivercounter:nn { }{#2}
+}
+
+
+
+
+
+\prg_new_conditional:Nnn \xassoccnt_is_drivercounter:n {T,F,TF}
+{
+  \seq_if_in:cnTF{\__xassoccnt_mastercontainer:}{#1}{%
+    \prg_return_true:
+  }{
+    \prg_return_false:
+  }
+}
+
+
+\prg_new_conditional:Nnn \__xassoccnt_container_if_in:Nn { T, F, TF }
+{
+  \seq_if_in:NnTF #1 {#2}{%
+    \prg_return_true:
+  }{
+    \prg_return_false:
+  }
+}
+
+\cs_generate_variant:Nn \__xassoccnt_container_if_in:NnTF { nxTF, cnTF,cxTF }
+\cs_generate_variant:Nn \__xassoccnt_container_if_in:NnT { nxT,cnT,cxT } 
+\cs_generate_variant:Nn \__xassoccnt_container_if_in:NnF { nxF,cnF,cxF }
+
+\prg_new_conditional:Nnn \xassoccnt_is_associatedcounter:n {T,F,TF} 
+{
+  \__xassoccnt_container_if_in:cnTF{\__xassoccnt_generate_countercontainername:n{\c_xassoccnt_associatedname_str}}{#1}{%
+    \prg_return_true:
+  }{
+    \prg_return_false:
+  }
+}
+
+\prg_new_conditional:Nnn \xassoccnt_is_suspendedcounter:n  {TF,T,F}
+{%
+  \__xassoccnt_container_if_in:cxTF{\__xassoccnt_generate_countercontainername:n{\c_xassoccnt_suspendedname_str}}{#1}{%
+    \prg_return_true:
+  }{%
+    \prg_return_false:
+  }%
+}
+
+
+
+\prg_new_conditional:Nnn \xassoccnt_is_associatedtocounter:nn {T,F,TF}
+{
+  \xassoccnt_is_drivercounter:nTF{#1}{%
+    \seq_if_in:cnTF{\__xassoccnt_drivercontainer:n{#1}}{#2}{%
+      \prg_return_true:
+    }{%
+      \prg_return_false:
+    }%
+  }{%
+    \prg_return_false:
+  }%
+}
+
+%% Clearing functions
+
+\cs_new:Nn \xassoccnt_remove_associatedcounter:nnn 
+{
+  \__xassoccnt_container_removeassociated:nn{#2}{#3}
+  \__xassoccnt_container_removecounter:nn{\c_xassoccnt_associatedname_str}{#3}%
+}
+
+\cs_new:Nn \xassoccnt_remove_associatedcounters:nnn 
+{%
+  \clist_set:Nx \l_tmpa_clist {#3}
+  \seq_set_from_clist:NN \l_tmpa_seq \l_tmpa_clist
+  \seq_map_inline:Nn \l_tmpa_seq { \xassoccnt_remove_associatedcounter:nnn{#1}{#2}{##1} } % Remove one counter after another one!
+}
+
+
+\cs_new:Nn \xassoccnt_gclear_associatedcounters:nn {%
+  \seq_map_inline:cn {\__xassoccnt_drivercontainer:n{#2}} { \__xassoccnt_container_removecounter:nn{\c_xassoccnt_associatedname_str}{##1} }% Remove from associated list container
+  \__xassoccnt_container_gclear:c {\__xassoccnt_drivercontainer:n{#2} }
+}
+%%%%%%%%%%%%%%%%%%%%% User interface routines 
+
+
+\NewDocumentCommand{\SuspendCounters}{O{}m}{%
+  \keys_set:nn { xassoccnt }{#1}%
+  \clist_set:Nx \l_tmpa_clist {#2}%
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \__xassoccnt_container_gputright:nn{\c_xassoccnt_suspendedname_str}{##1}
+  }
+  % Code for removal of duplicates
+  \__xassoccnt_container_removeduplicates:n{\c_xassoccnt_suspendedname_str}
+}
+
+\cs_new_protected:Nn \xassoccnt_cascade_suspendcounters:nn {%
+  \keys_set:nn { xassoccnt }{#1}%
+  \clist_set:Nx \l_tmpa_clist {#2}%
+  % Loop through the several counters!
+  \clist_map_inline:Nn \l_tmpa_clist {%
+    % Cascading requires knowledge of the counter reset list, so get this!
+    \xassoccnt_countersinresetlist:n {##1} 
+    \int_compare:nNnT {\l_xassoccnt_resetlist_counter} > {0} {%
+      \__xassoccnt_getresetlist:n {##1}%
+      \seq_map_inline:Nn \l__xassoccnt_counterreset_seq {% 
+        \__xassoccnt_container_gputright:nn{\c_xassoccnt_suspendedname_str}{####1}
+        % Recursively suspend all other counters that are on the reset list of #2 and hunt down their reset lists as well.
+        \xassoccnt_cascade_suspendcounters:nn{#1}{####1}%
+      }%
+    }% End \int_compare:
+    % Now add ##1
+    \__xassoccnt_container_gputright:nn{\c_xassoccnt_suspendedname_str}{##1}
+  }% End \clist_map_inline:
+  % Remove duplicates
+  \__xassoccnt_container_removeduplicates:n{\c_xassoccnt_suspendedname_str}
+  \bool_set_false:N \l__xassoccnt_cascade_suspension_bool
+}
+
+
+
+\NewDocumentCommand{\CascadeSuspendCounters}{O{}m}{%
+  \xassoccnt_cascade_suspendcounters:nn {#1}{#2}%
+}
+
+\NewDocumentCommand{\ShowSuspendedCounters}{}{%
+  \seq_use:cn { \__xassoccnt_generate_countercontainername:n{\c_xassoccnt_suspendedname_str}} {\par}
+}
+
+\NewDocumentCommand{\ResumeSuspendedCounters}{O{}m}{%
+  \clist_set:Nx \l_tmpa_clist {#2}%
+  \clist_map_inline:Nn \l_tmpa_clist {
+    \__xassoccnt_container_removecounter:nn{\c_xassoccnt_suspendedname_str}{##1}%
+  }
+}
+
+\NewDocumentCommand{\ResumeAllSuspendedCounters}{O{}}{%
+  \seq_if_exist:cTF{\__xassoccnt_generate_countercontainername:n{\c_xassoccnt_suspendedname_str}} {%
+    \seq_gclear:c {\__xassoccnt_generate_countercontainername:n{\c_xassoccnt_suspendedname_str}}%
+  }{%	
+    % A warning message later on here!
+    \typeout{Container\space\__xassoccnt_generate_countercontainername:n{\c_xassoccnt_suspendedname_str}\space does\space not\space exist}%
+  }%
+}
+
+
+%%%% Associated counters section
+
+\NewDocumentCommand{\DeclareAssociatedCounters}{omm}{%
+  \IfValueTF{#1}{%
+    \keys_set:nn {xassoccnt} {#1}
+    \xassoccnt_declareassociatedcounters:nnn{#1}{#2}{#3}%
+  }{%
+    % Disable the automated definition of counters explicitly
+    \xassoccnt_declareassociatedcounters:nnn{autodefine=none}{#2}{#3}%
+  }
+}
+
+
+\NewDocumentCommand{\AddDriverCounter}{O{}m}{%
+  \xassoccnt_adddrivercounter:nn{#1}{#2}
+}
+
+\NewDocumentCommand{\AddAssociatedCounters}{O{}mm}{%
+  %Check first if we are in document or in preamble:
+  \ifx\@onlypreamble\@notprerr 
+  % Explicitly disable autodefinition of counters
+  \__xassoccnt_addassociatedcounters:nnn{#1,autodefine=none}{#2}{#3}%  
+  \else 
+  % No, it's the preamble, fall back to `\DeclareAssociatedCounters
+  \DeclareAssociatedCounters[#1]{#2}{#3}
+  \fi
+}
+
+\NewDocumentCommand{\RemoveDriverCounter}{O{}m}{%
+  \__xassoccnt_removedrivercounter:nn{#1}{#2}%
+}
+
+\NewDocumentCommand{\GetDriverCounter}{O{,}m}{%
+  \seq_clear:N \l_tmpa_seq
+  \seq_map_inline:cn {\__xassoccnt_mastercontainer:}{%
+    \seq_if_in:cnT{\__xassoccnt_drivercontainer:n{##1}}{#2}{%
+      \seq_put_right:Nn \l_tmpa_seq {##1}
+    }%
+  }%
+  \seq_if_empty:NTF \l_tmpa_seq{--}{\seq_use:Nn \l_tmpa_seq {#1}}
+}
+
+
+
+\prg_new_conditional:Nnn \__xassoccnt_ifis_latexcounter:n {T,F,TF}
+{%
+  \cs_if_exist:cTF {c@#1}{%
+    \prg_return_true:
+  }{%
+    \prg_return_false:
+  }%
+}
+
+\prg_new_conditional:Nnn \__xassoccnt_latexcounter_exists:n {T,F,TF}
+{%
+  \cs_if_exist:cTF {c@#1}{%
+    \prg_return_true:
+  }{%
+    \prg_return_false:
+  }%
+}
+
+
+\NewDocumentCommand{\IfIsDocumentCounterTF}{om+m+m}{%
+  \__xassoccnt_ifis_latexcounter:nTF {#2}{ #3 } { #4 }
+}
+
+\NewDocumentCommand{\IfIsDocumentCounterT}{om+m}{%
+  \__xassoccnt_ifis_latexcounter:nT {#2}{ #3 }
+}
+
+
+\NewDocumentCommand{\IfIsDocumentCounterF}{om+m}{%
+  \__xassoccnt_ifis_latexcounter:nF {#2}{ #3 }
+}
+
+
+\NewDocumentCommand{\IsDriverCounter}{O{}mmm}{%
+  \xassoccnt_is_drivercounter:nTF{#2}{#3}{#4}%
+}
+
+\NewDocumentCommand{\IsAssociatedToCounter}{O{}mmmm}{%
+  \xassoccnt_is_associatedtocounter:nnTF{#2}{#3}{%
+    #4%
+  }{%
+    #5%
+  }%
+}
+
+\NewDocumentCommand{\IsAssociatedCounter}{O{}mmm}{%
+  \xassoccnt_is_associatedcounter:nTF{#2}{#3}{#4}%
+}
+
+
+\NewDocumentCommand{\IsSuspendedCounter}{O{}mmm}{%
+  \xassoccnt_is_suspendedcounter:nTF{#2}{#3}{#4}%
+}
+
+
+
+\NewDocumentCommand{\IfExistsDriverCounterList}{mmm}{%
+  \seq_if_exist:cTF{\__xassoccnt_drivercontainer:n{#1}}{%
+    #2%
+  }{%
+    #3%
+  }%
+}
+
+\NewDocumentCommand{\RemoveAssociatedCounters}{O{}mm}{%
+  \xassoccnt_remove_associatedcounters:nnn{#1}{#2}{#3}
+}
+
+\NewDocumentCommand{\RemoveAssociatedCounter}{O{}mm}{%
+  \xassoccnt_remove_associatedcounter:nnn{#1}{#2}{#3}
+}
+
+\NewDocumentCommand{\ClearAssociatedCounters}{O{}m}{%
+  \xassoccnt_gclear_associatedcounters:nn{#1}{#2}% 
+}
+
+
+
+\NewDocumentCommand{\ShowAssociatedCountersList}{m}{%
+  {\color{red}%
+    \fbox{#1}~has~\seq_use:cn {\__xassoccnt_drivercontainer:n{#1}}{\par\noindent}
+  }	
+}
+
+\NewDocumentCommand{\ShowAllAssociatedCounters}{}{%
+  {\color{brown}%
+    \seq_use:cn {\__xassoccnt_associatedcontainer:}{\par\noindent}
+  }	
+}
+
+
+\NewDocumentCommand{\ShowDriverCounterList}{}{%
+  {\color{blue}%
+    \seq_use:cn{\__xassoccnt_mastercontainer:}{\par\bigskip\noindent}
+  }%
+}
+
+
+
+
+
+
+
+\cs_new:Nn \__xassoccnt_step_associatedcounters:n {%
+  \seq_if_exist:cT { \__xassoccnt_drivercontainer:n{#1} }
+  { \seq_map_inline:cn {\__xassoccnt_drivercontainer:n{#1} } 
+    {%
+      \xassoccnt_addtocounter{##1}{\c_one} 
+    }%
+  }%
+ % End of \seq_if_exist
+}
+
+\prg_new_conditional:Nnn \__xassoccnt_is_totalcounter:n {T,F,TF}
+{%
+  \seq_if_in:NxTF \g__xassoccnt_totalcounter_container { \__xassoccnt_expand_totalcountername:n {#1} }
+  {
+    \prg_return_true:
+  }{%
+    \prg_return_false:
+  }%
+}
+
+
+\cs_new_nopar:Nn \__xassoccnt_translate_countername:cn {%
+  \tl_set:cn {#1}{#2}%
+  \seq_if_in:NxTF \g__xassoccnt_supertotalcounter_container {#2} {%
+    \tl_set:cn {#1}{\__xassoccnt_expand_totalcountername:n {#2} }%
+  }{%
+  }
+}
+
+
+%%%
+
+
+%% More generic macros (hidding the internal features of the lists)
+
+
+\cs_new_nopar:Nn \xassoccnt_container_property: {prop}
+
+\cs_new_nopar:Nn \xassoccnt_container_datatype: {seq}
+
+
+\cs_new:Nn \__xassoccnt_construct_cs:n {%
+  \use:c{\xassoccnt_container_datatype:#1}
+}
+
+
+
+
+\cs_new:Nn \xassoccnt_container_new:N {%
+  \__xassoccnt_construct_cs:n{_new:N} #1
+}
+
+
+\cs_new:Nn \xassoccnt_container_clear:N {%
+  \__xassoccnt_construct_cs:n{_clear:N} #1
+}
+
+\cs_new:Nn \xassoccnt_container_gclear:N {%
+  \__xassoccnt_construct_cs:n{_gclear:N} #1
+}
+
+
+
+\cs_new:Nn \xassoccnt_container_set_eq:NN {%
+  \__xassoccnt_construct_cs:n{_set_eq:NN} #1 #2
+}
+
+
+\cs_new:Nn \xassoccnt_container_gset_eq:NN {%
+  \__xassoccnt_construct_cs:n{_gset_eq:NN} #1 #2
+}
+
+
+\cs_new:Nn \xassoccnt_container_put_right:Nn {%
+  \__xassoccnt_construct_cs:n{_put_right:Nn} #1 {#2}
+}
+
+\cs_new:Nn \xassoccnt_container_gput_right:Nn {%
+  \__xassoccnt_construct_cs:n{_gput_right:Nn} #1 {#2}
+}
+
+\cs_new:Nn \xassoccnt_container_put_left:Nn {%
+  \__xassoccnt_construct_cs:n{_put_left:Nn} #1 {#2}
+}
+
+\cs_new:Nn \xassoccnt_container_gput_left:Nn {%
+  \__xassoccnt_construct_cs:n{_gput_left:Nn} #1 {#2}
+}
+
+
+\cs_new:Nn \xassoccnt_container_get_item:Nn {%
+  \__xassoccnt_construct_cs:n{_get_item:Nn} #1 {#2}
+}
+
+\cs_new:Nn \xassoccnt_container_remove_duplicates:N {%
+  \__xassoccnt_construct_cs:n{_remove_duplicates:N} #1 
+}
+
+\cs_new:Nn \xassoccnt_container_gremove_duplicates:N {%
+  \__xassoccnt_construct_cs:n{_gremove_duplicates:N} #1 
+}
+
+\cs_new:Nn \xassoccnt_container_remove_all:Nn {%
+  \__xassoccnt_construct_cs:n{_remove_all:Nn} #1 {#2}
+}
+
+\cs_new:Nn \xassoccnt_container_gremove_all:Nn {%
+  \__xassoccnt_construct_cs:n{_gremove_all:Nn} #1 {#2}
+}
+
+\cs_new:Nn \xassoccnt_container_map_inline:Nn {%
+  \__xassoccnt_construct_cs:n{_map_inline:Nn} #1 {#2}
+}
+
+\cs_new:Nn \xassoccnt_container_count:N {%
+  \__xassoccnt_construct_cs:n{_count:N} #1 
+}
+
+\cs_new:Nn \xassoccnt_container_set_from_clist:NN {%
+  \__xassoccnt_construct_cs:n{_set_from_clist:NN} #1 #2
+}
+
+\cs_new:Nn \xassoccnt_container_gset_from_clist:NN {%
+  \__xassoccnt_construct_cs:n{_gset_from_clist:NN} #1 #2
+}
+
+\cs_new:Nn \xassoccnt_container_remove_by_clist:Nn {%
+  \clist_set:Nn \l_tmpa_tl {#2}
+  \clist_map_inline:Nn \l_tmpa_tl {
+    \xassoccnt_container_remove_all:Nn #1 {##1}
+  }
+}
+
+
+\cs_new:Nn \xassoccnt_container_use:Nn {%
+  \__xassoccnt_construct_cs:n{_use:Nn} #1 {#2}
+}
+
+
+\cs_new_nopar:Nn \xassoccnt_container_map_break: {%
+  \__xassoccnt_construct_cs:n{_map_break:}
+}
+
+\cs_new:Nn \xassoccnt_container_concat:NNN {%
+  \__xassoccnt_construct_cs:n{_concat:NNN} #1 #2 #3
+}
+
+\cs_new:Nn \xassoccnt_container_gconcat:NNN {%
+  \__xassoccnt_construct_cs:n{_gconcat:NNN} #1 #2 #3
+}
+
+  
+
+\prg_new_conditional:Nnn \xassoccnt_container_if_exist:N {TF,T,F}%
+{
+%  \__xassoccnt_construct_cs:n{_if_exist:NTF} #1 
+  \seq_if_exist:NTF #1
+  {\prg_return_true:}
+  {\prg_return_false:}
+}
+
+\prg_new_conditional:Nnn \xassoccnt_container_if_exist:c {TF,T,F}%
+{
+%  \__xassoccnt_construct_cs:n{_if_exist:NTF} #1 
+  \seq_if_exist:cTF {#1}
+  {\prg_return_true:}
+  {\prg_return_false:}
+}
+
+
+
+\prg_new_conditional:Nnn \xassoccnt_container_if_in:Nn {TF,T,F}%
+{
+ % \seq_if_in:NnTF #1 {#2}
+  \__xassoccnt_construct_cs:n{_if_in:NnTF} #1 {#2}
+  {\prg_return_true:}
+  {\prg_return_false:}
+}
+
+\prg_new_conditional:Nnn \xassoccnt_container_if_empty:N {TF,T,F}%
+{
+  \__xassoccnt_construct_cs:n{_if_empty:NTF} 
+  {\prg_return_true:}
+  {\prg_return_false:}
+}
+
+
+\prg_new_conditional:Nnn \xassoccnt_container_if_empty:c {T,F,TF}
+{
+  \__xassoccnt_construct_cs:n{_if_empty:cTF} 
+  {\prg_return_true:}
+  {\prg_return_false:}
+}
+
+
+
+
+\cs_generate_variant:Nn \xassoccnt_container_new:N {c}
+\cs_generate_variant:Nn \xassoccnt_container_clear:N {c,x}
+\cs_generate_variant:Nn \xassoccnt_container_gclear:N {c,x}
+\cs_generate_variant:Nn \xassoccnt_container_set_eq:NN {cN,Nc,cc}
+\cs_generate_variant:Nn \xassoccnt_container_gset_eq:NN {cN,Nc,cc}
+
+\cs_generate_variant:Nn \xassoccnt_container_put_right:Nn {NV,Nv,No,Nx,cn,cV,cv,co,cx}
+\cs_generate_variant:Nn \xassoccnt_container_gput_right:Nn {NV,Nv,No,Nx,cn,cV,cv,co,cx}
+\cs_generate_variant:Nn \xassoccnt_container_put_left:Nn {NV,Nv,No,Nx,cn,cV,cv,co,cx}
+\cs_generate_variant:Nn \xassoccnt_container_gput_left:Nn {NV,Nv,No,Nx,cn,cV,cv,co,cx}
+
+\cs_generate_variant:Nn \xassoccnt_container_get_item:Nn {cn}
+
+\cs_generate_variant:Nn \xassoccnt_container_remove_duplicates:N {c}
+\cs_generate_variant:Nn \xassoccnt_container_gremove_duplicates:N {c}
+
+\cs_generate_variant:Nn \xassoccnt_container_concat:NNN {ccc}
+\cs_generate_variant:Nn \xassoccnt_container_gconcat:NNN {ccc}
+\cs_generate_variant:Nn \xassoccnt_container_remove_all:Nn {cn}
+\cs_generate_variant:Nn \xassoccnt_container_gremove_all:Nn {cn}
+
+\cs_generate_variant:Nn \xassoccnt_container_remove_by_clist:Nn {cn,nn}
+
+\cs_generate_variant:Nn \xassoccnt_container_map_inline:Nn {cn}
+
+\cs_generate_variant:Nn \xassoccnt_container_count:N {c}
+
+\cs_generate_variant:Nn \xassoccnt_container_set_from_clist:NN {cN,cc,Nc,Nn,cn}
+\cs_generate_variant:Nn \xassoccnt_container_gset_from_clist:NN {cN,cc,Nc,Nn,cn}
+
+\cs_generate_variant:Nn \xassoccnt_container_use:Nn {cn}
+
+
+\cs_generate_variant:Nn \xassoccnt_container_if_in:NnTF {NVTF,NvTF,NoTF,NxTF,cnTF,cVTF,cvTF,coTF,cxTF}
+\cs_generate_variant:Nn \xassoccnt_container_if_in:NnT {NVT,NvT,NoT,NxT,cnT,cVT,cvT,coT,cxT}
+\cs_generate_variant:Nn \xassoccnt_container_if_in:NnF {NVF,NvF,NoF,NxF,cnF,cVF,cvF,coF,cxF}
+
+\cs_generate_variant:Nn \xassoccnt_container_if_exist:NTF {cTF,xTF}
+\cs_generate_variant:Nn \xassoccnt_container_if_exist:NT {cT}
+\cs_generate_variant:Nn \xassoccnt_container_if_exist:NF {cF}
+
+\bool_new:N \l__xassoccnt_feature_bool
+\bool_new:N \l__xassoccnt_sublists_bool
+
+\keys_define:nn {xassoccnt_container} {
+  feature  .bool_set:N=\l__xassoccnt_feature_bool,
+  sublists .bool_set:N=\l__xassoccnt_sublists_bool,
+  name .tl_set:N=\l__xassoccnt_countergroup_name_tl,
+  multiple .bool_set:N=\l__xassoccnt_multiple_bool,
+  featurename .tl_set:N=\l__xassoccnt_feature_name_tl
+}
+
+\seq_new:N \g__xassoccnt_feature_seq  % The master control !!!!
+
+\seq_new:N \g__xassoccnt_sublists_seq
+
+\cs_new:Nn \xassoccnt_create_featurename:n { xassoccnt_feature_#1 }
+
+\cs_new:Nn \xassoccnt_featurename:n { xassoccnt_feature_#1 }
+
+\cs_new:Nn \xassoccnt_feature_subcontainer:nn { \xassoccnt_featurename:n{#1}_#2 }
+\cs_new:Nn \xassoccnt_feature_group_container:n { \xassoccnt_featurename:n{#1}_group } % This holds the names of the several sub containers
+
+
+%% A feature is actually a super container that has sub containers (i.e. a list/seq of counters that have this feature )
+
+%% Example the feature 'coupledcounters' will have a  group countainer, that holds the name of the counter groups
+%% Each counter group (of a feature) itself will have a subcontainer where the counter names are stored. 
+
+%% Multiple counters may occur in the per - feature - specific container list 
+
+\cs_new:Nn \xassoccnt_add_feature:nn {%
+  \keys_set:nn {xassoccnt_container} {#1}
+  \seq_if_exist:NT \g__xassoccnt_feature_seq {% Unique addition of a feature only!
+    \seq_if_in:NnF \g__xassoccnt_feature_seq {#2} {%
+      \seq_gput_right:Nn \g__xassoccnt_feature_seq {#2}%
+      \xassoccnt_create_container:nc {feature=true} { \xassoccnt_featurename:n { #2 } }
+      \bool_if:NTF \l__xassoccnt_sublists_bool {
+        \xassoccnt_create_container:nc {feature=false} {\xassoccnt_feature_group_container:n{#2} }
+        \seq_gput_right:NV \g__xassoccnt_sublists_seq {\c_one }
+      } { \seq_gput_right:NV \g__xassoccnt_sublists_seq  {\c_zero }}
+    }% End of \seq_if_in
+  }
+}
+
+
+\prg_new_conditional:Nnn \xassoccnt_feature_if_in:n {TF,T,F}
+{
+  \seq_if_in:NnTF { \g__xassoccnt_feature_seq } {#1}
+  {\prg_return_true:}
+  {\prg_return_false:}
+}
+
+\cs_generate_variant:Nn \xassoccnt_feature_if_in:nTF {c}
+\cs_generate_variant:Nn \xassoccnt_feature_if_in:nT {c}
+\cs_generate_variant:Nn \xassoccnt_feature_if_in:nF {c}
+
+\cs_new:Nn \xassoccnt_remove_feature:nn {%
+  % keys from #1 to be set
+ 
+  \seq_if_exist:NTF \g__xassoccnt_feature_seq {%
+    \seq_remove_all:Nn \g__xassoccnt_feature_seq {#2}
+    \cs_undefine:c { \xassoccnt_featurename:n { #2 }} % Remove the sequence as a macro
+  }{
+    % To be done!
+  }
+}
+
+\cs_new:Nn \xassoccnt_add_container_to_feature:nn {%
+  \xassoccnt_feature_if_in:nTF { #1 } {%
+    \xassoccnt_add_to_containerlist:cn { \xassoccnt_featurename:n { feature#1 }} {#2 }
+  }{%
+    % To be done
+  }
+}
+
+
+\cs_new:Nn \xassoccnt_create_container:nN {
+  \keys_set:nn {xassoccnt_container} {#1}
+  \xassoccnt_container_if_exist:NTF #2 {%
+    % A existing container must not be redefined
+    \msg_error:nnn{xassoccnt}{containeralreadyexists}{#2}% Error!
+  }{
+    \xassoccnt_container_new:N {#2}
+  }
+}
+
+
+
+\cs_generate_variant:Nn \xassoccnt_create_container:nN {nc,nx}
+
+\cs_new:Nn \xassoccnt_add_to_containerlist:Nn {%
+  \clist_set:Nx \l_tmpa_clist {#2}
+  \xassoccnt_container_if_exist:NTF #1 {%
+    \clist_map_inline:Nn \l_tmpa_clist {% 
+      \xassoccnt_container_put_right:Nn  #1 {##1}% Append data 
+    }
+  }{
+    \xassoccnt_create_container:nN {feature=false} #1
+    \xassoccnt_container_set_from_clist:NN #1 \l_tmpa_clist
+  }
+}
+
+
+\cs_new:Nn \xassoccnt_feature_add_to_subcontainer:nnn {%
+  \keys_set:nn{xassoccnt_container} {multiple=false,#1}
+  \clist_set:Nx \l_tmpa_clist {#3}
+
+  \clist_map_inline:Nn \l_tmpa_clist {%
+    \xassoccnt_container_if_in:cnTF {\xassoccnt_feature_subcontainer:nn{\l__xassoccnt_feature_name_tl}{#2}} {##1} 
+    {%
+      \bool_if:NT \l__xassoccnt_multiple_bool {% Add only if `multiple=true` was specified 
+        \xassoccnt_container_put_right:cn  {\xassoccnt_feature_subcontainer:nn{\l__xassoccnt_feature_name_tl}{#2}} {##1}
+      }
+    }{ %
+      \xassoccnt_container_put_right:cn  {\xassoccnt_feature_subcontainer:nn{\l__xassoccnt_feature_name_tl}{#2}} {##1}
+    }
+  } % End of map_inline
+}
+
+
+
+\cs_new:Nn \xassoccnt_feature_add_to_group_container:nn {%
+  \keys_set:nn{xassoccnt_container} {multiple=false,#1}
+  \xassoccnt_add_to_containerlist:cn {\xassoccnt_feature_group_container:n{\l__xassoccnt_feature_name_tl}} {#2}% Create the container first. 
+  \bool_if:NF \l__xassoccnt_multiple_bool {%
+    \xassoccnt_container_remove_duplicates:c { \xassoccnt_feature_group_container:n{\l__xassoccnt_feature_name_tl} }%
+  }
+  \xassoccnt_container_if_exist:cF {\xassoccnt_feature_subcontainer:nn{\l__xassoccnt_feature_name_tl}{#2}}
+  {
+    \xassoccnt_create_container:nc {feature=false} {\xassoccnt_feature_subcontainer:nn{\l__xassoccnt_feature_name_tl}{#2}}  % Creating and filling of the subcontainer
+  }
+}
+
+\cs_generate_variant:Nn \xassoccnt_add_to_containerlist:Nn {cn,nn}
+
+
+
+\NewDocumentCommand{\AddFeature}{O{sublists=false}m}{%
+  \xassoccnt_add_feature:nn {#1} {#2}
+}
+
+\NewDocumentCommand{\RemoveFeature}{O{}m}{%
+  \xassoccnt_remove_feature:nn {#1} {#2}
+}
+
+
+
+
+\NewDocumentCommand{\NewContainer}{m}{%
+  \xassoccnt_create_container:nc {feature=false} {#1}
+}
+
+
+\bool_new:N \l__xassoccnt_is_coupledcounter_bool
+
+
+\prg_new_conditional:Nnn \__xassoccnt_is_coupledcounter:n {TF,T,F} 
+{
+  \xassoccnt_container_map_inline:cn { \xassoccnt_feature_group_container:n{coupledcounters} } {%
+  \bool_set_false:N \l__xassoccnt_is_coupledcounter_bool
+    \xassoccnt_container_if_in:cxT { \xassoccnt_feature_subcontainer:nn{coupledcounters}{##1} } {#1} 
+    {
+      \bool_set_true:N \l__xassoccnt_is_coupledcounter_bool 
+      \xassoccnt_container_map_break:
+    }
+  }
+  \bool_if:NTF \l__xassoccnt_is_coupledcounter_bool 
+  {\prg_return_true:}
+  {\prg_return_false:}
+}
+
+\cs_generate_variant:Nn \__xassoccnt_is_coupledcounter:nTF {c }
+\cs_generate_variant:Nn \__xassoccnt_is_coupledcounter:nT { c }
+\cs_generate_variant:Nn \__xassoccnt_is_coupledcounter:nF { c }
+
+\cs_new:Nn \xassoccnt_is_coupledcounter:nTF { %
+  \__xassoccnt_is_coupledcounter:nTF {#1} {#2} {#3}
+}
+
+\cs_new:Nn \xassoccnt_is_coupledcounter:nT { %
+  \__xassoccnt_is_coupledcounter:nT {#1} {#2}%
+}
+
+\cs_new:Nn \xassoccnt_is_coupledcounter:nF { %
+  \__xassoccnt_is_coupledcounter:nF {#1} {#2}%
+}
+
+
+
+\cs_generate_variant:Nn \xassoccnt_is_coupledcounter:nTF { c }
+\cs_generate_variant:Nn \xassoccnt_is_coupledcounter:nT {  c }
+\cs_generate_variant:Nn \xassoccnt_is_coupledcounter:nF { c }
+
+
+% Declaring a new coupled counters group
+\cs_new:Nn \xassoccnt_declare_coupledcountersgroup:n {%
+  \xassoccnt_container_if_exist:cF { \xassoccnt_feature_group_container:n{coupledcounters}{#1} }
+  {
+    \xassoccnt_feature_add_to_group_container:nn{multiple=false,featurename=coupledcounters}{#1}%
+  }
+}
+
+% The stepcounter branch for coupled counters
+\cs_new:Nn \xassoccnt_stepcounter_coupledcounters:n {%
+  \xassoccnt_container_map_inline:cn { \xassoccnt_feature_group_container:n{coupledcounters} } {%
+    \xassoccnt_container_if_in:cxT { \xassoccnt_feature_subcontainer:nn{coupledcounters}{##1} } {#1 }
+    {
+      \xassoccnt_container_map_inline:cn {\xassoccnt_feature_subcontainer:nn{coupledcounters}{##1}} {
+        \xassoccnt_standardstepcounter{####1}%
+      }
+    }
+  }
+}
+
+
+\NewDocumentCommand{\DeclareCoupledCountersGroup}{m}{%
+  \xassoccnt_declare_coupledcountersgroup:n{#1}
+}
+
+
+\NewDocumentCommand{\DeclareCoupledCounters}{O{}m}{%
+  \keys_set:nn {xassoccnt_container} {multiple=false,#1}
+  % Check first if the counter group name is already registered
+  \xassoccnt_container_if_exist:cF { \xassoccnt_feature_subcontainer:nn{coupledcounters}{\l__xassoccnt_countergroup_name_tl} }
+  {
+    \xassoccnt_declare_coupledcountersgroup:n{\l__xassoccnt_countergroup_name_tl}
+  }
+  \xassoccnt_feature_add_to_subcontainer:nnn{multiple=false,#1,featurename=coupledcounters}{\l__xassoccnt_countergroup_name_tl}{#2}%
+}
+
+\NewDocumentCommand{\AddCoupledCounters}{O{}m}{%
+  \keys_set:nn {xassoccnt_container} {multiple=false,#1}
+  \xassoccnt_container_if_exist:cTF { \xassoccnt_feature_subcontainer:nn{coupledcounters}{\l__xassoccnt_countergroup_name_tl } } {
+    \xassoccnt_feature_add_to_subcontainer:nnn{#1,featurename=coupledcounters}{\l__xassoccnt_countergroup_name_tl}{#2}%
+  }{%
+    \msg_warning:nnxx{xassoccnt}{addcoupledcountergroupundefined}{AddCoupledCounters}{\l__xassoccnt_countergroup_name_tl}% Warning about undefined counter group
+  }%
+}
+
+\NewDocumentCommand{\RemoveCoupledCounters}{O{}m}{%
+  \keys_set:nn {xassoccnt_container} {#1}
+  \xassoccnt_container_if_exist:cTF { \xassoccnt_feature_subcontainer:nn{coupledcounters}{\l__xassoccnt_countergroup_name_tl } } {%
+    \xassoccnt_container_remove_by_clist:cn {\xassoccnt_feature_subcontainer:nn{coupledcounters}{\l__xassoccnt_countergroup_name_tl }} {#2}
+  }{%
+    \msg_warning:nnxx{xassoccnt}{removingcoupledcountergroupundefined}{RemoveCoupledCounters}{\l__xassoccnt_countergroup_name_tl}% Warning about undefined counter group
+  }
+}
+
+\NewDocumentCommand{\ClearCoupledCounters}{m}{%
+  \keys_set:nn {xassoccnt_container} {#1}
+  \xassoccnt_container_if_exist:cTF { \xassoccnt_feature_subcontainer:nn{coupledcounters}{\l__xassoccnt_countergroup_name_tl } } {%
+    \xassoccnt_container_clear:c {\xassoccnt_feature_subcontainer:nn{coupledcounters}{\l__xassoccnt_countergroup_name_tl }}
+  }{%
+    \msg_warning:nnxx{xassoccnt}{clearcoupledcountergroupundefined}{ClearCoupledCounters}{\l__xassoccnt_countergroup_name_tl}% Warning about undefined counter group
+  }
+}
+
+\NewDocumentCommand{\ClearAllCoupledCounters}{}{%
+  \xassoccnt_container_if_exist:cT { \xassoccnt_feature_group_container:n{coupledcounters} } {%
+    \xassoccnt_container_map_inline:cn { \xassoccnt_feature_group_container:n{coupledcounters} } {%
+      \ClearCoupledCounters{name=##1}%
+    }
+  }
+}
+
+\NewDocumentCommand{\IsCoupledCounterTF}{mmm}{%
+  \xassoccnt_is_coupledcounter:nTF {#1} {#2} {#3}
+}
+
+\NewDocumentCommand{\IsCoupledCounterT}{mm}{%
+  \xassoccnt_is_coupledcounter:nT {#1} {#2} 
+}
+
+\NewDocumentCommand{\IsCoupledCounterF}{mm}{%
+  \xassoccnt_is_coupledcounter:nF {#1} {#2} 
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\NewDocumentCommand{\DeclarePeriodicCounter}{O{}mm}{%
+  \xassoccnt_add_periodiccounter:nnn {#1} {#2} {#3}%
+}
+
+
+\prg_new_conditional:Nnn \xassoccnt_is_periodiccounter:n {TF,T,F} 
+{%
+  \seq_if_in:NnTF \g_xassoccnt_periodiccounter_container_seq {#1} 
+  {\prg_return_true:}
+  {\prg_return_false:}
+}
+
+\cs_new:Nn \xassoccnt_stepcounter_periodiccounter:n {%
+  \xassoccnt_is_periodiccounter:nT {#1}{%
+    \int_compare:nNnT {\prop_item:Nn \g_xassoccnt_periodiccounter_prop {#1}} = {\use:c{c@#1}}%
+    { \__xassoccnt_setdocumentcounter:nnn {} {#1}{\c_zero} }
+  }
+}
+\cs_new:Nn \xassoccnt_addtocounter_periodiccounter:nnn {%
+  \keys_set:nn {xassoccnt_periodiccounter} {wrap=true,#3}
+  \int_set:Nn \l_tmpa_int { \int_eval:n {\number\value{#1}+#2 } }
+  \bool_if:NTF \l_xassoccnt_wrapperiodiccounters_bool {%
+    \int_set:Nn \l_tmpb_int { \int_mod:nn {\l_tmpa_int} {\prop_item:Nn \g_xassoccnt_periodiccounter_prop {#1}}}%
+    \__xassoccnt_setdocumentcounter:nnn {} {#1}{\l_tmpb_int}% Wrap around!!!!
+  }{%	
+    \__xassoccnt_setdocumentcounter:nnn {} {#1}{\l_tmpa_int}% Don't Wrap around!!!!
+  }%
+}
+
+
+\cs_new:Nn \xassoccnt_reset_periodiccounter:nn {%
+  \keys_set:nn {xassoccnt_periodiccounter} {reset=true,#1}
+  % Reset the periodic counter if requested (by default this is true!)
+  \bool_if:NT \l_xassoccnt_resetperiodiccounters_bool {%
+    \__xassoccnt_setdocumentcounter:nnn {} {#2} {\c_zero}%       
+  }
+}
+
+\cs_new:Nn \xassoccnt_remove_periodiccounter:nn {%
+  \seq_gremove_all:Nn \g_xassoccnt_periodiccounter_container_seq {#2}%
+  \prop_remove:Nn \g_xassoccnt_periodiccounter_prop {#2}%
+  \xassoccnt_reset_periodiccounter:nn {#1} {#2}
+}
+
+\cs_new:Nn \xassoccnt_add_periodiccounter:nnn {%
+  \keys_set:nn {xassoccnt} {#1}
+  \seq_put_right:Nn \g_xassoccnt_periodiccounter_container_seq {#2}%
+  \seq_gremove_duplicates:N \g_xassoccnt_periodiccounter_container_seq
+  \xassoccnt_changecondition_periodiccounter:nnn {reset=false} {#2} {#3} % Check the optional argument later on!!!!
+}
+
+\cs_new:Nn \xassoccnt_changecondition_periodiccounter:nnn {%
+  \xassoccnt_is_periodiccounter:nTF {#2}{%
+    \prop_put:Nnn \g_xassoccnt_periodiccounter_prop {#2} {#3}%
+    \xassoccnt_reset_periodiccounter:nn {#1} {#2}
+  }
+}
+
+\NewDocumentCommand{\ChangePeriodicCounterCondition}{O{}mm}{%
+  \xassoccnt_changecondition_periodiccounter:nnn {#1}{#2}{#3}%
+}
+
+\NewDocumentCommand{\RemovePeriodicCounter}{O{}m}{%
+  \xassoccnt_remove_periodiccounter:nn{#1} {#2}
+}
+
+\NewDocumentCommand{\AddPeriodicCounter}{O{}mm}{%
+  \xassoccnt_add_periodiccounter:nnn {#1} {#2} {#3}
+}
+
+\NewDocumentCommand{\IsPeriodicCounterTF}{m+m+m}{%
+  \xassoccnt_is_periodiccounter:nTF{#1}{#2}{#3}%
+}
+
+\NewDocumentCommand{\IsPeriodicCounterT}{m+m}{%
+  \xassoccnt_is_periodiccounter:nT{#1}{#2}
+}
+
+\NewDocumentCommand{\IsPeriodicCounterF}{m+m}{%
+  \xassoccnt_is_periodiccounter:nF{#1}{#2}
+}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%% Redefinition of standard counter macros 
+
+
+
+\NewDocumentCommand{\stepcounteroldnototal}{m}{% 
+  \__xassoccnt_translate_countername:cn {l_tmpa_tl} {#1}%
+  \xassoccnt_is_suspendedcounter:nF{#1}{%
+    \xassoccnt_is_coupledcounter:nTF {#1}
+    { \xassoccnt_stepcounter_coupledcounters:n{#1} }
+    {% No, not a coupled counter!
+      \cs_gset_nopar:Nn \__xassoccnt_laststeppedcounter: {\l_tmpa_tl}%
+      \xassoccnt_countersinresetlist:n{\l_tmpa_tl}%
+      \__xassoccnt_getresetlist:n {\l_tmpa_tl}%
+      \seq_if_empty:NTF  \l__xassoccnt_counterreset_seq 
+      {%
+        \xassoccnt_standardaddtocounter{\l_tmpa_tl}{\c_one}% Use the original one!
+        \int_gset:Nn \g__xassoccnt_lastcountervalue_int {\number\value{\l_tmpa_tl}}%
+        \__xassoccnt_step_associatedcounters:n {\l_tmpa_tl} 
+      }{ % reset list is not empty!
+        % This is the replacement of \csname cl@#1\endcsname
+        \xassoccnt_standardaddtocounter{\l_tmpa_tl}{\c_one}
+        \seq_map_inline:Nn \l__xassoccnt_counterreset_seq {%
+          \xassoccnt_is_drivercounter:nTF{##1}{%
+            \csname c@##1\endcsname\c_zero % Reset but do not increase
+          }{%
+            \csname c@##1\endcsname\c_minus_one
+            \xassoccnt_standardstepcounter{##1}%
+          }
+        }
+        \__xassoccnt_step_associatedcounters:n {\l_tmpa_tl} % step the remaining associated counters
+      }% End of not empty reset list
+    }% End of coupled counters
+  } % end of not suspended counter
+}
+
+
+
+\NewDocumentCommand{\stepcounterTotal}{m}{% 
+  \__xassoccnt_translate_countername:cn {l_tmpa_tl} {#1}%
+  \xassoccnt_is_suspendedcounter:nF{#1}{%
+    \xassoccnt_is_coupledcounter:nTF {#1}
+    { \xassoccnt_stepcounter_coupledcounters:n{#1} }
+    {% No, not a coupled counter!
+      \cs_gset_nopar:Nn \__xassoccnt_laststeppedcounter: {\l_tmpa_tl}%
+      \xassoccnt_countersinresetlist:n{\l_tmpa_tl}%
+      \__xassoccnt_getresetlist:n {\l_tmpa_tl}%
+      \seq_if_empty:NTF  \l__xassoccnt_counterreset_seq 
+      {%
+        \xassoccnt_standardaddtocounter{\l_tmpa_tl}{\c_one}% Use the original one!
+        \int_gset:Nn \g__xassoccnt_lastcountervalue_int {\number\value{\l_tmpa_tl}}%
+        \__xassoccnt_step_associatedcounters:n {\l_tmpa_tl} 
+      }{ % reset list is not empty!
+        % This is the replacement of \csname cl@#1\endcsname
+        \xassoccnt_standardaddtocounter{\l_tmpa_tl}{\c_one}
+        \seq_map_inline:Nn \l__xassoccnt_counterreset_seq {%
+          \xassoccnt_is_drivercounter:nTF{##1}{%
+            \csname c@##1\endcsname\c_zero % Reset but do not increase
+          }{%
+            \csname c@##1\endcsname\c_minus_one
+            \xassoccnt_standardstepcounter{##1}%
+          }
+        }
+        \__xassoccnt_step_associatedcounters:n {\l_tmpa_tl} % step the remaining associated counters
+      }% End of not empty reset list
+    }% End of coupled counters
+  } % end of not suspended counter
+  \__xassoccnt_is_totalcounter:nT {#1} {%
+    \__xassoccnt_store_totalcounter_value:n {#1}%
+  }
+}
+
+
+\RenewDocumentCommand{\stepcounter}{m}{% 
+  \__xassoccnt_translate_countername:cn {l_tmpa_tl} {#1}%
+  \xassoccnt_is_suspendedcounter:nF{#1}{%
+    \xassoccnt_stepcounter_periodiccounter:n {#1}%
+    \xassoccnt_is_coupledcounter:nTF {#1}
+    { \xassoccnt_stepcounter_coupledcounters:n{#1} }
+    {% No, not a coupled counter!
+      \cs_gset_nopar:Nn \__xassoccnt_laststeppedcounter: {\l_tmpa_tl}%
+      \xassoccnt_countersinresetlist:n{\l_tmpa_tl}%
+      \__xassoccnt_getresetlist:n {\l_tmpa_tl}%
+      \seq_if_empty:NTF  \l__xassoccnt_counterreset_seq 
+      {%
+        \xassoccnt_standardaddtocounter{\l_tmpa_tl}{\c_one}% Use the original one!
+        \int_gset:Nn \g__xassoccnt_lastcountervalue_int {\number\value{\l_tmpa_tl}}%
+        \__xassoccnt_step_associatedcounters:n {\l_tmpa_tl} 
+      }{ % reset list is not empty!
+        % This is the replacement of \csname cl@#1\endcsname
+        \xassoccnt_standardaddtocounter{\l_tmpa_tl}{\c_one}
+        \seq_map_inline:Nn \l__xassoccnt_counterreset_seq {%
+          \xassoccnt_is_drivercounter:nTF{##1}{%
+            \csname c@##1\endcsname\c_zero % Reset but do not increase
+          }{%
+            \csname c@##1\endcsname\c_minus_one
+            \xassoccnt_standardstepcounter{##1}%
+          }
+        }
+        \__xassoccnt_step_associatedcounters:n {\l_tmpa_tl} % step the remaining associated counters
+      }% End of not empty reset list
+    }% End of coupled counters
+  } % end of not suspended counter
+  \__xassoccnt_is_totalcounter:nT {#1} {%
+    \__xassoccnt_store_totalcounter_value:n {#1}%
+  }
+}
+
+\RenewDocumentCommand{\addtocounter}{mmO{}}{%
+  \xassoccnt_is_periodiccounter:nTF {#1}{%
+    \xassoccnt_addtocounter_periodiccounter:nnn {#1} {#2} {#3}%
+  }{%
+    \xassoccnt_standardaddtocounter{#1}{#2}%
+  }
+}
+
+
+
+
+
+
+
+\NewDocumentCommand{\xassoccnt_addtocounter}{mmO{}}{%
+  % Only add to a counter if this counter isn't on the suspended counters list!
+  \xassoccnt_is_suspendedcounter:nF{#1}{%
+    \__xassoccnt_translate_countername:cn {l_tmpb_tl} {#1}%
+    \xassoccnt_standardaddtocounter{\l_tmpb_tl}{#2}%
+    \cs_gset_nopar:Nn \__xassoccnt_lastaddtocounter: {\l_tmpb_tl}%
+  }%
+  % Now check if #1 is a total counter and set the property correspondingly
+  \__xassoccnt_is_totalcounter:nT {#1} {%
+    \__xassoccnt_store_totalcounter_value:n {#1}%
+  }
+}
+
+
+\RenewDocumentCommand{\xassoccnt_addtocounter}{mmO{}}{%
+  % Only add to a counter if this counter isn't on the suspended counters list!
+  \xassoccnt_is_suspendedcounter:nF{#1}{%
+    \__xassoccnt_translate_countername:cn {l_tmpb_tl} {#1}%
+    \xassoccnt_standardaddtocounter{\l_tmpb_tl}{#2}%
+    \cs_gset_nopar:Nn \__xassoccnt_lastaddtocounter: {\l_tmpb_tl}%
+  }%
+  % Now check if #1 is a total counter and set the property correspondingly
+  \__xassoccnt_is_totalcounter:nT {#1} {%
+    \__xassoccnt_store_totalcounter_value:n {#1}%
+  }
+}
+
+
+
+\cs_new:Nn \__xassoccnt_setdocumentcounter:nnn {%
+  \__xassoccnt_translate_countername:cn {l_tmpa_tl} {#2}%
+  \xassoccnt_standardsetcounter{\l_tmpa_tl}{#3}%
+  \clist_clear:N \l__xassoccnt_onlycounters_clist 
+  \keys_set:nn {xassoccnt}{#1}%
+  \bool_if:nTF {\l__xassoccnt_setcounter_associated } {%
+    \seq_if_exist:cT { \__xassoccnt_drivercontainer:n{#2} }
+    { \seq_map_inline:cn {\__xassoccnt_drivercontainer:n{#2} } 
+      { 
+        \__xassoccnt_translate_countername:cn {l_tmpb_tl} {##1}%
+        \xassoccnt_standardsetcounter{\l_tmpb_tl}{#3} }
+    }% End of \seq_if_exist
+  }{%
+    % Check whether the `onlycounters` - clist is empty -- if not, loop through the list
+    \clist_if_empty:NF \l__xassoccnt_onlycounters_clist {% 
+      \seq_if_exist:cT { \__xassoccnt_drivercontainer:n{#2} }
+      {  
+        \clist_map_inline:Nn \l__xassoccnt_onlycounters_clist 
+        { % Check first if ##1 is associated to #2 at all
+          \__xassoccnt_translate_countername:cn {l_tmpb_tl} {##1}%
+         \xassoccnt_is_associatedtocounter:nnT {#2} {\l_tmpb_tl} { \xassoccnt_standardsetcounter{\l_tmpb_tl}{#3} }
+        }
+      }
+    }
+  }
+  \cs_gset_nopar:Nn \__xassoccnt_lastsetdocumentcounter: {#2}%
+  \int_gset:Nn \g__xassoccnt_lastcountervalue_int {\number\value{\l_tmpa_tl}}%
+}
+
+
+\cs_new:Nn \__xassoccnt_synccounters:nn {%
+  \int_set:Nn \l_tmpa_int {\value{#2}}
+  \__xassoccnt_setdocumentcounter:nnn {associatedtoo=true,#1}{#2}{\l_tmpa_int} % copy the driver counter value to all associated counters
+  \int_zero:N \l_tmpa_int
+}
+
+\cs_new:Nn \__xassoccnt_copycounters:nnn {%
+  \xassoccnt_standardsetcounter{#3}{\value{#2}}
+}
+
+
+\cs_new:Nn \__xassoccnt_swapcounters:nnn {%
+  \int_set:Nn \l_tmpa_int {\value{#2}}%
+  \xassoccnt_standardsetcounter{#2}{\value{#3}}
+  \xassoccnt_standardsetcounter{#3}{\l_tmpa_int}
+  \int_zero:N \l_tmpa_int
+}
+
+\cs_new:Nn \__xassoccnt_getresetlist:n {% 
+  \begingroup
+  \seq_gclear:N \l__xassoccnt_counterreset_seq
+  \def\@elt##1{\seq_gput_right:Nn \l__xassoccnt_counterreset_seq {##1} }
+  \use:c{cl@#1}
+  \endgroup
+}
+
+\newcommand{\showresetlist}[1]{%
+  \__xassoccnt_getresetlist:n {#1} 
+  \seq_use:Nn \l__xassoccnt_counterreset_seq {\par}
+}
+
+\NewDocumentCommand{\SetDocumentCounter}{O{associatedtoo=false}mm}{%
+  \__xassoccnt_setdocumentcounter:nnn {#1}{#2}{#3} % copy the driver counter value to all associated counters
+}
+
+
+
+\NewDocumentCommand{\StepDownCounter}{O{}m}{%
+  \SubtractFromCounter[#1]{#2}{1}%
+}
+
+\NewDocumentCommand{\SubtractFromCounter}{O{}mm}{%
+  \xassoccnt_addtocounter{#2}{-#3}[#1]%
+}
+
+
+
+\NewDocumentCommand{\SyncCounters}{om}{%
+  \IfValueTF{#1}{%
+    \__xassoccnt_synccounters:nn {#1}{#2}
+  }{%
+    \__xassoccnt_synccounters:nn {}{#2}
+  }
+}
+
+
+\RenewDocumentCommand{\setcounter}{mm}{%
+  \__xassoccnt_translate_countername:cn {l_tmpb_tl}{#1}%
+  \cs_gset_nopar:Nn \__xassoccnt_lastsetcounter: {#1}
+  \xassoccnt_standardsetcounter{\tl_use:N \l_tmpb_tl}{#2}%
+  \int_gset:Nn \g__xassoccnt_lastcountervalue_int {\number\value{\l_tmpb_tl}}%
+  \__xassoccnt_is_totalcounter:nT {#1} {%
+    \__xassoccnt_store_totalcounter_value:n {#1}%
+    %\prop_put:Nnn \g_xassoccnt_totalcounter_prop {#1} {\number\value{\tl_use:N \l_tmpa_tl}}
+  }
+}
+
+
+
+\RenewDocumentCommand{\refstepcounter}{m}{%
+  \seq_if_in:NxF \g_xassoccnt_suspendedcnt_seq {#1} {%
+    \cs_gset_nopar:Nn \__xassoccnt_lastrefsteppedcounter: {#1}
+    \xassoccnt_standardrefstepcounter{#1}%
+    \int_gset:Nn \g__xassoccnt_lastcountervalue_int {\number\value{#1}}%
+  }
+}
+
+
+%%%% Now some expandable wrapper macros for information on the last counter changed
+
+\newcommand{\LastSteppedCounter}{%
+  \__xassoccnt_laststeppedcounter:
+}
+
+
+\newcommand{\LastRefSteppedCounter}{%
+  \__xassoccnt_lastrefsteppedcounter:
+}
+
+\newcommand{\LastAddedToCounter}{%
+  \__xassoccnt_lastaddtocounter:
+}
+
+\newcommand{\LastSetCounter}{%
+  \__xassoccnt_lastsetcounter:
+}
+
+\newcommand{\LastSetDocumentCounter}{%
+  \__xassoccnt_lastsetdocumentcounter:
+}
+
+
+%%%%%%%%%
+
+
+\newcommand{\LastCounterValue}{%
+  \int_use:N \g__xassoccnt_lastcountervalue_int
+}
+
+
+
+
+
+\NewDocumentCommand{\NewDocumentCounter}{O{initial=\c_zero}mo}{%
+  \IfValueTF{#3}{%
+    \__xassoccnt_newcounter_ltx:nnn{#1}{#2}{#3}
+  }{%
+    \__xassoccnt_newcounter_ltx:nnn{#1}{#2}{}
+  }
+}
+
+
+
+\NewDocumentCommand{\CopyDocumentCounters}{O{}mm}{% 
+  \__xassoccnt_copycounters:nnn{#1}{#2}{#3}%
+}
+
+\NewDocumentCommand{\SwapDocumentCounters}{O{}mm}{% 
+  \__xassoccnt_swapcounters:nnn{#1}{#2}{#3}%
+}
+
+
+
+\newcommand{\countersresetlistcount}[1]{%
+  \int_zero:N \l_xassoccnt_resetlist_counter%
+  \xassoccnt_countersinresetlist:n{#1}%
+}
+
+\newcommand{\getresetlistcount}{%
+  \int_use:N  \l_xassoccnt_resetlist_counter
+}
+
+\bool_new:N \l__xassoccnt_isinresetlist_bool
+
+
+\prg_new_conditional:Nnn \__xassoccnt_ifinresetlist:nn {T,F,TF}
+{%
+  \bool_set_false:N \l__xassoccnt_isinresetlist_bool
+  \cs_set:Nn \l__tmpa_cs: {#2}
+  \def\@elt##1{% Can't use \cs_new:Nn here :-(
+    \cs_set:Nn \l__tmpb_cs: {##1}
+    % Check if \l__tmpa_cs: and \l__tmpb_cs: are equal
+    \cs_if_eq:NNT \l__tmpa_cs: \l__tmpb_cs: {
+    \bool_set_true:N \l__xassoccnt_isinresetlist_bool
+    }
+  }
+  \use:c{ cl@#1 }
+  \bool_if:nTF {\l__xassoccnt_isinresetlist_bool}{%
+    \prg_return_true:
+  }{%
+    \prg_return_false:
+  }
+}
+
+\NewDocumentCommand{\IfInResetListTF}{omm+m+m}{%
+  \bool_set_true:N \l__xassoccnt_isinresetlist_bool
+  \__xassoccnt_ifinresetlist:nnTF{#2}{#3}{#4}{#5}%
+}
+
+\NewDocumentCommand{\IfInResetListT}{omm+m}{%
+  \__xassoccnt_ifinresetlist:nnT{#2}{#3}{#4}%
+}
+
+\NewDocumentCommand{\IfInResetListF}{omm+m}{%
+  \__xassoccnt_ifinresetlist:nnF{#2}{#3}{#4}%
+}
+
+
+% Pretty printing counters
+
+\NewDocumentCommand{\PrettyPrintCounterName}{+mm}{%
+  \keys_set:nn {xassoccnt} {countertype=general,#1}%
+  \bool_if:nTF {\l__xassoccnt_countertype_general}
+  {
+    \fbox{\textcolor{\GeneralCounterInfoColor}{\textbf{#2}}}
+  }
+  { 
+    \bool_if:nTF {\l__xassoccnt_countertype_driver} { 
+      \fbox{\textcolor{\DriverCounterInfoColor}{\textbf{#2}}}%
+    }{
+      \bool_if:nTF {\l__xassoccnt_countertype_associated }
+      {%
+        \fbox{\textcolor{\AssociatedCounterInfoColor}{\textbf{#2}}}%
+      }{%
+      \bool_if:nTF {\l__xassoccnt_countertype_total }
+      {%
+        \fbox{\textcolor{\TotalCounterInfoColor}{\textbf{#2}}}%
+      }{
+        Error}%
+      }
+    }%
+  }%
+}
+
+%%%%%%%%%%% Total counter features
+
+\NewDocumentCommand{\IsTotalCounterTF}{m+m+m}{%
+  \__xassoccnt_is_totalcounter:nTF { #1 } 
+  { #2 }
+  { #3 }
+}
+
+\NewDocumentCommand{\IsTotalCounterT}{m+m}{%
+  \__xassoccnt_is_totalcounter:nT { #1 } 
+  { #2 }
+}
+
+\NewDocumentCommand{\IsTotalCounterF}{m+m}{%
+  \__xassoccnt_is_totalcounter:nF { #1 } 
+  { #2 }
+}
+
+\NewDocumentCommand{\NewTotalDocumentCounter}{O{}m}{%
+  \keys_set:nn {xassoccnt} {supertotal=false,#1}
+  \__xassoccnt_ifis_latexcounter:nF {#2} {% Define the counter
+    \xassoccnt_declaredocumentcounter:nn{sloppy=false}{#2}%
+  }%
+  \__xassoccnt_registertotaldocumentcounter:nn{#1}{#2}
+}
+
+\cs_new:Nn \__xassoccnt_store_totalcounter_value:n {%
+  \prop_put:Nnn \g_xassoccnt_totalcounter_prop {#1} {\number\value{\__xassoccnt_expand_totalcountername:n{#1}}}
+}
+
+\cs_new:Nn \__xassoccnt_registertotaldocumentcounter:nn {%
+  \keys_set:nn {xassoccnt} {supertotal=false,#1}
+  \__xassoccnt_ifis_latexcounter:nF {#2} {% Counter does not exist -- do not autodefine
+    \msg_error:nnn{xassoccnt}{nameisnocounter}{#2}%    
+  }%
+  % If the counter already exists -> check for the internal totalcounter name
+  \cs_if_exist:cF { c@\__xassoccnt_expand_totalcountername:n{#2} }
+  { 
+    \xassoccnt_declaredocumentcounter:nn{sloppy=false,initial={\c_minus_one}}{\__xassoccnt_expand_totalcountername:n{#2}}%
+    \seq_gput_right:Nx \g__xassoccnt_totalcounter_container {\__xassoccnt_expand_totalcountername:n{#2}}%
+    \__xassoccnt_store_totalcounter_value:n {#2}%
+    %\prop_put:Nnn \g_xassoccnt_totalcounter_prop {#2} {\number\value{\__xassoccnt_expand_totalcountername:n{#2}}}
+    \bool_if:NT \l__xassoccnt_is_supertotalcounter_bool {%
+      \__xassoccnt_add_supertotalcounter:n {#2}
+    }
+    \AtEndDocument{%
+      \__xassoccnt_writetotalcounters:nn {#2}{#2}
+    }%
+  }%
+}
+
+\NewDocumentCommand{\RegisterTotalDocumentCounter}{O{}m}{%
+  \__xassoccnt_registertotaldocumentcounter:nn{#1}{#2}%
+}
+
+
+\newcommand{\TotalValue}[1]{%
+%  \seq_use:Nn \g__xassoccnt_totalcounter_container {\par}%
+  \tl_set:Nx \l_tmpa_tl {\__xassoccnt_expand_totalcountername:n{#1}}
+  \tl_set:Nx \l_tmpb_tl {#1}%
+  \seq_if_in:NnTF \g__xassoccnt_supertotalcounter_container {\l_tmpb_tl }{%
+    \tl_set:Nx \l_tmpa_tl {\__xassoccnt_expand_totalcountername:n{#1}}
+  }{%
+    \seq_if_in:NVF \g__xassoccnt_totalcounter_container {\l_tmpa_tl }{%
+      \tl_set:NV \l_tmpa_tl {#1}%
+    }
+  }
+  \number\value{\tl_use:N \l_tmpa_tl}%
+}
+
+\renewcommand{\TotalValue}[1]{%
+  \prop_item:Nn \g_xassoccnt_totalcounter_prop {#1}%
+}
+
+%\newcommand{\loadstore}
+
+
+
+\cs_new:Nn \__xassoccnt_writetotalcounters:nn {%
+  \immediate\write\@mainaux {%
+    \string\IfIsDocumentCounterF\expandafter{\__xassoccnt_expand_totalcountername:n{#1}}{\string\DeclareDocumentCounter\expandafter{\__xassoccnt_expand_totalcountername:n{#1}}}
+  }
+  \seq_if_in:NnTF \g__xassoccnt_supertotalcounter_container {#1} {%
+    \immediate\write\@mainaux{%
+      \string\setcounter{\__xassoccnt_expand_totalcountername:n{#1}}{\number\value{\__xassoccnt_expand_totalcountername:n{#1}}}%
+    }
+  }{
+    \immediate\write\@mainaux{%
+      \string\setcounter{\__xassoccnt_expand_totalcountername:n{#1}}{\number\value{#2}}%
+    }
+  }
+}
+
+
+
+\NewDocumentCommand{\TotalCounterInternalName}{m}{%
+  \__xassoccnt_is_totalcounter:nTF { #1 }
+  { \__xassoccnt_expand_totalcountername:n {#1} }
+  { #1 } %
+}
+
+%%% Super total counter features
+
+\cs_new:Nn \__xassoccnt_add_supertotalcounter:n {%
+  \cs_if_exist:cTF {c@#1} {%
+    \seq_gput_right:Nx \g__xassoccnt_supertotalcounter_container {#1}
+  }{%
+    % Some warning/error message later on here!
+  }
+}
+
+\cs_new:Nn \__xassoccnt_remove_supertotalcounter:n {%
+  \seq_gremove_all:Nn \g__xassoccnt_supertotalcounter_container {#1}
+}
+
+
+\prg_new_conditional:Nnn \__xassoccnt_is_supertotalcounter:n {T,F,TF}
+{%
+  \seq_if_in:NxTF \g__xassoccnt_supertotalcounter_container { #1 }
+  {
+    \prg_return_true:
+  }{%
+    \prg_return_false:
+  }%
+}
+
+
+\NewDocumentCommand{\IsSuperTotalCounterTF}{m+m+m}{%
+  \__xassoccnt_is_supertotalcounter:nTF { #1 } 
+  { #2 }
+  { #3 }
+}
+
+\NewDocumentCommand{\IsSuperTotalCounterT}{m+m}{%
+  \__xassoccnt_is_supertotalcounter:nT { #1 } 
+  { #2 }
+}
+
+\NewDocumentCommand{\IsSuperTotalCounterF}{m+m}{%
+  \__xassoccnt_is_supertotalcounter:nF { #1 } 
+  { #2 }
+}
+
+%%% Counter backup list features
+
+% Those macros all deal with the global reset list%
+
+
+\cs_new:Nn \__xassoccnt_renew_theHmacros:n {%
+  \bool_if:NT \l__xassoccnt_hyperrefpackage_loaded_bool {%
+    \cs_if_exist:cT {theH#1} {%
+      \cs_gset_eq:cc {xassoccnt_theH#1} {theH#1}%
+      \expandafter\renewcommand\csname theH#1\endcsname{xassoccnt.\int_use:N \g__xassoccnt_backupcalls_int.#1.\number\value{#1}}%
+    }%
+  }
+}
+\cs_new:Nn \__xassoccnt_restore_theHmacros:n {%
+  \bool_if:NT \l__xassoccnt_hyperrefpackage_loaded_bool {%
+    \cs_if_exist:cT {theH#1} {%
+      \cs_gset_eq:cc {theH#1} {xassoccnt_theH#1} %
+    }%
+  }%
+}
+
+
+\cs_new:Nn \__xassoccnt_addcountertobackuplist_with_reset:nn {%
+  % Prevent multiple addition of a counter name
+  \seq_if_in:NnF #1 {#2}
+  {
+    \seq_gput_right:Nn \l__xassoccnt_backupresetlist_seq {\c_one} 
+    \seq_gput_right:Nn #1 { #2 } 
+  }
+}
+
+
+\cs_new:Nn \__xassoccnt_addcountertobackuplist_without_reset:nn {%
+  % Prevent multiple addition of a counter name
+  \seq_if_in:NnF #1 {#2}
+  {
+    \seq_gput_right:Nn \l__xassoccnt_backupresetlist_seq {\c_zero} 
+    \seq_gput_right:NV #1 {#2} 
+  }
+}
+
+
+
+\cs_new:Nn \__xassoccnt_removestar:n {%
+  \tl_clear:N \l_tmpa_tl
+  \clist_set:Nx \l_tmpa_clist {#1}
+  \clist_map_inline:Nn \l_tmpa_clist {%
+    \tl_clear:N \l_tmpa_tl%
+    \tl_if_in:nnTF {##1} {*} 
+    { 
+      \tl_set:Nn \l_tmpa_tl {##1}
+      \tl_remove_all:Nn \l_tmpa_tl {*}
+      \__xassoccnt_addcountertobackuplist_without_reset:nn { \l__xassoccnt_counternamesbackup_seq } {\l_tmpa_tl }
+    }{%
+      \__xassoccnt_addcountertobackuplist_with_reset:nn {\l__xassoccnt_counternamesbackup_seq} {##1}
+    }
+  }%
+}
+
+\cs_new:Nn \__xassoccnt_removestarsinglevalue:n {%
+  \tl_clear:N \l_tmpa_tl%
+  \tl_if_in:nnTF {#1} {*} 
+  { 
+    \tl_set:Nn \l_tmpa_tl {#1}
+    \tl_remove_all:Nn \l_tmpa_tl {*}
+    \__xassoccnt_addcountertobackuplist_without_reset:nn { \l__xassoccnt_counternamesbackup_seq } {\l_tmpa_tl }
+  }{%
+    \__xassoccnt_addcountertobackuplist_with_reset:nn {\l__xassoccnt_counternamesbackup_seq} {#1}
+  }
+}
+
+
+
+\cs_new:Nn \__xassoccnt_backupcountervalues:nnn {%
+  \seq_map_inline:Nn \l__xassoccnt_counternamesbackup_seq {%
+    \int_incr:N \l_tmpa_int
+    \__xassoccnt_ifis_latexcounter:nTF {##1} {% Check whether this is a counter at all!
+      % Store the old `\theH....` definition if preset
+      \__xassoccnt_renew_theHmacros:n {##1 }
+      \seq_gput_right:Nx \l__xassoccnt_countervaluesbackup_seq { \number\value{##1} }
+      % Check first if the counter name is starred -> no resetting then
+      \int_compare:nNnF { \seq_item:Nn \l__xassoccnt_backupresetlist_seq {\int_use:N \l_tmpa_int }} = { \c_zero } 
+      {%
+        \bool_if:NT \l__xassoccnt_resetbackupcounters_bool {%
+          \setcounter{##1}{\c_zero}%
+        }%
+      }%
+    }{%
+      \msg_error:nnn{xassoccnt}{nameisnocounter}{##1}%
+    }%
+  }%
+}
+
+
+\cs_new:Nn \__xassoccnt_backupsinglecountervalue:n {%
+  \int_set:Nn \l_tmpa_int {\seq_count:N \l__xassoccnt_backupresetlist_seq}%
+  \__xassoccnt_ifis_latexcounter:nTF {#1} {% Check whether this is a counter at all!
+    % Store the old `\theH....` definition if preset
+    \__xassoccnt_renew_theHmacros:n { #1 }
+    \seq_gput_right:Nx \l__xassoccnt_countervaluesbackup_seq { \number\value{#1} }
+    % Check first if the counter name is starred -> no resetting then
+    \int_compare:nNnF { \seq_item:Nn \l__xassoccnt_backupresetlist_seq {\int_use:N \l_tmpa_int }} = { \c_zero } 
+    {%
+      \bool_if:NT \l__xassoccnt_resetbackupcounters_bool {%
+        \setcounter{#1}{\c_zero}%
+      }%
+    }%
+  }{%
+    \msg_error:nnn{xassoccnt}{nameisnocounter}{#1}%
+  }%
+}
+
+
+\cs_new:Nn \__xassoccnt_restorecountervalues:n {
+  \int_zero:N \l_tmpa_int % dummy 'counter'
+  \seq_map_inline:cn {#1} {%
+    \int_incr:N \l_tmpa_int % Increment the local 'counter'
+    \setcounter{##1}{\seq_item:Nn \l__xassoccnt_countervaluesbackup_seq {\int_use:N \l_tmpa_int }}
+    \__xassoccnt_restore_theHmacros:n {##1}%
+   }
+}
+
+
+\NewDocumentCommand{\BackupCounterValues}{O{resetbackup=true}m}{%
+  \keys_set:nn{xassoccnt}{#1}
+  \int_incr:N \g__xassoccnt_backupcalls_int
+  \int_zero:N \l_tmpa_int
+  \seq_clear:N \l__xassoccnt_countervaluesbackup_seq
+  \seq_clear:N \l__xassoccnt_backupresetlist_seq
+  \__xassoccnt_addbackupcounter:nnn {#1}{}{#2}%  
+  \seq_clear:N \l__xassoccnt_backupresetlist_seq%
+}
+
+\NewDocumentCommand{\RemoveBackupCounterInternal}{sO{}m}{%
+  \tl_set:Nn \l_tmpa_tl {#3}
+  \int_zero:N \l_tmpa_int%
+  \int_zero:N \l_tmpb_int%
+
+  \seq_clear:N \l_tmpa_seq%
+  \seq_if_in:NnT \l__xassoccnt_counternamesbackup_seq {#3} {%
+    \seq_map_inline:Nn  \l__xassoccnt_counternamesbackup_seq 
+    {%
+      \int_incr:N \l_tmpa_int
+      \tl_set:Nn \l_tmpb_tl {##1}
+      % Get the value of the current counter 
+      \int_set:Nn \l_tmpb_int {\seq_item:Nn \l__xassoccnt_countervaluesbackup_seq {\l_tmpa_int }}
+      \tl_if_eq:NNTF \l_tmpa_tl \l_tmpb_tl
+      { % Restore the old \theH#3 definition 
+        \__xassoccnt_restore_theHmacros:n {#3}% 
+        \IfBooleanF{#1}{ \setcounter{#3}{\l_tmpb_int } } 
+      }{
+        \seq_put_right:NV \l_tmpa_seq { \l_tmpa_int }
+      }% End of \tl_if_eq:NNTF
+    }% End of \seq_map_inline
+  } % No F - Branch needed here (most likely ;-))
+}
+
+
+
+
+\NewDocumentCommand{\RemoveBackupCounters}{sO{}m}{%
+  \clist_set:Nn \l_tmpa_clist {#3}
+  % Loop through the list
+  \clist_map_inline:Nn \l_tmpa_clist {%
+    \IfBooleanTF{#1}{%
+      \RemoveBackupCounterInternal*{##1}%
+    }{%
+      \RemoveBackupCounterInternal*{##1}%
+    }
+  }
+}
+ 
+\NewDocumentCommand{\RestoreAllCounterValues}{O{}}{%
+  \__xassoccnt_restorecountervalues:n {l__xassoccnt_counternamesbackup_seq }
+   \seq_clear:N \l__xassoccnt_countervaluesbackup_seq % clear the value list
+   \seq_clear:N \l__xassoccnt_counternamesbackup_seq  % clear the name  list
+}
+
+
+% \Restore is \Remove with restoring (of course)
+\NewDocumentCommand{\RestoreCounterValues}{O{}m}{%
+  \clist_set:Nn \l_tmpa_clist {#2}
+  \clist_map_inline:Nn \l_tmpa_clist {%
+    \RemoveBackupCounterInternal{##1}%
+  }
+}
+
+
+\cs_new:Nn \__xassoccnt_addbackupcounter:nnn {%
+  % Remove first the stars from the counter names that should not be reset!
+  \__xassoccnt_removestar:n {#3} 
+  % Now backup the counter values 
+  \__xassoccnt_backupcountervalues:nnn {#3}{}{}
+}
+
+
+\NewDocumentCommand{\AddBackupCounter}{O{}m}{%
+  \clist_set:Nx \l_tmpa_clist {#2}
+  \clist_map_inline:Nn \l_tmpa_clist {%
+    \__xassoccnt_removestarsinglevalue:n{##1}%
+    \__xassoccnt_backupsinglecountervalue:n{##1}%
+  }
+}
+
+
+%%%% More simplifying macros for doing similar steps for all counters in the comma separated list
+
+
+\NewDocumentCommand{\LoopAddtoCounters}{+mm}{%
+  \clist_set:Nx \l_tmpa_clist {#1}%
+  \clist_map_inline:Nn \l_tmpa_clist { \addtocounter{##1}{#2} }
+}
+
+\NewDocumentCommand{\LoopRefstepCounters}{+mm}{%
+  \clist_set:Nx \l_tmpa_clist {#1}%
+  \clist_map_inline:Nn \l_tmpa_clist { \refstepcounter{##1}{#2} }
+}
+
+\NewDocumentCommand{\LoopResetCounters}{+m}{%
+  \LoopSetCounters{#1}{0}
+}
+
+\NewDocumentCommand{\LoopStepCounters}{+m}{%
+  \clist_set:Nx \l_tmpa_clist {#1}%
+  \clist_map_inline:Nn \l_tmpa_clist { \stepcounter{##1} }
+}
+
+\NewDocumentCommand{\LoopSetCounters}{+mm}{%
+  \clist_set:Nx \l_tmpa_clist {#1}%
+  \clist_map_inline:Nn \l_tmpa_clist { \setcounter{##1}{#2} }
+}
+
+\NewDocumentCommand{\LoopCountersFunction}{+m+m}{%
+  \clist_set:Nx \l_tmpa_clist {#1}%
+  \clist_map_inline:Nn \l_tmpa_clist { #2{##1} }
+}
+
+
+
+
+%%%%
+
+%% Counter-Values-Mapping-To-Something-Different - Macros
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%
+
+%% Reporting Macros
+
+\NewDocumentCommand{\ShowResetList}{m}{%
+  \xassoccnt_report_resetlist:n{#1}%
+}
+
+\NewDocumentCommand{\DisplayResetList}{O{,}m}{%
+  \__xassoccnt_getresetlist:n {#2}
+  \seq_use:Nn \l__xassoccnt_counterreset_seq {#1}
+}
+
+
+
+%%%%%%%%%%%%%%%%%%%%
+
+\cs_new:Nn \xassoccnt_declaredocumentcounteropt:nnn{%
+  \__xassoccnt_newcounter_ltx:nnn{#1}{#2}{#3}%
+}
+
+\cs_new:Nn \xassoccnt_declaredocumentcounter:nn{%
+  \__xassoccnt_newcounter_ltx:nn{#1}{#2}{}%
+}
+
+
+
+%%%%%%%%%%%%%%%%%%%%
+
+\NewDocumentCommand{\EnableNumberofrunsTF}{mm}{%
+  \bool_if:NF  \g__xassoccnt_nonumberofruns_bool {
+    #1
+  }{#2}
+}
+
+
+\NewDocumentCommand{\DeclareDocumentCounter}{O{initial={0}}mo}{%
+  \IfValueTF{#3}{%
+    \xassoccnt_declaredocumentcounteropt:nnn{#1}{#2}{#3}%
+  }{%
+    \xassoccnt_declaredocumentcounter:nn{#1}{#2}%
+  }%	
+}
+
+\ExplSyntaxOff
+
+
+
+\EnableNumberofrunsTF{%
+  \NewTotalDocumentCounter[supertotal=true]{numberofruns}
+  \AtBeginDocument{%
+    \stepcounter{numberofruns}%
+  }
+}{}
+
+
+  
+
+
+%%%%%%%%%%%
+
+% Extended interface functions
+
+
+
+\@onlypreamble{\NewTotalDocumentCounter}
+\@onlypreamble{\RegisterTotalDocumentCounter}
+\@onlypreamble{\DeclareAssociatedCounters}
+\@onlypreamble{\DeclareDocumentCounter}
+\@onlypreamble{\DeclareCoupledCounters}
+
+
+
+%%% Colour output routines
+
+\newcommand{\GeneralCounterInfoColor}{orange}
+\newcommand{\DriverCounterInfoColor}{blue}
+\newcommand{\AssociatedCounterInfoColor}{red}
+\newcommand{\TotalCounterInfoColor}{violet}
+
+
+
+
+
+\AddFeature[sublists=true]{coupledcounters}  % New style, not fully implemented so far
+\AddFeature[sublists=false]{periodiccounters}  % New style, not fully implemented so far
+
+
+% Some more to be done
+
+\endinput

@@ -1,0 +1,482 @@
+% \iffalse meta-comment
+%<*internal>
+\iffalse
+%</internal>
+%<*internal>
+\fi
+\def\nameofplainTeX{plain}
+\ifx\fmtname\nameofplainTeX\else
+  \expandafter\begingroup
+\fi
+%</internal>
+%<*install>
+\input docstrip.tex
+\keepsilent
+\askforoverwritefalse
+\preamble
+\endpreamble
+\ifx\fmtname\nameofplainTeX
+\generate{
+  \file{\jobname.sty}{\from{\jobname.dtx}{copyright,package}}
+}
+\fi
+%</install>
+%<install>\endbatchfile
+%<*internal>
+\ifx\fmtname\nameofplainTeX
+  \expandafter\endbatchfile\else
+  \expandafter\endgroup\fi
+%</internal>
+%<*copyright>
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ran_toks.sty package,           2013/08/03           %%
+%% Copyright (C) 2012  D. P. Story                      %%
+%%   dpstory@uakron.edu                                 %%
+%%                                                      %%
+%% This program can redistributed and/or modified under %%
+%% the terms of the LaTeX Project Public License        %%
+%% Distributed from CTAN archives in directory          %%
+%% macros/latex/base/lppl.txt; either version 1 of the  %%
+%% License, or (at your option) any later version.      %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%</copyright>
+%<package>\NeedsTeXFormat{LaTeX2e}
+%<package>\ProvidesPackage{ran_toks}
+%<package> [2016/02/06 v1.0e Randomizing tokens]
+%<*driver>
+\documentclass{ltxdoc}
+%\usepackage{\jobname}
+%\usepackage[numbered]{hypdoc}
+%\EnableCrossrefs
+%\CodelineIndex
+%\RecordChanges
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+%\GetFileInfo{\jobname.sty}
+%
+%\title{The  \textsf{ran\_toks} Package}
+%\author{D. P. Story}
+%\date{Released \today}
+%
+%\maketitle
+%
+%\StopEventually{^^A
+%  \PrintChanges
+%  \PrintIndex
+%}
+%
+%    \begin{macrocode}
+%<*package>
+%    \end{macrocode}
+% \paragraph*{Description.}
+% This short package randomizes a list of tokens. The command, \cs{ranToks},
+% takes one argument, which is, in turn, a list of tokens:
+%\begin{verbatim}
+%   \ranToks{<name>}
+%   {
+%       {tok_1}{tok_2}...{tok_n}
+%   }
+%\end{verbatim}
+% The command defines a series of $n$ internal commands, one for each of the tokens.
+% The definitions are essentially randomized. The randomized tokens are accessed through
+% the command \cs{useRanTok}. For example
+%\begin{verbatim}
+%       \useRanTok{1}, \useRanTok{2},..., \useRanTok{n}
+%\end{verbatim}
+% gives a random listing of the $n$ tokens. These can be arranged on the page
+% as desired.
+%
+% There is a second construct, designed for more elaborate randomization.
+%\begin{verbatim}
+%\bRTVToks{<name>}
+%\begin{rtVW}
+% <some content>
+%\end{rtVW}
+%...
+%...
+%\begin{rtVW}
+%<some content>
+%\end{rtVW}
+%\eRTVToks
+%\end{verbatim}
+% The contents of each of the \texttt{rtVW} environments are written to disk, then input
+% back in in random order, using \cs{useRanTok}, eg,
+%\begin{verbatim}
+%       \useRanTok{1}, \useRanTok{2},..., \useRanTok{n}
+%\end{verbatim}
+% Other details are left to the readers' imagination.
+%
+% \paragraph{Requirements.} As of this writing, we require only the \texttt{verbatim} package
+% and \texttt{random.tex}, the package was written by Donald Arseneau.
+%    \begin{macrocode}
+\RequirePackage{verbatim}
+%    \end{macrocode}
+% Input \texttt{random.tex} if now already input.
+%\changes{v1.0d}{2013/08/03}{Added conditional input of random.tex}
+%    \begin{macrocode}
+\@ifundefined{nextrandom}{\input{random.tex}}{}
+%    \end{macrocode}
+% We redefine \cs{nextrandom} from \texttt{random.tex} to save the initializing seed.
+%    \begin{macrocode}
+\def\nextrandom{\begingroup
+ \ifnum\randomi<\@ne % then initialize with time
+    \global\randomi\time
+    \global\multiply\randomi388 \global\advance\randomi\year
+    \global\multiply\randomi31 \global\advance\randomi\day
+    \global\multiply\randomi97 \global\advance\randomi\month
+    \message{Randomizer initialized to \the\randomi.}%
+    \nextrandom \nextrandom \nextrandom
+%    \end{macrocode}
+% Save the initial seed value to \cs{rtInitSeedValue}.
+% \changes{v1.0c}{2013/08/03}{Save the initial seed value to \cs{rtInitSeedValue}.}
+%    \begin{macrocode}
+    \xdef\InitSeedValue{\the\randomi}%
+ \fi
+ \count@ii\randomi
+ \divide\count@ii 127773 % modulus = multiplier * 127773 + 2836
+ \count@\count@ii
+ \multiply\count@ii 127773
+ \global\advance\randomi-\count@ii % random mod 127773
+ \global\multiply\randomi 16807
+ \multiply\count@ 2836
+ \global\advance\randomi-\count@
+ \ifnum\randomi<\z@ \global\advance\randomi 2147483647\relax\fi
+ \endgroup
+}
+%    \end{macrocode}
+% The code for this package was taken from the \textsf{dps} package, and modified
+% suitably. We use several token registers and count registers. This can probably
+% be optimized.
+%    \begin{macrocode}
+\newtoks\rt@listIn \rt@listIn={}
+\newtoks\rt@newListIn \rt@newListIn={}
+\newtoks\rt@listOut \rt@listOut={}
+\newcount\rt@nMax
+\newcount\rt@nCnt
+\newcount\rt@getRanNum
+\newif\ifrtdebug \rtdebugfalse
+\newif\ifwerandomize \werandomizetrue
+\newif\ifsaveseed\saveseedtrue
+\newwrite\rt@Verb@write
+%    \end{macrocode}
+%    \begin{macrocode}
+\def\rt@nameedef#1{\expandafter\edef\csname #1\endcsname}
+%    \end{macrocode}
+%
+% \section{Commands for controlling the process}
+%
+% \DescribeMacro{\ranToksOn}\DescribeMacro{\ranToksOff} These two turn on and turn off
+% randomization.
+%    \begin{macrocode}
+\def\ranToksOn{\werandomizetrue}
+\def\ranToksOff{\werandomizefalse}
+%    \end{macrocode}
+% \DescribeMacro{\useThisSeed} initializes the random number generator. Use this to reproduce
+% the same sequence of pseudo-random numbers from an earlier run. We also set
+% \cs{saveseedfalse} so we do not write the initial seed to the disk.
+%    \begin{macrocode}
+\def\useThisSeed#1{\saveseedfalse\randomi=#1}
+\@onlypreamble\useThisSeed
+%    \end{macrocode}
+% \DescribeMacro{\useLastAsSeed} initializes the random number generator using the
+% last random seed. If the file \cs{jobname\_rt.sav} does not exist, the generator will be
+% initialized using time and date data.
+%    \begin{macrocode}
+\def\useLastAsSeed{\rt@useLastAsSeed}
+\@onlypreamble\useLastAsSeed
+\def\rt@useLastAsSeed{%
+    \IfFileExists{\jobname_rt.sav}{%
+        \PackageInfo{ran_toks}{Inputting \jobname_rt.sav}%
+        \@ifundefined{readsavfile}{\newread\readsavfile}{}%
+        \openin\readsavfile=\jobname_rt.sav
+        \read\readsavfile to \InitSeedValue
+        \read\readsavfile to \lastRandomNum
+        \closein\readsavfile
+        \randomi=\lastRandomNum
+%    \end{macrocode}
+% When \cs{useLastAsSeed}, the last becomes the first.
+%    \begin{macrocode}
+        \xdef\InitSeedValue{\the\randomi}
+    }{%
+        \PackageInfo{ran_toks}{\jobname_rt.sav cannot
+        be found, \MessageBreak
+        using the random initializer}%
+    }%
+}
+\@ifundefined{aeb@randomizeChoices}{%
+    \let\inputRandomSeed\useLastAsSeed
+    \let\useRandomSeed\useThisSeed}{}
+%    \end{macrocode}
+%
+% \section{Utility commands}
+%
+% A standard \cs{verbatim} write used in exerquiz and other package in the AeB family.
+%    \begin{macrocode}
+\def\verbatimwrite{\@bsphack
+    \let\do\@makeother\dospecials
+    \catcode`\^^M\active \catcode`\^^I=12
+    \def\verbatim@processline{%
+        \immediate\write\verbatim@out
+        {\the\verbatim@line}}%
+    \verbatim@start}
+\def\endverbatimwrite{\@esphack}
+\def\rt@IWVO{\immediate\write\verbatim@out}
+%    \end{macrocode}
+% We write only if \cs{ifsaveseed} is true.
+%    \begin{macrocode}
+\def\InitSeedValue{\the\randomi}
+\def\rt@writeSeedData{%
+    \ifsaveseed
+        \@ifundefined{saveseedinfo}{\newwrite\saveseedinfo}{}
+        \immediate\openout \saveseedinfo \jobname_rt.sav
+        \let\verbatim@out\saveseedinfo
+        \def\rt@msgi{initializing seed value}%
+        \def\rt@msgii{last random number used}%
+        \uccode`c=`\%\uppercase{%
+        \rt@IWVO{\InitSeedValue\space c \rt@msgi}%
+        \rt@IWVO{\the\randomi\space c \rt@msgii}%
+        }\immediate\closeout\saveseedinfo
+    \fi
+}
+%    \end{macrocode}
+% Save the initial seed value to hard drive.
+%    \begin{macrocode}
+\AtEndDocument{\rt@writeSeedData}%
+%    \end{macrocode}
+% \DescribeMacro{\rt@populateList} is a utility command, its argument is a positive integer, \texttt{n},
+% and it generates a list of the form \verb!\\{1}\\{2}...\\{n}! and is held in the
+% token register \cs{rt@listIn}  This listing is later
+% randomly permuted by \cs{rt@RandomizeList}.
+%    \begin{macrocode}
+\def\rt@populateList#1{%
+    \rt@listIn={}%
+    \rt@nCnt=0
+    \@whilenum\rt@nCnt<#1\do{%
+        \advance\rt@nCnt1
+        \edef\rt@listInHold{\the\rt@listIn\noexpand\\{\the\rt@nCnt}}%
+        \rt@listIn=\expandafter{\rt@listInHold}%
+    }%
+}
+%    \end{macrocode}
+% \DescribeMacro{\rt@RandomizeList} is the command that gets the process of randomizing
+% the input list going. The argument is the number of tokens. If
+% \cs{werandomize} is false, it just returns the input list; otherwise, it
+% calls \cs{rt@randomizeList} to actually do the work.
+%    \begin{macrocode}
+\def\rt@RandomizeList#1{%
+    \global\rt@listIn={}\global\rt@newListIn={}\global\rt@listOut={}%
+    \rt@nMax=#1\relax\rt@populateList{\the\rt@nMax}%
+    \ifwerandomize
+        \expandafter\rt@randomizeList\else
+        \global\rt@listOut=\expandafter{\the\rt@listIn}\fi
+}
+%    \end{macrocode}
+% \DescribeMacro{\rt@randomizeList} randomizes the list of consecutive integers, and leaves the
+% results,
+%\begin{verbatim}
+%    \\{k_1}\\{k_2}...\\{k_n}
+%\end{verbatim}
+% in the token register \cs{rt@listOut}.
+% \cs{rt@randomizeList} is a loop, looping between itself and \cs{rt@loopTest}.
+%    \begin{macrocode}
+\def\rt@randomizeList{%
+    \let\\=\rt@processi
+    \setrannum{\rt@getRanNum}{1}{\the\rt@nMax}%
+\ifrtdebug\typeout{\string\rt@getRanNum=\the\rt@getRanNum}\fi
+    \rt@nCnt=0\relax
+\ifrtdebug\typeout{LISTING: \the\rt@listIn}\fi
+    \the\rt@listIn
+    \rt@loopTest
+}
+\def\rt@loopTest{\advance\rt@nMax-1\relax
+    \ifnum\rt@nMax>0\relax
+        \def\rt@next{%
+            \rt@listIn=\expandafter{\the\rt@newListIn}%
+            \rt@newListIn={}\rt@randomizeList}%
+    \else
+        \let\rt@next\relax
+        \global\rt@listOut=\expandafter{\the\rt@listOut}%
+\ifrtdebug\typeout{Final Result: \string\rt@listOut=\the\rt@listOut}\fi
+    \fi
+    \rt@next
+}
+%    \end{macrocode}
+% In \cs{rt@randomizeList}, we \verb~\let\\=\rt@processi~ before dumping the
+% contents of \cs{rt@listIn}. We then go into a loop \cs{rt@loopTest}. \cs{rt@getRanNum}
+% is the random integer between 1 and \cs{rt@nMax}.
+%    \begin{macrocode}
+\def\rt@processi#1{\advance\rt@nCnt1
+    \ifnum\rt@nCnt=\rt@getRanNum
+        \edef\rt@listOutHold{\the\rt@listOut}%
+        \global\rt@listOut=\expandafter{\rt@listOutHold\\{#1}}%
+\ifrtdebug\typeout{Found it: \string\\{#1}}%
+\typeout{New \string\rt@listOut: \the\rt@listOut}\fi
+    \else
+        \edef\rt@listInHold{\the\rt@newListIn}%
+        \rt@newListIn=\expandafter{\rt@listInHold\\{#1}}%
+\ifrtdebug\typeout{\string\rt@newListIn: \the\rt@newListIn}\fi
+    \fi
+}
+%    \end{macrocode}
+% \section{The main commands}
+% \DescribeMacro{\ranToks} takes one argument, a list of tokens. It randomizes them.
+% The randomized listing can be accessed using \cs{useRanTok}.
+%    \begin{macrocode}
+\def\ranToks#1{\begingroup
+    \useRTName{#1}%
+    \r@nToks
+}
+\long\def\r@nToks#1{%
+    \rt@nMax=0
+    \r@ndToks#1\rt@NIL
+}
+\def\rt@NIL{@nil}
+%    \end{macrocode}
+% \DescribeMacro{\useRTName} sets the base name (use prior to the use of \cs{useRanTok}).
+%    \begin{macrocode}
+\newcommand{\useRTName}[1]{\gdef\rt@BaseName{#1}}%
+\let\rt@BaseName\@empty
+%    \end{macrocode}
+% \DescribeMacro{\bRTVToks}\cs{bRTVToks} and \DescribeMacro{\eRTVToks}\cs{eRTVToks} enclose a series
+% of \texttt{rtVW} environments. The single argument is the name of this set of
+% verbatim write ``tokens''.
+%    \begin{macrocode}
+\newcommand{\bRTVToks}[1]{%
+    \rt@nCnt=0
+    \useRTName{#1}%
+}
+%    \end{macrocode}
+% At the end of the \texttt{rtVW} environments, initiated by \cs{bRTVToks}, the
+% \cs{eRTVToks} command saves the number of tokens counted, and randomizes the
+% access to the contents of the \texttt{rtVW} environments, this done by
+% \cs{r@nVToks}.
+%    \begin{macrocode}
+\newcommand{\eRTVToks}{%
+    \global\rt@nameedef{\rt@BaseName Cnt}{\the\rt@nCnt}%
+    \expandafter\r@nVToks\expandafter{\rt@BaseName}%
+}
+%    \end{macrocode}
+%    \begin{environment}{rtVW}
+% \cs{rtVW} is a verbatim write environment. It saves its contents to the file
+% \verb!\jobname_\rt@BaseName\the\rt@nCnt.cut!. The file is later input back into
+% the source file in a random way.
+%    \begin{macrocode}
+\def\reVerbEnd{\ifhmode\unskip\fi}
+\newenvironment{rtVW}{%
+    \global\advance\rt@nCnt1
+    \immediate\openout\rt@Verb@write
+        \jobname_\rt@BaseName\the\rt@nCnt.cut
+    \let\verbatim@out\rt@Verb@write
+    \verbatimwrite
+}{%
+    \endverbatimwrite
+    \immediate\write\rt@Verb@write{\string\reVerbEnd}%
+    \immediate\closeout\rt@Verb@write
+}
+%    \end{macrocode}
+%    \end{environment}
+% \DescribeMacro{\r@nVToks} randomizes the contents of the \texttt{rtVW}
+% environment.
+%    \begin{macrocode}
+\def\r@nVToks#1{\begingroup
+    \gdef\rt@BaseName{#1}%
+    \expandafter\rt@nMax\@nameuse{#1Cnt}%
+    \rt@listIn={}\rt@nCnt=0\relax\let\rt@listInHold\@empty
+    \@whilenum\rt@nCnt<\rt@nMax\do{%
+    \advance\rt@nCnt1
+    \edef\rt@listInHold{%
+        \the\rt@listIn{\noexpand\rt@inputVerb{#1\the\rt@nCnt}}}%
+    \rt@listIn=\expandafter{\rt@listInHold}%
+    }%
+\ifrtdebug\typeout{\string\r@nVToks: \the\rt@listIn}\fi
+    \expandafter\r@nToks\expandafter{\the\rt@listIn}%
+}
+\def\rt@inputVerb#1{\input{\jobname_#1.cut}}
+%    \end{macrocode}
+% \DescribeMacro{\r@ndToks} is main looping command for \cs{ranToks}
+% and \cs{eRTVToks} (through \cs{r@nVToks}).  If the ending token \cs{rt@NIL} is detected, we
+% break off and go to \cs{rt@endToks}.
+% \changes{v1.0e}{2016/02/06}{Fixed a bug, when the first two tokens \texttt{\#1} are the same,
+% we get an incorrect decision}
+%    \begin{macrocode}
+\def\rt@PAR{\par}
+\long\def\r@ndToks#1{\def\rt@rgi{#1}%
+%    \end{macrocode}
+% If the current argument is \cs{par}, we skip it
+%    \begin{macrocode}
+    \ifx\rt@rgi\rt@PAR\def\rt@next{\r@ndToks}\else
+        \advance\rt@nMax1\relax
+        \global\@namedef{rtTok\the\rt@nMax\rt@BaseName}{#1}%
+        \def\rt@next{\@ifnextchar\rt@NIL
+            {\rt@endToks\@gobble}{\r@ndToks}}%
+    \fi\rt@next
+}
+%    \end{macrocode}
+% The final destination for \cs{r@ndToks}.
+%    \begin{macrocode}
+\def\rt@endToks{%
+%    \end{macrocode}
+% Save the number of tokens counted
+%    \begin{macrocode}
+    \global\rt@nameedef{nMax4\rt@BaseName}{\the\rt@nMax}%
+%    \end{macrocode}
+% Now we randomize the order of the integers 1, 2,\dots\cs{rt@nMax}.
+%    \begin{macrocode}
+    \rt@RandomizeList{\the\rt@nMax}%
+    \rt@nCnt=0
+%    \end{macrocode}
+% Now we randomized the definitions. We \verb!\let\\=\assignRanToks!, then
+% let loose the tokens!
+%    \begin{macrocode}
+    \let\\\assignRanToks
+    \the\rt@listOut
+    \endgroup
+}
+%    \end{macrocode}
+%\DescribeMacro{\assignRanToks} makes the assignments that are expanded by \cs{useRanTok}.
+% We \cs{let} the assignment \verb!\let\\=\assignRanToks! in \cs{rt@endToks}, just before we dump out the
+% contents of \verb!\the\rt@listOut!.
+%    \begin{macrocode}
+\def\assignRanToks#1{\advance\rt@nCnt1
+    \global\rt@nameedef{rtRanTok\the\rt@nCnt\rt@BaseName}%
+        {\noexpand\@nameuse{rtTok#1\rt@BaseName}}%
+%        {\noexpand\rtTokByNum[\rt@BaseName]{#1}}%
+}
+%    \end{macrocode}
+% \subsection{Additional user access commands}
+% \DescribeMacro{\nToksFor} expands the the number of tokens whose name is \texttt{\#1}.
+%    \begin{macrocode}
+\newcommand{\nToksFor}[1]{\@nameuse{nMax4#1}}
+%    \end{macrocode}
+% \DescribeMacro{\rtTokByNum} is an internal macro, but it can be used publicly.
+% The argument of it is an integer, eg, \verb!\rtTokByNum{3}! is the third token, as listed in the order
+% given in the argument of \cs{ranToks}.
+%    \begin{macrocode}
+\newcommand{\rtTokByNum}[2][\rt@BaseName]{\@nameuse{rtTok#2#1}%
+    \ignorespaces}
+%    \end{macrocode}
+%\DescribeMacro{\useRanTok} After \cs{ranToks} has been executed, the user has access to the
+% randomized tokens through \cs{useRanTok}. The argument is an integer 1 through max.
+%    \begin{macrocode}
+\newcommand{\useRanTok}[2][\rt@BaseName]{\@nameuse{rtRanTok#2#1}}
+%    \end{macrocode}
+% \DescribeMacro{\displayListRandomly} lists all items in the list as passed
+% by the required argument. For expanding in a list environment, use \cs{item} as
+% the optional argument. Designed for listing all question in an eqexam
+% document in random order.
+%\changes{v1.0b}{2013/07/29}{Added \cs{displayListRandomly}}
+%\changes{v1.0e}{2016/02/06}{Added optional argument to \cs{displayListRandomly}}
+%    \begin{macrocode}
+\newcommand{\displayListRandomly}[2][]{\rt@nCnt=0\relax
+    \@whilenum\rt@nCnt<\nToksFor{#2}\advance\rt@nCnt1\relax
+    \do{#1\useRanTok{\the\rt@nCnt}}%
+}
+%    \end{macrocode}
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+%\Finale

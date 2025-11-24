@@ -1,0 +1,340 @@
+\def\tabstackengineversionnumber{V1.10}
+%
+% tabstackengine initial release
+%
+% THIS MATERIAL IS SUBJECT TO THE LaTeX Project Public License
+%
+% V1.00 -Adopted beta version 0.21 as initial release version 1.0
+% V1.10 -Corrected unary/binary problem for left end of tabbed cell content;
+%       -Added \TABunaryLeft (\TABbinaryRight) for "   cell{} ";
+%        added \TABunaryRight (\TABbinaryLeft) for " {}cell   ";
+%        added \TABbinary                      for " {}cell{} ";
+%        The default is \TABunaryLeft (V1.00 wrongly equivalent to \TABbinary)
+%        This removes need to brace unary negatives at lead of cell.
+%       -Corrected bug of trailing \frac, noted in V1.00, by adding a
+%        \relax to definition of \@postTAB in \readTABrow.
+%
+\ProvidesPackage{tabstackengine}
+[2014/02/19 (\tabstackengineversionnumber) tabbed stacking]
+\RequirePackage[usestackEOL]{stackengine}[2013-10-15]
+\RequirePackage{calc}
+
+\newtoggle{@doneTABreads}
+\newcounter{TAB@stackindex}
+\newcounter{TABcellindex@}
+\newlength\maxTAB@width
+
+\newcommand\setstackTAB[1]{%
+  \ifstrempty{#1}{\def\TAB@char{ }}{\def\TAB@char{#1}}%
+  \expandafter\define@processTABrow\expandafter{\TAB@char}%
+}
+
+\newcommand\define@processTABrow[1]{%
+    \def\@processTABrow##1#1##2||{%
+      \def\@preTAB{##1}%
+      \def\@postTAB{##2}%
+    }%
+}
+\setstackTAB{&}
+
+\newcommand\readTABrow[2]{%
+  \edef\row@ID{#1}%
+  \togglefalse{@doneTABreads}%
+  \edef\@postTAB{\unexpanded{#2\relax}\expandonce{\TAB@char}}%
+  \setcounter{TABcellindex@}{0}%
+  \whileboolexpr{ test {\nottoggle{@doneTABreads}}}{%
+    \stepcounter{TABcellindex@}%
+    \expandafter\@processTABrow\@postTAB||%
+    \global\csedef{TABX\row@ID X\roman{TABcellindex@}}{\expandonce\@preTAB}%
+    \setbox0=\hbox{%
+      \stack@delim\TABcell{\row@ID}{\theTABcellindex@}\stack@delim}%
+    \ifdim\wd0>\maxTAB@width\setlength{\maxTAB@width}{\the\wd0}\fi%
+    \expandafter\ifstrempty\expandafter{\@postTAB}{%
+      \toggletrue{@doneTABreads}%
+    }{}%
+  }%
+  \expandafter\xdef\csname \row@ID TABcells\endcsname{\arabic{TABcellindex@}}%
+  \find@TABstrut{#1}%
+}
+
+\newcommand\find@TABstrut[1]{%
+  \def\@accumulatedTAB{}%
+  \setcounter{TABcellindex@}{0}%
+  \expandafter\protected@edef\csname @#1TABtextblob\endcsname{}%
+  \whileboolexpr{test {\ifnumless{\theTABcellindex@}{\TABcells{#1}}}}{%
+    \stepcounter{TABcellindex@}%
+    \protected@edef\@accumulatedTAB{%
+      \@accumulatedTAB\TABcell{#1}{\theTABcellindex@}}%
+  }%
+  \global\csedef{@#1TABtextblob}{\expandonce\@accumulatedTAB}%
+}
+
+\def\p@Tstrut#1{\protect\TABstrut{#1}}
+
+\newcommand\TABunaryLeft{%
+  \def\TAB@strutLeftA{}%
+  \def\TAB@strutRightA{\p@Tstrut{i}}%
+  \def\TAB@strutLeftB{}%
+  \def\TAB@strutRightB{\p@Tstrut{ii}}%
+  \def\TAB@strutLeftC{}%
+  \def\TAB@strutRightC{\p@Tstrut{\TAB@prefix}}%
+}
+\let\TABbinaryRight\TABunaryLeft
+
+\newcommand\TABunaryRight{%
+  \def\TAB@strutLeftA{\p@Tstrut{i}}%
+  \def\TAB@strutRightA{}%
+  \def\TAB@strutLeftB{\p@Tstrut{ii}}%
+  \def\TAB@strutRightB{}%
+  \def\TAB@strutLeftC{\p@Tstrut{\TAB@prefix}}%
+  \def\TAB@strutRightC{}%
+}
+\let\TABbinaryLeft\TABunaryRight
+
+\newcommand\TABbinary{%
+  \def\TAB@strutLeftA{{}}%
+  \def\TAB@strutRightA{\p@Tstrut{i}}%
+  \def\TAB@strutLeftB{{}}%
+  \def\TAB@strutRightB{\p@Tstrut{ii}}%
+  \def\TAB@strutLeftC{{}}%
+  \def\TAB@strutRightC{\p@Tstrut{\TAB@prefix}}%
+}
+\TABunaryLeft
+
+\newcommand\TAB@delim[1]{#1}%
+\newcommand\TABstackMath{%
+  \renewcommand\TAB@delim[1]{\ensuremath{##1}}%
+}
+\newcommand\TABstackText{%
+  \renewcommand\TAB@delim[1]{##1}%
+}
+
+\newcommand\TABcell[2]{\TAB@delim{%
+  \ignorespaces\csname TABX#1X\romannumeral#2\endcsname\unskip}}
+
+\newcommand\TABcells[1]{\csname #1TABcells\endcsname}
+
+% NOTE THAT THE STRUT IS NOT YET TYPESET, SINCE WE DO NOT YET KNOW
+% WHETHER \@#1textblob IS TO BE INVOKED IN MATH MODE OR NOT
+\newcommand\TABstrut[1]{\vphantom{\csname @#1TABtextblob\endcsname}}
+
+\newcommand\tabbedShortstack[2][\stackalignment]{%
+  \@TAB@stack{#1}{#2}{D}{\Shortstack}}
+
+\newcommand\alignShortstack[1]{%
+  \@TAB@stack{}{#1}{A}{\Shortstack}}
+
+\newcommand\tabularShortstack[2]{%
+  \@TAB@stack{}{#2}{#1}{\Shortstack}}
+
+\newcommand\tabbedShortunderstack[2][\stackalignment]{%
+  \@TAB@stack{#1}{#2}{D}{\Shortunderstack}}
+
+\newcommand\alignShortunderstack[1]{%
+  \@TAB@stack{}{#1}{A}{\Shortunderstack}}
+
+\newcommand\tabularShortunderstack[2]{%
+  \@TAB@stack{}{#2}{#1}{\Shortunderstack}}
+
+\newcommand\tabbedLongstack[2][\stackalignment]{%
+  \@TAB@stack{#1}{#2}{D}{\Longstack}}
+
+\newcommand\alignLongstack[1]{%
+  \@TAB@stack{}{#1}{A}{\Longstack}}
+
+\newcommand\tabularLongstack[2]{%
+  \@TAB@stack{}{#2}{#1}{\Longstack}}
+
+\newcommand\tabbedLongunderstack[2][\stackalignment]{%
+  \@TAB@stack{#1}{#2}{D}{\Longunderstack}}
+
+\newcommand\alignLongunderstack[1]{%
+  \@TAB@stack{}{#1}{A}{\Longunderstack}}
+
+\newcommand\tabularLongunderstack[2]{%
+  \@TAB@stack{}{#2}{#1}{\Longunderstack}}
+
+\newcommand\tabbedCenterstack[2][\stackalignment]{%
+  \@TAB@stack{#1}{#2}{D}{\Centerstack}}
+
+\newcommand\alignCenterstack[1]{%
+  \@TAB@stack{}{#1}{A}{\Centerstack}}
+
+\newcommand\tabularCenterstack[2]{%
+  \@TAB@stack{}{#2}{#1}{\Centerstack}}
+
+\newcommand\tabbedVectorstack[2][\stackalignment]{%
+  \ensureTABstackMath{\@TAB@stack{#1}{#2}{D}{\Vectorstack}}}
+
+\newcommand\alignVectorstack[1]{%
+  \ensureTABstackMath{\@TAB@stack{}{#1}{A}{\Vectorstack}}}
+
+\newcommand\tabularVectorstack[2]{%
+  \ensureTABstackMath{\@TAB@stack{}{#2}{#1}{\Vectorstack}}}
+
+\newcommand\parenMatrixstack[2][\stackalignment]{%
+  \ensureTABstackMath{\left(\@TAB@stack{#1}{#2}{D}{\Vectorstack}\right)}}
+
+\newcommand\braceMatrixstack[2][\stackalignment]{%
+  \ensureTABstackMath{\left\{\@TAB@stack{#1}{#2}{D}{\Vectorstack}\right\}}}
+
+\newcommand\bracketMatrixstack[2][\stackalignment]{%
+  \ensureTABstackMath{\left[\@TAB@stack{#1}{#2}{D}{\Vectorstack}\right]}}
+
+\newcommand\vertMatrixstack[2][\stackalignment]{%
+  \ensureTABstackMath{\left|\@TAB@stack{#1}{#2}{D}{\Vectorstack}\right|}}
+
+\newcommand\@TAB@stack[4]{%
+  \setlength{\maxTAB@width}{0pt}%
+  \let\sv@stackalignment\stackalignment%
+  \edef\stackalignment{#1}%
+  \@readMANYrows{#2}%
+  \edef\TAB@narg{\narg}%
+  \setcounter{TAB@stackindex}{0}%
+  \whileboolexpr{test {\ifnumless{\theTAB@stackindex}{\TAB@narg}}}{%
+    \stepcounter{TAB@stackindex}%
+    \edef\TAB@prefix{\roman{TAB@stackindex}}%
+    \protected@edef\TABrow@data{\csname arg\TAB@prefix\endcsname}%
+    \def\@tmp{\readTABrow{\TAB@prefix}}%
+    \expandafter\@tmp\expandafter{\TABrow@data}%
+  }%
+%
+  \setcounter{TABcellindex@}{0}%
+  \whileboolexpr{test {\ifnumless{\theTABcellindex@}{\TABcells{i}}}}{%
+    \def\col@stack{%
+        \TAB@strutLeftA%
+        \TABcell{i}{\theTABcellindex@}%
+        \TAB@strutRightA%
+}%
+    \stepcounter{TABcellindex@}%
+    \@getTABalignment{#3}{\theTABcellindex@}%
+    \ifboolexpr{%
+      test {\ifnumgreater{\theTABcellindex@}{1}}%
+    }{\add@TAB@gap{#3}{\theTABcellindex@}}{}%
+    \setcounter{TAB@stackindex}{1}%
+    \whileboolexpr{test {\ifnumless{\theTAB@stackindex}{\TAB@narg}}}{%
+      \stepcounter{TAB@stackindex}%
+      \edef\TAB@prefix{\roman{TAB@stackindex}}%
+      \protected@edef\col@stack{\col@stack\SEP@char%
+        \TAB@strutLeftC%
+        \TABcell{\TAB@prefix}{\theTABcellindex@}%
+        \TAB@strutRightC%
+      }%
+    }%
+    \iftoggle{fixed@TABwidth}%
+      {\makebox[\the\maxTAB@width][\stackalignment]{%
+        \expandafter#4\expandafter{\col@stack}}}%
+      {\expandafter#4\expandafter{\col@stack}}%
+  }%
+  \let\stackalignment\sv@stackalignment%
+}
+
+\newcommand\tabbedstackon[3][\stackgap]{%
+  \@TABstackonunder{#1}{#2}{#3}{D}{\stackon}}
+
+\newcommand\alignstackon[3][\stackgap]{%
+  \@TABstackonunder{#1}{#2}{#3}{A}{\stackon}}
+
+\newcommand\tabularstackon[4][\stackgap]{%
+  \@TABstackonunder{#1}{#3}{#4}{#2}{\stackon}}
+
+\newcommand\tabbedstackunder[3][\stackgap]{%
+  \@TABstackonunder{#1}{#2}{#3}{D}{\stackunder}}
+
+\newcommand\alignstackunder[3][\stackgap]{%
+  \@TABstackonunder{#1}{#2}{#3}{A}{\stackunder}}
+
+\newcommand\tabularstackunder[4][\stackgap]{%
+  \@TABstackonunder{#1}{#3}{#4}{#2}{\stackunder}}
+
+\newcommand\tabbedstackanchor[3][\stackgap]{%
+  \@TABstackonunder{#1}{#2}{#3}{D}{\stackanchor}}
+
+\newcommand\alignstackanchor[3][\stackgap]{%
+  \@TABstackonunder{#1}{#2}{#3}{A}{\stackanchor}}
+
+\newcommand\tabularstackanchor[4][\stackgap]{%
+  \@TABstackonunder{#1}{#3}{#4}{#2}{\stackanchor}}
+
+\newcommand\@TABstackonunder[5]{%
+  \setlength{\maxTAB@width}{0pt}%
+  \let\sv@stackalignment\stackalignment%
+  \readTABrow{i}{#2}%
+  \readTABrow{ii}{#3}%
+  \setcounter{TABcellindex@}{0}%
+  \whileboolexpr{test {\ifnumless{\theTABcellindex@}{\TABcells{i}}}}{%
+    \stepcounter{TABcellindex@}%
+    \@getTABalignment{#4}{\theTABcellindex@}%
+    \ifboolexpr{%
+      test {\ifnumgreater{\theTABcellindex@}{1}}%
+    }{\add@TAB@gap{#4}{\theTABcellindex@}}{}%
+    \iftoggle{fixed@TABwidth}%
+      {\makebox[\the\maxTAB@width][\stackalignment]{%
+       #5[#1]{\TAB@strutLeftA\TABcell{i}{\theTABcellindex@}\TAB@strutRightA}%
+              {\TAB@strutLeftB\TABcell{ii}{\theTABcellindex@}\TAB@strutRightB}}}%
+      {#5[#1]{\TAB@strutLeftA\TABcell{i}{\theTABcellindex@}\TAB@strutRightA}%
+              {\TAB@strutLeftB\TABcell{ii}{\theTABcellindex@}\TAB@strutRightB}}%
+  }%
+  \let\stackalignment\sv@stackalignment%
+}
+
+\newcommand\@getTABalignment[2]{%
+  \ifstrequal{#1}{D}{}{%                    T, DO NOTHING (USE \stackalignment)
+    \ifstrequal{#1}{A}{%
+      \ifnumequal{1}{#2}{%
+        \def\stackalignment{r}}{%          A, 1st ELEMENT, SET TO r
+        \if l\stackalignment%
+          \def\stackalignment{r}\else%     A, SWITCH l TO r
+          \def\stackalignment{l}\fi}}{%    A, SWITCH r TO l
+          \set@tabularcellalignment{#1}{#2}%   tabular, READ #2 location
+      }%
+  }%
+}
+
+\def\tabbed@gap{0pt}
+\def\align@gap{1em}
+\def\tabular@gap{\tabcolsep}
+
+\newcommand\setstacktabbedgap[1]{\def\tabbed@gap{#1}}
+\newcommand\setstackaligngap[1]{\def\align@gap{#1}}
+\newcommand\setstacktabulargap[1]{\def\tabular@gap{#1}}
+
+\newcommand\add@TAB@gap[2]{%
+  \ifstrequal{#1}{D}{\hspace{\tabbed@gap}}{%
+    \ifstrequal{#1}{A}{%
+      \if r\stackalignment\hspace{\align@gap}\fi%
+    }{%  
+      \hspace{\tabular@gap}%
+    }%
+  }%
+}
+
+\newcounter{TABalignmentindex@}
+
+\newcommand\set@tabularcellalignment[2]{%
+  \setcounter{TABalignmentindex@}{1}%
+  \edef\tabular@settings{#1.}%
+  \whileboolexpr{test {\ifnumless{\theTABalignmentindex@}{#2}}}{%
+    \stepcounter{TABalignmentindex@}%
+    \edef\tabular@settings{\expandafter\@gobble\tabular@settings.}%
+  }%
+  \expandafter\@getnextTABchar\tabular@settings\\% GET NEXT TAB ALIGNMENT
+  \if l\@nextTABchar\edef\stackalignment{l}\else%
+    \if r\@nextTABchar\edef\stackalignment{r}\else%
+      \if c\@nextTABchar\edef\stackalignment{c}\fi%
+    \fi%                                        IGNORE IF NOT l, c, OR r
+  \fi%
+}
+
+\def\@getnextTABchar#1#2\\{\gdef\@nextTABchar{#1}}
+
+
+\newtoggle{fixed@TABwidth}
+\newcommand\fixTABwidth[1]{%
+  \if T#1\toggletrue{fixed@TABwidth}\else\togglefalse{fixed@TABwidth}\fi%
+}
+\fixTABwidth{F}
+
+\newcommand\ensureTABstackMath[1]{\TABstackMath#1\TABstackText}
+
+\endinput

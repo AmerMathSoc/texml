@@ -1,0 +1,308 @@
+% --------------------------------------------------------------------------
+% the IDXCMDS package
+% 
+%   create commands for adding formatted index entries
+% 
+% --------------------------------------------------------------------------
+% Clemens Niederberger
+% Web:    https://bitbucket.org/cgnieder/idxcmds/
+% E-Mail: contact@mychemistry.eu
+% --------------------------------------------------------------------------
+% Copyright 2012-2015 Clemens Niederberger
+% 
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+% 
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Clemens Niederberger.
+% --------------------------------------------------------------------------
+% The idxcmds package consists of the files
+%  - idxcmds.sty
+%  - idxcmds_en.tex, idxcmds_en.pdf
+%  - README
+% --------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% --------------------------------------------------------------------------
+\newcommand*\idxcmds@date{2015/08/13}
+\newcommand*\idxcmds@version{v0.2c}
+\newcommand*\idxcmds@description{create commands for adding formatted index entries}
+
+\ProvidesPackage{idxcmds}[\idxcmds@date\space \idxcmds@version\space
+  \idxcmds@description\space (CN)]
+\RequirePackage{etoolbox,pgfopts,ltxcmds}
+
+% --------------------------------------------------------------------------
+% message handling:
+\newcommand*\idxcmds@create@message[1]{%
+  \ifstrequal{#1}{Error}
+    {%
+      \lowercase{\csdef{@idxcmds@#1}}##1##2{%
+        \csuse{Package#1}{idxcmds}{##1}{##2}}%
+    }{%
+      \lowercase{\csdef{@idxcmds@#1}}##1{%
+        \csuse{Package#1}{idxcmds}{##1}}%
+    }}
+\idxcmds@create@message{Error}
+\idxcmds@create@message{Warning}
+\idxcmds@create@message{WarningNoLine}
+\idxcmds@create@message{Info}
+
+% --------------------------------------------------------------------------
+% package options:
+\newcommand*\idxcmds@sortsep{@}
+\newcommand*\idxcmds@subsep{!}
+\newcommand*\idxcmds@default@index{\index}
+
+\pgfkeys{
+  idxcmds/.cd,
+    sort-sep/.code = \def\idxcmds@sortsep{#1} ,
+    sub-sep/.code  = \def\idxcmds@subsep{#1} ,
+    idx-cmd/.code  = \def\idxcmds@default@index{#1}
+}
+\ProcessPgfOptions*
+
+\newrobustcmd*\setidxcmds[1]{\pgfqkeys{/idxcmds}{#1}}
+
+% --------------------------------------------------------------------------
+% a few helpers:
+\newcommand*\idxcmds@stripbs{\expandafter\@gobble\string}
+\newrobustcmd*\idxcmds@csdef[1]{\csdef{\idxcmds@stripbs#1}}
+\newcommand*\idxcmds@csuse[1]{\csuse{\idxcmds@stripbs#1}}
+\protected\def\idxcmds@appdef#1[#2]{\idxcmds@csdef{#1@idx@app}{#2}}
+\newcommand*\idxcmds@newcommand{%
+  \@ifstar
+    {\idxcmds@newcommand@star}
+    {\idxcmds@newcommand@nostar}%
+}
+\newrobustcmd*\idxcmds@newcommand@nostar[1]{%
+  \expandafter\newrobustcmd\csname\idxcmds@stripbs#1\endcsname
+}
+\newrobustcmd*\idxcmds@newcommand@star[1]{%
+  \expandafter\newrobustcmd\expandafter*\csname\idxcmds@stripbs#1\endcsname
+}
+
+% --------------------------------------------------------------------------
+% \newidxcmd[<index cmd>]{<cs>}{<formatting specs>}[<app to idx entry>]
+% new commands will have the syntax
+%   \cmd*{<text>}            => no index entry
+%   \cmd{<text>}             => index entry
+%   \cmd[<sort idx>]{<text>} => alt. sort index
+%
+
+\newrobustcmd\newidxcmd[3][\idxcmds@default@index]{%
+  \idxcmds@csdef{#2@base}##1{#3}%
+  \idxcmds@csdef{#2@idx}##1##2##3{%
+    \ifblank{##1}
+      {%
+        #1{%
+          ##2\idxcmds@sortsep
+          \idxcmds@csuse{#2@base}{##2}%
+          \idxcmds@csuse{#2@idx@app}%
+          ##3%
+        }%
+      }
+      {%
+        #1{%
+          ##1\idxcmds@sortsep
+          \idxcmds@csuse{#2@base}{##2}%
+          \idxcmds@csuse{#2@idx@app}%
+          ##3%
+        }%
+      }%
+    }%
+  \idxcmds@csdef{#2@star}##1{\idxcmds@csuse{#2@base}{##1}}%
+  \idxcmds@csdef{#2@nostar}{%
+    \ltx@ifnextchar[% ]
+      {\idxcmds@csuse{#2@nostar@opt}}
+      {\idxcmds@csuse{#2@nostar@opt}[]}%
+  }%
+  \idxcmds@csdef{#2@nostar@opt}[##1]##2{%
+    \idxcmds@csuse{#2@base}{##2}%
+    \ltx@ifnextchar@nospace[% ]
+      {\idxcmds@csuse{#2@idx@optarg}{##1}{##2}}
+      {\idxcmds@csuse{#2@idx}{##1}{##2}{}}%
+  }%
+  \idxcmds@csdef{#2@idx@optarg}##1##2[##3]{%
+    \idxcmds@csuse{#2@idx}{##1}{##2}{##3}%
+  }%
+  \newrobustcmd*#2{%
+    \@ifstar
+      {\idxcmds@csuse{#2@star}}
+      {\idxcmds@csuse{#2@nostar}}%
+  }%
+  \idxcmds@newcommand*{#2idx}[2][]{%
+    \ltx@ifnextchar@nospace[% ]
+      {\idxcmds@csuse{#2@idx@optarg}{##1}{##2}}
+      {\idxcmds@csuse{#2@idx}{##1}{##2}{}}%
+  }%
+  \ltx@ifnextchar[% ]
+    {\idxcmds@appdef{#2}}
+    {\idxcmds@appdef{#2}[]}%
+}
+
+% ---------------------------------------------------------------------------
+% \newsubmainidxcmd[<index cmd>]{<cs>}{<formatting specs>}[<app to idx entry>]
+\newrobustcmd\newsubmainidxcmd[3][\idxcmds@default@index]{%
+  \idxcmds@csdef{#2@base}##1{#3}%
+  \idxcmds@csdef{#2@idx}##1##2##3##4{%
+    \ifblank{##1}
+      {%
+        #1{%
+          ##3\idxcmds@subsep##2\idxcmds@sortsep
+          \idxcmds@csuse{#2@base}{##2}%
+          \idxcmds@csuse{#2@idx@app}%
+          ##4%
+        }%
+      }{%
+        #1{%
+          ##3\idxcmds@subsep##1\idxcmds@sortsep
+          \idxcmds@csuse{#2@base}{##2}%
+          \idxcmds@csuse{#2@idx@app}%
+          ##4%
+        }%
+      }%
+    }%
+  \idxcmds@csdef{#2@star}##1{\idxcmds@csuse{#2@base}{##1}}%
+  \idxcmds@csdef{#2@nostar}{%
+    \ltx@ifnextchar[% ]
+      {\idxcmds@csuse{#2@nostar@opt}}
+      {\idxcmds@csuse{#2@nostar@opt}[]}%
+  }%
+  \idxcmds@csdef{#2@nostar@opt}[##1]##2##3{%
+    \idxcmds@csuse{#2@base}{##2}%
+    \ltx@ifnextchar@nospace[% ]
+      {\idxcmds@csuse{#2@idx@optarg}{##1}{##2}{##3}}
+      {\idxcmds@csuse{#2@idx}{##1}{##2}{##3}{}}%
+  }%
+  \idxcmds@csdef{#2@idx@optarg}##1##2##3[##4]{%
+    \idxcmds@csuse{#2@idx}{##1}{##2}{##3}{##4}%
+  }%
+  \newrobustcmd*#2{%
+    \@ifstar
+      {\idxcmds@csuse{#2@star}}
+      {\idxcmds@csuse{#2@nostar}}%
+  }%
+  \idxcmds@newcommand*{#2idx}[3][]{%
+    \idxcmds@csuse{#2@idx}{##1}{##2}{##3}%
+  }%
+  \ltx@ifnextchar[% ]
+    {\idxcmds@appdef{#2}}
+    {\idxcmds@appdef{#2}[]}%
+}
+
+% ---------------------------------------------------------------------------
+% \newsubidxcmd[<index cmd>]{<cs>}{<idx cmd>}{<formatting specs>}[<app to idx entry>]
+% \newsubidxcmd*[<index cmd>]{<cs>}{<main entry>}{<formatting specs>}[<app to idx entry>]
+\newbool{idxcmds@sub@star}
+
+% get main if starred
+\newrobustcmd*\idxcmds@extract@main[2]{%
+  \ltx@ifnextchar[% ]
+    {\idxcmds@extract@main@aux{#1}{#2}}
+    {\idxcmds@extract@main@aux{#1}{#2}[]}%
+}
+\protected\def\idxcmds@extract@main@aux#1#2[#3]#4{%
+  \idxcmds@csdef{#1@main}{\idxcmds@csuse{#2@base}{#4}}%
+  \ifstrempty{#3}
+    {\idxcmds@csdef{#1@main@sort}{#4}}
+    {\idxcmds@csdef{#1@main@sort}{#3}}%
+}
+
+\newcommand*\newsubidxcmd{%
+  \@ifstar
+    {\booltrue{idxcmds@sub@star}\idxcmds@subidx}
+    {\boolfalse{idxcmds@sub@star}\idxcmds@subidx}%
+}
+\newrobustcmd\idxcmds@subidx[4][\idxcmds@default@index]{%
+  \idxcmds@csdef{#2@base}##1{#4}%
+  \ifbool{idxcmds@sub@star}{%
+    \idxcmds@extract@main#2#3%
+    \idxcmds@csdef{#2@idx}##1##2##3{%
+      \ifblank{##1}
+        {%
+          #1{%
+            \idxcmds@csuse{#2@main@sort}\idxcmds@sortsep
+            \idxcmds@csuse{#2@main}%
+            \idxcmds@subsep##2\idxcmds@sortsep
+            \idxcmds@csuse{#2@base}{##2}%
+            \idxcmds@csuse{#2@idx@app}%
+            ##3%
+          }%
+        }{%
+          #1{%
+            \idxcmds@csuse{#2@main@sort}\idxcmds@sortsep
+            \idxcmds@csuse{#2@main}%
+            \idxcmds@subsep##1\idxcmds@sortsep
+            \idxcmds@csuse{#2@base}{##2}%
+            \idxcmds@csuse{#2@idx@app}%
+            ##3%
+          }%
+        }%
+    }%
+  }{%
+    \idxcmds@csdef{#2@idx}##1##2##3{%
+      \ifblank{##1}
+        {%
+          #1{%
+            #3%
+            \idxcmds@subsep##2\idxcmds@sortsep
+            \idxcmds@csuse{#2@base}{##2}%
+            \idxcmds@csuse{#2@idx@app}%
+            ##3%
+          }%
+        }{%
+          #1{%
+            #3%
+            \idxcmds@subsep##1\idxcmds@sortsep
+            \idxcmds@csuse{#2@base}{##2}%
+            \idxcmds@csuse{#2@idx@app}%
+            ##3%
+          }%
+        }%
+    }%
+  }%
+  \idxcmds@csdef{#2@star}##1{\idxcmds@csuse{#2@base}{##1}}%
+  \idxcmds@csdef{#2@nostar}{%
+    \ltx@ifnextchar[% ]
+      {\idxcmds@csuse{#2@nostar@opt}}
+      {\idxcmds@csuse{#2@nostar@opt}[]}%
+  }%
+  \idxcmds@csdef{#2@nostar@opt}[##1]##2{%
+    \idxcmds@csuse{#2@base}{##2}%
+    \ltx@ifnextchar@nospace[% ]
+      {\idxcmds@csuse{#2@idx@optarg}{##1}{##2}}
+      {\idxcmds@csuse{#2@idx}{##1}{##2}{}}%
+  }%
+  \idxcmds@csdef{#2@idx@optarg}##1##2[##3]{%
+    \idxcmds@csuse{#2@idx}{##1}{##2}{##3}%
+  }%
+  \newrobustcmd*#2{%
+    \@ifstar
+      {\idxcmds@csuse{#2@star}}
+      {\idxcmds@csuse{#2@nostar}}%
+  }%
+  \idxcmds@newcommand*{#2idx}[2][]{%
+    \idxcmds@csuse{#2@idx}{##1}{##2}%
+  }%
+  \ltx@ifnextchar[% ]
+    {\idxcmds@appdef{#2}}
+    {\idxcmds@appdef{#2}[]}%
+}
+
+\endinput
+% --------------------------------------------------------------------------
+% HISTORY:
+2012/11/02 v0.1  - first working version
+2013/04/11 v0.1a - made \newidxcmd, \newsubmainidxcmd and \newsubidxcmd robust
+2013/04/16 v0.2  - added trailing optional argument to defined commands
+                   that allows appending stuff to the index entry at use-time
+2013/05/14 v0.2a - added \setidxcmds
+2013/08/31 v0.2b - added option `idx-cmd'
+2015/08/13 v0.2c - removed spurious space, minor code changes

@@ -1,0 +1,175 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                          %%
+%% synproof.sty v. 1.0 by Paul Isambert                                     %%
+%% This set of macros is published under the LaTeX Project Public License.  %%
+%%                                                                          %%
+%% Comments, suggestions and bugs:                                          %%
+%%                                                                          %%
+%% zappathustra@free.fr                                                     %%
+%%                                                                          %%
+%% http://paulisambert.free.fr/                                             %%
+%%                                                                          %%
+%% Enjoy!                                                                   %%
+%%                                                                          %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{synproof}[2007/06/09 Drawing syntactic proofs with PSTricks.]
+
+\RequirePackage{ifthen}
+\RequirePackage{pstricks}
+\RequirePackage{pst-node}
+\RequirePackage{keyval}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% Options declaration %
+%%%%%%%%%%%%%%%%%%%%%%%
+
+\DeclareOption{symbols}{%
+\newcommand{\Exists}{$\exists$}%
+\newcommand{\Forall}{$\forall$}%
+\newcommand{\Neg}{$\neg$}%
+\newcommand{\And}{$\wedge$}%
+\newcommand{\Or}{$\vee$}%
+\newcommand{\Falsum}{$\bot$}%
+\newcommand{\Implies}{$\rightarrow$}%
+}
+\ProcessOptions\relax
+
+\makeatletter
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Counters, Lengths and Keys % 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% This is a "perverted" version of \newcounter, which allows you 
+% (or rather me) to create a new counter even if it's already defined.
+\def\newctr#1{\@definecounter{#1}}
+
+\newcounter{lab}
+\newcounter{infline}
+\newcounter{embedding}
+\newcounter{endassumption}
+\newcounter{step}
+\newcommand{\LineNum}[1]{\setcounter{step}{#1}\addotocounter{step}{-1}}
+
+% \Start and \Num set the position of the starting point of the
+% assumption line and the position of the line number respectively,
+% and are not accessible from user's interface. See the documentation
+% for the other lengths.
+\newlength{\Start}
+\setlength{\Start}{.8cm}
+
+\newlength{\Num}
+\setlength{\Num}{1cm}
+
+\newlength{\NumToEx}
+\setlength{\NumToEx}{2cm}
+\define@key{synproof}{NumToEx}{\addtolength{\NumToEx}{#1cm}}
+
+\newlength{\ExToRule}
+\setlength{\ExToRule}{8cm}
+\define@key{synproof}{ExToRule}{\addtolength{\ExToRule}{#1cm}}
+
+\newlength{\OutLine}
+\setlength{\OutLine}{-.6cm}
+\define@key{synproof}{OutLine}{\addtolength{\OutLine}{#1mm}}
+
+\newlength{\LineSpace}
+\setlength{\LineSpace}{.15cm}
+\define@key{synproof}{LineSpace}{\addtolength{\LineSpace}{#1mm}}
+
+\newlength{\AssumeLine}
+\setlength{\AssumeLine}{10cm}
+\define@key{synproof}{AssumeLine}{\addtolength{\AssumeLine}{#1cm}}
+
+\define@key{synproof}{HorAlign}{%
+	\addtolength{\OutLine}{#1cm}%
+	\addtolength{\Start}{#1cm}%
+	\addtolength{\AssumeLine}{#1cm}%
+	\addtolength{\Num}{#1cm}%
+	\addtolength{\NumToEx}{#1cm}%
+	\addtolength{\ExToRule}{#1cm}}
+
+\newcommand{\ResetDim}{%
+	\setlength{\OutLine}{-.6cm}%
+	\setlength{\Start}{.8cm}%
+	\setlength{\AssumeLine}{10cm}%
+	\setlength{\Num}{1cm}%
+	\setlength{\NumToEx}{2cm}%
+	\setlength{\ExToRule}{8cm}%
+	\setlength{\LineSpace}{.15cm}%
+	}
+
+\newcommand{\SetDim}[1]{\setkeys{synproof}{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% Definition of \step %
+%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\step}[3][none]{%
+	\@ifnextchar[%
+			{\step@i[#1]{#2}{#3}}%
+			{\step@i[#1]{#2}{#3}[none]}%
+		}%
+
+\def\step@i[#1]#2#3[#4]{%
+	\addtocounter{infline}{-4}%     Position of the line relative to the previous one
+	\stepcounter{step}%             Line number
+	\ifthenelse{\equal{#1}{none}}%
+		{\rput[ml](\Num,\value{infline}ex){\thestep.}}% Automatic numbering and position of the line number
+		{\rput[ml](\Num,\value{infline}ex){#1.}}%
+	\rput[ml](\NumToEx,\value{infline}ex){#2}%   Position of the expression
+	\rput[ml](\ExToRule,\value{infline}ex){#3}%  Position of the rule
+	\ifthenelse{\equal{#4}{none}}{}{%            Optional label
+		\expandafter\newsavebox\expandafter{\csname lab@#4\endcsname}%
+		\expandafter\savebox\expandafter{\csname lab@#4\endcsname}{%
+		\ifthenelse{\equal{#1}{none}}%
+			{\thestep}%
+			{#1}%
+		}%
+		\@namedef{#4}{\expandafter\usebox\expandafter{\csname lab@#4\endcsname}}% Creation of the command to call the label
+	}%
+}%
+
+
+%%%%%%%%%%%%%%%
+% Environment %
+%%%%%%%%%%%%%%%
+
+\newenvironment{synproof}[2][]{%
+	\noindent%
+	\setkeys{synproof}{#1}%
+	\begin{pspicture}(-1,0)(15,-#2)%
+	\setcounter{step}{0}%
+	\setcounter{infline}{0}%
+	}%
+	{\end{pspicture}}%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \assumption and \assumend %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\assumption}{%
+	\addtolength{\OutLine}{\LineSpace}% Increases the position of the assumption line by the value of \LineSpace
+	\stepcounter{embedding}%
+	\expandafter\newctr\expandafter{\alph{embedding}begin@ss}% This counter is created on the fly to keep track of the starting positions 
+	\expandafter\setcounter\expandafter{\alph{embedding}begin@ss}{\value{infline}}% of running assumptions
+	\expandafter\addtocounter\expandafter{\alph{embedding}begin@ss}{-4}%
+	}%
+
+\newcommand{\assumend}{%
+	\setcounter{endassumption}{\value{infline}}% Tuning of the end position of the assumption line. Should not be modified.
+	\addtocounter{endassumption}{-2}%
+		\psline[linewidth=.5pt]%
+		(\Start,\value{\alph{embedding}begin@ss}ex)%
+		(\OutLine,\value{\alph{embedding}begin@ss}ex)%
+		(\OutLine,\value{endassumption}ex)%
+		(\AssumeLine,\value{endassumption}ex)%
+	\addtocounter{embedding}{-1}%	    Back to the previous running assumption
+	\addtolength{\OutLine}{-\LineSpace}% Back to the previous setting of the line position
+	}%
+\makeatother
+

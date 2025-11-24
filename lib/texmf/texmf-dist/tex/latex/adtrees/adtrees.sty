@@ -1,0 +1,670 @@
+%%-------------------------------------------------------
+%% This package is deputed to draw AdTrees as defined by
+%% F. Gobbo and M. Benini in "Constructive Adpositional
+%% Grammars: Foundations of Constructive Linguistics",
+%% Cambrdige Scholar Publishing
+%%
+%% Version 1.0 - 2016/01/20
+%%-------------------------------------------------------
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{adtrees}[2016/01/20 v1.0 Adtrees package]
+\RequirePackage{cancel}
+
+%%-------------------------------------------------------
+%% We assume that \smaller is a command that reduces the
+%% current font size, e.g., from \Large to \large. If it
+%% is defined, then we use it. 
+%% Otherwise we stick on a safe choice: \small, which is
+%% the right size when dealing with \normalsize trees.
+%%-------------------------------------------------------
+\@ifundefined{smaller}%
+{\gdef\@ATsmall{\small}}%
+{\gdef\@ATsmall{\smaller}} 
+
+%%-------------------------------------------------------
+%% Usually, the angle in adtrees is 60 degrees
+%% To set it to 90 degrees, issue the command 
+%% \ATwideangle
+%% To set it to 120 degrees, issue the command
+%% \ATextrawideangle
+%% To revert to the standard 60 degrees, 
+%% \ATnormalangle
+%%-------------------------------------------------------
+\def\ATnormalangle{\def\@ATangle{60}}
+\def\ATwideangle{\def\@ATangle{90}}
+\def\ATextrawideangle{\def\@ATangle{120}}
+\ATnormalangle
+
+%%-------------------------------------------------------
+%% Firstly, we declare the internal variables
+%%-------------------------------------------------------
+\newskip\@ATlen      % a temporay length
+\newskip\@ATbp       % the base point of a block
+\newskip\@ATwt       % the width of a block
+\newskip\@ATh        % the height of a block
+\newskip\@ATbl       % left base point
+\newskip\@ATrl       % left rest (width minus base point)
+\newskip\@ATwl       % left width
+\newskip\@ATbr       % right base point
+\newskip\@ATrr       % right rest
+\newskip\@ATwr       % right width
+\newskip\@ATskip     % skip before a block
+\newskip\@ATpiks     % skip after a block
+\newskip\@ATunit     % another temporary length
+\newbox\@ATu         % temporary block
+\newbox\@ATsa        % temporary save box
+\newbox\@ATsb        % temporary save box
+\newbox\@ATsc        % temporary save box
+\newbox\@ATta        % left save box
+\newbox\@ATtb        % right save box
+
+\def\@ATtok{\z@}     % placeholder for the conversion
+                     % number to dimension
+
+\newif\if@ATlinear   % switch for linear vs tree format
+\@ATlinearfalse      % (usually false)
+
+%%-------------------------------------------------------
+%% The variable stack implementation
+%% Since variables' scope is not limited to the enclosing
+%% group, but extends to subgroups, we need to memorise
+%% variables which may be overwritten during a recursive
+%% macro expansion. Hence, we save them in a stack.
+%% In this case, we know that the saved values are, in
+%% fact, dimensions. We store them as numbers.
+%%-------------------------------------------------------
+\def\@ATeos{X}
+\edef\@ATstack{\@ATeos}
+\def\@ATpush#1{%
+\def\@ATcons{\noexpand\@ATcons}%
+\expandafter\edef\expandafter\@ATstack\expandafter{%
+\@ATcons{#1}\@ATstack}}
+\def\@AT@top#1#2#3X{#2}
+\def\@ATtop{\expandafter\@AT@top\@ATstack}
+\def\@AT@pop#1#2#3X{%
+\def\@ATcons{\noexpand\@ATcons}%
+\expandafter\edef\expandafter\@ATstack\expandafter{#3\@ATeos}}
+\def\@ATpop{\expandafter\@AT@pop\@ATstack}
+
+%%-------------------------------------------------------
+%% To typeset an adtree we start by typesetting the 
+%% adposition box. So, we parse the attributes, if any, 
+%% and we construct a suitable box containing the trajectory, 
+%% followed by the adposition, and closed by the grammar 
+%% character together with the attributes, if present. 
+%% Suitable skips are put in between these pieces.
+%%
+%% Then, the drawing procedure gets invoked. 
+%%-------------------------------------------------------
+\def\@ATadposition#1#2#3{%
+  \if@ATlinear%
+  \ATlinearadpositionblock{#1}{#2}{#3}\else%%
+  \setbox\@ATsa\hbox{#1}\setbox\@ATsb\hbox{#2}%
+  \setbox\@ATsc\hbox{#3}%
+  \setbox\@ATu\vbox{\copy\@ATsa\copy\@ATsb\copy\@ATsc}%
+  \@ATlen\wd\@ATu%
+  \setbox\@ATu\vbox{%
+    \ATpreadpositionskip%
+    \hbox to\@ATlen{\hfil\copy\@ATsa\hfil}\nointerlineskip%
+    \ATfirstinteradpositionskip%
+    \hbox to\@ATlen{\hfil\copy\@ATsb\hfil}\nointerlineskip%
+    \ATsecondinteradpositionskip%
+    \hbox to\@ATlen{\hfil\box\@ATsc\hfil}\nointerlineskip%
+    \ATpostadpositionskip}%
+  \@ATwt\dp\@ATu%
+  \hbox{\raise\@ATwt\hbox{\box\@ATu}}\fi}
+\def\@ATtree#1#2#3#4#5{%
+  \@ifnextchar[{\@ATadposb{#1}{#2}{#3}{#4}{#5}}%
+  {\@ATadposa{#1}{#2}{#3}{#4}{#5}}}
+\def\@ATadposa#1#2#3#4#5{%
+  \@ATtreeparsed{#1}{#2}{#3}{#4}{\hbox{#5}}}
+\def\@ATadposb#1#2#3#4#5[#6]{%
+  \@ATadposc{#1}{#2}{#3}{#4}{%
+    \@ATadposd{#5}{\@ATsmall\ATAttributeBox{#6}}}}
+\def\@ATadposc#1#2#3#4#5{%
+  \@ifnextchar[{\@ATadposf{#1}{#2}{#3}{#4}{#5}}%
+  {\@ATadposa{#1}{#2}{#3}{#4}{#5}}}
+\def\@ATadposd#1#2{\if@ATlinear%
+  \ATlinearfirstattribute{#1}{#2}\else%
+  \setbox\@ATsa\hbox{#1}\setbox\@ATsb\hbox{#2}%
+  \setbox\@ATu\vbox{\copy\@ATsa\copy\@ATsb}\@ATlen\wd\@ATu%
+  \vbox{%
+    \hbox to\@ATlen{\hfil\box\@ATsa\hfil}\nointerlineskip%
+    \ATfirstattrskip%
+    \hbox to\@ATlen{\hfil\box\@ATsb\hfil}}\fi}%
+\def\@ATadpose#1#2{\if@ATlinear%
+  \ATlinearnextattribute{#1}{#2}\else%
+  \setbox\@ATsa\hbox{#1}\setbox\@ATsb\hbox{#2}%
+  \setbox\@ATu\vbox{\copy\@ATsa\copy\@ATsb}\@ATlen\wd\@ATu%
+  \vbox{%
+    \hbox to\@ATlen{\hfil\box\@ATsa\hfil}\nointerlineskip%
+    \ATinterattrskip%
+    \hbox to\@ATlen{\hfil\box\@ATsb\hfil}}\fi}%
+\def\@ATadposf#1#2#3#4#5[#6]{%
+  \@ATadposc{#1}{#2}{#3}{#4}{%
+    \@ATadpose{#5}{\@ATsmall\ATAttributeBox{#6}}}}
+
+%%-------------------------------------------------------
+%% The internal drawing procedure for binary adtrees.
+%%
+%% A block is drawn from the extreme left to the extreme
+%% right. First, we draw the left subtree, eventually
+%% prepending a skip (when the right subtree extends
+%% beyond the left one); then, we draw the connecting
+%% branches, lifting them to the proper height; lastly,
+%% we draw the right subtree, eventually followed by a
+%% skip, when the left subtree extends beyond the right 
+%% one.
+%%
+%% Our blocks are thought to as a TeX block, starting from
+%% the current position and ending at the right edge. 
+%% This block carries the information, called 'base point',
+%% that identifies where it must be linked with an upper
+%% block, i.e., where is the current position of the
+%% upper block.
+%%
+%% Summarising, calculation are as follows:
+%% 1. when bl + rr + 50u > wr & bl + rr + 50u > wl
+%%    skip = 0pt
+%%    piks = 0pt
+%%    bp   = bl + 25u
+%%    wt   = bl + rr + 50u
+%% 2. when bl + rr + 50u < wl & wr < wl
+%%    skip = 0pt
+%%    piks = rl - rr - 50u
+%%    bp   = bl + 25u
+%%    wt   = wl
+%% 3. when bl + rr + 50u < wr & wl < wr
+%%    skip = br - bl - 50u
+%%    piks = 0pt
+%%    bp   = br - 50u
+%%    wt   = wr
+%%
+%% Some care has been taken to improve calculation time
+%% and to limit register/memory usage.
+%%-------------------------------------------------------
+\def\@ATtreeparsed#1#2#3#4#5#6#7{%
+\if@ATlinear%
+\@ATadposition{#3}{#4}{#5}\ATlinearsubtrees{#6}{#7}\else%
+\sbox{\@ATta}{\ignorespaces#6\@killglue}%
+\@ATpush{\the\@ATbp}\@ATpush{\the\@ATwt}%  
+\sbox{\@ATtb}{\ignorespaces#7\@killglue}%
+\setbox\@ATu\hbox{\usebox{\@ATta}\usebox{\@ATtb}}\@ATh\ht\@ATu%
+\setbox\@ATu\hbox{\usebox{\@ATta}}\@ATlen\ht\@ATu\advance\@ATlen -\@ATh%
+\edef\@ATtok{\@ATtop}\@ATpop\@ATwl\@ATtok%
+\edef\@ATtok{\@ATtop}\@ATpop\@ATbl\@ATtok%
+\@ATrl\@ATwl\advance\@ATrl -\@ATbl%
+\sbox{\@ATta}{\raisebox{-\@ATlen}{\usebox{\@ATta}}}%
+\setbox\@ATu\hbox{\usebox{\@ATtb}}\@ATwr\@ATwt\@ATlen\ht\@ATu%
+\advance\@ATlen -\@ATh\@ATbr\@ATbp\@ATrr\@ATwr\advance\@ATrr -\@ATbr%
+\sbox{\@ATtb}{\raisebox{-\@ATlen}{\usebox{\@ATtb}}}%
+\@ATskip\z@\@ATpiks\z@%
+\@ATunit\unitlength%
+\unitlength#1%
+\@ATlen\@ATbl\advance\@ATlen\@ATrr\advance\@ATlen 50\unitlength\relax%
+\ifdim\@ATlen<\@ATwl%
+\ifdim\@ATwr<\@ATwl\@ATpiks\@ATrl\advance\@ATpiks -\@ATrr%
+\advance\@ATpiks -50\unitlength\fi%
+\@ATlen\@ATwl\fi\relax%
+\ifdim\@ATlen<\@ATwr\@ATlen\@ATwr%
+\@ATskip\@ATbr\advance\@ATskip -\@ATbl%
+\advance\@ATskip -50\unitlength\fi\relax%
+\global\@ATbp\@ATbl\global\advance\@ATbp 25\unitlength%
+\global\advance\@ATbp \@ATskip\global\@ATwt\@ATlen%
+\setbox\@ATu\box\voidb@x%
+\unitlength\@ATunit%
+\hbox{\hspace*{\@ATskip}\usebox{\@ATta}\hspace*{-\@ATrl}%
+\@ATunit\unitlength%
+\unitlength#1%
+\edef\@AT@angle{#2}%
+{\ifnum\@AT@angle=120%
+\raisebox{\@ATh}{\begin{picture}(50,12.5)%
+\thicklines\put(25,12.5){\ATleftbranch{-2}{-1}{25}}%
+\put(25,12.5){\ATcircle{2}}%
+\put(25,9.5){\makebox(0,0)[t]{\@ATadposition{#3}{#4}{#5}}}%
+\thicklines\put(25,12.5){\ATrightbranch{2}{-1}{25}}%
+\end{picture}}%
+\else\ifnum\@AT@angle=90%
+\raisebox{\@ATh}{\begin{picture}(50,25)%
+\thicklines\put(25,25){\ATleftbranch{-1}{-1}{25}}%
+\put(25,25){\ATcircle{2}}%
+\put(25,19){\makebox(0,0)[t]{\@ATadposition{#3}{#4}{#5}}}%
+\thicklines\put(25,25){\ATrightbranch{1}{-1}{25}}%
+\end{picture}}%
+\else%
+\raisebox{\@ATh}{\begin{picture}(50,50)%
+\thicklines\put(25,50){\ATleftbranch{-1}{-2}{25}}%
+\put(25,50){\ATcircle{2}}%
+\put(25,35){\makebox(0,0)[t]{\@ATadposition{#3}{#4}{#5}}}%
+\thicklines\put(25,50){\ATrightbranch{1}{-2}{25}}%
+\end{picture}}\fi\fi}%
+\unitlength\@ATunit%
+\hspace*{-\@ATbr}\usebox{\@ATtb}\hspace*{\@ATpiks}}\fi}
+
+%%-------------------------------------------------------
+%% The internal drawing procedure for right extensions
+%% of an adtree.
+%% Essentially, this is an adtree where the left side has
+%% been truncated.
+%%-------------------------------------------------------
+\def\@ATright#1#2#3{%
+\if@ATlinear%
+#3\else%
+\sbox{\@ATtb}{\ignorespaces#3\@killglue}%
+\setbox\@ATu\hbox{\usebox{\@ATtb}}\@ATh\ht\@ATu\@ATwr\@ATwt%
+\@ATbr\@ATbp\@ATrr\@ATwr\advance\@ATrr -\@ATbr%
+\global\advance\@ATbp\ifdim\@ATbr<25pt -\@ATbp\else -25\unitlength\fi%
+\@ATwt\@ATrr\advance\@ATwt 25\unitlength\global\advance\@ATwt\@ATbp%
+\setbox\@ATu\box\voidb@x%
+\hbox{\hspace*{\@ATbp}%
+\@ATlen\unitlength%
+\unitlength#1%
+\edef\@AT@angle{#2}%
+\ifnum\@AT@angle=120%
+\raisebox{\@ATh}{\begin{picture}(25,12.5)%
+\thicklines\put(0,12.5){\ATrightbranch{2}{-1}{25}}%
+\end{picture}}%
+\else\ifnum\@AT@angle=90%
+\raisebox{\@ATh}{\begin{picture}(25,25)%
+\thicklines\put(0,25){\ATrightbranch{1}{-1}{25}}%
+\end{picture}}%
+\else%
+\raisebox{\@ATh}{\begin{picture}(25,50)%
+\thicklines\put(0,50){\ATrightbranch{1}{-2}{25}}%
+\end{picture}}\fi\fi%
+\unitlength\@ATlen%
+\hspace*{-\@ATbr}\usebox{\@ATtb}}\fi}
+
+%%-------------------------------------------------------
+%% The internal drawing procedure for left extensions
+%% of an adtree.
+%% Essentially, this is an adtree where the right side 
+%% has been truncated.
+%%-------------------------------------------------------
+\def\@ATleft#1#2#3{%
+\if@ATlinear%
+#3\else%
+\sbox{\@ATta}{\ignorespaces#3\@killglue}%
+\setbox\@ATu\hbox{\usebox{\@ATta}}\@ATh\ht\@ATu\@ATwl\@ATwt%
+\@ATrl\@ATwl\advance\@ATrl -\@ATbp\global\advance\@ATbp 25\unitlength\relax%
+\global\@ATwt\ifdim\@ATbp<\@ATwl\@ATwl\else\@ATbp\fi\relax%
+\setbox\@ATu\box\voidb@x%
+\hbox{\usebox{\@ATta}\hspace*{-\@ATrl}%
+\@ATlen\unitlength%
+\unitlength#1%
+\edef\@AT@angle{#2}%
+\ifnum\@AT@angle=120%
+\raisebox{\@ATh}{\begin{picture}(25,12.5)%
+\thicklines\put(25,12.5){\ATleftbranch{-2}{-1}{25}}%
+\end{picture}}%
+\else\ifnum\@AT@angle=90%
+\raisebox{\@ATh}{\begin{picture}(25,25)%
+\thicklines\put(25,25){\ATleftbranch{-1}{-1}{25}}%
+\end{picture}}%
+\else%
+\raisebox{\@ATh}{\begin{picture}(25,50)%
+\thicklines\put(25,50){\ATleftbranch{-1}{-2}{25}}%
+\end{picture}}\fi\fi%
+\unitlength\@ATlen%
+\hspace*{-\@ATbp}\hspace*{\@ATwt}}\fi}%
+
+%%-------------------------------------------------------
+%% The internal procedure to draw a leaf.
+%% Its base point is in the middle of the box.
+%% 
+%% First we parse attributes, accumulating them together
+%% with the grammar character. Then, we assemble the 
+%% morpheme with the computed box.
+%%-------------------------------------------------------
+\def\@ATadl#1#2{\@ifnextchar[%
+  {\@ATadlb{#1}{#2}}%
+  {\@ATadla{#1}{#2}}}
+\def\@ATadla#1#2{%
+  \if@ATlinear\ATlinearmorphemeblock{#1}{#2}\else%
+  \setbox\@ATsa\hbox{#1}\setbox\@ATsb\hbox{#2}%
+  \setbox\@ATu\vbox{\copy\@ATsa\copy\@ATsb}\@ATlen\wd\@ATu%
+  \setbox\@ATu\vbox{%
+    \ATpremorphemeskip%
+    \hbox to\@ATlen{\hfil\copy\@ATsa\hfil}\nointerlineskip%
+    \ATintermorphemeskip%
+    \hbox to\@ATlen{\hfil\box\@ATsb\hfil}\nointerlineskip%
+    \ATpostmorphemeskip}%
+  \@ATwt\dp\@ATu\setbox\@ATu\hbox{\raise\@ATwt\hbox{\box\@ATu}}%
+  \setbox\@ATsa\vbox{\ATpremorphemeskip\hbox{\box\@ATsa}}%
+  \@ATwt\ht\@ATu\advance\@ATwt-\ht\@ATsa%
+  \setbox\@ATu\hbox{\lower\@ATwt\hbox{\box\@ATu}}%
+  \global\@ATwt\wd\@ATu\global\@ATbp .5\@ATwt%
+  \hbox{\box\@ATu}\fi}
+\def\@ATadlb#1#2[#3]{%
+  \@ATadlc{#1}{\@ATadld{#2}{\ATAttributeBox{#3}}}}
+\def\@ATadlc#1#2{\@ifnextchar[%
+  {\@ATadlf{#1}{#2}}%
+  {\@ATadla{#1}{#2}}}
+\def\@ATadld#1#2{\if@ATlinear%
+  \ATlinearfirstattribute{#1}{#2}\else%
+  \setbox\@ATsa\hbox{#1}\setbox\@ATsb\hbox{#2}%
+  \setbox\@ATu\vbox{\copy\@ATsa\copy\@ATsb}\@ATlen\wd\@ATu%
+  \vbox{%
+    \hbox to\@ATlen{\hfil\box\@ATsa\hfil}\nointerlineskip%
+    \ATfirstattrskip%
+    \hbox to\@ATlen{\hfil\box\@ATsb\hfil}}\fi}%
+\def\@ATadle#1#2{\if@ATlinear%
+  \ATlinearnextattribute{#1}{#2}\else%
+  \setbox\@ATsa\hbox{#1}\setbox\@ATsb\hbox{#2}%
+  \setbox\@ATu\vbox{\copy\@ATsa\copy\@ATsb}\@ATlen\wd\@ATu%
+  \vbox{%
+    \hbox to\@ATlen{\hfil\box\@ATsa\hfil}\nointerlineskip%
+    \ATinterattrskip%
+    \hbox to\@ATlen{\hfil\box\@ATsb\hfil}}\fi}%
+\def\@ATadlf#1#2[#3]{%
+  \@ATadlc{#1}{\@ATadle{#2}{\ATAttributeBox{#3}}}}
+
+%%-------------------------------------------------------
+%% The internal procedure to draw a summary.
+%% Its base point is in the middle of the box.
+%% 
+%% First we parse attributes, accumulating them together 
+%% with the grammar character. Then, we assemble the 
+%% summary symbol with the morpheme and the computed box.
+%% -------------------------------------------------------
+\def\@ATads#1#2{\@ifnextchar[%
+  {\@ATadsb{#1}{#2}}%
+  {\@ATadsa{#1}{#2}}}
+\def\@ATadsa#1#2{%
+  \if@ATlinear\ATlinearsummaryblock{#1}{#2}\else%
+  \setbox\@ATsa\hbox{#1}\setbox\@ATsb\hbox{#2}%
+  \setbox\@ATsc\hbox{\ATSummarySymbol}%
+  \setbox\@ATu\vbox{\copy\@ATsc\copy\@ATsa\copy\@ATsb}%
+  \@ATlen\wd\@ATu%
+  \setbox\@ATu\vbox{%
+    \hbox to\@ATlen{\hfil\copy\@ATsc\hfil}\nointerlineskip%
+    \ATpremorphemeskip%
+    \hbox to\@ATlen{\hfil\copy\@ATsa\hfil}\nointerlineskip%
+    \ATintermorphemeskip%
+    \hbox to\@ATlen{\hfil\box\@ATsb\hfil}\nointerlineskip%
+    \ATpostmorphemeskip}%
+  \@ATwt\dp\@ATu\setbox\@ATu\hbox{\raise\@ATwt\hbox{\box\@ATu}}%
+  \setbox\@ATsa\vbox{%
+    \hbox{\box\@ATsc}\nointerlineskip%
+    \ATpremorphemeskip\hbox{\box\@ATsa}}%
+  \@ATwt\ht\@ATu\advance\@ATwt-\ht\@ATsa%
+  \setbox\@ATu\hbox{\lower\@ATwt\hbox{\box\@ATu}}%
+  \global\@ATwt\wd\@ATu\global\@ATbp .5\@ATwt%
+  \hbox{\box\@ATu}\fi}
+\def\@ATadsb#1#2[#3]{%
+  \@ATadsc{#1}{\@ATadsd{#2}{\ATAttributeBox{#3}}}}
+\def\@ATadsc#1#2{\@ifnextchar[%
+  {\@ATadsf{#1}{#2}}%
+  {\@ATadsa{#1}{#2}}}
+\def\@ATadsd#1#2{\if@ATlinear%
+  \ATlinearfirstattribute{#1}{#2}\else%
+  \setbox\@ATsa\hbox{#1}\setbox\@ATsb\hbox{#2}%
+  \setbox\@ATu\vbox{\copy\@ATsa\copy\@ATsb}\@ATlen\wd\@ATu%
+  \vbox{%
+    \hbox to\@ATlen{\hfil\box\@ATsa\hfil}\nointerlineskip%
+    \ATfirstattrskip%
+    \hbox to\@ATlen{\hfil\box\@ATsb\hfil}}\fi}%
+\def\@ATadse#1#2{\if@ATlinear%
+  \ATlinearnextattribute{#1}{#2}\else%
+  \setbox\@ATsa\hbox{#1}\setbox\@ATsb\hbox{#2}%
+  \setbox\@ATu\vbox{\copy\@ATsa\copy\@ATsb}\@ATlen\wd\@ATu%
+  \vbox{%
+    \hbox to\@ATlen{\hfil\box\@ATsa\hfil}\nointerlineskip%
+    \ATinterattrskip%
+    \hbox to\@ATlen{\hfil\box\@ATsb\hfil}}\fi}%
+\def\@ATadsf#1#2[#3]{%
+  \@ATadsc{#1}{\@ATadse{#2}{\ATAttributeBox{#3}}}}
+
+%%-------------------------------------------------------
+%% The commands to format adtrees in the standard way.
+%%
+%% \ATMorphemeBox{<morpheme>} 
+%% generates a horizontal box containing the morpheme
+%%
+%% \ATGrammarCharacterBox{<grammar character>}
+%% generates a horizontal box containing the grammar character
+%%
+%% \ATAttributeBox{<attribute>}
+%% generates a horizontal box containing the attribute of a morpheme
+%%
+%% - \ATfirstattrskip generates the vertical material to be put before 
+%%   the first attribute in a morpheme or summary box
+%% - \ATinterattrskip generates the vertical material to be put
+%%   between two attributes in a morpheme or summary box
+%%
+%% - \ATpremorphemeskip generates the vertical material to be put
+%%   before the morpheme in a morpheme or summary box
+%% - \ATintermorphemeskip generates the vertical material to be but 
+%%   between the morpheme and the grammar character in a morpheme or 
+%%   summary box
+%% - \ATpostmorphemeskip generates the vertical material to be put
+%%   after the grammar character or the last attribute in a morpheme
+%%   or summary box
+%%
+%% - \ATpreadpositionskip generates the vertical material appearing
+%%   before the trajectory in the root of a node 
+%% - \ATfirstinteradpositionskip generates the vertical material to be
+%%   put between the trajectory and the adposition in the root of a
+%%   node 
+%% - \ATsecondinteradpositionskip generates the vertical material to
+%%   be put between the adposition and the grammar character in the
+%%   root of a node
+%% - \ATpostadpositionskip generates the vertical material to be put
+%%   after the grammar character or the last attribute in the root of
+%%   a node
+%%
+%% \ATSummarySymbol defines the symbol used for the summary
+%%-------------------------------------------------------
+\def\ATMorphemeBox#1{#1\strut}
+\def\ATGrammarCharacterBox#1{$\mathrm{#1}$}
+\def\ATAttributeBox#1{\textsf{[#1]}}
+
+\def\ATfirstattrskip{\vskip.7ex}
+\def\ATinterattrskip{\vskip.5ex}
+
+\def\ATpremorphemeskip{\vskip.5ex}
+\def\ATintermorphemeskip{\vskip1ex}
+\def\ATpostmorphemeskip{\relax}
+
+\def\ATpreadpositionskip{\relax}
+\def\ATfirstinteradpositionskip{\vskip.3ex}
+\def\ATsecondinteradpositionskip{\vskip.3ex}
+\def\ATpostadpositionskip{\relax}
+
+\def\ATSummarySymbol{$\triangle$}
+
+\def\ATleftbranch#1#2{\line(#1,#2)}
+\def\ATrightbranch#1#2{\line(#1,#2)}
+\def\ATcircle{\circle*}
+
+%%-------------------------------------------------------
+%% The following commands draw an adtree specifying its adposition,
+%% the grammar character of the resulting expression, and the left and
+%% right subtrees. The l, r, and b variants differ in the trajectory,
+%% which is a left arrow, a right arrow, or a bidirectional arrow,
+%% respectively. 
+%% \ATl{<adposition>}{<grammar character>}
+%%      {<left subtree>}{<right subtree>}
+%% \ATr{<adposition>}{<grammar character>}
+%%      {<left subtree>}{<right subtree>}
+%% \ATb{<adposition>}{<grammar character>}
+%%      {<left subtree>}{<right subtree>}
+%%   
+%% A single morpheme can be typeset by the following command
+%% \ATm{<morpheme>}{<grammar character>}{x1}...{xn}
+%% with x1,..,xn stacked as morpheme's attributes
+%%
+%% A summary has the same structure as a morpheme, but it is provided
+%% to give graphical evidence that the <text> can be further expanded
+%% as an adtree
+%% \ATs{<text>}{<grammar character>}{x1}...{xn}
+%% with x1,..,xn stacked as morpheme's attributes
+%%
+%% To write complex adtrees, we need to extend branches on the left
+%% and on the right:
+%% \ATxl{<adtree>}
+%% \ATxr{<adtree>}
+%%
+%% To avoid writing of epsilons, i.e., empty morphemes:
+%% \ATle{<grammar character>}
+%%       {<left subtree>}{<rightsubtree>}
+%% \ATre{<grammar character>}
+%%       {<left subtree>}{<rightsubtree>}
+%% \ATbe{<grammar character>}
+%%      {<left subtree>}{<rightsubtree>}
+%%
+%% The epsilon transformations are very useful and common, so the
+%% following shortcuts allow to write them quickly.
+%% \ATlc{<grammar character>}
+%%       {<left subtree>}{<rightsubtree>}
+%% \ATrc{<grammar character>}
+%%       {<left subtree>}{<rightsubtree>}
+%% \ATbc{<grammar character>}
+%%      {<left subtree>}{<rightsubtree>}
+%%
+%% The mu adpositions indicate morphological relations. The code
+%% to define them is similar to the one with the epsilons, but 
+%% no transformations are involved. The related commands are
+%% \ATlmu{<grammar character>}
+%%       {<left subtree>}{<rightsubtree>}
+%% \ATrmu{<grammar character>}
+%%       {<left subtree>}{<rightsubtree>}
+%% \ATbmu{<grammar character>}
+%%      {<left subtree>}{<rightsubtree>}
+%%
+%% All the above commands, except \ATs and \ATm, come in four
+%% variants:
+%% - the pure variants draws the adtree in the standard way
+%% - the L variants allow to specify the value for \unitlength to be
+%%   used in the expansion of that particular node
+%% - the A variants allow to specify the value for the angle to be
+%%   used in the expansion of that particular node
+%% - the LA variants allow to specify both values.
+%%-------------------------------------------------------
+\def\@ATeps{\epsilon}
+\def\@ATepsc{\cancel{\@ATeps}}
+\def\@ATmu{\mu}
+\def\@AT@shorttree#1#2#3#4#5{%
+  \@ATtree{#1}{#2}{\hbox{$#3$}}%
+  {\@ATsmall\ATMorphemeBox{#4}}%
+  {\@ATsmall\ATGrammarCharacterBox{#5}}} 
+\def\ATl{\@AT@shorttree{\unitlength}{\@ATangle}%
+  {\scriptstyle\leftarrow}}
+\def\ATlL#1{\@AT@shorttree{#1}{\@ATangle}%
+  {\scriptstyle\leftarrow}}
+\def\ATlA#1{\@AT@shorttree{\unitlength}{#1}%
+  {\scriptstyle\leftarrow}}
+\def\ATlLA#1#2{\@AT@shorttree{#1}{#2}%
+  {\scriptstyle\leftarrow}}
+\def\ATr{\@AT@shorttree{\unitlength}{\@ATangle}%
+  {\scriptstyle\rightarrow}}
+\def\ATrL#1{\@AT@shorttree{#1}{\@ATangle}%
+  {\scriptstyle\rightarrow}}
+\def\ATrA#1{\@AT@shorttree{\unitlength}{#1}%
+  {\scriptstyle\rightarrow}}
+\def\ATrLA#1#2{\@AT@shorttree{#1}{#2}%
+  {\scriptstyle\rightarrow}}
+\def\ATb{\@AT@shorttree{\unitlength}{\@ATangle}%
+  {\scriptstyle\leftrightarrow}}
+\def\ATbL#1{\@AT@shorttree{#1}{\@ATangle}%
+  {\scriptstyle\leftrightarrow}}
+\def\ATbA#1{\@AT@shorttree{\unitlength}{#1}%
+  {\scriptstyle\leftrightarrow}}
+\def\ATbLA#1#2{\@AT@shorttree{#1}{#2}%
+  {\scriptstyle\leftrightarrow}}
+\def\ATle{\ATl{$\@ATeps$}}
+\def\ATleL#1{\ATlL{#1}{$\@ATeps$}}
+\def\ATleA#1{\ATlA{#1}{$\@ATeps$}}
+\def\ATleLA#1#2{\ATlLA{#1}{#2}{$\@ATeps$}}
+\def\ATlc{\ATl{$\@ATepsc$}}
+\def\ATlcL#1{\ATlL{#1}{$\@ATepsc$}}
+\def\ATlcA#1{\ATlA{#1}{$\@ATepsc$}}
+\def\ATlcLA#1#2{\ATlLA{#1}{#2}{$\@ATepsc$}}
+\def\ATlmu{\ATl{$\@ATmu$}}
+\def\ATlmuL#1{\ATlL{#1}{$\@ATmu$}}
+\def\ATlmuA#1{\ATlA{#1}{$\@ATmu$}}
+\def\ATlmuLA#1#2{\ATlLA{#1}{#2}{$\@ATmu$}}
+\def\ATre{\ATr{$\@ATeps$}}
+\def\ATreL#1{\ATrL{#1}{$\@ATeps$}}
+\def\ATreA#1{\ATrA{#1}{$\@ATeps$}}
+\def\ATreLA#1#2{\ATrLA{#1}{#2}{$\@ATeps$}}
+\def\ATrc{\ATr{$\@ATepsc$}}
+\def\ATrcL#1{\ATrL{#1}{$\@ATepsc$}}
+\def\ATrcA#1{\ATrA{#1}{$\@ATepsc$}}
+\def\ATrcLA#1#2{\ATrLA{#1}{#2}{$\@ATepsc$}}
+\def\ATrmu{\ATr{$\@ATmu$}}
+\def\ATrmuL#1{\ATrL{#1}{$\@ATmu$}}
+\def\ATrmuA#1{\ATrA{#1}{$\@ATmu$}}
+\def\ATrmuLA#1#2{\ATrLA{#1}{#2}{$\@ATmu$}}
+\def\ATbe{\ATb{$\@ATeps$}}
+\def\ATbeL#1{\ATbL{#1}{$\@ATeps$}}
+\def\ATbeA#1{\ATbA{#1}{$\@ATeps$}}
+\def\ATbeLA#1#2{\ATbLA{#1}{#2}{$\@ATeps$}}
+\def\ATbc{\ATb{$\@ATepsc$}}
+\def\ATbcL#1{\ATbL{#1}{$\@ATepsc$}}
+\def\ATbcA#1{\ATbA{#1}{$\@ATepsc$}}
+\def\ATbcLA#1#2{\ATbLA{#1}{#2}{$\@ATepsc$}}
+\def\ATbmu{\ATb{$\@ATmu$}}
+\def\ATbmuL#1{\ATbL{#1}{$\@ATmu$}}
+\def\ATbmuA#1{\ATbA{#1}{$\@ATmu$}}
+\def\ATbmuLA#1#2{\ATbLA{#1}{#2}{$\@ATmu$}}
+\def\ATxl{\@ATleft{\unitlength}{\@ATangle}}
+\def\ATxlL#1{\@ATleft{#1}{\@ATangle}}
+\def\ATxlA#1{\@ATleft{\unitlength}{#1}}
+\def\ATxlLA#1#2{\@ATleft{#1}{#2}}
+\def\ATxr{\@ATright{\unitlength}{\@ATangle}}
+\def\ATxrL#1{\@ATright{#1}{\@ATangle}}
+\def\ATxrA#1{\@ATright{\unitlength}{#1}}
+\def\ATxrLA#1#2{\@ATright{#1}{#2}}
+\def\ATs#1#2{\@ATads{\ATMorphemeBox{#1}}%
+  {\ATGrammarCharacterBox{#2}}}
+\def\ATm#1#2{\@ATadl{\ATMorphemeBox{#1}}%
+  {\ATGrammarCharacterBox{#2}}}
+
+%%-------------------------------------------------------
+%% Public commands to write adtrees in linear format.
+%%
+%% Essentially, an adtree is written as Ad^dir_GC(L, R),
+%% where Ad is the adposition, dir is the direction, GC
+%% is the grammar character, and L and R are the left and
+%% right subtrees respectively. Leaves are written as
+%% m_GC, where m is the morpheme, and summaries as (t)_GC
+%% where t is the text. All these renderings are coded via
+%% suitable blocks 
+%%-------------------------------------------------------
+\def\ATlinearise#1{\@ATlineartrue\hbox{#1}\@ATlinearfalse}
+\def\ATLinear{\@ATlineartrue}
+\def\ATNormal{\@ATlinearfalse}
+
+\def\ATlinearadpositionblock#1#2#3{%
+  {#2}${}^{\hbox{#1}}_{\hbox{#3}}$}
+\def\ATlinearfirstattribute#1#2{{#1}:{#2}}
+\def\ATlinearnextattribute#1#2{{#1};{#2}}
+\def\ATlinearsubtrees#1#2{(#1,\linebreak[0] #2)}
+\def\ATlinearmorphemeblock#1#2{{#1}${}_{\hbox{#2}}$}
+\def\ATlinearsummaryblock#1#2{({#1})${}_{\hbox{#2}}$}
+
+%%-------------------------------------------------------
+%% Centring adtrees.
+%%
+%% The command \ATvcentre{<adtree>} vertically centres its argument
+%% with respect to the current baseline
+%%
+%% The command \AThcentre{<adtree>} horizontally centres its argument
+%% around the current position in the baseline 
+%%
+%% The command \ATcentre{<adtree>} centres its argument both
+%% horizontally and vertically around the current position in the
+%% baseline 
+%%-------------------------------------------------------
+\def\ATvcentre#1{%
+  \setbox\@ATsc\hbox{#1}%
+  \@ATlen\dp\@ATsc\setbox\@ATsc\hbox{\raise\@ATlen\box\@ATsc} 
+  \@ATlen.5\ht\@ATsc\hbox{\lower\@ATlen\box\@ATsc}}%
+\def\AThcentre#1{%
+  \setbox\@ATsc\hbox{#1}%
+  \@ATlen-.5\wd\@ATsc%
+  \hbox{\kern\@ATlen\box\@ATsc}}
+\def\ATcentre#1{\AThcentre{\ATvcentre{#1}}}
+
+%%-------------------------------------------------------

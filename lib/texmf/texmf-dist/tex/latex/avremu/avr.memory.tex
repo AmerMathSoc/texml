@@ -1,0 +1,343 @@
+%% Copyright (C) 2014 Christian Dietrich <stettberger@dokucode.de>
+%% -------------------------------------------------------
+%% 
+%% This package may be distributed and/or modified under the conditions
+%% of the LaTeX Project Public License, either version 1.3c of this
+%% license or (at your option) any later version.  The latest version of
+%% this license is in
+%% 
+%%    http://www.latex-project.org/lppl.txt
+%% 
+%% and version 1.3c or later is part of all distributions of LaTeX
+%% version 2008/05/04 or later.
+%
+% The IO subsystem
+%
+
+%% Bootup
+\def\avr@init{%
+  \avr@flag@init%
+  \avr@reg@init%
+  \avr@pc@init%
+  \avr@stack@init%
+  \avr@mem@init{1024}%
+  \avr@io@init%
+  \avr@instr@init%
+  \avr@debug{Initialized AVR}%
+}
+
+\newcount\avr@accA
+\newcount\avr@accB
+
+
+\def\avr@dump@totex{%
+  SREG:\avr@sreg@get{\@tempa}:='\@tempa' (ITHS VNZC)
+
+  \ttfamily
+  \begin{tabular}{llllllll}
+    r0 :\avr@reg@get{00000}{\@tempa}:=   '\@tempa' & 
+    r1 :\avr@reg@get{00001}{\@tempa}:=   '\@tempa' & 
+    r2 :\avr@reg@get{00010}{\@tempa}:=   '\@tempa' & 
+    r3 :\avr@reg@get{00011}{\@tempa}:=   '\@tempa' \\
+    r4 :\avr@reg@get{00100}{\@tempa}:=   '\@tempa' & 
+    r5 :\avr@reg@get{00101}{\@tempa}:=   '\@tempa' & 
+    r6 :\avr@reg@get{00110}{\@tempa}:=   '\@tempa' & 
+    r7 :\avr@reg@get{00111}{\@tempa}:=   '\@tempa' \\
+    r8 :\avr@reg@get{01000}{\@tempa}:=   '\@tempa' & 
+    r9 :\avr@reg@get{01001}{\@tempa}:=   '\@tempa' & 
+    r10:\avr@reg@get{01010}{\@tempa}:=  '\@tempa' & 
+    r11:\avr@reg@get{01011}{\@tempa}:=  '\@tempa' \\
+    r12:\avr@reg@get{01100}{\@tempa}:=  '\@tempa' & 
+    r13:\avr@reg@get{01101}{\@tempa}:=  '\@tempa' & 
+    r14:\avr@reg@get{01110}{\@tempa}:=  '\@tempa' & 
+    r15:\avr@reg@get{01111}{\@tempa}:=  '\@tempa' \\
+    r16:\avr@reg@get{10000}{\@tempa}:=  '\@tempa' & 
+    r17:\avr@reg@get{10001}{\@tempa}:=  '\@tempa' & 
+    r18:\avr@reg@get{10010}{\@tempa}:=  '\@tempa' & 
+    r19:\avr@reg@get{10011}{\@tempa}:=  '\@tempa' \\
+    r20:\avr@reg@get{10100}{\@tempa}:=  '\@tempa' & 
+    r21:\avr@reg@get{10101}{\@tempa}:=  '\@tempa' & 
+    r22:\avr@reg@get{10110}{\@tempa}:=  '\@tempa' & 
+    r23:\avr@reg@get{10111}{\@tempa}:=  '\@tempa' \\
+    r24:\avr@reg@get{11000}{\@tempa}:=  '\@tempa' & 
+    r25:\avr@reg@get{11001}{\@tempa}:=  '\@tempa' & 
+    r26:\avr@reg@get{11010}{\@tempa}:=  '\@tempa' & 
+    r27:\avr@reg@get{11011}{\@tempa}:=  '\@tempa' \\
+    r28:\avr@reg@get{11100}{\@tempa}:=  '\@tempa' & 
+    r29:\avr@reg@get{11101}{\@tempa}:=  '\@tempa' & 
+    r30:\avr@reg@get{11110}{\@tempa}:=  '\@tempa' & 
+    r31:\avr@reg@get{11111}{\@tempa}:=  '\@tempa' \\
+  \end{tabular}
+}
+
+\def\avr@dump{%
+  \avr@sreg@get{\@@X} \avr@debug{SREG::='\@@X' (ITHS VNZC)}
+  \def\avr@dump@reg##1##2{%
+    \avr@reg@get{\csuse{avr@##1}}{\@@X}%
+    \avr@bin@tocount{\@@X}{\avr@count@tmpa}%
+    \edef##2{##1=\the\avr@count@tmpa}%
+  }%
+  \def\avr@dump@row##1##2##3##4{%
+    \avr@dump@reg{##1}{\@@A}%
+    \avr@dump@reg{##2}{\@@B}%
+    \avr@dump@reg{##3}{\@@C}%
+    \avr@dump@reg{##4}{\@@D}%
+    \avr@debug{(\@@A)    (\@@B)    (\@@C)    (\@@D)}%
+  }%
+  \avr@dump@row{r0}{r1}{r2}{r3}%
+  \avr@dump@row{r4}{r5}{r6}{r7}%
+  \avr@dump@row{r8}{r9}{r10}{r11}%
+  \avr@dump@row{r12}{r13}{r14}{r15}%
+  \avr@dump@row{r16}{r17}{r18}{r19}%
+  \avr@dump@row{r20}{r21}{r22}{r23}%
+  \avr@dump@row{r24}{r25}{r26}{r27}%
+  \avr@dump@row{r28}{r29}{r30}{r31}%
+}
+
+
+%% Status Register && Flags
+\def\avr@flag@set#1#2{% Register Name, Value \in 0,1
+  \csxdef{avr@flag@#1}{#2}\relax%
+}
+
+\def\avr@flag@get#1#2{% Register Name, Target Macro
+  \edef#2{\csuse{avr@flag@#1}}%
+}
+
+\def\avr@flag@init{%
+  \avr@sreg@set{00000000}%
+}
+
+\def\avr@sreg@set#1{% Bitstring
+  \def\avr@sreg@helper##1##2##3##4##5##6##7##8\@nnil{%
+    \avr@flag@set{C}{##8} % Carry
+    \avr@flag@set{Z}{##7} % Zero
+    \avr@flag@set{N}{##6} % Negative
+    \avr@flag@set{V}{##5} % Two's complement overflow indicator
+    \avr@flag@set{S}{##4} % N \xor V, For Signed Tests
+    \avr@flag@set{H}{##3} % Half Carry Flag
+    \avr@flag@set{T}{##2} % Transfer bit
+    \avr@flag@set{I}{##1} % Global Interrupt Enable
+  }%
+  \edef\@tempa{#1}%
+  \expandafter \avr@sreg@helper \@tempa \@nnil%
+}
+
+\def\avr@sreg@get#1{% Target Macro
+  \edef#1{%
+    \csuse{avr@flag@I}%
+    \csuse{avr@flag@T}%
+    \csuse{avr@flag@H}%
+    \csuse{avr@flag@S}%
+    \csuse{avr@flag@V}%
+    \csuse{avr@flag@N}%
+    \csuse{avr@flag@Z}%
+    \csuse{avr@flag@C}%
+  }%
+}
+
+\def\avr@flags@update#1{%
+  % Negate Flag
+  \avr@bin@msb@get{#1}{\@@N}%
+  \avr@flag@set N \@@N%
+  % Zero Flag
+  \avr@bin@tocount{#1}{\avr@count@tmpa}%
+  \ifnum \avr@count@tmpa = 0%
+    \avr@flag@set Z 1%
+  \else%
+    \avr@flag@set Z 0%
+  \fi%
+  % Signed Flag
+  \avr@flag@get V \@@V%
+  \edef\@@tmp{\avr@bit@xor \@@N \@@V}%
+  \avr@flag@set S \@@tmp%
+}
+
+%% Registers
+\def\avr@reg@set#1#2{% Bitstring, Register Bitstring
+  \csxdef{avr@reg@#2}{#1}%
+}
+
+\def\avr@reg@get#1#2{% Register Bitstring, Target Macro
+  \edef#2{\csuse{avr@reg@#1}}%
+}
+
+\csdef{avr@X}{1101}
+\csdef{avr@Y}{1110}
+\csdef{avr@Z}{1111}
+
+\def\avr@regw@get#1#2{%
+  \avr@reg@get{#11}{\@@high}%
+  \avr@reg@get{#10}{\@@low}%
+  \edef#2{\@@high \@@low}%
+}
+
+\def\avr@regw@set#1#2{%
+  \edef\@@value{#1}%
+  \avr@bin@word@low{\@@value}{\@@low}%
+  \avr@bin@word@high{\@@value}{\@@high}%
+  \avr@reg@set{\@@high}{#21}%
+  \avr@reg@set{\@@low}{#20}%
+}
+
+\def\avr@reg@init{%
+  \avr@reg@set{\avr@zeroes}{00000}%
+  \avr@reg@set{\avr@zeroes}{00001}%
+  \avr@reg@set{\avr@zeroes}{00010}%
+  \avr@reg@set{\avr@zeroes}{00011}%
+  \avr@reg@set{\avr@zeroes}{00100}%
+  \avr@reg@set{\avr@zeroes}{00101}%
+  \avr@reg@set{\avr@zeroes}{00110}%
+  \avr@reg@set{\avr@zeroes}{00111}%
+  \avr@reg@set{\avr@zeroes}{01000}%
+  \avr@reg@set{\avr@zeroes}{01001}%
+  \avr@reg@set{\avr@zeroes}{01010}%
+  \avr@reg@set{\avr@zeroes}{01011}%
+  \avr@reg@set{\avr@zeroes}{01100}%
+  \avr@reg@set{\avr@zeroes}{01101}%
+  \avr@reg@set{\avr@zeroes}{01110}%
+  \avr@reg@set{\avr@zeroes}{01111}%
+  \avr@reg@set{\avr@zeroes}{10000}%
+  \avr@reg@set{\avr@zeroes}{10001}%
+  \avr@reg@set{\avr@zeroes}{10010}%
+  \avr@reg@set{\avr@zeroes}{10011}%
+  \avr@reg@set{\avr@zeroes}{10100}%
+  \avr@reg@set{\avr@zeroes}{10101}%
+  \avr@reg@set{\avr@zeroes}{10110}%
+  \avr@reg@set{\avr@zeroes}{10111}%
+  \avr@reg@set{\avr@zeroes}{11000}%
+  \avr@reg@set{\avr@zeroes}{11001}%
+  \avr@reg@set{\avr@zeroes}{11010}%
+  \avr@reg@set{\avr@zeroes}{11011}%
+  \avr@reg@set{\avr@zeroes}{11100}%
+  \avr@reg@set{\avr@zeroes}{11101}%
+  \avr@reg@set{\avr@zeroes}{11110}%
+  \avr@reg@set{\avr@zeroes}{11111}%
+}
+
+\csdef{avr@r0}{00000}
+\csdef{avr@r1}{00001}
+\csdef{avr@r2}{00010}
+\csdef{avr@r3}{00011}
+\csdef{avr@r4}{00100}
+\csdef{avr@r5}{00101}
+\csdef{avr@r6}{00110}
+\csdef{avr@r7}{00111}
+\csdef{avr@r8}{01000}
+\csdef{avr@r9}{01001}
+\csdef{avr@r10}{01010}
+\csdef{avr@r11}{01011}
+\csdef{avr@r12}{01100}
+\csdef{avr@r13}{01101}
+\csdef{avr@r14}{01110}
+\csdef{avr@r15}{01111}
+\csdef{avr@r16}{10000}
+\csdef{avr@r17}{10001}
+\csdef{avr@r18}{10010}
+\csdef{avr@r19}{10011}
+\csdef{avr@r20}{10100}
+\csdef{avr@r21}{10101}
+\csdef{avr@r22}{10110}
+\csdef{avr@r23}{10111}
+\csdef{avr@r24}{11000}
+\csdef{avr@r25}{11001}
+\csdef{avr@r26}{11010}
+\csdef{avr@r27}{11011}
+\csdef{avr@r28}{11100}
+\csdef{avr@r29}{11101}
+\csdef{avr@r30}{11110}
+\csdef{avr@r31}{11111}
+
+%% Code
+\newcount\avr@pc
+\def\avr@pc@init{%
+  \avr@pc=0%
+}
+
+\def\avr@pc@inc{% Increment by one
+  \advance \avr@pc by 1\relax%
+  \avr@count@overflow{\avr@pc}%
+}
+
+\def\avr@pc@add#1{% Increment by N
+  \advance \avr@pc by #1\relax%
+  \avr@count@overflow{\avr@pc}%
+}
+
+
+\def\avr@code@get#1{% Result Macro
+  \edef#1{\csuse{avr@code@\the\avr@pc}}%
+}
+
+\def\avr@code@load#1#2{% Result Macro
+  \edef#2{\csuse{avr@code@#1}}%
+}
+
+\def\avr@code@set#1#2{% OpString (16 Bit), Number
+  \csxdef{avr@code@#2}{#1}%
+}
+%% RAM
+\newcount\avr@stackptr
+\def\avr@stack@init{%
+  \avr@stackptr=0%
+}
+
+\def\avr@stack@SPL@get#1{%
+  \avr@count@tobin@w{\avr@stackptr}{\@@stack}%
+  \avr@bin@word@low{\@@stack}{#1}%
+}
+\def\avr@stack@SPH@get#1{%
+  \avr@count@tobin@w{\avr@stackptr}{\@@stack}%
+  \avr@bin@word@high{\@@stack}{#1}%
+}
+
+\def\avr@stack@SPL@set#1{%
+  \avr@count@tobin@w{\avr@stackptr}{\@@stack}%
+  \avr@bin@word@high{\@@stack}{\@@high}%
+  \avr@bin@tocount{\@@high #1}{\avr@stackptr}%
+  \avr@debug{  SP=\the\avr@stackptr}%
+}
+
+\def\avr@stack@SPH@set#1{%
+  \avr@count@tobin@w{\avr@stackptr}{\@@stack}%
+  \avr@bin@word@low{\@@stack}{\@@low}%
+  \avr@bin@tocount{#1\@@low}{\avr@stackptr}%
+  \avr@debug{  SP=\the\avr@stackptr}%
+}
+
+\def\avr@mem@init#1{%
+  \avr@count@tmpa = #1\relax
+  \def\avr@mem@init@helper{%
+    \ifnum \avr@count@tmpa > 0%
+       \csxdef{avr@mem@\the\avr@count@tmpa}{00000000}%
+       \advance \avr@count@tmpa by -1\relax%
+    \else%
+       \let \avr@mem@init@helper \relax%
+    \fi%
+    \avr@mem@init@helper%
+  }%
+  \avr@mem@init@helper%
+}
+
+\def\avr@mem@set#1#2{% Bitstring, Address (as number)
+  \ifnum #2 < 96 % 0x60
+     % FIXME
+     \avr@error{Not implement access to IO/Regs through memory}%
+  \fi%
+  \avr@debug{  MEM W *#2=#1}%
+  \csxdef{avr@mem@#2}{#1}%
+}
+
+
+\def\avr@mem@get#1#2{% Address (as number), Target Macro
+  \ifnum #1 < 96 % 0x60
+     % FIXME
+     \avr@error{Not implement access to IO/Regs through memory}%
+  \fi%
+  \ifcsdef{avr@mem@#1}{%
+    \edef#2{\csuse{avr@mem@#1}}%
+  }{%
+    \edef#2{00000000}%
+  }%
+  \avr@debug{  MEM R *#1==#2}%
+}

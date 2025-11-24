@@ -1,0 +1,1236 @@
+% \iffalse meta-comment
+% !TEX program  = pdfLaTeX
+%<*internal>
+\iffalse
+%</internal>
+%<*readme>
+----------------------------------------------------------------
+autonum --- Automatic number referenced equations
+E-mail: pat_h@web.de
+Released under the LaTeX Project Public License v1.3c or later
+See http://www.latex-project.org/lppl.txt
+----------------------------------------------------------------
+
+This is the autonum package, automatically numbering only the equations which
+are referenced.
+This package is similar to mathtools' showonlyrefs option, but without
+introducing the bug to overwrite long equations with the equation number.
+
+Usage: \usepackage{autonum}
+
+Everything else should happen automatically.
+To use autonum together with other packages, load autonum last.
+%</readme>
+%<*internal>
+\fi
+\def\nameofplainTeX{plain}
+\ifx\fmtname\nameofplainTeX\else
+  \expandafter\begingroup
+\fi
+%</internal>
+%<*install>
+\input docstrip.tex
+\keepsilent
+\askforoverwritefalse
+\preamble
+----------------------------------------------------------------
+autonum --- Automatic number referenced equations
+E-mail: pat_h@web.de
+Released under the LaTeX Project Public License v1.3c or later
+See http://www.latex-project.org/lppl.txt
+----------------------------------------------------------------
+
+\endpreamble
+\postamble
+
+Copyright (C) 2012, 2013, 2014, 2015 by Patrick Häcker <pat_h@web.de>
+
+This work may be distributed and/or modified under the
+conditions of the LaTeX Project Public License (LPPL), either
+version 1.3c of this license or (at your option) any later
+version.  The latest version of this license is in the file:
+
+http://www.latex-project.org/lppl.txt
+
+This work is "maintained" (as per LPPL maintenance status) by
+Patrick Häcker.
+
+This work consists of the file  autonum.dtx
+and the derived files           autonum.ins,
+                                autonum.pdf and
+                                autonum.sty.
+
+\endpostamble
+\usedir{tex/latex/autonum}
+\generate{
+  \file{autonum.sty}{\from{autonum.dtx}{package}}
+}
+%</install>
+%<install>\endbatchfile
+%<*internal>
+\usedir{source/latex/autonum}
+\generate{
+  \file{autonum.ins}{\from{autonum.dtx}{install}}
+}
+\nopreamble\nopostamble
+\usedir{doc/latex/autonum}
+\generate{
+  \file{README.txt}{\from{autonum.dtx}{readme}}
+}
+\ifx\fmtname\nameofplainTeX
+  \expandafter\endbatchfile
+\else
+  \expandafter\endgroup
+\fi
+%</internal>
+%<*package>
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{autonum}[2015/01/18 v0.3.11 Automatic numbering of equations]
+\PassOptionsToPackage{hypertexnames=false}{hyperref}
+\RequirePackage{etoolbox}
+%
+% Avoid \href{https://groups.google.com/d/msg/comp.text.tex/VRrFB4ll5n0/Vu31OC4hQG8J}{a conflict} between etoolbox and etextools
+\makeatletter % The missing \makeatother command is on purpose (as every other combination results in an error).
+\let\autonum@etoolbox@forlistloop\forlistloop
+\RequirePackage{etextools}
+\let\forlistloop\autonum@etoolbox@forlistloop
+%
+\RequirePackage{amsmath}
+\RequirePackage[absolute]{textpos}
+\RequirePackage{letltxmacro}
+%</package>
+%<*driver>
+\documentclass{ltxdoc}
+% \documentclass{ydoc}
+\usepackage[utf8]{inputenx}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage[numbered]{hypdoc}
+\usepackage{autonum}%
+\hypersetup{pdftitle=The autonum package}
+\EnableCrossrefs
+\CodelineIndex
+\RecordChanges
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+%\GetFileInfo{\jobname.sty}
+%
+%\title{^^A
+%  \textsf{autonum} --- automatic number referenced equations\thanks{^^A
+%    This file describes version \fileversion, last revised \filedate.^^A
+%  }^^A
+%}
+%\author{^^A
+%  Patrick Häcker\thanks{E-mail: pat\_h@web.de}^^A
+%}
+%\date{Released \filedate}
+%
+%\maketitle
+%
+%\changes{v0.1}{2012-05-26}{First public release}
+%\changes{v0.2}{2012-06-21}{Support multi-line environments. Redefine \cmd{\[} to use the new \cmd{\equation}.}
+%\changes{v0.3}{2012-08-16}{Support alignat and flalign environments. Fix handling of special characters in label names. Fix handling of multiple label names in \cmd{\cref} command.}
+%\changes{v0.3.1}{2012-08-25}{Fix of leading whitespace in references. Fix of underfull hbox.}
+%\changes{v0.3.2}{2012-09-03}{Fix using reference inside caption.}
+%\changes{v0.3.3}{2013-04-20}{Fix using cleveref inside section.}
+%\changes{v0.3.4}{2013-04-28}{Gracefully handle deactivating the package.}
+%\changes{v0.3.5}{2013-06-15}{Support reference commands with optional arguments or stars.}
+%\changes{v0.3.6}{2013-10-13}{Fix special characters regression. Fix deactivating the package with TOC and LOF.}
+%\changes{v0.3.7}{2013-11-10}{Suport label commands with an optional argument.}
+%\changes{v0.3.8}{2014-04-14}{Correct vertical whitespace after long lines with split.}
+%\changes{v0.3.9}{2014-12-19}{Fix problems and increase robustness for split environment and newline options.}
+%\changes{v0.3.10}{2015-01-03}{Fix incompatibility to biblatex and possible other packages.}
+%\changes{v0.3.11}{2015-01-18}{Fix referencing of align. Fix alignment directly following newline. Fix labeling split.}
+%
+% \section{Introduction}
+% With \LaTeX, the user has to decide manually to not number an equation by adding a star in the math environment. Authors who do not want to think about the numbering during writing (and maybe they should not), often use the environments without stars. As default, these users get all equations numbered, although there are \href{http://tex.stackexchange.com/q/29267/7323}{different opinions} about what should be numbered.
+%
+% The other automatic possibility one can think of is to number only the referenced equations. The \href{http://www.ctan.org/pkg/mh/}{mathtools} package's option \texttt{showonlyrefs} seems to be the solution for those who want to have the referenced equations numbered only. Unfortunately, for \href{http://www.ctan.org/pkg/amsmath}{amsmath} users this also means a step backwards, as the numbering can overwrite parts of the equation according to its documentation. Generally, this options seems to be quite unreliable as it is incompatible with the \href{http://www.ctan.org/pkg/cleveref/}{cleveref} package. The autonum package implements the numbering of referenced equations only without this deficiencies.
+%^^A This currently does not work with cleveref, as equations without a number increment the equation counter, too. As placing the labels does not always work correctly, \cmd{\mathtoolsset{showonlyrefs}} is not an option (see mathtools documentation, bottom of page 10).
+%
+% \section{Usage and Examples}
+% To get the automatic numbering of referenced equations, simply load the package:
+%
+% \vspace{0.5em}
+% \cmd{\usepackage\{autonum\}}
+% \vspace{0.5em}
+%
+% This provides support for \cmd{\ref} (and \cmd{\cref} if cleveref is loaded, see section \ref{loadOrder}). If you need support for other reference commands, see section \ref{referenceCommands}. As you probably use the hyperref package, you should set the hypperref option \texttt{hypertexnames=false} when loading the hyperref package to avoid some warnings (see section \ref{hyperref}).
+%
+% The recommended style is to add a label to each logical equation. Then, simply use the references as needed. Never use the starred forms when defining an equation as they do not make sense with autonum and are deactivated. You can use the (redefined) \texttt{equation} or \cmd{\[}-\cmd{\]}-environment in most cases, if you add the appropriate \cmd{\begin\{split\}}-\cmd{\end\{split\}} pairs when needed. Sometimes, an \texttt{align}, \texttt{multline}, \texttt{gather}, \texttt{flalign} or \texttt{alignat} environment is needed.  Do \href{http://tug.org/pracjourn/2006-4/madsen/madsen.pdf}{not use \texttt{eqnarray}}.^^A, rarely use the \texttt{aligned} or \texttt{gathered} environments.
+%
+% Please keep in mind, that using autonum might not always be a good thing. If you hand-in a paper for review with many equations on a page, you might avoid using autonum or if you do, you probably should reference most of your equations or activate line numbers.
+%
+%\begin{macro}{equation}
+% The following examples show the results of the equation environment after loading the package. Now let's reference the third equation: \ref{alreadyReferenced}.
+% \begin{equation}
+% 	1 = 1\quad(\text{equation without label})
+% \end{equation}
+%
+% \begin{equation}\label{notReferenced}
+% 	2 = 2\quad(\text{equation with label, not referenced})
+% \end{equation}
+%
+% \begin{equation+}\label{alreadyReferenced}
+% 	3 = 3\quad(\text{equation with label, already referenced})
+% \end{equation+}
+%
+% \begin{equation+}\label{referencedLater}
+% 	4 = 4\quad(\text{equation with label, referenced later})
+% \end{equation+}
+% Now let's reference the fourth equation: \ref{referencedLater}. The first and the second equations do not get a number, as they are not referenced.
+%
+% If you want to try an example yourself, you can take this one, where only the first equation gets a number:
+%
+% \vspace{0.5em}
+% \noindent\cmd{\documentclass\{article\}}\\
+% \cmd{\usepackage\{autonum\}}\\
+% \cmd{\begin\{document\}}\\
+% \indent\cmd{\begin\{equation\}}\cmd{\label\{a\}}\\
+% \indent\indent \texttt{a}\\
+% \indent\cmd{\end\{equation\}}\\
+% \indent\cmd{\begin\{equation\}}\cmd{\label\{b\}}\\
+% \indent\indent \texttt{b}\\
+% \indent\cmd{\end\{equation\}}\\
+% \indent\cmd{\ref\{a\}}\\
+% \cmd{\end\{document\}}
+% \vspace{0.5em}
+%
+% To get the correct references up to three compilation runs are necessary when the autonum package is used (as always in \TeX\ this cannot be guaranteed, so in rare cases even that is not enough). This is one additional run compared to the default referencing mode, as one run is needed to check if an equation is used. This is probably not avoidable, as the information which equation should have a number is simply not always available in the first run while layouting the equation. Thus, the equation's number can change in the second run. For the reference command, this information is only stable in the third run, as the equations influence each other.
+%\end{macro}
+%
+% \begin{macro}{align et al.}
+% Instead of equation you may also use one of the following environments: \texttt{align}, \texttt{gather}, \texttt{multline}, \texttt{flalign}. ^^A, \texttt{aligned}, \texttt{gathered}. ^^A The \texttt{multlined} environment is patched, if it is available.
+% The label should be given after the equation but before the newline command, e.g.
+%
+% \vspace{0.5em}
+% \noindent\cmd{\begin\{align\}}\\
+% \indent \texttt{a}\cmd{\label\{firstLabel\}}\texttt{\textbackslash\textbackslash}\\
+% \indent \texttt{b}\cmd{\label\{secondLabel\}}\\
+% \cmd{\end\{align\}}\\
+% \vspace{0.5em}
+%
+% Providing the label at the beginning of an equation's line should work, too, but is less thoroughly tested. Please provide feedback, if you find a non-working constellation, which works if autonum is not loaded.
+% \end{macro}
+
+% \begin{macro}{split}
+% The split environment should work as expected with one exception. To get correct vertical spacing after a non-referenced split environment, which is embedded into another math environment, autonum must execute code inside of the split environment. To identify the environment, currently the label name is used, which is not available inside of the split environment, if the label is given after the end of the split environment, which is possible without autonum. So as an exception to the rule above, provide the label before the beginning of the split environment when using a split environment to be on the safe side. Providing it inside of the split environment seems to work currently, but is not guaranteed to work in the future. If the label is given too late, autonum prints an error to avoid accidently introducing a spacing or numbering problem. As an example, put the labels as following:
+%
+% \vspace{0.5em}
+% \noindent\cmd{\begin\{align\}}\\
+% \indent \cmd{\label\{firstLabel\}}\\
+% \indent \cmd{\begin\{split\}}\\
+% \indent\indent \texttt{a}\\
+% \indent\indent \texttt{\textbackslash\textbackslash}\\
+% \indent\indent \texttt{b}\\
+% \indent \cmd{\end\{split\}}\\
+% \indent \texttt{\textbackslash\textbackslash}\\
+% \indent \texttt{c}\cmd{\label\{secondLabel\}}\\
+% \cmd{\end\{align\}}\\
+% \vspace{0.5em}
+%
+% \end{macro}
+
+% \begin{macro}{\[ and \]}
+% As the commands \cmd{\[} and \cmd{\]} are useless when using autonum, they are redefined to be an alias of \texttt{begin\{equation\}} and \texttt{end\{equation\}}, respectively. ^^A, instead either the \texttt{equation} or the \texttt{align} environments are used, depending on the number of lines in the equation.
+% Without adding labels or referencing added labels, the new \cmd{\[}-\cmd{\]}-environment behaves like the old one. ^^A if the equation is only one line. The new definition inherits all the multi-line and alignment capabilities from align and thus is recommended as default while writing. If the environment's content has only one line, the equation environment is used, which has a \href{http://tex.stackexchange.com/questions/321/align-vs-equation}{smaller vertical space} for short lines above the environment compared to align.
+% \end{macro}
+%
+%\begin{macro}{equation+}
+% In the rare case, that an equation is very important and not references within the text, but some other person wants to reference to that equation, you can use \cmd{\begin\{equation+\}} and \cmd{\end\{equation+\}}. The equation is then numbered in all cases (having a label or not, being referenced or not). This feature has been added, so that all \href{http://tex.stackexchange.com/a/52287}{three referencing practices} are supported in \LaTeX\ with as much automation as possible. The other math environments support a \texttt{+}-variant, too.
+%\end{macro}
+%
+%\begin{macro}{equation*}
+% The starred versions have been deleted, to avoid accidental use. Use the versions without star and without adding a label, to avoid that an equation gets a number.
+%\end{macro}
+%
+% \section{Compatibility}
+% \subsection{Load Order}\label{loadOrder}
+% As other packages might break autonum, it should be loaded very late. Normally, amsmath is loaded automatically to make use of the more advanced math environments. Nevertheless, to use other packages, it might be necessary to load amsmath manually. To use autonum with amsmath, hyperref and cleveref for example, the order must be amsmath $\rightarrow$ hyperref $\rightarrow$ cleveref $\rightarrow$ autonum. If a wrong order has been active, it might be necessary to delete the aux file manually to get rid of compile errors, which is generally a good debugging strategy if autonum is or was involved. The support of autonum without amsmath has been discontinued due to missing demand.
+%
+% \subsection{Hyperref}\label{hyperref}
+% The hyperref package must be loaded with the option \texttt{hypertexnames=false} to work when autonum is used, as in the following example
+%
+% \vspace{0.5em}\noindent
+% \cmd{\usepackage[hypertexnames=false]\{hyperref\}}\\
+% \cmd{\usepackage\{autonum\}}
+% \vspace{0.5em}
+%
+% Problem description: Generally, the autonum package is careful not to break other packages, but with autonum there are non-starred mathematical environment which do not increase the equation counter if they are not referenced. This leads to the following warning in hyperref when more than one equation is used: "destination with the same identifier (name{equation.0.1}) has been already used, duplicate ignored".
+%
+% Additionally, the link anchors do not work correctly (with a reference followed by a labeled equation, there is a warning in tracing mode, too. Hyperref seems to increase \LaTeX's equation's counter (called \texttt{equation}) only if a equation is referenced. This counter may not be modified to avoid problems with Hyperref, as this would change the displayed equation number (and it does not work anyway). This problem is independent of cleveref. The problem might be solvable by modifying \cmd{\begin\{equation\}} or \cmd{\end\{equation\}}. Using \texttt{gather} instead of \texttt{equation} removes the warning, but hyperlinks still do not work.
+%
+% So it's a mess and probably not worth the time, as \texttt{hypertexnames=false} solves all these problems.
+%
+% \subsection{Reference commands}\label{referenceCommands}
+% As default the \cmd{\ref} and cleveref's \cmd{\cref} commands are supported (the latter one only if the cleveref package is loaded).
+% If you want to add autonum support for other referencing commands, you have the following choices. Please mind that these interfaces might change in the future, as it's unclear what reference commands make sense beyond \cmd{\cref}. Please also mind the \cmd{\makeatletter} and \cmd{\makeatother} command before and after the commands, respectively.
+%
+%\begin{macro}{\autonum@generatePatchedReference}
+% For normal reference commands expecting a single label name as an argument, you can use \cmd{\autonum@generatePatchedReference}\{\texttt{NewReferenceCommand}\}.
+%\end{macro}
+%
+%\begin{macro}{\autonum@generatePatchedReferenceCSL}
+% For reference commands expecting a comma separated list of label names as an argument, you can use\\
+% \cmd{\autonum@generatePatchedReferenceCSL}\{\texttt{NewReferenceCommand}\}.
+%\end{macro}
+%
+%\begin{macro}{\autonum@generatePatchedReferenceGeneral}
+% For reference commands expecting a general data structure containing label names as an argument, you can use\\
+% \cmd{\autonum@generatePatchedReferenceGeneral}\{\texttt{NewReferenceCommand}\}\\
+% \{\cmd{\SplitAndLoopMacro}\}.\\
+% The macro \cmd{\SplitAndLoopMacro} acts as a function expecting the to-be-called function as the first argument and the data structure as the second argument. It must call the function given in the first argument for each label name given in the data structure of the second argument. An example is the \cmd{\forcsvlist} macro from the etoolbox package, which is used to implement \cmd{\autonum@generatePatchedReferenceCSL}.
+%\end{macro}
+%
+%\begin{macro}{\crefrange}
+% Range commands like the \cmd{\crefrange} command are not supported at the moment. It's not completely clear, if this is a good or a bad thing. Please contact the package author if you are interested in this feature.
+%\end{macro}
+%
+% Support for new reference command names can be added by executing\\
+% \cmd{\let}\cmd{\ref}\cmd{\NewReferenceCommand}.
+%
+% If the new reference command can have optional arguments, you should probably write instead\\
+% \cmd{\LetLtxMacro}\cmd{\ref}\cmd{\NewReferenceCommand}.
+%
+% If you want to use the power of \cmd{\cref} without getting rid of the habit of writing \cmd{\ref}, you can just add the following code to the preamble
+%
+% \vspace{0.5em}
+% \noindent\cmd{\AfterEndPreamble\{\%}\\
+% \indent\cmd{\let}\cmd{\ref}\cmd{\cref}\\
+% \texttt{\}\%}
+% \vspace{0.5em}
+%
+% If you also strive for maximum consistency and want to avoid accidently writing \cmd{\cref} or \cmd{\autoref}, you can instead add the following lines
+%
+% \vspace{0.5em}
+% \noindent\cmd{\AfterEndPreamble\{\%}\\
+% \indent\cmd{\let}\cmd{\ref}\cmd{\cref}\\
+% \indent\cmd{\undef\{}\cmd{\cref\}\%}\\
+% \indent\cmd{\undef\{}\cmd{\autoref\}\%}\\
+% \texttt{\}\%}
+% \vspace{0.5em}
+%
+%
+% \section{Further Ideas}
+% \begin{itemize}
+% \item For equations with multiple lines, which have a width close to the linewidth, but whose width at the middle/end is not so large, the equation number should not be set below the equation but next to the equation as it is done if the equation is smaller.
+% \item A similar approach could be used for figure and table environments to print a warning, if such an environment is not referenced. With the subfig package, the solution would be harder, as a figure or table may be unreferenced, if all subfloats are referenced. Similarly, a subfloat may be unreferenced, if its parent environment is referenced. So the warning should only be printed if an unreferenced parent environment either does not have any child environment or if there is an unreferenced child environment.
+% \item A warning could be printed, if another compile is necessary. Sometimes this is the case, but not always.
+% \item A "*" could be used instead of a "+".
+% \item If a reference is used before the label is defined, the reference information is saved in a variable and can be used later in the current run when processing the label. It does not have to be saved to the aux file. If a reference is used after defining the label, the reference information is saved in the aux file and can be used in the next run when processing the label. The information does not have to be saved into a variable, as a label must only be defined once and the definition has already happened. Unfortunately, this would make it necessary to distinguish between definitions in the current and in the last run, as otherwise this leads either to oscillation or to defining everything in the end (depending if csdefaux or csdefall is used in the not-defined case), which is probably not worth the effort.
+% \item The command \cmd{\(} could be an alias for \texttt{begin\{split\}} and \cmd{\)} could be an alias for \texttt{end\{split\}} inside of another math environment, as the \href{http://tex.stackexchange.com/questions/510/are-and-preferable-to}{LaTeX math inline syntax} can only occur outside of a math environment.
+% \item This \href{http://tex.stackexchange.com/a/5652}{trick} might be handy
+% \item The \cmd{\crefrange} might be supported. As this would require a lot of work it will only be done if multiple people show interest and there are really convincing real-world examples where using \cmd{\crefrange} is superior to using \cmd{\cref}. Patches are, of course, welcome, too.
+% \item This documentation should be vastly improved from someone who is actually good in writing documentations.
+% \end{itemize}
+%
+% \section{Contributions}
+% \begin{itemize}
+%     \item David Carlisle
+%         \begin{itemize}
+%             \item explained that amsmath environments \href{http://tex.stackexchange.com/a/59088/7323}{are executed twice} what lead to the support of the amsmath environments
+%             \item created the \cmd{\vanishprotect} macro what avoided errors after the deactivation of the package
+%         \end{itemize}
+%     \item Fg Nu
+%         \begin{itemize}
+%             \item highlighted, that special characters in label names must be supported what lead to the support of special characters
+%         \end{itemize}
+%     \item Joseph Wright
+%         \begin{itemize}
+%             \item created a \href{http://tex.stackexchange.com/a/64271/7323}{correctly working} \cmd{\csxdefaux} what lead to the support of special characters
+%             \item sent an MWE showing a regression in the support of special characters what lead to its fix
+%         \end{itemize}
+%     \item Jonas Nyrup
+%         \begin{itemize}
+%             \item reported a bug occuring when using \cmd{\cref} with comma separated arguments what lead to its fix
+%             \item started an interesting discussion if cleveref's \cmd{\crefrange} command should be supported in autonum or not
+%             \item found an incompatibility with biblatex, which lead to its fix
+%         \end{itemize}
+%     \item Toby Cubitt
+%         \begin{itemize}
+%             \item highlighted, that there are some users who might find valid use of cleveref's \cmd{\crefrange} command
+%         \end{itemize}
+%     \item Marko Pinteric
+%         \begin{itemize}
+%             \item found an underfull hbox error what lead to its removal
+%             \item found the existance of a spurious whitespace problem what lead to its removal
+%         \end{itemize}
+%     \item Heiko Oberdiek
+%         \begin{itemize}
+%             \item found the reason of spurious whitespaces what lead to their removal
+%             \item found an underfull hbox error what lead to its removal
+%         \end{itemize}
+%     \item Carsten Grimm
+%         \begin{itemize}
+%             \item found a bug when using \cmd{\ref} inside the \cmd{\caption} command which lead to its fix
+%         \end{itemize}
+%     \item Ulrike Fischer
+%         \begin{itemize}
+%             \item found that a \cmd{\protect} is missing to use \cmd{\ref} inside a \cmd{\caption}, which lead to its addition
+%         \end{itemize}
+%     \item Johannes Gerer
+%         \begin{itemize}
+%             \item found a bug when using \cmd{\cref} inside the \cmd{\section} command when hyperref is loaded which lead to its fix
+%         \end{itemize}
+%     \item Michel Voßkuhle
+%         \begin{itemize}
+%             \item found a bug when using autonum together with the subcaption package due to the missing support of starred reference commands in autonum which lead to its fix
+%             \item sent an MWE showing a regression in the support of special characters what lead to its fix
+%         \end{itemize}
+%     \item Pascal Germroth
+%         \begin{itemize}
+%             \item sent an MWE showing a regression in the support of special characters what lead to its fix
+%         \end{itemize}
+%     \item Vladimir Pozdyayev
+%         \begin{itemize}
+%             \item found an error if an equation is used inside of a figure environment, which has not been fixed, yet
+%         \end{itemize}
+%     \item Enno Nagel
+%         \begin{itemize}
+%             \item highlighted poor areas in the documentation, which (hopefully) have been improved
+%         \end{itemize}
+%     \item Deniz Stiegemann
+%         \begin{itemize}
+%             \item found an incompatibility with biblatex, which lead to its fix
+%             \item found a bug when having a newline directly followed by an alignment character in an align environment, which lead to its fix
+%         \end{itemize}
+%     \item Fredrick Freekowtski
+%         \begin{itemize}
+%             \item found a bug when referencing an align environment, which lead to its fix
+%             \item found a bug when having a newline directly followed by an alignment character in an align environment, which lead to its fix
+%         \end{itemize}
+%     \item TeX Stack Exchange user bers
+%         \begin{itemize}
+%             \item found a bug when putting a label inside a split itself being inside of an equation, which lead to its fix
+%         \end{itemize}
+%     \item Denis Bitouzé
+%         \begin{itemize}
+%             \item found a bug when having a newline directly followed by an alignment character in an align environment, which lead to its fix
+%         \end{itemize}
+% \end{itemize}
+%
+%
+% \section{Implementation}
+% The basic idea is to write into the aux file and save a variable whenever a label is referenced, so that the information is available in the current and in the next run. The label information is passed from the label command to the newline command. The newline command uses the label and the reference information to possibly add a \cmd\notag command, deciding if it is referenced or not.
+%
+% ^^A Calling the old newline command leads to a redefinition (overwriting, not patching) of the (current) newline command (proved by using \cmd{\show}\cmd{\\} before and after the call to amsmath's newline command) when using local definitions. As amsmath behaves like a virus then, the patched newline function is only called for the first newline. After the first call, amsmath's hijacked newline is used directly without giving a chance to do something useful. To correct this behavior, the newline command would need to be patched again. Unfortunately, \cmd{\let} cannot be used to save the current command, because the copy generated by \cmd{\let} is deleted by amsmath (WTF?). To avoid all this, some global definitions are used.
+%
+% \iffalse
+%<*package>
+% \fi
+%
+%\begin{macro}{\csxdefaux}
+% This command is similar to the \cmd{\csxdef} command from the package etoolbox, but instead of defining the command immediately, it is defined in the next run by writing it to the aux file. The name is given by the first argument (which may not have a leading backslash). The second argument is the replacement text. This command would be a candidate for inclusion into etoolbox. \cmd{\ifcsdef} can be used to check, if the command has been defined. See also http://tex.stackexchange.com/a/49035
+% Usage: \cmd{\csxdefaux\{csname\}\{replacement\}}
+%    \begin{macrocode}
+\def\csxdefaux#1#2{%
+%    \end{macrocode}
+	% The expandafter commands are used to first expand the \cmd{\csname}-\cmd{\endcsname}. Then there is a command definition left, where the command and its replacement (which can also be a command) are protected by \cmd{\string} to create the command in the next run (when the aux file is read) and not in the current run (when the aux file is written).
+%    \begin{macrocode}
+	\protected@write\@mainaux{}{%
+%    \end{macrocode}
+		% The commented and the uncommented lines should do the same. The longer variant has the advantage, that there is no error the first run after the deactivation of the autonum package, as \cmd{\xdef}, read from the aux file, is always a known command, whereas \cmd{\csxdef} might not be known in that case, as with the deactivation of autonum it might happen, that etoolbox is not loaded anymore, too.
+%    \begin{macrocode}
+		\csxdef{\detokenize{#1}}{#2}%
+	}%
+}
+%    \end{macrocode}
+% Do not abort compilation, if the package has been deactivated from the last compilation to the current one and thus \cmd{\csxdef} might have become undefined (as etoolbox might not be loaded anymore). Therefore, add a dummy implementation of \cmd{\csxdef} to the aux file, which gets loaded if the real implementation is not available any longer.
+%    \begin{macrocode}
+\protected@write\@mainaux{}{%
+	\string\providecommand\string\csxdef[2]{}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\csxdefall}
+% This command simply combines the commands \cmd{\csxdef} and \cmd{\csxdefaux}. This command would be a candidate for inclusion into etoolbox.
+%    \begin{macrocode}
+\def\csxdefall#1#2{%
+	\csxdefaux{#1}{#2}%
+	\csxdef{#1}{#2}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\CsLetLtxMacro}
+% This command simply combines the functionality from \cmd{\cslet} and \cmd{\LetLtxMacro}. This command would be a candidate for inclusion into letltxmacro or possibly etoolbox.
+%    \begin{macrocode}
+\newrobustcmd{\CsLetLtxMacro}[2]{%
+	\expandafter\LetLtxMacro\csname#1\endcsname#2%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\LetCsLtxMacro}
+% This command simply combines the functionality from \cmd{\letcs} and \cmd{\LetLtxMacro}. This command would be a candidate for inclusion into letltxmacro or possibly etoolbox.
+%    \begin{macrocode}
+\newrobustcmd{\LetCsLtxMacro}[2]{%
+	\ifcsdef{#2}{%
+		\expandafter\LetLtxMacro\expandafter#1\csname#2\endcsname
+	}{%
+		\undef#1%
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\CsLetCsLtxMacro}
+% This command simply combines the functionality from \cmd{\csletcs} and \cmd{\LetLtxMacro}. This command would be a candidate for inclusion into letltxmacro or possibly etoolbox.
+%    \begin{macrocode}
+\newrobustcmd*{\CsLetCsLtxMacro}[2]{%
+	\ifcsdef{#2}{%
+		\expandafter\LetLtxMacro\csname#1\expandafter\endcsname\csname#2\endcsname
+	}{%
+		\csundef{#1}%
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\GlobalCsLetLtxMacro}
+% This command simply combines the functionality from \cmd{\cslet} and \cmd{\GlobalLetLtxMacro}. This command would be a candidate for inclusion into letltxmacro or possibly etoolbox.
+%    \begin{macrocode}
+\newrobustcmd{\GlobalCsLetLtxMacro}[2]{%
+	\expandafter\GlobalLetLtxMacro\csname#1\endcsname#2%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\GlobalLetCsLtxMacro}
+% This command simply combines the functionality from \cmd{\letcs} and \cmd{\GlobalLetLtxMacro}. This command would be a candidate for inclusion into letltxmacro or possibly etoolbox.
+%    \begin{macrocode}
+\newrobustcmd{\GlobalLetCsLtxMacro}[2]{%
+	\ifcsdef{#2}{%
+		\expandafter\GlobalLetLtxMacro\expandafter#1\csname#2\endcsname
+	}{%
+		\undef#1%
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\GlobalCsLetCsLtxMacro}
+% This command simply combines the functionality from \cmd{\csletcs} and \cmd{\GlobalLetLtxMacro}. This command would be a candidate for inclusion into letltxmacro or possibly etoolbox.
+%    \begin{macrocode}
+\newrobustcmd*{\GlobalCsLetCsLtxMacro}[2]{%
+	\ifcsdef{#2}{%
+		\expandafter\GlobalLetLtxMacro\csname#1\expandafter\endcsname\csname#2\endcsname
+	}{%
+		\csundef{#1}%
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\vanishprotect}
+% This \href{http://tex.stackexchange.com/a/110782}{command} encapsulates content to not appear in the table-of-contents or similar lists. The content is shown in normal text (captions or section headings and so on). The macro uses one arguments in spite of its parameterless definition.
+%    \begin{macrocode}
+\def\vanishprotect{%
+	\ifx\protect\@typeset@protect
+		\expandafter\@firstofone
+	\else
+		\expandafter\@gobble
+	\fi
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\ifcsedef}
+% This command is similar to the \cmd{\ifcsdef} test from the package etoolbox, but the command sequence gets fully expanded before it is evaluated. This command would be a candidate for inclusion into etoolbox.
+%    \begin{macrocode}
+\def\ifcsedef#1#2#3{%
+	\edef\autonum@ifcsedefTemp{#1}%
+	\expandafter\ifcsdef\expandafter{\autonum@ifcsedefTemp}{#2}{#3}%
+	\undef{\autonum@ifcsedefTemp}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\newcommandsequence}
+% This command combines the macro \cmd{\csdef} from the package etoolbox and \LaTeX's \cmd{\newcommand} macro. This command would be a candidate for inclusion into etoolbox or into LaTeX2e, although the former is much more likely.
+% The interface of \cmd{\newcommand} et al. is "moom" when using xparse syntax. Yet, \cmd{\newcommand} itself provides "ommm..." as interface, i.e. is not capable of defining itself. However, as all the argument types "m" and "o" are supported, combining multiple \cmd{\newcommand}s which read (curry) only part of the arguments are able to emulate the interface. Even simpler is the use of currying, as besides the first argument, everything is identical in \cmd{\newcommand} and \cmd{\newcommandsequence}. So the first arguments is read, and \cmd{\newcommand} is called to read the changed first argument and the rest.
+%    \begin{macrocode}
+\def\newcommandsequence#1{%
+	\expandafter\newcommand\csname #1\endcsname
+}
+% Tests:
+% \newcommandsequence{testcommand}{This is a test}%
+% \testcommand
+% \newcommandsequence{testcommandtwo}[2]{This is a test with #1 and #2}%
+% \testcommandtwo{one}{two}%
+% \newcommandsequence{testcommandtwooptional}[2][three]{This is a test with #1 and #2}%
+% \testcommandtwooptional[one]{two}%
+% \testcommandtwooptional{two}%
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\renewcommandsequence}
+% This command combines the macro \cmd{\csdef} from the package etoolbox and \LaTeX's \cmd{\renewcommand} macro. This command would be a candidate for inclusion into etoolbox or into LaTeX2e, although the former is much more likely.
+%    \begin{macrocode}
+\def\renewcommandsequence#1{%
+	\expandafter\renewcommand\csname #1\endcsname
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\ifstar}
+% This command is similar to the \cmd{\@ifstar} command from LaTeX, but it absorbs a token instead of peeking ahead. This command would be a candidate for inclusion into etoolbox.
+%    \begin{macrocode}
+% \def\ifstar#1#2#3{%
+% 	\ifstrequal{#1}{*}{#2}{#3}%
+% }
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\csDeclareDocumentCommand}
+% This command is a mixture of the \cmd{\csdef} command from the etoolbox package and the \cmd{\DeclareDocumentCommand} from the xparse package. This command would be a candidate for inclusion into xparse.
+%    \begin{macrocode}
+% \def\csDeclareDocumentCommand#1#2#3{%
+% 	\expandafter\DeclareDocumentCommand\csname #1\endcsname{#2}{#3}%
+% }
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@debug}
+% Activate and deactivate debugging by commenting and uncommenting the following code.
+%    \begin{macrocode}
+\def\autonum@debug#1{%
+	\PackageWarning{autonum}{#1}%
+}
+% \def\autonum@debug#1{}%
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\meaningx}
+% Acts like \cmd{\meaning}, but if the given macro is defined via \cmd{\newcommand} or similar and has an optional argument, \cmd{\meaning} does always show something like \cmd{\@protected@testopt} \cmd{\command} \cmd{\\command}, which is not very useful. That is why \cmd{\meaningx} outputs the meaning of \cmd{\\command} instead. \cmd{\meaningx} is expandable (see "texdoc etex" and \href{http://tex.stackexchange.com/a/66168}{this information about expandability} for more details).
+%    \begin{macrocode}
+\def\meaningx#1{%
+	\expandafter\ifcsname\string #1\endcsname
+		\expandafter\meaning\csname\string #1\endcsname
+	\else
+		\meaning#1%
+	\fi
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@debug}
+% Print the \cmd{\meaningx} of the given macro.
+%    \begin{macrocode}
+\def\autonum@debugMacro#1{%
+%    \end{macrocode}
+	% Please mind, that ppdflatex distorts the messages printed by this macro.
+%    \begin{macrocode}
+	\autonum@debug{%
+		\detokenize{#1}defined as \MessageBreak
+		\meaning#1 \expandafter\ifcsname\string #1\endcsname\MessageBreak
+		with \expandafter\detokenize\expandafter{\csname\string#1\endcsname}defined as\MessageBreak
+		\meaningx#1\fi
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+% This is needed to not get overwritten by other packages. The package autonum only overwrites some commands whose name start with \cmd{\autonum}. Other commands are only patched, so the currently valid command gets called, too. So although not very polite, this behavior seems reasonable.
+%    \begin{macrocode}
+\AtBeginDocument{%
+%    \end{macrocode}
+	% Most of amsmath's environments are redefined. The environments aligned and gathered are not redefined, as it is unclear, how the numbering should work.
+%    \begin{macrocode}
+	%^^A\forcsvlist{\autonum@patchBlockEnvironment}{gathered,aligned}%
+%^^A	\ifdef{\multlined}{%
+%^^A		\autonum@patchBlockEnvironment{multlined}%
+%^^A	}{}%
+%    \end{macrocode}
+	% If align is redefined before flalign or alignat, autonum.dtx does not build anymore. The reason of the error is unknown. As the error disappears when align is redefined after both, there is no motivation in finding the underlying problem.
+%    \begin{macrocode}
+	\newlength{\autonum@environmentWidth}%
+% 	\forcsvlist{\autonum@patchParametrizedFullEnvironment}{alignat,figure}%
+	\forcsvlist{\autonum@patchParametrizedFullEnvironment}{alignat}%
+	\forcsvlist{\autonum@patchFullEnvironment}{equation,gather,multline,flalign,align}%
+	\autonum@patchBlockEnvironment{split}%
+%    \end{macrocode}
+	%
+	% Patch the environment delimited by \cmd{\[} and \cmd{\]}.
+%    \begin{macrocode}
+% 	\autonum@patchShortcutEnvironment
+	\def\[#1\]{%
+		\begin{equation}#1\end{equation}%
+	}%
+%    \end{macrocode}
+	%
+	% Support the normal \cmd{\ref} command and, if available, the \cmd{\cref} command from cleveref.
+%    \begin{macrocode}
+	\autonum@generatePatchedReference{ref}%
+	\ifdef{\cref}{%
+		\autonum@generatePatchedReferenceCSL{cref}%
+	}{}%
+%    \end{macrocode}
+%    \begin{macrocode}
+}
+%    \end{macrocode}
+
+%\begin{macro}{\autonum@patchEnvironment}
+% Patch a mathematical environment to automatically show an equation's number, if a part is referenced and do not use a number otherwise. For completeness, the original definition (numbering every part of an displayed equation structure) is made available using a different name. Do not redefine the environments before getting the original label and newline commands. Use center as the default parameter, as a center environment is a neutral element regarding the subcommands' definitions.
+%    \begin{macrocode}
+% \def\autonum@patchEnvironment#1{
+\def\autonum@patchFullEnvironment#1{%
+% 	\autonum@debug{patchFullEnvironment; 1=#1}%
+	\autonum@saveEnvironmentSubcommands{#1}{center}{}%
+	\autonum@patchEnvironmentHelper{#1}{0}%
+}
+\def\autonum@patchParametrizedFullEnvironment#1{%
+% 	\autonum@debug{patchParametrizedFullEnvironment; 1=#1}%
+	\autonum@saveEnvironmentSubcommands{#1}{center}{1}%
+	\autonum@patchEnvironmentHelper{#1}{1}%
+}
+\def\autonum@patchBlockEnvironment#1{%
+% 	\autonum@debug{patchBlockEnvironment; 1=#1}%
+%    \end{macrocode}
+% 	There is no need to patch the newline or label commands like for the other environments, as they already have been patched in those outer math environments. So the environment subcommands do not have to be saved, too. However, split inside of an equation environment resets the label command, so that our version of the label command (of the equation) is no longer valid. Currently, this is taken care of in startChangeEnvironment.
+%    \begin{macrocode}
+	\autonum@renameEnvironment{#1}{0}%
+	\autonum@changeEnvironment{#1}{0}%
+}
+\def\autonum@patchEnvironmentHelper#1#2{%
+% 	\autonum@debug{patchEnvironmentHelper; 1=#1; 2=#2}%
+	\autonum@renameEnvironment{#1}{#2}%
+	\autonum@changeEnvironment{#1}{#2}%
+	\autonum@generatePatchedLabel{#1}%
+	\autonum@generatePatchedNewline{#1}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@saveEnvironmentSubcommands}
+% This macro saves the newline code used in a mathematic display environment so that it can be used later. This is necessary, as saving it in the instance of the environment, where it should be used, does not work. Allow for two arguments, to enable putting the alignment building blocks into an equation environment (see amsmath documentation). As a neutral element, the center environment can be used. The third argument is needed for environments which have arguments themself.
+%    \begin{macrocode}
+\def\autonum@saveEnvironmentSubcommands#1#2#3{%
+% 	\autonum@debug{In saveEnvironmentSubcommands; 1=#1; 2=#2; 3=#3}%
+	\begin{textblock}{1}[1,1](0,0)%
+		\begin{#2}%
+			\begin{#1}#3%
+			%    \end{macrocode}
+				% Avoid underfull hbox warning in multline, by putting content of the correct size in it. The correct size can only be measured here, as the values might change due to the beginning of environments.
+			%    \begin{macrocode}
+				\deflength{\autonum@environmentWidth}{\linewidth-\multlinegap-\multlinegap}%
+				\hspace{\autonum@environmentWidth}%
+%    \end{macrocode}
+				% Using global here is necessary to get the information out of the environment. As \cmd{\\} has an optional argument, you would think, that \cmd{\GlobalCsLetLtxMacro} is correct, while \cmd{\global}\cmd{\cslet} is incorrect (\href{http://tex.stackexchange.com/a/29837}{see here}). But although \cmd{\\} has an optional argument, it does not use \cmd{\newcommand} (see the definintion of \cmd{\Let@} in amsmath.sty for the details), but plain \cmd{\TeX}. Although using LetLtxMacro \href{http://tex.stackexchange.com/a/88007}{should never no harm}, it results in errors here, so it isn't used.
+%    \begin{macrocode}
+				\global\cslet{autonum@newline#1}\\%
+%    \end{macrocode}
+				% Use \cmd{\notag} to not increase the equation counter (otherwise the first equation shown would not have number 1).
+%    \begin{macrocode}
+				\notag
+%    \end{macrocode}
+				% For multline, check, that autonum's label command is undefined, because this means, that the first pass (measuring pass) of the environment is active. This is to avoid getting the \cmd{\label} command of the second pass (displaying pass), where the \cmd{\label} command is set to the \href{http://tex.stackexchange.com/a/59088/7323}{null definition}. The multline environment seems to need the first pass, whereas other environments seem to need the second pass, so adapt to the environments. The following code does the macro definition twice for the other environments - once for the measurement pass and once for the display pass. This is not a problem, as the result of the first pass is overwritten with the correct definition in the second pass.
+%    \begin{macrocode}
+				\ifboolexpr{not test {\ifstrequal{#1}{multline}} or test {\ifcsundef{autonum@label#1}}}{%
+% 					\autonum@debug{In saveEnvironmentSubcommands, define autonum@label#1 to \meaning\label}%
+					\GlobalCsLetLtxMacro{autonum@label#1}\label
+				}{}%
+			\end{#1}%
+		\end{#2}%
+	\end{textblock}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@renameEnvironment}
+% Rename the old environment to be accessible with an appended + by saving the original environment using a different name. The first argument contains the environment's name, the second argument contains the number of arguments the environment has.
+%    \begin{macrocode}
+\def\autonum@renameEnvironment#1#2{%
+	\csletcs{autonum@#1Old}{#1}%
+	\csletcs{autonum@end#1Old}{end#1}%
+	\newenvironment{#1+}[#2]{%
+		\csuse{autonum@#1Old}%
+	}{%
+		\csuse{autonum@end#1Old}%
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@changeEnvironment}
+% Now change the environment. This command only supports displayed equation structures and is not suited for other environments (as e.g. figures). The second argument contains the number of arguments the redefined environment has.
+%    \begin{macrocode}
+\def\autonum@changeEnvironment#1#2{%
+% 	\autonum@debug{changeEnvironment; 1=#1; 2=#2}%
+%    \end{macrocode}
+	% Although Amsmath's environment is executed twice (for measuring and for painting), the content here is executed only once. The following if is only needed to distinguish between environments without (e.g. equation) and with one parameter (e.g. alignat).
+%    \begin{macrocode}
+	\ifnum #2=0%
+		\renewenvironment{#1}{%
+			\autonum@startChangeEnvironment{#1}{}%
+		}{%
+			\autonum@endChangeEnvironment{#1}%
+		}%
+	\else
+		\renewenvironment{#1}[1]{%
+			\autonum@startChangeEnvironment{#1}{##1}%
+		}{%
+			\autonum@endChangeEnvironment{#1}%
+		}%
+	\fi
+%    \end{macrocode}
+	% Delete the starred versions of the environment, as they sometimes lead to strange errors a long time after using the starred version. By deleting it, the error occurs at the right place.
+%    \begin{macrocode}
+	\global\csundef{#1*}%
+	\global\csundef{end#1*}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@startChangeEnvironment}
+% Start the changed environment.
+%    \begin{macrocode}
+\def\autonum@startChangeEnvironment#1#2{%
+% 	\autonum@debug{startChangeEnvironment; 1=#1; 2=#2}%
+%    \end{macrocode}
+	% Prepare the label and the newline commands and begin the displayed equation environment.
+%    \begin{macrocode}
+	\ifstrequal{#1}{split}{%
+%    \end{macrocode}
+		% Split does not have its own label command. However, beginning the split environment inside of an equation environment resets the label command so that our definition is no longer used. Thus, save the (currently patched) label command before starting the environment.
+%    \begin{macrocode}
+		\GlobalLetLtxMacro\autonum@outerMathEnvironmentLabel\label
+	}{%
+		\autonum@saveSubcommands
+	}%
+	%
+	\csuse{autonum@#1Old}#2%
+	%
+	\ifstrequal{#1}{split}{%
+%    \end{macrocode}
+		% Restore the just saved label command (see above).
+%    \begin{macrocode}
+		\GlobalLetLtxMacro\label\autonum@outerMathEnvironmentLabel
+	}{%
+		\autonum@patchSubcommands{#1}%
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@endChangeEnvironment}
+% Close the changed environment.
+%    \begin{macrocode}
+\def\autonum@endChangeEnvironment#1{%
+% 	\autonum@debug{In endChangeEnvironment; 1=#1}%
+%    \end{macrocode}
+	% Possibly hide the number of the last equation in the displayed equation environment and end the latter one.
+%    \begin{macrocode}
+	\autonum@possiblyHideNumber
+	\csuse{autonum@end#1Old}%
+%    \end{macrocode}
+	% Restore the subcommands. Do not restore the subcommands for the split environment, as \cmd{autonum@startChangeEnvironment} is not called (even if set) for the split environment due to yet unknown reasons. The hypothesis is, that this is as the split environment is inside of another environment (equation). Thus, \cmd{\renewenvironment} is called inside a group. As \cmd{\renewenvironment} is always local (see http://tex.stackexchange.com/q/51733), the redefinition of the split environment does not work. As the split subcommands are currently neither saved nor patched, it is not only unnecessary, but really harmful to restore the subcommands. Doing so breaks splits together with other material in an align environment. This code should be changed after the root problem has been fixed. Neither delete the label, as it might be defined before the split environment and is used after its end.
+%    \begin{macrocode}
+	\ifstrequal{#1}{split}{%
+%    \end{macrocode}
+	% If a split environment is inside an align environment, the \cmd{\notag} must be set inside of the split environment to get correct vertical spacing after the environment if the line is so long, that the equation number would be placed below the equation and if the equation is not referenced. In order to set the \cmd{\notag} it must be known if the equation is referenced or not. With the current logic, the label is used to identify an equation. If the label is only given after the split (but before the line of the align ends), this is impossible, thus, the label has to be given before the end of the split environment. As split provides no numbering, it's best to provide the label before the beginning of the split environment. To save users, redefine \cmd{\label} to result in an error if the \cmd{\label} is called too late. In the future, this could be changed if equations have another unique identifier like a number. The \cmd{\label} can be overwritten (but mind the optional argument, which must be supported), as the split TeX-group will end directly after this macro. In order to be effective, it must be smuggled outside, which \cmd{\aftergroup@def} from etextools takes care of. Outside, it will be removed automatically, as soon as the TeX-group ends, e.g. if the line or the environment ends.
+%    \begin{macrocode}
+		\renewcommand\label[2][]{%
+			\PackageError{autonum}{%
+				A label must not be placed between \detokenize{\end{split}}\MessageBreak
+				and the end (of a line) of a math environment\MessageBreak
+				when using autonum. Wrongly placed label is:\MessageBreak
+				##2%
+			}{Move the \detokenize{\label}call before \detokenize{\begin{split}}}%
+		}%
+		\aftergroup@def{\label}%
+	}{%
+		\autonum@restoreSubcommands
+		\global\undef\autonum@currentLabel
+	}%
+% 	\autonum@debug{In endChangeEnvironment at the end}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@saveSubcommands}
+% Save the current newline and label commands.
+%    \begin{macrocode}
+\def\autonum@saveSubcommands{%
+	\GlobalLetLtxMacro\autonum@labelNormal\label
+	\GlobalLetLtxMacro\autonum@newlineNormal\\%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@patchSubcommands}
+% Patch the label command, as some special data has to be saved with each usage. In order to support multi-line equations, the counter must be increased in every line, as every line is a possible reference target. Therefore, \\ has to be overwritten, too. This must be global, as amsmath is very annoying with overwriting local definitions, e.g. in align environments.
+%    \begin{macrocode}
+\def\autonum@patchSubcommands#1{%
+%    \end{macrocode}
+	% Activate the patched label command and support an optional argument for the \cmd{\label} command.
+%    \begin{macrocode}
+	\GlobalLetCsLtxMacro\label{autonum@patched#1Label}%
+%    \end{macrocode}
+	% Do not patch the newline command in a multline environment, as only the last line may get a \cmd{\notag} command, because all lines basically build one equation (see also amsmath's documentation, section 3.3).
+%    \begin{macrocode}
+	\ifstrequal{#1}{multline}{%
+	}{%
+		\GlobalLetCsLtxMacro\\{autonum@patched#1Newline}%
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@restoreSubcommands}
+% Restore the newline and label commands. This must be global, as it had been overwritten globally in \cmd{\autonum@patchSubcommands}.
+%    \begin{macrocode}
+\def\autonum@restoreSubcommands{%
+% 	\autonum@debug{In restoreSubcommands}%
+	\GlobalLetLtxMacro\label\autonum@labelNormal
+	\GlobalLetLtxMacro\\\autonum@newlineNormal
+% 	\autonum@debug{In restoreSubcommands at the end}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@generatePatchedLabel}
+% Use an extra command to patch the used label command for efficiency.
+%    \begin{macrocode}
+\def\autonum@generatePatchedLabel#1{%
+%    \end{macrocode}
+	% As the \cmd{\label} command can have an optional argument (see cleveref: Overriding the Cross-Reference Type), it must be supported in the patched version of the command, too. As the basic version of \cmd{\label} does not support an optional argument (see texdoc source2e), inside of the following macro the label command must not be called with a possible empty optional argument unconditionally. Instead, there must be a test if an optional argument has been provided and only then it must be used in the call of the original label command. Use the trick with the \href{http://tex.stackexchange.com/a/60896}{empty macro} as a test.
+%    \begin{macrocode}
+	\newcommandsequence{autonum@patched#1Label}[2][]{%
+% 		\autonum@debug{In patched#1Label, 1=##1, 2=##2}%
+%    \end{macrocode}
+		% Do not do the labeling work twice, i.e. in amsmath's measuring and in it's display pass. Doing everything in the display pass is correct, because during the measuring pass, the original label commands are set to only gobble their arguments instead of doing something useful (the latter is done in the display pass).
+%    \begin{macrocode}
+		\ifmeasuring@
+		\else
+%    \end{macrocode}
+		% The labeling information is needed in the newline command. Therefore, the following variable is used to store it until the next newline command. As the definition is local and every line in an multi-line displayed math environment has its own group, the variable does not have to be deleted explicitly.
+%    \begin{macrocode}
+		\ifdef{\autonum@currentLabel}{%
+%    \end{macrocode}
+			% As \cmd{\autonum@currentLabel} can be a global macro, there was a false positive error with math environments which are \href{http://tex.stackexchange.com/a/59088/7323}{executed twice}. To avoid this false positives, only check during the first run of these environments.
+%    \begin{macrocode}
+			\ifmeasuring@
+				\PackageError{autonum}{Two succeeding \string\label's detected}{Did you forget a \string\\?}%
+			\fi
+		}{%
+%    \end{macrocode}
+			% Define the label globally, as otherwise it gets deleted inside of an align environment if it is defined before a split environment and should be applied after the split environment. Thus, it is globally deleted when ending a math environment or a line in such an environment (always with the exception of the split environment).
+%    \begin{macrocode}
+			\ifboolexpr{test {\ifstrequal{#1}{flalign}} or test {\ifstrequal{#1}{alignat}}}{%
+%    \end{macrocode}
+				% Do not define the label globally for flalign and alignat environment, as it results in warnings. According to the amsmath documentation it's uncommon to use split inside of both environments, so this should be an accectable compromise. Deleting globally when only defining locally does not seem to be a problem.
+%    \begin{macrocode}
+				\def\autonum@currentLabel{##2}%
+			}{%
+% 				\autonum@debug{In patched#1Label, currentLabel globally defined to ##2}%
+				\global\def\autonum@currentLabel{##2}%
+			}%
+		}%
+%    \end{macrocode}
+		% Only call the original label command if the label gets referenced. This obviously is identical if the reference is located before the label. It is also identical if the reference is located after the label, as the \cmd{\\} or \cmd{\endenvironment} commands which follow the \cmd{\label} would suppress the numbering anyway in the first pass. In the second pass, the information about referencing is the same as if only the content of the following if-command were available.
+%    \begin{macrocode}
+		\ifcsedef{autonum@##2Referenced}{%
+% 			\autonum@debug{In patched#1Label, label ##2 has been referenced}%
+%    \end{macrocode}
+		% The environment's original label command is called to do the real labeling. As it checks for erroneous succeeding labels using \cmd{df@label}, this variable has to be emptied before every call.
+%    \begin{macrocode}
+			\let\df@label\@empty%
+%    \end{macrocode}
+			% If the following test is true, \cmd{\label} has been called without optional argument, as the default has been used internally. This test is from \href{http://tex.stackexchange.com/a/53091}{egreg}.
+%    \begin{macrocode}
+% 			\autonum@debug{In patched#1Label, autonum@label#1 is called with mandatory argument ##2}%
+			\if\relax\detokenize{##1}\relax
+% 				\autonum@debug{In patched#1Label, no optional argument given}%
+				\csuse{autonum@label#1}{##2}%
+			\else
+				\csuse{autonum@label#1}[##1]{##2}%
+			\fi
+		}{%
+% 			\autonum@debug{In patched#1Label, label ##2 has not been referenced}%
+		}%
+		\fi
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@generatePatchedNewline}
+% This command generates patched newline commands for displayed math environments, so that they can simply be activated when needed.
+%    \begin{macrocode}
+\def\autonum@generatePatchedNewline#1{%
+%    \end{macrocode}
+% 	The \cmd{\\} command has an optional argument, e.g. in an align environment, to put some extra vertical space between two lines. Thus, the patched newline command must correctly cope with an optional argument, too, if it has been given.
+%    \begin{macrocode}
+	\newcommandsequence{autonum@patched#1Newline}{%
+% 		\autonum@debug{In patched#1Newline, 1=##1}%
+		\autonum@possiblyHideNumber
+		\global\undef\autonum@currentLabel
+% 		\autonum@debug{\expandafter\meaning\csname autonum@newline#1\endcsname}%
+		\csuse{autonum@newline#1}%
+%    \end{macrocode}
+		% CAUTION: Do not write code below this comment and inside of this macro. This is because the newline command above looks for an optional argument in the input stream, which it cannot read if there are further tokens inside of this macro. Absorbing the optional argument in this macro and transfering it to the newline command did have unexpected side effects (a test case has been added for this).
+%    \begin{macrocode}
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@possiblyHideNumber}
+% Define this command, which can hide the current line's number if the label is not referenced.
+%    \begin{macrocode}
+\def\autonum@possiblyHideNumber{
+	\ifdef{\autonum@currentLabel}{%
+% 		\autonum@debug{In possiblyHideNumber, existing currentLabel=\autonum@currentLabel}%
+		\ifcsedef{autonum@\autonum@currentLabel Referenced}{%
+		}{%
+			\notag
+		}%
+%    \end{macrocode}
+		% The current label does not have to be cleaned, as every line is a separate cell \href{http://tex.stackexchange.com/q/58190}{defining a local group} in an displayed math environment.
+%    \begin{macrocode}
+	}{%
+		\notag
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@generatePatchedReference}
+% This command can patch reference commands with a normal input argument.
+%    \begin{macrocode}
+\def\autonum@generatePatchedReference#1{%
+	\autonum@generatePatchedReferenceGeneral{#1}{autonum@use}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@generatePatchedReferenceCSL}
+% This command can patch reference commands which expect a comma separated list as input argument.
+%    \begin{macrocode}
+\def\autonum@generatePatchedReferenceCSL#1{%
+	\autonum@generatePatchedReferenceGeneral{#1}{forcsvlist}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+
+%\begin{macro}{\skipInPDFTOC}
+% The content of the macro is never written to the PDF's table of content (TOC). This is especially useful for macros which should only modify the normal PDF's content.
+%    \begin{macrocode}
+\def\skipInPDFTOC#1{%
+%    \end{macrocode}
+		% If hyperref is loaded (i.e. \cmd{\texorpdfstring} is defined), take care to only write into the document. If it is not loaded, this is the default behavior.
+%    \begin{macrocode}
+	\ifdef{\texorpdfstring}{%
+		\texorpdfstring{#1}{}%
+	}{%
+		#1%
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@generatePatchedReferenceGeneral}
+% This command can patch arbitrary reference commands. The patch logic can be different to patching the label command, as the references have to be patched only once, so optimizing for speed is counter-productive.
+%    \begin{macrocode}
+\def\autonum@generatePatchedReferenceGeneral#1#2{%
+%    \end{macrocode}
+	% 	There might be reference commands, which have an optional argument. To support these, use \cmd{\CsLetCsLtxMacro} instead of \cmd{\csletcs}.
+%    \begin{macrocode}
+	\CsLetCsLtxMacro{autonum@reference#1Old}{#1}%
+%    \end{macrocode}
+	% 	Do not absorb any arguments, yet, because every further processing must be protected and this is the simplest way to achieve protected processing. Something like using \cmd{\@ifstar} inside of a moving argument would otherwise be very hard or impossible. Unfortunately, a simple approach like \cmd{\csDeclareDocumentCommand\{\#1\}\{sm\}} does produce a not yet understood infinite recursion.
+%    \begin{macrocode}
+	\csdef{#1}{%
+%    \end{macrocode}
+		% Use protect, to avoid problems with sections and captions. This is the same trick that hyperref uses, which can be seen by executing \cmd{\show}\cmd{\ref}.
+%    \begin{macrocode}
+		\protect\autonum@processReference{autonum@reference#1Old}{#2}%
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@processReference}
+ % If the reference command supports a starred call, as \cmd{\ref} when loading hyperref does for example, the star must be supported, as well. This macro separates calls using a star from those not using one.
+%    \begin{macrocode}
+\def\autonum@processReference#1#2{%
+	\@ifstar{%
+		\autonum@processReferenceHelper{#1}{#2}{*}%
+	}{%
+		\autonum@processReferenceHelper{#1}{#2}{}%
+	}%
+}%
+%    \end{macrocode}
+% Do not abort compilation, if the package has been deactivated from the last compilation to the current one and thus the table of content or the list of figure files might reference the now undefined \cmd{\autonum@processReference} command. Therefore, add a dummy implementation to both files, which gets loaded if the real implementation is not available any longer. The dummy implementation is only written, if the respective files exist (are otherwise used).
+%    \begin{macrocode}
+\addtocontents{toc}{%
+	\string\providecommand\string\autonum@processReference[2]{}%
+}
+\addtocontents{lof}{%
+	\string\providecommand\string\autonum@processReference[2]{}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@processReference}
+ % Mark label as referenced and call the old reference command. Do not write in the PDF's TOC, as this would lead to a write inside of a write when, e.g., calling \cmd{\cref} inside of a section command. Also use \cmd{\vanishprotect} to avoid writing \cmd{\autonum@markLabelAsReferenced} into the aux file or similar files. This avoids errors after deactivating the autonum package.
+%    \begin{macrocode}
+% \autonum@processReferenceHelper{reference command name}{extraction command name}{star or empty}{label}
+\def\autonum@processReferenceHelper#1#2#3#4{%
+% 	\autonum@debug{In processReferenceHelper, 1=#1, 2=\detokenize{#2}, 3=#3, 4=#4}%
+	\skipInPDFTOC{%
+		\vanishprotect{%
+			\csuse{#2}{\protect\autonum@markLabelAsReferenced}{#4}%
+		}%
+	}%
+	\csuse{#1}#3{#4}%
+}%
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@markLabelAsReferenced}
+% This is a simple helper macro to mark a label as referenced. The reference information is stored into a variable (for the current run) and into the aux file (for the next run), so it does not matter if the reference is used before or after the definition of the label. Saving into a variable saves one compilation run, although still up to three are needed to get everything right.
+%    \begin{macrocode}
+\def\autonum@markLabelAsReferenced#1{%
+% 	\autonum@debug{In markLabelAsReferenced, autonum@#1Referenced defined}%
+	\csxdefall{autonum@#1Referenced}{}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@use}
+% This is a simple helper macro which can be used like a function handle similar to csuse but expecting a macro instead of a macro's name.
+%    \begin{macrocode}
+\def\autonum@use#1#2{%
+	#1{#2}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@patchShortcutEnvironment}
+% Use a counter to numerate all \cmd{\[}-\cmd{\]}-environments linearly.
+%    \begin{macrocode}
+\newcounter{autonum@counter}
+%    \end{macrocode}
+% \cmd{\[} and \cmd{\]} are redefined as the correct one of \texttt{equation} and \texttt{align}. Due to the improved numbering, the old environment's capabilities are basically a subset of the new capabilities.
+%    \begin{macrocode}
+\def\autonum@patchShortcutEnvironment{%
+	\def\[##1\]{%
+%    \end{macrocode}
+		% This command checks if the current environment only consists of one line without counting lines in sub-environments. The default will result in an align environment, as incorrectly using an equation instead of an correct align results in a compile error.
+%    \begin{macrocode}
+		\ifcsedef{autonum@\Roman{autonum@counter}HasExactlyOneLine}{%
+			\autonum@useWithMultipleLineDetection{equation}{##1}%
+		}{%
+			\autonum@useWithMultipleLineDetection{align}{##1}%
+		}%
+		\stepcounter{autonum@counter}%
+	}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@useWithMultipleLineDetection}
+% This function uses an environment defined by the first argument to display the content given in the second argument. A multiple-line detection is activated, to set a variable if more than one line is used.
+%    \begin{macrocode}
+\def\autonum@useWithMultipleLineDetection#1#2{%
+	\begin{#1}%
+		\autonum@patchParentheses
+%    \end{macrocode}
+	% Use global as this is in the middle of the first local group of a math environment.
+%    \begin{macrocode}
+		\GlobalLetLtxMacro\autonum@patchedNewline\\%
+%    \end{macrocode}
+	% Set the multipleLines variable if a newline is used. Do not use the newline for equations, as this results in "There's no line here to end" errors. This is ok, as if there is a newline in an environment, which is currently an equation, it is wrong anyway and should be set as an align environment. For that it is enough to set the multipleLines variable.
+%    \begin{macrocode}
+		\ifstrequal{#1}{align}{%
+			\gdef\\{%
+				\autonum@patchedNewline
+				\gdef\autonum@multipleLines{}%
+			}%
+		}{%
+			\gdef\\{%
+				\gdef\autonum@multipleLines{}%
+			}%
+		}
+%    \end{macrocode}
+		% Set the environment's content and reset the newline command.
+%    \begin{macrocode}
+		#2%
+		\GlobalLetLtxMacro\\\autonum@patchedNewline
+%    \end{macrocode}
+		% Store information if the current math environment. The roman number is used, as there might be no label and if there is one, it might not be available at the beginning of the environment. Delete the multipleLines variable, to avoid influencing the next \cmd{\[}-\cmd{\]}-environment, as the variable must be global.
+%    \begin{macrocode}
+		\ifdef{\autonum@multipleLines}{%
+			\global\undef{\autonum@multipleLines}%
+		}{%
+			\csxdefaux{autonum@\Roman{autonum@counter}HasExactlyOneLine}{\Roman{autonum@counter}}%
+		}%
+		\autonum@restoreParentheses
+	\end{#1}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@patchParentheses}
+% This function patches the left and the right parentheses.
+%    \begin{macrocode}
+\global\def\autonum@patchParentheses{%
+	\autonum@patchParenthesis{(}{Left}{}%
+	\autonum@patchParenthesis{)}{Right}{end}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@patchParenthesis}
+% This function patches a parenthesis given in the first argument with a name partly given in the second argument by using the third argument.
+%    \begin{macrocode}
+\global\def\autonum@patchParenthesis#1#2#3{%
+	\ifcsdef{#1}{%
+		\global\csletcs{autonum@old#2Parenthesis}{#1}%
+	}{}%
+	\global\csletcs{#1}{#3split}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@restoreParentheses}
+% This function restores the left and the right parentheses.
+%    \begin{macrocode}
+\global\def\autonum@restoreParentheses{%
+	\autonum@restoreParenthesis{(}{Left}%
+	\autonum@restoreParenthesis{)}{Right}%
+}
+%    \end{macrocode}
+%\end{macro}
+
+%\begin{macro}{\autonum@restoreParenthesis}
+% This function restores a parenthesis given in the first argument with the name given in the second argument.
+%    \begin{macrocode}
+\global\def\autonum@restoreParenthesis#1#2{%
+	\ifcsdef{autonum@old#2Parenthesis}{%
+		\global\csletcs{#1}{autonum@old#2Parenthesis}%
+		\global\csundef{autonum@old#2Parenthesis}%
+	}{}%
+}
+%    \end{macrocode}
+%\end{macro}
+%
+% \iffalse
+%</package>
+% \fi
+%
+%\StopEventually{^^A
+%  \PrintChanges
+%^^A  \PrintIndex
+%}
+%
+%\Finale

@@ -1,0 +1,222 @@
+% \iffalse meta-comment
+%
+% Copyright (C) 2012 by Ferdinand Schwenk (me@nerdifand.de).
+% Copyright (C) 2012 by Benjamin Berg (benjamin@sipsolutions.net).
+%
+% This file may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either
+% version 1.3c of this license or (at your option) any later
+% version. The latest version of this license is available at
+% http://www.latex-project.org/lppl/.
+%
+% \fi
+%
+% \iffalse
+%<*driver>
+\ProvidesFile{tikzinclude.dtx}
+%</driver>
+%<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+%<package>\ProvidesPackage{tikzinclude}
+%<*package>
+    [2012/22/02 v1.0 package for including only a specified tikz pictures from a file]
+%</package>
+%
+%<*driver>
+\documentclass[a4paper]{ltxdoc}
+\usepackage{tikzinclude}[2012/12/23]
+\EnableCrossrefs
+\CodelineIndex
+\RecordChanges
+\begin{document}
+  \DocInput{tikzinclude.dtx}
+  \PrintChanges
+  \PrintIndex
+\end{document}
+%</driver>
+% \fi
+%
+% \CheckSum{70}
+%
+% \CharacterTable
+%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
+%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
+%   Digits        \0\1\2\3\4\5\6\7\8\9
+%   Exclamation   \!     Double quote  \"     Hash (number) \#
+%   Dollar        \$     Percent       \%     Ampersand     \&
+%   Acute accent  \'     Left paren    \(     Right paren   \)
+%   Asterisk      \*     Plus          \+     Comma         \,
+%   Minus         \-     Point         \.     Solidus       \/
+%   Colon         \:     Semicolon     \;     Less than     \<
+%   Equals        \=     Greater than  \>     Question mark \?
+%   Commercial at \@     Left bracket  \[     Backslash     \\
+%   Right bracket \]     Circumflex    \^     Underscore    \_
+%   Grave accent  \`     Left brace    \{     Vertical bar  \|
+%   Right brace   \}     Tilde         \~}
+%
+%
+% \changes{v1.0}{2012/12/23}{Initial version}
+%
+% \GetFileInfo{tikzinclude.dtx}
+%
+% \title{The \textsf{tikzinclude} package\thanks{This document
+%   corresponds to \textsf{tikzinclude}~\fileversion, dated \filedate.}}
+% \author{Ferdinand Schwenk \texttt{me@nerdifand.de} \and
+%         Benjamin Berg \texttt{benjamin@sipsolutions.net}}
+%
+% \maketitle
+%
+% \begin{abstract}
+%   This package addresses the problem of importing only one TikZ-image from
+%   a file holding multiple images (i.e. different versions of the same picture).
+% \end{abstract}
+%
+% \section{Introduction}
+% Normaly I use one file per TikZ-image. This simplifies reusage of the images in
+% different documents.
+%
+% When drawing different versions of the same image, for example to highlight
+% parts of the image or provide localized versions, it is not practical to put
+% each of the version in a separate file. Doing this would increase the risk
+% of version mismatch.
+%
+% Because of this it can make sense to have all versions of one image or even
+% different images inside the same source file. However, simply doing this
+% makes it impossible to use the |\input| command as this would insert all
+% images at the same time. This package solves the issue by allowing the user
+% to only insert a single tikzpicture from a file.
+%
+% \section{Usage}
+%
+% To be able to select an image it necessary to name each drawing. This is done
+% by assigning a figure name to the TikZ-Key |/tikzinclude/figure| at the
+% beginning of the picture.
+%
+% \begin{verbatim}
+%   \begin{tikzpicture}[/tikzinclude/figure=foo]
+%     \node{foo};
+%   \end{tikzpicture}
+% \end{verbatim}
+%
+% \DescribeMacro{\includetikzgraphics}
+% After naming the images it is now possible to only include a specific image
+% using the |\includetikzgraphics|\oarg{name}\marg{imagefile} command.\\
+% \meta{name} is the name of the image that should be included. If \meta{name}
+% is provided then only the picture with the given name is included, all other
+% pictures are dropped.
+% If \meta{name} is omitted all pictures in \meta{imagefile} are included. This
+% gives the same result as if |\input| was used.\\
+%
+% \StopEventually{}
+%
+% \section{Implementation}
+%
+% The Package is depending on |ifthen| and |etoolbox|
+%    \begin{macrocode}
+\RequirePackage{tikz}
+\RequirePackage{ifthen}
+\RequirePackage{etoolbox}
+%    \end{macrocode}
+%
+% Provide a new if condition that states if tikzinclude should be active or if
+% all pictures should be included.
+%    \begin{macrocode}
+\newif\if@tikzinclude@active\@tikzinclude@activefalse
+%    \end{macrocode}
+%
+% Store the original definition of |\pgfsys@typesetpicturebox|
+%    \begin{macrocode}
+\let\@tikzinclude@typsetpicturebox\pgfsys@typesetpicturebox
+%    \end{macrocode}
+%
+% \begin{macro}{\@tikzinclude@picture@started}
+% This internal macro sets |\par| to its original definition, if tikzinclude is
+% used. Otherwise it should not have been changed.
+%    \begin{macrocode}
+\newcommand{\@tikzinclude@picture@started}{%
+  \if@tikzinclude@active%
+    \let\par\@tikzinclude@par%
+  \fi%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@tikzinclude@picture@ended}
+% This internal macro overwrites |\pgfsys@typesetpicturebox| with a macro that
+% drops the next box entirely and then resets the definition of
+% |\pgfsys@typesetpicturebox|. The overwrite only happens if the image should
+% be suppressed.
+%    \begin{macrocode}
+\newcommand{\@tikzinclude@picture@ended}{%
+  \if@tikzinclude@active%
+    \ifthenelse{%
+      \equal{\pgfkeysvalueof{/tikzinclude/figure}}{\pgfkeysvalueof{/tikzinclude/select}}%
+    }%
+    {}%
+    {%
+      \global\def\pgfsys@typesetpicturebox##1{%
+        \global\let\pgfsys@typesetpicturebox\@tikzinclude@typsetpicturebox%
+      }%
+    }%
+  \fi%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% Some hooks need to be installed.
+%    \begin{macrocode}
+\BeforeBeginEnvironment{tikzpicture}{\if@tikzinclude@active%
+  \whileboolexpr{test{\ifdimgreater{\lastskip}{0pt}}}{\unskip}\fi}%
+  \AtBeginEnvironment{tikzpicture}{\@tikzinclude@picture@started%
+}
+\AtEndEnvironment{tikzpicture}{\@tikzinclude@picture@ended}
+\AfterEndEnvironment{tikzpicture}{\ignorespaces}
+%    \end{macrocode}
+%
+% Set the TikZ-Keys to empty values. This is necessary to suppress some
+% TikZ-warnings
+%    \begin{macrocode}
+\pgfkeyssetvalue{/tikzinclude/figure}{}
+\pgfkeyssetvalue{/tikzinclude/select}{}
+%    \end{macrocode}
+%
+% \begin{macro}{\includetikzgraphics}
+% First it is checked if \meta{name} is provided or not. If no name is given a
+% simple |\input| is performed.\\
+% If \meta{name} is given it needs to be assigned to |/tikzinclude/select|.
+% Any whitespace in the image file needs to be ignored, but whitespace inside
+% the images should be unchanged. Therefore the definition of |\par| is stored
+% and |\par| is overridden outside of any TikZ-environment.\par
+% Then tikzinclude is activated and the image file is included using the |\input|
+% command.
+% After the picture is included some additional whitespace needs to be erased.
+% To have a defined starting position and to avoid the deletion of whitespace
+% added by the user a 0pt kerning is inserted prior to the inclusion of the
+% image file.\\
+% The whitespace that needs to be removed is caused by newlines at the end
+% of TikZ-environments.\par
+% In the end all settings are restored.
+%    \begin{macrocode}
+\newcommand\includetikzgraphics[2][]{%
+  \begingroup%
+    \ifthenelse{\equal{#1}{}}%
+    {%
+      \input{#2}%
+    }%
+    {%
+      \let\@tikzinclude@par\par%
+      \def\par{}%
+      \pgfkeyssetvalue{/tikzinclude/select}{#1}%
+      \@tikzinclude@activetrue%
+      \kern0pt\input{#2}%
+      \whileboolexpr{test{\ifdimgreater{\lastskip}{0pt}}}{\unskip}%
+      \@tikzinclude@activefalse%
+      \let\par\@tikzinclude@par%
+    }%
+  \endgroup%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \Finale
+\endinput
+

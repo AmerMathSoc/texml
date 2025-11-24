@@ -1,0 +1,191 @@
+% Tobias Weh, 2011
+
+% THANKS to Audrey form TeX.SX for building the
+% quoted-in-cite-code. His code is marked with the
+% pseudo tag <audrey>.
+% See http://tex.stackexchange.com/q/27964/4918
+\ProvidesFile{musuos.cbx}[2011/09/10 v1.0 Musikwissenschaften Uni Osnabrueck]
+
+% Ausgangsstil laden
+\RequireCitationStyle{verbose-ibid}
+
+% Voreinstellungen
+\ExecuteBibliographyOptions{
+	autocite=footnote, 
+	labelyear=true,
+	dashed=false,
+	urldate=long,
+%<audrey>
+	citetracker=true,
+	ibidtracker=true,
+	ibidpage=true,
+%</audrey>
+}
+
+% Auf die neue Sprachdatei umleiten
+\DeclareLanguageMapping{german}{german-musuos}
+
+% Zitatmacros anpassen
+\renewbibmacro*{cite:short}{% 
+	\iffieldequalstr{entrytype}{music}{%
+		\iffieldundef{userb}{%
+			\printnames{labelname}%
+			\newunit{\addcolon\space}{\printfield{title}}
+		}{%
+			\printfield{userb}%
+		}
+	}{%
+		\ifthenelse{\ifnameundef{labelname}\OR\iffieldundef{labelyear}}{%
+			\printnames{labelname}% 
+			\setunit{\nameyeardelim}%
+			\usebibmacro{cite:label}% 
+		 	\setunit{\addcolon}%
+		}{%
+			\printnames{labelname}% 
+			\setunit{\nameyeardelim}% 
+			\usebibmacro{cite:labelyear+extrayear}%
+		}%
+	}%
+} 
+
+\newbibmacro*{cite:labelyear+extrayear}{% 
+	\iffieldundef{labelyear}{%
+	}{%
+		\printtext[bibhyperref]{% 
+	 		\printfield{labelyear}% 
+	 		\printfield{extrayear}}
+	 }%
+}
+
+\newbibmacro*{cite:label}{%
+	\newunit{\nameyeardelim}{o.\,J.}% 
+}
+
+\renewbibmacro*{shorthandintro}{%
+  \iffieldundef{shorthandintro}
+    {\iffieldundef{shorthand}
+       {}
+       {\setunit{\addspace}%
+        \printtext[parens]{%
+          \bibstring{citedas}\space
+          \mkbibquote{\printfield{shorthand}}}}}
+    {\setunit{\addspace}%
+     \printtext[parens]{\printfield{shorthandintro}}}}
+
+%<audrey>
+\newbibmacro*{cite:quotee}{%
+  \savefieldcs{postnote}{cbx@post}%
+  \ifboolexpr{ test {\ifciteseen} and not test {\iftoggle{cbx@fullquote}} }
+    {\iffieldundef{shorthand}
+       {\ifboolexpr{ not test {\iffirstonpage}
+                     and test {\ifsamepage{\value{instcount}}{\value{instcount}-2}}
+                     and test {\iftoggle{cbx@iflastquote}}
+                     and test {\iffieldequalcs{entrykey}{cbx@lastquoteekey}} }
+          {\printtext[bibhyperlink]{\bibstring[\mkibid]{ibidem}}%
+           \iffieldequalcs{postnote}{cbx@lastquoteepost}
+             {\clearfield{postnote}}
+             {\global\toggletrue{cbx@ifquoteepost}}%
+           \global\toggletrue{cbx@iflastibid}}
+          {\usebibmacro{cite:short}}}
+       {\usebibmacro{cite:shorthand}}}
+    {\usebibmacro{cite:full}}%
+  \csxdef{cbx@lastquoteepost}{\csuse{cbx@post}}}
+
+\newbibmacro*{cite:quoter}{%
+  \savefieldcs{postnote}{cbx@post}%
+  \ifboolexpr{ not test {\iftoggle{cbx@fullquote}}
+               and test {\iftoggle{cbx@iflastibid}}
+               and test {\iffieldequalcs{entrykey}{cbx@lastquoterkey}} }
+    {\iffieldequalcs{postnote}{cbx@lastquoterpost}
+       {\clearfield{postnote}}
+       {\global\toggletrue{cbx@ifquoterpost}}}
+    {\iftoggle{cbx@iflastibid}
+       {\quotedelim}
+       {}%
+     \global\togglefalse{cbx@iflastibid}%
+     \ifboolexpr{ test {\ifciteseen} and not test {\iftoggle{cbx@fullquote}} }
+       {\iffieldundef{shorthand}
+          {\usebibmacro{cite:short}}
+          {\usebibmacro{cite:shorthand}}}
+       {\usebibmacro{cite:full}}}%
+  \csxdef{cbx@lastquoterpost}{\csuse{cbx@post}}%
+  \global\togglefalse{cbx@ifquoteepost}}
+
+\DeclareCiteCommand{\cbx@quotecite}
+  {\usebibmacro{prenote}}
+  {\ifnumless{\value{multicitecount}}{2}% <loopcode>
+     {\usebibmacro{citeindex}% Current entry is a quotee
+      \addtocategory{quotee}{\thefield{entrykey}}%
+      \xdef\cbx@quoteekey{\thefield{entrykey}}%
+      \usebibmacro{cite:quotee}%
+      \csxdef{cbx@lastquoteekey}{\thefield{entrykey}}}
+     {\addtocategory{quoter}{\thefield{entrykey}}% Current entry is a quoter
+      \xifinlistcs{\thefield{entrykey}}{cbx@quoterlist@\cbx@quoteekey}
+        {}
+        {\csxappto{cbx@quoter@\cbx@quoteekey}{\thefield{entrykey},}%
+         \listcsxadd{cbx@quoterlist@\cbx@quoteekey}{\thefield{entrykey}}}%
+      \usebibmacro{cite:quoter}%
+      \csxdef{cbx@lastquoterkey}{\thefield{entrykey}}}}
+  {\multicitedelim}
+  {\iftoggle{cbx@iflastibid}
+     {\iftoggle{cbx@ifquoteepost}
+        {\let\postnotedelim=\quoteepostdelim}
+        {\iftoggle{cbx@ifquoterpost}
+           {\let\postnotedelim=\quoterpostdelim}
+           {}}}
+     {}%
+   \usebibmacro{cite:postnote}%
+   \global\toggletrue{cbx@iflastquote}}
+
+\newrobustcmd{\cbx@mkfullquote}{%
+  \AtNextCite{\citetrackerfalse}%
+  \toggletrue{cbx@fullquote}}
+
+\DeclareMultiCiteCommand{\quotecite}
+  [\cbx@qcwrapper\relax\mkbibautoformat] 
+  {\cbx@quotecite} 
+  {\cbx@qcdelim}
+\DeclareMultiCiteCommand{\fullquotecite}
+  [\cbx@qcwrapper\cbx@mkfullquote\mkbibautoformat]
+  {\cbx@quotecite}
+  {\cbx@qcdelim}
+
+\newrobustcmd{\mkbibautoformat}[1]{%
+  \cslet{cbx@autocite}{\autocite}%
+  \ifcsequal{cbx@autocite}{blx@acite@inline}
+    {\ifboolexpr{ test {\ifdefstring{\blx@bbxfile}{numeric}}
+                  or test {\ifdefstring{\blx@bbxfile}{alphabetic}} }
+       {\mkbibbrackets{#1}}
+       {\mkbibparens{#1}}}
+    {\ifcsequal{cbx@autocite}{blx@acite@footnote}
+       {\iffootnote
+          {\ifboolexpr{ test {\ifdefstring{\blx@bbxfile}{numeric}}
+                        or test {\ifdefstring{\blx@bbxfile}{alphabetic}} }
+             {\mkbibbrackets{#1}}
+             {\mkbibparens{#1}}}
+          {\mkbibfootnote{#1}}}
+       {\ifcsequal{cbx@autocite}{blx@acite@superscript}
+          {\mkbibsuperscript{#1}}
+          {#1}}}}
+
+
+\newrobustcmd{\cbx@qcwrapper}[3]{%
+  \global\toggletrue{cbx@isquote}%
+  \global\togglefalse{cbx@fullquote}%
+  #1#2{#3}%
+  \global\togglefalse{cbx@isquote}%
+  \global\togglefalse{cbx@iflastibid}%
+  \global\togglefalse{cbx@ifquoteepost}%
+  \global\togglefalse{cbx@ifquoterpost}}
+
+\newrobustcmd{\cbx@qcdelim}{%
+  \iftoggle{cbx@iflastibid}
+    {}
+    {\quotedelim}}
+%</audrey>
+
+% Feldformate anpassen
+\DeclareFieldFormat{url}{\url{#1}}
+\DeclareFieldFormat{urldate}{\bibstring{urlseen}\space#1}
+
+\endinput

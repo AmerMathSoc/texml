@@ -1,0 +1,302 @@
+% Copyright 2010 -- 2012 by tobig <tobias.goerlach@uni-hohneheim.de>
+% https://bitbucket.org/tobig/hohenheimbeamertheme/overview
+%
+% This file may be distributed and/or modified
+%
+% 1. under the LaTeX Project Public License and/or
+% 2. under the GNU Public License.
+%
+% See the file doc/licenses/LICENSE for more details.
+
+ \RequirePackage{ expl3, l3keys2e, xfrac, xparse}
+
+\ProvidesExplPackage {hobete} {2012/06/24} {0004} {2012/6/24 Beamer Theme for University of Hohenheim}
+
+\RequirePackage{tikz}
+
+\tl_new:N\hoversion
+\tl_set:Nn\hoversion{0004}
+
+
+\bool_new:N \g_hobete_poster_bool
+\bool_set_false:N \g_hobete_poster_bool
+\bool_new:N \l_hobete_sectionpage_bool
+\bool_set_false:N \l_hobete_sectionpage_bool
+
+\cs_new:Npn\g_tg_frml_front{x\ }
+\cs_new:Npn\g_tg_frml_back{\par}
+
+
+\keys_define:nn {hobeteoptions}{
+	poster .bool_set:N=\g_hobete_poster_bool,
+	poster .default:n = false,
+	framelist front .code:n	=\cs_set:Npn\g_tg_frml_front{ #1 },
+	framelist back .code:n	=\cs_set:Npn\g_tg_frml_back{ #1 },
+}
+
+\keys_define:nn {hobetecommands} {
+	plain .bool_set:N	= \l_hobete_sectionpage_bool,
+	plain .default:n = false,
+}
+
+\ProcessKeysOptions{hobeteoptions}
+
+
+
+
+
+
+\typeout{ ________________________________________________}
+\typeout{| ~This ~is ~the~ Hohenheim ~Beamer ~Theme  ~ \hoversion.}
+\typeout{| ~Please ~remark ~this ~is ~not ~a ~official ~Theme}
+\typeout{| ~The ~University ~of ~Hohenheim ~will ~grant~ NO ~support~ at~ all}
+\typeout{| ~If~ using~ the ~Logos, ~please ~make ~sure ~that ~you ~have ~the ~permission ~to ~do ~so!}
+\typeout{| }
+\typeout{|________________________________________________}
+
+
+
+% Lets hack some stuff
+\cs_new:Npn\cs_mylogo  { }
+        \NewDocumentCommand\insertmylogo{}{\cs_mylogo }
+    \NewDocumentCommand\mylogo{m}{\cs_gset:Npn\cs_mylogo {#1} }
+
+
+\bool_if:NF \g_hobete_poster_bool{% all the followig stuff is only needed in slide mode
+  
+\DeclareDocumentCommand\sectionpage{o}{%
+\group_begin:
+	\keys_set_known:nnN {hobetecommands}{ #1 }\tl_unkown_keys%
+  		\bool_if:NTF \l_hobete_sectionpage_bool%
+      		{%
+       		\begin{frame}[plain]\begin{beamercolorbox}[wd=\textwidth,ht=4ex,dp=1ex,center,rounded=true,shadow=true]{titlelike}\huge \insertsection \end{beamercolorbox}\end{frame}%
+      		}%true
+      		{%
+      		\frame{\begin{beamercolorbox}[wd=\textwidth,ht=4ex,dp=1ex,center,rounded=true,shadow=true]{titlelike}\huge \insertsection \end{beamercolorbox}}
+      		}%false
+\group_end:
+}%
+
+
+
+%Here comes the Framelist
+%
+%\newcommand{\printframelist}{ }
+%\newcommand{\@savefrml}{ }
+%\newcommand{\frameliston}{%
+%\let\oldframetitle\frametitle
+%\newcommand{\tgframelistfronthook}{$\cdot$}
+%\newcommand{\tgframelistbackhook}{\\ }
+%\newcommand\myaddto[1]{%
+  %\write\@auxout{\noexpand\@writefile{frml}{\noexpand ##1}}}
+  %\renewcommand{\printframelist}{\@starttoc{frml}}
+%\renewcommand{\frametitle}[1]{\oldframetitle{##1}%
+%\xifstrequal{##1}{\@savefrml}{}{
+%\myaddto{ \noexpand%
+%\tgframelistfronthook ##1 \noexpand\tgframelistbackhook}%
+%}
+%\global\def\@savefrml{##1}%
+%}
+%}
+
+
+%% Delcaring the i/o Streams
+\iow_new:N\iow_frml
+\ior_new:N\ior_frml
+
+
+
+\let\oldframetitle\frametitle
+
+
+
+
+\cs_new:Npn\iow_to_frml{}
+
+% Survives outside \frametitle
+\tl_new:N\tl_gtemp_save_frametitle
+% Does not
+\tl_new:N\l_temp_framelist_tl
+% will store the whole fl at the begin
+\tl_new:N\g_store_frml_tl
+% will store new fl at end (which is written to file)
+\tl_new:N\g_whole_framelist_tl
+% Stores the fl-filename
+\tl_new:N\tl_name_file_frml
+% sets the fl-filename
+\tl_gset:Nn\tl_name_file_frml{\c_job_name_tl.frml}
+
+ 
+ 
+ % check if file exits if not build a empty one	
+ \file_if_exist:nTF {\tl_name_file_frml}
+   {   %reading in by input
+ 	\tl_set:Nn\g_store_frml_tl{ \input{ \tl_name_file_frml } }
+	% The following could be a l3 solution for read in line by line
+	% not used jet
+	%\ior_open:Nn\ior_frml{\tl_name_file_frml}
+	  %\ior_str_map_inline:Nn \ior_frml
+      %{ \tl_gput_right:Nn \g_store_frml_tl {\g_tg_frml_front #1 \g_tg_frml_back } }
+	%\ior_close:N\ior_frml
+}{ % making new file
+ 	\iow_open:Nn\iow_frml{\tl_name_file_frml}
+	\iow_now:Nn\iow_frml{ }
+	\iow_close:N\iow_frml
+	
+	}
+
+ 
+\DeclareDocumentCommand\frametitle { m } { 
+\oldframetitle{#1}%no changes to org definition 
+\tl_set:Nn\l_temp_framelist_tl{#1} % seems to be beter for comparing
+% Now comparing the recent and the former frametitle
+\str_if_eq:xxTF {\l_temp_framelist_tl}{\tl_gtemp_save_frametitle} {% do nothing if true
+%
+}{%false
+%write to tl if e recent and the former frametitle are not the same
+\tl_gput_right:Nn\g_whole_framelist_tl{\g_tg_frml_front  #1 \g_tg_frml_back}
+	%\iow_now:Nx\iow_frml{\l_temp_framelist_tl} % would be another posibility, but keeps a stream open the whole time
+%	  \iow_close:N\ios_frml
+	}
+\tl_gset:Nn\tl_gtemp_save_frametitle{#1} % now overwriting global old frametitle with recent frametitle
+% this is the last that should be done here
+}
+
+
+%
+%
+\AtEndDocument{% this is latex2e but saves a write stream
+	\iow_open:Nn\iow_frml{\tl_name_file_frml}
+	\iow_now:Nx\iow_frml{\g_whole_framelist_tl}
+	\iow_close:N\iow_frml
+}
+
+
+
+	
+\DeclareDocumentCommand\printframelist{ }{ %
+\tl_use:N\g_store_frml_tl
+}% this simply prints the frametitle list
+
+
+%------------------
+% The Fancy Title stuff: 
+% First defining the print user code
+
+  
+\tl_new:N\g_logo_klein_tl
+\tl_new:N\g_logo_gro_tl
+
+\NewDocumentCommand\HohenheimLogoKlein{m}{%
+%\def\g_logo_klein_tl
+\tl_gset:Nn\g_logo_klein_tl{#1}
+}
+
+\NewDocumentCommand\HohenheimLogoLang{m}{%
+\tl_gset:Nn\g_logo_gro_tl{#1}
+}
+
+% Now defining the respective Functions for the titlepage
+% (They also could be defined in the Decision Tree below, but this is better to read)
+% First if only the small logo exists
+\NewDocumentCommand{\inserthotpwolang}{m}{\frame[plain]{
+       \begin{tikzpicture}[remember~picture,overlay] 
+       \node [scale=1.7,fill ~opacity=.2,text ~opacity=.07] at (current ~page.south~ west) {\includegraphics{\g_logo_klein_tl} }; 
+       %\node [scale=0.9,fill opacity=.2,text opacity=.8] at (7,0) {\includegraphics{\g_logo_gro_tl} }; 
+        \end{tikzpicture} 
+        \maketitle
+        \begin{center}%
+	#1%
+	 \end{center}
+        }
+}
+% if no short logo
+\NewDocumentCommand\inserthotpwokurz{m}{\frame[plain]{
+   \begin{tikzpicture}[remember~picture,overlay] 
+    % \node [scale=1.7,fill opacity=.2,text opacity=.07] at (current page.south west) {\includegraphics{logoklein.eps} }; 
+	\node [scale=0.9,fill ~opacity=.2,text ~opacity=.8, xshift=1.2cm, yshift=-1.5cm] at (current ~page.north) {\includegraphics{\g_logo_gro_tl} };  
+    \end{tikzpicture}\\[1cm]
+    \maketitle
+	\begin{center}%
+	#1%
+	 \end{center}
+    }
+}
+%if both are defined
+\NewDocumentCommand\inserthotp{m}{\frame[plain]{
+	\begin{tikzpicture}[remember~picture,overlay] 
+	\node [scale=1.7,fill ~opacity=.2,text ~opacity=.07] at (current~page.south~west) {\includegraphics{\g_logo_klein_tl} }; 
+	\node [scale=0.9,fill ~opacity=.2,text~opacity=.8, xshift=1.2cm, yshift=-1.5cm] at (current~page.north) {\includegraphics{\g_logo_gro_tl} }; 
+	\end{tikzpicture}\\[1cm]
+	 \maketitle%
+	%  \vskip0pt plus 1filll
+	\begin{center}%
+	#1%
+	 \end{center}
+	 }
+}
+
+
+\NewDocumentCommand\HohenheimFancyTitle{m}{\frame[plain]{ \maketitle } } %Fall Back
+\AtBeginDocument{
+\tl_if_empty:NTF\g_logo_klein_tl{%true klein 
+		\typeout{ __Hohenheim ~Beamer ~Theme ~says: __________________}
+ 		\typeout{| \string\HohenhemLogoKlein\space a ~is ~not ~defined  ~please~ specify... dropping~ one~ Picture}%  
+	\tl_if_empty:NTF \g_logo_gro_tl{%true groﬂ
+	  	\typeout{| \string\HohenhemLogoLang\space is not defined  please specify... dropping fancy Title... inserting boring one} %
+	  	\typeout{|________________________________________________}%
+	}{%flase groﬂ -> also kein klein aber groﬂ
+		 \typeout{| seems that \string\HohenhemLogoLang\space exists... Lets see what we can do with it}
+     		\typeout{|________________________________________________}
+        \RenewDocumentCommand\HohenheimFancyTitle{m}{\inserthotpwokurz{#1}}%
+        }}
+{%klein false  (vorhanden) 
+	\tl_if_empty:NTF\g_logo_gro_tl{ % klein vorhanden, groﬂ nicht
+        		   \typeout{| \string\HohenhemLogoLang\space is not defined... i ll try my best} %
+           	\typeout{|________________________________________________}
+     	  	\RenewDocumentCommand\HohenheimFancyTitle{1}{\inserthotpwolang{#1}}%
+ 	}
+	{% klein da groﬂ da
+	\RenewDocumentCommand\HohenheimFancyTitle{m}{\inserthotp{#1}}
+  	}
+}}
+}
+
+\usetheme{hohenheim}% we need that in any case
+
+    \bool_if:NT \g_hobete_poster_bool% Check if Poster is requested ift poster=true load hohenheimposter
+      { 
+      	\useoutertheme{hohenheimposter} 
+   	\typeout{ ________________________________________________}
+	\typeout{| ~This ~is ~the~ Hohenheim ~Beamer ~Theme  ~ \hoversion.}
+	\typeout{| ~Now~entering ~Poster ~Mode}
+	\typeout{|________________________________________________}
+      
+%
+%
+%
+%
+%
+%
+% now all the --- Poster --- Stuff: 
+% the following definitions are neither brilliant nor very hard to code for the users
+% their purpose is to make the user-end code a bit cleaner
+ \NewDocumentEnvironment{posterblock}{m}{\begin{block}{#1}}{\end{block}\vfill}
+%
+ \NewDocumentEnvironment{outerretainblock}{}{ \begin{column}{.49\textwidth}
+      \begin{beamercolorbox}[center,wd=\textwidth]{postercolumn}
+        \begin{minipage}[t][\columnheight][t]{.95\textwidth}}%
+        {    %
+             \end{minipage}
+      \end{beamercolorbox}
+    \end{column}\hfill}
+    %
+    \NewDocumentCommand\insertemail{}{\tl_to_str:N\tl_posteremail }
+    \NewDocumentCommand\posteremail{m}{\tl_set:Nn\tl_posteremail{#1} }
+    
+        \NewDocumentCommand\insertwebsite{}{\tl_to_str:N\tl_posterwebsite }
+    \NewDocumentCommand\posterwebsite{m}{\tl_set:Nn\tl_posterwebsite{#1} }
+    }
+%
+% EOF
+ 

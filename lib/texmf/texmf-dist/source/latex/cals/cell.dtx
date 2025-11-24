@@ -1,0 +1,314 @@
+% \subsection{Creating cells}
+
+% \begin{macro}{\cals@cell}
+% \begin{macro}{\cals@cell@end}
+% Creates an individual cell before socialization into a table.
+% Content of the cell is typeset inside a group.
+% Execution continues in |\cals@celll@end|. Parameters:
+% \begin{enumerate}
+% \item Width of the cell
+% \item Vertical correction: when we have a rowspan, the cell is created while processing the last row. The vertical correction is required to raise the text back to the first row of the rowspan.
+% \item (Implicit parameter.) Content. It is important that it contains a switch to the horizontal mode, otherwise horizontal dimensions of the cell will be incorrect.
+% \end{enumerate}
+% Using an implicit parameter instead of putting it to a macro
+% parameter is probably a premature optimization.
+%
+%
+%    \begin{macrocode}
+\newcommand\cals@cell[3]{}
+\def\cals@cell#1#2{%
+%    \end{macrocode}
+%
+% Start immediately with |\vbox| to allow |\setbox0=\cals@cell{...}|
+% construction. Later, white integrating the cell into
+% a row, the content will be unvboxed and put to a vbox
+% of the row height.
+%
+%    \begin{macrocode}
+\vbox\bgroup%
+%    \end{macrocode}
+%
+% Implicitely sets the width and the horizontal paddings
+% of the cell. These settings come into effect on
+% switch from the restricted vertical mode (our |\vbox|) to
+% the horizontal mode. Therefore, the content must force such
+% switch, otherwise the code fails.
+%
+%    \begin{macrocode}
+\hsize=#1
+\linewidth=#1
+\leftskip=\cals@paddingL %
+\rightskip=\cals@paddingR %
+%    \end{macrocode}
+%
+% Vertical correction and top padding
+%
+%    \begin{macrocode}
+\ifdim #2>0pt %
+ \vskip-#2
+\fi
+\vskip\cals@paddingT %
+%    \end{macrocode}
+%
+% Tuning the top padding. First, compensate the |\parskip|,
+% which appears on the mode switch. Second, adjusts baselineskip,
+% so in the case of the right preliminimary setup, the top of the
+% letters "Al" touches the padding border. Meanwhile, setting
+% prevdepth aligns the baselines of the first text lines
+% of the row cells.
+%
+%    \begin{macrocode}
+\vskip-\parskip %
+\prevdepth=\cals@paddingD %
+%    \end{macrocode}
+%
+% Finally, the content. And the switch to the horizontal mode (we hope).
+%
+% We want more work afrer typesetting the content, but it is not
+% desirable to collect all the tokens. Instead, start a group and use
+% |\aftergroup| to finish typesetting. For more explanations, see
+% ``\TeX{} by Topic'', Chapter 12 ``Expansion''.
+%
+%    \begin{macrocode}
+\bgroup\aftergroup\cals@cell@end
+\cals@AtBeginCell\let\next=% eat '{' of the content
+}%{Implicit content}
+
+%    \end{macrocode}
+%
+% The infinite glue before the bottom padding is useful later,
+% when we will re-height the cells in a row.
+%
+%    \begin{macrocode}
+\def\cals@cell@end{\vfil\vskip\cals@paddingB
+\cals@AtEndCell\egroup % finish vbox
+%    \end{macrocode}
+% Call the caller
+%    \begin{macrocode}
+\cals@celll@end}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+
+% \begin{macro}{\cell}
+% Creates a cell and appends it to the hbox |\cals@current@row|.
+%    \begin{macrocode}
+\newcommand\cell[1]{}
+\def\cell{%
+%    \end{macrocode}
+% Get the width of the cell and typeset it to the box 0.
+% The execution flow is: |\cell| to |\cals@cell|
+% to |\cals@cell@end| to |\cals@celll@end|.
+%    \begin{macrocode}
+\llt@rot\cals@colwidths
+\let\cals@cell@width=\llt@car
+\setbox0=\cals@cell\cals@cell@width{0pt}%
+}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@AtBeginCell}
+% \begin{macro}{\cals@AtEndCell}
+% Additional code to be executed at the begin and at the end
+% of a cell. An use case is a hook for pdfsync:
+% |\def\cals@AtBeginCell{\pdfsyncstart}|. I am not sure if the end-hook
+% is useful because all the changes are local for the cell group,
+% but decided to retain it for symmetry.
+%    \begin{macrocode}
+\let\cals@AtBeginCell=\relax
+\let\cals@AtEndCell=\relax
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+
+% \begin{macro}{\cals@width@cell@put@row}
+% Implicit setting of the cell width can fail (example is an empty cell).
+% In this case, force the width explicitely. Then put the cell
+% to the current row. This code should be a part of |\cals@celll@end|,
+% but due to |\spancontent| is in a separate macro.
+%    \begin{macrocode}
+\newcommand\cals@width@cell@put@row{%
+\ifdim \cals@cell@width=\wd0 \relax \else \wd0=\cals@cell@width \fi
+\setbox\cals@current@row=\hbox{\unhbox\cals@current@row\box0 }}%
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@celll@end}
+% After a cell is typeset to the box 0, execution continues here
+% (see notes to |\cell|). Update the current row and its decorations.
+%    \begin{macrocode}
+\newcommand\cals@celll@end{%
+\cals@width@cell@put@row
+\cals@decor@next\cals@cell@width}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\spancontent}
+% Typesets a spanned cell (the content is in the implicit argument)
+% and puts it to the current row.
+% The width and height correction are
+% already calculated, the decorations are also already added.
+%    \begin{macrocode}
+\newcommand\spancontent[1]{}
+\def\spancontent{%
+\let\cals@tmp=\cals@celll@end
+\let\cals@cell@width=\cals@span@width
+\def\cals@celll@end{%
+  \cals@width@cell@put@row%
+  \let\cals@celll@end=\cals@tmp}%
+\setbox0=\cals@cell{\cals@span@width}{\cals@span@height}%
+}%{Implicit content}
+%    \end{macrocode}
+% \end{macro}
+
+% \subsubsection{Cell padding}
+
+% \begin{macro}{\cals@setpadding}
+% \begin{macro}{\cals@paddingL}
+% \begin{macro}{\cals@paddingR}
+% \begin{macro}{\cals@paddingT}
+% \begin{macro}{\cals@paddingB}
+% 
+% Calculates and sets the cell padding. It seems that a good value
+% is the half of the font size, calculated as the full height of
+% a box with the content \#1. The calstable environment uses
+% the letters ``Ag''.
+%
+%    \begin{macrocode}
+\newskip\cals@paddingL
+\newskip\cals@paddingR
+\newskip\cals@paddingT
+\newskip\cals@paddingB
+
+\newcommand{\cals@setpadding}[1]{%
+\setbox0=\hbox{#1}%
+\dimen0=\ht0 \advance\dimen0 by \dp0 \divide\dimen0 by 2
+\cals@paddingL=\dimen0 \relax
+\cals@paddingR=\cals@paddingL
+\cals@paddingT=\cals@paddingL
+\cals@paddingB=\cals@paddingL
+}
+%    \end{macrocode}
+% \end{macro}\end{macro}\end{macro}\end{macro}\end{macro}
+
+% \begin{macro}{\cals@setcellprevdepth}
+% \begin{macro}{\cals@paddingD}
+% The function |\cals@cell| uses the
+% length |\cals@paddingD| to tune the top padding. The macro
+% |\cals@setcellprevdepth| calculates and sets this parameter,
+% so that a box with the content \#1 touches the padding border.
+% The calstable environment uses the letters ``Al''.
+%
+%    \begin{macrocode}
+\newdimen\cals@paddingD
+
+\newcommand{\cals@setcellprevdepth}[1]{%
+\setbox0=\vbox{\prevdepth=0pt #1}%
+\setbox1=\vbox{#1}%
+\dimen0=\ht0 \advance\dimen0 by \dp0 %
+\advance\dimen0 by -\ht1 \advance\dimen0 by -\dp1%
+\cals@paddingD=\dimen0 }
+%    \end{macrocode}
+% \end{macro}\end{macro}
+
+% \begin{macro}{\alignL}
+% \begin{macro}{\alignC}
+% \begin{macro}{\alignR}
+% To align the table cell text left, center or right we add or
+% remove vfill-part of the left and right padding. Executed
+% by assigning skip to dimen.
+%    \begin{macrocode}
+\newcommand\alignL{%
+\dimen0=\cals@paddingL \cals@paddingL=\dimen0 \relax
+\dimen0=\cals@paddingR \cals@paddingR=\dimen0 \relax}
+
+\newcommand\alignC{%
+\dimen0=\cals@paddingL \cals@paddingL=\dimen0 plus 1fill\relax
+\dimen0=\cals@paddingR \cals@paddingR=\dimen0 plus 1fill\relax}
+
+\newcommand\alignR{%
+\dimen0=\cals@paddingL \cals@paddingL=\dimen0 plus 1fill\relax
+\dimen0=\cals@paddingR \cals@paddingR=\dimen0 \relax}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+
+% \subsection{From cells to a row}
+
+% \begin{macro}{\cals@current@row}
+% Rows are first typeset to this hbox.
+%    \begin{macrocode}
+\newbox\cals@current@row
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\colwidths}
+% \begin{macro}{\cals@colwidths}
+% The macro |\cals@colwidths| contains a list of column widths.
+% The user sets it through the API macro |\colwidths|, which performs
+% expansion. The list is alive, it is rotated after a cell is finished,
+% so the width of the next cell is always the first element.
+%    \begin{macrocode}
+\newcommand\colwidths[1]{}
+\def\colwidths#{\edef\cals@colwidths}
+\def\cals@colwidths{{100pt}}
+%    \end{macrocode}
+% \end{macro}\end{macro}
+
+% Initially, I planned to use |\row{...}| to create a row.
+% In order to perform actions at the end of the row I used
+% the aftergroup-trick, like for |\cell| command. Unfortunately,
+% the decorations were lost after the
+% group finished. I tried to save them to global temporary
+% macros at the end of each cell, but the saving list was big.
+% Finally, I decided that the construction |\brow...\erow|
+% is much easier to implement.
+
+% \begin{macro}{\brow}
+% Starts a row. Resets the rowspan markers, |\cals@current@row|
+% and decorations.
+%    \begin{macrocode}
+\newcommand\brow{%
+\cals@updateRspanMarkers
+\setbox\cals@current@row=\hbox{}%
+\cals@decor@begin}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\erow}
+% Finishes a row. All the cells are re-layouted to the row height.
+% Decorations are finalized, and the row is dispatched.
+%    \begin{macrocode}
+\newcommand\erow{%
+\cals@reheight@cells\cals@current@row
+\cals@last@row@height=\ht\cals@current@row\relax
+\cals@decor@end\cals@lastWidth
+\ht\cals@current@cs=\ht\cals@current@row
+\cals@row@dispatch
+}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@reheight@cells}
+% Re-heights all the boxes of a row.
+% Retains the widths of these boxes.
+%    \begin{macrocode}
+\newcommand\cals@reheight@cells[1]{%
+\dimen0=\ht#1\relax
+\setbox2=\hbox{}%
+\def\next{%
+ \setbox4=\lastbox
+ \ifvoid4
+   \def\next{\global\setbox2=\box2}%
+ \else
+   \dimen4=\wd4
+   \setbox4=\vbox to \dimen0{\unvbox4}%
+   \ifdim \dimen4=\wd4 \relax \else \wd4=\dimen4 \fi
+   \setbox2=\hbox{\box4\unhbox2 }%
+ \fi
+ \next}%
+\setbox0=\hbox{\unhbox#1\next}%
+\setbox#1=\box2 }
+%    \end{macrocode}
+% \end{macro}

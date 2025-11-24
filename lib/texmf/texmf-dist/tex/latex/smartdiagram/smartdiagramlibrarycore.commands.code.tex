@@ -1,0 +1,513 @@
+%%
+%% This is file `smartdiagramlibrarycore.commands.code.tex',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% smartdiagram.dtx  (with options: `commands')
+%% * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+%% smartdiagram --- Automatic creation of smart diagrams from lists of items.
+%% 
+%% E-mail: claudio <dot> fiandrino <at> gmail <dot> com
+%% 
+%% Released under the LaTeX Project Public License v1.3c or later
+%% See http://www.latex-project.org/lppl.txt
+%% * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+%% 
+
+\NewDocumentCommand{\smartdiagram}{r[] m}{%
+   \StrCut{#1}{:}\diagramtype\option
+   \IfNoValueTF{#1}{% true-no value 1
+      \PackageError{smartdiagram}%
+      {Type of the diagram not inserted. Please insert it}%
+      {Example: \protect\smartdiagram[flow diagram]}}
+   {%false-no value 1
+   \IfStrEq{\diagramtype}{}{%
+      \PackageError{smartdiagram}{Type of the diagram not inserted. Please insert it}
+      {Example: \protect\smartdiagram[flow diagram]}
+   }{}
+   \IfStrEq{\diagramtype}{circular diagram}{% true-circular diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+
+   \foreach \smitem [count=\xi] in {#2}  {\global\let\maxsmitem\xi}
+
+   \foreach \smitem [count=\xi] in {#2}{%
+   \IfStrEq{\option}{clockwise}{% true-clockwise-circular diagram
+     \pgfmathtruncatemacro{\angle}{180+360/\maxsmitem*\xi}
+   }{% false-clockwise-circular diagram
+     \pgfmathtruncatemacro{\angle}{360/\maxsmitem*\xi}
+   }
+   \edef\col{\@nameuse{color@\xi}}
+   \IfStrEq{\option}{clockwise}{% true-clockwise-circular diagram
+     \node[module,drop shadow] (module\xi)
+      at (-\angle:\sm@core@circulardistance) {\smitem };
+   }{% false-clockwise-circular diagram
+     \node[module,drop shadow] (module\xi)
+      at (\angle:\sm@core@circulardistance) {\smitem };
+   }
+   }%
+   \foreach \smitem [count=\xi] in {#2}{%
+   \ifnum\xi=\maxsmitem
+     \ifcircularfinalarrowdisabled
+       \relax
+     \else
+       \pgfmathtruncatemacro{\xj}{mod(\xi, \maxsmitem) + 1)}
+       \edef\col{\@nameuse{color@\xj}}
+       \IfStrEq{\option}{clockwise}{% true-clockwise-circular diagram
+         \draw[diagram arrow type,shorten <=0.3cm,shorten >=0.3cm]
+          (module\xj) to[bend right] (module\xi);
+         }{% false-clockwise-circular diagram
+          \draw[diagram arrow type,shorten <=0.3cm,shorten >=0.3cm]
+           (module\xj) to[bend left] (module\xi);
+         }
+     \fi
+   \else
+     \pgfmathtruncatemacro{\xj}{mod(\xi, \maxsmitem) + 1)}
+     \edef\col{\@nameuse{color@\xj}}
+     \IfStrEq{\option}{clockwise}{% true-clockwise-circular diagram
+       \draw[diagram arrow type,shorten <=0.3cm,shorten >=0.3cm]
+         (module\xj) to[bend right] (module\xi);
+     }{% false-clockwise-circular diagram
+        \draw[diagram arrow type,shorten <=0.3cm,shorten >=0.3cm]
+         (module\xj) to[bend left] (module\xi);
+       }
+
+   \fi
+   }%
+   \end{tikzpicture}
+   }{}% end-circular diagram
+   \IfStrEq{\diagramtype}{flow diagram}{% true-flow diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+
+   \foreach \smitem [count=\xi] in {#2}  {\global\let\maxsmitem\xi}
+
+   \foreach \smitem [count=\xi] in {#2}{%
+   \edef\col{\@nameuse{color@\xi}}
+   \IfStrEq{\option}{horizontal}{% true-horizontal-flow diagram
+     \path let \n1 = {int(0-\xi)}, \n2={0+\xi*\sm@core@modulexsep} in
+         node[module,drop shadow] (module\xi) at +(\n2,0) {\smitem};
+   }{% false-horizontal-flow diagram
+     \path let \n1 = {int(0-\xi)}, \n2={0-\xi*\sm@core@moduleysep} in
+         node[module,drop shadow] (module\xi) at +(0,\n2) {\smitem};
+   }
+   }%
+
+   \foreach \smitem [count=\xi] in {#2}{%
+   \pgfmathtruncatemacro{\xj}{mod(\xi, \maxsmitem) + 1)}
+   \edef\col{\@nameuse{color@\xj}}
+   \ifnum\xi<\maxsmitem
+   \begin{pgfonlayer}{smart diagram arrow back}
+   \draw[diagram arrow type] (module\xj) -- (module\xi);
+   \end{pgfonlayer}
+   \fi
+   % last arrow - not display it in background - check if disabled
+   \ifbackarrowdisabled
+     \relax
+   \else
+     \ifnum\xi=\maxsmitem
+       \IfStrEq{\option}{horizontal}{% true-horizontal-flow diagram
+         \tikzset{square arrow/.style={
+            to path={-- ++(0,\sm@core@backarrowdistance) -| (\tikztotarget)}
+            }
+         }
+         \draw[diagram arrow type, square arrow]
+          (module\xj.north) to (module\xi.north);
+       }{% false-horizontal-flow diagram
+         \tikzset{square arrow/.style={
+            to path={-- ++(\sm@core@backarrowdistance,0) |- (\tikztotarget)}
+            }
+         }
+         \draw[diagram arrow type,square arrow]
+           (module\xj.east) to (module\xi);
+       }
+     \fi
+   \fi
+   }%
+   \end{tikzpicture}
+   }{}% end-flow diagram
+   \IfStrEq{\diagramtype}{descriptive diagram}{% true-descr. diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \smitem [count=\xi] in {#2}{%
+   \edef\col{\@nameuse{color@\xi}}
+   \foreach \subitem [count=\xii] in \smitem{%
+   \ifnumequal{\xii}{1}{% true
+   \node[description title,drop shadow]
+    (module-title\xi) at (0,0-\xi*\sm@core@descriptiveitemsysep) {\subitem};
+   }{}
+   \ifnumequal{\xii}{2}{% true
+   \node[description,drop shadow](module\xi)
+    at (0,0-\xi*\sm@core@descriptiveitemsysep) {\subitem};
+   }{}
+   }%
+   }%
+   \end{tikzpicture}
+   }{}% end-descr. diagram
+   \IfStrEq{\diagramtype}{bubble diagram}{% true-bubble diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \smitem [count=\xi] in {#2}{\global\let\maxsmitem\xi}
+   \pgfmathtruncatemacro\actualnumitem{\maxsmitem-1}
+   \foreach \smitem [count=\xi] in {#2}{%
+   \ifnumequal{\xi}{1}{ %true
+   \node[bubble center node](center bubble){\smitem};
+   }{%false
+   \pgfmathtruncatemacro{\xj}{\xi-1}
+   \pgfmathtruncatemacro{\angle}{360/\actualnumitem*\xj}
+   \edef\col{\@nameuse{color@\xj}}
+   \node[bubble node] (module\xi)
+       at (center bubble.\angle) {\smitem };
+   }%
+   }%
+   \end{tikzpicture}
+   }{}%end-bubble diagram
+   \IfStrEq{\diagramtype}{constellation diagram}{% true-const diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \smitem [count=\xi] in {#2}{\global\let\maxsmitem\xi}
+   \pgfmathtruncatemacro\actualnumitem{\maxsmitem-1}
+   \foreach \smitem [count=\xi] in {#2}{%
+   \ifnumequal{\xi}{1}{ %true
+   \node[planet](planet){\smitem};
+   }{%false
+   \pgfmathtruncatemacro{\xj}{\xi-1}
+   \pgfmathtruncatemacro{\angle}{360/\actualnumitem*\xj}
+   \edef\col{\@nameuse{color@\xj}}
+   \node[satellite] (satellite\xi)
+       at (\angle:\sm@core@distanceplanetsatellite) {\smitem };
+   \draw[connection planet satellite] (planet) -- (satellite\xi);
+   }%
+   }%
+   \end{tikzpicture}
+   }{}%end-const diagram
+   \IfStrEq{\diagramtype}{connected constellation diagram}{% true-conn const diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \smitem [count=\xi] in {#2}{\global\let\maxsmitem\xi}
+   \pgfmathtruncatemacro\actualnumitem{\maxsmitem-1}
+   \foreach \smitem [count=\xi] in {#2}{%
+   \ifnumequal{\xi}{1}{ %true
+   \node[planet](planet){\smitem};
+   }{%false
+   \pgfmathtruncatemacro{\xj}{\xi-1}
+   \pgfmathtruncatemacro{\angle}{360/\actualnumitem*\xj}
+   \edef\col{\@nameuse{color@\xj}}
+   \node[satellite] (satellite\xj)
+        at (\angle:\sm@core@distanceplanetsatellite) {\smitem };
+   }%
+   }%
+   \foreach \smitem [count=\xi] in {#2}{%
+      \ifnumgreater{\xi}{1}{ %true
+      \pgfmathtruncatemacro{\xj}{\xi-1}
+      \edef\col{\@nameuse{color@\xj}}
+      \pgfmathtruncatemacro{\xk}{mod(\xj,\actualnumitem) +1}
+      \path[connection planet satellite,-]
+         (satellite\xj) edge[bend right] (satellite\xk);
+   }{}
+   }%
+   \end{tikzpicture}
+   }{}%end-connected constellation diagram
+   \IfStrEq{\diagramtype}{priority descriptive diagram}{% true-priority descriptive diagram
+   \pgfmathparse{subtract(\sm@core@priorityarrowwidth,\sm@core@priorityarrowheadextend)}
+   \pgfmathsetmacro\sm@core@priorityticksize{\pgfmathresult/2}
+   \pgfmathsetmacro\arrowtickxshift{(\sm@core@priorityarrowwidth-\sm@core@priorityticksize)/2}
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \smitem [count=\xi] in {#2}{\global\let\maxsmitem\xi}
+   \foreach \smitem [count=\xi] in {#2}{%
+   \edef\col{\@nameuse{color@\xi}}
+    \node[description,drop shadow](module\xi)
+    at (0,0+\xi*\sm@core@descriptiveitemsysep) {\smitem};
+\draw[line width=\sm@core@prioritytick,\col]
+      ([xshift=-\arrowtickxshift pt]module\xi.base west)--
+ ($([xshift=-\arrowtickxshift pt]module\xi.base west)-(\sm@core@priorityticksize pt,0)$);
+   }%
+   \coordinate (A) at (module1);
+   \coordinate (B) at (module\maxsmitem);
+   \CalcHeight(A,B){heightmodules}
+   \pgfmathadd{\heightmodules}{\sm@core@priorityarrowheightadvance}
+   \pgfmathsetmacro{\distancemodules}{\pgfmathresult}
+   \pgfmathsetmacro\arrowxshift{\sm@core@priorityarrowwidth/2}
+   \begin{pgfonlayer}{background}
+   \node[priority arrow] at ([xshift=-\arrowxshift pt]module1.south west){};
+   \end{pgfonlayer}
+   \end{tikzpicture}
+   }{}% end-priority descriptive diagram
+   \IfStrEq{\diagramtype}{sequence diagram}{% true-sequence diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \x[count=\xi, count=\prevx from 0] in {#2}{%
+   \edef\col{\@nameuse{color@\xi}}
+   \ifnum\xi=1
+     \node[sequence item] (sequence-item\xi) {\x};
+   \else
+     \node[sequence item,anchor=west] (sequence-item\xi) at (sequence-item\prevx.east) {\x};
+   \fi
+   }
+   \end{tikzpicture}
+   }{}% end-sequence diagram
+}% end-no value 1
+}% end-command
+\NewDocumentCommand{\smartdiagramanimated}{r[] m}{%
+   \StrCut{#1}{:}\diagramtype\option
+   \IfNoValueTF{#1}{% true-no value 1
+      \PackageError{smartdiagram}{Type of the diagram not inserted. Please insert it}
+      {Example: \protect\smartdiagram[flow diagram]}}
+   {%false-no value 1
+   \IfStrEq{\diagramtype}{}{%
+      \PackageError{smartdiagram}{Type of the diagram not inserted. Please insert it}
+      {Example: \protect\smartdiagram[flow diagram]}
+   }{}
+   \IfStrEq{\diagramtype}{circular diagram}{% true-circular diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \smitem [count=\xi] in {#2}  {\global\let\maxsmitem\xi}
+   \foreach \smitem [count=\xi] in {#2}{%
+   \IfStrEq{\option}{clockwise}{% true-clockwise-circular diagram
+     \pgfmathtruncatemacro{\angle}{180+360/\maxsmitem*\xi}
+   }{% false-clockwise-circular diagram
+     \pgfmathtruncatemacro{\angle}{360/\maxsmitem*\xi}
+   }
+   \edef\col{\@nameuse{color@\xi}}
+   \IfStrEq{\option}{clockwise}{% true-clockwise-circular diagram
+      \node[module,
+        drop shadow={smvisible on=<\xi->},
+        smvisible on=<\xi->] (module\xi)
+       at (-\angle:\sm@core@circulardistance) {\smitem};
+   }{% false-clockwise-circular diagram
+      \node[module,
+        drop shadow={smvisible on=<\xi->},
+        smvisible on=<\xi->] (module\xi)
+       at (\angle:\sm@core@circulardistance) {\smitem};
+   }
+   }%
+   \foreach \smitem [count=\xi] in {#2}{%
+   \ifnum\xi=\maxsmitem
+     \ifcircularfinalarrowdisabled
+       \relax
+     \else
+       \pgfmathtruncatemacro{\xj}{mod(\xi, \maxsmitem) + 1)}
+       \pgfmathtruncatemacro{\adv}{\xi + 1)}
+       \edef\col{\@nameuse{color@\xj}}
+       \IfStrEq{\option}{clockwise}{% true-clockwise-circular diagram
+         \draw[diagram arrow type,shorten <=0.3cm,shorten >=0.3cm,
+        smvisible on=<\adv->]
+          (module\xj) to[bend right] (module\xi);
+         }{% false-clockwise-circular diagram
+          \draw[diagram arrow type,shorten <=0.3cm,shorten >=0.3cm,
+        smvisible on=<\adv->]
+           (module\xj) to[bend left] (module\xi);
+         }
+     \fi
+   \else
+     \pgfmathtruncatemacro{\xj}{mod(\xi, \maxsmitem) + 1)}
+     \pgfmathtruncatemacro{\adv}{\xi + 1)}
+     \edef\col{\@nameuse{color@\xj}}
+     \IfStrEq{\option}{clockwise}{% true-clockwise-circular diagram
+       \draw[diagram arrow type,shorten <=0.3cm,shorten >=0.3cm,
+        smvisible on=<\adv->]
+         (module\xj) to[bend right] (module\xi);
+     }{% false-clockwise-circular diagram
+        \draw[diagram arrow type,shorten <=0.3cm,shorten >=0.3cm,
+          smvisible on=<\adv->]
+         (module\xj) to[bend left] (module\xi);
+       }
+
+   \fi
+   }%
+   \end{tikzpicture}
+   }{}% end-circular diagram
+   \IfStrEq{\diagramtype}{flow diagram}{% true-flow diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+
+   \foreach \smitem [count=\xi] in {#2}  {\global\let\maxsmitem\xi}
+
+   \foreach \smitem [count=\xi] in {#2}{%
+   \edef\col{\@nameuse{color@\xi}}
+   \IfStrEq{\option}{horizontal}{% true-horizontal-flow diagram
+     \path let \n1 = {int(0-\xi)}, \n2={0+\xi*\sm@core@modulexsep}
+        in node[module,drop shadow={smvisible on=<\xi->},
+        smvisible on=<\xi->] (module\xi) at +(\n2,0) {\smitem};
+   }{% false-horizontal-flow diagram
+     \path let \n1 = {int(0-\xi)}, \n2={0-\xi*\sm@core@moduleysep}
+        in node[module,drop shadow={smvisible on=<\xi->},
+        smvisible on=<\xi->] (module\xi) at +(0,\n2) {\smitem};
+   }
+   }%
+
+   \foreach \smitem [count=\xi] in {#2}{%
+   \pgfmathtruncatemacro{\xj}{mod(\xi, \maxsmitem) + 1)}
+   \edef\col{\@nameuse{color@\xj}}
+   \ifnum\xi<\maxsmitem
+   \begin{pgfonlayer}{smart diagram arrow back}
+   \draw[diagram arrow type,smvisible on=<\xi->]
+     (module\xj) -- (module\xi);
+   \end{pgfonlayer}
+   \fi
+   % last arrow - not display it in background - check if disabled
+   \ifbackarrowdisabled
+     \relax
+   \else
+     \ifnum\xi=\maxsmitem
+       \IfStrEq{\option}{horizontal}{% true-horizontal-flow diagram
+         \tikzset{square arrow/.style={
+           to path={-- ++(0,\sm@core@backarrowdistance) -| (\tikztotarget)}
+           }
+         }
+         \draw[diagram arrow type, square arrow,smvisible on=<\xi->]
+          (module\xj.north) to (module\xi.north);
+       }{% false-horizontal-flow diagram
+         \tikzset{square arrow/.style={
+           to path={-- ++(\sm@core@backarrowdistance,0) |- (\tikztotarget)}
+           }
+         }
+         \draw[diagram arrow type,square arrow,smvisible on=<\xi->]
+           (module\xj.east) to (module\xi);
+       }
+     \fi
+   \fi
+   }%
+   \end{tikzpicture}
+   }{}% end-flow diagram
+   \IfStrEq{\diagramtype}{descriptive diagram}{% true-descriptive diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \smitem [count=\xi] in {#2}{%
+   \edef\col{\@nameuse{color@\xi}}
+
+   \foreach \subitem [count=\xii] in \smitem{%
+      \pgfmathtruncatemacro\subitemvisible{\xi}
+   \ifnumequal{\xii}{1}{% true
+   \node[description title,drop shadow, smvisible on=<\subitemvisible->]
+   (module-title\xi) at (0,0-\xi*\sm@core@descriptiveitemsysep) {\subitem};\pause
+   }{}
+   \ifnumequal{\xii}{2}{% true
+   \node[description,drop shadow,smvisible on=<\subitemvisible->]
+   (module\xi)at (0,0-\xi*\sm@core@descriptiveitemsysep) {\subitem};\pause
+   }{}
+   }%
+   }%
+   \end{tikzpicture}
+   }{}% end-descriptive diagram
+   \IfStrEq{\diagramtype}{bubble diagram}{% true-bubble diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \smitem [count=\xi] in {#2}{\global\let\maxsmitem\xi}
+   \pgfmathtruncatemacro\actualnumitem{\maxsmitem-1}
+   \foreach \smitem [count=\xi] in {#2}{%
+   \ifnumequal{\xi}{1}{ %true
+   \node[bubble center node, smvisible on=<\xi->](center bubble){\smitem};
+   }{%false
+   \pgfmathtruncatemacro{\xj}{\xi-1}
+   \pgfmathtruncatemacro{\angle}{360/\actualnumitem*\xj}
+   \edef\col{\@nameuse{color@\xj}}
+   \node[bubble node, smvisible on=<\xi->](module\xi)
+        at (center bubble.\angle) {\smitem };
+   }%
+   }%
+   \end{tikzpicture}
+   }{}%end-bubble diagram
+   \IfStrEq{\diagramtype}{constellation diagram}{% true-const diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \smitem [count=\xi] in {#2}{\global\let\maxsmitem\xi}
+   \pgfmathtruncatemacro\actualnumitem{\maxsmitem-1}
+   \foreach \smitem [count=\xi] in {#2}{%
+   \ifnumequal{\xi}{1}{ %true
+   \node[planet, smvisible on=<\xi->](planet){\smitem};
+   }{%false
+   \pgfmathtruncatemacro{\xj}{\xi-1}
+   \pgfmathtruncatemacro{\angle}{360/\actualnumitem*\xj}
+   \edef\col{\@nameuse{color@\xj}}
+   \node[satellite, smvisible on=<\xi->] (satellite\xi)
+    at (\angle:\sm@core@distanceplanetsatellite) {\smitem };
+   \draw[connection planet satellite, smvisible on=<\xi->]
+    (planet) -- (satellite\xi);
+ }%
+   }%
+   \end{tikzpicture}
+   }{}%end-constellation diagram
+   \IfStrEq{\diagramtype}{connected constellation diagram}{% true-conn const diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \smitem [count=\xi] in {#2}{\global\let\maxsmitem\xi}
+   \pgfmathtruncatemacro\actualnumitem{\maxsmitem-1}
+   \foreach \smitem [count=\xi] in {#2}{%
+   \ifnumequal{\xi}{1}{ %true
+   \node[planet,smvisible on=<\xi->](planet){\smitem};
+   }{%false
+   \pgfmathtruncatemacro{\xj}{\xi-1}
+   \pgfmathtruncatemacro{\angle}{360/\actualnumitem*\xj}
+   \edef\col{\@nameuse{color@\xj}}
+   \node[satellite,smvisible on=<\xi->] (satellite\xj)
+    at (\angle:\sm@core@distanceplanetsatellite) {\smitem };
+   }%
+   }%
+   \foreach \smitem [count=\xi] in {#2}{%
+      \ifnumgreater{\xi}{1}{ %true
+      \pgfmathtruncatemacro{\xj}{\xi-1}
+      \edef\col{\@nameuse{color@\xj}}
+      \pgfmathtruncatemacro{\xk}{mod(\xj,\actualnumitem) +1}
+      \pgfmathtruncatemacro{\smvisible}{\xi+1}
+      \path[connection planet satellite,-,smvisible on=<\smvisible->]
+       (satellite\xj) edge[bend right] (satellite\xk);
+   }{}
+   }%
+   \end{tikzpicture}
+   }{}%end-connected constellation diagram
+   \IfStrEq{\diagramtype}{priority descriptive diagram}{% true-priority descriptive diagram
+   \pgfmathparse{subtract(\sm@core@priorityarrowwidth,\sm@core@priorityarrowheadextend)}
+   \pgfmathsetmacro\sm@core@priorityticksize{\pgfmathresult/2}
+   \pgfmathsetmacro\arrowtickxshift{(\sm@core@priorityarrowwidth-\sm@core@priorityticksize)/2}
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \smitem [count=\xi] in {#2}{\global\let\maxsmitem\xi}
+   \foreach \smitem [count=\xi] in {#2}{%
+   \edef\col{\@nameuse{color@\xi}}
+   \pgfmathtruncatemacro\smvisible{\xi+1}
+   \node[description,drop shadow={smvisible on=<\smvisible->},smvisible on=<\smvisible->]
+    (module\xi) at (0,0+\xi*\sm@core@descriptiveitemsysep) {\smitem};
+\draw[line width=\sm@core@prioritytick,\col,smvisible on=<\smvisible->]
+ ([xshift=-\arrowtickxshift pt]module\xi.base west)--
+ ($([xshift=-\arrowtickxshift pt]module\xi.base west)-(\sm@core@priorityticksize pt,0)$);
+   }%
+   \coordinate (A) at (module1);
+   \coordinate (B) at (module\maxsmitem);
+   \CalcHeight(A,B){heightmodules}
+   \pgfmathadd{\heightmodules}{\sm@core@priorityarrowheightadvance}
+   \pgfmathsetmacro{\distancemodules}{\pgfmathresult}
+   \pgfmathsetmacro\arrowxshift{\sm@core@priorityarrowwidth/2}
+   \begin{pgfonlayer}{background}
+   \node[priority arrow] at ([xshift=-\arrowxshift pt]module1.south west){};
+   \end{pgfonlayer}
+   \end{tikzpicture}
+   }{}% end-priority descriptive diagram
+   \IfStrEq{\diagramtype}{sequence diagram}{% true-sequence diagram
+   \begin{tikzpicture}[every node/.style={align=center,let hypenation}]
+   \foreach \x[count=\xi, count=\prevx from 0] in {#2}{%
+   \edef\col{\@nameuse{color@\xi}}
+   \ifnum\xi=1
+     \node[sequence item,smvisible on=<\xi->] (sequence-item\xi) {\x};
+   \else
+     \node[sequence item,anchor=west,smvisible on=<\xi->]
+      (sequence-item\xi) at (sequence-item\prevx.east) {\x};
+   \fi
+   }
+   \end{tikzpicture}
+   }{}% end-sequence diagram
+   }% end-no value 1
+}% end-command
+
+%% 
+%% Copyright (C) 2012-2013 by Claudio Fiandrino
+%% E-mail: <claudio <dot> fiandrino <at> gmail <dot> com>
+%% 
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License (LPPL), either
+%% version 1.3c of this license or (at your option) any later
+%% version.  The latest version of this license is in the file:
+%% 
+%% http://www.latex-project.org/lppl.txt
+%% 
+%% This work is "maintained" (as per LPPL maintenance status) by
+%% Claudio Fiandrino.
+%% 
+%% This work consists of the file  smartdiagram.dtx
+%% and the derived files           smartdiagram.ins,
+%%                                 smartdiagram.pdf,
+%%                                 smartdiagramlibrarycore.definitions.code.tex,
+%%                                 smartdiagramlibrarycore.styles.code.tex,
+%%                                 smartdiagramlibrarycore.commands.code.tex
+%%                                 smartdiagramlibraryadditions.code.tex and
+%%                                 smartdiagram.sty.
+%% 
+%%
+%% End of file `smartdiagramlibrarycore.commands.code.tex'.

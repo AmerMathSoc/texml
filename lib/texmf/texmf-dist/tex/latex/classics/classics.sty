@@ -1,0 +1,146 @@
+%% Copyright (C) 2013 Eduardo C. Lourenço de Lima
+%%
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either
+%% version 1.3 of this license or (at your option) any later
+%% version.  The latest version of this license is in
+%%
+%%   http://www.latex-project.org/lppl.txt
+%%
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%%
+%\NeedsTeXFormat{LaTeX2e}[1996/06/01]
+\RequirePackage{expl3}
+\RequirePackage{xparse}
+\ProvidesExplPackage {classics} {2013/02/02} {0.1} {Cite classic works}
+
+\tl_new:N  \g_classics_style_range_separator_tl
+\tl_new:N  \g_classics_style_separator_tl
+
+\tl_set:Nn \g_classics_style_range_separator_tl {--}
+\tl_set:Nn \g_classics_style_separator_tl   {|}
+
+\bool_new:N \g__classics_plural_prefix_bool
+
+\cs_generate_variant:Nn \seq_set_split:Nnn     {cVn}
+
+% * [<range separator>] {<basename>} {<code>}
+
+\NewDocumentCommand \newclassic {somm}
+ {
+
+  \seq_new:c      {g_classics_#3_style_seq}
+  \tl_new:c       {g_classics_#3_range_separator_tl}
+
+  \IfValueTF {#2}
+   {\tl_set:cn      {g_classics_#3_range_separator_tl} {#2}}
+   {\tl_set:cn      {g_classics_#3_range_separator_tl} {\tl_use:N \g_classics_style_range_separator_tl}}
+
+  \classics_style_set:nn {#3} {#4}
+
+% * (<last page>) [<title>] {<page>} [<section>]
+
+  \exp_after:wN \NewDocumentCommand \cs:w #3\cs_end: { sd()omO{}O{}O{}O{}O{} }
+   {
+
+    %Title: Typeset the optional title
+    \IfValueT  {##3}
+     {
+      \group_begin:
+      \frenchspacing \classics_title_format:n {##3}
+      \tl_if_blank:nTF {##4} {}{~}
+      \group_end:
+     }
+
+    %Range: Typeset page when last page is provided only if they differ
+    \bool_if:nTF { (! #1) && \str_if_eq_x_p:nn{##2}{##4} }
+     {
+      \classics_style_map:nnnnnnn{#3}  {} {##5}{##6}{##7}{##8}{##9}
+     }
+     {
+      \classics_style_map:nnnnnnn{#3}{##4}{##5}{##6}{##7}{##8}{##9}
+     }
+
+    %Starred:
+    \IfBooleanT {##1} {\tl_use:c {g_classics_#3_range_separator_tl}\cs:w #3\cs_end:(##4)}
+
+   }
+ }
+
+% {<code>}
+
+\NewDocumentCommand \DeclareClassicWorkFormat {m} {\cs_set:Npn \classics_title_format:n ##1 {#1}}
+
+% {<string>}
+
+\cs_new:Npn \classics_title_format:n #1 {\textit{#1}}
+
+% {<basename>} {<string>}
+
+\cs_new:Npn \classics_style_set:nn #1#2
+ {
+  \seq_set_split:cVn {g_classics_#1_style_seq} \g_classics_style_separator_tl {#2}
+ }
+
+% {<basename>} {<value>}
+
+\cs_new:Npn \classics_style_map:nnnnnnn #1#2#3#4#5#6#7
+ {
+    \seq_set_split:Nnn \l_tmpa_seq {} {{#2} {#3} {#4} {#5} {#6} {#7}}
+
+    \cs_generate_variant:Nn \seq_mapthread_function:NNN {cNN}
+    \seq_mapthread_function:cNN {g_classics_#1_style_seq} \l_tmpa_seq  \classics_style_apply:nn
+ }
+
+% {<style>} {<value>}
+
+\cs_new:Npn \classics_style_apply:nn #1#2
+ {
+    \tl_if_blank:nTF {#2}
+     {}
+     {
+       \cs_set:Npn \__classics_style_apply:n ##1 {#1}
+       \__classics_style_apply:n {#2}
+     }
+ }
+
+% {<code>}
+
+\cs_new:Npn \__classics_style_apply:n #1 {}
+
+% ********************************** Misc *************************************
+
+\NewDocumentCommand \classicsalph  {m} {\int_to_alph:n {#1}}
+\NewDocumentCommand \classicsAlph  {m} {\int_to_Alph:n {#1}}
+\NewDocumentCommand \classicsroman {m} {\int_to_roman:n{#1}}
+\NewDocumentCommand \classicsRoman {m} {\int_to_Roman:n{#1}}
+
+% ------------------------------ Plural prefix --------------------------------
+
+% {<command>} {<singular>} {<plural>} {<and>}
+
+\NewDocumentCommand \newpagination {mmmm}
+ {
+% \exp_after:wN \NewDocumentCommand \cs:w #1\cs_end: {m}
+ \NewDocumentCommand #1 {m}
+  {
+   \classics_plural_prefix:nnnn {#2} {#3} {#4} {##1}
+   {~##1}
+  }
+ }
+
+% {<singular>} {<plural>} {<and>} {<string>}
+
+\cs_new:Npn \classics_plural_prefix:nnnn #1#2#3#4
+ {
+  \bool_set_false:N \g__classics_plural_prefix_bool
+
+  \tl_if_in:nnT {#4} {#3} {\bool_set_true:N \g__classics_plural_prefix_bool}
+  \tl_if_in:nnT {#4} {-}  {\bool_set_true:N \g__classics_plural_prefix_bool}
+  \tl_if_in:nnT {#4} {,}  {\bool_set_true:N \g__classics_plural_prefix_bool}
+
+  \bool_if:nTF \g__classics_plural_prefix_bool {#2} {#1}
+ }
+
+\endinput

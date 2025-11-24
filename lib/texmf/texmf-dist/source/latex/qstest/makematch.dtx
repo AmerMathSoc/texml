@@ -1,0 +1,598 @@
+% \iffalse
+%%
+%% Copyright (C) 2006, 2007 QuinScape GmbH
+%% http://www.quinscape.de
+%
+% This file may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%    http://www.latex-project.org/lppl.txt
+% \fi
+% \CheckSum{354}
+% \section{Using \texttt{makematch}}
+%
+% The basic idea of \texttt{makematch} is to compile patterns and
+% targets (and/or lists of them) and match the former to the latter.
+% This functionality is used extensively in QuinScape's
+% \href{file:qstest}{\texttt{qstest}} package for unit testing.  We'll
+% use that package for documenting usage of \texttt{makematch}; the
+% following construct is skips the tests when \texttt{makematch.dtx} is
+% used as a standalone file.
+%    \begin{macrocode}
+%<*dtx>
+\iffalse
+%</dtx>
+%<*test>
+\RequirePackage{makematch,qstest}
+\IncludeTests{*}
+%    \end{macrocode}
+%
+% \texttt{makematch} requires an e\TeX-based \LaTeX\ which should be
+% standard for current \TeX\ distributions.
+%
+% \hypertarget{patterns}{%
+% \subsection{Match patterns and targets}
+% } This
+% package has the notion of match patterns and targets.  Patterns and
+% targets get sanitized at the time they are specified; this means
+% that nothing gets expanded, but replaced by a textual representation
+% consisting of spaces (with catcode~10) and other characters
+% (catcode~12).  Control words are usually followed by a single space
+% when getting sanitized.
+%
+% Patterns and targets are actually generalized to pattern and target
+% lists by this package: you can, when specifying either, instead give
+% a list by using an optional argument for specifying a list separator
+% (the lists used in \texttt{qstest} are comma-separated).
+%
+% Target lists are unordered: the order of targets in them is
+% irrelevant.  Leading spaces in front of each target get stripped,
+% all others are retained.
+%
+% Pattern lists similarly consist of a list of patterns, with leading
+% spaces stripped from each pattern.  In contrast to target lists, the
+% order of pattern lists is significant, with later patterns
+% overriding earlier ones.  Also in contrast to target lists, empty
+% patterns are removed.
+%
+% There are two special characters inside of a pattern: the first is
+% the wildcard |*| which matches any number of consecutive characters
+% (including the empty string) in a target.  Wildcards can occur
+% anywhere and more than once in a pattern.
+%
+% The second special character in a pattern is only recognized at the
+% beginning of a pattern, and only if that pattern is part of a
+% pattern list (namely, when a list separator is
+% specified).\footnote{And if |!| is not the list separator of the
+%   list.}  If a pattern is preceded by |!| then the following
+% pattern, if it matches, causes any previous match from the pattern
+% list to be disregarded.
+%
+% So for example, the pattern list |{*,!foo}| matches any target list
+% that does not contain the match target |foo|.
+%
+% An empty target list |{}| is considered to contain the empty string.
+% Thus the pattern |*| matches every target list, including empty
+% ones, while the pattern list |{}| does not match any keyword list,
+% including empty ones.
+%
+% \subsection{The Interface}
+%
+% \DescribeMacro{\MakeMatcher} takes two mandatory arguments.  The
+% first is a macro name.  This macro will become the new matcher.  The
+% second argument of \cmd{\MakeMatcher} is the pattern to match.  An
+% optional argument before the mandatory ones can be used for
+% specifying a list separator in which case the first mandatory
+% argument becomes a pattern list (only in this case are leading |!|
+% characters before list elements interpreted specially).
+%    \begin{macrocode}
+\begin{qstest}{\MakeMatcher}{\MakeMatcher}
+  \MakeMatcher\stylefiles{*.sty}
+  \MakeMatcher\headbang{!*}
+  \MakeMatcher[,]\truestylefiles{*.sty,!.thumbnails/*,!*/.thumbnails/*}
+%    \end{macrocode}
+% The matcher constructed in that manner is called with three
+% arguments.  The first argument is a control sequence name containing
+% a match target (or target list) prepared using
+% \cmd{\MakeMatchTarget} (see below).
+%
+% Alternatively, the first argument can be a brace-enclosed list (note
+% that you'll need \emph{two} nested levels of braces, one for
+% enclosing the argument, one for specifying that this is a list)
+% which will then get passed to \cmd{\MakeMatchTarget} (see below) for
+% processing before use.  The inner level of braces inside of the
+% first argument may be preceded by a bracketed optional argument
+% specifying the list separator for this list.
+%
+% The second argument of the matcher is executed if the pattern list
+% for which the matcher has been built matches the keyword list.  The
+% third is executed if it doesn't.  List separators of pattern and
+% keyword list are completely independent from each other.  Ok, we
+% expect the following to result just in calls of \cmd{\true} (a call
+% of \cmd{\false} is turned into a failed expectation):
+%    \begin{macrocode}
+  \begin{qstest}{\Makematcher literal}{\MakeMatcher}
+    \begin{ExpectCallSequence}{\true{}\false{}`%
+        .#1{\Expect*{\CalledName#1}{true}}+'}
+      \stylefiles{{xxx/.thumbnails/blubb.sty}}{\true}{\false}
+      \truestylefiles{{xxx/.thumbnails/blubb.sty}}{\false}{\true}
+      \headbang{{xxx/.thumbnails/blubb.sty}}{\false}{\true}
+      \stylefiles{[ ]{x.sty.gz .thumbnails/x.sty !x}}{\true}{\false}
+      \truestylefiles{[ ]{x.sty.gz .thumbnails/x.sty !x}}{\false}{\true}
+      \headbang{[ ]{x.sty.gz .thumbnails/x.sty !x}}{\true}{\false}
+    \end{ExpectCallSequence}
+  \end{qstest}
+%    \end{macrocode}
+%
+% So how do we create a sanitized keyword list in a control sequence?
+%
+% \DescribeMacro{\MakeMatchTarget} is called with two mandatory
+% arguments, the first being a control sequence name where the keyword
+% list in the second argument will get stored in a sanitized form: it
+% is converted without expansion to characters of either ``special''
+% or ``space'' category (catcodes 12 and~10, respectively), and any
+% leading spaces at the beginning of an element is removed.  Without
+% an optional bracketed argument, not more than sanitization and
+% leading space stripping is done.  If an optional bracketed argument
+% before the mandatory arguments is specified, it defines the list
+% separator: this has to be a single sanitized character token (either
+% a space or a character of category ``other'') that is used as the
+% list separator for the input (the finished list will actually always
+% use the macro |\,| as a list separator).
+%    \begin{macrocode}
+  \begin{qstest}{\Makematcher with \MakeMatchTarget}%
+                {\MakeMatcher,\MakeMatchTarget}
+    \MakeMatchTarget\single{xxx/.thumbnails/blubb.sty}
+    \MakeMatchTarget[ ]\multiple{x.sty.gz .thumbnails/x.sty !x}
+    \begin{ExpectCallSequence}{\true{}\false{}`%
+        .#1{\Expect*{\CalledName#1}{true}}+'}
+      \stylefiles{\single}{\true}{\false}
+      \truestylefiles\single{\false}{\true}
+      \headbang\single{\false}{\true}
+      \stylefiles{\multiple}{\true}{\false}
+      \truestylefiles\multiple{\false}{\true}
+      \headbang\multiple{\true}{\false}
+    \end{ExpectCallSequence}    
+  \end{qstest}
+%    \end{macrocode}
+% \DescribeMacro{\MatchedTarget} This will after a match process
+% contain the target matched by the last matching pattern (if several
+% targets in a match target list match, only the first of those is
+% considered and recorded), regardless of whether the corresponding
+% pattern was negated with |!|.
+%
+% \DescribeMacro{\RemoveMatched} After a successful match, you can
+% call \cmd{\RemoveMatched} with one argument: the control sequence
+% name where the list was kept, and the match will get removed from
+% the list.  If every list element is removed, the list will be
+% identical to \cmd{\@empty}.
+%    \begin{macrocode}
+  \begin{qstest}{\MatchedTarget}
+                {\MakeMatcher,\MakeMatchTarget,\MatchedTarget}
+    \MakeMatchTarget\single{xxx/.thumbnails/blubb.sty}
+    \MakeMatchTarget[ ]\multiple{x.sty.gz .thumbnails/x.sty !x}
+    \begin{ExpectCallSequence}{\true{}\false{}`%
+        .#1{\Expect*{\CalledName#1}{true}}+'}
+      \stylefiles{\single}{\true}{\false}
+      \Expect*{\single}{xxx/.thumbnails/blubb.sty}
+      \Expect*{\meaning\MatchedTarget}*{\meaning\single}
+      \RemoveMatched\single
+      \Expect*{\meaning\single}{macro:->}
+      \truestylefiles\single{\false}{\true}
+      \headbang\single{\false}{\true}
+      \stylefiles{\multiple}{\true}{\false}
+      \Expect*{\MatchedTarget}{.thumbnails/x.sty}
+      \RemoveMatched\multiple
+      \Expect\expandafter{\multiple}{x.sty.gz\,!x}
+      \truestylefiles\multiple{\false}{\true}
+      \Expect*{\meaning\MatchedTarget}{undefined}
+      \headbang\multiple{\true}{\false}
+      \Expect*{\MatchedTarget}{!x}
+      \RemoveMatched\multiple
+      \Expect*{\multiple}{x.sty.gz}
+    \end{ExpectCallSequence}    
+  \end{qstest}
+\end{qstest}
+%    \end{macrocode}
+%
+% \subsection{Notes on sanitization}
+% Note that sanitization to printable characters has several
+% consequences: it means that the control sequence \cmd{\,} will turn
+% into the string |\| followed by the end of the keyword.  Note also
+% that single-character control sequences with a nonletter name are
+% not followed by a space in sanitization.  This means that
+% sanitization depends on the current catcodes.  Most particularly,
+% sanitizing the input |\@abc12| will turn into |\@abc 12| when |@| is
+% of catcode letter, but to |\@abc12| when |@| is a nonletter.
+%
+% So sanitization cannot hide all effects of catcode differences.  It
+% is still essential since otherwise braces would cause rather severe
+% complications during matching.
+%
+% Another curiosity of sanitization is that explicit macro parameter
+% characters (usually |#|) get duplicated while being sanitized.
+%
+% So this is the end of the documentation section, so we end our test
+% file setup by complementing the beginning:
+%    \begin{macrocode}
+%</test>
+%<*dtx>
+\fi
+%</dtx>
+%    \end{macrocode}
+% 
+% \StopEventually{}
+% \section{The driver file}
+% An explicit driver file generated by docstrip will typeset the
+% implementation.  Running the |.dtx| file through, in contrast, will
+% only typeset the user level documentation.
+%    \begin{macrocode}
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{makematch}
+\usepackage{ifpdf}
+\usepackage{hyperref}
+\OnlyDescription
+%<driver> \AlsoImplementation
+\begin{document}
+\GetFileInfo{makematch.sty}
+\date{\filedate}
+\title{\texttt{\filename}\\\fileinfo\\version \fileversion}
+\author{David Kastrup\thanks{\href{mailto:dak@gnu.org}%
+    {David.Kastrup@QuinScape.de}, \href{http://quinscape.de}{QuinScape
+    GmbH}}}
+\maketitle
+\DocInput{makematch.dtx}
+\end{document}
+%</driver>
+%    \end{macrocode}
+% \section{The installer file}
+%
+% There is no separate installer file for this package as it is part
+% of the \texttt{qstest} bundle and uses its
+% \href{file:qstest#installer}{installer}.
+%
+% \section{The Implementation}
+% \subsection{Front matter}
+% Some data and version magic from SVN keyword expansion.
+%    \begin{macrocode}
+%<*package>
+\NeedsTeXFormat{LaTeX2e}
+\def\next$#1: #2.dtx #3 #4-#5-#6 #7${%
+  \ProvidesPackage{#2}[#4/#5/#6 1.#3 Pattern matching with
+  wildcards]
+}
+\next
+$Id: makematch.dtx 7925 2007-02-23 14:22:19Z dkastrup $
+%    \end{macrocode}
+% \subsection{Pattern matching}
+% \begin{macro}{\MakeMatcher}
+%   This is the principal magic for doing pattern matching.  The
+%   control sequence name given in |#1| becomes a pattern matching
+%   engine for the pattern list specified in |#2|.  If this control
+%   sequence is executed at a later point of time, it matches the
+%   compiled pattern list to the keyword list contained in the
+%   sanitized macro specified in its first argument (if the first
+%   argument itself starts with an additional opening brace, it is
+%   considered to be a keyword list that yet needs to be sanitized).
+%
+%   Macros in |#2| are not expanded, and everything but spaces is
+%   converted to catcode~12 characters.  At the start of a pattern or
+%   a keyword, spaces get ignored.  Spaces inside of patterns or
+%   keywords should work as expected, however.
+%    \begin{macrocode}
+\newcommand\MakeMatcher[3][\relax]{%
+%<etex> \edef#2{\detokenize{#3}}%
+%<*!etex>
+  \toks@{#3}%
+  \edef#2{\the\toks@}%
+  \@onelevel@sanitize#2%
+%</!etex>
+  \def\qst@mmtmp##1##2#1{\qst@parseonecase{##1}{##2}}%
+  \let\qst@comma= #1\relax
+  \edef#2##1{\noexpand\qst@setup##1%
+    \expandafter\qst@parsestart\expandafter\@firstoftwo
+%    \end{macrocode}
+% The following |{#1\m@ne}| sequence causes \cmd{\qst@parsestart} to
+% end parsing.
+%    \begin{macrocode}
+    #2#1{#1\m@ne}\noexpand\qst@finish}}
+%    \end{macrocode}
+% \end{macro}
+% We define two shorthands for matchers that match always and never,
+% respectively:
+% \begin{macro}{\qst@matchalways}
+%    \begin{macrocode}
+\long\def\qst@matchalways#1#2#3{#2}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@matchnever}
+%    \begin{macrocode}
+\long\def\qst@matchnever#1#2#3{#3}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\qst@setup}
+%   Gets one argument, namely a macro containing the match list, or
+%   otherwise a list enclosed with a level of braces, optionally
+%   preceded by the list separator to be used in brackets.  This is
+%   stored in \cmd{\qst@matchlist}.  Furthermore, \cmd{\qst@finish} is
+%   set to the default value indicating a non-match.
+%    \begin{macrocode}
+\def\qst@setup{\let\MatchedTarget\@undefined
+  \let\qst@finish\@secondoftwo
+  \futurelet\qst@matchlist\qst@setupii}
+\def\qst@setupii{\ifcase
+    \ifcat\noexpand\qst@matchlist\bgroup\@ne\fi
+    \ifx\qst@matchlist[\tw@\fi %]
+    \m@ne
+  \or
+    \expandafter\MakeMatchTarget\expandafter\qst@matchlist
+  \or
+    \expandafter\qst@setupiii
+  \else \expandafter\@gobble
+  \fi}
+\def\qst@setupiii[#1]{\MakeMatchTarget[{#1}]\qst@matchlist}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\qst@parsestart}
+%   This tests at the start of a new word whether we are finished or
+%   whether there is an inverted condition.  Note that this will
+%   remove spaces before a word.  |#1| indicates the polarity, |#2|~is
+%   always a single token, no braces possible.
+%    \begin{macrocode}
+\def\qst@parsestart#1#2{%
+  \ifcase
+    \ifx\qst@comma#2\@ne\fi
+    \ifx\qst@comma\relax
+      \else\ifx!#2#1\tw@\@ne\fi
+    \fi
+    \thr@@
+  \or
+    \expandafter\qst@parsestart
+    \expandafter\@firstoftwo
+  \or
+    \expandafter\qst@parsestart
+    \expandafter\@secondoftwo
+  \or
+    \expandafter\qst@mmtmp
+    \expandafter#1%
+    \expandafter#2%
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@afterfi}
+%   This is just a helper macro cleaning up a following |\fi|.
+%    \begin{macrocode}
+\def\qst@afterfi#1#2\fi{\fi#1}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@parseonecase}
+%   We process one pattern here.  A pattern ends with |,| and we have
+%   passed in |#1| the command to execute in case the pattern
+%   matches.
+%    \begin{macrocode}
+\def\qst@parseonecase#1#2{%
+  \noexpand\qst@checkname {\qst@parsewild#2*\,23456789*}%
+  \noexpand#1\qst@parsestart\@firstoftwo}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@parsewild}
+%   This is the parsing macro for wildcards and stuff.  |#1|~is
+%   material before the next |*| character or the end of the sequence,
+%   |#2|~is either empty (indicating the end of the word to match) or
+%   material coming after a wildcard and terminated by |*|,
+%   |#3|~contains the next unused parameter number, and |#4| contains
+%   following parameter numbers.  If we emitted a wildcard code, we
+%   jump into \cmd{\qst@skipwild} in order to skip additional
+%   wildcards.
+%    \begin{macrocode}
+\def\qst@parsewild#1*#2\,#3#4*{%
+  #1%
+  \ifx\,#2\,%
+  \else
+    #####3%
+    \qst@afterfi{\qst@skipwild#2\,#4*}%
+  \fi}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@skipwild}
+%   This caters for the case where successive wildcards are
+%   encountered.  This is the case if |#1| is empty, meaning that the
+%   string started with |*|, but |#2| is non-empty, indicating that we
+%   are not at the terminal |*|.
+%    \begin{macrocode}
+\def\qst@skipwild#1*#2\,{%
+  #1%
+  \ifcase
+    \ifx *#1*\ifx\,#2\,\else \@ne \fi \fi
+    \tw@
+  \or
+    \expandafter\qst@skipwild
+  \or
+    \expandafter\qst@parsewild\expandafter*%
+  \fi#2\,}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@checkname}
+%   This is called with a compiled form of a test pattern in~|#1| and
+%   a single token that will get assigned to \cmd{\qst@finish} in case
+%   that we got a match of the pattern with any of the comma-separated
+%   keywords in \cmd{\MatchList}.
+%
+%   Here is how \cmd{\qst@checkname} works: both test pattern and
+%   option list are placed between commas (actually \cmd{\,}) so that
+%   a match of the test pattern on the list implies a full match.  The
+%   test pattern happens to match itself when just interpreted as an
+%   unexpanded pattern string, and this pattern string does not
+%   contain commas in itself.  We append the pattern string as an
+%   artificial last element in the option list.  Since the trailing
+%   comma placed at the end of the match pattern can't match inside of
+%   an option, options are consumed only completely.  If the pattern
+%   matched a string containing a comma, it actually did so across
+%   more than a single option.  In that case, we remove everything up
+%   to the first comma and try again.
+%
+%   We define \cmd{\qst@mmtmp} as a macro that matches starting at an
+%   arbitrary comma (throwing away everything preceding), then
+%   retaining the matched string (note that |#1| in the replacement
+%   text will faithfully reproduce what was matched by |#1| in the
+%   argument string, also note the difference between |#1| and |##1|),
+%   appending a separator of \cmd{\@nil} in order to delimit the
+%   matched sequence.
+%    \begin{macrocode}
+\def\qst@checkname#1{%
+  \def\qst@mmtmp##1\,#1\,{#1\,\@nil}%
+  \expandafter\expandafter\expandafter\qst@checknameii
+  \expandafter\qst@mmtmp
+  \expandafter\,\qst@matchlist\,#1\,\@nil}
+%    \end{macrocode}
+% \begin{macro}{\qst@checknameii}
+%   So we now do the check.  If |#3| is |\@nil|, the sentinel has been
+%   consumed and we did not match anything.  If this is not the case,
+%   we split the matched material at the first comma into |#1|
+%   and~|#2|.  If |#2| is empty, no comma is contained in the match,
+%   so we matched a complete option.  Otherwise, if |#2| is non-empty,
+%   the match contained a comma and was across several options
+%   (possibly breaking into the sentinel without consuming it).  Ugh.
+%   We remove the first option that was conflated in the match, and
+%   restart the match process.
+%
+%   Note that |#3| has its origin from behind a comma, so at its
+%   position there are no leading spaces that could get lost by it
+%   being an undelimited argument.
+%    \begin{macrocode}
+\def\qst@checknameii#1\,#2\@nil#3{%
+  \ifcase
+    \ifx\@nil#3\@ne\fi
+    \ifx\@nil#2\@nil \tw@\fi
+    \m@ne
+  \or
+    \expandafter\qst@checknamenomatch
+  \or
+    \expandafter\qst@checknamematch
+  \fi \expandafter\qst@checknameii\qst@mmtmp#1\,#2#3}
+%    \end{macrocode}
+% \begin{macro}{\qst@checknamenomatch}
+%   This removes remaining garbage and the code corresponding to the
+%   polarity of the test since the test is not taken.
+%    \begin{macrocode}
+\def\qst@checknamenomatch#1\@nil#2{}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@checknamematch}
+%   We had a match, something which did not include a comma and at the
+%   same time left the sentinel at the end of the word list intact.
+%   So clean up and take over the right polarity.
+%    \begin{macrocode}
+\def\qst@checknamematch#1\qst@mmtmp#2\,#3\@nil{%
+  \def\MatchedTarget{#2}%
+  \let\qst@finish}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% Now for removing patterns: |\romannumeral\z@| expands to
+% nothing, but we use it as a an \cmd{\expandafter}-Propagator.
+% \begin{macro}{\RemoveMatched}
+%    \begin{macrocode}
+\def\RemoveMatched#1{\ifx#1\MatchedTarget
+    \let#1\@empty
+  \else
+    \expandafter\def\expandafter\qst@mmtmp
+    \expandafter##\expandafter1\expandafter\,\MatchedTarget\,{##1\,}%
+    \expandafter\def\expandafter#1\expandafter{%
+      \romannumeral\expandafter\expandafter\expandafter\z@
+      \expandafter\qst@remmat
+      \romannumeral\expandafter\expandafter\expandafter\z@
+      \expandafter\qst@mmtmp\expandafter\,#1\,\@nil}%
+  \fi}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@remmat}
+%   This is just a helper macro removing \cmd{\,} from around the
+%   list.
+%    \begin{macrocode}
+\def\qst@remmat\,#1\,\@nil{#1}
+%    \end{macrocode}
+% \end{macro}
+% 
+% Ok, let's test this thing for some patterns.
+%    \begin{macrocode}
+%</package>
+%<*test>
+\makeatletter
+\begin{qstest}{\MakeMatcher internals}{\MakeMatcher,internal}
+  \MakeMatcher\sometest{}
+  \Expect*{\meaning\sometest}{macro:#1->\qst@setup#1\qst@finish}
+  \MakeMatcher[,]\sometest{ a, bc*, !woozle**, !*#*woz***.*x, !!*ab}
+  \Expect*{\meaning\sometest}{macro:#1->%
+      \qst@setup#1%
+      \qst@checkname{a}\@firstoftwo
+      \qst@checkname{bc##2}\@firstoftwo
+      \qst@checkname{woozle##2}\@secondoftwo
+      \qst@checkname{##2####3woz##4.##5x}\@secondoftwo
+      \qst@checkname{##2ab}\@firstoftwo
+      \qst@finish}
+  \MakeMatcher[ ]\another{ a bc* ! woozle** ! *#*woz***.*x ! ! *ab}
+  \Expect*{\meaning\another}*{\meaning\sometest}
+\end{qstest}
+%</test>
+%<*package>
+%    \end{macrocode}
+% 
+% \begin{macro}{\MakeMatchTarget}
+%   This gets two obligatory arguments, a control sequence name and
+%   the keyword list.  This list is sanitized and prepared for
+%   matching.  The list sanitized in this manner is stored in the
+%   control sequence in~|#2|, the first obligatory argument.  The
+%   gobbledygook before and after the detokenized content is there to
+%   get started nicely into the loop with \cmd{\qst@mmtmp} and get out
+%   again without having to employ expensive tests.  The purpose of
+%   \cmd{\qst@mmtmp} is to remove leading spaces from list elements
+%   and replace the list separator (which defaults to `|,|' but can be
+%   specified with an optional argument to \cmd{\MakeMatchTarget})
+%   with the sentinel separator |\,| which can't otherwise occur in a
+%   sanitized list.  There are several special values for the list
+%   separator that make sense:
+%   \begin{description}
+%   \item[\textvisiblespace] A space character (catcode 10).  List
+%     entries are separated by spaces.
+%   \item[$\textrm{other}_{12}$] A character of catcode~12 that is
+%     going to be used as a list separator.  Don't use anything other
+%     than sanitized characters, or the effects will be as with the
+%     following:
+%   \item[\texttt{\string\relax}] The default, does not do any list
+%     replacement.
+%   \end{description}
+%   Don't ever pass anything other than a single token (possibly
+%   brace-enclosed) in this manner, or things will go really wrong.
+%    \begin{macrocode}
+\newcommand\MakeMatchTarget[3][\relax]{%
+  \def\qst@mmtmp##1#1##2{##1\noexpand\,\qst@mmtmp##2}%
+%<*etex>
+  \edef#2{\expandafter\qst@mmtmp\expandafter
+    \@gobbletwo\expandafter#1\detokenize{#3}\iffalse#1\fi}%
+%</etex>
+%<*!etex>
+  \toks@{#3}%
+  \edef#2{\the\toks@}%
+  \@onelevel@sanitize#2%
+  \edef#2{\expandafter\qst@mmtmp\expandafter
+    \@gobbletwo\expandafter#1#2\iffalse#1\fi}%
+%</!etex>
+}
+%    \end{macrocode}
+% \end{macro}
+% \subsection{The End}
+% The test can be ended either in the driver file, or in a standalone
+% testfile.  \cmd{\stop} is \LaTeX's way of ending the processing of
+% an input file before any document processing or setup has been done.
+%    \begin{macrocode}
+%</package>
+%<test>\stop
+%    \end{macrocode}
+% \Finale

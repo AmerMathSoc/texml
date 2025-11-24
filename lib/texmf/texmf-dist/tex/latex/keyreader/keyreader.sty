@@ -1,0 +1,1225 @@
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++%
+% This is file 'keyreader.sty', version 0.5b, 2012/11/06.                  %
+%                                                                          %
+% This package and accompanying files may be distributed and/or            %
+% modified under the conditions of the LaTeX Project Public License,       %
+% either version 1.3 of this license or any later version. The latest      %
+% version of this license is in http://www.latex-project.org/lppl.txt      %
+% and version 1.3 or later is part of all distributions of LaTeX           %
+% version 2005/12/01 or later.                                             %
+%                                                                          %
+% The LPPL maintenance status of this software is 'author-maintained'.     %
+%                                                                          %
+% This software is provided 'as it is', without warranty of any kind,      %
+% either expressed or implied, including, but not limited to, the          %
+% implied warranties of merchantability and fitness for a particular       %
+% purpose.                                                                 %
+%                                                                          %
+% Copyright (c) 2010-2012 Ahmed Musa (amusa22@gmail.com).                  %
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++%
+
+\ProvidesPackage{keyreader}
+  [2012/11/06 v0.5b Robust interfaces to xkeyval package (AM)]
+\newdimen\krdz@
+\ifcase
+  \ifx\eTeXversion\@undefined\krdz@\else
+    \ifnum\eTeXversion<\tw@\krdz@\else\@ne\fi\fi
+  \PackageError{keyreader}
+    {eTeX not loaded or old version}
+    {This package requires eTeX version 2 or higher.}%
+  \expandafter\endinput
+\fi
+\NeedsTeXFormat{LaTeX2e}[2011/06/27]
+\begingroup
+\catcode064 11% @
+\catcode123 01% {
+\catcode125 02% }
+\catcode044 12% ,
+\def\reserved@a{\endgroup
+  \def\do##1,{%
+    \ifx\end##1\else
+      \catcode##1\string=\the\catcode##1 %
+      \expandafter\do
+    \fi
+  }%
+  \edef\krd@restorecodes{\do035,064,123,125,061,059,\end,}%
+}
+\reserved@a
+\catcode035 06% #
+\catcode064 11% @
+\catcode123 01% {
+\catcode125 02% }
+\catcode061 12% =
+\catcode044 12% ,
+\def\do#1=#2,{%
+  \ifx\end#1\else
+    \edef\krd@restorecodes{%
+      \krd@restorecodes
+      \catcode#1=\the\catcode#1 %
+    }%
+    \catcode#1=#2\relax
+    \expandafter\do
+  \fi
+}
+\do 032=10,033=12,036=03,038=04,040=12,041=12,042=12,043=12,%
+059=12,045=12,047=12,058=12,063=12,091=12,093=12,126=13,\end=,%
+
+\AtEndOfPackage{%
+  \krdAfterEndPackage{%
+    \krd@restorecodes
+    \let\krd@restorecodes\relax
+  }%
+}
+
+\ifx\XKeyValLoaded\endinput\else
+  \input xkeyval
+\fi
+\let\XKV@doxs\relax
+
+\let\krd@err\@latex@error
+\def\krd@ehd{%
+  There is a problem here. Investigate it before
+  \MessageBreak proceeding. Try typing <return>
+  to proceed.\MessageBreak If that doesn't  work,
+  type X <return> to quit.
+}
+\def\@space{ }
+\protected\def\krdnewlet#1{\@ifdefinable{#1}\relax\let#1= }
+\krdnewlet\krd@nil\relax
+\def\krd@nnil{\krd@nil}
+\def\krdswap#1#2{#2#1}
+\def\krd@quark{\@gobble\krd@quark}
+\newcount\krd@csvdepth
+\newif\ifkrd@foreach@break
+\newif\ifkrd@st
+\newif\ifkrdindef
+\long\def\krdifblank#1{%
+  \ifcat$\detokenize\expandafter{\@gobble#1.}$%
+  \expandafter\@firstoftwo\else\expandafter\@secondoftwo\fi
+}
+
+\begingroup
+\catcode`\&=8
+\gdef\krdifledbyspace#1{\krd@ifledbyspace&&#1& \trim@nil}
+\gdef\krd@ifledbyspace&#1& #2\trim@nil{%
+  \krdifblank{#2}\@secondoftwo\@firstoftwo
+}
+\gdef\krdtrimspace#1{\krd@trimspace@a.#1& &}
+\gdef\krd@trimspace@a#1 &{\krd@trimspace@b#1&}
+\gdef\krd@trimspace@b#1&#2{%
+  \krdexpandonce{%
+    \romannumeral-`\q
+    \expandafter\krdifledbyspace\expandafter{\@gobble#1}%
+    {\expandafter\noexpand\@gobble#1}{\expandafter\@space\@gobble#1}%
+  }%
+}
+\endgroup
+
+\def\krdzapspace#1{\krd@zapspace#1 \zap@nil}
+\def\krd@zapspace#1 #2\zap@nil{%
+  \krdifblank{#2}{#1}{%
+    \krd@zapspace#1#2\zap@nil
+  }%
+}
+
+\protected\def\krdAfterEndPackage{%
+  \krdifcsdef{\@currname.\@currext-krd@endpkghook}{}{%
+    \@namedef{\@currname.\@currext-krd@endpkghook}{}%
+  }%
+  \expandafter\g@addto@macro
+  \csname\@currname.\@currext-krd@endpkghook\endcsname
+}
+\xdef\@popfilename{%
+  \unexpanded{%
+    \csname\@currname.\@currext-krd@endpkghook\endcsname
+    \expandafter\let
+    \csname\@currname.\@currext-krd@endpkghook\endcsname
+    \relax
+  }%
+  \unexpanded\expandafter{\@popfilename}%
+}
+\newcommand*\krdifdef[1]{%
+  \krdifblank{#1}\@secondoftwo{%
+    \ifx#1\@undefined
+      \expandafter\@secondoftwo
+    \else
+      \ifx#1\relax
+        \expandafter\expandafter\expandafter\@secondoftwo
+      \else
+        \expandafter\expandafter\expandafter\@firstoftwo
+      \fi
+    \fi
+  }%
+}
+\newcommand*\krdifcsdef[1]{%
+  \krdifblank{#1}{%
+    \expandafter\@secondoftwo\@gobble
+  }{%
+    \ifcsname#1\endcsname
+      \expandafter\@firstofone
+    \else
+      \expandafter\expandafter\expandafter
+      \@secondoftwo\expandafter\@gobble
+    \fi
+  }{%
+    \expandafter\krdifdef\csname#1\endcsname
+  }%
+}
+\def\krd@ifx@quark{\@gobble\krd@ifx@quark}
+\newcommand\krdifx[2]{%
+  \ifx#1#2\krd@ifx@quark
+  \expandafter\@firstoftwo\else\expandafter\@secondoftwo\fi
+}
+\def\krdifbool#1{%
+  \krdifblank{#1}{%
+    \krd@err{No boolean}\krd@ehd
+  }{%
+    \krdifcsdef{if#1}{%
+      \csname @\csname if#1\endcsname
+        first\else second\fi oftwo\endcsname
+    }{%
+      \krd@err{Undefined boolean '#1'}\krd@ehd
+    }%
+  }%
+}
+\def\krd@ifswitch@aux#1#2\krd@nil{%
+  \krdifblank{#2}\@secondoftwo\@firstoftwo
+}
+\def\krdifswitch#1{%
+  \krdifblank{#1}{%
+    \@secondoftwo
+  }{%
+    \expandafter\krd@ifswitch@aux\romannumeral-`\q#1\krd@nil{%
+      \if#1\expandafter\@firstoftwo\else\expandafter\@secondoftwo\fi
+    }{%
+      \krd@err{Invalid switch '#1'}\krd@ehd
+    }%
+  }%
+}
+\krdifx\pdfstrcmp\@undefined{%
+  \RequirePackage{pdftexcmds}%
+  \krdifx\pdf@strcmp\@undefined{%
+    \krd@err{Neither '\string\pdfstrcmp' nor
+      '\string\pdf@strcmp' exists}\krd@ehd
+  }{%
+    \let\krd@pdfstrcmp\pdf@strcmp
+  }%
+}{%
+  \let\krd@pdfstrcmp\pdfstrcmp
+}
+\newcommand\krdifstrcmp[2]{%
+  \csname @\ifnum\krd@pdfstrcmp{\detokenize{#1}}%
+    {\detokenize{#2}}=0first\else second\fi oftwo\endcsname
+}
+\def\krdifcond#1\fi{%
+  \csname @#1first\else second\fi oftwo\endcsname
+}
+% If we were to use \krdtrimspace for \krdifbraced, then the need
+% for double \romannumeral will cause problems of premature expansion.
+% We need the \romannumeral below to make \krdifbraced expandable:
+\def\krdifbraced#1{%
+  \expandafter\krdswap\expandafter{%
+    \expandafter{\romannumeral-`\q\krd@ifbraced@a{#1}}%
+  }{%
+    \expandafter\krd@ifbraced@d\romannumeral-`\q\krd@ifbraced@a{#1}\krd@nil
+  }%
+}
+\begingroup
+\catcode`\&=7
+\gdef\krd@ifbraced@a#1{\krd@ifbraced@b.#1& &}
+\gdef\krd@ifbraced@b#1 &{\krd@ifbraced@c#1&}
+\gdef\krd@ifbraced@c#1&#2{\expandafter\noexpand\@gobble#1}
+\endgroup
+\def\krd@ifbraced@d#1\krd@nil#2{%
+  \krdifstrcmp{#1}{#2}\@secondoftwo\@firstoftwo
+}
+% \krdstripouterbraces{<nr>}<cmd>
+\protected\def\krdstripouterbraces#1#2{%
+  \begingroup
+  \@tempcnta\krdz@
+  \expandafter\krd@stripouterbraces#2\krd@stripbrace{#2}{#1}%
+}
+\protected\def\krd@stripouterbraces#1\krd@stripbrace#2#3{%
+  \advance\@tempcnta\@ne
+  \krdifcond\ifnum\@tempcnta=#3\fi{%
+    \edef#2{\unexpanded{#1}}%
+    \edef\x{\endgroup\krdaftergr#2}\x
+  }{%
+    \krd@stripouterbraces#1\krd@stripbrace{#2}{#3}%
+  }%
+}
+
+\def\krdoxdetok#1{\detokenize\expandafter{#1}}
+\def\krdusearg#1#2{%
+  \expandafter\krdswap\expandafter{\expandafter{#2}}{#1}%
+}
+\def\krdexpandonce#1{\unexpanded\expandafter{#1}}
+\def\krdnoexpandcs#1{\krdexpandonce{\csname#1\endcsname}}
+\def\krdncsname{\expandafter\noexpand\csname}
+\protected\def\krdexpanded#1{%
+  \begingroup
+  \protected@edef\reserved@a{\endgroup#1}\reserved@a
+}
+\protected\def\krdexpandarg#1#2{\krdexpanded{\unexpanded{#1}{#2}}}
+\protected\def\krdexpandargonce#1#2{%
+  \krdexpanded{\unexpanded{#1}{\krdexpandonce{#2}}}%
+}
+\protected\def\krdexpandsecond#1#2{\krdexpanded{\unexpanded{#1}#2}}
+\protected\def\krdexpandsecondonce#1#2{%
+  \krdexpanded{\unexpanded{#1}\krdexpandonce{#2}}%
+}
+\def\krdaftergr#1{%
+  \edef\noexpand#1{\noexpand\unexpanded{\krdexpandonce{#1}}}%
+}
+\protected\def\krdifescaped#1{%
+  \begingroup
+  \escapechar92\relax
+  \edef\x{\expandafter\@car\string#1x\@nil}%
+  \expandafter\endgroup
+  \csname @\ifx\x\@backslashchar first\else second\fi oftwo\endcsname
+}
+% Eg,
+% \newcount\nr\nr=\tw@
+% \def\do#1{%
+%   \let\noexpand#1%
+%   \expandafter\noexpand\csname\expandafter\@gobble\string#1@%
+%   \romannumeral\nr\endcsname
+% }
+% \edef\x{\krdfor{\cmda,\cmdb}}
+% \show\x -> \let\cmda\cmda@ii \let\cmdb\cmdb@ii
+%
+\def\krdfor#1{\krd@for@a#1,\krd@nnil,\krd@nil}
+\def\krd@for@a#1,#2\krd@nil{%
+  \krdifblank{#1}{%
+    \krd@for@a#2\krd@nil
+  }{%
+    \expandafter\krdifx\@car#1\@nil\krd@nnil
+    {}{\do{#1}\krd@for@a#2\krd@nil}%
+  }%
+}
+% We redefine xkeyval's loops to increase robustness.
+% We can't replace \@nil by \krd@nil here because xkeyval uses \@nil
+% to terminate the loops.
+\protected\long\def\XKV@for@n#1#2#3{%
+  \edef#2{\unexpanded{#1}}%
+  \krdifx#2\@empty{}{%
+    \XKV@f@r#2{#3}#1,\@nil,%
+  }%
+}
+\let\krdcommaloop\XKV@for@n
+\let\krdecommaloop\XKV@for@o
+\protected\long\def\XKV@f@r#1#2#3,{%
+  \edef#1{\unexpanded{#3}}%
+  \krdifx#1\@nnil{}{#2\XKV@f@r#1{#2}}%
+}
+\protected\long\def\XKV@for@eo#1#2#3{%
+  \edef#2{\unexpanded{\XKV@f@r#2{#3}}}%
+  \expandafter#2#1,\@nil,%
+}
+\protected\long\def\XKV@whilist#1#2#3\fi#4{%
+  #3\relax
+    \expandafter\@firstofone
+  \else
+    \expandafter\@gobble
+  \fi
+  {\expandafter\XKV@wh@list#1,\@nil,\@nnil#2#3\fi{#4}{}}%
+}
+\long\def\XKV@wh@list#1,#2\@nnil#3#4\fi#5#6{%
+  \edef#3{\unexpanded{#1}}%
+  \krdifx#3\@nnil{%
+    \def#3{#6}\@gobble
+  }{%
+    #4\relax
+      \expandafter\@firstofone
+    \else
+      \def#3{#6}%
+      \expandafter\@gobble
+    \fi
+  }%
+  {#5\XKV@wh@list#2\@nnil#3#4\fi{#5}{#1}}%
+}
+\protected\def\KV@@sp@def#1#2{\edef#1{\krdtrimspace{#2}}}
+\protected\def\XKV@sp@deflist#1#2{%
+  \edef#1{\unexpanded{#2}}%
+  \krdcsvnormalize#1%
+}
+\protected\def\krd@pushmacros#1#2#3{%
+  \begingroup
+  \global\advance#2\@ne
+  \krdifdef#1{}{\def#1{}}%
+  \def\reserved@a##1{\expandafter\@gobble\string##1@\romannumeral#2}%
+  \def\do##1{\let\noexpand##1\krdnoexpandcs{\reserved@a{##1}}}%
+  \xdef#1{#3{\krdexpandonce#1}}%
+  \def\do##1{\let\krdnoexpandcs{\reserved@a{##1}}\noexpand##1}%
+  \krdexpanded{\endgroup#3}%
+}
+\protected\def\krd@popmacros#1#2{%
+  \begingroup
+  \def\reserved@a##1##{\endgroup##1\gdef#1}%
+  \expandafter\reserved@a#1%
+  \global\advance#2\m@ne
+}
+
+\protected\def\krd@testst#1{\@ifstar{\krd@sttrue#1}{\krd@stfalse#1}}
+
+% \krdforeach[<parser>]
+%    {<list>}<\if...>\fi{<ini-code>}{<final-code>}{<reg-code>}
+% \krdforeach*[<parser>]
+%    {<listcmd>}<\if...>\fi{<ini-code>}{<final-code>}{<reg-code>}
+%
+% 1. When the conditional <\if...> isn't true, the regular code <reg-code>
+%    will be executed for every member of the list.
+% 2. <final-code> will be executed when the conditional <\if...> is true.
+%    <ini-code> may be used to first turn <\if...> off before commencing
+%    the loop. \ifkrd@foreach@break may be used as the conditional in
+%    <\if...>.
+% 3. Both <ini-code> and <final-code> can be empty (ie, {}).
+% 4. Use '#1' in <final-code> and <reg-code> to access the current element
+%    of the list.
+%
+\protected\def\krdforeach{\krd@testst{\@testopt\krd@foreach,}}
+\protected\def\krd@foreach[#1]#2#3\fi#4#5#6{%
+  \krd@pushmacros\krd@foreach@stack\krd@csvdepth{%
+    \do\krd@foreach@do\do\krd@foreach@final\do\krd@foreach@regular
+    \do\stopforeach
+  }%
+  \edef\krd@foreach@item{\krdifbool{krd@st}\krdexpandonce\unexpanded{#2}}%
+  \krdcsvnormalize[#1]\krd@foreach@item
+  \def\krd@foreach@final##1{#5}%
+  \def\krd@foreach@regular##1{#6}%
+  \krd@foreach@breakfalse
+  \let\stopforeach\krd@foreach@breaktrue
+  % Initial code:
+  #4\relax
+  \def\krd@foreach@do##1#1##2\krd@nnil{%
+    \edef\krd@foreach@item{\krdexpandonce{\@gobble##1}}%
+    \krdifx\krd@foreach@item\krd@nnil{%
+      \krd@foreach@breakfalse
+    }{%
+      \krdifcond#3\fi{%
+        \expandafter\krd@foreach@final\expandafter{\krd@foreach@item}\relax
+      }{%
+        \expandafter\krd@foreach@regular\expandafter{\krd@foreach@item}\relax
+        \krdifbool{krd@foreach@break}{%
+          \krd@foreach@breakfalse
+        }{%
+          \krd@foreach@do.##2\krd@nnil
+        }%
+      }%
+    }%
+  }%
+  \expandafter\krd@foreach@do\expandafter
+    .\krd@foreach@item#1\krd@nil#1\krd@nnil
+  \krd@popmacros\krd@foreach@stack\krd@csvdepth
+}
+\protected\def\krdaddtolist{\krd@testst{\@testopt{\krd@addtolist{e}},}}
+\protected\def\krdgaddtolist{\krd@testst{\@testopt{\krd@addtolist{x}},}}
+\protected\def\krd@addtolist#1[#2]#3#4{%
+  \@nameuse{#1def}#3{%
+    \krdifdef#3{%
+      \krdifx#3\@empty{}{\krdexpandonce#3#2}%
+    }{}%
+    \krdifbool{krd@st}\krdexpandonce\unexpanded{#4}%
+  }%
+}
+\protected\def\krdcsvnormalize{\@testopt\krd@csvnormalize,}
+\protected\def\krd@csvnormalize[#1]#2{%
+  \begingroup
+  \krd@setupnormalize{#1}%
+  \def\krd@inkv{01}%
+  \edef#2{\expandafter\krd@normalizelist\expandafter{#2}}%
+  \krdexpanded{\endgroup
+    \edef\noexpand#2{\noexpand\unexpanded{\krdexpandonce{#2}}}%
+  }%
+}
+\protected\def\krdkvnormalize#1{%
+  \begingroup
+  \krd@setupnormalize{,}%
+  \def\krd@inkv{00}%
+  \edef#1{\expandafter\krd@normalizelist\expandafter{#1^?^}}%
+  \def\reserved@b##1^?^##2\krd@nil{%
+    \edef#1{\unexpanded{##1##2}}%
+  }%
+  \expandafter\reserved@b#1\krd@nil
+  \krdexpanded{\endgroup
+    \edef\noexpand#1{\noexpand\unexpanded{\krdexpandonce{#1}}}%
+  }%
+}
+\begingroup
+\catcode`\~=13
+\catcode`\!=13
+\protected\gdef\krd@setupnormalize#1{%
+  \begingroup
+  \uccode`\~=`#1%
+  \uccode`\!=`\=%
+  \uppercase{\endgroup
+    \def\krd@normalizelist##1{%
+      \unexpanded\expandafter{\romannumeral-`\q
+        \krd@activeparser#1##1#1~\krd@nil}%
+    }%
+    \def\krd@activeparser##1~##2\krd@nil{%
+      \krdifblank{##2}{%
+        \krdifswitch\krd@inkv{%
+          \krd@activeequal##1!\krd@nil
+        }{%
+          \krd@spaceparser##1 #1\krd@nil
+        }%
+      }{%
+        \krd@activeparser##1#1##2\krd@nil
+      }%
+    }%
+  }%
+  \begingroup
+  \uccode`\~=`\=%
+  \uppercase{\endgroup
+    \def\krd@activeequal##1~##2\krd@nil{%
+      \krdifblank{##2}{%
+        \krd@spaceparser##1 #1\krd@nil
+      }{%
+        \krd@activeequal##1=##2\krd@nil
+      }%
+    }%
+  }%
+  \def\krd@spaceparser##1 #1##2\krd@nil{%
+    \krdifblank{##2}{%
+      \krd@parserspace##1#1 \krd@nil
+    }{%
+      \krd@spaceparser##1#1##2\krd@nil
+    }%
+  }%
+  \def\krd@parserspace##1#1 ##2\krd@nil{%
+    \krdifblank{##2}{%
+      \krdifswitch\krd@inkv{%
+        \krd@spaceequal##1 =\krd@nil
+      }{%
+        \krd@doubleparser##1#1#1\krd@nil
+      }%
+    }{%
+      \krd@parserspace##1#1##2\krd@nil
+    }%
+  }%
+  \def\krd@spaceequal##1 =##2\krd@nil{%
+    \krdifblank{##2}{%
+      \krd@equalspace##1= \krd@nil
+    }{%
+      \krd@spaceequal##1=##2\krd@nil
+    }%
+  }%
+  \def\krd@equalspace##1= ##2\krd@nil{%
+    \krdifblank{##2}{%
+      \krd@doubleparser##1#1#1\krd@nil
+    }{%
+      \krd@equalspace##1=##2\krd@nil
+    }%
+  }%
+  \def\krd@doubleparser##1#1#1##2\krd@nil{%
+    \krdifblank{##2}{%
+      \krdifswitch\krd@inkv{%
+        \krd@doubleequal##1==\krd@nil
+      }{%
+        \krdifblank{##1}{}{%
+          \krd@remleadparser##1\krd@nil
+        }%
+      }%
+    }{%
+      \krd@doubleparser##1#1##2\krd@nil
+    }%
+  }%
+  \def\krd@doubleequal##1==##2\krd@nil{%
+    \krdifblank{##2}{%
+      \krdifblank{##1}{}{%
+        \krd@remleadparser##1\krd@nil
+      }%
+    }{%
+      \krd@doubleequal##1=##2\krd@nil
+    }%
+  }%
+  \def\krd@remleadparser#1##1\krd@nil{\noexpand##1}%
+  \def\krd@parserequalerr##1#1=##2\krd@nil{%
+    \krdifblank{##2}{}{%
+      \krd@err{There is '#1=' in your key-value list}\krd@ehd
+    }%
+  }%
+}
+\endgroup
+\krd@setupnormalize{,}
+
+% Filter class options to remove '=' and option values. Do this
+% retroactively if this package was loaded before \documentclass.
+% The keyreader package can be loaded before \documentclass.
+\protected\def\XKV@filterclassoptions{%
+  \XKV@sgfalse
+  \ifx\@classoptionslist\@undefined\else
+    \ifx\@classoptionslist\relax\else
+      \ifx\@classoptionslist\@empty\else
+        \XKV@sgtrue
+      \fi
+    \fi
+  \fi
+  \ifXKV@sg
+    \let\XKV@filterclassoptions\relax
+    \let\XKV@origclassoptionslist\@classoptionslist
+    \let\XKV@classoptionslist\@classoptionslist
+    \def\@classoptionslist{}%
+    \XKV@for@o\XKV@classoptionslist\XKV@tempa{%
+      \@expandtwoargs\in@{=}{\krdoxdetok\XKV@tempa}%
+      \ifin@\else
+        \edef\@classoptionslist{%
+          \@classoptionslist\ifx\@classoptionslist\@empty\else,\fi
+          \unexpanded\expandafter{\XKV@tempa}%
+        }%
+      \fi
+    }%
+  \fi
+}
+\def\XKV@getdocumentclass{%
+  \let\XKV@documentclass\@undefined
+  \XKV@sgfalse
+  \ifdefined\@filelist
+    \ifx\@filelist\@gobble\else
+      \ifx\@filelist\relax\else
+        \ifx\@filelist\@empty\else
+          \XKV@sgtrue
+        \fi
+      \fi
+    \fi
+  \fi
+  \ifXKV@sg
+    \def\XKV@tempb{00}%
+    \XKV@whilist\@filelist\XKV@tempa\if\XKV@tempb\fi{%
+      \filename@parse\XKV@tempa
+      \ifx\filename@ext\@clsextension
+        \edef\XKV@tempa{\filename@area\filename@base.\filename@ext}%
+        \XKV@ifundefined{opt@\XKV@tempa}{}{%
+          \let\XKV@documentclass\XKV@tempa
+          \def\XKV@tempb{01}%
+        }%
+      \fi
+    }%
+  \fi
+}
+\XKV@getdocumentclass
+\ifdefined\XKV@documentclass
+  \XKV@filterclassoptions
+\else
+  \let\XKV@documentclass\@empty
+  \let\XKV@classoptionslist\@empty
+  \xdef\@popfilename{%
+    \unexpanded\expandafter{\@popfilename}%
+    \noexpand\XKV@filterclassoptions
+  }%
+\fi
+
+% Redefine \XKV@define@key to heed a complaint about the grabbing
+% of the callback:
+\protected\def\XKV@define@key#1{%
+  \@ifnextchar[{%
+    \XKV@d@fine@k@y{#1}%
+  }{%
+    \begingroup
+    \toks1{\endgroup\@namedef{\XKV@header#1}####1}%
+    \def\reserved@a{\the\toks\expandafter1\expandafter{\the\toks0}}%
+    \afterassignment\reserved@a\toks0=%
+  }%
+}
+\def\XKV@d@fine@k@y#1[#2]#3{%
+  \XKV@define@default{#1}{#2}%
+  \expandafter\def\csname\XKV@header#1\endcsname##1{#3}%
+}
+% When the key value has doubled hash characters, xkeyval's
+% definition of \XKV@define@cmdkey fails:
+\def\XKV@define@cmdkey#1#2[#3]#4{%
+  \ifXKV@st\XKV@define@default{#2}{#3}\fi
+  \def\XKV@tempa{\expandafter\def\csname\XKV@header#2\endcsname####1}%
+  \begingroup\expandafter\endgroup\expandafter\XKV@tempa\expandafter
+    {\expandafter\edef\csname#1#2\endcsname{\unexpanded{##1}}#4}%
+}
+% Allow macro prefix (default: mp@) for choice keys:
+\protected\def\define@choicekey{%
+  \XKV@testopta{\XKV@testoptb
+    {\@testopt\XKV@define@choicekey{choice\XKV@header}}}%
+}
+\def\XKV@define@choicekey[#1]#2{%
+  \edef\XKV@macropf{\krdtrimspace{#1}\krdtrimspace{#2}}%
+  \@testopt{\XKV@d@fine@choicekey{#2}}{}%
+}
+\def\XKV@d@fine@choicekey#1[#2]#3{%
+  \XKV@tempa@toks{#2}%
+  \XKV@sp@deflist\XKV@tempa{#3}%
+  \XKV@toks\expandafter{\XKV@tempa}%
+  \@ifnextchar[{\XKV@d@fine@ch@icekey{#1}}{\XKV@d@fine@ch@ic@key{#1}}%
+}
+\def\XKV@d@fine@ch@icekey#1[#2]{%
+  \edef\krd@default{\krdtrimspace{#2}}%
+  % Choice keys shouldn't have braced values:
+  \krdstripouterbraces{2}\krd@default
+  \krdexpanded{%
+    \noexpand\XKV@define@default{#1}{\krdexpandonce\krd@default}%
+  }%
+  \XKV@d@fine@ch@ic@key{#1}%
+}
+\def\XKV@d@fine@ch@ic@key#1{%
+  \edef\reserved@a{\krdnoexpandcs{\XKV@header#1}}%
+  \krdifbool{XKV@pl}{%
+    \expandafter\XKV@d@f@ne@ch@ic@k@y\reserved@a
+  }{%
+    \expandafter\XKV@d@f@ne@ch@ic@key\reserved@a
+  }%
+}
+\def\XKV@d@f@ne@ch@ic@key#1#2{\XKV@d@f@n@@ch@ic@k@y#1{{#2}}}
+\def\XKV@d@f@ne@ch@ic@k@y#1#2#3{\XKV@d@f@n@@ch@ic@k@y#1{{#2}{#3}}}
+\def\XKV@d@f@n@@ch@ic@k@y#1#2{%
+  \edef#1##1{%
+    \edef\krdnoexpandcs{\XKV@macropf}{\noexpand\unexpanded{##1}}%
+    \ifXKV@st\noexpand\XKV@sttrue\else\noexpand\XKV@stfalse\fi
+    \ifXKV@pl\noexpand\XKV@pltrue\else\noexpand\XKV@plfalse\fi
+    \noexpand\XKV@checkchoice[\the\XKV@tempa@toks]{##1}{\the\XKV@toks}%
+  }%
+  \def\XKV@tempa{\def#1####1}%
+  \expandafter\XKV@tempa\expandafter{#1{##1}#2}%
+}
+\protected\def\XKV@checksanitizea#1#2{%
+  \XKV@ch@cksanitize{#1}#2=%
+  \ifin@\else\XKV@ch@cksanitize{#1}#2,\fi
+  \krdifbool{in@}{\krdkvnormalize#2}{}%
+}
+\protected\def\XKV@checksanitizeb#1#2{%
+  \XKV@ch@cksanitize{#1}#2,%
+  \krdifbool{in@}{\krdcsvnormalize[,]#2}{}%
+}
+% Don't apply the new schemes to \setkeys, because old calls to
+% \setkeys will now discover that braces are preserved. This may
+% break their codes:
+\protected\def\krdsetkeys{\XKV@testopta{\XKV@testoptc\krd@setkeys}}
+\protected\def\krd@setkeys[#1]#2{%
+  \edef\krd@na{\unexpanded{#1}}%
+  \krdifx\krd@na\@empty{}{\krdcsvnormalize\krd@na}%
+  \edef\XKV@resb{\unexpanded{#2}}%
+  \krdkvnormalize\XKV@resb
+  \let\XKV@naa\@empty
+  \XKV@for@o\XKV@resb\XKV@tempa{%
+    \expandafter\XKV@g@tkeyname\XKV@tempa=\@nil\XKV@tempa
+    \XKV@addtolist@x\XKV@naa\XKV@tempa
+  }%
+  \ifnum\XKV@depth=\krdz@\let\XKV@rm\@empty\fi
+  \expandafter\XKV@usepresetkeys\expandafter{\krd@na}{preseth}%
+  \krdexpandsecond\krd@s@tkeys
+    {{\krdexpandonce\XKV@resb}{\krdexpandonce\krd@na}}%
+  \expandafter\XKV@usepresetkeys\expandafter{\krd@na}{presett}%
+  \let\CurrentOption\@empty
+}
+\protected\def\krd@s@tkeys#1#2{%
+  \edef\key@list{\unexpanded{#1}}%
+  \krdkvnormalize\key@list
+  \edef\XKV@na{\unexpanded{#2}}%
+  \krdifx\XKV@na\@empty{}{\krdcsvnormalize\XKV@na}%
+  \def\krd@s@tkeys@a##1={%
+    \def\reserved@a####1=####2\@nil{%
+      \edef\reserved@a{\expandafter\krdtrimspace\expandafter{\@gobble####1}}%
+      \krdifx\reserved@a\@empty{%
+        \expandafter\krd@s@tk@ys##1==\@nil
+      }{%
+        \expandafter\krdifbraced\expandafter{\reserved@a}{%
+          \edef\CurrentOption{%
+            \unexpanded{##1}={{\krdexpandonce\reserved@a}}%
+          }%
+        }{%
+          \edef\CurrentOption{\unexpanded{##1}=\krdexpandonce\reserved@a}%
+        }%
+        \expandafter\krd@s@tk@ys\CurrentOption==\@nil
+      }%
+    }%
+    \reserved@a.%
+  }%
+  \XKV@for@o\key@list\CurrentOption{%
+    \expandafter\krd@s@tkeys@a\CurrentOption==\@nil
+  }%
+}
+% I found that \XKV@s@tk@ys is responsible for the inability of
+% xkeyval's \setkeys to handle unbalanced conditionals. So
+% we redefine it here, but only for \krdsetkeys:
+\protected\def\krd@s@tk@ys#1=#2=#3\@nil{%
+  \XKV@g@tkeyname#1=\@nil\XKV@tkey
+  \krdexpandargonce{\KV@@sp@def\XKV@tkey}\XKV@tkey
+  \krdifx\XKV@tkey\@empty{%
+    \krdifblank{#2}{}{%
+      \krd@err{No key specified for value
+        \MessageBreak '\the\XKV@toks'}\krd@ehd
+    }%
+  }{%
+    \@expandtwoargs\in@{,\XKV@tkey,}{,\XKV@na,}%
+    \krdifbool{in@}{}{%
+      \XKV@knftrue
+      \KV@@sp@def\XKV@tempa{#2}%
+      \krdifbool{XKV@preset}{%
+        \XKV@s@tk@ys@{#3}%
+      }{%
+        \krdifbool{XKV@pl}{%
+          \XKV@for@eo\XKV@fams\XKV@tfam{%
+            \XKV@makehd\XKV@tfam
+            \XKV@s@tk@ys@{#3}%
+          }%
+        }{%
+          \XKV@whilist\XKV@fams\XKV@tfam\ifXKV@knf\fi{%
+            \XKV@makehd\XKV@tfam
+            \XKV@s@tk@ys@{#3}%
+          }%
+        }%
+      }%
+      \krdifbool{XKV@knf}{%
+        \krdifbool{XKV@inpox}{%
+          \krdifx\XKV@doxs\relax{%
+            \ifx\@currext\@clsextension\else
+              \let\CurrentOption\XKV@tkey\@unknownoptionerror
+            \fi
+          }{%
+            \XKV@doxs
+          }%
+        }{%
+          \krdifbool{XKV@st}{%
+            \XKV@addtolist@o\XKV@rm\CurrentOption
+          }{%
+            \krd@err{Key '\XKV@tkey' is undefined in
+              families \MessageBreak '\XKV@fams'}\krd@ehd
+          }%
+        }%
+      }{%
+        \krdifbool{XKV@inpox}{%
+          \krdifx\XKV@testclass\XKV@documentclass{%
+            \expandafter\XKV@useoption\expandafter{\CurrentOption}%
+          }{}%
+        }{}%
+      }%
+    }%
+  }%
+}
+% When the key default value has doubled hash characters,
+% xkeyval's definition of \XKV@default fails:
+\protected\def\XKV@default#1#2\@nil{%
+  \edef\XKV@tempa{\expandafter\@gobble\string#1}%
+  \edef\XKV@tempb{\XKV@header\XKV@tkey}%
+  \@onelevel@sanitize\XKV@tempb
+  \krdifx\XKV@tempa\XKV@tempb{%
+    \begingroup
+    \@namedef{\XKV@header\XKV@tkey}##1{%
+      \toks@{\edef\XKV@tempa{\unexpanded{##1}}}%
+    }%
+    \csname\XKV@header\XKV@tkey @default\endcsname
+    \expandafter\endgroup\the\toks@
+    \krdifcsdef{XKV@\XKV@header save}{%
+      \expandafter\XKV@testsavekey\csname XKV@\XKV@header
+        save\endcsname\XKV@tkey
+    }{}%
+    \ifXKV@rkv
+      \ifXKV@sg\expandafter\global\fi
+      \expandafter\let
+      \csname XKV@\XKV@header\XKV@tkey @value\endcsname\XKV@tempa
+    \fi
+    \expandafter\XKV@replacepointers\expandafter{\XKV@tempa}%
+    \XKV@srstate{@\romannumeral\XKV@depth}{}%
+    \expandafter#1\expandafter{\XKV@tempa}\relax
+    \XKV@srstate{}{@\romannumeral\XKV@depth}%
+  }{%
+    \XKV@srstate{@\romannumeral\XKV@depth}{}%
+    \csname\XKV@header\XKV@tkey @default\endcsname\relax
+    \XKV@srstate{}{@\romannumeral\XKV@depth}%
+  }%
+}
+\protected\def\XKV@replacepointers#1{%
+  \let\XKV@tempa\@empty
+  \let\XKV@resa\@empty
+  \XKV@r@placepointers#1\usevalue\@nil
+}
+\def\XKV@r@placepointers#1\usevalue#2{%
+  \XKV@addtomacro@n\XKV@tempa{#1}%
+  \edef\XKV@tempb{\unexpanded{#2}}%
+  \ifx\XKV@tempb\@nnil\else\XKV@afterfi
+    \XKV@ifundefined{XKV@\XKV@header#2@value}{%
+      \krd@err{No value has been recorded for key
+        \MessageBreak '#2'; pointer not replaced}\krd@ehd
+      \XKV@r@placepointers
+    }{%
+      \@expandtwoargs\in@{,\detokenize{#2},}{,\krdoxdetok\XKV@resa,}%
+      \ifin@\XKV@afterelsefi
+        \krd@err{Possible back linking of pointers;
+          \MessageBreak pointer replacement terminated}\krd@ehd
+      \else\XKV@afterfi
+        \XKV@addtolist@x\XKV@resa{#2}%
+        \expandafter\expandafter\expandafter\XKV@r@placepointers
+          \csname XKV@\XKV@header#2@value\endcsname
+      \fi
+    }%
+  \fi
+}
+\protected\def\krdsetrmkeys{\XKV@testopta{\XKV@testoptc\krd@setrmkeys}}
+\protected\def\krd@setrmkeys[#1]{%
+  \krdexpandargonce{\krd@setkeys[#1]}\XKV@rm
+}
+% We alias xkeyval's \savekeys to \savevaluekeys:
+\protected\def\savevaluekeys{\savekeys}
+% We split xkeyval's \presetkeys (head and tail) into
+% \krdpresetkeys (head only) and \krdpostsetkeys (tail only):
+\protected\def\krdpresetkeys{\@testopt\krd@presetkeys{KV}}
+\protected\def\krd@presetkeys[#1]#2#3{\presetkeys[#1]{#2}{#3}{}}
+\protected\def\krdpostsetkeys{\@testopt\krd@postsetkeys{KV}}
+\protected\def\krd@postsetkeys[#1]#2#3{\presetkeys[#1]{#2}{}{#3}}
+\protected\def\krd@disabledkey@err#1{%
+  \krd@err{Key '#1' has been disabled}
+    {You can't set or reset key '#1' at this\MessageBreak
+    late stage. Perhaps you should have set it \MessageBreak
+    earlier in \string\documentclass\@space or \string\usepackage}%
+}
+\protected\def\krddisablekeys{\XKV@testoptb\krd@disablekeys}
+\protected\def\krd@disablekeys#1{%
+  \def\XKV@tempa{#1}%
+  \krdcsvnormalize\XKV@tempa
+  \XKV@for@o\XKV@tempa\XKV@tempa{%
+    \krdifcsdef{\XKV@header\XKV@tempa}{}{%
+      \@latex@warning@no@line{Key '\XKV@tempa' is undefined:
+        couldn't be disabled}%
+    }%
+    \krdifcsdef{\XKV@header\XKV@tempa @default}{%
+      \edef\XKV@tempb{\noexpand\XKV@define@key{\XKV@tempa}[]}%
+    }{%
+      \edef\XKV@tempb{\noexpand\XKV@define@key{\XKV@tempa}}%
+    }%
+    \krdexpandarg{\expandafter\XKV@tempb\expandafter}%
+      {\krd@disabledkey@err{\XKV@tempa}}%
+  }%
+}
+\edef\krd@hashchar{\string#}
+
+% \krddefinekeys[<pref>]{<fam>}[<mp>]{
+%    ord/<key>/<dft>/<f1>;
+%    cmd/<key>/<dft>/<f1>;
+%    bool/<key>/<dft>/<f1>;
+%    bool+/<key>/<dft>/<f1>/<f2>;
+%    choice/<key>/<dft>/<alt>/<f1>;
+%    choice+/<key>/<dft>/<alt>/<f1>/<f2>;
+% }
+\protected\def\krddefinekeys{%
+  \begingroup
+  \endlinechar\m@ne
+  \krd@testst{\@testopt\krd@definekeys{KV}}%
+}
+\protected\def\krd@definekeys[#1]#2{%
+  \@testopt{\krd@d@finekeys{#1}{#2}}{krdmp@}%
+}
+\protected\def\krd@d@finekeys#1#2[#3]#4{%
+  \expandafter\endgroup
+  \edef\krd@keyst{0\ifkrd@st0\else1\fi}%
+  \krdindeftrue
+  \begingroup
+  \edef\krd@prefix{\krdtrimspace{#1}}%
+  \edef\krd@family{\krdtrimspace{#2}}%
+  \edef\krd@macpref{\krdtrimspace{#3}}%
+  \toks@{}%
+  \def\krd@rej{^?^}%
+  \def\krd@defna{.na}%
+  \def\krd@vals{}%
+  \let\krduserinput\relax
+  \let\krdorder\relax
+  \def\krd@splita##1/##2/{\krd@splitb##1/##2/.}%
+  \def\krd@splitb##1/##2/##3/##4/##5/##6/##7/##8/##9\krd@nil{%
+    \edef\krd@type{\krdzapspace{##1}}%
+    \edef\krd@name{\krdtrimspace{##2}}%
+    \edef\krd@default{\krdusearg\krdtrimspace{\@gobble##3}}%
+    \edef\krd@itemfour{\krdtrimspace{##4}}%
+    \edef\krd@itemfive{\krdtrimspace{##5}}%
+    \edef\krd@itemsix{\krdtrimspace{##6}}%
+    \@expandtwoargs\in@{\krd@hashchar}{\detokenize{##2}}%
+    \ifin@
+      \krd@err{Bad key name '\detokenize{##2}'}\krd@ehd
+    \fi
+    \if\krd@keyst
+      \krdifcsdef{\krd@prefix @\krd@family @##2}{%
+        \krd@err{Key '##2' already exists in
+          family '\krd@family'}\krd@ehd
+      }{}%
+    \fi
+    \@expandtwoargs\in@
+      {,\krdoxdetok\krd@type,}
+      {,\detokenize{ord,cmd,bool,bool+,choice,choice+},}%
+    \ifin@\else
+      \krd@err{Unknown key type '\krd@type'}\krd@ehd
+    \fi
+    % ord{0}cmd{1}bool{2}bool+{3}choice{4}choice+{5}
+    \krdusearg\krd@gettypenr{\krd@type}%
+    \ifnum\krd@typenr>\thr@@
+      \krdstripouterbraces{2}\krd@default
+      \ifcase0%
+        \ifx\krd@itemfour\@empty\else
+        \ifx\krd@itemfour\krd@rej\else
+        \ifx\krd@itemfour\krd@defna\else 1\fi\fi\fi\relax
+        \krd@err{Empty nominations for choice key \krd@name}\krd@ehd
+      \else
+        \krd@getaltlist{##4}%
+      \fi
+    \fi
+    \@expandtwoargs\in@
+      {,\krdoxdetok\krd@default,}{,\detokenize{true,false},}%
+    \edef\krd@vals{%
+      \ifx\krd@vals\@empty\else\krdexpandonce\krd@vals,\fi
+      \ifx\krd@default\krd@rej\else
+        \ifx\krd@default\krd@defna\else
+          \krd@name=\ifin@ false\else\krdexpandonce\krd@default\fi
+        \fi
+      \fi
+    }%
+    \krdexpanded{%
+      \toks@{\the\toks@
+        \krdncsname define@\krd@typefordef key\endcsname
+        \if\krd@plustype+\fi
+        [\krd@prefix]{\krd@family}%
+        \ifnum\krd@typenr>\krdz@[\krd@macpref]\fi
+        {\krd@name}%
+        \ifnum\krd@typenr>\thr@@
+          [\krduserinput\krdorder]{\krdexpandonce\krd@altlist@a}%
+        \fi
+        \ifx\krd@default\krd@rej\else
+          \ifx\krd@default\krd@defna\else
+            [{\krdexpandonce\krd@default}]%
+          \fi
+        \fi
+        {% callback-1
+          \ifnum\krd@typenr>\thr@@
+            \ifx\krd@itemfive\krd@rej\else
+              \ifx\krd@itemfive\krd@defna\else
+                \krdexpandonce\krd@itemfive
+              \fi
+            \fi
+            \krd@executealt{########1}{\krdexpandonce\krd@altlist@b}%
+          \else
+            \ifx\krd@itemfour\krd@rej\else
+              \ifx\krd@itemfour\krd@defna\else
+                \krdexpandonce\krd@itemfour
+              \fi
+            \fi
+          \fi
+        }%
+        \if\krd@plustype
+          {% callback-2
+            \ifnum\krd@typenr>\thr@@
+              \ifx\krd@itemsix\krd@rej
+                \noexpand\krd@keyvalerr
+              \else
+                \ifx\krd@itemsix\krd@defna
+                  \noexpand\krd@keyvalerr
+                \else
+                  \krdexpandonce\krd@itemsix
+                \fi
+              \fi
+            \else
+              \ifx\krd@itemfive\krd@rej
+                \noexpand\krd@keyvalerr
+              \else
+                \ifx\krd@itemfive\krd@defna
+                  \noexpand\krd@keyvalerr
+                \else
+                  \krdexpandonce\krd@itemfive
+                \fi
+              \fi
+            \fi
+          }%
+        \fi
+      }%
+    }%
+  }%
+  \edef\krd@list{\unexpanded{#4}}%
+  % Don't normalize for slash, since double slash (meaning, eg,
+  % "no value") will be made one slash.
+  \krdforeach*[;]\krd@list\if01\fi{}{}{%
+    \krd@splita##1/^?^/^?^/^?^/^?^/^?^/^?^/^?^/\krd@nil
+  }%
+  \krdexpanded{\endgroup
+    \the\toks@
+    \noexpand\krdsetkeys[\krd@prefix]%
+      {\krd@family}{\krdexpandonce\krd@vals}%
+  }%
+  \krdindeffalse
+}
+\protected\def\krd@gettypenr#1{%
+  \def\reserved@a##1#1##2##3\krd@nil{%
+    \def\krd@typenr{##2}%
+    \ifx\krd@typenr\krd@nnil
+      \krd@err{Invalid key type '#1'}\krd@ehd
+    \else
+      \edef\krd@typefordef{%
+        % Using \numexpr will remove \relax, which is needed
+        % to stop \ifcase's search for number.
+        \ifcase\numexpr\krd@typenr\relax\or
+          cmd\or bool\or bool\or choice\or choice\fi
+      }%
+    \fi
+  }%
+  \reserved@a ord{0}cmd{1}bool{2}bool+{3}choice{4}choice+{5}%
+    #1{\krd@nil}\krd@nil
+  \@expandtwoargs\in@{+\relax}{\krdoxdetok\krd@type\relax}%
+  \edef\krd@plustype{0\ifin@ 0\else 1\fi}%
+}
+\protected\def\krd@keyvalerr{%
+  \krd@getinnoval
+  \krd@err{Erroneous value '\krd@ival'
+    \MessageBreak for key or option '\XKV@tkey'}
+    {Invalid value for key '\XKV@tkey'.}%
+}
+\protected\def\krd@getaltlist#1{%
+  \begingroup
+  \def\krd@altlist@a{}%
+  \def\krd@altlist@b{}%
+  \def\krd@g@taltlist##1.do=##2.do=##3\krd@nil{%
+    \edef\XKV@tempa{\krdtrimspace{##1}}%
+    \krdstripouterbraces{2}\XKV@tempa
+    \edef\XKV@tempb{\krdoxdetok\XKV@tempa{\krdtrimspace{##2}}}%
+    \def\@do####1####2{%
+      \edef####1{%
+        \krdexpandonce####1\ifx####1\@empty\else,\fi
+        \krdexpandonce####2%
+      }%
+    }%
+    \@do\krd@altlist@a\XKV@tempa
+    \@do\krd@altlist@b\XKV@tempb
+  }%
+  \def\do##1{%
+    \krd@g@taltlist##1.do=.do=\krd@nil
+  }%
+  \krdfor{#1}%
+  \ifx\krd@altlist@a\@empty
+    \krd@err{No nominations for choice key}\@ehd
+    \def\krd@altlist@b{}%
+  \fi
+  \krdexpanded{\endgroup
+    \krdaftergr\krd@altlist@a\krdaftergr\krd@altlist@b
+  }%
+}
+\protected\def\krd@executealt#1#2{%
+  \edef\reserved@a{\krdtrimspace{#1}}%
+  \krdstripouterbraces{2}\reserved@a
+  \edef\reserved@a{\krdoxdetok\reserved@a}%
+  % There may be parameters characters in #2. So hide #2 in a macro:
+  \edef\reserved@b{\unexpanded{#2}}%
+  \def\reserved@c##1{%
+    \def\reserved@a####1##1####2####3\krd@nil{%
+      \edef\reserved@a{\unexpanded{####2}}%
+      \krdifx\reserved@a\krd@nnil{%
+        \krd@err{No choice match for key '\XKV@tkey'}\krd@ehd
+      }{%
+        ####2%
+      }%
+    }%
+    \expandafter\reserved@a\reserved@b#1{\krd@nil}\krd@nil
+  }%
+  \krdusearg\reserved@c\reserved@a
+}
+\def\krd@lengthofival{20}
+\protected\def\krd@getinnoval{%
+  \begingroup
+  \def\reserved@a##1=##2=##3\krd@nil{%
+    \def\krd@tval{##2}%
+  }%
+  \expandafter\reserved@a\CurrentOption==\krd@nil
+  \krdifx\krd@tval\@empty{%
+    \def\krd@ival{???}%
+  }{%
+    \def\krd@ival{}%
+    \@tempcnta\krdz@
+    \def\do##1{%
+      \def\reserved@a{##1}%
+      \krdifx\reserved@a\krd@nnil{}{%
+        \advance\@tempcnta\@ne
+        \ifnum\@tempcnta<\krd@lengthofival\relax
+          \edef\krd@ival{\krd@ival##1}%
+          \expandafter\do
+        \else
+          \def\do####1\krd@nil{}%
+          \expandafter\do
+        \fi
+      }%
+    }%
+    \expandafter\do\detokenize\expandafter{\krd@tval}\krd@nil
+  }%
+  \krdexpanded{\endgroup
+    \def\noexpand\krd@ival{\krd@ival}%
+  }%
+}
+\def\XKV@testopte#1{%
+  \XKV@ifstar{\XKV@sttrue\XKV@t@stopte#1}{\XKV@stfalse\XKV@t@stopte#1}%
+}
+\def\XKV@t@stopte#1{\@testopt{\XKV@t@st@pte#1}{KV}}
+\def\XKV@t@st@pte#1[#2]{%
+  \XKV@makepf{#2}%
+  \@ifnextchar<{\XKV@@t@st@pte#1}%
+    {\XKV@@t@st@pte#1<\@currname.\@currext>}%
+}
+\def\XKV@@t@st@pte#1<#2>{%
+  \XKV@sp@deflist\XKV@fams{#2}%
+  \@testopt#1{}%
+}
+\def\DeclareOptionX{%
+  \let\@fileswith@pti@ns\@badrequireerror
+  \XKV@ifstar\XKV@dox\XKV@d@x
+}
+\long\def\XKV@dox#1{\XKV@toks{#1}\edef\XKV@doxs{\the\XKV@toks}}
+\def\XKV@d@x{\@testopt\XKV@@d@x{KV}}
+\def\XKV@@d@x[#1]{%
+  \@ifnextchar<{\XKV@@@d@x[#1]}{\XKV@@@d@x[#1]<\@currname.\@currext>}%
+}
+\def\XKV@@@d@x[#1]<#2>#3{\@testopt{\define@key[#1]{#2}{#3}}{}}
+\def\ExecuteOptionsX{\XKV@stfalse\XKV@plfalse\XKV@t@stopte\XKV@setkeys}
+\def\ProcessOptionsX{\XKV@plfalse\XKV@testopte\XKV@pox}
+\def\XKV@pox[#1]{%
+  \let\XKV@tempa\@empty
+  \XKV@inpoxtrue
+  \let\@fileswith@pti@ns\@badrequireerror
+  \edef\XKV@testclass{\@currname.\@currext}%
+  \ifx\XKV@testclass\XKV@documentclass
+    \let\@unusedoptionlist\XKV@classoptionslist
+    \XKV@ifundefined{ver@xkvltxp.sty}{}{%
+      \@onelevel@sanitize\@unusedoptionlist
+    }%
+  \else
+    \ifXKV@st
+      \def\XKV@tempb##1,{%
+        \def\CurrentOption{##1}%
+        \ifx\CurrentOption\@nnil\else
+          \XKV@g@tkeyname##1=\@nil\CurrentOption
+          \XKV@key@if@ndefined{\CurrentOption}{}{%
+            \XKV@useoption{##1}%
+            \XKV@addtolist@n\XKV@tempa{##1}%
+          }%
+          \expandafter\XKV@tempb
+        \fi
+      }%
+      \expandafter\XKV@tempb\XKV@classoptionslist,\@nil,%
+    \fi
+  \fi
+  \expandafter\XKV@addtolist@o\expandafter
+    \XKV@tempa\csname opt@\@currname.\@currext\endcsname
+  \def\XKV@tempb{\XKV@setkeys[#1]}%
+  \expandafter\XKV@tempb\expandafter{\XKV@tempa}%
+  \let\XKV@doxs\relax
+  \let\XKV@rm\@empty
+  \XKV@inpoxfalse
+  \let\@fileswith@pti@ns\@@fileswith@pti@ns
+  \AtEndOfPackage{\let\@unprocessedoptions\relax}%
+}
+\def\XKV@useoption#1{%
+  \def\XKV@resa{#1}%
+  \XKV@ifundefined{ver@xkvltxp.sty}{}{%
+    \@onelevel@sanitize\XKV@resa
+  }%
+  \@expandtwoargs\@removeelement{\XKV@resa}%
+    {\@unusedoptionlist}\@unusedoptionlist
+}
+\krdnewlet\krdDeclareOption\DeclareOptionX
+\krdnewlet\krdExecuteOptions\ExecuteOptionsX
+\krdnewlet\krdProcessOptions\ProcessOptionsX
+\krdDeclareOption[KV]<keyreader>{lengthofival}[20]{%
+  \edef\krd@lengthofival{\number#1}%
+}
+\krdDeclareOption*{\PackageWarning{keyreader}{Unknown option
+  '\CurrentOption' ignored}}
+\krdExecuteOptions[KV]<keyreader>{lengthofival}
+\krdProcessOptions[KV]<keyreader>\relax
+
+\endinput

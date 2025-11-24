@@ -1,0 +1,176 @@
+% \subsection{Spanned cells}
+
+% The technical approach:
+% \begin{itemize}
+% \item Spanning is started in the left top corner using the
+%    command |\nullcell{lt...}|
+% \item The spanned cell is split on the table cells using the
+%    command |\nullcell|. These nullcells are responsible for
+%    correct decorations and for calculating the big cell dimensions.
+% \item The content of the spanned cells comes in the end,
+%    in the right bottom corner.
+% \end{itemize}
+
+% It is possible to have several active spans at once, therefore we
+% have to remember them. I use a queue. Each time a left column
+% of a span is started, we take span data from the queue. After the
+% right column of the span, we put the data back to the queue,
+% to the end. Probably it is not obvious at the first look (at least,
+% I needed time to find this simple idea) that this rotating queue
+% is always right: when spanning (its left column) starts again,
+% the beginning of the queue always contains data for exactly this spanning.
+
+% \begin{macro}{\cals@spanq@heights}
+% The queue for height tracking. In the first version I also had
+% a queue for decorations, but later cancelled it.
+% I use |\def| instead of |\newcommand| in order that |\show|
+% prints "|macro|" instead of "|\long macro|". The latter breaks
+% unit tests.
+%    \begin{macrocode}
+\def\cals@spanq@heights{}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@span@get}
+% Gets |\cals@span@height| from the queue.
+%    \begin{macrocode}
+\newcommand\cals@span@get{%
+\llt@decons\cals@spanq@heights \cals@span@height=\llt@car\relax}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@span@put}
+% Puts |\cals@span@height| to the queue.
+%    \begin{macrocode}
+\newcommand\cals@span@put{%
+\edef\cals@tmp{\the\cals@span@height}\llt@snoc\cals@spanq@heights\cals@tmp}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\nullcell}
+% The big spanned cell is split on the table cells, which are
+% identified by |\nullcell|s. The task is to produce correct
+% decorations and to track the parameters of the spanned cell.
+% \begin{itemize}
+% \item Decorations: if defined, the background color is always
+% added to the column separation row.
+% \item Decorations: the borders are set to 0pt (disabled),
+% except for the borders which are requested by
+% the parameter of |\nullcell|: |l| for the left border,
+% |t| for the top, |r| for the right, |b| for the bottom.
+% \item More precisely, the letters in the argument are not to
+% specify which decorations to use, but to specify the location
+% of the small cell in the big cell. The use for decorations
+% is just an useful side-effect.
+% \item Action |l|: take the span data from the queue.
+% \item Action |r|: update the height of the current span,
+% put the data to the queue.
+% \item Action |b|: do not put an empty box to the current row.
+% Instead, accumulate the width of the current span.
+% (Preparation for |\spancontent|.)
+% \end{itemize}
+%    \begin{macrocode}
+\newcommand\nullcell[1]{%
+%    \end{macrocode}
+% First of all, parse the argument and set the if-commands |\cals@span@ifX|.
+% Then get the width of the cell.
+%    \begin{macrocode}
+\let\cals@span@ifL=\cals@iffalse
+\let\cals@span@ifT=\cals@iffalse
+\let\cals@span@ifR=\cals@iffalse
+\let\cals@span@ifB=\cals@iffalse
+\def\next##1{\ifx\relax##1\let\next=\relax \else
+ \expandafter\let\csname cals@span@if##1\endcsname=\cals@iftrue \fi
+ \next}%
+\uppercase{\next #1}\relax
+\llt@rot\cals@colwidths \let\cals@nullcell@width=\llt@car
+%    \end{macrocode}
+% Action "l": update the height, supress the borders, set the rowspan markers.
+%    \begin{macrocode}
+\cals@span@ifL\iftrue
+ \cals@span@ifT\iftrue
+   \cals@span@height=0pt %
+ \else
+   \cals@span@get
+   \advance\cals@span@height by \cals@last@row@height\relax
+ \fi
+ \cals@span@ifB\iftrue \else
+  \let\cals@ifInRspan=\cals@iftrue
+  \let\cals@ifLastRspanRow=\cals@iffalse
+ \fi
+ \let\cals@span@borderL=\cals@borderL \let\cals@span@borderT=\cals@borderT
+ \let\cals@span@borderR=\cals@borderR \let\cals@span@borderB=\cals@borderB
+\fi
+%    \end{macrocode}
+% Action "r": put the data to the queue, unless in the end of the spanning.
+%    \begin{macrocode}
+\cals@span@ifR\iftrue
+ \cals@span@ifB\iftrue \relax \else \cals@span@put \fi
+\fi
+%    \end{macrocode}
+% Update the current row or calculate the span width
+% (in the case of the bottom row).
+%    \begin{macrocode}
+\cals@span@ifB\iftrue
+ \cals@span@ifL\iftrue
+  \cals@span@width=\cals@nullcell@width\relax
+ \else
+  \advance\cals@span@width by \cals@nullcell@width\relax
+ \fi
+\else
+ \setbox\cals@current@row=\hbox{%
+   \unhbox\cals@current@row
+   \vbox{\hbox to\cals@nullcell@width{}\vfil}}%
+\fi
+%    \end{macrocode}
+% Update decorations
+%    \begin{macrocode}
+\cals@span@ifL\iftrue \let\cals@borderL=\cals@span@borderL
+  \else \def\cals@borderL{0pt}\fi
+\cals@span@ifT\iftrue \let\cals@borderT=\cals@span@borderT
+  \else \def\cals@borderT{0pt}\fi
+\cals@span@ifR\iftrue \let\cals@borderR=\cals@span@borderR
+  \else \def\cals@borderR{0pt}\fi
+\cals@span@ifB\iftrue \let\cals@borderB=\cals@span@borderB
+  \else \def\cals@borderB{0pt}\fi
+\cals@decor@next\cals@nullcell@width
+\let\cals@borderL=\cals@span@borderL \let\cals@borderR=\cals@span@borderR
+\let\cals@borderT=\cals@span@borderT \let\cals@borderB=\cals@span@borderB
+}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@span@width}
+% \begin{macro}{\cals@span@height}
+% The width of the span cell. The height of the spanned cell (without
+% the last row).
+%    \begin{macrocode}
+\newdimen\cals@span@width
+\newdimen\cals@span@height
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+
+% \begin{macro}{\cals@ifInRspan}
+% Set to |\cals@iftrue| if the current row is a part of a row span.
+% Otherwise |\cals@iffalse|.
+% \end{macro}
+
+% \begin{macro}{\cals@ifLastRspanRow}
+% Set to |\cals@iftrue| if the current row is the last row of
+% of a row span. Otherwise |\cals@iffalse|.
+% \end{macro}
+
+% \begin{macro}{\cals@updateRspanMarkers}
+% Resets the span markers, which are later updated by |\nullcell|
+% to the correct state for the current row.
+%    \begin{macrocode}
+\newcommand\cals@updateRspanMarkers{%
+\ifx \empty\cals@spanq@heights
+ \let\cals@ifInRspan=\cals@iffalse
+\else
+ \let\cals@ifInRspan=\cals@iftrue
+\fi
+\let\cals@ifLastRspanRow=\cals@iftrue}
+%    \end{macrocode}
+% \end{macro}

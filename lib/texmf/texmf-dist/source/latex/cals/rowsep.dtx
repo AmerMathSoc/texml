@@ -1,0 +1,360 @@
+% \subsection{Row separation (rowsep)}
+
+% \subsubsection{Data presentation}
+
+% A horizontal line between table rows can't appear in the output
+% immediately. Its formatting should be postponed until the next
+% row and its context are known. Two basic cases:
+% \begin{itemize}
+% \item The default cell formatting is to have a border around cells.
+% For some cell \textit{A} in the middle of a table, the user has
+% overridden formatting to no borders. To imlement the user's wish,
+% we should not create the bottom border for the cell \textit{B}
+% which is above the \textit{A}. But we don't know about the wish
+% for \textit{A} while processing \textit{B}. Therefore, the border
+% between two rows can be established only after processing the
+% both rows.
+% \item The default cell border is 1pt, but a border between
+% a body and a header or a footer row is 2pt. It means that the
+% border between two rows should be created only after we sure
+% that there is no table break.
+% \end{itemize}
+% Our approach is to define the desired formatting of a rowsep
+% as a set of parameters in a token list. Later we can join two
+% rowseps or a rowsep and context to a final rowsep.
+%
+% A rowsep token list consist of several items, each
+% item is a list of tokens or token groups:
+% \begin{enumerate}
+% \item length
+% \item left-border
+% \item right-border
+% \item user-specified thickness
+% \end{enumerate}
+% Values \textit{left-border} and \textit{right-border} are
+% required to get a nice rectangle border around a cell. Without length
+% correction, using the cell dimension, the border could look like:
+% \begin{verbatim}
+%   xxxxxxxx
+% xxx cell xxx
+%   xxxxxxxx
+% \end{verbatim}
+% With length correction, we get the correct result:
+% \begin{verbatim}
+% xxxxxxxxxxxx
+% xxx cell xxx
+% xxxxxxxxxxxx
+% \end{verbatim}
+%
+% Here is an example of a rowsep specification. It consist of three items.
+% The first item: length is 5cm, width 2pt, borders are 2mm.
+% The second item: length is 9cm, borders are 2mm, no rule at all.
+% The third item: length 2cm, default width, borders are 2pt.
+% The token list for this specification:
+% \begin{verbatim}
+% { {5cm} {2mm} {2mm} {2pt} }
+% { {9cm} {2mm} {2mm} {0pt} }
+% { {2cm} {2pt} {2pt} \relax }
+% \end{verbatim}
+%
+% Cell length and the left and right borders should be the correct lengths,
+% the rule thickness can be |\relax|, in this case the actual thickness
+% will be calculated during output.
+%
+% \begin{macro}{\cals@rs@pack}
+% Construct a rowsep fragment from the arguments 2-5 and
+% put it to the macro 1.
+%    \begin{macrocode}
+\newcommand\cals@rs@pack[5]{%
+\edef#1{\noexpand{#2\noexpand}\noexpand{#3\noexpand}\noexpand{#4\noexpand}%
+ \ifx \relax#5\relax \else \noexpand{#5\noexpand}\fi }}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@rs@unpack}
+% The reverse for |\cals@rs@pack|. The first argument is a rowsep
+% fragment (without enclosing curly braces), arguments 2-5 is macro
+% names where to put the results.
+%    \begin{macrocode}
+\newcommand\cals@rs@unpack[5]{%
+\def\cals@tmp##1##2##3##4{\edef#2{##1}\edef#3{##2}\edef#4{##3}%
+ \ifx\relax##4\let#5=\relax \else \edef#5{##4}\fi}%
+\expandafter\cals@tmp#1}
+%    \end{macrocode}
+% \end{macro}
+
+%
+% ^^A -----------------------------------------------------
+%
+% \subsubsection{From individual decorations to rowsep specification}
+
+% The rowsep specifications are created cell-by-cell and stored
+% in the macros |\cals@current@rs@above| and |\cals@current@rs@below|.
+% The construction happens with delay because we don't know
+% the exact value of the right border until the next cell is processed.
+
+% \begin{macro}{\cals@rs@spec@begin}
+% Initializes |\cals@current@rs@above|, |\cals@current@rs@below|
+% and set the flag of a new row.
+%    \begin{macrocode}
+\newcommand\cals@rs@spec@begin{%
+\def\cals@current@rs@above{}%
+\def\cals@current@rs@below{}%
+\let\cals@rs@spec@ll=\relax}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@rs@spec@next}
+% \begin{macro}{\cals@rs@spec@nextII}
+% Finalizes the decorations for the previous cell by using the left border
+% of the current as the right border for the previous. Then
+% remembers the decorations of the current cell ---
+% the left border width,
+% the widths of the top and bottom borders (|\relax| is ok) ---
+% in the macros |\cals@rs@spec@ll|, |...@bl|, |...@bt|, |...@bb|.
+% All the arguments much be macros.
+%    \begin{macrocode}
+\newcommand\cals@rs@spec@next[4]{
+\cals@rs@spec@nextII#2
+\let\cals@rs@spec@ll=#1%
+\let\cals@rs@spec@bl=#2%
+\let\cals@rs@spec@bt=#3%
+\let\cals@rs@spec@bb=#4%
+}
+
+\newcommand\cals@rs@spec@nextII[1]{%
+\ifx \relax\cals@rs@spec@ll \else
+ \cals@rs@pack\cals@tmp\cals@rs@spec@ll\cals@rs@spec@bl#1\cals@rs@spec@bt
+ \llt@snoc\cals@current@rs@above\cals@tmp
+ \cals@rs@pack\cals@tmp\cals@rs@spec@ll\cals@rs@spec@bl#1\cals@rs@spec@bb
+ \llt@snoc\cals@current@rs@below\cals@tmp
+\fi
+}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+
+% \begin{macro}{\cals@rs@spec@end}
+% Finishes the rowsep specification by putting the last cell to it.
+% The only implicit argument (|\cals@lastLeftWidth|) is the width
+% of the right border of the last cell.
+%    \begin{macrocode}
+\newcommand\cals@rs@spec@end[1]{}
+\let\cals@rs@spec@end=\cals@rs@spec@nextII
+%    \end{macrocode}
+% \end{macro}
+
+%
+% ^^A -----------------------------------------------------
+%
+% \subsubsection{``Waiting'' rowsep}
+%
+% \begin{macro}{\cals@rs@sofar@length}
+% \begin{macro}{\cals@rs@sofar@borderl}
+% \begin{macro}{\cals@rs@sofar@borderr}
+% \begin{macro}{\cals@rs@sofar@width}
+% Typesetting a row separator is not an easy task, especially
+% because we support border-widths. Indeed, consider the worst
+% case: four cells and all the borders are different.
+% Our solution is an optimizer for a good case. We do not typeset
+% a fragment of the rule immediately. Instead, we remember the
+% parameters. If the next fragment is of the same width,
+% we increase the length of the ``waiting'' fragment.
+% Otherwise, we output the waiting fragment and the new fragment
+% becomes the new waiting fragment.
+%    \begin{macrocode}
+\newcommand\cals@rs@sofar@length{}
+\newcommand\cals@rs@sofar@borderl{}
+\newcommand\cals@rs@sofar@borderr{}
+\newcommand\cals@rs@sofar@width{}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+
+% \begin{macro}{\cals@rs@sofar@reset}
+% Sets a flag that a new waiting rule should be started.
+%    \begin{macrocode}
+\newcommand\cals@rs@sofar@reset{\let\cals@rs@sofar@width=\relax}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@rs@sofar@end}
+% Prints the waiting rule, if exists.
+%    \begin{macrocode}
+\newcommand\cals@rs@sofar@end{\ifx\relax\cals@rs@sofar@width
+  \else\cals@rs@sofar@out\fi}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@rs@sofar@next}
+% Enlarges the current waiting rule, or typesets it and
+% starts new if the widths do not match. All the parameters
+% must be macro names. In order: length, left border, right
+% border, width.
+%    \begin{macrocode}
+\newcommand\cals@rs@sofar@next[4]{%
+\ifx\relax\cals@rs@sofar@width
+%    \end{macrocode}
+% Starts a new waiting rule.
+%    \begin{macrocode}
+ \let\cals@rs@sofar@length=#1%
+ \let\cals@rs@sofar@borderl=#2%
+ \let\cals@rs@sofar@borderr=#3%
+ \let\cals@rs@sofar@width=#4%
+\else
+ \ifdim \cals@rs@sofar@width=#4\relax
+%    \end{macrocode}
+% Enlarges the waiting rule.
+%    \begin{macrocode}
+  \dimen0=\cals@rs@sofar@length\relax
+  \advance\dimen0 by #1\relax
+  \edef\cals@rs@sofar@length{\the\dimen0}%
+  \let\cals@rs@sofar@borderr=#3%
+ \else
+%    \end{macrocode}
+% Typesets the current and start a new waiting rule.
+%    \begin{macrocode}
+  \cals@rs@sofar@out
+  \let\cals@rs@sofar@length=#1%
+  \let\cals@rs@sofar@borderl=#2%
+  \let\cals@rs@sofar@borderr=#3%
+  \let\cals@rs@sofar@width=#4%
+ \fi
+\fi}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@rs@sofar@over}
+% Repeats the last rowsep fragment, probably with another settings.
+% Arguments are like in |\cals@rs@sofar@next|.
+%    \begin{macrocode}
+\newcommand\cals@rs@sofar@over[4]{%
+\ifdim 0pt=#4
+  \relax
+\else
+  \ifdim \cals@rs@sofar@width=#4\relax
+%    \end{macrocode}
+% The width is not changed. We probably need to enlarge the right border
+% and probably the left border too. The latter is a bit harder because
+% we don't want to change it if the line continues from another cell
+% (so, change only if |length|+|borderl|\textgreater |sofar@length|+|sofar@borderl|).
+%    \begin{macrocode}
+    \ifdim #3>\cals@rs@sofar@borderr\relax
+      \edef\cals@rs@sofar@borderr{#3}%
+    \fi
+    \dimen0=\cals@rs@sofar@length
+    \advance\dimen0 by \cals@rs@sofar@borderl\relax
+    \advance\dimen0 by -#2\relax
+    \ifdim #1>\dimen0 \relax
+      \edef\cals@rs@sofar@borderl{#2}%
+    \fi
+  \else
+%    \end{macrocode}
+% Typesets the current and start a new waiting rule.
+%    \begin{macrocode}
+    \cals@rs@sofar@out
+    \hskip-#1\relax
+    \let\cals@rs@sofar@length=#1%
+    \let\cals@rs@sofar@borderl=#2%
+    \let\cals@rs@sofar@borderr=#3%
+    \let\cals@rs@sofar@width=#4%
+  \fi
+\fi}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@rs@sofar@out}
+% Typesets the waiting rule
+%    \begin{macrocode}
+\newcommand\cals@rs@sofar@out{%
+\ifdim 0pt=\cals@rs@sofar@width\relax
+  \hskip\cals@rs@sofar@length\relax
+\else
+  \cals@halfWidthToDimen0\cals@rs@sofar@borderl
+  \hskip-\dimen0\relax
+  \cals@halfWidthToDimen2\cals@rs@sofar@borderr
+  \dimen4=\cals@rs@sofar@length\relax
+  \advance\dimen4 by \dimen0\relax \advance\dimen4 by \dimen2\relax
+  \cals@halfWidthToDimen6\cals@rs@sofar@width
+  \vrule height\dimen6 depth\dimen6 width\dimen4\relax
+  \hskip-\dimen2\relax
+\fi}
+%    \end{macrocode}
+% \end{macro}
+
+% ^^A -----------------------------------------------------
+%
+% \subsubsection{From rowsep specification to typesetting}
+
+% \begin{macro}{\cals@rs@joinTwo}
+% Join and typeset two rowseps (arguments 2 and 3, must be macro names).
+% The number and the lengths of the fragments in the rowseps
+% should match.
+% The argument 1 (also a macro name) is the default width.
+% Corrupts the macros 2 and 3.
+% Call this macro inside |sofar@reset|...|@end| group.
+%    \begin{macrocode}
+\newcommand\cals@rs@joinTwo[3]{%
+%    \end{macrocode}
+% The loop function.
+%    \begin{macrocode}
+\def\next##1{%
+\ifx \eol##1\let\next=\relax
+\else
+  \toks0=\expandafter{##1}%
+  \edef\cals@tmpII{\the\toks0}%
+  \llt@decons#3%
+%    \end{macrocode}
+% Now |\cals@tmpII| contains a current fragment of the first rowsep,
+% and |\llt@car| of the second. Unpack the individual parameters.
+%    \begin{macrocode}
+  \cals@rs@unpack\cals@tmpII\cals@tmpLI \cals@tmpBlI \cals@tmpBrI \cals@tmpWI
+  \cals@rs@unpack\llt@car   \cals@tmpLII\cals@tmpBlII\cals@tmpBrII\cals@tmpWII
+%    \end{macrocode}
+% The special case is when we should not typeset a rowsep fragment.
+%    \begin{macrocode}
+  \let\cals@tmp=\cals@iftrue
+  \cals@maxWidth\cals@tmpWI\cals@tmpWII
+  \ifx \relax\cals@width\else \ifdim \cals@width=0pt %
+    \cals@rs@sofar@next\cals@tmpLI\cals@tmpBlI\cals@tmpBrI\cals@width
+    \let\cals@tmp=\cals@iffalse
+  \fi\fi
+%    \end{macrocode}
+% Not the special case. Put the both definitions, and let the
+% underlying functions take care of calculations.
+%    \begin{macrocode}
+  \cals@tmp\ifvoid
+    \cals@widthII#1\cals@tmpWI
+    \cals@rs@sofar@next\cals@tmpLI\cals@tmpBlI\cals@tmpBrI\cals@width
+    \cals@widthII#1\cals@tmpWII
+    \cals@rs@sofar@over\cals@tmpLII\cals@tmpBlII\cals@tmpBrII\cals@width
+  \fi
+\fi
+%    \end{macrocode}
+% End of |\next| definition: continue the loop.
+% End of |\cals@rs@joinTwo| definition: start the loop.
+%    \begin{macrocode}
+\next}%
+\expandafter\next#2\eol}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@rs@joinOne}
+% A simplified version of the previous macro. We have only one rowsep,
+% and want to join and typeset it with regard to some width,
+% given as the first macro parameter. Call this macro inside
+% |sofar@reset|...|@end| group.
+%    \begin{macrocode}
+\newcommand\cals@rs@joinOne[2]{%
+\def\next##1{\ifx\eol##1\let\next=\relax\else
+ \toks0=\expandafter{##1}%
+ \edef\cals@tmpII{\the\toks0}%
+ \cals@rs@unpack\cals@tmpII\cals@tmpL\cals@tmpBl\cals@tmpBr\cals@tmpW
+ \cals@widthII#1\cals@tmpW
+ \cals@rs@sofar@next\cals@tmpL\cals@tmpBl\cals@tmpBr\cals@width
+\fi\next}%
+\expandafter\next#2\eol}
+%    \end{macrocode}
+% \end{macro}

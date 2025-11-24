@@ -1,0 +1,415 @@
+\NeedsTeXFormat{LaTeX2e}[1994/12/01]
+\ProvidesPackage{filedate}[2013/03/26 v0.41 check file dates (UL)]
+
+%% Copyright (C) 2012 2013 Uwe Lueck,
+%% http://www.contact-ednotes.sty.de.vu
+%% -- author-maintained in the sense of LPPL below --
+%%
+%% This file can be redistributed and/or modified under
+%% the terms of the LaTeX Project Public License; either
+%% version 1.3c of the License, or any later version.
+%% The latest version of this license is in
+%%     http://www.latex-project.org/lppl.txt
+%% We did our best to help you, but there is NO WARRANTY.
+%%
+%% Please report bugs, problems, and suggestions via
+%%
+%%   http://www.contact-ednotes.sty.de.vu
+%%
+%% % \filbreak                       %% 2012/11/10 rm. 2013/03/25
+%%  === The 'readprov' Package    ===
+%% \label{sec:readprov}
+% \RequirePackage{readprov}
+%% ---is required for \[|\ReadInfoDate{<file>}|\quad 
+%% \mbox{and}\quad |\ReadCheckDateOf{<file>}{<date>}|\] 
+%% %% <- <date>, \[...\] 2012/10/25
+%% % \hyperref[sec:readinfo]{below} 
+%% (sections~\ref{sec:readinfo} and \ref{sec:readcheck})
+%% % below
+%% only. 
+%% Please care for providing \ctanpkgdref{readprov} %% href 2013/03/25
+%% on your own if you need that.
+%%
+%%  === Providing Dates for Comparisons      ===    %% 2013/03/24
+%% ==== Accessing ``Info Date"               ====
+%% \label{sec:readinfo}
+%% |\theinfodateof{<file>}| will expand to the first ``word" of the 
+%% `\Provides'\code{...} entry, provided that has been read before:
+\newcommand*{\theinfodateof}[1]{%
+    \@ifundefined{ver@#1}{unknown}{%
+         \expandafter\expandafter\expandafter
+             \FD@firstword\csname ver@#1\endcsname\@gobble{} \@nil}}
+\def\FD@firstword#1 #2\@nil{#1}
+%% This avoids the `\relax' that `\UseDateOf' from \ctanpkgref{readprov}
+%% currently adds (which doesn't harm in printing but is bad for comparing).
+%%
+%% |\LoadInfoDateOf{<file>}| sets |\theinfodate| to the first word of 
+%% what is in the `\Provides' instruction of <file>, provided that info 
+%% has been input. So far, you must care for yourself that this works.
+%% % The purpose of this kind of actions is to refer to a ``type'' of 
+%% % comparisons (with `\CheckDateGiven') for a multiplicity of files.
+\newcommand*{\LoadInfoDateOf}[1]{%
+    \edef\theinfodate{\theinfodateof{#1}}}
+%% |\ReadInfoDateOf{<file>}| additionally inputs the info before:            
+\newcommand*{\ReadInfoDateOf}[1]{%
+    \ReadFileInfos{#1}\LoadInfoDateOf{#1}}
+%% TODO provide automatically.
+%%
+%% ==== Accessing \cs{pdffilemoddate}        ====
+%% \label{sec:pdfmod}
+%% |\pdffilemoddate{<file>}| in the first instance is a \ctanpkgref{pdftex}
+%% primitive. With \LuaTeX, 
+%% \ctanpkgdref{pdftexcmds} provides it.            %% d 2013/03/25
+%% Currently, you must care for this yourself before loading the 
+%% present package. I recommend the 
+%% \ctanpkgdref{filemod} documentation for          %% d 2013/03/25
+%% details about \cs{pdffilemoddate}.
+%%
+%% %% rm. 2013/03/24:
+%% % Otherwise, (with \XeLaTeX) the modification date may be obtained 
+%% % by a (shell) script---the next definitions do \emph{not} deal with 
+%% % the latter situation. Testing against ``today" 
+%% % (|\rawtoday| in Section~\ref{sec:rawtoday})
+%% % may be another alternative.
+%%
+%% |\thepdfmoddateof{<file>}| expands to the modification date 
+%% (eight digits separated by two slashes) if `\pdffilemoddate' 
+%% is available. Otherwise, we are trying to inform about 
+%% unavailability:
+\ifx\pdffilemoddate\@undefined
+    \newcommand*{\thepdfmoddateof}{%
+        \string\pdffilemoddate\space unavailable.}
+\else
+    \newcommand*{\thepdfmoddateof}[1]{%
+        \expandafter \FD@pdftexdate \pdffilemoddate{#1}\@nil}
+    \expandafter \def \expandafter
+        \FD@pdftexdate\string D:#1#2#3#4#5#6#7#8#9\@nil{%
+            #1#2#3#4/#5#6/#7#8}
+%% ---cf.~Will \ctanpkgauref{robertson}{Robertson}'s suggestion dating from 2010 on 
+%% \httpref{stackoverflow.com/questions/2118972/latex-command-for-last-modified}{%
+%% \urlfmt{stackoverflow.com}} in another discussion of accessing modification dates, 
+%% including use of scripts.
+%% `\string D' deals with the fact that `\pdffilemoddate' returns 
+%% % in                         %% rm. 2013/03/24
+%% ``other" character tokens.
+\fi
+%% The modification date of <file> according to `\pdffilemoddate'
+%% will be available as `\thepdffilemoddate' after 
+%% `ReadPDFfileModDateOf{<file>}', see \secref{short-refdates}.
+%%
+%% ==== \cs{rawtoday}                        ====
+%% \label{sec:rawtoday}
+%% % Enabling `\CheckDateOf{<file>}{\rawtoday}':
+%% |\rawtoday| accesses ``today"'s date as eight digits separated 
+%% by two slashes (`yyyy/mm/dd'):
+\newcommand*{\rawtoday}{%
+    \the\year/\two@digits{\the\month}/\two@digits{\the\day}}
+%%
+%%  === Comparing Basically                  ===
+%% \label{sec:readcheck}
+%% |\CheckDateOf{<file>}{<ref-date>}| compares <file>'s \strong{info} date with 
+%% the \strong{reference} date <ref-date>:
+\newcommand*{\CheckDateOf}[2]{%
+%% We provide a check that does not affect the order with 
+%% \ctanpkgdref{myfilist}.                                  %% 2013/03/25
+%     \ReadFileInfos{#1}%
+%% The date according to `\Provides' will be accessible as |\theinfodate|:
+    \LoadInfoDateOf{#1}%
+%     \show\theinfodate
+    \ReadPDFmodDateOf{#1}%
+    \edef\FD@therefdate{#2}%
+%     \show\FD@therefdate
+    \ifx\theinfodate\FD@therefdate
+        \FD@datesequal{#1}%
+    \else
+        \FD@datesdiff{#1}%
+    \fi}
+%% The \strong{reference} date may be either (i)~\emph{today} as accessed 
+%% by `\rawtoday' (\secref{rawtoday}), (ii)~the \emph{modification} date as accessed 
+%% by `\pdffilemoddate' (\secref{pdfmod}), (iii)~something \emph{else} relevant, 
+%% e.g., a modification date determined and inserted by a shell script.
+%% %% <- added 2013/03/24
+%% 
+%% |\ReadCheckDateOf{<file>}{<date>}| \ prepends \ |\ReadFileInfos{<file>}|
+%% from the \ctanpkgref{readprov} package (cf. Section~\ref{sec:readprov}), 
+%% in order to ensure that the \strong{info} date is known:
+\newcommand*{\ReadCheckDateOf}[1]{%
+    \ReadFileInfos{#1}\CheckDateOf{#1}}
+%% TODO provide automatically.
+%% 
+%%  === Reporting Styles                     === %% subsections 2013/03/24
+%% ==== Same Dates                           ====
+%% By default, there is no report about comparisons finding \strong{equality}.
+\let\FD@datesequal\@gobble
+%% % We do not want to disturb `\listfiles' with \ctanpkgref{myfilist}. 
+%% %% <- rm. 2012/10/25
+%% |\EqualityMessages| changes this to screen and log messages: 
+\newcommand*{\EqualityMessages}{\let\FD@datesequal\FD@equalmess}
+\def\FD@equalmess#1{\message{ + #1 passed date check + }}
+\def\FD@errdatesdiff#1{%
+    \PackageError{filedate}{%
+        \FD@infodate{#1}\FD@refdate}{%      %% \fd@refdate 2012/10/19
+        Fix that!}}
+%% |\FD@infodate{<file>}| might be used to change the current 
+%% presentation of the ``info date:"
+\def\FD@infodate#1{% 
+    #1 has \string\Provides... date \theinfodate\space}
+%% TODO here |\theinfodate| could be replaced by 
+%% |\theinfodateof{#1}|, there is no essential application of 
+%% `\theinfodate' currently.
+%%
+%% ==== Differing Dates                      ====
+%% After |\DatesDiffErrors|, date \strong{differences} 
+%% are reportet ``drastically" by `\PackageError':
+\newcommand*{\DatesDiffErrors}{\let\FD@datesdiff\FD@errdatesdiff}
+%% This is the default:
+\DatesDiffErrors
+%% After |\DatesDiffNotices|, date differences are reported by 
+%% %% <- told -> reported  2012/10/19
+%% `\typeout':
+\newcommand*{\DatesDiffNotices}{\let\FD@datesdiff\FD@notedatesdiff}
+\def\FD@notedatesdiff#1{\def\MessageBreak{^^J}%   %% added 2012/10/24
+                        {\typeout{\FD@infodate{#1}%
+                                  \FD@refdate}}}  %% added 2012/10/19
+%% v0.3 adds |\DatesDiffWarnings| to get more salient reports of 
+%% date differences by `\PackageWarningNoLine':
+\newcommand*{\DatesDiffWarnings}{\let\FD@datesdiff\FD@warndatesdiff}
+\def\FD@warndatesdiff#1{%
+    \PackageWarningNoLine{filedate}%
+                         {\FD@infodate{#1}\FD@refdate}}
+%% ==== Kinds of Reference Dates             ====
+%% When the reference date is `\pdffilemoddate', the report about 
+%% a comparison may call it a ``modification date". 
+%% But when the reference date is ``today", it may not be a 
+%% ``modification date". Otherwise, it depends ...
+%% (See \secref{readcheck} for kinds of reference dates.)
+%% 
+%% After |\ModDates|, reference dates are called ``modification'' dates: 
+\newcommand*{\ModDates}{\let\FD@refdate\FD@moddate}
+\def\FD@moddate{\MessageBreak vs. modification date \FD@therefdate}
+%% After |\SomeDates|, the type of reference dates is not specified. 
+%% This is more accurate when the info date is compared with |\rawtoday|.
+\newcommand*{\SomeDates}{\let\FD@refdate\FD@somedate}
+\def\FD@somedate{\MessageBreak vs. \FD@therefdate}
+%% That's the default:
+\SomeDates
+%%
+%%  === Shorthands                           ===
+%% %% mod. again 2013/03/25
+%% We may want to compare \emph{info} with \emph{reference} dates for 
+%% many files. But when the \emph{reference} date is `\pdffilemoddate' 
+%% for many files
+%% (probably the most frequent application, see \secref{pdfmod}), 
+%% we don't want to state this explicitly for each 
+%% file---\secref{short-refdates}---neither 
+%% for other kinds of reference dates.
+%% 
+%% As to enumerating \emph{file names}, the 'filesdo' package 
+%% from the \ctanpkgdref{commado} bundle should help 
+%% (combinations of base names and extensions, 
+%%  see \secref{demo-here};                             %% 2013/03/25
+%%  TODO: shorthands using 'filesdo' could be defined 
+%%  in the present package).
+%%
+%% The files <in-file> whose dates we want to check may be just 
+%% the same that some <reading-file> tries to `\input'.
+%% It may me helpful if those input commands trigger the 
+%% file consistency check without a need to demand this explicitly 
+%% for each file---the section on ``automatic immediate checking"
+%% (\secref{auto-check}) aims at this. 
+%% 
+%% ==== Kinds of Reference Dates             ====
+%% \label{sec:short-refdates}
+%% |\ReadPDFmodDateOf{<file>}| enables
+%% \[|\CheckDateOf{<file>}{\thepdfmoddate}|\] 
+%% by setting |\thepdfmoddate|:
+\newcommand*{\ReadPDFmodDateOf}[1]{%
+    \edef\thepdfmoddate{\thepdfmoddateof{#1}}}
+%% % The purpose of this section is to control the reference date 
+%% % without changing commands with <file> arguments. 
+%% After a single |\UseReferenceDate{<date>}| all ensuing 
+%% \[|\CheckDateOfGiven{<file>}|\] compare 
+%% % `\theinfodateof{<file>}'
+%% <file>'s ``info date"
+%% with 
+%% % |\thedategiven|. 
+%% <date>.
+%% % <date> 
+%% The latter 
+%% may be an explicit
+%% \[<4-digits>/<2-digits>/<2-digits>\quad 
+%% (`yyyy/mm/dd')\]---a script might insert it---, 
+%% `\rawtoday', or `\thepdfmoddate'.
+%% \ctanpkgdref{adhocfilelist} v0.7 (with option \strong{\code{-c}}) 
+%% is such a script, a shell script generating a ``\TeX\ script", 
+%% providing the file modification date according to Unix/Linux.
+\newcommand*{\UseReferenceDate}{\def\thedategiven}
+\newcommand*{\CheckDateOfGiven}[1]{\CheckDateOf{#1}{\thedategiven}}
+%%
+%% %%% *** Clarifying Reference Type in Reports ***
+%% |\CheckDateOfPDFmod{<file>}| compares the ``info date" 
+%% with the modification date according to `\pdffilemoddate', 
+%% and in reporting a difference the modification 
+%% date it is called a ``modification date" indeed:
+\newcommand*{\CheckDateOfPDFmod}[1]{%
+    \begingroup
+        \ModDates
+        \CheckDateOf{#1}{\thepdfmoddate}%
+    \endgroup}
+%% |\CheckDateOfToday{<file>}| checks if the `\Provides' date is today's, 
+%% and the report of a difference somewhat emphasizes that this may not 
+%% be a \emph{modification} date. 
+%% (It may be a \emph{substitute} for a modification date when you 
+%%  know that the file was modified ``today".)
+\newcommand*{\CheckDateOfToday}[1]{%
+    \begingroup
+        \def\FD@refdate{%
+            \MessageBreak which is not today}%
+        \CheckDateOf{#1}{\rawtoday}%
+    \endgroup}
+%% 
+%% ==== Automatic Immediate Checking         ==== 
+%% \label{sec:auto-check}
+%% |\FileDateAutoChecks| modifies the \qtdcode{&\Provides...}
+%% commands internally so that they check their date with 
+%% with the file's modification date according to 
+%% |\pdffilemoddate|---this choice might be queried (TODO).
+%% The modification may be undone by |\NoFileDateAutoChecks|
+%% so that the \qtdcode{&\Provides...} commands get their 
+%% original functionality (only) again. This will even work 
+%% with \ctanpkgref{readprov} v0.4.
+%% 
+%% Actually, \LaTeX's internal `\@pr@videpackage' and 
+%% `\@profidesfile' are used as hooks. Their original meanings 
+%% are stored so they can be regained by \qtd{&\NoFile...}:
+\let\FD@@provpkg\@pr@videpackage
+\def\FD@provpkg[#1]{\FD@@provpkg[#1]%
+                    \CheckDateOfPDFmod{\@currname.\@currext}}
+\let\FD@@provfile\@providesfile
+\def\FD@provfile#1[#2]{\FD@@provfile{#1}[#2]%
+                       \CheckDateOfPDFmod{#1}}
+%% |\FileDateAutoChecks*| in addition to `\FileDateAutoChecks'
+%% checks the main file's info date, 
+%% assuming the main file is `\jobname.tex' 
+%% (TODO):                              %% 2013/03/25 cf. \@iinput
+\newcommand*{\FileDateAutoChecks}{%
+    \@ifstar{{\FD@check@pdf@job\FD@autochecks}\FD@autochecks}%
+                                              \FD@autochecks} 
+%% |\FD@check@pdf@job| is introduced in v0.41 for the 
+%% ``restricted" automatic checks below.
+\newcommand*{\FD@check@pdf@job}{\CheckDateOfPDFmod{\jobname.tex}}
+\newcommand*{\FD@autochecks}{\let\@pr@videpackage\FD@provpkg
+                             \let\@providesfile\FD@provfile}
+\newcommand*{\NoFileDateAutoChecks}{\let\@pr@videpackage\FD@@provpkg
+                                    \let\@providesfile  \FD@@provfile}
+%%
+%% However, see \secref{auto-level} for \strong{problems}
+%% of the previous idea 
+%% (unless using \ctanpkgdref{fileinfo}, i.e., 'readprov' or even 'myfilist').
+%%
+%% \pagebreak                                       %% 2013/03/25
+%% ==== Level-Restricted Automatic Checking  ====   %% 2013/03/25
+%% \label{sec:auto-level}
+%% The present package is made to ensure ``date consistency" 
+%% of files that the user maintains/edits. By contrast, 
+%% date consistency cannot be expected for \LaTeX\ package 
+%% files that were generated by \ctanpkgdref{docstrip} 
+%% (many days after the `.dtx' source was released).
+%% No date consistency checks should be applied to such files. 
+%% (The ``criticism" of the present section does not apply to 
+%%  usage with \ctanpkgref{fileinfo}, and the commands presented 
+%%  here \emph{disable} 'fileinfo', so don't use them with 'fileinfo'.)
+%% 
+%% The problem with `\FileDateAutoChecks' (\secref{auto-check}) is, 
+%% e.g., that a chapter file for a book that is `\include'd by 
+%% the master file may trigger loading a font definition file 
+%% (`.fd')---that is not date-consistent, though the test is 
+%% applied to it. We now aim at checking only those files 
+%% that are input by the file that contains the call, 
+%% not to files that are input indirectly.
+%% We use `\InputIfFileExists' as a hook for this. 
+%% This should affect \emph{\LaTeX} user commands for file inclusion,
+%% even for (the user's) packages and class files. 
+%% It does \emph{not} affect the version of `\input' without braces.
+%% The commands for this purpose are |\FileDateLevelChecks|, 
+%% |\FileDateLevelChecks*|, and |\NoFileDateLevelChecks|
+%% (replacing `Auto' by `Level' for analogy to the commands 
+%%  of \secref{auto-check}).
+%% 
+%% The implementation is somewhat recursive, or ``counter-recursive"?
+\def\FD@level@provpkg   [#1]{\FD@provpkg[#1]%
+                             \NoFileDateLevelChecks}
+\def\FD@level@provfile#1[#2]{\FD@provfile{#1}[#2]%
+                             \NoFileDateLevelChecks}
+%% |\FD@userchecks@| is introduced for \secref{auto-user}:
+\newcommand*{\FD@userchecks@}{\let\@pr@videpackage\FD@level@provpkg
+                              \let\@providesfile\FD@level@provfile}
+\newcommand*{\FD@levelchecks}{\FD@userchecks@
+                              \let\InputIfFileExists\FD@input@if@f@ex}
+\let\FD@@input@if@f@ex\InputIfFileExists
+\newcommand{\FD@input@if@f@ex}[3]{\FD@@input@if@f@ex{#1}{#2}{#3}%
+                                  \FD@levelchecks}
+\newcommand*{\FileDateLevelChecks}{%
+    \@ifstar{\CheckDateOfPDFmod{\jobname.tex}\FD@levelchecks}%
+                                             \FD@levelchecks} 
+\newcommand*{\NoFileDateLevelChecks}{%
+    \NoFileDateAutoChecks \let\InputIfFileExists\FD@@input@if@f@ex}
+%% Section \ref{sec:auto-user} introduces another idea 
+%% to avoid checking of \LaTeX\ package files.
+%%
+%% ==== User-Restricted Automatic Checking   ====   %% 2013/03/26
+%% \label{sec:auto-user}
+%% Another idea to avoid checking of \LaTeX\ package files 
+%% while checking `\input' files automatically are 
+%% |\FileDateUserChecks| and |\FileDateUserChecks*|
+%% only affecting user transclusion commands %%% such as 
+%% `\include{<file>}' and `\input{<file>}' while allowing 
+%% nesting, i.e., e.g., even an `\input{<indir>}' in an 
+%% `\include'd file is checked automatically. 
+%% (See \secref{auto-level} if you do not remember what is 
+%%  bad with \secref{auto-check}.)
+\let\FD@@iinput\@iinput \let\FD@@include\@include
+%% Using definitions from above:
+\newcommand*{\FD@userchecks}{%
+%% `\@iinput' is \LaTeX's internal behind `\input':
+    \def\@iinput##1{%
+        \FD@userchecks@\FD@@iinput{##1}\NoFileDateAutoChecks}%
+%% `\@include' is \LaTeX's internal behind `\include'. 
+%% Its argument is limited by a space:
+    \def\@include##1 {%
+        \FD@userchecks@\FD@@include##1 \NoFileDateAutoChecks}}
+%% Temporary switching off `\FD@provpkg' and `\FD@provfile' 
+%% is doubled to deal with files that don't have a 
+%% `\Provides' entry. 
+\newcommand*{\FileDateUserChecks}{%
+    \@ifstar{\FD@check@pdf@job\FD@userchecks}\FD@userchecks} 
+\newcommand*{\NoFileDateUserChecks}{%
+    \let\@iinput\FD@@iinput \let\@include\FD@@include}
+%% TODO `\usepackage', `\documentclass'?
+%%
+%%  === Leaving the Package File ===
+\endinput
+%% \pagebreak                                       %% 2013/03/25
+%%  === VERSION HISTORY ===
+
+v0.1   2012/10/15   core try, bad
+v0.2   2012/10/16   code for first release 
+       2012/10/17   reordering, correcting documentation
+v0.21  2012/10/19   \fd@datekind\@tempb -> \fd@refdate,
+                    \fd@refdate with \DatesDiffNotices! (bug)
+                    \@tempb -> \fd@therefdate; doc. mod.s
+v0.3   2012/10/24   \MessageBreak fix, \DatesDiffWarnings
+       2012/10/25   doc.: add <date> in sec:readprov, 
+                    rm. remark on \fd@datesequal, 
+                    mod. text on \DatesDiffWarnings,
+                    -- -> --- before `a script might'
+v0.4   2012/11/10   \fd@ -> \FD@, doc. v0.7 -> v0.3, v0.21, 
+                    \filbreak; code for \...AutoChecks
+       2012/11/11   doc. another \filbreak, documenenting
+                    \...AutoChecks, \...AutoChecks*
+v0.41  2013/03/24   doc. restructured and extended
+       2013/03/25   ... continued; section with \FileDateLevelChecks 
+                    etc., \@ifstar without braces; 
+                    doc. automatical ("archaic") -> automatic, 
+                    reducing numbers of lines
+       2013/03/26   \FileDateUserChecks etc., \FD@check@pdf@job

@@ -1,0 +1,101 @@
+%% gatech-thesis-gloss.sty - support code for creating glossaries
+%%   depends on gloss.sty, so it is not included by default in the
+%%   main gatech-thesis.cls (this cuts down on ``extra'' dependencies
+%%
+%% To use this package, all you need do is include
+%%   \usepackage{gatech-thesis-gloss}
+%%   \glossfiles{<glosary file, sans .bib suffix>}
+%% in your preamble, and the glossary will be automatically generated
+%% and included in the frontmatter.  Of course, you need actual
+%% *entries* in the glossary file -- which must end in .bib -- and you
+%% need actual citations to those entries within your bodytext, like this:
+%%   \gloss{key}.
+%% Note that \gloss{<key>} typesets the <word> from the <key> entry of 
+%% the glossfile within the text, so there''s no need to do this:
+%%   (BAD) word\gloss{keyforword}
+%% Read the gloss.sty documentation for more info, but basically 
+%% gatech-thesis-gloss.sty makes it simple:
+%%    1. insert the two commands above into your preamble
+%%    2. create a glossfile with your glossary definitions
+%%    3. sprinkle \gloss{} citations in your text
+%%    4. run ``bibtex'' on the <rootfile>.gls.aux file created
+%%       after the first ``latex'' run.  (But don''t include the
+%%       .aux extension.  So say ``bibtex <rootfile>.gls''  You
+%%       can do this at the same time you run ``bibtex'' for your
+%%       references.
+%%    5. run ``latex'' twice more
+%%
+\NeedsTeXFormat{LaTeX2e}[1995/06/01] \ProvidesPackage{gatech-thesis-gloss}
+          [2002/08/08  Glossary support for gatech-thesis.cls]
+\@ifclassloaded{gatech-thesis}{}{
+  PackageError{This style can only be used with the gatech-thesis class}
+}
+\RequirePackage[refpages]{gloss}
+
+\newif\ifglossarypage
+\glossarypagetrue% why use this package if you're not going to USE it?
+
+\makegloss
+
+\newcommand{\glossfiles}[1]%
+  {\ifx\empty#1\empty\else\gdef\@glossfiles{#1}\fi}
+\def\@glossfiles{}
+
+\newcommand{\gtglossname}{}
+\newcommand{\glscontentlinestring}{}
+\newcommand{\glspdfbookmarkstring}{}
+
+\newcommand{\setglossstring}[1]{%
+  \renewcommand{\gtglossname}{#1}
+  \renewcommand{\glossname}{\Makeuppercase{#1}}
+  \renewcommand{\glscontentlinestring}{%
+    \texorpdfstring{\Makeuppercase{#1}}{#1}
+  }
+  \renewcommand{\glspdfbookmarkstring}{#1}
+}
+% \setglossstring{List of Nomenclature}% ???
+\setglossstring{Glossary}
+
+\renewcommand{\glossheading}[1]{} % don't print subsection headings ("A", "B", ...)
+\renewenvironment{glosslist}
+  {\begin{singlespaced}\begin{list}{\relax}{%
+        \def\makelabel##1{##1\hfil}%
+        \setlength{\labelsep}{1em}%
+        \setlength{\labelwidth}{\glosshang}%
+        \addtolength{\labelwidth}{-\labelsep}%
+        \setlength{\itemindent}{0em}%
+        \setlength{\leftmargin}{\glosshang}}}
+  {\end{list}\end{singlespaced}}
+
+\renewcommand\gls@section{%
+  \if@twocolumn
+    \@restonecoltrue\onecolumn
+  \else
+    \@restonecolfalse
+  \fi
+  \chapter*{\glossname}%
+  \@mkboth{\scshape\MakeUppercase\glossname}%
+          {\scshape\MakeUppercase\glossname}%
+}
+\renewenvironment{thegloss}
+  {\gls@section
+   \def\+##1+{}%
+   \@beginparpenalty\@M}%  
+  {\if@restonecol\twocolumn\fi%
+  \stopglosslist}
+  
+\renewcommand{\do@glossarypage}{%
+  \ifglossarypage
+    \if@openright\cleardoublepage\else\clearpage\fi 
+    % must clear page here, so that phantomsection\addcontentsline is on the correct page
+    \settoheight{\gt@tmpa}{A}
+    \set@gttocskip{\gt@tmpa}
+    {\newlinestretch{1}
+     \addvspace{\gt@tocentryskip@value}
+     \phantomsection%
+     \addcontentsline{toc}{chapter}{\glscontentlinestring}
+     \printgloss{\@glossfiles}
+    }%
+    \newpage
+  \fi
+}

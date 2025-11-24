@@ -1,0 +1,158 @@
+\NeedsTeXFormat{LaTeX2e}
+
+% A package to help make a document based on scanned pages.
+%
+% Copyright (c) 2014 by Michael Sharpe, msharpe at ucsd dot edu;
+% This is free software, subject to the LATEX Project Public License.
+
+\def\fileversion{1.04}
+\def\filedate{2016/03/28}
+\ProvidesPackage{scanpages.sty}[\filedate\space v\fileversion]
+
+\message{`scanpages' v\fileversion, \filedate\space Macros to help create documents from scanned pages (msharpe)}
+%
+\RequirePackage{ifpdf}
+\RequirePackage{pgffor}
+\RequirePackage{xcolor}
+\RequirePackage{xkeyval}
+\RequirePackage{fp-basic}
+\RequirePackage{graphicx}
+\RequirePackage{etoolbox}
+\ifpdf\else
+  \@latex@error{Must be processed with pdf[la]tex!}\@eha
+\fi
+\newif\ifscanp@nogrid
+\define@boolkey{scanp}{nogrid}[true]{%
+\csname scanp@nogrid#1\endcsname}
+\def\scanp@origscale{1.0}
+\def\scanp@srcscale{1.0}
+\def\scanp@invscale{1.0}
+\define@key{scanp}{scale}[1.0]{\def\scanp@srcscale{#1}}
+\def\scanp@llx{1in}
+\def\scanp@lly{1in}
+\def\scanp@srcw{400\p@}
+\def\scanp@srch{600\p@}
+\define@key{scanp}{llx}[0]{\def\scanp@llx{#1}}%
+\define@key{scanp}{lly}[0]{\def\scanp@lly{#1}}%
+\define@key{scanp}{w}[0]{\def\scanp@srcw{#1}}%
+\define@key{scanp}{h}[0]{\def\scanp@srch{#1}}%
+\DeclareOption*{%
+  \begingroup
+  \edef\x{\endgroup
+    \noexpand\setkeys{scanp}{\CurrentOption}}%
+  \x}
+\ProcessOptions*
+
+%new
+\newcommand{\origpgcmd}{\put(\scanp@srcw,-30){p.\ \the\origpgnum\ in orig.}}
+\newcount\origpgnum %page in original
+\newif\ifscanp@origindest
+\newif\ifscanp@origingrid
+\newif\ifscanp@change
+% end new
+\newcount\scanp@pgcnt
+\setlength\unitlength{1bp}
+\long\def\putn(#1,#2)#3{%
+  \@killglue%
+  \dimen0\@picht\advance\dimen0 -#2\unitlength%
+  \raise\dimen0\hb@xt@\z@{\kern#1\unitlength #3\hss}
+  \ignorespaces}
+\def\bp@ratio{.99264} % factor to multiply num of pt to get num of bp
+\def\unitlength@off{\let\@unitlength\ignorespaces\ignorespaces}
+\def\scanp@setlength#1#2{% if #2 has no dimension, append dimension
+  \let\@unitlength\unitlength
+  \afterassignment\unitlength@off
+  #1 #2\@unitlength%
+}
+\def\scanp@addtolength#1#2{% if #2 has no dimension, append dimension
+  \let\@unitlength\unitlength
+  \afterassignment\unitlength@off
+  \advance#1 #2\@unitlength%
+}
+\newdimen\scanp@dwdim\newdimen\scanp@dhdim % dest width and height
+\newdimen\scanp@swdim\newdimen\scanp@shdim % src width and height
+\newdimen\scanp@dwdimbp\newdimen\scanp@dhdimbp % dest width and height in bp
+\newdimen\scanp@xindent\newdimen\scanp@yindent
+\newdimen\scanp@xl\newdimen\scanp@yl\newdimen\scanp@xr\newdimen\scanp@yr
+\newdimen\scanp@xlbp\newdimen\scanp@ylbp\newdimen\scanp@xrbp\newdimen\scanp@yrbp\newdimen\@dima
+%
+\def\initviewport#1#2#3#4#5{% srcscale,llx,lly,srcw,srch
+\scanp@pgcnt=\z@
+\FPdiv\scanp@invscale{1.0}{\scanp@srcscale}
+\scanp@setlength{\scanp@swdim}{\scanp@srcw}
+\scanp@setlength{\scanp@shdim}{\scanp@srch}
+\scanp@dwdim=\scanp@srcscale\scanp@swdim
+\scanp@dhdim=\scanp@srcscale\scanp@shdim
+\scanp@dwdimbp=\bp@ratio\scanp@dwdim
+\scanp@dhdimbp=\bp@ratio\scanp@dhdim
+\scanp@setlength{\scanp@xl}{#2}
+\scanp@setlength{\scanp@yl}{#3}
+\scanp@xr=\scanp@xl \advance\scanp@xr\scanp@swdim
+\scanp@yr=\scanp@yl \advance\scanp@yr\scanp@shdim
+\scanp@xindent=\textwidth \scanp@yindent=\textheight
+\advance\scanp@xindent -\scanp@dwdim\advance\scanp@yindent -\scanp@dhdim
+\scanp@xindent=0.5\scanp@xindent\scanp@yindent=0.5\scanp@yindent
+\advance\scanp@yindent -14\p@ 
+}
+\initviewport{\scanp@srcscale}{\scanp@llx}{\scanp@lly}{\scanp@srcw}{\scanp@srcw}
+%
+\define@key{scanpi}{origpgnum}{\global\origpgnum=#1 \global\scanp@origingridtrue}
+\define@boolkey{scanpi}{origindest}[true]{\csname scanp@change#1\endcsname}
+\define@boolkey{scanpi}{origpgnumoff}[true]{\global\scanp@origindestfalse\global\scanp@origingridfalse}
+\define@key{scanpi}{dx}{\def\scanp@dx{#1}}
+\define@key{scanpi}{dy}{\def\scanp@dy{#1}}
+\define@key{scanpi}{page}{\def\scanp@page{#1}}
+\define@key{scanpi}{rot}{\def\scanp@rot{#1}}
+\define@key{scanpi}{tanrot}{\def\scanp@skew{#1}}
+\newdimen\scanp@dxdim\newdimen\scanp@dydim
+
+\def\scanpage{\@ifnextchar[\scanpage@i{\scanpage@i[]}}
+\def\scanpage@i[#1]#2{\advance\scanp@pgcnt\@ne\begingroup\setkeys{scanpi}{#1}%
+\ifscanp@change\global\scanp@origindesttrue %
+ \global\scanp@origingridfalse %
+ \global\scanp@changefalse \fi%
+\edef\scanp@head{\noexpand\vspace*{\scanp@yindent}\noexpand\noindent\noexpand\hspace*{\scanp@xindent}\noexpand\picture(\strip@pt\scanp@dwdimbp,\strip@pt\scanp@dhdimbp)}
+%\edef\@x{\strip@pt\scanp@dwdimbp}\edef\@y{\strip@pt\scanp@dhdimbp}
+%\vspace*{\the\scanp@yindent}\noindent\hspace*{\scanp@xindent}\picture(\@x,\@y)
+\ifdefvoid{\scanp@dx}{}{\scanp@setlength\scanp@dxdim{-\scanp@dx}\scanp@dxdim=\scanp@invscale\scanp@dxdim\advance\scanp@xl \scanp@dxdim \advance\scanp@xr \scanp@dxdim}
+\ifdefvoid{\scanp@dy}{}{\scanp@setlength\scanp@dydim{-\scanp@dy}\scanp@dydim=\scanp@invscale\scanp@dydim\advance\scanp@yl \scanp@dydim \advance\scanp@yr \scanp@dydim}
+\scanp@xlbp=\bp@ratio\scanp@xl
+\scanp@xrbp=\bp@ratio\scanp@xr
+\scanp@ylbp=\bp@ratio\scanp@yl
+\scanp@yrbp=\bp@ratio\scanp@yr
+\edef\scanp@cmd{viewport=\strip@pt\scanp@xlbp\space\strip@pt\scanp@ylbp\space\strip@pt\scanp@xrbp\space\strip@pt\scanp@yrbp, clip]{#2}}
+\ifdefvoid{\scanp@rot}{%
+\ifdefvoid{\scanp@skew}{}{%
+ \@dima=\scanp@skew\p@\@dima=57.14\@dima\edef\scanp@cmd{angle=\strip@pt\@dima,origin=c,\scanp@cmd}}}{\edef\scanp@cmd{angle=\scanp@rot,origin=c,\scanp@cmd}}%
+\if\scanp@srcscale\scanp@origscale\else\edef\scanp@cmd{scale=\scanp@srcscale,\scanp@cmd}\fi
+\ifdefvoid{\scanp@page}{}{\edef\scanp@cmd{page=\scanp@page,\scanp@cmd}}
+\edef\scanp@cmd{\noexpand\scanp@head\noexpand\put(0,0){\noexpand\includegraphics[\scanp@cmd}}
+\scanp@cmd % \begingroup, start \picture, \put pdf at (0,0)
+\ifscanp@origindest\origpgcmd\fi
+\thegrid{\strip@pt\scanp@dwdimbp}{\strip@pt\scanp@dhdimbp}%
+\global\advance\origpgnum\@ne}
+
+\ifscanp@nogrid\def\thegrid#1#2{}\else%
+\long\def\thegrid#1#2{\edef\scanp@gcmd{\noexpand\put(0,0){\noexpand\line(1,0){#1}}
+\noexpand\put(0,0){\noexpand\line(0,1){#2}}
+\noexpand\put(#1,0){\noexpand\line(0,1){#2}}
+\noexpand\put(0,#2){\noexpand\line(1,0){#1}}}
+\foreach\x in{-400,-390,...,800}{%
+  \put(-400,\x){\color{red!20}\line(1,0){1000}}%
+  }
+\foreach\x in {-300,-290,...,550}{%
+  \put(\x,-500){\color{red!20}\line(0,1){1500}}%
+}
+\foreach\x in{-400,-350,...,800}{%
+  \put(-400,\x){\color{red!50}\line(1,0){1000}}%
+  \put(-20,\x){\x}  
+  }
+\foreach\x in {-300,-250,...,550}{%
+  \put(\x,-500){\color{red!50}\line(0,1){1500}}%
+  \put(\x,-15){\x}}
+\put(0,-30){\color{blue}Page \the\scanp@pgcnt}%
+\scanp@gcmd%
+\ifscanp@origingrid\origpgcmd\fi}
+\fi % end \ifscanp@nogrid
+
+\endinput

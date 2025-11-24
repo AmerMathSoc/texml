@@ -1,0 +1,434 @@
+%%
+%% This is file `impnattypo.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% impnattypo.dtx  (with options: `package')
+%% 
+%% This is a generated file.
+%% 
+%% Copyright (C) 2011-2012 by Raphaël Pinson <raphink@gmail.com>
+%% --------------------------------------------------------------------------
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%   http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%% 
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{impnattypo}
+    [2015/02/25 1.4 Typographic utilities inspired by the French Imprimerie Nationale]
+\ProvidesPackage{impnattypo}
+\RequirePackage{ifluatex}
+\RequirePackage{kvoptions}
+\SetupKeyvalOptions{
+   family=impnattypo,
+   prefix=int,
+}
+\DeclareBoolOption{draft}
+\DeclareBoolOption{frenchchapters}
+\DeclareBoolOption{hyphenation}
+\DeclareBoolOption{nosingleletter}
+\DeclareBoolOption{parindent}
+\DeclareBoolOption{lastparline}
+\DeclareBoolOption{homeoarchy}
+\DeclareBoolOption{rivers}
+\DeclareStringOption[red]{homeoarchywordcolor}
+\DeclareStringOption[orange]{homeoarchycharcolor}
+\DeclareStringOption[brown]{nosinglelettercolor}
+\DeclareStringOption[teal]{lastparlinecolor}
+\DeclareStringOption[lime]{riverscolor}
+\DeclareStringOption[1]{homeoarchymaxwords}
+\DeclareStringOption[3]{homeoarchymaxchars}
+\ProcessKeyvalOptions*
+\RequirePackage{xcolor}
+\def\usecolor#1{\csname\string\color@#1\endcsname\space}
+\ifinthyphenation
+   \brokenpenalty=10000
+   \doublehyphendemerits=1000000000
+\fi
+\ifintfrenchchapters
+   \let\frenchchapter\Roman
+   \renewcommand{\thechapter}{%
+     \ifnum\value{chapter}=1
+       premier%
+     \else
+       \frenchchapter{chapter}%
+     \fi
+   }
+\fi
+\ifintnosingleletter
+   \ifluatex
+      \RequirePackage{luatexbase,luacode}
+      \begin{luacode}
+
+      local prevent_single_letter = function (head)
+        while head do
+          if head.id == 37 then                                             -- glyph
+            if unicode.utf8.match(unicode.utf8.char(head.char),"%a") then   -- some kind of letter
+               if head.prev.id == 10 and head.next.id == 10 then            -- only if we are at a one letter word
+
+                 local p = node.new("penalty")
+                 p.penalty = 10000
+
+                 \ifintdraft
+                    local w = node.new("whatsit","pdf_literal")
+                    w.data = "q \usecolor{\intnosinglelettercolor} 0 0 m 0 5 l 2 5 l 2 0 l b Q"
+
+                    node.insert_after(head,head,w)
+                    node.insert_after(head,w,p)
+                 \else
+                    node.insert_after(head,head,p)
+                 \fi
+               end
+            end
+          end
+          head = head.next
+        end
+        return true
+      end
+
+      luatexbase.add_to_callback("pre_linebreak_filter",prevent_single_letter,"~")
+      \end{luacode}
+   \else
+      \PackageError{The nosingleletter option only works with LuaTeX}
+   \fi
+\fi
+\ifintparindent
+\setlength{\parindent}{1em}
+\fi
+\ifintlastparline
+   \ifluatex
+      \RequirePackage{luatexbase,luacode}
+      \begin{luacode}
+      last_line_twice_parindent = function (head)
+        while head do
+          local _w,_h,_d = node.dimensions(head)
+          if head.id == 10 and head.subtype ~= 15 and (_w < 2 * tex.parindent) then
+
+              -- we are at a glue and have less then 2*\parindent to go
+              local p = node.new("penalty")
+              p.penalty = 10000
+
+              \ifintdraft
+                 local w = node.new("whatsit","pdf_literal")
+                 w.data = "q \usecolor{\intlastparlinecolor} 0 0 m 0 5 l 2 5 l 2 0 l b Q"
+
+                 node.insert_after(head,head.prev,w)
+                 node.insert_after(head,w,p)
+              \else
+                 node.insert_after(head,head.prev,p)
+              \fi
+          end
+
+          head = head.next
+        end
+        return true
+      end
+
+      luatexbase.add_to_callback("pre_linebreak_filter",last_line_twice_parindent,"lastparline")
+      \end{luacode}
+   \else
+      \setlength{\parfillskip}{0pt plus\dimexpr\textwidth-2\parindent}
+   \fi
+\fi
+\ifinthomeoarchy
+ \ifintdraft
+   \ifluatex
+      \RequirePackage{luatexbase,luacode}
+      \begin{luacode}
+      compare_lines = function (line1,line2)
+        local head1 = line1.head
+        local head2 = line2.head
+
+        local char_count = 0
+        local word_count = 0
+
+        while head1 and head2 do
+           if (head1.id == 37 and head2.id == 37
+                  and head1.char == head2.char)          -- identical glyph
+              or (head1.id == 10 and head2.id == 10) then  -- glue
+
+              if head1.id == 37 then -- glyph
+                 char_count = char_count + 1
+              elseif char_count > 0 and head1.id == 10 then -- glue
+                 word_count = word_count + 1
+              end
+              head1 = head1.next
+              head2 = head2.next
+           elseif (head1.id == 0 or head2.id == 0) then -- end of line
+              break
+           elseif (head1.id ~= 37 and head1.id ~= 10) then -- some other kind of node
+              head1 = head1.next
+           elseif (head2.id ~= 37 and head2.id ~= 10) then -- some other kind of node
+              head2 = head2.next
+           else -- no match, no special node
+              break
+           end
+        end
+        -- analyze last non-matching node, check for punctuation
+        if ((head1 and head1.id == 37 and head1.char > 49)
+             or (head2 and head2.id == 37 and head2.char > 49)) then
+           -- not a word
+        elseif char_count > 0 then
+           word_count = word_count + 1
+        end
+        return char_count,word_count,head1,head2
+      end
+
+      compare_lines_reverse = function (line1,line2)
+        local head1 = node.tail(line1.head)
+        local head2 = node.tail(line2.head)
+
+        local char_count = 0
+        local word_count = 0
+
+        while head1 and head2 do
+           if (head1.id == 37 and head2.id == 37
+                  and head1.char == head2.char)          -- identical glyph
+              or (head1.id == 10 and head2.id == 10) then  -- glue
+
+              if head1.id == 37 then -- glyph
+                 char_count = char_count + 1
+              elseif char_count > 0 and head1.id == 10 then -- glue
+                 word_count = word_count + 1
+              end
+              head1 = head1.prev
+              head2 = head2.prev
+           elseif (head1.id == 0 or head2.id == 0) then -- start of line
+              break
+           elseif (head1.id ~= 37 and head1.id ~= 10) then -- some other kind of node
+              head1 = head1.prev
+           elseif (head2.id ~= 37 and head2.id ~= 10) then -- some other kind of node
+              head2 = head2.prev
+           elseif (head1.id == 37 and head1.char < 48) then -- punctuation
+              head1 = head1.prev
+           elseif (head2.id == 37 and head2.char < 48) then -- punctuation
+              head2 = head2.prev
+           else -- no match, no special node
+              break
+           end
+        end
+        -- analyze last non-matching node, check for punctuation
+        if ((head1 and head1.id == 37 and head1.char > 49)
+             or (head2 and head2.id == 37 and head2.char > 49)) then
+           -- not a word
+        elseif char_count > 0 then
+           word_count = word_count + 1
+        end
+        return char_count,word_count,head1,head2
+      end
+
+      highlight = function (line,nend,color)
+         local n = node.new("whatsit","pdf_literal")
+
+         -- get dimensions
+         local w,h,d = node.dimensions(line.head,nend)
+         local w_pts = w/65536 -- scaled points to points
+
+         -- set data
+         n.data = "q " .. color .. " 0 0 m 0 5 l " .. w_pts .. " 5 l " .. w_pts .. " 0 l b Q"
+
+         -- insert node
+         n.next = line.head
+         line.head = n
+         node.slide(line.head)
+      end
+
+      highlight_reverse = function (nstart,line,color)
+         local n = node.new("whatsit","pdf_literal")
+
+         -- get dimensions
+         local w,h,d = node.dimensions(nstart,node.tail(line.head))
+         local w_pts = w/65536 -- scaled points to points
+
+         -- set data
+         n.data = "q " .. color .. " 0 0 m 0 5 l " .. w_pts .. " 5 l " .. w_pts .. " 0 l b Q"
+
+         -- insert node
+         node.insert_after(line.head,nstart,n)
+      end
+
+      homeoarchy = function (head)
+        local cur_line = head
+        local prev_line -- initiate prev_line
+
+        local max_char = tonumber(\inthomeoarchymaxchars)
+        local max_word = tonumber(\inthomeoarchymaxwords)
+
+        while head do
+          if head.id == 0 then -- new line
+            prev_line = cur_line
+            cur_line = head
+            if prev_line.id == 0 then
+               -- homeoarchy
+               char_count,word_count,prev_head,cur_head = compare_lines(prev_line,cur_line)
+               if char_count >= max_char or word_count >= max_word then
+                  local color
+                  if word_count >= max_word then
+                     color = "q \usecolor{\inthomeoarchywordcolor}"
+                  else
+                     color = "q \usecolor{\inthomeoarchycharcolor}"
+                  end
+
+                  -- highlight both lines
+                  highlight(prev_line,prev_head,color)
+                  highlight(cur_line,cur_head,color)
+               end
+            end
+          end
+          head = head.next
+        end
+        return true
+      end
+
+      luatexbase.add_to_callback("post_linebreak_filter",homeoarchy,"homeoarchy")
+
+      homoioteleuton = function (head)
+        local cur_line = head
+        local prev_line -- initiate prev_line
+
+        local max_char = tonumber(\inthomeoarchymaxchars)
+        local max_word = tonumber(\inthomeoarchymaxwords)
+
+        local linecounter = 0
+
+        while head do
+          if head.id == 0 then -- new line
+            linecounter = linecounter + 1
+            if linecounter > 1 then
+               prev_line = cur_line
+               cur_line = head
+               if prev_line.id == 0 then
+                  -- homoioteleuton
+                  char_count,word_count,prev_head,cur_head = compare_lines_reverse(prev_line,cur_line)
+                  if char_count >= max_char or word_count >= max_word then
+                     local color
+                     if word_count >= max_word then
+                        color = "q \usecolor{\inthomeoarchywordcolor}"
+                     else
+                        color = "q \usecolor{\inthomeoarchycharcolor}"
+                     end
+
+                     -- highlight both lines
+                     highlight_reverse(prev_head,prev_line,color)
+                     highlight_reverse(cur_head,cur_line,color)
+                  end
+               end
+            end
+          end
+          head = head.next
+        end
+
+        return true
+      end
+
+      luatexbase.add_to_callback("post_linebreak_filter",homoioteleuton,"homoioteleuton")
+      \end{luacode}
+   \else
+      \PackageError{The homeoarchy option only works with LuaTeX}
+   \fi
+ \fi
+\fi
+\ifintrivers
+ \ifintdraft
+   \ifluatex
+      \RequirePackage{luatexbase,luacode}
+      \begin{luacode}
+river_analyze_line = function(line,dim1,dim2,precision)
+   local head = line.head
+
+   while head do
+      if head.id == 10 then  -- glue node
+         local w1,h1,d1 = node.dimensions(line.glue_set,line.glue_sign,line.glue_order,line.head,head.prev)
+         local w2,h2,d2 = node.dimensions(line.glue_set,line.glue_sign,line.glue_order,line.head,head)
+         --print("dim1:"..dim1.."; dim2:"..dim2.."; w1:"..w1.."; w2:"..w2)
+         if w1 > dim2 + precision then  -- out of range
+            return false,head
+         elseif w1 < (dim2 + precision) and w2 > (dim1 - precision) then -- found
+            return true,head
+         end
+      end
+      head = head.next
+   end
+
+   return false,head
+end
+
+rivers = function (head)
+   local prev_prev_line
+   local prev_line
+   local cur_line = head
+   local cur_node
+   local char_count
+
+   local linecounter = 0
+
+   while head do
+      if head.id == 0 then -- new line
+         linecounter = linecounter + 1
+         prev_prev_line = prev_line
+         prev_line = cur_line
+         cur_line = head
+         if linecounter > 2 then
+            cur_node = cur_line.head
+            char_count = 0
+
+            while cur_node do
+               if cur_node.id == 37 then  -- glyph
+                  char_count = char_count + 1
+               elseif cur_node.id == 10 and char_count > 0 and cur_node.next then  -- glue node
+                  -- prev_line
+                  local w1,h1,d1 = node.dimensions(head.glue_set,head.glue_sign,head.glue_order,head.head,cur_node.prev)
+                  local w2,h2,d2 = node.dimensions(head.glue_set,head.glue_sign,head.glue_order,head.head,cur_node)
+                  -- if we allow up to 45° diagonal rivers, then there can be up to + or - line height between spaces
+                  local w_p,h_p,d_p = node.dimensions(prev_line.head,cur_line.head) -- calculate line height
+                  found_p,head_p = river_analyze_line(prev_line,w1,w2,h_p)
+
+                  if found_p then
+                     -- prev_prev_line
+                     local w1,h1,d1 = node.dimensions(prev_line.glue_set,prev_line.glue_sign,prev_line.glue_order,prev_line.head,head_p.prev)
+                     local w2,h2,d2 = node.dimensions(prev_line.glue_set,prev_line.glue_sign,prev_line.glue_order,prev_line.head,head_p)
+                     -- if we allow up to 45° diagonal rivers, then there can be up to + or - line height between spaces
+                     local w_p,h_p,d_p = node.dimensions(prev_prev_line.head,prev_line.head) -- calculate line height
+                     found_pp,head_pp = river_analyze_line(prev_prev_line,w1,w2,h_p)
+
+                     if found_pp then
+                        local n_pp = node.new("whatsit","pdf_literal")
+                        n_pp.data = "q \usecolor{\intriverscolor} 0 0 m 0 5 l 5 5 l 5 0 l b Q"
+                        node.insert_after(prev_prev_line,head_pp.prev,n_pp)
+
+                        local n_p = node.new("whatsit","pdf_literal")
+                        n_p.data = "q \usecolor{\intriverscolor} 0 0 m 0 5 l 5 5 l 5 0 l b Q"
+                        node.insert_after(prev_line,head_p.prev,n_p)
+
+                        local n_c = node.new("whatsit","pdf_literal")
+                        n_c.data = "q \usecolor{\intriverscolor} 0 0 m 0 5 l 5 5 l 5 0 l b Q"
+                        node.insert_after(cur_line,cur_node.prev,n_c)
+                     end
+                  end
+               end
+               cur_node = cur_node.next
+            end
+         end
+      end
+      head = head.next
+   end
+
+   return true
+
+end
+
+luatexbase.add_to_callback("post_linebreak_filter",rivers,"rivers")
+      \end{luacode}
+   \else
+      \PackageError{The homeoarchy option only works with LuaTeX}
+   \fi
+ \fi
+\fi
+\endinput
+%%
+%% End of file `impnattypo.sty'.

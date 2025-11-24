@@ -1,0 +1,158 @@
+--- ./player/StrobeMediaPlayback/src/org/osmf/player/chrome/widgets/PlayButtonOverlay.as.orig	2012-11-14 15:48:22.000000000 +0100
++++ ./player/StrobeMediaPlayback/src/org/osmf/player/chrome/widgets/PlayButtonOverlay.as	2012-11-20 15:14:02.000000000 +0100
+@@ -98,6 +98,11 @@
+ 		override protected function onMouseClick(event:MouseEvent):void
+ 		{
+ 			var playable:PlayTrait = media.getTrait(MediaTraitType.PLAY) as PlayTrait;
++ 			var seekable:SeekTrait = media.getTrait(MediaTraitType.SEEK) as SeekTrait;
++ 			if(playable.playState == PlayState.STOPPED)
++ 			{
++ 				try{seekable.seek(0);}catch(e:Object){}
++ 			}
+ 			playable.play();
+ 		}
+ 		
+@@ -134,4 +139,4 @@
+ 		/* static */
+ 		private static const VISIBILITY_DELAY:int = 500;
+ 	}
+-}
+\ No newline at end of file
++}
+--- ./player/StrobeMediaPlayback/src/org/osmf/player/chrome/widgets/Slider.as.orig	2012-11-14 15:48:22.000000000 +0100
++++ ./player/StrobeMediaPlayback/src/org/osmf/player/chrome/widgets/Slider.as	2012-11-14 15:42:53.000000000 +0100
+@@ -106,7 +106,7 @@
+ 			if (_enabled && _sliding == false)
+ 			{
+ 				_sliding = true;
+-				stage.addEventListener(MouseEvent.MOUSE_UP, onStageExitDrag);
++				stage.addEventListener(MouseEvent.MOUSE_UP, onStageExitDrag, true);
+ 				updateFace(down);
+ 				scrubTimer.start();
+ 				dispatchEvent(new ScrubberEvent(ScrubberEvent.SCRUB_START));
+--- ./player/StrobeMediaPlayback/src/org/osmf/player/chrome/widgets/PlayButton.as.orig	2012-11-14 15:48:22.000000000 +0100
++++ ./player/StrobeMediaPlayback/src/org/osmf/player/chrome/widgets/PlayButton.as	2012-11-14 15:42:53.000000000 +0100
+@@ -26,6 +26,7 @@
+ 	import org.osmf.traits.MediaTraitType;
+ 	import org.osmf.traits.PlayState;
+ 	import org.osmf.traits.PlayTrait;
++	import org.osmf.traits.SeekTrait;
+ 	
+ 	public class PlayButton extends PlayableButton
+ 	{
+@@ -44,6 +45,11 @@
+ 		override protected function onMouseClick(event:MouseEvent):void
+ 		{
+ 			var playable:PlayTrait = media.getTrait(MediaTraitType.PLAY) as PlayTrait;
++            var seekable:SeekTrait = media.getTrait(MediaTraitType.SEEK) as SeekTrait;
++			if(playable.playState == PlayState.STOPPED)
++			{
++			    try{seekable.seek(0);}catch(e:Object){}
++			}
+ 			playable.play();
+ 			event.stopImmediatePropagation();
+ 		}
+@@ -58,4 +64,4 @@
+ 			}
+ 		}
+ 	}
+-}
+\ No newline at end of file
++}
+--- ./player/StrobeMediaPlayback/src/StrobeMediaPlayback.as.orig	2012-11-14 15:48:22.000000000 +0100
++++ ./player/StrobeMediaPlayback/src/StrobeMediaPlayback.as	2012-11-14 15:42:54.000000000 +0100
+@@ -52,6 +52,7 @@
+ 	import org.osmf.traits.MediaTraitType;
+ 	import org.osmf.traits.PlayState;
+ 	import org.osmf.traits.PlayTrait;
++	import org.osmf.traits.SeekTrait;
+ 	import org.osmf.utils.OSMFSettings;
+ 	import org.osmf.utils.OSMFStrings;
+ 	
+@@ -152,6 +153,7 @@
+ 			
+ 			player.addEventListener(TimeEvent.COMPLETE, onComplete);
+ 			player.addEventListener(MediaErrorEvent.MEDIA_ERROR, onMediaError);
++			player.addEventListener(MediaPlayerCapabilityChangeEvent.CAN_PLAY_CHANGE, onCanPlayChange);
+ 			
+ 			// Add DRM error handler
+ 			var drmManager:DRMManager = DRMManager.getDRMManager();
+@@ -338,6 +340,8 @@
+ 			mainContainer.backgroundAlpha = 0;
+ 			mainContainer.addEventListener(MouseEvent.DOUBLE_CLICK, onFullScreenRequest);
+ 			mainContainer.addEventListener(MouseEvent.CLICK, onMainClick, false);
++			mainContainer.addEventListener(MouseEvent.MOUSE_DOWN, onMainDown, false);
++			mainContainer.addEventListener(MouseEvent.MOUSE_UP, onMainUp, false);
+ 			mainContainer.doubleClickEnabled = true;
+ 			
+ 			addChild(mainContainer);
+@@ -415,6 +419,9 @@
+ 				}
+ 
+ 				player.addEventListener(PlayEvent.PLAY_STATE_CHANGE, onSetAutoHide);
++
++				controlBarContainer.addEventListener(MouseEvent.MOUSE_DOWN, onControlBarAny, false);
++				controlBarContainer.addEventListener(MouseEvent.MOUSE_UP, onControlBarAny, false);
+ 					
+ 				layout();
+ 				
+@@ -757,6 +764,38 @@
+ 			}
+ 		}
+ 		
++		private function onMainDown(event:MouseEvent):void
++		{
++			var playable:PlayTrait = player.media.getTrait(MediaTraitType.PLAY) as PlayTrait;
++			if (playable.playState == PlayState.PLAYING)
++			{
++				playable.pause();
++			}
++		}
++		
++		private function onMainUp(event:MouseEvent):void
++		{
++			var playable:PlayTrait = player.media.getTrait(MediaTraitType.PLAY) as PlayTrait;
++			var seekable:SeekTrait = player.media.getTrait(MediaTraitType.SEEK) as SeekTrait;
++			if(playable.playState == PlayState.STOPPED)
++			{
++				if(player.canSeek){seekable.seek(0);}
++				playable.play();
++			}
++			else if(playable.playState == PlayState.PAUSED)
++			{
++				playable.play();
++			}
++		}
++		
++		private function onControlBarAny(event:MouseEvent):void
++		{
++		    if(event.eventPhase == EventPhase.BUBBLING_PHASE)
++			{
++				event.stopImmediatePropagation();
++			}
++		}
++		
+ 		/**
+ 		 * Toggles full screen state.
+ 		 */ 
+@@ -1036,12 +1075,20 @@
+ 				&&	configuration.endOfVideoOverlay != ""
+ 				&&	player.loop == false
+ 				&&	player.playing == false
++				&&	player.autoRewind == true
+ 			)
+ 			{
+ 				processPoster(configuration.endOfVideoOverlay);
+ 			}	
+ 		}
+ 		
++		private function onCanPlayChange(event:MediaPlayerCapabilityChangeEvent):void
++		{
++			// Make sure this event gets handled only once:
++			player.removeEventListener(event.type, arguments.callee);
++			player.play(); player.stop();
++		}
++
+ 		private function onMediaError(event:MediaErrorEvent):void
+ 		{
+ 			// Make sure this event gets handled only once:

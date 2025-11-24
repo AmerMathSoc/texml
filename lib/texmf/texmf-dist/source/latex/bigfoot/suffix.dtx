@@ -1,0 +1,236 @@
+% \iffalse
+%%
+%% suffix is part of the bigfoot bundle for critical typesetting
+%% Copyright 2002--2006  David Kastrup <dak@gnu.org>
+%%
+%% The license notice and corresponding source code for this file are
+%% contained in suffix.dtx.
+%%
+% This program is free software; you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation; either version 2 of the License, or
+% (at your option) any later version.
+%
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+%
+% You should have received a copy of the GNU General Public License
+% along with this program; if not, write to the Free Software
+% Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+% \fi
+% \CheckSum{198}
+% \GetFileInfo{suffix.sty}
+% \author{David Kastrup\thanks{\href{mailto:dak@gnu.org}
+%   {Email: \texttt{dak@gnu.org}}}}
+% \title{The \texttt{suffix} Package\\Version \fileversion}
+% \date{\filedate}
+% \maketitle
+% \section{Basics}
+% The \texttt{suffix} package has the purpose of making it easy to
+% define and maintain command variants like |\macro*| and even
+% |\macro\/| or similar.  It requires e\TeX\ version~2 for its work.
+% The suffixes are fetched with |\futurelet|, so things like |\bgroup|
+% and |{| ^^A}
+% can't be distinguished.  In addition, the efficiency depends on the
+% complexity of the suffix' definition, so you should preferably use
+% characters or short commands as a suffix.  A suffixed command itself
+% counts as short for this purpose.  How does a suffix definition look
+% like?
+%
+% \DescribeMacro{\WithSuffix} The general form is
+% \begin{quote}
+%  |\WithSuffix|\meta{prefixed definition}\meta{macro}\meta{suffix}\dots
+% \end{quote}
+% where \meta{prefixed definition} is something like |\xdef|,
+% |\global\let| or similar.  Recognised prefixes are |\global|,
+% |\long|, |\protected| (the latter is rarely useful, as the original
+% definition already is robust), and |\expandafter| (with its
+% `natural' meaning), specially recognized commands are |\gdef| and
+% |\xdef|.  Other commands can be used as long as they are suitable as
+% an undelimited macro argument.  This means they must either be a
+% single token like |\newcommand| or brace-enclosed like
+% |{\newcommand*}|.  \meta{macro} can be a macro or an active
+% character.  It should be a single token suitable for assignment with
+% |\let|.  \meta{suffix} can be something like a single letter such as
+% |*| or |[|.
+%
+% For example, assume that a command |\snarf| already exists and we
+% want to define a variant |\snarf|\oarg{optarg}.  Then we can do this
+% with
+% \begin{quote}
+%   \cmd\WithSuffix|\long\def\snarf[#1]{|\meta{Definition using
+%       \texttt{\#1}}|}|  
+% \end{quote}
+% That's pretty much it.  Oh, only when a command is recognised as
+% having a prefix |\global| or being |\xdef| or |gdef| will the
+% corresponding redefinitions be done globally.  This is rarely a
+% concern.
+%
+% \DescribeMacro{\SuffixName} In case you need to refer to the control
+% sequence name used to refer to the suffixed macro, you can access it
+% as
+% \begin{quote}
+%   |\csname|\cmd{\SuffixName}\meta{macro}\meta{suffix}|\endcsname|
+% \end{quote}
+% \DescribeMacro{\NoSuffixName} and if you need to refer to the
+% original unsuffixed macro, you can access it as
+% \begin{quote}
+%   |\csname|\cmd{\NoSuffixName}\meta{macro}|\endcsname|
+% \end{quote}
+% \StopEventually{}
+% \section{The driver file for the documentation}
+% Installation is done by |bigfoot.ins|, so look there for more
+% information for that.  Here comes the documentation driver.
+%    \begin{macrocode}
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{hyperref}
+\usepackage{suffix}
+\begin{document}
+\OnlyDescription
+%<driver> \AlsoImplementation
+\DocInput{suffix.dtx}
+\end{document}
+%</driver>
+%    \end{macrocode}
+% \section{Implementation}
+% First we announce the package and check for e\TeX~2.
+%   \begin{macrocode}
+%<*style>
+\ProvidesPackage{suffix}[2006/07/15 1.5a Variant command support]
+\ifcase\ifx\eTeXversion\@undefined \@ne\fi
+  \ifnum\eTeXversion<\tw@ \@ne\fi\z@
+\else
+  \PackageError{suffix}{This package requires eTeX version 2}%
+  {You might try to use the `elatex' command.}%
+\fi
+%    \end{macrocode}
+% \begin{macro}{\WithSuffix}
+%   Then we define the \cmd{\WithSuffix} command.  We use
+%   \cmd{\@temptokena} to collect prefixes and let \cmd{\WSF@global}
+%   to |\global| for global definitions.
+%
+%    \begin{macrocode}
+\def\WithSuffix{\@temptokena{}\let\WSF@global\relax
+  \WSF@sfx}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\WSF@sfx}
+% \begin{macro}{\WSF@append}
+% \begin{macro}{\WSF@gobblenext}
+%   After checking all prefixes and stuff (we'll fill in this missing
+%   link later), we add the defining command itself to the token list,
+%   place \meta{macro} into \cmd{\reserved@a} and fetch \meta{suffix}
+%   into \cmd{\reserved@b}.
+%    \begin{macrocode}
+\long\def\WSF@sfx#1#2{\WSF@append{#1}\def\reserved@a{#2}%
+  \afterassignment\WSF@decsuff \WSF@gobblenext}
+
+\def\WSF@append#1{\@temptokena\expandafter{\the\@temptokena#1}}
+
+\def\WSF@gobblenext{\let\reserved@b= }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \begin{macro}{\SuffixName}
+% \begin{macro}{\NoSuffixName}
+%   While we are at it, let us define the macro names to use for
+%   suffixed and unsuffixed \meta{macro}.
+%    \begin{macrocode}
+\long\def\SuffixName#1{WSF:\string#1 \meaning}
+\def\NoSuffixName{WSF:\string}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \begin{macro}{\WSF@decsuff}
+%   We first check whether the macro has already been suffixed.  If it
+%   hasn't, we save a copy of it and redefine it in terms of
+%   \cmd{\WSF@suffixcheck}.
+%    \begin{macrocode}
+\def\WSF@decsuff{\ifcsname
+    \expandafter\NoSuffixName\reserved@a\endcsname
+  \else
+    \WSF@global\expandafter\let\csname
+       \expandafter\NoSuffixName\reserved@a
+      \expandafter\endcsname \reserved@a
+    \long\def\reserved@c##1{\WSF@global\protected\def
+      ##1{\WSF@suffixcheck##1}}%
+    \expandafter\reserved@c\reserved@a
+  \fi
+%    \end{macrocode}
+% Once we have done that, we are ready for calling the definition
+% command on the suffixed \meta{macro}.
+%    \begin{macrocode}
+  \WSF@global
+    \the\expandafter\@temptokena\csname
+    \expandafter \SuffixName
+    \reserved@a\reserved@b\endcsname}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\WSF@suffixcheck}
+%   We now do the runtime code.  This is
+%   executed in a group of its own in order not to interfere with any
+%   other macros.
+%    \begin{macrocode}
+\def\WSF@suffixcheck#1{\begingroup\def\reserved@a{#1}%
+  \futurelet\reserved@b\WSF@suffixcheckii}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\WSF@suffixcheckii}
+%   After assigning the \meta{suffix} to \cmd{\reserved@b}, we split
+%   into the case of known and unknown suffix.  We don't code this
+%   inline, since \cmd{\reserved@} in a false conditional might
+%   confuse \TeX\ if it happens to be something like |\iffalse|
+%   itself.
+%    \begin{macrocode}
+\def\WSF@suffixcheckii{\ifcsname \expandafter\SuffixName
+    \reserved@a\reserved@b\endcsname
+      \expandafter
+      \WSF@suffixcheckiii
+    \else
+      \expandafter
+      \WSF@suffixcheckiv
+    \fi}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\WSF@suffixcheckiii}
+% \begin{macro}{\WSF@suffixcheckiv}
+%   Calling the macros is reasonably straightforward, we just have to
+%   take care not to close the group at the wrong time.
+%    \begin{macrocode} 
+\def\WSF@suffixcheckiii{%
+  \afterassignment\endgroup
+  \expandafter\aftergroup
+    \csname \expandafter \SuffixName\reserved@a\reserved@b\endcsname
+    \WSF@gobblenext}
+
+\def\WSF@suffixcheckiv{%
+    \expandafter\endgroup
+    \csname \expandafter\NoSuffixName\reserved@a\endcsname}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \begin{macro}{\WSF@sfx}
+%   Now we just augment \cmd{WSF@sfx} to recognize all prefixes and
+%   global commands:
+%    \begin{macrocode}
+\WithSuffix\def\WSF@sfx\long{\WSF@append\long\WSF@sfx}
+\WithSuffix\def\WSF@sfx\global{\let\WSF@global\global\WSF@sfx}
+\WithSuffix\def\WSF@sfx\protected{\WSF@append\protected\WSF@sfx}
+\WithSuffix\def\WSF@sfx\expandafter{\expandafter\WSF@sfx\expandafter}
+\WithSuffix\edef\WSF@sfx\gdef{\let\WSF@global\global
+  \expandafter\noexpand\csname\NoSuffixName\WSF@sfx\endcsname\def}
+\WithSuffix\edef\WSF@sfx\xdef{\let\WSF@global\global
+  \expandafter\noexpand\csname\NoSuffixName\WSF@sfx\endcsname\edef}
+%</style>
+%    \end{macrocode}
+%\end{macro}
+% \Finale
+% \endinput
+% Local Variables:
+% mode: doctex
+% TeX-master: "suffix.drv"
+% End:

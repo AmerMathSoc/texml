@@ -1,0 +1,323 @@
+*** amsfndoc.def.org	2009-02-22 20:46:31.000000000 +0100
+--- amsfndoc.def	2013-02-14 15:43:14.549616359 +0100
+***************
+*** 49,54 ****
+--- 49,104 ----
+  
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  %
++ %  Additions of latex-tds
++ 
++ \input ltxcmds.sty\relax
++ \input infwarerr.sty\relax
++ \input ifpdf.sty\relax
++ 
++ \ifpdf
++ \else
++   \@PackageError{\jobname}{pdfTeX in PDF mode is required}\@ehd
++   \endgroup
++   \csname @@end\expandafter\endcsname
++ \fi
++ 
++ \def\MakeDest#1{%
++   \begingroup
++     \begingroup
++       \let\relax\ltx@empty
++       \edef\x{\endgroup
++         \edef\noexpand\@tmp{#1\ltx@empty}%
++       }%
++     \x  
++     \ltx@IfUndefined{dest@\@tmp}{%
++       \pdfdest name{\@tmp}xyz\relax
++       \immediate\write16{* dest: [\@tmp]}%
++       \global\expandafter\let\csname dest@\@tmp\endcsname\ltx@empty
++     }{%
++       \@PackageError{\jobname}{%
++         Destination `\@tmp' is already defined%   
++       }\@ehc
++     }%
++   \endgroup
++ }
++ \def\MakeLinkAux#1#2#3{%
++   \leavevmode
++   \pdfstartlink attr{/F 4/Border[0 0 0]}goto name{#1}\relax
++     \pdfcolorstack0 push{#3}\relax
++     {#2}%
++     \pdfcolorstack0 pop\relax
++   \pdfendlink
++ }
++ \def\MakeLink#1#2{%
++   \MakeLinkAux{#1}{#2}{1 0 0 rg 1 0 0 RG}%
++ }
++ 
++ \def\Cite[#1]{%
++   [\MakeLinkAux{bib.#1}{#1}{0 .8 0 rg 0 .8 0 RG}]%
++ }
++ 
++ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++ %
+  %  Utility registers and definitions
+  
+  %  Test registers for transient use; paired - internal/external
+***************
+*** 428,434 ****
+  \let\DoHrule=\mthrule
+  
+  \newbox\maintitlebox
+! \def\maintitle #1\\#2<{\vfil\eject
+    \vbox{\rightskip=0pt plus 1fil\leftskip=\rightskip
+      \parindent=0pt\parfillskip=0pt\bf#1\par
+    }%
+--- 478,484 ----
+  \let\DoHrule=\mthrule
+  
+  \newbox\maintitlebox
+! \def\OriginalMaintitle #1\\#2<{\vfil\eject
+    \vbox{\rightskip=0pt plus 1fil\leftskip=\rightskip
+      \parindent=0pt\parfillskip=0pt\bf#1\par
+    }%
+***************
+*** 437,442 ****
+--- 487,498 ----
+            \else\vskip3pt\centerline{#2}\fi
+          \medskip\SetupFirstPar }
+  
++ \def\maintitle #1\\{%
++   \pdfinfo{/Title(#1)}%
++   \global\let\maintitle\OriginalMaintitle
++ }
++ 
++ \pdfinfo{/Author(AMS)}
+  
+  %  First-paragraph formatting
+  
+***************
+*** 465,477 ****
+  \def\section#1#2\par{%
+      \penalty-20
+      \vskip\AboveTitleSkip
+      {\raggedcenter
+        {\smc\noindent\ignorespaces\if!#1!\else#1. \fi
+         \ifFigure\rm\fi\ignorespaces
+          #2\unskip}\strutt
+        \ifFigure \global\Figurefalse
+        \else
+!          \tocwrites\tocsection{#1}{#2}%
+           \ifAppendix
+           \else \toks0{\rhsection{#1}{#2}}\mark{\the\toks0}%
+           \fi
+--- 521,534 ----
+  \def\section#1#2\par{%
+      \penalty-20
+      \vskip\AboveTitleSkip
++     \MakeDest{section.#1}%
+      {\raggedcenter
+        {\smc\noindent\ignorespaces\if!#1!\else#1. \fi
+         \ifFigure\rm\fi\ignorespaces
+          #2\unskip}\strutt
+        \ifFigure \global\Figurefalse
+        \else
+!          \tocwrites\tocsection{section.#1}{#1}{#2}%
+           \ifAppendix
+           \else \toks0{\rhsection{#1}{#2}}\mark{\the\toks0}%
+           \fi
+***************
+*** 493,503 ****
+  \def\auxwriteb{\write\auxfile}
+  
+  \long\def\gobbletwo#1#2{}
+! \long\def\gobblethree#1#2#3{}
+  
+! \def\tocwrite#1#2#3{%
+    \begingroup
+!   \def\temp{{#2}{#3}}\edef\temp{\mmeaning\temp}%
+    \edef\tempb{\noexpand\auxwrite{%
+      \string#1\temp{\noexpand\the\pageno}}}%
+    \tempb
+--- 550,560 ----
+  \def\auxwriteb{\write\auxfile}
+  
+  \long\def\gobbletwo#1#2{}
+! \long\def\gobblefour#1#2#3#4{}
+  
+! \def\tocwrite#1#2#3#4{%
+    \begingroup
+!   \def\temp{{#2}{#3}{#4}}\edef\temp{\mmeaning\temp}%
+    \edef\tempb{\noexpand\auxwrite{%
+      \string#1\temp{\noexpand\the\pageno}}}%
+    \tempb
+***************
+*** 508,518 ****
+  \def\tocwritea{\tocwrite}
+  
+  \newif\ifAppendix
+! \def\appendix#1#2{\maintitle Appendix #1\break #2\\<
+!   \mark{Appendix #1.\enspace#2}\tocwritea\tocappendix{#1}{#2}%
+    \gdef\theappendix{#1}%
+  %    Now \section should no longer go into the table of contents.
+!   \let\tocwrites\gobblethree
+  %    And forget the running head on the first page of an appendix.
+    \global\ThisIsFirstPagetrue \Appendixtrue
+    \InstSec=0 \relax }
+--- 565,577 ----
+  \def\tocwritea{\tocwrite}
+  
+  \newif\ifAppendix
+! \def\appendix#1#2{%
+!   \MakeDest{appendix.#1}%
+!   \maintitle Appendix #1\break #2\\<
+!   \mark{Appendix #1.\enspace#2}\tocwritea\tocappendix{appendix.#1}{#1}{#2}%
+    \gdef\theappendix{#1}%
+  %    Now \section should no longer go into the table of contents.
+!   \let\tocwrites\gobblefour
+  %    And forget the running head on the first page of an appendix.
+    \global\ThisIsFirstPagetrue \Appendixtrue
+    \InstSec=0 \relax }
+***************
+*** 535,541 ****
+  
+  \def\endReferences{\par\endgroup}
+  
+! \def\bibitem [#1] {\noindent\kern-\leftskip
+      \hbox to\leftskip{[#1]\hfil}\ignorespaces}
+  
+  \def\bysame{\hbox to 3em{\leaders\hrule\hfill}\thinspace, }
+--- 594,602 ----
+  
+  \def\endReferences{\par\endgroup}
+  
+! \def\bibitem [#1] {%
+!   \MakeDest{bib.#1}%
+!   \noindent\kern-\leftskip
+      \hbox to\leftskip{[#1]\hfil}\ignorespaces}
+  
+  \def\bysame{\hbox to 3em{\leaders\hrule\hfill}\thinspace, }
+***************
+*** 543,557 ****
+  %  Note that, since \raggedbottom is turned on, there is already an
+  %  implied 60pt (= 5\baselineskip) margin allowed, so the penalty
+  %  should not be overly attractive.
+! \def\subsection#1#2\par{\ifFirstPar \nobreak
+      \else \vskip\z@ plus 4\baselineskip \penalty-10
+          \vskip\z@ plus-4\baselineskip \vskip 8pt \vskip\parskip \fi
+      {\raggedright\hyphenpenalty=10000 \exhyphenpenalty=10000
+!       \noindent\bf#1. \ignorespaces#2\endgraf}\nobreak \vskip 4pt\relax
+      \SetupFirstPar }
+  
+  
+  \def\Contents{%
+    \subsection{\gobble}Contents of this document\par
+    \begingroup
+    \parfillskip=\normalparindent \parindent=\normalparindent
+--- 604,645 ----
+  %  Note that, since \raggedbottom is turned on, there is already an
+  %  implied 60pt (= 5\baselineskip) margin allowed, so the penalty
+  %  should not be overly attractive.
+! \def\subsection#1#2\par{%
+!   \def\@tmps{#1}%
+!   \ifx\@tmps\macrogobble
+!     \MakeDest{section.contents}%
+!   \else
+!     \MakeDest{subsection.#1}%
+!   \fi
+!   \ifFirstPar \nobreak
+      \else \vskip\z@ plus 4\baselineskip \penalty-10
+          \vskip\z@ plus-4\baselineskip \vskip 8pt \vskip\parskip \fi
+      {\raggedright\hyphenpenalty=10000 \exhyphenpenalty=10000
+!       \noindent
+!       \ifx\@tmps\macrogobble
+!       \else
+!         \tocwrite\tocsub{subsection.#1}{#1}{#2}%
+!       \fi
+!       \bf#1. \ignorespaces#2\endgraf}\nobreak \vskip 4pt\relax
+      \SetupFirstPar }
+  
++ \def\macrogobble{\gobble}
++ 
++ \def\tocsub#1#2#3#4{}%
++ 
++ \def\Outline#1#2{%
++   \begingroup
++     \def\LaTeX##1{LaTeX##1}%
++     \def\TeX##1{TeX##1}%
++     \def\AmSTeX##1{AmS-TeX##1}%
++     \pdfoutline goto name{#1}count0{\romannumeral-`\@#2}\relax
++   \endgroup
++ }
++ 
++ \pdfcatalog{/PageMode/UseOutlines}
+  
+  \def\Contents{%
++   \Outline{section.contents}{Table of contents}%
+    \subsection{\gobble}Contents of this document\par
+    \begingroup
+    \parfillskip=\normalparindent \parindent=\normalparindent
+***************
+*** 560,572 ****
+    \par\endgroup
+  }
+  
+! \def\tocsection#1#2#3{%
+    \par \global\NoTocfalse
+    \begingroup  \hangindent\parindent\indent
+!     \if!#1!\else#1. \fi#2\dotsfill\ #3\endgraf
+    \endgroup}
+  
+! \def\tocappendix#1{\tocsection{Appendix #1}}
+  
+  %  Define address blocks and other structures that use \obeylines
+  %  in the context  \tag ...<
+--- 648,666 ----
+    \par\endgroup
+  }
+  
+! \def\tocsection#1#2#3#4{%
+!   \Outline{#1}{%
+!     \if!#2!\else#2. \fi#3%
+!   }%
+    \par \global\NoTocfalse
+    \begingroup  \hangindent\parindent\indent
+!     \MakeLink{#1}{%
+!       \if!#2!\else#2. \fi#3\dotsfill\ #4%
+!     }%
+!     \endgraf
+    \endgroup}
+  
+! \def\tocappendix#1#2{\tocsection{#1}{Appendix #2}}
+  
+  %  Define address blocks and other structures that use \obeylines
+  %  in the context  \tag ...<
+***************
+*** 827,833 ****
+  
+  \ifx\InstName\relax % then we are doing only the installation instructions.
+    \NoTocfalse % don't complain about the absence of TOC
+!   \let\tocwrite\gobblethree
+  \else
+  %    Make sure there is an auxfile.
+    \openin\auxfile=\jobname.aux \relax
+--- 921,927 ----
+  
+  \ifx\InstName\relax % then we are doing only the installation instructions.
+    \NoTocfalse % don't complain about the absence of TOC
+!   \let\tocwrite\gobblefour
+  \else
+  %    Make sure there is an auxfile.
+    \openin\auxfile=\jobname.aux \relax
+***************
+*** 843,849 ****
+  
+  \ifx\InstName\relax % then we are doing only the installation instructions.
+  \else
+!   \begingroup \let\tocsection\gobblethree
+    \input \jobname.aux
+    \endgroup
+  \fi
+--- 937,943 ----
+  
+  \ifx\InstName\relax % then we are doing only the installation instructions.
+  \else
+!   \begingroup \let\tocsection\gobblefour
+    \input \jobname.aux
+    \endgroup
+  \fi

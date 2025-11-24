@@ -1,0 +1,79 @@
+%%
+%% Copyright (C) 2013 by Thomas Bogue
+%% This file may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either
+%% version 1.2 of this license or (at your option) any later
+%% version. The latest version of this license is in:
+%% 
+%% http://www.latex-project.org/lppl.txt
+%% 
+%% and version 1.2 or later is part of all distributions of
+%% LaTeX version 1999/12/01 or later.
+%% 
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{rterface}[2013/04/19 interface to the R computational program from within LaTeX]
+\RequirePackage{newfile}
+
+\newoutputstream{Routput}
+\openoutputfile{\jobname.R}{Routput}
+\newinputstream{Rinput}
+\IfFileExists{\jobname.R.out}{}{% if input file doesn't exist
+\PackageWarning{r}{the R output file \jobname.R.out doesn't exist -- create it by running R --slave < \jobname.R > \jobname.R.out}%
+\newoutputstream{Rtmp}% create it with no content
+\openoutputfile{\jobname.R.out}{Rtmp}%
+\addtostream{Rtmp}{0}%
+\closeoutputstream{Rtmp}%
+}
+\openinputfile{\jobname.R.out}{Rinput}
+\AtEndDocument{%
+\closeoutputstream{Routput}%
+\closeinputstream{Rinput}%
+}
+\begin{writeverbatim}{Routput}
+backslash<-"\\"
+percent<-"%"
+latex.table<-function(data,nrows) {
+tmp<-unlist(data);dim(tmp)<-c((nrows),length(tmp)/nrows);
+for (i in 1:dim(tmp)[1]) {
+  cat(tmp[i,1]);
+  for (j in 2:dim(tmp)[2]) {
+    cat(" &",tmp[i,j]);
+  };
+  cat("\\\\");
+};
+}
+topercent<-function(x,r=0){paste(round(x*100,r),"\\%",sep="")}
+\end{writeverbatim}
+\newcommand{\Rtilde}{\addtostream{Routput}{\noexpand~}}
+\def\Rcmd{\@Rbreakcodes\@Rcmdwitharg}
+\def\@Rcmdwitharg#1{\immediate\addtostream{Routput}{invisible({#1})}\@Rfixcodes}
+\newcommand{\Rvalue}{\@ifstar\@Rvaluestar\@Rvalue}
+\newcommand{\@Rvalue}[2][4]{\ensuremath{\textrm{\@Rvaluestar{signif(#2,#1)}}}}
+\newcommand{\@Rvaluestar}[1]{\addtostream{Routput}{cat(#1,"\@backslashchar n")}\readaline{Rinput}}
+
+\newcommand{\Rtable}[2]{%
+\ifeof\@nameuse{Rinputinstre@m}%
+\addtostream{Routput}{cat(latex.table(c(#1),#2),"\@backslashchar n")}%
+0\\%
+\else%
+\Rvalue*{latex.table(c(#1),#2)}%
+\fi%
+}
+
+\newcommand{\Rset}{\@Rbreakcodes\@ifstar\@Rsetstar\@Rset}
+\newcommand{\@Rset}[3][4]{\Rcmd{#2<-#3}\@Rcodeformat{#2 = #3 = \Rvalue[#1]{#3}}\@Rfixcodes}
+\newcommand{\@Rsetstar}[3][4]{\Rcmd{#2<-#3}\@Rcodeformat{#2 = \Rvalue[#1]{#3}}\@Rfixcodes}
+\newcommand{\Rcode}{\@Rbreakcodes\@Rcode}
+\newcommand{\@Rfixcodes}{\catcode`\%=14\catcode`\$=3\catcode`\^=7\catcode`\_=8\catcode`\&=4\catcode`~=13}
+\newcommand{\@Rbreakcodes}{\catcode`\$=11%
+\catcode`\^=11%
+\catcode`\_=11%
+\catcode`\&=11%
+\catcode`~=11%
+\catcode`~=11}
+\def\@Rcode#1{\Rcmd{#1}\@Rcodeformat{#1}\@Rfixcodes}
+%\newcommand{\@Rcodeformat}[1]{\noindent\obeyspaces\texttt{#1}\\\noindent}
+\newcommand{\@Rcodeformat}[1]{\par\noindent\obeyspaces\texttt{#1}\par\noindent}
+
+\newlength{\@Rtmplength}
+\settowidth{\@Rtmplength}{\Rvalue{0}}

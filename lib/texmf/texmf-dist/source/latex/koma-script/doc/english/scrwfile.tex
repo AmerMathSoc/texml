@@ -1,0 +1,273 @@
+% ======================================================================
+% scrwfile.tex
+% Copyright (c) Markus Kohm, 2010-2015
+%
+% This file is part of the LaTeX2e KOMA-Script bundle.
+%
+% This work may be distributed and/or modified under the conditions of
+% the LaTeX Project Public License, version 1.3c of the license.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3c or later is part of all distributions of LaTeX 
+% version 2005/12/01 or later and of this work.
+%
+% This work has the LPPL maintenance status "author-maintained".
+%
+% The Current Maintainer and author of this work is Markus Kohm.
+%
+% This work consists of all files listed in manifest.txt.
+% ----------------------------------------------------------------------
+% scrwfile.tex
+% Copyright (c) Markus Kohm, 2010-2015
+%
+% Dieses Werk darf nach den Bedingungen der LaTeX Project Public Lizenz,
+% Version 1.3c, verteilt und/oder veraendert werden.
+% Die neuste Version dieser Lizenz ist
+%   http://www.latex-project.org/lppl.txt
+% und Version 1.3c ist Teil aller Verteilungen von LaTeX
+% Version 2005/12/01 oder spaeter und dieses Werks.
+%
+% Dieses Werk hat den LPPL-Verwaltungs-Status "author-maintained"
+% (allein durch den Autor verwaltet).
+%
+% Der Aktuelle Verwalter und Autor dieses Werkes ist Markus Kohm.
+% 
+% Dieses Werk besteht aus den in manifest.txt aufgefuehrten Dateien.
+% ======================================================================
+%
+% Chapter about scrwfile of the KOMA-Script guide
+% Maintained by Markus Kohm
+%
+% ----------------------------------------------------------------------
+%
+% Kapitel ueber scrwfile in der KOMA-Script-Anleitung
+% Verwaltet von Markus Kohm
+%
+% ============================================================================
+
+\KOMAProvidesFile{scrwfile.tex}%
+                 [$Date: 2015-03-31 11:10:59 +0200 (Tue, 31 Mar 2015) $
+                  KOMA-Script guide (chapter: scrwfile)]
+
+% Date of translated German file: 2015-03-31
+
+\translator{Markus Kohm\and Jana Schubert}
+
+\chapter[{Economise and Replace Files Using \Package{scrwfile}}]
+{Economise and Replace Files Using \Package{scrwfile}%
+}
+\labelbase{scrwfile}
+
+\BeginIndex{Package}{scrwfile}
+
+\TeX{} supports 18 write handles only. Handle 0 is used by \TeX{} itself (log
+file). \LaTeX{} needs at least handle 1 for \Macro{@mainaux}, handle 2 for
+\Macro{@partaux}, one handle for \Macro{tableofcontents}, one handle for
+\Macro{listoffigures}, one handle for \Macro{listoftables}, one handle for
+\Macro{makeindex}. So there are 11 left. Seams a lot and enough. But every new
+type of float, every new index and several other packages, e.g.,
+\Package{hyperref} need write handles, too.
+
+The bottom line is, that this eventually will result in the error message:
+\begin{lstcode}
+  ! No room for a new \write .
+  \ch@ck ...\else \errmessage {No room for a new #3}
+                                                    \fi
+\end{lstcode}
+
+There is an additional disadvantage of immediately opening a new write handle
+for every table of contents, list of figures, list of tables etc.  These are
+not only set by the corresponding commands, they also could not be set once
+more, because their helper files are empty after the corresponding commands
+until the end of the document.
+
+Package \Package{scrwfile} provides an amendment of the \LaTeX{} kernel,
+that solves both problems.
+
+\section{General Modifications of the \LaTeX{} Kernel}
+\seclabel{kernelpatches}
+
+To allocate a new file handle eg. for \Macro{listoffigures} or
+\Macro{listoftables} \LaTeX{} classes use the \LaTeX{} kernel command
+\Macro{@starttoc}\IndexCmd{@starttoc}. This command not only inputs the
+associated helper file but also allocates a new write handle for the
+associated helper file and opens it for writing. Nevertheless, if afterwards
+new entries to these lists of floats are added using \Macro{addcontentsline},
+then these file handles are not used immediately, instead \LaTeX{} writes
+\Macro{@writefile}\IndexCmd{@writefile} commands into the
+\File{aux}-file. Only while reading the \File{aux}-file while the end of the
+document, those \Macro{@writefile} commands become real write operations
+on the helper files. Additionally \LaTeX{} does not close the helper files
+explicitly. Instead \LaTeX{} relies on \TeX{} to close all open files at
+the end.
+
+Thus all the helper files are open throughout the entire process. However the
+content is written at \Macro{end}\PParameter{document}. The basic idea of
+\Package{scrwfile} is tackling this contradiction by redefining
+\Macro{@starttoc} and \Macro{@writefile}.
+
+Surely\textnote{Attention!}, changes of the \LaTeX{} kernel may
+result in incompatibilities with other packages. In case of
+\Package{scrwfile}, clashes my arise with all packages also redefining
+\Macro{@starttoc} or \Macro{@writefile}. Sometimes changing the order of
+loading the packages may help.
+
+However, only few such problems have been reported eventhough several users
+have tested the package for one year before its first release. See
+\autoref{sec:scrwfile.incompatible} for more information about known
+incompatibilities. If you find such a problem, please contact the
+\KOMAScript{} author.
+
+\section{The Single File Feature}
+\seclabel{singlefilefeature}
+
+At the point the package is loaded using, e.\,g.,
+\begin{lstcode}[belowskip=\dp\strutbox]
+  \usepackage{scrwfile}
+\end{lstcode}
+\Package{scrwfile} will redefine \Macro{@starttoc}\IndexCmd{@starttoc} to not
+longer allocate a write handle or open any file for writing. Immediately before
+closing the \File{aux}-file in \Macro{end}\PParameter{document} it will
+redefine \Macro{@writefile} to no longer write into the usual helper files
+but into one single new file with file extension \File{wrt}. After
+reading the \File{aux}-file this \File{wrt}-file will be processed once per
+helper file. This means, that not all of the helper file have to be open at
+the same time, but only one at a time. And this single file will be closed
+afterwards and the write handle is not longer needed after it is closed. An
+internal write handle of \LaTeX{} is used for this. So \Package{scrwfile}
+doesn't need any own write handle.
+
+Because of this, even if only one table of contents should be generated, 
+loading \Package{scrwfile} gives one extra write file handle,
+e.\,g., for bibliographies, indexes, glossaries and similar, that are not
+using \Macro{@starttoc}. Additionally the number of tables of contents and
+lists of whatever, that use \Macro{@starttoc}\IndexCmd{@starttoc} is not
+limited any longer.
+
+\section{The Clone File Write Feature}
+\seclabel{clonefilefeature}
+
+Sometimes it is useful to input a file not only once but several times. As
+\Macro{@starttoc} does not open files for writing any more, this can be done
+by simply using \Macro{@starttoc} several times with the same extension. But
+sometimes you may have additional entries in only some of the content
+directories. \Package{scrwfile} allows to copy all entries of a file to
+another file, too. We call this cloning.
+
+\begin{Declaration}
+  \Macro{TOCclone}%
+  \OParameter{heading}\Parameter{source}\Parameter{destination}
+\end{Declaration}
+\BeginIndex{Cmd}{TOCclone}%
+activates the clone feature for files with extensions \PName{source} and
+\PName{destination}. All entries to the file
+\Macro{jobname}\File{.}\PName{source} will be added to
+\Macro{jobname}\File{.}\PName{destination}.
+
+If extension \PName{destination} is a new one, \PName{destination} will be
+added to the list of known extensions using the \KOMAScript{} package
+\Package{tocbasic}.
+
+If the optional argument \PName{heading} is given, a new list-of macro
+\Macro{listof}\PName{destination} is defined. \PName{heading} will be used
+as section (or chapter) heading of this list. In this case several
+\Package{tocbasic} features of the \PName{source} will be copied to
+\PName{destination}, if and only if they have been set up when
+\Macro{TOCclone} was used. Feature \PName{nobabel} will always be set,
+because the language selection commands are part of the helper file and
+would be cloned, anyway.
+
+\begin{Example}
+Assumed, you want a short table of contents
+with only the chapter level but an additional entry with the table of
+contents:
+\begin{lstcode}
+  \usepackage{scrwfile}
+  \TOCclone[Short \contentsname]{toc}{stoc}
+\end{lstcode}
+This would create a new table of contents with the heading ``Short
+Contents''. The new table of contents uses a helper file with extension
+\File{stoc}. All entries to the helper file with extension \File{toc} will
+also be copied to this new helper file.
+
+The new short table of contents should only have the chapter entries. This may
+be done using:
+\begin{lstcode}
+  \addtocontents{stoc}{\protect\value{tocdepth}=0}
+\end{lstcode}
+Normally you cannot write into a helper file before
+\Macro{begin}\PParameter{document}. But using \Package{scrwfile} changes
+this. So the code above is correct already after loading \Package{scrwfile}.
+
+To show the new short contents of helper file extension \File{stoc} we
+use
+\begin{lstcode}[moretexcs={listofsttoc}]
+  \listofstoc
+\end{lstcode}
+somewhere after \Macro{begin}\PParameter{document}.
+
+If we also want an entry for the table of contents at the short contents, we
+cannot use
+\begin{lstcode}
+  \addtocontents{toc}{% write to the Contents
+    \protect\addcontentslinedefault{stoc}% write to Short Contents
+      {chapter}% a chapter entry with
+      {\contentsname}% the Contents' name
+  }
+\end{lstcode}
+because the \Macro{addcontentsline} command would be copied to \File{stoc}
+too. So we cannot add the command to the \File{toc}-file. Package
+\Package{tocbasic}\important{\Package{tocbasic}} may be used to solve this:
+\csname phantomsection\endcsname\label{example:scrwfile.AfterStartingTOC}
+\begin{lstcode}
+  \AfterStartingTOC[toc]{%
+    \addcontentslinedefault{stoc}{chapter}
+                    {\protect\contentsname}%
+  }
+\end{lstcode}
+However, this needs, that the file with extension \File{toc} is under control of
+package \Package{tocbasic}, which is indeed the case within all \KOMAScript{}
+classes.
+See \autoref{sec:tocbasic.toc} on
+\autopageref{desc:tocbasic.cmd.AfterStartingTOC} for more information about
+\Macro{AfterStartingTOC}.%
+\end{Example}
+\EndIndex{Cmd}{TOCclone}
+
+\section{Note on State of Development}
+\seclabel{draft}
+
+Eventhough this package has been tested by several users and even is in
+productivity usage several times it is still under construction. Therefore,
+there might be amendments especially to the internal functionality. Most likely
+the package will be extended. Some code for extensions is already in the
+package. However, there is currently no user documentation available, as up to
+now nobody has requested any of these extensions.
+
+\section{Known Package Incompatibilities}
+\seclabel{incompatible}
+
+As mentioned in \autoref{sec:scrwfile.kernelpatches},
+\Package{scrwfile} redefines some commands of the \LaTeX{} kernel. This
+happens not only while loading the package, but indeed at different times of
+processing a document, e.\,g., just before reading the
+\File{aux}-file. This\textnote{Attention!} results in incompatibility with
+packages that also redefine these commands at run-time.
+
+The \Package{titletoc}\important{Package{titletoc}}\IndexPackage{titletoc}
+package is an example for such an incompatibility. That
+package redefines \Macro{@writefile} under some conditions at run-time. If you
+use both, \Package{scrwfile} and \Package{titletoc}, there is no warranty for
+the correct behaviour of neither of them. This is neither an error of
+\Package{titletoc} nor of \Package{scrwfile}.
+
+\EndIndex{Package}{scrwfile}
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% mode: flyspell
+%%% coding: us-ascii
+%%% ispell-local-dictionary: "en_GB"
+%%% TeX-master: "../guide"
+%%% End: 

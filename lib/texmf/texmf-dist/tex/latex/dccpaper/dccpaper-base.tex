@@ -1,0 +1,1202 @@
+%%
+%% This is file `dccpaper-base.tex',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% dccpaper.dtx  (with options: `base')
+%% 
+%% ----------------------------------------------------------------
+%% The dccpaper bundle: Classes for submissions to IJDC and IDCC
+%% Author:  Alex Ball
+%% E-mail:  a.ball@ukoln.ac.uk
+%% License: Released under the LaTeX Project Public License v1.3c or later
+%% See:     http://www.latex-project.org/lppl.txt
+%% ----------------------------------------------------------------
+%% 
+\def\Version{2015/06/22 v1.4.1}
+\ProvidesFile{dccpaper-base.tex}
+    [\Version\space Common class code for IJDC and IDCC papers.]
+%
+% The \textsf{dccpaper} classes are deliberately very similar. This file
+% contains the common code. All the classes are based on the \textsf{article}
+% class, and use A4 paper.
+%
+\LoadClass[a4paper,12pt,twoside]{article}
+
+%
+% We use British English orthography.
+%
+\RequirePackage[british]{babel}
+%
+% The macro patching commands from \textsf{etoolbox} come in useful for handling
+% author and date information, and also for compatibility with \textsf{apacite}.
+%
+\RequirePackage{etoolbox}
+%
+% The \textsf{dccpaper} classes use Times as the main text font. We prefer
+% \textsf{newtx} as it provides support for mathematics, but the standard
+% \textsf{times} package will do. In case they are needed, we also provide
+% Helvetica for the sans serif font and Computer Modern Teletype for the
+% monospaced.
+%
+\RequirePackage[T1]{fontenc}
+\IfFileExists{newtxtext.sty}%
+  {\RequirePackage{newtxtext,newtxmath}}%
+  {\RequirePackage{times}}
+\RequirePackage[scaled=0.92]{helvet}
+\renewcommand{\ttdefault}{cmtt}
+%
+% We will need support for included graphics and colour. The structural elements
+% are a medium turquoise, while the links are slightly darker to make them
+% easier to read on screen.
+%
+\RequirePackage{graphicx}
+\IfFileExists{xcolor.sty}%
+  {\RequirePackage{xcolor}}%
+  {\RequirePackage{color}}
+\definecolor[named]{struct}{rgb}{0,0.5,0.5}
+\definecolor[named]{links}{rgb}{0,0.4,0.4}
+%
+% We will calculate some lengths later.
+%
+\RequirePackage{calc}
+
+%
+% Ragged right text is easier to read on screen, but fully justified text looks
+% better. The |\raggedyright| layout from Peter Wilson's \textsf{memoir} class
+% (2005/09/25 v1.618) is an excellent compromise. The code below replicates it.
+%
+% First we save the original definitions of |\\| and |\parindent| as
+% |\OrigLineBreak| and |\RaggedParindent| respectively.
+%
+\let\OrigLineBreak\\
+\newdimen\RaggedParindent
+\setlength{\RaggedParindent}{\parindent}
+
+%
+% The |\raggedyright| layout more or less lays text out as with full
+% justification, but then lets the shorter lines relax a bit from the right
+% margin. It is the default for DCC papers.
+%
+\newcommand{\raggedyright}[1][2em]{%
+  \let\\\@centercr\@rightskip \z@ \@plus #1\relax
+  \rightskip\@rightskip
+  \leftskip\z@skip
+  \parindent\RaggedParindent}
+\AtBeginDocument{\raggedyright}
+
+%
+% The |\flushleftright| layout restores full justification, in case it is
+% needed.
+%
+\newcommand*{\flushleftright}{%
+  \let\\\OrigLineBreak
+  \leftskip\z@skip
+  \rightskip\leftskip
+  \parfillskip\@flushglue
+  \everypar{}}
+
+%
+% Pdf\TeX\ 1.40.15 introduced the facility to include dummy interword spaces
+% to improve text extraction and reflow. We test for this facility and use it
+% if available.
+%
+\RequirePackage{ifpdf}
+\ifpdf
+  \ifdef{\pdfinterwordspaceon}{\pdfinterwordspaceon}{}
+\fi
+
+%
+% The classes have some special metadata requirements. We start with the author
+% information.
+%
+% The macro |\thecorrespondence| is used in the title page footer for the name,
+% postal address and email address of the corresponding author.
+%
+\def\thecorrespondence{}
+\newcommand*{\correspondence}[1]{\def\thecorrespondence{#1}}
+%
+% The handling of authors here is inspired by Patrick W Daly's \textsf{authblk},
+% (2001/02/27 1.3), and defines the familiar user commands. Authors are
+% presented in blocks, one affiliation but perhaps several authors per block.
+%
+% We make the presentation of the author information configurable (just in case)
+% with some hooks and lengths:
+% \begin{itemize}
+% \item |\Authfont| is the font used for author names;
+% \item |\Affilfont| is the font used for affiliations;
+% \item |\affilsep| is the line spacing between author names and affiliations;
+% \item |\authblksep| is the line spacing between author name/affiliation
+%       blocks.
+% \end{itemize}
+%
+\newcommand*{\Authfont}{\normalfont}
+\newcommand*{\Affilfont}{\normalfont\small}
+\newlength{\affilsep}\setlength{\affilsep}{0pt}
+\newlength{\authblksep}\setlength{\authblksep}{1.5\baselineskip}
+%
+% The |\AuthorBlock| command will be used to collect all the author information.
+%
+\newcommand{\AuthorBlock}{}
+%
+% The |\MainAuthor| command collects abbreviated author information for use in
+% the headers.
+%
+\newcommand{\MainAuthor}{}
+%
+% The |\dccp@author| command, meanwhile, collects a full list of authors for the
+% PDF metatdata.
+%
+\newcommand{\dccp@author}{}
+%
+% We define counters for
+% \begin{itemize}
+% \item the total number of authors defined;
+% \item the number of authors in the current block;
+% \item the number of blocks defined.
+% \end{itemize}
+%
+\newcounter{authors}
+\newcounter{authorsinblock}
+\newcounter{block}
+%
+% The |block| counter will increase once in the preamble, and again when the
+% information is typeset, so we need to reset it at the beginning of the
+% document.
+%
+\AtBeginDocument{\setcounter{block}{0}}
+%
+% The new definition of the author command starts here.
+%
+\renewcommand{\author}[1]{%
+%
+% If this is the first or second |\author| command, we add the name to our
+% abbreviated list of authors. Otherwise, we replace the name of the second
+% and subsequent authors with `et al.' in that list.
+%
+% At the same time, we use a simpler technique to populate |\dccp@author|.
+%
+  \ifnum\theauthors=0
+    \def\dccp@author{#1}%
+    \def\MainAuthor{#1}%
+  \else
+    \appto\dccp@author{, #1}%
+    \ifnum\theauthors=1%
+      \def\OtherMainAuthors{ and #1}%
+      \appto\MainAuthor{\OtherMainAuthors}%
+    \else
+      \ifnum\theauthors=2%
+        \def\OtherMainAuthors{ et al.}%
+      \fi
+    \fi
+  \fi
+  \stepcounter{authors}%
+%
+% Each block has its author names collected in a macro like |\blocki@auth|,
+% and its affiliation collected in a macro like |\blocki@affil| (the `i' is a
+% serial number).
+%
+% If this is the first author in a block, we need to create the block and add it
+% to |\AuthorBlock|; second and subsequent blocks are preceded by a |\quad| of
+% space.
+%
+  \ifnum\theauthorsinblock=0%
+    \stepcounter{block}%
+    \expandafter\def\csname block\roman{block}@auth\endcsname{\Authfont#1}%
+    \ifnum\theblock>1\appto\AuthorBlock{\quad}\fi
+    \appto\AuthorBlock{%
+      \stepcounter{block}%
+      \begin{minipage}[t]{0.45\textwidth}\centering
+      \csname block\roman{block}@auth\endcsname
+      \ifx\undefined\csname block\roman{block}@affil\endcsname
+      \else
+        \\[\affilsep]\csname block\roman{block}@affil\endcsname
+      \fi
+      \end{minipage}%
+      \rule{0pt}{2\baselineskip}%
+      }
+  \else
+%
+% Otherwise we just add the name to the right |\blocki@auth|-style macro.
+%
+    \csappto{block\roman{block}@auth}{, #1}%
+  \fi
+  \stepcounter{authorsinblock}%
+}
+%
+% The |\affil| command adds an affiliation to the current block and closes it by
+% resetting the |authorsinblock| counter.
+%
+\newcommand{\affil}[1]{%
+  \expandafter\def\csname block\roman{block}@affil\endcsname{\Affilfont#1}%
+  \setcounter{authorsinblock}{0}%
+}
+
+%
+% The |\HeadTitle| collects the abbreviated title for use in the headers.
+%
+\newcommand*{\HeadTitle}{}
+%
+% We wrap the normal |\title| command with code to populate |\HeadTitle| with
+% the optional argument if provided, or the mandatory one otherwise. We also
+% provide a persistent |\thetitle| macro, stripped of any |\thanks|.
+%
+\let\ProperTitle=\title
+\renewcommand{\title}[2][\empty]{
+  \ifx\empty #1%
+    \renewcommand*{\HeadTitle}{#2}%
+  \else
+    \renewcommand*{\HeadTitle}{#1}%
+  \fi%
+  \begingroup\let\footnote\@gobble
+  \ProperTitle{#2}%
+  \begingroup
+    \renewcommand{\thanks}[1]{}
+    \protected@xdef\thetitle{#2}
+  \endgroup\endgroup
+}
+%
+% To prevent \LaTeX\ throwing an error if no title is supplied, we supply a
+% fallback value and issue a warning instead.
+%
+\def\thetitle{%
+  Please supply a title
+  \ClassWarning{dccpaper}{%
+    Please supply a title in the preamble with \noexpand\title{}%
+  }
+}
+
+%
+% We make |\thedate| persistent, borrowing the technique used in Peter Wilson's
+% \textsf{memoir} class (2005/09/25 v1.618).
+%
+\pretocmd{\date}{\begingroup\let\footnote\@gobble}{}{}%
+\apptocmd{\date}{%
+  \begingroup
+    \renewcommand{\thanks}[1]{}
+    \protected@xdef\thedate{#1}
+  \endgroup\endgroup%
+}{}{}
+%
+% We ensure |\thedate| is defined using a dummy date.
+%
+\date{20xx}
+
+%
+% IJDC articles have extra bibliographic information:
+% \begin{itemize}
+% \item |\volume| sets the volume number, |\thevolume|;
+% \item |\issue| sets the issue number, |\theissue|;
+% \item |\subno| sets the submission number, |\thesubno|.
+% \end{itemize}
+%
+% These numbers are used to build the DOI, |\thedoi|.
+%
+\newcommand*{\thevolume}{0}
+\newcommand*{\volume}[1]{\renewcommand*{\thevolume}{#1}}
+\newcommand*{\theissue}{0}
+\newcommand*{\issue}[1]{\renewcommand*{\theissue}{#1}}
+\newcommand*{\thesubno}{0}
+\newcommand*{\subno}[1]{\renewcommand*{\thesubno}{#1}}
+\newcommand*{\thedoi}{10.2218/ijdc.v\thevolume i\theissue .\thesubno}
+%
+% They also display the page range. The following code was borrowed from Peter
+% Wilson's \textsf{memoir} class (2005/09/25 v1.618). It defines a counter
+% |lastpage| which, on the second run, will contain the number of the last page.
+%
+\newcounter{lastpage}
+\setcounter{lastpage}{0}
+\newcommand{\dol@stpage}{%
+  \if@filesw
+    \addtocounter{page}{-1}%
+    \immediate\write\@auxout%
+      {\string\setcounter{lastpage}{\the\c@page}}%
+    \stepcounter{page}%
+  \fi
+}
+\AtBeginDocument{\AtEndDocument{\clearpage\dol@stpage}}
+
+%
+% DCC papers display some important dates. We collect these in |\dccp@dates|,
+% initially setting the value to something sensible for papers in draft.
+%
+\def\dccp@dates{\emph{Draft from} \today}
+%
+% Several types of date can be added:
+% \begin{itemize}
+% \item |\submitted| for when the authors submitted the paper (intended for
+%       IDCC papers).
+% \item |\received| for when the paper was received by the editorial board
+%       (intended for IJDC papers).
+% \item |\revised| for when the most recent version was received by the
+%       editorial board.
+% \item |\accepted| for when the paper was accepted by the editorial board.
+% \end{itemize}
+%
+\newcommand*{\submitted}[1]{%
+  \def\dccp@dates{\emph{Submitted} #1}}
+\newcommand*{\received}[1]{%
+  \def\dccp@dates{\emph{Received} #1}}
+\newcommand*{\revised}[1]{%
+  \appto\dccp@dates{%
+    \space\space\space\textbar\space\space\space
+    \emph{Revision received} #1}%
+  }
+\newcommand*{\accepted}[1]{%
+  \appto\dccp@dates{%
+    \space\space\space\textbar\space\space\space
+    \emph{Accepted} #1}%
+  }
+%
+% IJDC papers need to say if they had a previous life as a conference paper.
+% This statement goes in |\dccp@conf|, which is initially empty. The user
+% command for setting this text is |\conference|.
+%
+\let\dccp@conf=\empty
+\newcommand*{\conference}[1]{%
+  \renewcommand*{\dccp@conf}{An earlier version of this paper was presented at #1.}%
+}
+
+%
+% The macro |\FixTextHeight| will be useful when switching from the first page
+% geometry to the regular geometry for the rest of the paper. It is based on
+% code from  Hideo Umeki's \textsf{geometry} package (2002/07/08 v3.2).
+%
+\newcommand{\FixTextHeight}{%
+  \setlength\@tempdima{\textheight}%
+  \addtolength\@tempdima{-\topskip}%
+  \@tempcnta\@tempdima
+  \@tempcntb\baselineskip
+  \divide\@tempcnta\@tempcntb
+  \setlength\@tempdimb{\baselineskip}%
+  \multiply\@tempdimb\@tempcnta
+  \advance\@tempdima-\@tempdimb
+  \global\advance\footskip\@tempdima
+  \multiply\@tempdima\tw@
+  \ifdim\@tempdima>\baselineskip
+    \addtolength\@tempdimb{\baselineskip}%
+    \global\advance\footskip-\baselineskip
+  \fi
+  \addtolength\@tempdimb{\topskip}%
+  \global\textheight\@tempdimb
+}
+
+%
+% The width of the textblock (on all pages) is 150mm, which on A4 paper implies
+% margins of 30mm each. (Making both horizontal margins the same in a two-sided
+% context makes the paper more pleasant to read on screen).
+%
+\setlength{\textwidth}{150mm}
+\setlength{\oddsidemargin}{30mm - \hoffset - 1in}
+\setlength{\evensidemargin}{30mm - \hoffset - 1in}
+%
+% It is rare to have marginal notes, but in case we ever do, we centre them in
+% the margin.
+%
+\setlength{\marginparwidth}{30mm - 2\marginparsep}
+%
+% We also want a distance of 15mm from the top of the page to the top of the
+% header, and two blank lines between the bottom of the header and the top of
+% the textblock.
+%
+\setlength{\topmargin}{15mm - \voffset - 1in}
+\setlength{\headsep}{2\baselineskip}
+
+%
+% IJDC editorials have slightly different headers and footers. This requires
+% testing for |\dccp@editorial| if it exists. In case it doesn't, we provide it.
+%
+\providecommand{\dccp@editorial}{Editorial}
+%
+% The height of the footer can vary a lot. To keep it a fixed distance from the
+% bottom of the page rather than the top, we need to vary the |\textheight|
+% accordingly. This means we need to measure the height of the footer. (The
+% header is more predictable but we may as well measure it while we are at it).
+%
+% Here we define the header and footer of the title page (i.e.\ the
+% \textsf{title} page style), making sure we save them to auxiliary macros
+% |\TitleHead| and |\TitleFoot| so we can measure them.
+%
+\def\ps@title{%
+  \def\@oddhead{%
+    \begin{minipage}{\textwidth}%
+      \centering
+      \LARGE\bfseries\color{struct}%
+      \ifx\dccp@type\dccp@editorial
+        \dccp@publ@long
+      \else
+        \dccp@publ@short\space\space\textbar\space\space\emph{\dccp@type}%
+      \fi
+      \par
+    \end{minipage}%
+  }%
+  \let\@evenhead=\@oddhead
+  \let\TitleHead=\@oddhead
+  \def\@oddfoot{%
+    \begin{minipage}[b]{\textwidth}%
+      \fontsize{9pt}{11pt}\selectfont
+      \ifx\dccp@type\dccp@editorial
+      \else
+        {\centering\dccp@dates\par}
+        \bigskip
+        Correspondence should be addressed to \thecorrespondence\par
+        \bigskip
+      \fi
+      \ifx\empty\dccp@conf
+      \else
+        \dccp@conf\par
+        \bigskip
+      \fi
+      \dccp@publ@msg\par
+      \bigskip
+      \begin{minipage}[b]{\linewidth - 25mm}
+      Copyright rests with the authors. This work is released under a Creative
+      Commons Attribution 4.0 International Licence. For details please see
+      \url{http://creativecommons.org/licenses/by/4.0/}%
+      \end{minipage}\hfill
+      \begin{minipage}[b]{19mm}
+        \href{http://creativecommons.org/licenses/by/4.0/}%
+          {\includegraphics[width=\hsize]{dccpaper-by}}%
+      \end{minipage}
+      \par
+      \bigskip
+      \makebox[0pt][l]{\parbox{0.4\hsize}{%
+        \ifx\undefined\dccp@titlefoot@bib\else\dccp@titlefoot@bib\fi
+      }}\hfill
+      \makebox[0pt][c]{\normalsize\thepage}\hfill
+      \makebox[0pt][r]{\parbox{0.4\hsize}{%
+        \raggedleft\ifx\undefined\dccp@titlefoot@doi\else\dccp@titlefoot@doi\fi
+      }}%
+    \end{minipage}%
+  }%
+  \let\@evenfoot=\@oddfoot
+  \let\TitleFoot=\@oddfoot
+}
+%
+% We set the normal page style to \textsf{title} here so that |\TitleHead| and
+% |\TitleFoot| are defined, but we will override it with the \textsf{dccpaper}
+% page style later.
+%
+\pagestyle{title}
+%
+% The first page should use the \textsf{title} page style, however.
+%
+\AtBeginDocument{\thispagestyle{title}}
+
+%
+% Here are the normal headers and footers (i.e.\ the \textsf{dccpaper} page
+% style). We save them to |\NormalHead| and |\NormalFoot|, again so we can
+% measure them.
+%
+\def\ps@dccpaper{%
+  \def\@oddhead{%
+    \begin{minipage}{\textwidth}\frenchspacing
+      {%
+        \fontsize{9pt}{11pt}\selectfont
+        \ifx\undefined\dccp@normhead@doi\else\dccp@normhead@doi\fi
+      }\hfill
+      {\MainAuthor}\space\space\space
+      \textcolor{struct}{\textbar}\space\space\space
+      \thepage\par
+      \vskip6pt\color{struct}{\hrule height 1bp}\par
+    \end{minipage}
+  }%
+  \def\@evenhead{%
+    \begin{minipage}{\textwidth}
+      \thepage\space\space\space
+      \textcolor{struct}{\textbar}\space\space\space
+      {\HeadTitle}\hfill
+      {%
+        \fontsize{9pt}{11pt}\selectfont
+        \ifx\undefined\dccp@normhead@doi\else\dccp@normhead@doi\fi
+      }\par
+      \vskip6pt\color{struct}{\hrule height 1bp}\par
+    \end{minipage}
+  }%
+  \let\NormalHead=\@oddhead
+  \def\@oddfoot{\begin{minipage}[b]{\textwidth}
+    \centering\bfseries\normalsize\color{struct}
+    \ifx\dccp@type\dccp@editorial
+      \dccp@publ@long
+    \else
+      \dccp@publ@short\space\space\textbar\space\space\emph{\dccp@type}%
+    \fi
+    \par
+  \end{minipage}}%
+  \let\@evenfoot=\@oddfoot
+  \let\NormalFoot=\@oddfoot
+}
+\pagestyle{dccpaper}
+
+%
+% We need to wait until the author has supplied the necessary information before
+% we can do our measuring and set the remainder of the geometry, so we do it at
+% the end of the preamble. First we put our saved macros into boxes we can
+% measure (i.e.\ |\dccp@firstpagehead|, |\dccp@firstpagefoot|,
+% |\dccp@restpagehead|, |\dccp@restpagefoot|).
+%
+\AtEndPreamble{
+  \newsavebox{\dccp@firstpagehead}
+  \sbox\dccp@firstpagehead{\normalfont\TitleHead}
+  \newsavebox{\dccp@firstpagefoot}
+  \sbox\dccp@firstpagefoot{\normalfont
+    \def\email#1{#1}\def\url#1{#1}\def\href#1#2{#2}\TitleFoot}
+  \newsavebox{\dccp@restpagehead}
+  \sbox\dccp@restpagehead{\normalfont\NormalHead}
+  \newsavebox{\dccp@restpagefoot}
+  \sbox\dccp@restpagefoot{\normalfont\NormalFoot}
+%
+% We can now set the geometry of the title page\dots
+%
+  \setlength{\headheight}{\ht\dccp@firstpagehead + \dp\dccp@firstpagehead}
+  \setlength{\footskip}{%
+    2\baselineskip + \ht\dccp@firstpagefoot + \dp\dccp@firstpagefoot
+  }
+  \setlength{\textheight}{%
+    \paperheight
+    - 30mm % 15mm top and bottom
+    - \headheight
+    - \headsep
+    - \footskip
+  }
+%
+% {\dots}and provide a macro that will reset the geometry for the remaining
+% pages.
+%
+  \def\dccp@resetgeometry{%
+    \setlength{\headheight}{\ht\dccp@restpagehead + \dp\dccp@restpagehead}
+    \global\headheight=\headheight
+    \setlength{\footskip}{%
+      2\baselineskip + \ht\dccp@restpagefoot
+    }
+    \global\footskip=\footskip
+    \setlength{\textheight}{%
+      \paperheight
+      - 30mm % 15mm top and bottom
+      - \headheight
+      - \headsep
+      - \footskip
+    }
+    \FixTextHeight
+    \global\textheight=\textheight
+  }
+}
+
+%
+% The |\maketitle| command is redefined to the correct formatting. At the end it
+% sets a hook that will reset the geometry when the first page is shipped out,
+% i.e.\ with effect from the second page. It is here rather than at the end of
+% the abstract in case the abstract itself spills over to the second page.
+%
+\RequirePackage{atbegshi}
+\renewcommand{\maketitle}{%
+  \null\nobreak\vspace*{-0.528\baselineskip}%
+  \begingroup
+    \centering
+    {\Large\thetitle\par}
+    \vspace{0.7\baselineskip}
+    \AuthorBlock\par
+    \vspace{1.7\baselineskip}
+  \endgroup
+  \AtBeginShipoutNext{\dccp@resetgeometry}%
+}
+
+%
+% The \textsf{abstract} environment is redefined in terms of an environment
+% \textsf{widequote}, which mimics the \textsf{quote} environment, but is a bit
+% wider. We also provide a hook, |\afterabstract|, so that if some annotation
+% needs to be appended to the title page after the abstract, we can do that.
+%
+\newenvironment{widequote}{%
+  \list{}{%
+    \setlength{\rightmargin}{2\parindent}%
+    \setlength{\leftmargin}{2\parindent}%
+  }%
+  \flushleftright\item[]%
+}{%
+    \endlist
+}
+\def\afterabstract{}
+\renewenvironment{abstract}{%
+  \vskip1em%
+  \begin{center}%
+    {\bfseries\abstractname\vspace{-.5em}\vspace{\z@}}%
+  \end{center}%
+  \widequote\footnotesize
+}{%
+  \endwidequote\afterabstract\newpage
+}
+
+%
+% We use the \textsf{titlesec} package to give headings the correct formatting.
+% The settings below try to space out headings so they occupy an integer number
+% of normal lines (an attempt at grid typesetting). They are a little
+% complicated because we want it to work even if the heading appears at the top
+% of the page.
+%
+\RequirePackage{titlesec}
+\titlespacing*{\section}{0pt}{0pt}{\baselineskip}
+\titlespacing*{\subsection}{0pt}{0pt}{0.6\baselineskip}
+\titlespacing{\subsubsection}{\parindent}{\baselineskip}{0pt}
+\titlespacing{\paragraph}{\parindent}{\baselineskip}{0pt}
+\titlespacing{\subparagraph}{\parindent}{\baselineskip}{0pt}
+%
+% An unfortunate side effect of spacing headings like this is that if a
+% |\subsection| immediately follows a |\section| it forms an unsightly gap. To
+% remedy this, we count how many paragraphs there have been since the last
+% |\section|. Note that as we do not normally number the sections, an automatic
+% reset of the |sectionpars| counter within the |section| counter won't work.
+%
+\newcounter{sectionpars}
+\let\dccp@old@ep\everypar
+\newtoks\everypar
+\dccp@old@ep{\the\everypar\stepcounter{sectionpars}}
+%
+% We need to manually reset |sectionpars| when |\section| is called. Also,
+% the normal font size is 12pt/14.5pt, while |\Large| is 17pt/22pt;
+% so the |\Large| line height = 1.5172 $\times$ normal line height. Nevertheless
+% it seems to work better if we let the heading eat 0.528|\baselineskip| into
+% the 2|\baselineskip| of padding above it.
+%
+\titleformat{\section}
+  [block]
+  {%
+    \vspace{2\baselineskip}%
+    \nobreak
+    \vspace*{-0.528\baselineskip}%
+    \setcounter{sectionpars}{0}%
+    \filcenter\normalfont\Large\bfseries
+  }
+  {\thesection}
+  {1em}
+  {}
+%
+% The others use a |\normalsize| font so that makes life easier. The format
+% for |\subsection| command includes conditional spacing: if the |sectionpars|
+% counter equals 2, this means the heading immediately follows a |\section|, so
+% less white space is needed.
+%
+\titleformat{\subsection}
+  {%
+    \ifnum\thesectionpars>2%
+      \vspace{2\baselineskip}%
+    \else
+      \vspace{\baselineskip}%
+    \fi\nobreak
+    \vspace*{-0.6\baselineskip}%
+    \normalfont\normalsize\bfseries
+  }
+  {\thesubsection}
+  {1em}
+  {}
+\titleformat{\subsubsection}
+  [block]
+  {\normalfont\normalsize\bfseries}
+  {\thesubsubsection}
+  {1em}
+  {}
+\titleformat{\paragraph}
+  [block]
+  {\normalfont\normalsize\bfseries\itshape}
+  {\thesubsubsection}
+  {1em}
+  {}
+\titleformat{\subparagraph}
+  [block]
+  {\normalfont\normalsize\itshape}
+  {\thesubsubsection}
+  {1em}
+  {}
+%
+% DCC papers do not typically number their sections.
+%
+\setcounter{secnumdepth}{0}
+
+%
+% To help with the display of tables we load the \textsf{array} and
+% \textsf{booktabs} packages. As we don't like lines between rows in the table
+% body, we stretch them out a bit so that white space does the job instead.
+%
+\RequirePackage{array,booktabs}
+\renewcommand{\arraystretch}{1.25}
+
+%
+% We use the \textsf{caption} package to give captions the right format.
+%
+\RequirePackage
+  [ format=hang
+  , labelsep=period
+  , font=small
+  , labelfont=bf
+  , figureposition=bottom
+  , tableposition=top
+  ]{caption}
+
+%
+% Footnotes should be set right up against the left margin. They should be
+% set hung and in the same half-ragged style as the main text. They should also,
+% for neatness, be at the bottom of the page regardless of how short it is. The
+% \textsf{footmisc} package helps here.
+%
+\RequirePackage[hang,bottom]{footmisc}
+\settowidth{\footnotemargin}{\footnotesize\textsuperscript{99}\space}
+\renewcommand{\footnotelayout}{\raggedyright}
+%
+% Also, if multiple footnotes are set at once, the markers should be separated
+% with superscript commas. The \textsf{footmisc} package should help here but
+% its solution is clobbered by \textsf{hyperref}. So after a footnote is set,
+% we check to see if the next token is also a footnote, and if so, slip a comma
+% in before it.\footnote{This solution was provided at
+% \url{http://tex.stackexchange.com/q/40072}} This tweak needs to be done late,
+% |\AtBeginDocument|. Note that the \textsf{newtx} superior figures are a bit
+% lower than normal superscript text.
+%
+\AtBeginDocument{
+  \let\dccp@footnote\footnote
+  \def\dccp@next@token{\relax}%
+  \def\dccp@supercomma{\textsuperscript{,}}%
+  \IfFileExists{newtxtext.sty}%
+    {\def\dccp@supercomma{\raisebox{-0.2ex}{\textsuperscript{,}}}}%
+    {}
+
+  \newcommand\dccp@check@for@footnote{%
+    \ifx\footnote\dccp@next@token
+      \dccp@supercomma
+    \fi
+  }
+
+  \renewcommand\footnote[1]{%
+    \dccp@footnote{#1}%
+    \futurelet\dccp@next@token\dccp@check@for@footnote
+  }
+}
+
+%
+% By default lists are quite loose. These settings help to tighten them.
+%
+\topsep = \z@
+\partopsep = \z@
+\appto{\enumerate}{\itemsep = 0.5ex plus 0.25ex minus 0.25ex}
+\appto{\itemize}{\itemsep = 0.5ex plus 0.25ex minus 0.25ex}
+
+%
+% A DCC paper should either be using \textsf{biblatex} or \textsf{apacite} for
+% references.
+%
+% If \textsf{biblatex} is used, we need to ensure that the reference list
+% heading is a normal section rather than a starred one so it appears in the
+% PDF bookmarks.
+%
+\AtBeginDocument{
+  \@ifpackageloaded{biblatex}{%
+    \defbibheading{bibliography}[\refname]{\section{#1}}%
+%
+% We also move the ‘doi:’ portion of a DOI inside the hyperlink.
+%
+    \DeclareFieldFormat{doi}{%
+      \ifhyperref{%
+        \href{http://dx.doi.org/#1}{\nolinkurl{doi:#1}}%
+      }{%
+        \nolinkurl{doi:#1}%
+      }%
+    }
+  }{%
+%
+% If \textsf{apacite} is used, there are a few other adaptations we need to
+% make.
+%
+    \@ifpackageloaded{apacite}{%
+%
+% With \textsf{hyperref} loaded, \textsf{apacite} makes the whole of a citation
+% a link to the reference list item. We patch |\@ifauthorsunequalc@de| so only
+% the year portion gets linked.
+%
+      \def\@ifauthorsunequalc@de#1{%
+        \if@F@cite
+          \@F@citefalse
+        \else
+          \if@Y@cite
+              {\@BAY}%
+          \fi
+          {\@BBC}%
+        \fi
+        \edef\@cite@undefined{?}%
+        \def\BBA{\@BBA}%
+        \if@A@cite
+          %%\hyper@natlinkstart{#1}% We remove this line...
+          {\csname b@\@citeb\APAC@extra@b@citeb\endcsname}%
+          %%\hyper@natlinkend% ...and this one.
+          \if@Y@cite
+              {\@BBAY}%
+          \fi
+        \fi
+        \if@Y@cite
+          \hyper@natlinkstart{#1}%
+          {\csname Y@\@citeb\APAC@extra@b@citeb\endcsname}%
+          \hyper@natlinkend
+        \fi
+        \let\BBA\relax
+      }
+%
+% The Spanish language support file defines a different version of
+% |\@ifauthorsunequalc@de|, which might override the patch we have just
+% introduced. So we employ the same test that \textsf{apacite} uses when
+% deciding whether to load that file; if successful, we patch the Spanish
+% version. Note that as \textsf{apacite} loads language support files
+% |\AtBeginDocument|, we have to do our thing after that, |\AfterEndPreamble|.
+%
+% (Note that as we set the language to British English earlier, this should
+% never be needed, but we try to be resilient to tinkering!)
+%
+      \AfterEndPreamble{%
+        \@ifundefined{iflanguage}{%
+          \relax
+        }{%
+          \edef\APAC@tmp{nohyphenation}%
+          \ifx\languagename\APAC@tmp
+          \else
+            \edef\APAC@tmp{spanish}%
+            \ifx\languagename\APAC@tmp
+              \def\@ifauthorsunequalc@de#1{%
+                \if@F@cite
+                  \@F@citefalse
+                \else
+                  \if@Y@cite
+                      {\@BAY}%
+                  \fi
+                  {\@BBC}%
+                \fi
+                \edef\@cite@undefined{?}%
+                \def\BBA{\@BBA}%
+                \@ifundefined{spanishe@\@citeb\APAC@extra@b@citeb}%
+                  {}% skip
+                  {{% Use `e' instead of `y' in Spanish
+                  \global\let\oldBBA\BBA
+                  \global\def\BBA{e\global\let\BBA\oldBBA}%
+                  }}%
+                \if@A@cite
+                  %%\hyper@natlinkstart{#1}% We remove this line...
+                  {\csname b@\@citeb\APAC@extra@b@citeb\endcsname}%
+                  %%\hyper@natlinkend% ...and this one.
+                  \if@Y@cite
+                      {\@BBAY}%
+                  \fi
+                \fi
+                \if@Y@cite
+                  \hyper@natlinkstart{#1}%
+                  {\csname Y@\@citeb\APAC@extra@b@citeb\endcsname}%
+                  \hyper@natlinkend
+                \fi
+                \let\BBA\relax
+              }%
+            \fi
+          \fi
+        }%
+%
+% Another thing \textsf{apacite} does |\AtBeginDocument| is set the URL style
+% to monospaced. So we reset it back to normal roman type |\AfterEndPreamble|.
+%
+        \urlstyle{APACrm}
+       }%
+%
+% We pre-empt \textsf{apacite}'s |\providecommand| of |\doi| with our own
+% definition that includes the `doi' URI scheme label in the link, remembering
+% to remove the one inserted by |\doiprefix|.
+%
+      \newcommand{\doi}[1]{\href{http://dx.doi.org/#1}{\nolinkurl{doi:#1}}}%
+      \renewcommand{\doiprefix}{\unskip}%
+    }{}%
+  }%
+%
+% Both \textsf{biblatex} and \textsf{apacite} use |\bibitemsep| for the space
+% between bibliography items. Just in case they haven't been loaded, though, we
+% protect our setting of that length with an |\ifx| test.
+%
+  \ifx\undefined\bibitemsep
+  \else
+    \setlength{\bibitemsep}{1em plus 1ex minus 1ex}%
+  \fi
+}
+%
+% As mentioned above, if \textsf{apacite} is used, we can use a package option
+% to ensure that the reference list heading appears in the PDF bookmarks.
+%
+\PassOptionsToPackage{numberedbib}{apacite}
+
+%
+% We, of course, use \textsf{hyperref} for enhancing the PDF with working links,
+% bookmarks, metadata, etc.
+%
+\usepackage
+  [ colorlinks=true
+  , linkcolor=black
+  , anchorcolor=black
+  , citecolor=links
+  , filecolor=black
+  , menucolor=black
+  , runcolor=black
+  , urlcolor=links
+  ]{hyperref}
+%
+% Links should be in roman type, not monospaced.
+%
+\urlstyle{rm}
+%
+% We provide an |\email| command for displaying the email address of the
+% corresponding author.
+%
+\newcommand*{\email}[1]{\href{mailto:#1}{#1}}
+%
+% Once the user has had a chance to provide the metadata, we can add it to the
+% PDF metadata.
+%
+\AtBeginDocument{%
+  \hypersetup
+    { pdftitle={\thetitle}
+    , pdfauthor={\dccp@author}
+    , pdfsubject={\dccp@subject}
+    }
+%
+% The APA has its own style for line breaks in URLs. The \textsf{apacite}
+% package provides the code for this, but in case \textsf{biblatex} is used
+% instead, we repeat the settings (from 2013/07/21 v6.03) here.
+%
+  \@ifundefined{Url@force@Tilde}{\def\Url@force@Tilde{\relax}}{}%
+  \def\url@apa@dot{\mathchar"2E }%
+  \def\url@apa@comma{\mathchar"2C }%
+  \def\url@apa@questionmark{\mathchar"3F }%
+  \def\url@apa@exclamation{\mathchar"21 }%
+  \def\url@apa@hyphen{\mathchar"2D }%
+  \def\url@apa@underscore{\_}%
+  \def\UrlBreaks{\do\@\do\\\do\|\do\;\do\>\do\]\do\)\do\'\do+\do\=\do\#}%
+  \def\UrlBigBreaks{\do\/\do\:\do@url@hyp}%
+  \def\UrlNoBreaks{\do\(\do\[\do\{\do\<}% \)}
+  \def\UrlOrds{\do\*\do\~\do\'\do\"}%
+  \def\UrlSpecials{%
+    \do\.{\mathbin{}\url@apa@dot }%
+    \do\,{\mathbin{}\url@apa@comma }%
+    \do\-{\mathbin{}\url@apa@hyphen }%
+    \do\?{\mathbin{}\url@apa@questionmark }%
+    \do\!{\mathbin{}\url@apa@exclamation }%
+    \do\_{\mathbin{}\url@apa@underscore }%
+    \do\ {\Url@space}\do\%{\Url@percent}\do\^^M{\Url@space}%
+    \Url@force@Tilde}%
+  \def\Url@OTnonTT{\do\<{\langle}\do\>{\mathbin{\rangle}}\do
+    \_{\mathbin{}\_}\do\|{\mid}\do\{{\lbrace}\do\}{\mathbin{\rbrace}}\do
+    \\{\mathbin{\backslash}}\UrlTildeSpecial}
+}
+
+%
+% We now embed the Creative Commons licence information in the PDF using an XMP
+% packet. To do this, we employ the same technique as Scott Pakin's
+% \textsf{hyperxmp} (2014/01/02 v2.4). In order to avoid avoid a bug whereby
+% Adobe Acrobat confuses the XMP author information and the regular author
+% information, though, we \emph{only} embed the licence information.
+%
+% We need to make sure that any characters to appear verbatim in the XMP packet
+% are treated as ordinary characters and not active ones. The likely active
+% characters are symbols and punctuation, so should be treated as `other'
+% (category 12).
+%
+\begingroup
+\catcode`\"=12
+\catcode`\&=12
+\catcode`\#=12
+\catcode`\<=12
+\catcode`\>=12
+\catcode`\_=12
+%
+% We construct the XMP packet as the document begins.
+%
+\AtBeginDocument{%
+%
+% For convenience we define |\sp| to be a level of indent, translating to three
+% spaces.
+%
+  \def\sp{\space\space\space}
+%
+% The text of the XMP packet is recorded in |\cc@xmp@packet|. We use |^^J| to
+% break lines.
+%
+  \long\gdef\cc@xmp@packet{%
+<?xpacket begin='' id=''?>^^J%
+<x:xmpmeta xmlns:x='adobe:ns:meta/'>^^J%
+<rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'>^^J%
+\sp<rdf:Description rdf:about=''^^J%
+\sp\sp xmlns:xapRights='http://ns.adobe.com/xap/1.0/rights/'>^^J%
+\sp\sp<xapRights:Marked>True</xapRights:Marked>^^J%
+\sp</rdf:Description>^^J%
+\sp<rdf:Description rdf:about=''^^J%
+\sp\sp xmlns:dc='http://purl.org/dc/elements/1.1/'>^^J%
+\sp\sp<dc:rights>^^J%
+\sp\sp\sp<rdf:Alt>^^J%
+\sp\sp\sp\sp<rdf:li xml:lang='x-default'>This work is licensed under a Creative Commons Attribution 4.0 International Licence.</rdf:li>^^J%
+\sp\sp\sp</rdf:Alt>^^J%
+\sp\sp</dc:rights>^^J%
+\sp</rdf:Description>^^J%
+\sp<rdf:Description rdf:about=''^^J%
+\sp\sp xmlns:cc='http://creativecommons.org/ns#'>^^J%
+\sp\sp<cc:license rdf:resource='http://creativecommons.org/licenses/by/4.0/'/>^^J%
+\sp</rdf:Description>^^J%
+</rdf:RDF>^^J%
+</x:xmpmeta>^^J%
+<?xpacket end='r'?>^^J%
+  }%
+}
+\endgroup
+%
+% Different workflows require the XMP packet to be embedded in different ways.
+%
+% Pdf\TeX\ can inject objects into PDFs natively.
+%
+\newcommand*{\ccxmp@embed@packet@pdftex}{%
+  \bgroup
+    \pdfcompresslevel=0
+    \immediate\pdfobj stream attr {%
+      /Type /Metadata
+      /Subtype /XML
+    }{\cc@xmp@packet}%
+    \pdfcatalog {/Metadata \the\pdflastobj\space 0 R}%
+  \egroup
+}
+%
+% The |\pdfmark| command defined by \textsf{hyperref} is respected by tools such
+% as Dvipdf, Dvips, Dvipsone, etc.
+%
+\newcommand*{\ccxmp@embed@packet@pdfmark}{%
+  \pdfmark{%
+    pdfmark=/NamespacePush
+  }%
+  \pdfmark{%
+    pdfmark=/OBJ,
+    Raw={/_objdef \string{ccxmp@packet\string} /type /stream}%
+  }%
+  \pdfmark{%
+    pdfmark=/PUT,
+    Raw={\string{ccxmp@packet\string}
+      2 dict begin
+        /Type /Metadata def
+        /Subtype /XML def
+        currentdict
+      end
+    }%
+  }%
+  \pdfmark{%
+    pdfmark=/PUT,
+    Raw={\string{ccxmp@packet\string} (\cc@xmp@packet)}%
+  }%
+  \pdfmark{%
+    pdfmark=/Metadata,
+    Raw={\string{Catalog\string} \string{ccxmp@packet\string}}%
+  }%
+  \pdfmark{%
+    pdfmark=/NamespacePop
+  }%
+}
+%
+% Dvipdfm has its own |\special| command for inserting PDF objects, but
+% it is a bit basic and requires advance knowledge of how long (in characters)
+% the object is.
+%
+% The |\ccxmp@count@spaces| macro counts the number of spaces in its parameter
+% through a process of iteration, adding this figure to |\@tempcnta|.
+%
+\def\ccxmp@count@spaces#1 {%
+  \def\ccxmp@one@token{#1}%
+  \ifx\ccxmp@one@token\@empty
+    \advance\@tempcnta by -1
+  \else
+    \advance\@tempcnta by 1
+    \expandafter\ccxmp@count@spaces
+  \fi
+}
+%
+% The |\ccxmp@count@non@spaces| command counts the number of non-spaces in its
+% argument through a process of iteration, adding this figure to |\@tempcnta|.
+%
+\newcommand*{\ccxmp@count@non@spaces}[1]{%
+  \def\ccxmp@one@token{#1}%
+  \ifx\ccxmp@one@token\@empty
+  \else
+    \advance\@tempcnta by 1
+    \expandafter\ccxmp@count@non@spaces
+  \fi
+}
+%
+% The |\ccxmp@string@len| command sets |\@tempcnta| to the number of characters
+% (spaces + non-spaces) in its argument.
+%
+\newcommand*{\ccxmp@string@len}[1]{%
+  \@tempcnta=0
+  \expandafter\ccxmp@count@spaces#1 {} %
+  \expandafter\ccxmp@count@non@spaces#1{}%
+}
+%
+% So now, finally, is the command for embedding the packet using Dvipdfm.
+%
+\newcommand*{\ccxmp@embed@packet@dvipdfm}{%
+  \ccxmp@string@len{\cc@xmp@packet}%
+  \special{pdf: object @ccxmp@packet
+    <<
+      /Type /Metadata
+      /Subtype /XML
+      /Length \the\@tempcnta
+    >>
+    stream^^J\cc@xmp@packet endstream%
+  }%
+  \special{pdf: docview
+    <<
+      /Metadata @ccxmp@packet
+    >>
+  }%
+}
+%
+% \XeTeX\ creates PDFs with Xdvipdfmx, which supports a simpler |\special| for
+% inserting objects that does not require us to count characters.
+%
+\newcommand*{\ccxmp@embed@packet@xetex}{%
+  \special{pdf:stream @ccxmp@packet (\cc@xmp@packet)
+    <<
+      /Type /Metadata
+      /Subtype /XML
+    >>
+  }%
+  \special{pdf:put @catalog
+    <<
+      /Metadata @ccxmp@packet
+    >>
+  }%
+}
+%
+% We rely on \textsf{hyperref} to tell us how the PDF will be generated (after
+% all, it may not be done in the current pass) and use the respective technique
+% to embed the XMP packet.
+%
+\AtBeginDocument{%
+  \begingroup
+  \def\ccxmp@driver{hpdftex}%
+  \ifx\ccxmp@driver\Hy@driver
+    \ccxmp@embed@packet@pdftex
+  \else
+    \def\ccxmp@driver{hdvipdfm}%
+    \ifx\ccxmp@driver\Hy@driver
+      \ccxmp@embed@packet@dvipdfm
+    \else
+      \def\ccxmp@driver{hxetex}%
+      \ifx\ccxmp@driver\Hy@driver
+        \ccxmp@embed@packet@xetex
+      \else
+        \@ifundefined{pdfmark}{}{%
+          \ccxmp@embed@packet@pdfmark
+        }%
+      \fi
+    \fi
+  \fi
+  \endgroup
+}
+%% 
+%% Copyright (C) 2015 Digital Curation Centre, University of Edinburgh
+%% <info@dcc.ac.uk>
+%%
+%% End of file `dccpaper-base.tex'.

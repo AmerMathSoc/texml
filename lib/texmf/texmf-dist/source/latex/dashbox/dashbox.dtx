@@ -1,0 +1,498 @@
+% \iffalse
+%%
+%% File `dashbox.dtx'.
+%% Copyright (C) 1997-2001 Reuben Thomas (rrt@sc3d.org)
+%% This file is distributed under the LaTeX Project Public License,
+%% and comes with no warranty.
+%%
+%
+%<*dtx>
+\ProvidesFile{dashbox.dtx}
+%</dtx>
+%<driver> \ProvidesFile{dashbox.drv}
+% \fi
+%
+% \iffalse
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{url,dashbox}
+\begin{document}
+\DocInput{dashbox.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \GetFileInfo{dashbox.dtx}
+% \CheckSum{336}
+%
+% \MakeShortVerb{\|}
+%
+% \changes{v1.00}{7 Mar 97}{First version (unreleased)}
+% \changes{v1.10}{97}{Layered boxes added}
+% \changes{v1.11}{2 Jun 97}{Minor formatting improvements; first release}
+% \changes{v1.12}{28 Jul 01}{Made into a doc package; documentation
+% added. Default number of layers changed to 3, and at signs inserted
+% into private macro names. Tidied up some infelicities.}
+% \changes{v1.13}{8 Aug 01}{Uncommented the TeX lines from
+% |\NeedsTeXFormat| onwards; oops! Renamed to dashbox to avoid
+% confusion.}
+% \changes{v1.14}{11 Dec 01}{Changed ``dashed'' to ``dash'' in command
+% names, to avoid confusion. Changed default number of layers back to 2.}
+%
+% \title{Dashed and layered boxes}
+% \author{Reuben Thomas\\\url{rrt@sc3d.org}}
+% \date{11th December 2001}
+% \maketitle
+%
+% \begin{abstract}
+% |dashbox| provides new commands similar to |\framebox| and |\fbox|
+% to typeset dashed and layered boxes.
+% \end{abstract}
+%
+%
+% \section{User interface}
+%
+% The following commands are provided:
+%
+% \begin{itemize}
+% \item[]\hskip-\leftmargin
+% \DescribeMacro{\dbox}
+%    |\dbox{|\textit{text}|}| works like |\fbox|, but the box is drawn
+%    with \dbox{dashed lines}.
+% \item[]\hskip-\leftmargin
+% \DescribeMacro{\dashbox}
+%    |\dashbox[|\textit{width}|][|\textit{pos}|]{|\textit{text}|}|
+%    works like |\framebox|, but the box is drawn with
+%    \dashbox[5cm][c]{dashed lines}. 
+% \item[]\hskip-\leftmargin
+% \DescribeMacro{\lbox}
+%    |\lbox[|\textit{layers}|]{|\textit{text}|}| draws a
+%    \lbox{\fbox{stack of boxes}} around its contents, with the number
+%    of layers given by the first parameter (default 2).
+% \item[]\hskip-\leftmargin
+% \DescribeMacro{\dlbox}
+%    |\dlbox[|\textit{layers}|]{|\textit{text}|}| works like |\lbox|,
+%    but the boxes are drawn with \dlbox[2]{\dbox{dashed lines}}.
+% \end{itemize}
+%
+% The following style parameters are available:
+%
+% \begin{itemize}
+% \item[]\hskip-\leftmargin
+% \DescribeMacro{\dashlength}
+%   |\dashlength| gives the length of a dash plus the following
+%   gap. The default is 6pt.
+% \item[]\hskip-\leftmargin
+% \DescribeMacro{\dashdash}
+%   |\dashdash| gives the length of a dash. The default is 3pt.
+% \item[]\hskip-\leftmargin
+% \DescribeMacro{\layersize}
+%   |\layersize| gives the protrusion of each layer below the previous
+%   one. The default is |\dashdash|.
+% \end{itemize}
+%
+% The following standard parameters are also observed:
+%
+% \begin{itemize}
+% \item[]\hskip-\leftmargin
+% \DescribeMacro{\fboxrule}
+%   |\fboxrule| gives the width of the dashes.
+% \item[]\hskip-\leftmargin
+% \DescribeMacro{\fboxsep}
+%   |\fboxsep| gives the separation between the box and text inside it.
+% \end{itemize}
+% \StopEventually{}
+%
+%
+% \section{Implementation}
+%
+% \subsection{Preliminaries}
+%
+% Make sure we've got what we need, and announce the package.
+%
+%    \begin{macrocode}
+%<*package>
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{dashbox}
+    [2001/12/11 v1.14 Dashed and layered boxes]
+\RequirePackage{calc}
+\RequirePackage{ifthen}
+%    \end{macrocode}
+%
+% \subsection{Style parameters}
+%
+% Define and give the default values of the style parameters.
+%
+% \begin{macro}{\dashlength}
+%    \begin{macrocode}
+\newlength{\dashlength} \setlength{\dashlength}{6pt}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\dashdash}
+%    \begin{macrocode}
+\newlength{\dashdash} \setlength{\dashdash}{3pt}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\layersize}
+%    \begin{macrocode}
+\newlength{\layersize} \setlength{\layersize}{\dashdash}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Dashes}
+%
+% We need two new commands for drawing horizontal and vertical dashes.
+%
+% \begin{macro}{\hd@shrule}
+% |\hd@shrule| takes one argument, the rule's width. The thickness of
+% the dash is given by |\fboxrule|.
+%
+%    \begin{macrocode}
+\newcommand{\hd@shrule}[1]{%
+    \hbox to #1%
+        {\vrule height \fboxrule width \dashdash%
+        \cleaders\hbox to \dashlength%
+            {\hfill\rule{\dashdash}{\fboxrule}\hfill}\hfill%
+        \ifthenelse{\lengthtest{#1 > 2\dashdash}}%
+            {\vrule height \fboxrule width \dashdash}{}%
+        }}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\vd@shrule}
+% |\vd@shrule| takes one argument, the rule's height. The thickness of
+% the dash is given by |\fboxrule|.
+%
+%    \begin{macrocode}
+\newcommand{\vd@shrule}[1]{%
+    \vbox to #1%
+        {\hrule height \dashdash width \fboxrule%
+        \cleaders\vbox to \dashlength%
+            {\vfill\rule{\fboxrule}{\dashdash}\vfill}\vfill%
+        \ifthenelse{\lengthtest{#1 > 2\dashdash}}%
+            {\hrule height \dashdash width \fboxrule}{}%
+        }}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Dashed boxes}
+%
+% A private save box and some lengths are defined. |\d@ashedsavebox|
+% is a box to hold the contents of a dashed box. |\d@shedboxwidth| is
+% the box's width, and |\d@shedboxtotalheight| is the height plus the
+% depth.
+%
+% \begin{macro}{\d@shedsavebox}
+%    \begin{macrocode}
+\newsavebox{\d@shedsavebox}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\d@shedboxwidth}
+%    \begin{macrocode}
+\newlength{\d@shedboxwidth}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\d@shedboxtotalheight}
+%    \begin{macrocode}
+\newlength{\d@shedboxtotalheight}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\m@kedashbox}
+% |\m@kedashbox| is where the work is actually done. It puts the box
+% together piece by piece. It requires |\d@shedboxwidth| to be set by
+% its caller.
+%
+%    \begin{macrocode}
+\newcommand{\m@kedashbox}{%
+%    \end{macrocode}
+%
+% The height plus depth of the box is calculated.
+%
+%    \begin{macrocode}
+    \setlength{\d@shedboxtotalheight}%
+        {\dp\d@shedsavebox+\ht\d@shedsavebox+\fboxsep*2+\fboxrule*2}%
+%    \end{macrocode}
+%
+% The box is raised an appropriate amount, and drawn in a |b|-aligned
+% parbox.
+%
+%    \begin{macrocode}
+    \raisebox{-\fboxrule-\fboxsep-\dp\d@shedsavebox}{%
+    \parbox[b]{\d@shedboxwidth}{%
+%    \end{macrocode}
+%
+% Inter-line and inter-paragraph skip are disabled.
+%
+%    \begin{macrocode}
+        \offinterlineskip%
+        \parskip=0pt%
+%    \end{macrocode}
+%
+% The top line is drawn; the kern makes the left and right sides line
+% up properly.
+%
+%    \begin{macrocode}
+        \hd@shrule{\d@shedboxwidth}%
+        \kern-\fboxrule%
+        \par%
+%    \end{macrocode}
+%
+% The left-hand side is now drawn, in a parbox of the correct width.
+%
+%    \begin{macrocode}
+        \parbox{\fboxrule}{\vd@shrule{\d@shedboxtotalheight}}%
+%    \end{macrocode}
+%
+% Now the inside of the box is set in a parbox, with |\fboxsep| space
+% top and bottom. The kerns add |\fboxsep| space at the left and
+% right. 
+%
+%    \begin{macrocode}
+        \kern\fboxsep%
+        \parbox{\wd\d@shedsavebox}%
+            {\vspace{\fboxsep}\usebox{\d@shedsavebox}\vspace{\fboxsep}}%
+        \kern\fboxsep%
+%    \end{macrocode}
+%
+% The right-hand side is drawn just like the left-hand side, and the
+% bottom just like the top.
+%
+%    \begin{macrocode}
+        \parbox{\fboxrule}{\vd@shrule{\d@shedboxtotalheight}}%
+        \par%
+        \kern-\fboxrule%
+        \hd@shrule{\d@shedboxwidth}}%
+    }}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dbox}
+% |\dbox| is just a wrapper around |\m@kedashbox| which saves its
+% argument and then calculates the width according to that of its
+% argument. 
+%
+%    \begin{macrocode}
+\newcommand{\dbox}[1]{%
+    \sbox{\d@shedsavebox}{#1}%
+    \setlength{\d@shedboxwidth}{\wd\d@shedsavebox+\fboxsep*2+\fboxrule*2}%
+    \m@kedashbox}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dashbox}
+% The code for |\dashbox| is partly taken from that for |\framebox|.
+% Depending on whether any optional arguments are given, it either
+% simply calls |\dbox|, or sets the width to that given and does the
+% typesetting via |\savebox| and |\m@kedashbox|.
+%
+%    \begin{macrocode}
+\def\dashbox{\@ifnextchar[\@dashbox\dbox}
+\def\@dashbox[#1]{\@ifnextchar[{\@idashbox[#1]}{\@idashbox[#1][c]}}
+\long\def\@idashbox[#1][#2]#3%
+    {\setlength{\d@shedboxwidth}{#1}%
+    \savebox{\d@shedsavebox}[#1-\fboxsep*2-\fboxrule*2][#2]{#3}%
+    \m@kedashbox}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Layers}
+%
+% Another series of private variables are required for layers:
+% |\l@yersavebox| holds the text to be set in a layer,
+% |\l@yerwidth| holds the total width of the layer,
+% |\l@yerboxwidth| the width of the layer box,
+% |\l@yertotalheight| the height plus depth of the layer.
+% |\l@yerlineheight| the lift of the top right-hand line, and
+% |\l@yervoffset| the lift of the layer below the baseline.
+%
+% \begin{macro}{\l@yersavebox}
+%    \begin{macrocode}
+\newsavebox{\l@yersavebox}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\l@yerwidth}
+%    \begin{macrocode}
+\newlength{\l@yerwidth}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\l@yerboxwidth}
+%    \begin{macrocode}
+\newlength{\l@yerboxwidth}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\l@yertotalheight}
+%    \begin{macrocode}
+\newlength{\l@yertotalheight}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\l@yerlineheight}
+%    \begin{macrocode}
+\newlength{\l@yerlineheight}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\l@yervoffset}
+%    \begin{macrocode}
+\newlength{\l@yervoffset}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\m@kelayer}
+% |\m@kelayer| makes a solid layer.
+%
+%    \begin{macrocode}
+\newcommand{\m@kelayer}[1]{%
+%    \end{macrocode}
+%
+% The various lengths are calculated. The argument gives the number of
+% the layer, i.e.\ how far down it should be offset from its contents
+% as a multiple of |\layersize|.
+%
+%    \begin{macrocode}
+    \setlength{\l@yertotalheight}%
+        {\dp\l@yersavebox+\ht\l@yersavebox+\layersize-#1\layersize}%
+    \setlength{\l@yerlineheight}%
+        {\ht\l@yersavebox-#1\layersize-\fboxrule}%
+    \setlength{\l@yervoffset}%
+        {-\layersize-\dp\l@yersavebox}%
+    \setlength{\l@yerboxwidth}%
+        {\wd\l@yersavebox+\layersize-#1\layersize}%
+%    \end{macrocode}
+%
+% The layer is set in a parbox of width |\l@yerwidth|.
+%
+%    \begin{macrocode}
+    \parbox{\l@yerwidth}{%
+%    \end{macrocode}
+%
+% Inter-line and inter-paragraph spacing are turned off.
+%
+%    \begin{macrocode}
+        \offinterlineskip%
+        \parskip=0pt%
+%    \end{macrocode}
+%
+% The contents of the layer is set first.
+%
+%    \begin{macrocode}
+        \usebox{\l@yersavebox}%
+%    \end{macrocode}
+%
+% The extra ``corner'' is added on to the bottom right.
+%
+%    \begin{macrocode}
+        \rule[\l@yerlineheight]{\layersize}{\fboxrule}%
+        \kern-\fboxrule%
+        \rule[\l@yervoffset]{\fboxrule}{\l@yertotalheight}%
+        \kern-\wd\l@yersavebox\kern-\layersize\kern#1\layersize
+        \rule[\l@yervoffset]{\fboxrule}{\layersize}%
+        \kern-\fboxrule
+        \rule[\l@yervoffset]{\l@yerboxwidth}{\fboxrule}%
+    }}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\l@yer}
+% |\l@yer| draws a layer. The first argument gives the number of the
+% layer, and the second its contents.
+%
+%    \begin{macrocode}
+\newcommand{\l@yer}[2]{%
+    \sbox{\l@yersavebox}{#2}%
+    \setlength{\l@yerwidth}{\wd\l@yersavebox+\layersize}%
+    \m@kelayer{#1}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\m@kedashlayer}
+% |\m@kedashlayer| makes a dashed layer. The code is the same as for
+% |\m@kelayer| except for the dash commands.
+%
+%    \begin{macrocode}
+\newcommand{\m@kedashlayer}[1]{%
+    \setlength{\l@yertotalheight}%
+        {\dp\l@yersavebox+\ht\l@yersavebox+\layersize-#1\layersize}%
+    \setlength{\l@yerlineheight}{\ht\l@yersavebox-#1\layersize-\fboxrule}%
+    \setlength{\l@yervoffset}{-\layersize-\dp\l@yersavebox}%
+    \setlength{\l@yerboxwidth}%
+        {\wd\l@yersavebox+\layersize-#1\layersize}%
+    \parbox{\l@yerwidth}{%
+        \offinterlineskip%
+        \parskip=0pt%
+        \usebox{\l@yersavebox}%
+        \raisebox{\l@yerlineheight}{\hd@shrule{\layersize}}%
+        \kern-\fboxrule%
+        \raisebox{\l@yervoffset}%
+            {\parbox[b]{\fboxrule}{\vd@shrule{\l@yertotalheight}}}%
+        \kern-\wd\l@yersavebox\kern-\layersize\kern#1\layersize
+        \raisebox{\l@yervoffset}%
+            {\parbox[b]{\fboxrule}{\vd@shrule{\layersize}}}%
+        \kern-\fboxrule
+        \raisebox{\l@yervoffset}%
+            {\hd@shrule{\l@yerboxwidth}}%
+    }}
+%    \end{macrocoode}
+% \end{macro}
+%
+% \begin{macro}{\dl@yer}
+% |\dl@yer| draws a dashed layer, just like |\l@yer| draws a solid
+% one.
+%
+%    \begin{macrocode}
+\newcommand{\dl@yer}[2]
+    {\sbox{\l@yersavebox}{#2}%
+    \setlength{\l@yerwidth}{\wd\l@yersavebox+\layersize}%
+    \m@kedashlayer{#1}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Stacks}
+%
+% Finally, the commands for drawing a stack of layers.
+%
+% |l@yercount| counts the number of layers drawn by the stack drawing
+% \begin{macro}{l@yercount}
+%    \begin{macrocode}
+\newcounter{l@yercount}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\l@yers}
+% |\l@yers| draws a stack of layers; it is parametrized on the command
+% used to draw a layer (third argument). The first argument is number
+% of layers, and the second is the text to set. The layers are drawn
+% in in a loop, using |\l@yersavebox| as an accumulator, and the
+% result is typeset.
+%
+%    \begin{macrocode}
+\newcommand{\l@yers}[3]
+    {\setcounter{l@yercount}{1}%
+    \sbox{\l@yersavebox}{#2}%
+    \whiledo{\not\(\value{l@yercount} > #1\)}%
+        {\sbox{\l@yersavebox}%
+            {#3{\value{l@yercount}}{\usebox{\l@yersavebox}}}%
+        \stepcounter{l@yercount}}%
+    \usebox{\l@yersavebox}%
+    }
+%    \end{macrocode}
+% \end{macro}
+%
+% |\lbox| and |\dlbox| are just wrappers for |\l@yers|. They both
+% default to drawing two layers.
+%
+% \begin{macro}{\lbox}
+%    \begin{macrocode}
+\newcommand{\lbox}[2][2]{%
+    \l@yers{#1}{#2}{\l@yer}}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\dlbox}
+%    \begin{macrocode}
+\newcommand{\dlbox}[2][2]{%
+    \l@yers{#1}{#2}{\dl@yer}}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+%
+% \Finale
+\endinput

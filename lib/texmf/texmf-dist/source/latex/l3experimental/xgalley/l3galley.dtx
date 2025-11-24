@@ -1,0 +1,2664 @@
+% \iffalse
+%
+%% File: l3galley.dtx Copyright (C) 1999-2001, 2004-2009 Frank Mittelbach
+%%                              (C) 2010-2016 The LaTeX3 Project
+%%
+%% It may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License (LPPL), either version 1.3c of this
+%% license or (at your option) any later version.  The latest version
+%% of this license is in the file
+%%
+%%    http://www.latex-project.org/lppl.txt
+%%
+%% This file is part of the "l3experimental bundle" (The Work in LPPL)
+%% and all files in that bundle must be distributed together.
+%%
+%% The released version of this bundle is available from CTAN.
+%%
+%% -----------------------------------------------------------------------
+%%
+%% The development version of the bundle can be found at
+%%
+%%    http://www.latex-project.org/svnroot/experimental/trunk/
+%%
+%% for those people who are interested.
+%%
+%%%%%%%%%%%
+%% NOTE: %%
+%%%%%%%%%%%
+%%
+%%   Snapshots taken from the repository represent work in progress and may
+%%   not work or may contain conflicting material!  We therefore ask
+%%   people _not_ to put them into distributions, archives, etc. without
+%%   prior consultation with the LaTeX Project Team.
+%%
+%% -----------------------------------------------------------------------
+%%
+%
+%<*driver|package>
+% The version of expl3 required is tested as early as possible, as
+% some really old versions do not define \ProvidesExplPackage.
+\RequirePackage{expl3}[2016/05/14]
+%<package>\@ifpackagelater{expl3}{2016/05/14}
+%<package>  {}
+%<package>  {%
+%<package>    \PackageError{l3galley}{Support package l3kernel too old}
+%<package>      {%
+%<package>        Please install an up to date version of l3kernel\MessageBreak
+%<package>        using your TeX package manager or from CTAN.\MessageBreak
+%<package>        \MessageBreak
+%<package>        Loading l3galley will abort!%
+%<package>      }%
+%<package>    \endinput
+%<package>  }
+\GetIdInfo$Id: l3galley.dtx 6493 2016-05-14 21:08:13Z joseph $
+  {L3 Experimental galley code}
+%</driver|package>
+%<*driver>
+\documentclass[full]{l3doc}
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \title{^^A
+%   The \textsf{l3galley} package\\ Galley code^^A
+%   \thanks{This file describes v\ExplFileVersion,
+%     last revised \ExplFileDate.}^^A
+% }
+%
+% \author{^^A
+%  The \LaTeX3 Project\thanks
+%    {^^A
+%      E-mail:
+%        \href{mailto:latex-team@latex-project.org}
+%          {latex-team@latex-project.org}^^A
+%    }^^A
+% }
+%
+% \date{Released \ExplFileDate}
+%
+% \maketitle
+%
+% \begin{documentation}
+%
+% \section{Introduction}
+%
+% In \LaTeX3 terminology a galley is a rectangular area which receives
+% text and other material filling it from top. The vertically extend of
+% a galley is normally not restricted: instead certain chunks are taken
+% off the top of an already partially filled galley to form columns or
+% similar areas on a page. This process is typically asynchronous but
+% there are ways to control or change its behaviour.
+%
+% Examples for galleys are \enquote{the main galley}, where the
+% continuous document data gets formatted into  and from which columns
+% and pages are constructed, and \enquote{vertical box galleys}, such
+% as the body of a minipage environment. The latter galleys are
+% typically not split after formatting, though there can be exceptions.
+%
+% \section{Formatting layers}
+%
+% The present module is mainly concerned with the formatting of text
+% in galleys. The mechanism by which this is achieved uses four
+% (somewhat) distinct layers, some of which can be addressed using the
+% templates provided here.
+%
+% \subsection{Layer one: external dimensions}
+%
+% The bottom layer of the system is the external dimensions of the
+% galley. Normally only the horizontal dimension is fixed externally,
+% while the vertical (filling) dimension is unspecified. The external
+% dimensions are fixed when starting a new galley, and are therefore
+% not modifiable within the galley.
+%
+% There are no templates for setting this layer directly, although the
+% external values are influenced by other parts of the system (for
+% example when creating minipage environments).
+%
+% \subsection{Layer two: internal dimensions}
+%
+% The second layer is the internal dimensions of the galley: the
+% \emph{measure} used for paragraph text and the position of the
+% paragraph relative to the edges of the galley.
+%
+% This layer is normally accessed by higher-level templates
+% \emph{via} the object type \texttt{measure}. Changes made using
+% level two templates will often extend for large parts of a document
+% (up to and including the entire document).
+%
+% \subsection{Layer three: paragraph shape}
+%
+% The third layer defines the paragraph shape within the measure as
+% provided by the second layer. In the absence of any specification
+% for that layer the paragraph shape used will be that of a
+% rectangular area of the width of the current measure.
+%
+% There are some restrictions imposed on the shape of a paragraph by the
+% underlying \TeX{} mechanisms. For example, cut out sections in
+% paragraphs can be specified from the top of the paragraph but not from
+% the bottom.
+%
+% \subsection{Layer four: formatting inside the paragraph}
+%
+% The forth layer deals with the paragraph formatting aspects such as
+% hyphenation and justification within the paragraph (this is sometimes
+% referred to as \enquote{\texttt{h\&j}} or \enquote{\texttt{hj}}). This
+% layer is somewhat distinct from the galley as such, but is handled in
+% the same place as there is, internally, interaction between the different
+% layers.
+%
+% \section{Code interfaces}
+%
+% \subsection{Galley layers}
+%
+% \begin{variable}{\l_galley_width_dim}
+%   The total width of a galley, set either by the page geometry code
+%   for the main vertical galley or when creating an independent galley,
+%   such as a minipage.
+% \end{variable}
+%
+% \begin{function}{\galley_level:}
+%   \begin{syntax}
+%     \cs{galley_level:}
+%   \end{syntax}
+%   Sets up a vertical box to contain a new galley level. The box should
+%   be \enquote{color safe}, which is automatic for \LaTeX3 coffins but
+%   must be included manually (using \cs{color_group_begin:} and
+%   \cs{color_group_end:}) in \enquote{raw} vertical boxes.
+% \end{function}
+%
+% \subsection{Measure}
+%
+% \begin{function}
+%   {\galley_margins_set_absolute:nn, \galley_margins_set_relative:nn}
+%   \begin{syntax}
+%     \cs{galley_margins_set_absolute:nn} \Arg{left margin} \Arg{right margin}
+%     \cs{galley_margins_set_relative:nn} \Arg{left margin} \Arg{right margin}
+%   \end{syntax}
+%   Sets the width of the measure to have the \meta{left margin} and
+%   \meta{right margin} specified by the arguments, both of which are
+%   \meta{dimension expressions}. The \texttt{relative} function will adjust
+%   the text width within any existing margins, whereas the \texttt{absolute}
+%   measure sets the margins based on the edges of the galley only. One or
+%   both of the \meta{margins} may be negative, to specify and outdent.
+% \end{function}
+%
+% \subsection{Between paragraphs}
+%
+% \begin{variable}{\g_galley_previous_par_lines_int}
+%   The number of lines in the preceding conceptual paragraph. This may not
+%   correspond to the \TeX{} \tn{prevgraf} primitive value as one conceptual
+%   paragraph may contain several \TeX{} \tn{par} primitive tokens.
+% \end{variable}
+%
+% \begin{variable}{\g_galley_restore_running_tl}
+%   When galley settings need to be reset at the end of a paragraph, the
+%   appropriate detail should be added to this token list. It is inserted
+%   immediately before the start of each paragraph, and can therefore be
+%   used to clear otherwise global settings. The token list itself is
+%   also cleared as part of this process.
+% \end{variable}
+%
+% \begin{variable}{\g_galley_no_break_next_bool}
+%   Indicates that no page break should be allowed between the current
+%   paragraph and the next paragraph.
+% \end{variable}
+%
+% \begin{function}{\g_galley_omit_next_indent_bool}
+%   Indicates that the indent should be omitted from the start of the next
+%   paragraph started.
+% \end{function}
+%
+% \begin{variable}{\l_galley_interpar_penalty_int}
+%   The \meta{penalty} for a break between paragraphs. The \meta{penalty}
+%   should be in the range $-10\,000$ to $10\,000$, where $-10\,000$ forces a
+%   page break, $0$ has no effect at all and  $10\,000$ forbids a page break.
+%   Note that setting \cs{g_galley_no_break_next_bool} to \texttt{true}
+%   will override any setting of \cs{l_galley_interpar_penalty_int}.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_interpar_vspace_skip}
+%   Stretchable space to be inserted between paragraphs, set at the design
+%   or template level.
+% \end{variable}
+%
+% \begin{function}{\galley_penalty_set_single:n}
+%   \begin{syntax}
+%     \cs{galley_penalty_set_single:n} \Arg{penalty}
+%     \cs{galley_penalty_add_single:n} \Arg{penalty}
+%   \end{syntax}
+%   Sets the \meta{penalty} for a break between the current and next
+%   paragraph on a one-off basis. This function is intended for user-level
+%   adjustments to design, and takes precedent over both settings from
+%   \cs{l_galley_interpar_penalty_int} and from \cs{galley_no_break_next:}.
+%   The \texttt{add} variant adds the penalty to any existing values.
+% \end{function}
+%
+% \begin{function}
+%   {
+%     \galley_vspace_set_single:n ,
+%     \galley_vspace_add_single:n ,
+%     \galley_vspace_max_single:n
+%   }
+%   \begin{syntax}
+%     \cs{galley_vspace_set_single:n} \Arg{space}
+%   \end{syntax}
+%   Sets the \meta{space} to be inserted between the current and next
+%   paragraph on a one-off basis. This function is intended for user-level
+%   adjustments to design. The \texttt{add} and \texttt{max} variants add
+%   to the existing spacing and set to the maximum of the existing value
+%   and the argument, respectively.
+% \end{function}
+%
+% \subsection{Paragraph shape}
+%
+% \begin{function}
+%   {
+%     \galley_parshape_set_multi:nnnN,
+%     \galley_parshape_set_multi:nVVN,
+%     \galley_parshape_set_single:nnnN,
+%     \galley_parshape_set_single:nVVN
+%   }
+%   \begin{syntax}
+%     \cs{galley_parshape_set_multi:nnnN} \Arg{unaltered lines} \Arg{left indents} \Arg{right indents} \meta{resume flag}
+%     \cs{galley_parshape_set_single:nnnN} \Arg{unaltered lines} \Arg{left indents} \Arg{right indents} \meta{resume flag}
+%   \end{syntax}
+%   Sets the current paragraph shape to create an arbitrary paragraph shape.
+%   The paragraph shape is set such that there are \meta{unaltered lines} which
+%   have width and indent as set by the measure. The \enquote{altered} lines
+%   are then defined by the comma-separated lists of \meta{left indents} and
+%   \meta{right indents}. These are both indents from the edge of the measure,
+%   and may be negative, and should both contain the same number of items.
+%   If the \meta{resume flag} is \texttt{true}, after the last
+%   altered line the paragraph shape returns to that of the measure. On the
+%   other hand, if the flag is \texttt{false} then the shape of the last line
+%   is retained for the rest of the paragraph.
+%   For example,
+%   \begin{verbatim}
+%     \galley_parshape_set_multi_par:nnnN { 1 }
+%       { 2 pt , 4 pt , 6 pt } { 2 pt , 4 pt , 6 pt } \c_true_bool
+%   \end{verbatim}
+%   would create a paragraph shape in which the first line is the full
+%   width of the measure, the second line is indented by $2$\,pt on each side,
+%   the third line by $4$\,pt and the fourth line and subsequent lines by
+%   $6$\,pt from the edge of the measure on each side.
+%
+%   The \texttt{single} version applies only to a single paragraph,
+%   while the \texttt{multi} function sets the paragraph shape on an
+%   ongoing basis within the scope of the current \TeX{} group.
+% \end{function}
+%
+% \begin{function}
+%   {
+%     \galley_cutout_left:nn,
+%     \galley_cutout_right:nn
+%   }
+%   \begin{syntax}
+%     \cs{galley_cutout_left:nn} \Arg{unaltered lines} \Arg{indents}
+%     \cs{galley_cutout_right:nn} \Arg{unaltered lines} \Arg{indents}
+%   \end{syntax}
+%   Adds a cutout section to the active paragraph shape, leaving
+%   \meta{unaltered lines} unchanged and then applying the \meta{indents}
+%   (a comma list). The cutout will be placed on the left or right as indicated
+%   by the function name, and will apply to exactly the number of lines
+%   specified (the total of the \meta{unaltered lines} and the number of
+%   entries in the \meta{indents} list). Several cutouts may be applied
+%   sequentially: these act in an additive sense.
+% \end{function}
+%
+% \subsection{Formatting inside the paragraph}
+%
+% The settings described here apply \enquote{inside} the paragraph, and so
+% are active irrespective of any paragraph shape within the measure.
+%
+% \begin{variable}{\l_galley_line_left_skip, \l_galley_line_right_skip}
+%   Stretchable space added to the appropriate side each line in a paragraph.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_par_begin_skip, \l_galley_par_end_skip}
+%   Stretchable space added to the beginning of the first line and end of
+%   the last line of a paragraph, respectively.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_par_indent_dim}
+%   Fixed space added to the start of each paragraph except for those where
+%   \cs{g_galley_omit_next_indent_bool} is \texttt{true}.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_last_line_fit_int}
+%   Determines how the inter-word stretch is set for the last line of a
+%   paragraph when
+%   \begin{enumerate}
+%     \item the value of \cs{l_galley_par_end_skip} contains an infinite
+%       (\texttt{fil(l)}) component;
+%     \item the values of \cs{l_galley_line_left_skip} and
+%       \cs{l_galley_line_right_skip} do \emph{not} contain an infinite
+%       (\texttt{fil(l)}) component.
+%   \end{enumerate}
+%   Under these circumstances, \cs{l_galley_last_line_fit_int} is active, and
+%   applies as follows:
+%   \begin{itemize}
+%     \item when set to~$0$, the last line of the paragraph is set with
+%       the inter-word spacing at natural width;
+%    \item when set to a $1000$ (or above), the inter-word spacing in the last
+%      line is stretched by the same factor as that applied to the penultimate
+%      line;
+%    \item when set to~$n$ between these extremes, the inter-word spacing in
+%      the last line is stretched by $n/1000$ times the factor used for the
+%      penultimate line.
+%   \end{itemize}
+% \end{variable}
+%
+% \begin{function}{\galley_interword_spacing_set:N}
+%   \begin{syntax}
+%     \cs{galley_interword_spacing_set:N} \meta{fixed spacing bool}
+%   \end{syntax}
+%   Sets the inter-word spacing used based on the values supplied by the
+%   current font. If the \meta{fixed spacing bool} flag is \texttt{true} then
+%   no stretch is permitted between words, otherwise the stretch specified by
+%   the font designer is used.
+% \end{function}
+%
+% \subsection{Display material}
+%
+% Material which is set in \enquote{display-style} require additional settings
+% to control the relationship with the surrounding material.
+%
+% \begin{function}{\galley_display_begin:, \galley_display_end:}
+%   \begin{syntax}
+%     \cs{galley_display_begin:}
+%       \ldots
+%     \cs{galley_display_end:}
+%   \end{syntax}
+%   Sets up a group to contain display-style material. Unlike an independent
+%   galley level, settings are inherited from the surroundings. However,
+%   the interaction of a display block with the paragraphs before and after it
+%   can be adjusted independent of the design of text.
+% \end{function}
+%
+% \subsection{Hyphenation}
+%
+% \begin{variable}{\l_galley_hyphen_left_int}
+%   THIS IS A HACK: SEE CODE!
+% \end{variable}
+%
+% \subsection{Line breaking}
+%
+% \begin{variable}{\l_galley_binop_penalty_int}
+%   Penalty charged if an inline math formula is broken at a
+%   binary operator.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_double_hyphen_demerits_int}
+%   Extra demerit charge of two (or more) lines in succession end
+%   in a hyphen.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_emergency_stretch_skip}
+%   Additional stretch assumed for each line if no better line breaking
+%   can be found without it. This stretch is not actually added to lines,
+%   so its use may result in underfull box warnings.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_final_hyphen_demerits_int}
+%   Extra demerit charge if the second last line is hyphenated.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_linebreak_badness_int}
+%   Boundary that if exceeded will cause \TeX{} to report an
+%   underfull line.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_linebreak_fuzz_dim}
+%   Boundary below which overfull lines are not reported.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_linebreak_penalty_int}
+%   Extra penalty charged per line in the paragraph. By making
+%   this penalty higher \TeX{} will try harder to produce compact
+%   paragraphs.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_linebreak_pretolerance_int}
+%   Maximum tolerance allowed for individual lines to break the
+%   paragraph without attempting hyphenation.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_linebreak_tolerance_int}
+%   Maximum tolerance allowed for individual lines when breaking a
+%   paragraph while attempting hyphenation (if this limit can't be
+%   met \cs{l_galley_emergency_stretch_skip} comes into play).
+% \end{variable}
+%
+% \begin{variable}{\l_galley_mismatch_demerits_int}
+%   Extra demerit charge if two visually incompatible lines follow
+%   each other.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_relation_penalty_int}
+%   Penalty charged if an inline math formula is broken at a
+%   relational symbol.
+% \end{variable}
+%
+% \begin{function}{\galley_break_line:Nn}
+%   \begin{syntax}
+%     \cs{galley_break_line:Nn} \meta{boolean} \Arg{dimexpr}
+%   \end{syntax}
+%   Breaks the current line, filling the remaining space with \texttt{fil}
+%   glue. If the \meta{boolean} is \texttt{true} then a page break is possible
+%   after the broken line. Vertical space as given by the \meta{dimexpr} will
+%   be inserted between the broken line and the next line.
+% \end{function}
+%
+% \subsection{Paragraph breaking}
+%
+% \begin{variable}{\l_galley_parbreak_badness_int}
+%   Boundary that if exceeded will cause \TeX{} to report an
+%   underfull vertical box.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_parbreak_fuzz_dim}
+%   Boundary below which overfull vertical boxes are not reported.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_broken_penalty_int}
+%   Penalty for page breaking after a hyphenated line.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_pre_display_penalty_int}
+%   Penalty for breaking between immediately before display math material.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_post_display_penalty_int}
+%   Penalty for breaking between immediately after display math material.
+% \end{variable}
+%
+% \begin{function}
+%   {
+%     \galley_club_penalties_set:n,
+%     \galley_club_penalties_set:V,
+%     \galley_club_penalties_set:v,
+%     \galley_display_club_penalties_set:n,
+%     \galley_display_club_penalties_set:V,
+%     \galley_display_club_penalties_set:v,
+%     \galley_display_widow_penalties_set:n,
+%     \galley_display_widow_penalties_set:V,
+%     \galley_display_widow_penalties_set:v,
+%     \galley_widow_penalties_set:n,
+%     \galley_widow_penalties_set:V,
+%     \galley_widow_penalties_set:v
+%   }
+%   \begin{syntax}
+%     \cs{galley_club_penalties_set:n} \Arg{penalty list}
+%   \end{syntax}
+%   Set the penalties for breaking lines at the beginning and end of
+%   (partial) paragraphs. In each case, the \meta{penalty list} is a
+%   comma-separated list of penalty values. The list applies as follows:
+%   \begin{itemize}
+%     \item[\texttt{club}] Penalties for breaking after the first, second,
+%       third, \emph{etc.}~line of the paragraph.
+%     \item[\texttt{display_club}] Penalties for breaking after the first,
+%       second, third, \emph{etc.}~line after a display math environment.
+%     \item[\texttt{display_club}] Penalties for breaking before the last,
+%       penultimate, antepenultimate, \emph{etc.}~line before a display
+%       math environment.
+%     \item[\texttt{widow}] Penalties for breaking before the last,
+%       penultimate, antepenultimate, \emph{etc.}~line of the paragraph.
+%   \end{itemize}
+%   In all cases, these penalties apply in addition to the general interline
+%   penalty or to any \enquote{special} line penalties.
+% \end{function}
+%
+% \begin{function}{\galley_interline_penalty_set:n}
+%   \begin{syntax}
+%     \cs{galley_interline_penalty_set:n} \Arg{penalty}
+%   \end{syntax}
+%   Sets the standard interline penalty applied between lines of a paragraph.
+%   This value is added to any (display) club or widow penalty in force.
+% \end{function}
+%
+% \begin{function}
+%   {
+%     \galley_interline_penalties_set:n,
+%     \galley_interline_penalties_set:V
+%   }
+%   \begin{syntax}
+%     \cs{galley_interline_penalties_set:n} \Arg{penalty list}
+%   \end{syntax}
+%   Sets \enquote{special} interline penalties to be used in place of
+%   the standard value, specified as a comma-separated \meta{penalty list}.
+%   The \meta{penalties} apply to the first, second, third, \emph{etc.}~line
+%   of the paragraph.
+% \end{function}
+%
+% \begin{function}
+%   {
+%     \galley_save_club_penalties:N,
+%     \galley_save_display_club_penalties:N,
+%     \galley_save_display_widow_penalties:N,
+%     \galley_save_interline_penalties:N,
+%     \galley_save_widow_penalties:N
+%   }
+%   \begin{syntax}
+%     \cs{galley_save_club_penalties:N} \Arg{comma list}
+%   \end{syntax}
+%   These functions save the current value of the appropriate penalty to the
+%   comma list specified, within the current \TeX{} group.
+% \end{function}
+%
+% \begin{function}[EXP]{\galley_interline_penalty:}
+%   \begin{syntax}
+%     \cs{galley_interline_penalty:}
+%   \end{syntax}
+%   Expands to the current interline penalty as a \meta{integer denotation}.
+% \end{function}
+%
+% \section{Hooks and insertion points}
+%
+% \begin{variable}{\g_galley_par_begin_hook_tl}
+%   Token list inserted at the beginning of every paragraph in horizontal mode.
+%   This is inserted after any paragraph indent but before any other horizontal
+%   mode material.
+% \end{variable}
+%
+% \begin{variable}{\g_galley_par_end_hook_tl}
+%   Token list inserted at the end of every paragraph in horizontal mode.
+% \end{variable}
+%
+% \begin{variable}{\g_galley_par_reset_hook_tl}
+%   Token list inserted after each paragraph. This is used for resetting
+%   galley parameters, and is therefore cleared after use. It is inserted
+%   in vertical mode and must not contain horizontal mode material.
+% \end{variable}
+%
+% \begin{variable}{\g_galley_whatsit_next_tl}
+%   Token list for whatsits to be inserted at the very beginning of the next
+%   paragraph started.
+% \end{variable}
+%
+% \begin{variable}{\g_galley_whatsit_previous_tl}
+%   Token list for whatsits to be inserted at the very end of the last
+%   paragraph started.
+% \end{variable}
+%
+% \section{Paragraphs}
+%
+% \begin{function}{\galley_par:}
+%   \begin{syntax}
+%     \cs{galley_par:}
+%   \end{syntax}
+%   Finalises the material collected as the last paragraph, inserts tokens
+%   at the start of the new paragraph, setting paragraph shape and any
+%   special values as required.
+% \end{function}
+%
+% \begin{function}{\galley_par:n}
+%   \begin{syntax}
+%     \cs{galley_par:n} \Arg{tokens}
+%   \end{syntax}
+%   Adds the \meta{tokens} to the material collected for the last paragraph
+%   before finalising it in the usual way. This function should
+%   therefore be the \emph{first} non-expandable entry used when a function
+%   needs to add tokens to the preceding paragraph.
+% \end{function}
+%
+% \section{Information variables}
+%
+% Some of the variables for the galley mechanism may be of
+% interest to the programmer. These should all be treated as read-only
+% values and accessed only through the defined interfaces described above.
+%
+% \begin{variable}{\l_galley_total_left_margin_dim}
+%   The total margin between the left side of the galley and the left side of
+%   the text block. This may be negative if the measure is set to overlap
+%   the text beyond the edge of the galley.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_total_right_margin_dim}
+%   The total margin between the right side of the galley and the right side
+%   of the text block. This may be negative if the measure is set to overlap
+%   the text beyond the edge of the galley.
+% \end{variable}
+%
+% \begin{variable}{\l_galley_text_width_dim}
+%   The width of a line of text within the galley, taking account of
+%   any margins added. This may be larger than \cs{l_galley_width_dim}
+%   if the margins are negative.
+% \end{variable}
+%
+% \end{documentation}
+%
+% \begin{implementation}
+%
+% \section{\pkg{l3galley} Implementation}
+%
+% At the implementation level, there are a number of challenges which
+% have to be overcome in order to make the galley easy to use at the
+% designer and user levels. Inserting material into the main vertical
+% list is in many ways an irreversible operation. Inserting items as
+% they appear in the source is therefore not desirable. Instead,
+% inserting vertical-mode material needs to be delayed until the start
+% of the \enquote{next} paragraph. This is particularly notable for
+% invisible items such as whatsits and specials, which will otherwise
+% cause changes in spacing. Delaying insertion enables user-supplied
+% settings to override design settings in a reliable fashion. This can
+% be achieved as the design-level material can be ignored if a user
+% value is supplied. There is a need to allow proper nesting of
+% galleys, which means that all of the above needs to be set up so that
+% it can be saved and restored. All of these manipulations require
+% altering the meaning of the \cs{par} token, which is particularly
+% awkward as \TeX{} inserts a token \emph{called} \cs{par} rather than
+% one with a particular meaning. This makes moving \cs{par} to somewhere
+% \enquote{safe} extremely challenging.
+%
+% Added to all of this complexity, there is a need to deal with
+% \enquote{display-like} material. The most obvious example is the way
+% lists are handled. These use \cs{par} tokens to achieve the correct
+% appearance, but at the same time
+% \begin{verbatim}
+%   Text
+%   \begin{itemize}
+%     \item An item
+%   \end{itemize}
+%   More text
+% \end{verbatim}
+% should form one visual paragraph while
+% \begin{verbatim}
+%   Text
+%   \begin{itemize}
+%     \item An item
+%   \end{itemize}
+%
+%   More text
+% \end{verbatim}
+% should be shown as two paragraphs. This requires an additional level
+% of handling so that the \cs{par} token used to end the list in the
+% first case does not start a new paragraph in a visual sense while the
+% second does.
+%
+% Another factor to bear in mind is that \cs{tex_everypar:D} may be
+% executed inside a group. For example, a paragraph starting
+% \begin{verbatim}
+%   {Text} here
+% \end{verbatim}
+% will insert the tokens such that the current group level is $1$
+% higher for \enquote{Text} than for \enquote{here}. The result of this
+% is that it's very important to watch how flags are set and reset. This
+% can only be done reliably on a global level, which then has a knock-on
+% effect on the rest of the implementation.
+%
+% At a \TeX{} level, settings can only apply to the current paragraph,
+% but conceptually there is a need to allow for both single-paragraph
+% and \enquote{running} settings. Whenever the code switches galley
+% level both of these need to be correctly saved.
+%
+%    \begin{macrocode}
+%<*initex|package>
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%<@@=galley>
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%<*package>
+\ProvidesExplPackage
+  {\ExplFileName}{\ExplFileDate}{\ExplFileVersion}{\ExplFileDescription}
+%</package>
+%    \end{macrocode}
+%
+% \subsection{Support items}
+%
+% Functions or settings which are needed by the galley but perhaps also
+% elsewhere.
+%
+% The default hyphenation character should be set and hyphenation should be
+% enabled.
+%    \begin{macrocode}
+%<*initex>
+\tex_defaulthyphenchar:D 45 \scan_stop:
+%</initex>
+%    \end{macrocode}
+%
+% \subsection{Scratch variables}
+%
+% \begin{variable}{\l_@@_tmp_int}
+% \begin{variable}{\g_@@_tmpa_seq, \g_@@_tmpb_seq, \l_@@_tmp_seq}
+% \begin{variable}{\l_@@_tmp_tl}
+%   Used for manipulating cutouts and paragraph shapes.
+%    \begin{macrocode}
+\int_new:N \l_@@_tmp_int
+\seq_new:N \g_@@_tmpa_seq
+\seq_new:N \g_@@_tmpb_seq
+\seq_new:N \l_@@_tmp_seq
+\tl_new:N \l_@@_tmp_tl
+%    \end{macrocode}
+% \end{variable}
+% \end{variable}
+% \end{variable}
+%
+% \subsection{Galley settings}
+%
+% Settings for application by the galley respect the usual \TeX{} grouping and
+% so are all local variables.
+%
+% \begin{variable}
+%   {\l_@@_cutout_left_indent_seq, \l_@@_cutout_right_indent_seq}
+%   Essentially scratch space, used when setting up a cutout in a paragrph,
+%   but named as there is quite a bit to do in that code.
+%    \begin{macrocode}
+\seq_new:N \l_@@_cutout_left_indent_seq
+\seq_new:N \l_@@_cutout_right_indent_seq
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\l_@@_parshape_multipar_bool}
+%   Indicates whether the paragraph shape in use applies to one paragraph
+%   only or to more than one.
+%    \begin{macrocode}
+\bool_new:N \l_@@_parshape_multipar_bool
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}
+%   {\l_@@_parshape_left_indent_seq, \l_@@_parshape_right_indent_seq}
+%   Used to convert user input comma lists into sequences for mapping, and also
+%   to keep the information on paragraph shape available for the case where a
+%   cutout is also active.
+%    \begin{macrocode}
+\seq_new:N \l_@@_parshape_left_indent_seq
+\seq_new:N \l_@@_parshape_right_indent_seq
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\l_galley_text_width_dim}
+%   The width of the current measure: the \enquote{running} setting can be
+%   inherited from \LaTeXe{}.
+%    \begin{macrocode}
+%<*initex>
+\dim_new:N \l_galley_text_width_dim
+%</initex>
+%<*package>
+\cs_new_eq:NN \l_galley_text_width_dim \linewidth
+%</package>
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}
+%   {\l_galley_total_left_margin_dim, \l_galley_total_right_margin_dim}
+%   Margins of the current text within the galley: these plus the galley
+%   width are one way to define the measure width. See also the text width,
+%   which is an alternative view (and should be in sync with this one!).
+%    \begin{macrocode}
+%<*initex>
+\dim_new:N \l_galley_total_left_margin_dim
+%</initex>
+%<*package>
+\cs_new_eq:NN \l_galley_total_left_margin_dim \@totalleftmargin
+%</package>
+\dim_new:N \l_galley_total_right_margin_dim
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}
+%   {\l_galley_interpar_penalty_int, \l_galley_interpar_vspace_skip}
+%   Items between paragraphs at the design level.
+%    \begin{macrocode}
+\int_new:N \l_galley_interpar_penalty_int
+\skip_new:N \l_galley_interpar_vspace_skip
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\l_galley_width_dim}
+%   The external size of a galley is the stored in the \TeX{} primitive
+%   \cs{tex_hsize:D}, which is renamed. This will only ever be reset by
+%   the code constructing a new galley, for example the start of a
+%   minipage. This value will be set for the main galley by the page
+%   layout system.
+%    \begin{macrocode}
+\cs_new_eq:NN \l_galley_width_dim \tex_hsize:D
+%    \end{macrocode}
+% \end{variable}
+%
+% \subsection{Galley data structures}
+%
+% In contrast to settings, the data structures used by the galley are all set
+% globally. To allow different galley levels to exist, a local variant is
+% defined for each one to save the value when starting a new level.
+%
+% \begin{variable}{\g_@@_begin_level_bool, \l_@@_begin_level_bool}
+%   Indicates that the galley is at the very beginning of the level, and that
+%   no material has yet been set. As a result, the global version is set
+%   \texttt{true} to begin with.
+%    \begin{macrocode}
+\bool_new:N \g_@@_begin_level_bool
+\bool_new:N \l_@@_begin_level_bool
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}
+%   {
+%     \g_@@_cutout_left_seq,  \l_@@_cutout_left_seq,
+%     \g_@@_cutout_right_seq, \l_@@_cutout_right_seq
+%   }
+%   To apply cutouts across paragraphs, they need to be tracked. The
+%   information has to be global, so is handled here.
+%    \begin{macrocode}
+\seq_new:N \g_@@_cutout_left_seq
+\seq_new:N \l_@@_cutout_left_seq
+\seq_new:N \g_@@_cutout_right_seq
+\seq_new:N \l_@@_cutout_right_seq
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}
+%   {\g_galley_omit_next_indent_bool, \l_@@_omit_next_indent_bool}
+%   A global flag is needed for suppressing indentation of the next
+%   paragraph. This does not need a \enquote{running} version since that
+%   should be handled using the \texttt{justification} object: the two
+%   concepts are related but not identical. The flag here is needed in
+%   cases such as the very first paragraph in a galley or immediately
+%   following a heading.
+%    \begin{macrocode}
+\bool_new:N \g_galley_omit_next_indent_bool
+\bool_new:N \l_@@_omit_next_indent_bool
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\g_galley_no_break_next_bool, \l_@@_no_break_next_bool}
+%   Dealing with the no-break flag is pretty much the same as the case
+%   for the indent: this applies on a single paragraph basis.
+%    \begin{macrocode}
+\bool_new:N \g_galley_no_break_next_bool
+\bool_new:N \l_@@_no_break_next_bool
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}
+%   {
+%     \g_galley_par_begin_hook_tl, \l_@@_par_begin_hook_tl,
+%     \g_galley_par_end_hook_tl,   \l_@@_par_end_hook_tl,
+%   }
+%   Hooks for user-level code: these are not used by the galley itself.
+%    \begin{macrocode}
+\tl_new:N \g_galley_par_begin_hook_tl
+\tl_new:N \l_@@_par_begin_hook_tl
+\tl_new:N \g_galley_par_end_hook_tl
+\tl_new:N \l_@@_par_end_hook_tl
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}
+%   {\g_galley_par_reset_hook_tl, \l_@@_par_reset_hook_tl}
+%   This one is used by the galley: it happens \enquote{after} the current
+%   paragraph, and is used for reset purposes.
+%    \begin{macrocode}
+\tl_new:N \g_galley_par_reset_hook_tl
+\tl_new:N \l_@@_par_reset_hook_tl
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}
+%   {
+%     \g_galley_previous_par_lines_int, \l_@@_previous_par_lines_int,
+%     \g_@@_current_par_lines_int, \l_@@_current_par_lines_int
+%   }
+%   The number of lines in the previous typeset paragraph. This is reset at
+%   the start of the paragraph and \emph{added to} when each \cs{tex_par:D}
+%   primitive is used: \LaTeX{} uses the primitive in places that do not end
+%   a (conceptual) paragraph. There is also a set of variables to deal with
+%   the current (conceptual) paragraph, so that the information can be
+%   build up correctly.
+%    \begin{macrocode}
+\int_new:N \g_galley_previous_par_lines_int
+\int_new:N \l_@@_previous_par_lines_int
+\int_new:N \g_@@_current_par_lines_int
+\int_new:N \l_@@_current_par_lines_int
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\g_galley_restore_running_tl, \l_@@_restore_running_tl}
+%   When a parameter is altered from the \enquote{running} value to a
+%   different \enquote{current} one, there needs to be a method to restore
+%   the \enquote{running} value. This is done by adding the necessary
+%   assignment to a token list, which can be executed when needed. At the
+%   same time, this information is itself part of the galley parameter
+%   structure, and so there has to be a local save version.
+%    \begin{macrocode}
+\tl_new:N \g_galley_restore_running_tl
+\tl_new:N \l_@@_restore_running_tl
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}
+%   {
+%     \g_galley_whatsit_next_tl, \l_@@_whatsit_next_tl,
+%     \g_galley_whatsit_previous_tl, \l_@@_whatsit_previous_tl
+%   }
+%   Whatsits only apply on a per-paragraph basis and so there is no need
+%   to differentiate between current and running values. However, there
+%   is a need to differentiate between whatsits that attach to the
+%   previous (completed) paragraph and those that attach to the next
+%   paragraph.
+%    \begin{macrocode}
+\tl_new:N \g_galley_whatsit_next_tl
+\tl_new:N \l_@@_whatsit_next_tl
+\tl_new:N \g_galley_whatsit_previous_tl
+\tl_new:N \l_@@_whatsit_previous_tl
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}
+%   {\g_@@_interpar_penalty_user_tl, \l_@@_interpar_penalty_user_tl}
+%   The user may want to over-ride the penalty for a break between
+%   paragraphs, for example to prevent a break when the overall design
+%   allows one. This is handled using an additional penalty.
+%    \begin{macrocode}
+\tl_new:N \g_@@_interpar_penalty_user_tl
+\tl_new:N \l_@@_interpar_penalty_user_tl
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}
+%   {\g_@@_interpar_vspace_user_tl, \l_@@_interpar_vspace_user_tl}
+%   Arbitrary vertical space can be inserted by the user on a one-off
+%   basis. This is used in place of any running space between paragraphs.
+%    \begin{macrocode}
+\tl_new:N \g_@@_interpar_vspace_user_tl
+\tl_new:N \l_@@_interpar_vspace_user_tl
+%    \end{macrocode}
+% \end{variable}
+%
+% \subsection{Independent galley levels}
+%
+% As well as the main vertical list, independent galleys are required
+% for items such as minipages and marginal notes. Each of these galleys
+% requires an independent set of global data structures. This is
+% achieved by storing the data structures in \emph{local} variables. The
+% later are only used to save and restore the global value, and so \TeX{}
+% grouping will manage the values correctly. This implies that each
+% galley level must form a group: galley levels are tied to vertical
+% boxes and so this is a reasonable requirements.
+%
+% \begin{macro}{\@@_initialise_variables:}
+%   At the start of a galley level the global variables need to be reset to
+%   standard values. For example, the measure is set to the galley width and
+%   any paragraph shape is cleared.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_initialise_variables:
+  {
+    \bool_gset_true:N \g_@@_begin_level_bool
+    \seq_gclear:N \g_@@_cutout_left_seq
+    \seq_gclear:N \g_@@_cutout_right_seq
+    \tl_gclear:N \g_@@_interpar_penalty_user_tl
+    \tl_gclear:N \g_@@_interpar_vspace_user_tl
+    \bool_gset_true:N \g_galley_omit_next_indent_bool
+    \bool_gset_false:N \g_galley_no_break_next_bool
+    \tl_gclear:N \g_galley_par_begin_hook_tl
+    \tl_gclear:N \g_galley_par_end_hook_tl
+    \tl_gclear:N \g_galley_par_reset_hook_tl
+    \int_gzero:N \g_@@_current_par_lines_int
+    \int_gzero:N \g_galley_previous_par_lines_int
+    \tl_gclear:N \g_galley_restore_running_tl
+    \tl_gclear:N \g_galley_whatsit_previous_tl
+    \tl_gclear:N \g_galley_whatsit_next_tl
+  }
+\@@_initialise_variables:
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@@_initialise_settings:}
+%   This sets the local values of the various galley settings. The
+%   flag \cs{l_@@_parshape_multipar_bool} is set \texttt{true} here
+%   as it allows an efficency saving in parshape setting: only
+%   when it is actively set \texttt{false} is action needed.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_initialise_settings:
+  {
+    \bool_set_true:N \l_@@_parshape_multipar_bool
+    \seq_clear:N \l_@@_parshape_left_indent_seq
+    \seq_clear:N \l_@@_parshape_right_indent_seq
+    \dim_set_eq:NN \l_galley_text_width_dim \l_galley_width_dim
+    \dim_zero:N \l_galley_total_left_margin_dim
+    \dim_zero:N \l_galley_total_right_margin_dim
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@@_save_parameters:, \@@_restore_parameters:}
+%   Saving and restoring parameters is carried out by a series of copy
+%   functions.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_save_parameters:
+  {
+    \bool_set_eq:NN \l_@@_begin_level_bool
+      \g_@@_begin_level_bool
+    \seq_set_eq:NN \l_@@_cutout_left_seq
+      \g_@@_cutout_left_seq
+    \seq_set_eq:NN \l_@@_cutout_right_seq
+      \g_@@_cutout_right_seq
+    \tl_set_eq:NN \l_@@_interpar_penalty_user_tl
+      \g_@@_interpar_penalty_user_tl
+    \tl_set_eq:NN \l_@@_interpar_vspace_user_tl
+      \g_@@_interpar_vspace_user_tl
+    \bool_set_eq:NN \l_@@_omit_next_indent_bool
+      \g_galley_omit_next_indent_bool
+    \bool_set_eq:NN \l_@@_no_break_next_bool
+      \g_galley_no_break_next_bool
+    \tl_set_eq:NN \l_@@_par_begin_hook_tl
+      \g_galley_par_begin_hook_tl
+    \tl_set_eq:NN \l_@@_par_end_hook_tl
+      \g_galley_par_end_hook_tl
+    \tl_set_eq:NN \l_@@_par_reset_hook_tl
+      \g_galley_par_reset_hook_tl
+    \int_set_eq:NN \l_@@_current_par_lines_int
+      \g_@@_current_par_lines_int
+    \int_set_eq:NN \l_@@_previous_par_lines_int
+      \g_galley_previous_par_lines_int
+    \tl_set_eq:NN \l_@@_restore_running_tl
+      \g_galley_restore_running_tl
+    \tl_set_eq:NN \l_@@_whatsit_previous_tl
+      \g_galley_whatsit_previous_tl
+    \tl_set_eq:NN \l_@@_whatsit_next_tl
+      \g_galley_whatsit_next_tl
+  }
+\cs_new_protected_nopar:Npn \@@_restore_parameters:
+  {
+    \bool_gset_eq:NN \g_@@_begin_level_bool
+      \l_@@_begin_level_bool
+    \seq_gset_eq:NN \g_@@_cutout_left_seq
+      \l_@@_cutout_left_seq
+    \seq_gset_eq:NN \g_@@_cutout_right_seq
+      \l_@@_cutout_right_seq
+    \tl_gset_eq:NN \g_@@_interpar_penalty_user_tl
+      \l_@@_interpar_penalty_user_tl
+    \tl_gset_eq:NN \g_@@_interpar_vspace_user_tl
+      \l_@@_interpar_vspace_user_tl
+    \bool_gset_eq:NN \g_galley_omit_next_indent_bool
+      \l_@@_omit_next_indent_bool
+    \bool_gset_eq:NN \g_galley_no_break_next_bool
+      \l_@@_no_break_next_bool
+    \tl_gset_eq:NN \g_galley_par_begin_hook_tl
+      \l_@@_par_begin_hook_tl
+    \tl_gset_eq:NN \g_galley_par_end_hook_tl
+      \l_@@_par_end_hook_tl
+    \tl_gset_eq:NN \g_galley_par_reset_hook_tl
+      \l_@@_par_reset_hook_tl
+    \int_gset_eq:NN \g_@@_current_par_lines_int
+      \l_@@_current_par_lines_int
+    \int_gset_eq:NN \g_galley_previous_par_lines_int
+      \l_@@_previous_par_lines_int
+    \tl_gset_eq:NN \g_galley_restore_running_tl
+      \l_@@_restore_running_tl
+    \tl_gset_eq:NN \g_galley_whatsit_previous_tl
+      \l_@@_whatsit_previous_tl
+    \tl_gset_eq:NN \g_galley_whatsit_next_tl
+      \l_@@_whatsit_next_tl
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\galley_level:}
+% \begin{macro}[aux]{\@@_level_end:}
+%   Galley levels are created by saving all of the current global
+%   settings, starting a group then initialising both the local and global
+%   variables.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \galley_level:
+  {
+    \@@_save_parameters:
+    \group_begin:
+      \@@_initialise_variables:
+      \@@_initialise_settings:
+      \group_insert_after:N \@@_level_end:
+  }
+%    \end{macrocode}
+%   At the end of the level, the global values are restored using the
+%   saved \emph{local} versions, hence the position of the close-of-group
+%   instruction. As this code can be inserted automatically, at the point
+%   of use only the start of a galley level needs to be marked up: the end
+%   must come in a fixed location. All of this relies on the
+%   \enquote{color safe} group used inside a box.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_level_end:
+  {
+      \par
+      \@@_restore_parameters:
+    \group_end:
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \subsection{The \cs{par} token}
+%
+% \begin{variable}{\s__par_omit}
+%   Used to indicate that a paragraph should be omitted.
+%    \begin{macrocode}
+\__scan_new:N \s__par_omit
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\galley_par:}
+% \begin{macro}[aux]{\@@_par_auxi:, \@@_par_auxii:, \@@_par_auxiii:}
+% \begin{macro}[aux]{\@@_par_aux:N}
+% \begin{macro}[int]{\@@_par_set_cutout:, \@@_par_update_cutout:}
+%   The idea here is to expand the next token in exactly the same way as \TeX{}
+%   would do anyway. The \texttt{f}-type expansion will ignore any protection,
+%   but will stop at a scan marker. Thus the code can test for an
+%   \enquote{omit paragraph} marker.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \galley_par:
+  {
+    \s__par_omit
+    \exp_after:wN \@@_par_auxi: \exp:w \exp_end_continue_f:w
+  }
+\cs_new_protected:Npn \@@_par_auxi:
+  {
+    \peek_meaning:NTF \s__par_omit
+      { \@@_par_aux:N }
+      { \@@_par_auxii: }
+  }
+\cs_new_protected:Npn \@@_par_aux:N #1
+  {
+    \str_if_eq_x:nnF {#1} { \s__par_omit }
+      {
+        \@@_par_auxii:
+        #1
+      }
+  }
+%    \end{macrocode}
+%   No marker, so really insert a paragraph: the \cs{tex_par:D} is inside a
+%   group to preserve some dynamic settings (for example
+%   \cs{etex_interlinepenalties:D}). In vertical mode, that means just
+%   inserting the primitive.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_par_auxii:
+  {
+    \mode_if_vertical:TF
+      {
+        \group_begin:
+          \tex_par:D
+        \group_end:
+      }
+%    \end{macrocode}
+%   In horizontal mode, after the end-of-paragraph hook we check if there
+%   is a cutout active. If there is, the paragraph shape has to be set.
+%   Inserting \cs{tex_par:D} will then carry out the typesetting
+%   operation. Once the paragraph has been typeset, the number of lines is
+%   added to the running total. It's possible that the conceptual paragraph
+%   contains display-like material, and simply setting the number of lines
+%   equal to \cs{tex_prevgraf:D} would lose these.
+%    \begin{macrocode}
+      {
+        \g_galley_par_end_hook_tl
+        \@@_par_set_cutout:
+        \group_begin:
+          \tex_par:D
+        \group_end:
+        \int_gset:Nn \g_galley_previous_par_lines_int
+          { \tex_prevgraf:D + \g_@@_current_par_lines_int }
+        \int_gzero:N \g_@@_current_par_lines_int
+        \bool_if:NF \l_@@_parshape_multipar_bool
+          {
+            \seq_clear:N \l_@@_parshape_left_indent_seq
+            \seq_clear:N \l_@@_parshape_right_indent_seq
+            \bool_set_true:N \l_@@_parshape_multipar_bool
+            \@@_parshape_set:
+          }
+        \@@_par_update_cutout:
+      }
+    \g_galley_par_reset_hook_tl
+    \tl_gclear:N \g_galley_par_reset_hook_tl
+%    \end{macrocode}
+%   The non-breaking penalty is needed here as within the \cs{tex_everypar:D}
+%   hook there is an additional \cs{tex_par:D}. This leads to an extra
+%   \cs{tex_parskip:D}, which will leave an unwanted break-point here
+%   otherwise.
+%    \begin{macrocode}
+    \tex_penalty:D \c_ten_thousand
+  }
+%    \end{macrocode}
+%   When cutouts are active, there is a need to set the paragraph shape
+%   \enquote{just in time}. After the typesetting, the lines remaining in
+%   the cutout has to be updated for the next run. This is all done for
+%   each paragraph to avoid any grouping issues and without needing to set
+%   \cs{tex_parshape:n} globally.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_par_set_cutout:
+  {
+    \bool_if:nF
+      {
+           \seq_if_empty_p:N \g_@@_cutout_left_seq
+        && \seq_if_empty_p:N \g_@@_cutout_right_seq
+      }
+      { \@@_parshape_set: }
+  }
+\cs_new_protected_nopar:Npn \@@_par_update_cutout:
+  {
+    \bool_if:nF
+      {
+           \seq_if_empty_p:N \g_@@_cutout_left_seq
+        && \seq_if_empty_p:N \g_@@_cutout_right_seq
+      }
+      {
+        \prg_replicate:nn \tex_prevgraf:D
+          {
+            \seq_gpop_left:NN \g_@@_cutout_left_seq  \l_@@_tmp_tl
+            \seq_gpop_left:NN \g_@@_cutout_right_seq \l_@@_tmp_tl
+          }
+        \@@_parshape_set:
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\galley_par:n}
+%   Inserts tokens such that they are appended to the end of the last
+%   paragraph, using the paragraph-omitting system.
+%    \begin{macrocode}
+\cs_new_protected:Npn \galley_par:n #1
+  {
+    \s__par_omit
+    \bool_if:nF \g_@@_begin_level_bool
+      {
+        #1
+        \galley_par:
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\par}
+%   The meaning of the token \cs{par} itself starts off as a standard
+%   paragraph.
+%    \begin{macrocode}
+\cs_set_protected_nopar:Npn \par { \galley_par: }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@par}
+%   \LaTeXe{} requires a \enquote{long term} version of \cs{par}, which is
+%   stored as \cs{@par}. Things are done a bit differently by \LaTeX3 and
+%   so this will only be needed in package mode.
+%    \begin{macrocode}
+%<*package>
+\tl_set:Nn \@par { \galley_par: }
+%</package>
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Display levels}
+%
+% \begin{macro}{\galley_display_begin:, \galley_display_end:}
+% \begin{macro}[aux]{\@@_display_penalty:N, \@@_display_vspace:N}
+% \begin{macro}[aux]{\@@_display_par_setup:, \@@_display_par:}
+%   Display items within the galley are a bit like galley levels: they
+%   may have different paragraph settings to the main part of the galley.
+%   On the other hand, unlike independent galleys they should inherit the
+%   settings from the surrounding material. They may also start and end with
+%   special spacing values.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \galley_display_begin:
+  {
+    \group_begin:
+      \@@_save_parameters:
+      \mode_if_vertical:TF
+        {
+          \@@_display_penalty:N \l_galley_display_begin_par_penalty_tl
+          \@@_display_vspace:N  \l_galley_display_begin_par_vspace_tl
+        }
+        {
+          \@@_display_penalty:N \l_galley_display_begin_penalty_tl
+          \@@_display_vspace:N  \l_galley_display_begin_vspace_tl
+        }
+      \par
+  }
+%    \end{macrocode}
+%   Two short-cuts for setting up any special penalty or vertical space.
+%   The idea is that the standard value is saved to the \enquote{restore}
+%   token list, before setting up the value to the special value needed
+%   in this one case.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_display_penalty:N #1
+  {
+     \tl_if_empty:NF #1
+       {
+         \tl_gput_right:Nx \g_galley_restore_running_tl
+           {
+             \int_gset:Nn \exp_not:N \g_galley_penalty_int
+               { \int_use:N \g_galley_penalty_int }
+           }
+         \int_gset:Nn \g_galley_penalty_int {#1}
+       }
+  }
+\cs_new_protected:Npn \@@_display_vspace:N #1
+  {
+     \tl_if_empty:NF #1
+       {
+         \tl_gput_right:Nx \g_galley_restore_running_tl
+           {
+             \skip_gset:Nn \exp_not:N \g_galley_vspace_skip
+               { \skip_use:N \g_galley_vspace_skip }
+           }
+         \skip_gset:Nn \g_galley_vspace_int {#1}
+       }
+  }
+%    \end{macrocode}
+%   The \cs{par} token at the end of the display needs to go in at the same
+%   group level as the text, hence this function cannot be placed using
+%   \cs{group_insert_after:N}. Resetting the meaning of the \cs{par} token
+%   needs to be carried out after the group used for the environment.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \galley_display_end:
+  {
+      \par
+      \@@_restore_parameters:
+    \group_end:
+    \group_insert_after:N \@@_display_par_setup:
+  }
+%    \end{macrocode}
+%   The method used here is to assume that the next piece of horizontal
+%   mode material will follow on from the displayed output without an
+%   intervening \cs{par} token (probably a blank line). The meaning of the
+%   \cs{par} token is then altered so that a check can be made to see if
+%   this assumption was correct.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_display_par_setup:
+  {
+    \bool_gset_false:N \g_galley_omit_next_indent_bool
+    \cs_set_eq:NN \par \@@_display_par:
+  }
+%    \end{macrocode}
+%   The \enquote{special} meaning of the paragraph token starts by putting
+%   things back to normal: there should never need to be more than one
+%   special paragraph marker in one group. If \TeX{} is in vertical mode,
+%   then there has been a paragraph token inserted, most likely by a
+%   blank line. Thus the next piece of material is a separate conceptual
+%   paragraph from the display. In that case, the assumption from above is
+%   undone and the indent is turned back on. On the other hand, for the
+%   case where \TeX{} is in horizontal mode then a \cs{tex_par:D} primitive
+%   is required in the same way as in \cs{galley_standard_par:}. Most of
+%   the settings for a conceptual paragraph will carry over there but any
+%   cutout will have to be updated as it depends on the number of lines
+%   \TeX{} has typeset.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_display_par:
+  {
+    \cs_set_eq:NN \par \galley_par:
+    \mode_if_vertical:TF
+      {
+        \par
+        \bool_gset_false:N \g_galley_omit_next_indent_bool
+        \@@_display_penalty:N \l_galley_display_end_par_penalty_tl
+        \@@_display_vspace:N  \l_galley_display_end_par_vspace_tl
+      }
+      {
+        \@@_par_set_cutout:
+        \group_begin:
+          \tex_par:D
+        \group_end:
+        \int_gadd:Nn \g_@@_current_par_lines_int \tex_prevgraf:D
+        \bool_set_false:N \l_@@_tmp_bool
+        \@@_par_update_cutout:
+        \@@_display_penalty:N \l_galley_display_end_penalty_tl
+        \@@_display_vspace:N  \l_galley_display_end_vspace_tl
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \subsection{Insertions using \cs{tex_everypar:D}}
+%
+% The key to the entire galley mechanism is hooking into the
+% \cs{tex_everypar:D} token register. This requires that the original
+% is moved out of the way, with appropriate hooks left attached for
+% further modification by other modules and by the user. This is all
+% done such that there is no danger of accidentally deactivating the
+% galley mechanism.
+%
+% \begin{macro}{\everypar}
+%   When used on top of \LaTeXe{} the original primitive name needs to be
+%   available without the risk of completely overwriting the new
+%   mechanism. This is implemented as a token register in case low-level
+%   \TeX{} is used. The \TeX{} primitive is set here as otherwise the
+%   \LaTeXe{} \cs{@nodocument} is never removed from the register.
+%   This precaution is not be needed for a stand-alone format.
+%    \begin{macrocode}
+%<*initex>
+\tex_everypar:D % TEMP
+  {
+    \bool_if:NTF \g_@@_begin_level_bool
+      { \@@_start_paragraph_first: }
+      { \@@_start_paragraph_std: }
+  }
+%</initex>
+%<*package>
+\cs_undefine:N \everypar
+\newtoks \everypar
+\AtBeginDocument
+  {
+    \tex_everypar:D
+      {
+        \bool_if:NTF \g_@@_begin_level_bool
+          { \@@_start_paragraph_first: }
+          { \@@_start_paragraph_std: }
+        \tex_the:D \everypar
+      }
+  }
+%</package>
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{The galley mechanism}
+%
+% \begin{variable}{\g_@@_last_box}
+%   A temporary box to hold the box inserted by \TeX{} when a paragraph
+%   is inserted with an indent. The galley actually inserts the space
+%   (\emph{i.e.}~\cs{tex_parindent:D} is globally zero), but there is
+%   still an empty box to test for.
+%    \begin{macrocode}
+\box_new:N \g_@@_last_box
+%    \end{macrocode}
+% \end{variable}
+%
+% The \enquote{start of paragraph} routines are fired by \cs{tex_everypar:D}.
+% This can take place within a group in a construction such as
+% \begin{verbatim}
+%   ... end of last par.
+%
+%   {\Large Start} of par
+% \end{verbatim}
+% and so anything applied here must be done globally.
+%
+% \begin{macro}[int]{\@@_start_paragraph_common:N}
+%   Share some code between all types of paragraph start.
+%   The routine at the start of a paragraph starts by removing any
+%   (empty) indent box from the vertical list. As there may be vertical
+%   mode items still to insert (|#1|), a \cs{tex_par:D} primitive is used to
+%   get back into vertical mode before they are tidied up. To get back
+%   again to horizontal mode, \cs{tex_noindent:D} can be used. To avoid
+%   an infinite loop, \cs{tex_everypar:D} is locally cleared before doing
+%   that.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_start_paragraph_common:N #1
+  {
+    \group_begin:
+      \box_gset_to_last:N \g_@@_last_box
+      \tex_par:D
+      #1
+      \tex_everypar:D { }
+      \tex_noindent:D
+    \group_end:
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{\@@_start_paragraph_std:}
+%   After dealign with the common items, the horizontal mode items can be
+%   tidied up before sorting out any items which have been set on a
+%   single-paragraph basis.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_start_paragraph_std:
+  {
+    \@@_start_paragraph_common:N \@@_insert_vertical_items:
+    \@@_insert_horizontal_items:
+    \@@_restore_running_parameters:
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{\@@_start_paragraph_first:}
+% \begin{macro}[aux]{\@@_insert_vspace_first:}
+%   For the very first paragraph in a galley, the code needs to avoid
+%   adding any unnecessary vertical items at the top as it will interfere with
+%   vertical positioning in \cs{tex_vtop:D}. That requirement also means we
+%   must not add any vertical space as the start of the box unless there
+%   is a user space to insert.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_start_paragraph_first:
+  {
+    \bool_gset_false:N \g_@@_begin_level_bool
+    \mode_if_horizontal:TF
+      { \@@_start_paragraph_common:N \@@_insert_vspace_first: }
+      { \@@_insert_vspace_first: }
+    \@@_insert_horizontal_items:
+    \@@_restore_running_parameters:
+  }
+\cs_new_protected_nopar:Npn \@@_insert_vspace_first:
+  {
+    \tl_if_empty:NF \g_@@_interpar_vspace_user_tl
+      { \skip_vertical:n { \g_@@_interpar_vspace_user_tl } }
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}[int]{\@@_insert_vertical_items}
+%   The aim here is to insert the vertical items such that they attach to
+%   the correct place. This function is used as part of the \cs{tex_everypar:D}
+%   mechanism, meaning that the immediately-preceding item on the vertical
+%   list is the \cs{tex_parskip:D}, always zero-length but an implicit
+%   penalty. So any whatsits \enquote{attached} to the previous paragraph
+%   should stay glued on.  After the whatsits, a penalty for
+%   breaking will be inserted. This will be the user penalty if supplied,
+%   or the running penalty unless the no-break flag is set. Finally,
+%   the inter-paragraph space is applied: only one space is ever added
+%   there.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_insert_vertical_items:
+  {
+    \g_galley_whatsit_previous_tl
+    \tl_gclear:N \g_galley_whatsit_previous_tl
+    \tl_if_empty:NTF \g_@@_interpar_penalty_user_tl
+      {
+        \bool_if:NTF \g_galley_no_break_next_bool
+          { \tex_penalty:D \c_ten_thousand }
+          { \tex_penalty:D \l_galley_interpar_penalty_int }
+      }
+      {
+        \tex_penalty:D
+          \__int_eval:w \g_@@_interpar_penalty_user_tl \__int_eval_end:
+        \tl_gclear:N \g_@@_interpar_penalty_user_tl
+      }
+    \bool_gset_false:N \g_galley_no_break_next_bool
+    \tl_if_empty:NTF \g_@@_interpar_vspace_user_tl
+      { \skip_vertical:N \l_galley_interpar_vspace_skip }
+      {
+        \skip_vertical:n { \g_@@_interpar_vspace_user_tl }
+        \tl_gclear:N \g_@@_interpar_vspace_user_tl
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{\@@_insert_horizontal_items:}
+%   Horizontal mode objects start with the whatsits for the next paragraph. An
+%   indent is then included if the removed box was not void.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_insert_horizontal_items:
+  {
+    \g_galley_whatsit_next_tl
+    \tl_gclear:N \g_galley_whatsit_next_tl
+    \bool_if:NF \g_galley_omit_next_indent_bool
+      {
+        \box_if_empty:NF \g_@@_last_box
+          { \hbox_to_wd:nn \l_galley_par_indent_dim { } }
+      }
+    \skip_horizontal:N \l_galley_par_begin_skip
+    \g_galley_par_begin_hook_tl
+    \bool_gset_false:N \g_galley_omit_next_indent_bool
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{\@@_restore_running_parameters:}
+%   Restoring the ongoing parameters just means using the token list
+%   variable in which the appropriate assignments are stored. The
+%   list can then be cleared.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_restore_running_parameters:
+  {
+    \g_galley_restore_running_tl
+    \tl_gclear:N \g_galley_restore_running_tl
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Measure}
+%
+% \begin{variable}{\l_@@_total_left_margin_dim, \l_@@_total_right_margin_dim}
+%   Used to set the measure, first by providing a place to save the existing
+%   values, then allowing calculation of the difference between old and new
+%   settings.
+%    \begin{macrocode}
+\dim_new:N \l_@@_total_left_margin_dim
+\dim_new:N \l_@@_total_right_margin_dim
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}
+%   {\galley_margins_set_absolute:nn, \galley_margins_set_relative:nn}
+%   Setting the measure is just a question of adjusting margins, either
+%   in a relative or absolute sense. One the settings are sorted, the
+%   paragraph shape can be reset.
+%    \begin{macrocode}
+\cs_new_protected:Npn \galley_margins_set_absolute:nn #1#2
+  {
+    \dim_set:Nn \l_galley_total_left_margin_dim  {#1}
+    \dim_set:Nn \l_galley_total_right_margin_dim {#2}
+    \dim_set:Nn \l_galley_text_width_dim
+      {
+          \l_galley_width_dim
+        - \l_galley_total_left_margin_dim
+        - \l_galley_total_right_margin_dim
+      }
+    \@@_parshape_set:
+  }
+\cs_new_protected:Npn \galley_margins_set_relative:nn #1#2
+  {
+    \dim_add:Nn \l_galley_total_left_margin_dim  {#1}
+    \dim_add:Nn \l_galley_total_right_margin_dim {#2}
+    \dim_set:Nn \l_galley_text_width_dim
+      {
+          \l_galley_width_dim
+        - \l_galley_total_left_margin_dim
+        - \l_galley_total_right_margin_dim
+      }
+    \@@_parshape_set:
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Paragraph shape}
+%
+% \begin{macro}
+%   {
+%     \galley_parshape_set_multi:nnnN,
+%     \galley_parshape_set_multi:nVVN,
+%     \galley_parshape_set_single:nnnN,
+%     \galley_parshape_set_single:nVVN
+%   }
+%   Setting the paragraph shape is mainly a question of converting the input.
+%   First, though, a flag is set.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \galley_parshape_set_multi:nnnN
+  {
+    \bool_set_true:N \l_@@_parshape_multipar_bool
+    \@@_parshape_set:nnnN
+  }
+\cs_new_protected_nopar:Npn \galley_parshape_set_single:nnnN
+  {
+    \bool_set_false:N \l_@@_parshape_multipar_bool
+    \@@_parshape_set:nnnN
+  }
+\cs_generate_variant:Nn \galley_parshape_set_multi:nnnN  { nVV }
+\cs_generate_variant:Nn \galley_parshape_set_single:nnnN { nVV }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{\@@_parshape_set:nnnN}
+%   Setting the paragraph shape starts by converting the two input lists into
+%   sequences. The shape is then set using a mapping with allowance for the
+%   unaltered lines and the possibility of resuming the measure. The unaltered
+%   lines are added to the sequences as this information may be needed
+%   elsewhere (if a cutout is active), and this is the most convenient way to
+%   deal with it. Everything ends up stored in the two sequences for possible
+%   re-application if there are cutouts.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_parshape_set:nnnN #1#2#3#4
+  {
+    \seq_set_from_clist:Nn \l_@@_parshape_left_indent_seq {#2}
+    \seq_set_from_clist:Nn \l_@@_parshape_right_indent_seq {#3}
+    \prg_replicate:nn {#1}
+      {
+        \seq_put_left:Nn \l_@@_parshape_left_indent_seq { 0pt }
+        \seq_put_left:Nn \l_@@_parshape_right_indent_seq { 0pt }
+      }
+    \bool_if:NT #4
+      {
+        \seq_put_right:Nn \l_@@_parshape_left_indent_seq { 0pt }
+        \seq_put_right:Nn \l_@@_parshape_right_indent_seq { 0pt }
+      }
+    \@@_parshape_set:
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Cutouts}
+%
+% Cutouts are another way of looking at paragraph shapes, but apply to
+% a fixed number of lines within a galley. As such, they require separate
+% handling from the measure and shape.
+%
+% \begin{macro}{\galley_cutout_left:nn, \galley_cutout_right:nn}
+% \begin{macro}[aux]{\@@_cutout:nnn}
+% \begin{macro}[int]{\@@_cutout:NN, \@@_cutout:cN, \@@_cutout:Nc}
+%   Setting up cutouts on the two sides of the paragraph is more or less
+%   the same idea with one or two very specific points of difference. As such,
+%   the two interface functions both use the same implementation.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \galley_cutout_left:nn
+  { \@@_cutout:nnn { left } }
+\cs_new_protected_nopar:Npn \galley_cutout_right:nn
+  { \@@_cutout:nnn { right } }
+%    \end{macrocode}
+%   The cutout information needs to be saved in in the appropriate sequence.
+%   First, the input is converted to a (temporary) sequence. If there is
+%   no existing cutout defined, this is simply stored. On the other hand,
+%   if there is a cutout already active, the new one needs to be added to
+%   it. To achieve that, we iterate over whichever sequence is longer
+%   (so that every relevant line is covered). At the end of this process,
+%   the paragraph shape needs to be activated. Notice here that we use
+%   a global temporary sequence: this allows the auxiliary \cs{@@_cutout:NN}
+%   to apply \cs{seq_gpop_left:NNF } with whichever sequence is shorter.
+%   The parshape is not set at this stage as cutouts need handling
+%   on a per-paragraph level.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_cutout:nnn #1#2#3
+  {
+    \seq_gset_from_clist:Nn \g_@@_tmpa_seq {#3}
+    \prg_replicate:nn {#2}
+      { \seq_gput_left:Nn \g_@@_tmpa_seq { 0pt } }
+    \seq_if_empty:cTF { g_@@_cutout_ #1 _seq }
+      { \seq_gset_eq:cN { g_@@_cutout_ #1 _seq } \g_@@_tmpa_seq }
+      {
+        \int_compare:nNnTF
+          { \seq_count:c { g_@@_cutout_ #1 _seq } } >
+            { \seq_count:N \g_@@_tmpa_seq }
+          { \@@_cutout:cN { g_@@_cutout_ #1 _seq } \g_@@_tmpa_seq }
+          { \@@_cutout:Nc \g_@@_tmpa_seq { g_@@_cutout_ #1 _seq } }
+        \seq_gset_eq:cN { g_@@_cutout_ #1 _seq } \l_@@_tmp_seq
+      }
+  }
+\cs_new_protected:Npn \@@_cutout:NN #1#2
+  {
+    \seq_clear:N \l_@@_tmp_seq
+    \seq_map_inline:Nn #1
+      {
+        \seq_gpop_left:NNF #2 \l_@@_tmp_tl
+          { \tl_set:Nn \l_@@_tmp_tl { 0pt } }
+        \seq_put_right:Nx \l_@@_tmp_seq
+          { \dim_eval:n { ##1 + \l_@@_tmp_tl } }
+      }
+  }
+\cs_generate_variant:Nn \@@_cutout:NN { c , Nc }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \subsection{Setting the primitive paragraph shape}
+%
+% \begin{macro}[int]{\@@_parshape_set:}
+% \begin{macro}[aux]
+%   {
+%     \@@_parshape_set_margins:,
+%     \@@_parshape_set_indents:,
+%     \@@_parshape_set_cutouts:
+%   }
+% \begin{macro}[aux]{\@@_parshape_set_indents:NN}
+% \begin{macro}[aux, rEXP]{\@@_parshape_set_indents:nn}
+% \begin{macro}[aux]{\@@_parshape_set_cutouts:n}
+% \begin{macro}[aux]{\@@_parshape_set_cutouts:N}
+%   The real paragraph shape (\cs{tex_parshape:D}) is set whenever any
+%   of the conceptual elements (margins, measure, cutouts) are set and
+%   potentially at the end of a paragraph in the cases where a single-paragraph
+%   measure or a cutout was active. Rather than try to track different
+%   combinations of the elements, as was done in earlier versions of this
+%   code, the approach taken here is always to reset the entire shape. This
+%   is done in three stages, one for each conceptual element.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_parshape_set:
+  {
+    \@@_parshape_set_margins:
+    \@@_parshape_set_indents:
+    \@@_parshape_set_cutouts:
+    \tl_set:Nx \l_@@_tmp_tl
+      {
+        \__int_value:w \tex_parshape:D
+        \int_step_function:nnnN \c_one \c_one \tex_parshape:D
+ \tmp
+      }
+%    \tl_show:N \l_@@_tmp_tl
+  }
+  \def\tmp#1{%
+            \c_space_tl
+            \__int_value:w \etex_parshapeindent:D #1 \c_space_tl \c_space_tl
+            \__int_value:w  \etex_parshapelength:D #1 \c_space_tl
+          }
+%    \end{macrocode}
+%   Setting the margins is simple. Either they are zero, using the full measure,
+%   or they are not. This is always set even if there are other elements to
+%   apply as these settings are very fast, so it is not worth doing a check
+%   at this stage for further parts to apply.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_parshape_set_margins:
+  {
+    \bool_if:nTF
+      {
+           \dim_compare_p:nNn \l_galley_total_left_margin_dim  = \c_zero_dim
+        && \dim_compare_p:nNn \l_galley_total_right_margin_dim = \c_zero_dim
+      }
+      { \tex_parshape:D \c_zero }
+      {
+        \tex_parshape:D
+          \c_one
+          \l_galley_total_left_margin_dim
+          \l_galley_text_width_dim
+      }
+  }
+%    \end{macrocode}
+%   If there is a measure (indent) to apply this simply overwrites the
+%   settings for the margins. As there are two sequences to use it is
+%   convenient to use a thread mapping, which means that the shorter sequence
+%   will always apply. The margins are reapplied at this stage as part of
+%   the auxiliary for the calculation of indentation.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_parshape_set_indents:
+  {
+    \bool_if:nF
+      {
+           \seq_if_empty_p:N \l_@@_parshape_left_indent_seq
+        && \seq_if_empty_p:N \l_@@_parshape_right_indent_seq
+      }
+      {
+        \@@_parshape_set_indents:NN
+          \l_@@_parshape_left_indent_seq
+          \l_@@_parshape_right_indent_seq
+      }
+  }
+\cs_new_protected:Npn \@@_parshape_set_indents:NN #1#2
+  {
+    \tex_parshape:D
+      \__int_eval:w
+        \int_min:nn { \seq_count:N #1 } { \seq_count:N #2 }
+      \__int_eval_end:
+      \seq_mapthread_function:NNN #1 #2
+        \@@_parshape_set_indents:nn
+  }
+\cs_new:Npn \@@_parshape_set_indents:nn #1#2
+  {
+    \__dim_eval:w \l_galley_total_left_margin_dim + ( #1 ) \__dim_eval_end:
+    \__dim_eval:w
+      \l_galley_text_width_dim - ( ( #1 ) + ( #2 ) )
+    \__dim_eval_end:
+  }
+%    \end{macrocode}
+%   Calculating cutouts is by far the most complex operation here. The
+%   first step is to establish if this needs to be done at all. If so,
+%   the cutout list and the matching measure (indent) are stored in two
+%   temporary sequences so that they can safely be \enquote{chomped} by
+%   \cs{@@_cutout:NN}. We then construct the overall list of indents required
+%   and store them in dedicated temporary storage. That is necessary as to get
+%   the indents corret on both sides is to use a thread mapping. That also
+%   means that the two sequences need to be of the same length.  That is
+%   done by finding the length difference then applying an auxiliary to
+%   the shorter sequence.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_parshape_set_cutouts:
+  {
+    \bool_if:nF
+      {
+           \seq_if_empty_p:N \g_@@_cutout_left_seq
+        && \seq_if_empty_p:N \g_@@_cutout_right_seq
+      }
+      {
+        \@@_parshape_set_cutouts:n { left }
+        \@@_parshape_set_cutouts:n { right }
+        \int_set:Nn \l_@@_tmp_int
+          {
+              \seq_count:N \l_@@_cutout_left_indent_seq
+            - \seq_count:N \l_@@_cutout_right_indent_seq
+          }
+        \int_compare:nNnTF \l_@@_tmp_int > \c_zero
+          { \@@_parshape_set_cutouts:N \l_@@_cutout_right_indent_seq }
+          { \@@_parshape_set_cutouts:N \l_@@_cutout_left_indent_seq }
+        \@@_parshape_set_indents:NN
+          \l_@@_cutout_left_indent_seq
+          \l_@@_cutout_right_indent_seq
+      }
+  }
+%    \end{macrocode}
+%   To work out the offsets for a cutout, we first check that there is
+%   anything to do at all. If there is, we need to ensure that there
+%   are more entries in the measure list than in the cutout list, so that
+%   any lines omitted by the cutout are correct and so that the normal measure
+%   will resume after the cutout. That is done in a global temporary sequence,
+%   which allows code sharing with the earlier path.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_parshape_set_cutouts:n #1
+  {
+    \seq_if_empty:cTF { g_@@_cutout_ #1 _seq }
+      {
+        \seq_set_eq:cc { l_@@_cutout_ #1 _indent_seq }
+          { l_@@_parshape_ #1 _indent_seq }
+      }
+      {
+        \seq_gset_eq:Nc \g_@@_tmpa_seq { g_@@_cutout_ #1 _seq }
+        \seq_gset_eq:Nc \g_@@_tmpb_seq { l_@@_parshape_ #1 _indent_seq }
+        \tl_set:Nx \l_@@_tmp_tl
+          {
+            \seq_item:Nn \g_@@_tmpb_seq
+              { \seq_count:N \g_@@_tmpb_seq }
+          }
+        \tl_if_empty:NT \l_@@_tmp_tl
+         { \tl_set:Nn \l_@@_tmp_tl { 0pt } }
+        \int_set:Nn \l_@@_tmp_int
+          {
+              \seq_count:N \g_@@_tmpa_seq
+            - \seq_count:N \g_@@_tmpb_seq
+            + \c_one
+          }
+        \int_compare:nNnT \l_@@_tmp_int > \c_zero
+          {
+            \prg_replicate:nn
+              { \l_@@_tmp_int }
+              { \seq_gput_right:NV \g_@@_tmpb_seq \l_@@_tmp_tl }
+          }
+        \@@_cutout:NN \g_@@_tmpb_seq \g_@@_tmpa_seq
+        \seq_set_eq:cN { l_@@_cutout_ #1 _indent_seq } \l_@@_tmp_seq
+      }
+  }
+%    \end{macrocode}
+%   Grab the last entry of the shorter sequence and repeat it to match
+%   the length of the longer.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_parshape_set_cutouts:N #1
+  {
+    \tl_set:Nx \l_@@_tmp_tl
+      { \seq_item:Nn #1 { \seq_count:N #1 } }
+    \tl_if_empty:NT \l_@@_tmp_tl
+      { \tl_set:Nn \l_@@_tmp_tl { 0pt } }
+    \prg_replicate:nn { \int_abs:n \l_@@_tmp_int }
+      { \seq_put_right:NV #1 \l_@@_tmp_tl }
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \subsection{Between paragraphs}
+%
+% \begin{macro}
+%   {
+%     \galley_penalty_set_single:n,
+%     \galley_penalty_add_single:n,
+%     \galley_vspace_set_single:n,
+%     \galley_vspace_add_single:n,
+%     \galley_vspace_max_single:n
+%   }
+%   User supplied penalties and spaces only apply for a single paragraph.
+%   In both cases, the input values need to be checked for the correct
+%   form but are stored as token lists. The \texttt{x}-type expansion
+%   deals with this nicely.
+%    \begin{macrocode}
+\cs_new_protected:Npn \galley_penalty_set_single:n #1
+  { \tl_gset:Nx \g_@@_interpar_penalty_user_tl { \int_eval:n {#1} } }
+\cs_new_protected:Npn \galley_penalty_add_single:n #1
+  {
+    \tl_gset:Nx \g_@@_interpar_penalty_user_tl
+      {
+        \int_eval:n
+          {
+            \tl_if_empty:NF \g_@@_interpar_penalty_user_tl
+              { \g_@@_interpar_penalty_user_tl + }
+            #1
+          }
+      }
+  }
+\cs_new_protected:Npn \galley_vspace_set_single:n #1
+  { \tl_gset:Nx \g_@@_interpar_vspace_user_tl { \skip_eval:n {#1} } }
+\cs_new_protected:Npn \galley_vspace_add_single:n #1
+  {
+    \tl_gset:Nx \g_@@_interpar_vspace_user_tl
+      {
+        \skip_eval:n
+          {
+            \tl_if_empty:NF \g_@@_interpar_vspace_user_tl
+              { \g_@@_interpar_vspace_user_tl + }
+            #1
+          }
+      }
+  }
+\cs_new_protected:Npn \galley_vspace_max_single:n #1
+  {
+    \tl_if_empty:NTF \g_@@_interpar_vspace_user_tl
+      { \galley_vspace_set_single:n {#1} }
+      {
+        \dim_compare:nNnT
+          { \etex_glueexpr:D \g_@@_interpar_vspace_user_tl } 
+            < { \etex_glueexpr:D #1 \scan_stop: }
+          { \galley_vspace_set_single:n {#1} }
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+% 
+%
+% \begin{macro}{\parskip}
+%   For the package, the \cs{parskip} primitive is moved out of the
+%   way as the code above is handling things.
+%    \begin{macrocode}
+%<*package>
+\dim_set:Nn \parskip \c_zero_dim
+\cs_undefine:N \parskip
+\skip_new:N \parskip
+%</package>
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Formatting inside the paragraph}
+%
+% Justification is more complex than is necessarily desirable as the various
+% \TeX{} parameters here interact in ways which mean that clear separation
+% between different areas is not so easy.
+%
+% \begin{variable}
+%   {
+%     \l_galley_line_left_skip,
+%     \l_galley_line_right_skip,
+%     \l_galley_par_begin_skip,
+%     \l_galley_par_end_skip,
+%     \l_galley_par_indent_dim
+%   }
+%   The variables for setting paragraph shape: essentially, these are
+%   the \TeX{} set.
+%    \begin{macrocode}
+\cs_new_eq:NN \l_galley_line_left_skip  \tex_leftskip:D
+\cs_new_eq:NN \l_galley_line_right_skip \tex_rightskip:D
+\dim_new:N \l_galley_par_begin_skip
+\cs_new_eq:NN \l_galley_par_end_skip   \tex_parfillskip:D
+\cs_new_eq:NN \l_galley_par_indent_dim \tex_parindent:D
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\l_galley_last_line_fit_int}
+%   One from \eTeX{}.
+%    \begin{macrocode}
+\cs_new_eq:NN \l_galley_last_line_fit_int \etex_lastlinefit:D
+%    \end{macrocode}
+% \end{variable}
+%
+% \subsection{Inter-word spacing}
+%
+% Setting the spacing between words and between sentences is important
+% for achieving the correct output from ragged and centered output. At
+% the same time, as far as possible the aim is to retain the spacing
+% specified by the font designer and not to use arbitrary values
+% (\emph{cf.}~the approach in \emph{The \TeX{}book}, p.~101).
+%
+% \begin{macro}{\galley_interword_spacing_set:N}
+%   The approach taken to setting a fixed space is to use the information
+%   from the current font to set the spacing. This means that only
+%   \cs{tex_spacefactor:D} needs to be set, while \cs{tex_xspacefactor:D}
+%   is left alone. However, this is only necessary for fonts which have
+%   a stretch component to the inter-word spacing in the first place,
+%   \emph{i.e.}~monospaced fonts require no changes. The code therefore
+%   checks whether there is any stretch, and if there is uses the fixed
+%   component to set \cs{tex_spaceskip:D}. If there is a stretch component
+%   (non-zero \cs{tex_fontdimen:D} \texttt{3}), then the \cs{teX_spaceskip:D}
+%   is set to the fixed component from the font.
+%    \begin{macrocode}
+\cs_new_protected:Npn \galley_interword_spacing_set:N #1
+  {
+    \bool_if:NTF #1
+      { % TODO Hook for font changes required!
+        \dim_compare:nNnTF { \tex_fontdimen:D \c_three \tex_font:D }
+          = \c_zero_dim
+          { \tex_spaceskip:D \c_zero_dim }
+          { \tex_spaceskip:D \tex_fontdimen:D \c_two \tex_font:D }
+      }
+      { \tex_spaceskip:D \c_zero_dim }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Hyphenation}
+%
+% \begin{variable}{\l_galley_hyphen_left_int}
+%   Currently something of a hack: this links in with language and fonts,
+%   so is not so straight-forward to handle.
+%    \begin{macrocode}
+\int_new:N \l_galley_hyphen_left_int
+%<*package>
+\int_set:Nn \l_galley_hyphen_left_int { \tex_lefthyphenmin:D }
+%</package>
+%    \end{macrocode}
+% \end{variable}
+%
+% \subsection{Line breaking}
+%
+% \begin{variable}
+%   {
+%     \l_galley_binop_penalty_int,
+%     \l_galley_double_hyphen_demerits_int,
+%     \l_galley_emergency_stretch_skip,
+%     \l_galley_final_hyphen_demerits_int,
+%     \l_galley_linebreak_badness_int,
+%     \l_galley_linebreak_fuzz_dim,
+%     \l_galley_linebreak_penalty_int,
+%     \l_galley_linebreak_pretolerance_int,
+%     \l_galley_linebreak_tolerance_int,
+%     \l_galley_mismatch_demerits_int,
+%     \l_galley_relation_penalty_int
+%   }
+%   All \TeX{} primitives renamed.
+%    \begin{macrocode}
+\cs_new_eq:NN \l_galley_binop_penalty_int          \tex_binoppenalty:D
+\cs_new_eq:NN \l_galley_double_hyphen_demerits_int \tex_doublehyphendemerits:D
+\cs_new_eq:NN \l_galley_emergency_stretch_skip     \tex_emergencystretch:D
+\cs_new_eq:NN \l_galley_final_hyphen_demerits_int  \tex_finalhyphendemerits:D
+\cs_new_eq:NN \l_galley_linebreak_badness_int      \tex_hbadness:D
+\cs_new_eq:NN \l_galley_linebreak_fuzz_dim         \tex_hfuzz:D
+\cs_new_eq:NN \l_galley_linebreak_penalty_int      \tex_linepenalty:D
+\cs_new_eq:NN \l_galley_linebreak_pretolerance_int \tex_pretolerance:D
+\cs_new_eq:NN \l_galley_mismatch_demerits_int      \tex_adjdemerits:D
+\cs_new_eq:NN \l_galley_relation_penalty_int       \tex_relpenalty:D
+\cs_new_eq:NN \l_galley_linebreak_tolerance_int    \tex_tolerance:D
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\galley_break_line:Nn}
+%   Terminating a line early without a new paragraph requires a few steps.
+%   First, any skips are removed, then any additional space to add is
+%   places on the surrounding vertical list. Finally, the current line
+%   is ended, using a penalty to prevents an overfull line ending |\\| giving
+%   a totally-blank one in the output. The boolean argument is used to indicate
+%   that a break is allowed after the blank line.
+%    \begin{macrocode}
+\cs_new_protected:Npn \galley_break_line:Nn #1#2
+  {
+    \mode_if_vertical:TF
+      { \__msg_kernel_error:nn { galley } { no-line-to-end } }
+      {
+        \tex_unskip:D
+        \bool_if:NF #1
+          { \tex_vadjust:D { \tex_penalty:D \c_ten_thousand } }
+        \dim_compare:nNnF {#2} = \c_zero_dim
+          { \tex_vadjust:D { \skip_vertical:n {#2} } }
+        \tex_penalty:D \c_ten_thousand
+        \tex_hfil:D
+        \tex_penalty:D -\c_ten_thousand
+      }
+  }
+%    \end{macrocode}
+%\end{macro}
+%
+% \subsection{Paragraph breaking}
+%
+% \begin{variable}
+%   {
+%     \l_galley_broken_penalty_int,
+%     \l_galley_interline_penalty_int,
+%     \l_galley_parbreak_badness_int,
+%     \l_galley_parbreak_fuzz_dim,
+%     \l_galley_post_display_penalty_int,
+%     \l_galley_pre_display_penalty_int
+%
+%   }
+%   \TeX{} primitives renamed cover \emph{some} of this.
+%    \begin{macrocode}
+\cs_new_eq:NN \l_galley_broken_penalty_int       \tex_brokenpenalty:D
+\cs_new_eq:NN \l_galley_interline_penalty_int    \tex_interlinepenalty:D
+\cs_new_eq:NN \l_galley_parbreak_badness_int     \tex_vbadness:D
+\cs_new_eq:NN \l_galley_parbreak_fuzz_dim        \tex_vfuzz:D
+\cs_new_eq:NN \l_galley_post_display_penalty_int \tex_postdisplaypenalty:D
+\cs_new_eq:NN \l_galley_pre_display_penalty_int  \tex_predisplaypenalty:D
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\l_galley_club_penalties_clist, \l_galley_line_penalties_clist}
+%   These are used to keep a track of information which cannot be
+%   extracted out of the primitives due to the overlapping nature of
+%   the meanings.
+%    \begin{macrocode}
+\clist_new:N \l_galley_club_penalties_clist
+\clist_new:N \l_galley_line_penalties_clist
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}
+%   {
+%     \galley_display_widow_penalties_set:n,
+%     \galley_display_widow_penalties_set:V,
+%     \galley_display_widow_penalties_set:v,
+%     \galley_widow_penalties_set:n,
+%     \galley_widow_penalties_set:V,
+%     \galley_widow_penalties_set:v
+%   }
+% \begin{macro}[aux]{\@@_set_aux:n}
+%   By far the easiest penalties to deal with are those for widows. These
+%   work exactly as the names imply, with the display version only used
+%   immediately before display math, and the standard penalty used at the end
+%   of a paragraph. Thus there is only the need to convert the argument into
+%   the correct form, and add a $0$ penalty at the end to nullify the effect of
+%   repeating the last value.
+%    \begin{macrocode}
+\cs_new_protected:Npn \galley_display_widow_penalties_set:n #1
+  {
+    \etex_displaywidowpenalties:D
+      \__int_eval:w \clist_count:n {#1} + \c_one \__int_eval_end:
+      \clist_map_function:nN {#1} \@@_set_aux:n
+      \c_zero
+  }
+\cs_generate_variant:Nn \galley_display_widow_penalties_set:n { V , v }
+\cs_new_protected:Npn \galley_widow_penalties_set:n #1
+  {
+    \etex_widowpenalties:D
+      \__int_eval:w \clist_count:n {#1} + \c_one \__int_eval_end:
+      \clist_map_function:nN {#1} \@@_set_aux:n
+      \c_zero
+  }
+\cs_generate_variant:Nn \galley_widow_penalties_set:n { V , v }
+\cs_new:Npn \@@_set_aux:n #1 { \int_eval:n {#1} ~ }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}
+%   {
+%     \galley_club_penalties_set:n,
+%     \galley_club_penalties_set:V,
+%     \galley_club_penalties_set:v,
+%     \galley_interline_penalties_set:n,
+%     \galley_interline_penalties_set:V,
+%     \galley_interline_penalties_set:v
+%   }
+%   Setting club or special line penalties is easy, as these are handled
+%   mainly by the interline set up function. The two concepts are essentially
+%   the same, but having two takes makes some special effects easier to
+%   carry out.
+%    \begin{macrocode}
+\cs_new_protected:Npn \galley_club_penalties_set:n #1
+  {
+    \clist_set:Nn \l_galley_club_penalties_clist {#1}
+    \@@_calc_interline_penalties:
+  }
+\cs_generate_variant:Nn \galley_club_penalties_set:n { V , v }
+\cs_new_protected:Npn \galley_interline_penalties_set:n #1
+  {
+    \clist_set:Nn \l_galley_line_penalties_clist {#1}
+    \@@_calc_interline_penalties:
+  }
+\cs_generate_variant:Nn \galley_interline_penalties_set:n { V , v }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}
+%   {
+%     \galley_display_club_penalties_set:n,
+%     \galley_display_club_penalties_set:V,
+%     \galley_display_club_penalties_set:v
+%   }
+%   Setting the display club penalties means first setting the primitive,
+%   then recalculating the interline array to allow for these new values.
+%    \begin{macrocode}
+\cs_new_protected:Npn \galley_display_club_penalties_set:n #1
+  {
+    \etex_clubpenalties:D
+      \__int_eval:w \clist_count:n {#1} + \c_one \__int_eval_end:
+      \clist_map_function:nN {#1} \@@_set_aux:n
+      \c_zero
+    \@@_calc_interline_penalties:
+  }
+\cs_generate_variant:Nn \galley_display_club_penalties_set:n { V , v }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\galley_interline_penalty_set:n}
+% \begin{macro}[aux]{\@@_set_interline_penalty:nn}
+% \begin{macro}[aux]
+%   {
+%     \@@_set_interline_penalty_auxi:n,
+%     \@@_set_interline_penalty_auxii:n
+%   }
+%   Dealing with the general interline penalty is handled in one shot.
+%   The idea is that for lines with no special penalty, the old general
+%   penalty is removed and the new one is added. If there is currently
+%   no shape set, then after adding the general interline value the
+%   generic build system is invoked (in case the
+%   \cs{etex_interlinepenalties:D} has accidentally been cleared).
+%    \begin{macrocode}
+\cs_new_protected:Npn \galley_interline_penalty_set:n #1
+  {
+    \int_compare:nNnTF { \etex_interlinepenalties:D \c_zero } = \c_zero
+      {
+        \etex_interlinepenalties:D \c_one \__int_eval:w #1 \__int_eval_end:
+        \@@_calc_interline_penalties:
+      }
+      {
+        \cs_set:Npn \@@_set_interline_penalty_auxii:n ##1
+          {
+            \__int_eval:w
+              \etex_interlinepenalties:D ##1
+               - \etex_interlinepenalties:D \etex_interlinepenalties:D \c_zero
+               + #1
+            \__int_eval_end:
+          }
+        \exp_args:Nf \@@_set_interline_penalty:nn
+          { \clist_count:N \l_galley_line_penalties_clist } {#1}
+      }
+  }
+\cs_new_protected:Npn \@@_set_interline_penalty:nn #1#2
+  {
+    \etex_interlinepenalties:D
+      \etex_interlinepenalties:D \c_zero
+      \int_step_function:nnnN \c_one \c_one {#1}
+        \@@_set_interline_penalty_auxi:n
+      \int_step_function:nnnN { #1 + \c_one } \c_one
+        { \etex_interlinepenalties:D \c_zero - \c_one }
+        \@@_set_interline_penalty_auxii:n
+      \__int_eval:w #2 \__int_eval_end:
+  }
+\cs_new:Npn \@@_set_interline_penalty_auxi:n #1
+  { \etex_interlinepenalties:D \__int_eval:w #1 \__int_eval_end: }
+\cs_new:Npn \@@_set_interline_penalty_auxii:n #1 { }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}[int]{\@@_calc_interline_penalties:}
+% \begin{macro}[aux]{\@@_calc_interline_penalties:nn}
+% \begin{macro}[aux]
+%   {
+%     \@@_calc_interline_penalties_auxi:n,
+%     \@@_calc_interline_penalties_auxii:n
+%   }
+%   The underlying interline penalty array has to deal with club penalties,
+%   display club penalties and any special line penalties, and include
+%   the general interline penalty. These requirements lead to a rather
+%   complex requirement on how many lines to deal with. This is needed twice,
+%   so an \texttt{f}-type expansion is used to make life a little less
+%   complex.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_calc_interline_penalties:
+  {
+    \exp_args:Nff \@@_calc_interline_penalties:nn
+      {
+        \int_max:nn
+          {
+              \clist_count:N \l_galley_club_penalties_clist
+            + \c_one
+          }
+          {
+            \int_max:nn
+              {
+                  \clist_count:N \l_galley_line_penalties_clist
+                + \c_one
+              }
+              { \etex_clubpenalties:D \c_zero }
+          }
+      }
+      { \clist_count:N \l_galley_line_penalties_clist }
+  }
+%    \end{macrocode}
+%   The idea is now to calculate the correct penalties. Two auxiliary functions
+%   are used: one for any \enquote{special penalty} lines and a second for
+%   normal lines. At the end of the process, the standard interline
+%   penalty is always included.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_calc_interline_penalties:nn #1#2
+  {
+    \etex_interlinepenalties:D #1 ~
+      \int_step_function:nnnN \c_one \c_one {#2}
+        \@@_calc_interline_penalties_auxi:n
+      \int_step_function:nnnN { #2 + \c_one } \c_one { #1 - \c_one }
+        \@@_calc_interline_penalties_auxii:n
+      \etex_interlinepenalties:D \etex_interlinepenalties:D \c_zero
+  }
+\cs_new:Npn \@@_calc_interline_penalties_auxi:n #1
+  {
+    \__int_eval:w
+        \clist_item:Nn \l_galley_line_penalties_clist {#1}
+      + 0 \clist_item:Nn \l_galley_club_penalties_clist {#1}
+      - \etex_clubpenalties:D #1 ~
+    \__int_eval_end:
+  }
+\cs_new:Npn \@@_calc_interline_penalties_auxii:n #1
+  {
+    \__int_eval:w
+        \etex_interlinepenalties:D \etex_interlinepenalties:D \c_zero
+      + 0 \clist_item:Nn \l_galley_club_penalties_clist {#1}
+      - \etex_clubpenalties:D #1 ~
+    \__int_eval_end:
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}
+%   {
+%     \galley_save_club_penalties:N,
+%     \galley_save_interline_penalties:N,
+%     \galley_save_display_club_penalties:N,
+%     \galley_save_display_widow_penalties:N,
+%     \galley_save_widow_penalties:N
+%   }
+% \begin{macro}[aux]
+%   {
+%     \@@_save_display_club_penalties:n,
+%     \@@_save_display_widow_penalties:n,
+%     \@@_save_widow_penalties:n
+%   }
+% \begin{macro}{\galley_interline_penalty:}
+%   Saving the array penalties varies in complexity depending on how they are
+%   stored internally. The first two are easy: these are simply copies.
+%    \begin{macrocode}
+\cs_new_protected:Npn \galley_save_club_penalties:N #1
+  { \clist_set_eq:NN #1 \l_galley_club_penalties_clist }
+\cs_new_protected:Npn \galley_save_interline_penalties:N #1
+  { \clist_set_eq:NN #1 \l_galley_line_penalties_clist }
+%    \end{macrocode}
+%   These all require appropriate mappings, using the fact that
+%   \cs{clist_set:Nx} will tidy up the excess comma.
+%    \begin{macrocode}
+\cs_new_protected:Npn \galley_save_display_club_penalties:N #1
+  {
+    \clist_set:Nx #1
+      {
+        \int_step_function:nnnN \c_one \c_one
+          { \etex_clubpenalties:D \c_zero - \c_one }
+          \@@_save_display_club_penalties:n
+      }
+  }
+\cs_new:Npn \@@_save_display_club_penalties:n #1
+  { \__int_value:w \etex_clubpenalties:D \__int_eval:w #1 \__int_eval_end: , }
+\cs_new_protected:Npn \galley_save_display_widow_penalties:N #1
+  {
+    \clist_set:Nx #1
+      {
+        \int_step_function:nnnN \c_one \c_one
+          { \etex_displaywidowpenalties:D \c_zero - \c_one }
+          \@@_save_display_widow_penalties:n
+      }
+  }
+\cs_new:Npn \@@_save_display_widow_penalties:n #1
+  { \__int_value:w \etex_displaywidowpenalties:D \__int_eval:w #1 \__int_eval_end: , }
+\cs_new_protected:Npn \galley_save_widow_penalties:N #1
+  {
+    \clist_set:Nx #1
+      {
+        \int_step_function:nnnN \c_one \c_one
+          { \etex_widowpenalties:D \c_zero - \c_one }
+          \@@_save_widow_penalties:n
+      }
+  }
+\cs_new:Npn \@@_save_widow_penalties:n #1
+  { \__int_value:w \etex_widowpenalties:D \__int_eval:w #1 \__int_eval_end: , }
+%    \end{macrocode}
+%   This one is not an array, but is stored in a primitive, so there is
+%   a simple conversion. The general interline penalty is always the
+%   last value in the primitive array.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \galley_interline_penalty:
+  { \__int_value:w \etex_interlinepenalties:D \etex_interlinepenalties:D \c_zero }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \subsection{Messages}
+%
+%    \begin{macrocode}
+\__msg_kernel_new:nnn { galley } { no-line-to-end }
+  { There's~no~line~here~to~end. }
+%    \end{macrocode}
+%
+% \subsection{\LaTeXe{} functions}
+%
+%    \begin{macrocode}
+%<*package>
+%    \end{macrocode}
+%
+% \begin{macro}{\clearpage}
+%   The \tn{clearpage} macro needs to place material into the correct
+%   structures rather than directly onto the main vertical list. Other
+%   than that it is the same as the \LaTeXe{} version.
+%    \begin{macrocode}
+\cs_set_nopar:Npn \clearpage
+  {
+    \mode_if_vertical:T
+      {
+        \int_compare:nNnT \@dbltopnum = \c_minus_one
+          {
+            \dim_compare:nNnT \tex_pagetotal:D < \topskip
+              { \tex_hbox:D { } }
+          }
+      }
+    \newpage
+    \galley_penalty_set_single:n { -\@Mi }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\nobreak}
+% \begin{macro}{\noindent}
+% \begin{macro}{\vspace}
+% In package mode, some of \LaTeXe{}'s functions are re-implemented using
+% the galley system. Not all of the optional arguments currently work!
+%    \begin{macrocode}
+\cs_set_nopar:Npn \nobreak
+  { \bool_gset_true:N \g_galley_no_break_next_bool }
+%    \end{macrocode}
+%  The \tn{noindent} primitive will causes problems, as it is used by
+%  \LaTeXe{} documents to implicitly leave vertical mode as well as to
+%  prevent indentation. Rather than patch \emph{every} place where we
+%  need leave vertical mode, at the moment we stick with the primitive as
+%  well as setting the galley flag.
+%    \begin{macrocode}
+\cs_set_protected_nopar:Npn \noindent
+  {
+    \tex_noindent:D
+    \bool_gset_false:N \g_galley_omit_next_indent_bool
+  }
+%    \begin{macrocode}
+%   At present we don't have a proper handling for the starred version
+%   of \tn{vspace}: just ignore it for the moment!
+%    \begin{macrocode}
+\DeclareRobustCommand \vspace
+  {
+    \@ifstar
+      \@vspace
+      \@vspace
+  }
+\cs_set:Npn \@vspace #1 { \galley_vspace_add_single:n {#1} }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\\}
+% \begin{macro}{\newline}
+%   These functions pass their arguments straight through to the internal
+%   implementation (which is currently just the \LaTeXe{} one recoded).
+%    \begin{macrocode}
+\DeclareRobustCommand \\
+  {
+    \@ifstar
+      { \cs_set_eq:NN \reserved@e \c_true_bool }
+      { \cs_set_eq:NN \reserved@e \c_false_bool }
+    \@xnewline
+  }
+\cs_set:Npn \@xnewline
+  {
+    \@ifnextchar [ % ]
+      { \@newline }
+      { \@newline [ 0pt ] }
+  }
+\cs_set:Npn \@newline [ #1 ]
+  { \galley_break_line:Nn \reserved@e {#1} }
+\DeclareRobustCommand \newline
+  { \galley_break_line:Nn \c_true_bool { 0pt } }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \subsection{\LaTeXe{} fixes}
+%
+% Purely for testing, some internal \LaTeXe{} functions are altered to work
+% with the mechanism here. This material is not comprehensive: additions are
+% made as-needed for test purposes.
+%
+% \begin{macro}{\@@par}
+%   The primitive is moved as otherwise the clever skipping code will fail.
+%    \begin{macrocode}
+\cs_set_eq:cN { @ @ par } \galley_par:
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\addpenalty, \addvspace}
+%   The mechanism here is entirely different, but at least this works!
+%    \begin{macrocode}
+\cs_set_nopar:Npn \addpenalty { \galley_penalty_add_single:n }
+\cs_set_nopar:Npn \addvspace  { \galley_vspace_max_single:n }
+%    \end{macrocode}
+%\end{macro}
+%
+% \begin{macro}{\@afterheading}
+%   Set some flags and hope for the best!
+%    \begin{macrocode}
+\cs_set_nopar:Npn \@afterheading
+  {
+    \bool_gset_true:N \g_galley_no_break_next_bool
+    \if@afterindent
+    \else
+      \bool_gset_true:N \g_galley_omit_next_indent_bool
+    \fi
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@hangfrom}
+%   The \cs{tex_hangindent:D} primitive is no longer used, so the paragraph
+%   shape is set in a different way. As a result, the label is part of the
+%   same paragraph as the main body, hence the need to leave vertical mode.
+%    \begin{macrocode}
+\cs_set:Npn \@hangfrom #1
+  {
+    \bool_gset_true:N \g_galley_omit_next_indent_bool
+    \leavevmode
+    \setbox \@tempboxa = \hbox { {#1} }
+    \galley_parshape_set_single:nnnN
+      \c_one
+      { \box_wd:N \@tempboxa }
+      \c_zero_dim
+      \c_false_bool
+    \bool_gset_true:N \g_galley_no_break_next_bool
+    \bool_gset_true:N \g_galley_omit_next_indent_bool
+    \box \@tempboxa
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@normalcr}
+%   This is needed as \cs{@parboxrestore} sets |\\| equal to \cs{@normalcr},
+%   and the new definition must be used
+%    \begin{macrocode}
+\cs_set_eq:Nc \@normalcr { \cs_to_str:N \\ }
+%    \end{macrocode}
+%\end{macro}
+%
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%</initex|package>
+%    \end{macrocode}
+%
+% \end{implementation}
+%
+% \PrintIndex

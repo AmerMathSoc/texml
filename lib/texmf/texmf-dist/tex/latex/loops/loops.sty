@@ -1,0 +1,1528 @@
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++%
+% This is file 'loops.sty', version 1.3, 2013/05/15.                       %
+%                                                                          %
+% This package and accompanying files may be distributed and/or            %
+% modified under the conditions of the LaTeX Project Public License,       %
+% either version 1.3 of this license or any later version. The latest      %
+% version of this license is in http://www.latex-project.org/lppl.txt      %
+% and version 1.3 or later is part of all distributions of LaTeX           %
+% version 2005/12/01 or later.                                             %
+%                                                                          %
+% The LPPL maintenance status of this software is 'author-maintained'.     %
+%                                                                          %
+% This software is provided 'as it is', without warranty of any kind,      %
+% either expressed or implied, including, but not limited to, the          %
+% implied warranties of merchantability and fitness for a particular       %
+% purpose.                                                                 %
+%                                                                          %
+% The following files constitute the loops bundle and must be              %
+% distributed as a whole:                                                  %
+%                                                                          %
+%  README, loops.sty, loops-pokayoke1.                                     %
+%                                                                          %
+% Copyright (c) 2012-2013 Ahmed Musa (amusa22@gmail.com).                  %
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++%
+
+\begingroup
+\catcode035 06 % #
+\catcode064 11 % @
+\catcode123 01 % {
+\catcode125 02 % }
+\catcode044 12 % ,
+\def\skv@prova{\endgroup
+  \def\do##1,{%
+    \ifx\do##1\else
+      \catcode##1\string=\the\catcode##1\relax
+      \expandafter\do
+    \fi
+  }%
+  \edef\loops@restorecodes{\do035,064,123,125,061,059,\do,}%
+}
+\skv@prova
+\catcode035 06 % #
+\catcode064 11 % @
+\catcode123 01 % {
+\catcode125 02 % }
+\catcode061 12 % =
+\catcode044 12 % ,
+\def\do#1=#2,{%
+  \ifx#1\do\else
+    \edef\loops@restorecodes{%
+      \loops@restorecodes
+      \catcode#1=\the\catcode#1\relax
+    }%
+    \catcode#1=#2\relax
+    \expandafter\do
+  \fi
+}
+\do 032=10,033=12,036=03,038=04,040=12,041=12,042=12,043=12,%
+  059=12,045=12,047=12,058=12,063=12,091=12,093=12,126=13,\do=,%
+
+\ProvidesPackage{loops}[2013/05/15 v1.3 Loops and list processors (AM)]
+\NeedsTeXFormat{LaTeX2e}[2011/06/27]
+
+% This is the way to load 'skeyval-for-core' here, otherwise we
+% can't access some of the needed commands from 'skeyval-core':
+
+\@ifpackageloaded{skeyval}{}{\RequirePackage{skeyval}}
+
+\skvnewlet\ltxkernelfor\@for
+\skvnewlet\ltxkerneltfor\@tfor
+
+\directkeys*{
+  .every unknown option={
+    \@onelevel@sanitize\CurrentOption
+    \PackageWarning{loops}{Unknown option '\CurrentOption' ignored}
+  },
+  .path=SKV/loops,
+  .holder prefix=lps@,
+  .initialize keys after define,
+  .new options={
+    .bool/verbose/true/\iflps@verbose\skv@verbosetrue\fi,
+  },
+  .copy class options and process options
+}
+
+% \lpsdocsvlist{<parser>}{<list>}{<callback>}
+%
+% Execute <callback> on each item of <list>. The user has access to
+% \firstprevitem, \secondprevitem, \currentitem, \firstnextitem,
+% \secondnextitem (some of which may be empty), and \iflpslastitem.
+%
+% Examples:
+%
+%   \def\aitems{}
+%   \lpsdocsvlist{,}{a,b,c,d,e,f}{%
+%     \def\do##1{\ifx##1\@empty\let##1\@gobble\fi}%
+%     \do\secondprevitem\do\firstprevitem\do\firstnextitem
+%     \edef\aitems{%
+%       \skvexpandonce\aitems\ifx\aitems\@empty\else,\fi
+%       \secondprevitem,\firstprevitem,\currentitem,%
+%       \firstnextitem,\secondnextitem
+%     }%
+%   }
+%
+\skvnewregister\bool{\iflpslastitem}
+\skvnewlet\lpsbreakloop\skvbreaklooptrue
+\skvrobustdef*\lpsdocsvlist#1#2#3{%
+  \skvpushfunctions\lpsdocsvlist{%
+    \do\lpsuserlist\do\firstprevitem\do\secondprevitem\do\currentitem
+    \do\firstnextitem\do\secondnextitem\do\lps@do\do\skv@callback
+  }\skv@csvdepth
+  \let\firstprevitem\@empty
+  \let\secondprevitem\@empty
+  \edef\lpsuserlist{\unexpanded{#2}}%
+  \edef\skv@callback{\unexpanded{#3}}%
+  \skvcsvnormalize[#1]\lpsuserlist
+  \def\lps@do##1#1##2#1##3#1{%
+    \edef\currentitem{\unexpanded{##1}}%
+    \skvifxTF\currentitem\skv@nnil{%
+      \skvbreakloopfalse
+    }{%
+      \skvifdefboolTF{skvbreakloop}{%
+        \skvbreakloopfalse
+        \def\lps@do####1\skv@nil#1\skv@nil#1\skv@nil#1{%
+          \edef\lpsremainder{\unexpanded{####1}}%
+        }%
+      }{%
+        \edef\firstnextitem{\unexpanded{##2}}%
+        \ifx\firstnextitem\skv@nnil
+          \lpslastitemtrue
+          \let\firstnextitem\@empty
+        \fi
+        \edef\secondnextitem{\unexpanded{##3}}%
+        \ifx\secondnextitem\skv@nnil
+          \let\secondnextitem\@empty
+        \fi
+        \lps@callback\relax
+        \let\secondprevitem\firstprevitem
+        \let\firstprevitem\currentitem
+      }%
+      \lps@do##2#1##3#1%
+    }%
+  }%
+  \skvbreakloopfalse
+  \skvifemptyTF\lpsuserlist{}{%
+    \expandafter\lps@do\lpsuserlist#1\skv@nil#1\skv@nil#1\skv@nil#1%
+  }%
+  \skvpopfunctions\lpsdocsvlist\skv@csvdepth
+}
+
+% Remove one element from a list. Only the first occurence of the
+% element will be removed. This is fast.
+%
+% \lpsremovefromlist<parser>{<element to remove>}<listcmd>
+%
+% Example:
+%
+%     \def\x{1,2,3,4}
+%     \lpsremovefromlist{,}7\x
+%
+\skvrobustdef\lpsremovefromlist#1#2#3{%
+  \begingroup
+  \def\lps@remove@a##1\lps@nil{##1}%
+  \def\lps@remove@b##1\lps@nil{}%
+  \def\lps@remove@c##1#1#2##2\lps@nil##3\lps@nil##4\lps@nnil{%
+    \expandafter\endgroup##3\def#3{##1##2}\lps@nil
+  }%
+  \expandafter\lps@remove@c\expandafter#1#3\lps@nil
+    \lps@remove@a\lps@nil#1#2\lps@nil\lps@remove@b\lps@nil\lps@nnil
+}
+
+% Expandable version of D.E. Knuth's \loop:
+%
+\skvnewdef\dekloop#1\repeat{\skv@dekloop{#1}}
+\skvnewdef\skv@dekloop#1{%
+  #1%
+    \expandafter\skv@dekloop
+  \else
+    \expandafter\@gobble
+  \fi
+  {#1}%
+}
+
+\skvnewdef\lpswhilecondition#1\do#2{%
+  \csname @#1firstofone\else gobble\fi\endcsname
+  {#2\lpswhilecondition{#1}\do{#2}}%
+}
+
+% A version of D.E. Knuth's \loop that can be nested.
+% Credit: David P. Carlisle.
+%
+% \carlisleloop\a
+%   \carlisleloop\b
+%     ...
+%     \if...
+%   \repeat\b
+%   ...
+%   \if...
+% \repeat\a
+%
+\let\repeat\fi
+\skvrobustdef*\carlisleloop#1{%
+  \long\def\skv@carlisleloop##1##2\repeat#1{%
+    \long\def##1{##2\relax\expandafter##1\fi}%
+    ##1\let##1\relax
+  }%
+  \expandafter\skv@carlisleloop
+  \csname skv@carlisleloop@\string#1\endcsname
+}
+
+% A version of D.E.Knuth's \loop that can be nested naturally.
+%
+% 1. As a design constraint, this doesn't accept \par.
+%
+% 2. ak=Wilhelm Ackermann, ter=Rózsa Péter; in honour of these
+%    mathematicians.
+%
+% \akterloop
+%   \akterloop
+%     ...
+%     \if...
+%   \repeat
+%   ...
+%   \if...
+% \repeat
+%
+\skvnewregister\toks{\skv@aktertoks}
+\skvnewdef*\skv@aktercnt{0}
+\skvrobustdef*\skv@akter@defloop{%
+  \def\skv@tempa##1##2##3{%
+    \def\skv@tempa{##1}%
+    \def\skv@tempb{##2}%
+    \let##2\fi
+    \gdef##1####1##2{%
+      \def##3{####1\relax\expandafter##3\fi}%
+      ##3\let##3\relax
+    }%
+  }%
+  \def\x##1{%
+    \skvnoexpandcs{skv@akter@##1@\skvrom\skv@aktercnt}%
+  }%
+  \edef\x{\x{loop}\x{repeat}\x{iterate}}%
+  \expandafter\skv@tempa\x
+}
+\skvrobustdef*\akterloop{%
+  \begingroup
+  \everyeof{EOF}\def\skv@aktercnt{0}%
+  \skv@aktertoks{\dekloop}%
+  \skv@akterpush
+}
+\skvrobustdef*\skv@akterpush{\futurelet\next\skv@akterpush@a}
+% Use star variant of \skvrobustdef here, to catch \par:
+\skvrobustdef*\skv@akterpush@a#1{%
+  \skvifntypeTF{#1}{%
+    \skvifxTF{#1}\akterloop{%
+      \skvadvanceno\skv@aktercnt\@ne
+      \skv@akter@defloop
+      \skv@aktertoks\expandafter
+        {\the\expandafter\skv@aktertoks\skv@tempa}%
+      \skv@akterpush
+    }{%
+      \skvifstrcmpTF{#1}\repeat{%
+        \skvifnumTF\skv@aktercnt=\skvz@{%
+          \expandafter\endgroup\the\skv@aktertoks\repeat
+        }{%
+          \skv@aktertoks\expandafter
+            {\the\expandafter\skv@aktertoks\skv@tempb}%
+          \skvadvanceno\skv@aktercnt\m@ne
+          \skv@akterpush
+        }%
+      }{%
+        \skvifxTF\next\@sptoken{%
+          \skv@aktertoks\expandafter
+            {\the\expandafter\skv@aktertoks\@space#1}%
+        }{%
+          \skv@aktertoks\expandafter{\the\skv@aktertoks#1}%
+        }%
+        \skv@akterpush
+      }%
+    }%
+  }{%
+    \skvifstrcmpTF{#1}{EOF}{%
+      \skv@err{'\string\repeat' not found: endless loop}\skv@ehd
+    }{%
+      \skvifxTF\next\@sptoken{%
+        \skv@aktertoks\expandafter
+          {\the\expandafter\skv@aktertoks\space{#1}}%
+      }{%
+        \skv@aktertoks\expandafter{\the\skv@aktertoks{#1}}%
+      }%
+      \skv@akterpush
+    }%
+  }%
+}
+
+% Expandable comma loop. List is not normalized prior to parsing, and
+% it is not possible to terminate the loop prematurely.
+%
+% \lpsfor{<list>}<callback.macro>
+%
+% Example:
+%
+% \skvnewregister\count{\nr}\nr=\tw@
+% \def\do#1{%
+%   \let\noexpand#1%
+%   \expandafter\noexpand\csname\skvremovescape{#1}@%
+%   \romannumeral\nr\endcsname
+% }
+% \edef\x{\lpsfor{\cmda,\cmdb}\do}
+% \show\x -> \let\cmda\cmda@ii \let\cmdb\cmdb@ii
+%
+\skvnewdef\skvfor#1#2{\skv@for@a{#2}#1,\skv@for@nil,}
+\skvnewdef\skv@for@a#1#2,{%
+  \skvifblankTF{#2}{%
+    \skv@for@a{#1}%
+  }{%
+    \skvifstrcmpTF{#2}\skv@for@nil{}{#1{#2}\skv@for@a{#1}}%
+  }%
+}
+\skvnewlet\lpsfor\skvfor
+% Process non-separated (token-wise) list. \ayeloop is like \skvtfor
+% but uses parameter characters directly, instead of a holder macro.
+%
+% \ayeloop{<list>}\do{<1.parameter.callback>}
+% \ayeloop*{<listcmd>}\do{<1.parameter.callback>}
+%
+%  \ayeloop abcd\do{%
+%    \def\nr{0}%
+%    \ayeloop 12345\do{%
+%      \typeout{Doing #1--##1}%
+%      \skvpushnumber\nr
+%      \ifnum\nr>3\relax\skvbreakloop\fi
+%    }%
+%  }%
+%
+\skvrobustdef*\ayeloop{\skv@testst\skv@ayeloop}
+\skvrobustdef*\skv@ayeloop#1\do#2{%
+  \skv@usetempst{#1}\skv@tempa
+  \skvsavestate\ayeloop{\do\skv@ayeloop}\skv@csvdepth
+  \def\skv@ayeloop##1{%
+    \skvifstrcmpTF{##1}\skv@tfor@nil{%
+      \skvbreakloopfalse
+    }{%
+      #2\relax
+      \ifskvbreakloop
+        \skvbreakloopfalse
+        \begingroup
+        \def\skv@ayeloop####1\skv@tfor@nil{%
+          \endgroup
+          \edef\skvremainder{\unexpanded{####1}}%
+        }%
+      \fi
+      \skv@ayeloop
+    }%
+  }%
+  \skvbreakloopfalse
+  \expandafter\skv@ayeloop\skv@tempa\skv@tfor@nil
+  \skvrestorestate\ayeloop\skv@csvdepth
+}
+
+% Robust, outer-brace-preserving, multi-level, general-purpose
+% non-separated values list (nsv/tsv) processor.
+%
+% \sifakaloop{<list>}{<1.parameter.callback>}
+% \sifakaloop*{<listcmd>}{<1.parameter.callback>}
+%
+\skvnewdef*\skv@tsvnil{\skv@tsvnil}
+\skvrobustdef*\sifakaloop{\skv@testst\skv@sifakaparse@a}
+\skvrobustdef*\skv@sifakaparse@a#1#2{%
+  \skv@usetempst{#1}\skv@sifakaarg
+  \skvsavestate\sifakaloop{\do\skv@user@do}\skv@csvdepth
+  \def\skv@user@do##1{#2}%
+  \edef\skv@sifakaarg{%
+    \expandafter\skvtsvnormalize\expandafter{\skv@sifakaarg}%
+  }%
+  \skvbreakloopfalse
+  \skvifemptyTF\skv@sifakaarg{%
+    \ifskvprocessempty\skv@user@do{}\fi
+  }{%
+    \expandafter\skv@sifakaparse@b\skv@sifakaarg\skv@tsvnil
+  }%
+  \skvrestorestate\sifakaloop\skv@csvdepth
+  \ifnum\skv@csvdepth=\skvz@\skvundef\skv@user@do\fi
+}
+\skvrobustdef*\skv@sifakaparse@b{%
+  \begingroup
+  \let\bgroup\relax
+  \skvifnextchar\skv@orig@bgroup{%
+    \let\skv@next\skv@orig@bgroup
+    \skv@sifakaparse@c
+  }{%
+    \let\skv@next\relax
+    \skv@sifakaparse@c
+  }%
+}
+\skvrobustdef*\skv@sifakaparse@c#1{%
+  \skvifxTF\skv@next\skv@orig@bgroup{%
+    \endgroup
+    \edef\skv@sifakaarg{{\unexpanded{#1}}}%
+  }{%
+    \endgroup
+    \edef\skv@sifakaarg{\unexpanded{#1}}%
+  }%
+  \skvifxTF\skv@sifakaarg\skv@tsvnil{%
+    \skvbreakloopfalse
+  }{%
+    \skvifxTF\skv@sifakaarg\skv@listbreakertoks{%
+      \skvbreakloop
+    }{%
+      \skvifemptyTF\skv@sifakaarg{%
+        \ifskvprocessempty\skv@user@do{}\fi
+      }{%
+        \expandafter\skv@user@do\expandafter{\skv@sifakaarg}\relax
+      }%
+      \skvifdefboolTF{skvbreakloop}{%
+        \skvbreakloopfalse
+        \begingroup
+        \def\skv@prova##1\skv@tsvnil{%
+          \endgroup
+          \edef\skvremainder{\unexpanded{##1}}%
+        }%
+        \skv@prova
+      }{%
+        \skv@sifakaparse@b
+      }%
+    }%
+  }%
+}
+
+% Processing both csv and tsv/nsv lists with \foreachfox.
+%
+% \foreachfox[<options>]{<list>}{<parametered.callback>}
+% \foreachfox*[<options>]{<listcmd>}{<parametered.callback>}
+%
+% 1. The <callback> is at least a one-parameter token list.
+%
+% 2. \breakforeachfox can be used to break out of the current nest loop.
+%    \breakallforeachloops can be used to break out of all current loops.
+%
+% 3. When the argument is more than one (say, #1#2), the last one
+%    must be delimited by the user-suggested <arg delimiter>.
+%
+% 4. To permit nesting we use a stack involving the counter \foreachnestdepth.
+%
+% 5. \subcallback is meant for callbacks with hash characters that may be
+%    confused with the parameters of the main <callback>. It can be defined
+%    outside <callback> and called within <callback>.
+%
+% 6. Outer braces around the list items are preserved in the parsing.
+%
+% 7. The following are available here, as in \newforeach:
+%
+%    \foreachcurrentitem, \foreachnextitem, \foreachitemcount,
+%    \foreachprevitem, \prependtobeginforeach, \appendtobeginforeach
+%    (=\atbeginforeach), \prependtoendforeach, \appendtoendforeach
+%    (=\atendforeach), \ifforeachlastitem, \foreachnestdepth,
+%    \foreachlistremainder, \skvforeachonlyinitially.
+%
+\skvnewregisters\bool{\iflastfox}
+\skvnewlet\breakforeachfox\skvbreaklooptrue
+% \atbeginforeachfox[<depth>]{<code>}
+\skvnewlet\atbeginforeachfox\atbeginforeach
+% \atendforeachfox[<depth>]{<code>}
+\skvnewlet\atendforeachfox\atendforeach
+
+% Define \foreachfox keys. Name all the macros with 'foreach' prefix so
+% that we can avoid new command names and use the list auto-completion
+% scheme of \newforeach.
+\skvquickkeys.define{loops/foreachfox}{%
+  parser/{,}/
+    \def\skv@foreach@parser{#1}
+    \skvstripouterbraces{2}\skv@foreach@parser
+  ;
+  list type/csv/\def\skv@foreach@listtype{#1}/csv,kv,tsv,nsv;
+  arg,args,arg pattern/##1/
+    \edef\skv@foreach@paramlist{\unexpanded{#1}}
+    \skvstripouterbraces{1}\skv@foreach@paramlist
+  ;
+  list breaker/\foreachlistbreaker/\def\skv@listbreakertoks{#1};
+  list pauser/\foreachlistpauser/\def\skv@listpausertoks{#1};
+  normalize list/true/
+    \edef\skv@foreach@normalizelist{0\skvifstrcmpTF{#1}{true}01}
+    /true,false
+  ;
+  use empty,use empty items/true/
+    \edef\skv@foreach@useempty{0\skvifstrcmpTF{#1}{true}01}
+    /true,false
+  ;
+  .exec/\let\skv@foreach@exittester\@secondoftwo;
+  break,loop stopper,exit when/\if01\fi/
+    \edef\skv@tempa{\unexpanded{#1}}
+    \skvstripouterbraces{2}\skv@tempa
+    \skvexpbracenext\skv@foreach@maketester\skv@tempa
+      \skv@foreach@exittester\@ne
+  ;
+  .exec/\let\skv@foreach@continuetester\@secondoftwo;
+  continue,ignore callback/\if01\fi/
+    \edef\skv@tempa{\unexpanded{#1}}%
+    \skvstripouterbraces{2}\skv@tempa
+    \skvexpbracenext\skv@foreach@maketester\skv@tempa
+      \skv@foreach@continuetester\skvz@
+  ;
+  item counter,counter/\foreachdefaultitemcounter/
+    \skvifescapedTF{#1}{%
+      \def\skv@foreach@itemcounter{#1}%
+    }{%
+      \skv@err{Non-escaped value '\detokenize{#1}'
+        \MessageBreak for key 'item counter'}\skv@ehd
+    }%
+  ;
+  process up to,process up to number//
+    \skviflacus#1\then\else
+      \skvensureinteger{process up to}{#1}%
+      \def\skv@foreach@processupto{#1}%
+      \skvstripouterbraces{2}\skv@foreach@processupto
+    \fi
+  ;
+  % This default value of 'link' is required by \skvautocompletelist:
+  .exec/\def\skv@foreach@link{\@nil};
+  link/\@nil/
+    \edef\skv@prova{\unexpanded{#1}}
+    \ifx\skv@prova\@nnil\else
+      \edef\skv@foreach@link{\unexpanded{#1}}
+      \skvstripouterbraces{2}\skv@foreach@link
+    \fi
+  ;
+  grow/\@nil/
+    \edef\skv@prova{\unexpanded{#1}}%
+    \ifx\skv@prova\@nnil\else
+      \skvcsedef{skv@foreach@grow#1}{00}%
+      \edef\skv@prova{\skvifstrcmpTF{#1}{left}{right}{left}}%
+      \skvcsedef{skv@foreach@grow\skv@prova}{01}%
+    \fi
+    /left,right
+  ;
+  .exec/
+    \def\skv@foreach@growleft{01}%
+    \def\skv@foreach@growright{01}%
+  ;
+  grow left/true/
+    \edef\skv@foreach@growleft{0\skvifstrcmpTF{true}{#1}01}%
+    \edef\skv@foreach@growright{0\skvifstrcmpTF{true}{#1}10}%
+    /true,false
+  ;
+  grow right/true/
+    \edef\skv@foreach@growright{0\skvifstrcmpTF{true}{#1}01}%
+    \edef\skv@foreach@growleft{0\skvifstrcmpTF{true}{#1}10}%
+    /true,false
+  ;
+  % Keep the decimals in rounded numbers or dimensions when list is
+  % auto-completed. The value value of this key is 'true'.
+  keep decimals/true/
+    \edef\skv@foreach@keepdecimals{0\skvifstrcmpTF{true}{#1}01}%
+    /true,false
+  ;
+  keep high decimals,keep only high decimals/true/
+    \edef\skv@foreach@keephighdecimals{0\skvifstrcmpTF{true}{#1}01}%
+    /true,false
+  ;
+  expand before fill,expand list before fill/true/
+    \edef\skv@foreach@expandbeforefill{0\skvifstrcmpTF{true}{#1}01}%
+    /true,false
+  ;
+  expand list once,*,list is a macro,macro list/true/
+    \edef\skv@foreach@expandlistonce{0\skvifstrcmpTF{true}{#1}01}%
+    /true,false
+  ;
+  expand list twice/true/
+    \edef\skv@foreach@expandlisttwice{0\skvifstrcmpTF{true}{#1}01}%
+    /true,false
+  ;
+  % Don't use 'expand' for the key 'expand list':
+  expand list,fully expand list,expand list fully/true/
+    \edef\skv@foreach@expandlistfully{0\skvifstrcmpTF{true}{#1}01}%
+    /true,false
+  ;
+  % Eg, 'evaluate = #1 as \x using \numexpr#1*2'.
+  % Since the parameters haven't assumed arguments, we defer the
+  % call to \skv@foreachfox@parseevaluate until the arguments are known.
+  evaluate/\@nil/
+    \skv@foreach@ifacceptkv{#1}{%
+      \skv@foreachfox@parseevaluate{#1}%
+    }%
+  ;
+  % Eg,
+  %    'count in = \p all #1 satisfying \ifnum#1>4\fi initially 2'
+  %    'count in = \p all #1 satisfying \ifnum#1>4\fi'
+  count in,count/\@nil/
+    \skv@foreach@ifacceptkv{#1}{%
+      \skv@foreachfox@parsecountin{#1}%
+    }%
+  ;
+  % Eg, remember=#1 as \y initially A
+  remember/\@nil/
+    \skv@foreach@ifacceptkv{#1}{%
+      \skv@foreachfox@parseremember{#1}%
+    }%
+  ;
+  reverse list,reverse,reflect/true/
+    \edef\skv@foreach@reverselist{0\skvifstrcmpTF{true}{#1}01}%
+    /true,false
+  ;
+}
+\skvquickkeys.preset{loops/foreachfox}{%
+  parser={,},list type=csv,arg=#1,loop stopper,
+  list breaker=\foreachlistbreaker,list pauser=\foreachlistpauser,
+  normalize list=true,use empty=false,keep decimals=true,
+  keep high decimals=false,expand before fill=false,
+  reverse list=false,expand list once=false,expand list twice=false,
+  expand list fully=false,
+}
+
+% Parser for 'evaluate' key:
+%
+% Eg, 'evaluate = #1 as \x using \numexpr#1*2'.
+%
+% \skv@foreachfox@parseevaluate differs from \skv@foreach@parseevaluate
+% because #1 here is likely to be a non-macro.
+%
+\skvrobustdef*\skv@foreachfox@parseevaluate#1{%
+  \begingroup
+  \def\skv@tempxifin##1##2{%
+    \skvxifinTF{\detokenize{##1}}{\detokenize{##2}}%
+  }%
+  \def\skv@tempd{}%
+  % <formula> #3 can be empty. So we don't test for its emptiness here.
+  \def\skv@tempa##1as##2using##3\skv@nil{%
+    \edef\skv@prova{\skvtrimspace{##1}}%
+    \edef\skv@provb{\skvtrimspace{##2}}%
+    \edef\skv@provc{\skvtrimspace{##3}}%
+    \ifx\skv@prova\@empty
+      \skv@err{Value of key 'evaluate':
+         \MessageBreak no quantity to evaluate}\skv@ehd
+    \fi
+    \ifx\skv@provb\@empty
+      \skv@err{Value of key 'evaluate' has no receiving macro,
+        \MessageBreak i.e., after 'as'}\skv@ehd
+    \else
+      \expandafter\skvifescapedTF\expandafter{\skv@provb}{}{%
+        \skv@err{Value of key 'evaluate': receiving macro
+          \MessageBreak \skvoxdetok\skv@provb not escaped}\skv@ehd
+      }%
+    \fi
+    \ifx\skv@provc\@empty
+      \skv@err{Value of key 'evaluate' has no formula}\skv@ehd
+    \fi
+    \skv@tempxifin{\pgfmathparse}{##3}{%
+      \def\skv@tempc####1\pgfmathparse####2\skv@nil{%
+        \ifx\@nnil####1\@nnil
+          \ifdefined\pgfmathparse
+            \skv@foreach@swatrue
+          \else
+            \skv@err{\noexpand\pgfmathparse isn't defined;
+              \MessageBreak maybe 'pgfmath' isn't loaded}\skv@ehd
+          \fi
+        \else
+          \skv@err{Invalid token \detokenize{####1}
+            \MessageBreak before \string\pgfmathparse}\skv@ehd
+        \fi
+      }%
+      \expandafter\skv@tempc\skv@provc\skv@nil
+    }{%
+      \skv@foreach@swafalse
+      \skv@tempxifin{\numexpr}{##3}{%
+        \def\skv@tempd{\relax}%
+      }{%
+        \skv@tempxifin{\dimexpr}{##3}{%
+          \def\skv@tempd{\relax}%
+        }{%
+          \def\skv@tempd{}%
+        }%
+      }%
+    }%
+  }%
+  \skv@tempxifin{using}{#1}{%
+    \skv@tempxifin{as}{#1}{%
+      % 'as' and 'using' are present: there is a formula.
+      \skv@foreach@swbtrue
+      \skv@tempa#1\skv@nil
+    }{%
+      \skv@err{Value of key 'evaluate':
+        \MessageBreak there is 'using', but no 'as'}\skv@ehd
+    }%
+  }{%
+    % No formula given:
+    \skv@foreach@swbfalse
+    \skv@tempxifin{as}{#1}{%
+      \def\skv@tempb##1as##2##3\skv@nil{%
+        \ifx\@nnil##1\@nnil
+          \skv@err{Value of key 'evaluate' has no
+            \MessageBreak quantity to evaluate}\skv@ehd
+        \else
+          \ifx\@nnil##2%
+            \skv@err{Value of key 'evaluate' has no receiving macro}\skv@ehd
+          \else
+            \skv@tempa##1as##2using##1\skv@nil
+          \fi
+        \fi
+      }%
+      \skv@tempb#1{\@nnil}\skv@nil
+    }{%
+      % No 'as' or 'using'. In \foreachfox, #1 is not guaranteed
+      % to be a macro. Hence raise error here:
+      \skv@err{Value of key 'evaluate' has no 'as'}\skv@ehd
+    }%
+  }%
+  \skv@foreach@addtocallback{pre}{%
+    \ifskv@foreach@swa
+      % Here, <formula> may have the syntax \pgfmathparse{<token>}.
+      \skvexpandonce\skv@provc
+      \let\skvexpandonce\skv@provb\noexpand\pgfmathresult
+    \else
+      % Here, <formula> may have the syntax \numexpr\x*2 or \dimexpr\x*2.
+      \edef\skvexpandonce\skv@provb{%
+        \ifskv@foreach@swb\noexpand\the\fi
+        \skvexpandonce\skv@provc\skvexpandonce\skv@tempd
+      }%
+    \fi
+  }%
+  \skvaftergroupdef\skv@foreach@precallback\endgroup
+}
+
+% Eg, 'count in \y all #1 satisfying \ifnum#1>2\fi initially 0'.
+%
+% 1. <condition> must be a balanced and valid TeX or LaTeX (2-fork)
+%    conditional, like
+%
+%    \ifnum\x>2\fi, \ifx\x\@empty\fi
+%
+% 2. The aim is to allow general conditions (not only those involving
+%    numerals) to be submitted.
+%
+% 3. PGF's \foreach doesn't have this feature; it has only a general
+%    counter, eg,
+%
+%    '\foreach \x [count=\xi from 2] in {a,...,e}'.
+%
+%    Generic counting is available in \foreachfox by default, without
+%    user request. The macros \foreachcurrentitem, \foreachitemcount,
+%    \foreachnextitem are always available on each nesting level.
+%    The boolean \ifforeachlastitem is also always available, to indicate
+%    when the last item of the list has been reached:
+%
+%    \ifforeachlastitem\typeout{Processing last entry of the list} \fi
+%
+\skvrobustdef*\skv@foreachfox@parsecountin#1{%
+  \begingroup
+  \def\skv@tempxifin##1##2{%
+    \skvxifinTF{\detokenize{##1}}{\detokenize{##2}}%
+  }%
+  \def\skv@tempa##1\skv@nil{%
+    \skv@tempxifin{initially}{##1}{%
+      \skv@tempb##1\skv@nil
+    }{%
+      \skv@tempb##1initially\skv@nil
+    }%
+  }%
+  \def\skv@tempb##1all##2satisfying##3initially##4\skv@nil{%
+    \edef\skv@prova{\skvtrimspace{##1}}%
+    \edef\skv@provb{\skvtrimspace{##2}}%
+    \edef\skv@provc{\skvtrimspace{##3}}%
+    \edef\skv@provd{\skvtrimspace{##4}}%
+    \ifx\skv@prova\@empty
+      \skv@err{Value of key 'count' has no counter macro}\skv@ehd
+    \else
+      \expandafter\skvifescapedTF\expandafter{\skv@prova}{}{%
+        \skv@err{Value of key 'count':\MessageBreak
+          counter macro \skvoxdetok\skv@prova not escaped}\skv@ehd
+      }%
+    \fi
+    \ifx\skv@provd\@empty
+      \expandafter\def\skv@prova{0}%
+    \else
+      \skvifintegerTF\skv@provd{%
+        \expandafter\let\skv@prova\skv@provd
+      }{%
+        \skv@err{Value of key 'count':\MessageBreak
+          initial \skvoxdetok\skv@provd not an integer}\skv@ehd
+      }%
+    \fi
+    \skv@foreach@swafalse
+    \ifx\skv@provc\@empty
+      % No tester but there may be a quantity to test. The quantity,
+      % on its own, isn't sufficient to conduct a test:
+      \let\skv@foreach@itemcounter\skv@prova
+    \else
+      % If there isn't a quantity to test, then no test is possible:
+      \ifx\skv@provb\@empty\else
+        \skv@foreach@swatrue
+        % \skv@tester is the second argument of \skv@foreach@maketester,
+        % which is used below:
+        \skvexpbracenext\skv@foreach@maketester\skv@provc\skv@tester\skvz@
+      \fi
+    \fi
+  }%
+  \skv@tempxifin{satisfying}{#1}{%
+    \skv@tempxifin{all}{#1}{%
+      % 'all' and 'satisfying' are present:
+      \skv@tempa#1\skv@nil
+    }{%
+      \skv@err{Value of key 'count':
+        \MessageBreak there is 'satisfying', but no 'all'}\skv@ehd
+    }%
+  }{%
+    \skv@tempxifin{all}{#1}{%
+      \skv@tempa#1satisfying\skv@nil
+    }{%
+      % No 'all' and 'satisfying': #1 should be only the counter macro:
+      \ifx\@nnil#1\@nnil
+        \skv@err{Value of key 'count': no counter macro}\skv@ehd
+      \else
+        \skvifntypeTF{#1}{%
+          \skv@tempa#1all satisfying\skv@nil
+        }{%
+          \skv@err{Value of key 'count in': more than 1
+            \MessageBreak token '\detokenize{#1}'.
+            \MessageBreak I can't find counter macro}\skv@ehd
+        }%
+      \fi
+    }%
+  }%
+  \ifskv@foreach@swa
+    \skv@foreach@addtocallback{pre}{%
+      \noexpand\ifnum\noexpand\foreachitemcount=\@ne
+        \def\skvexpandonce\skv@prova{\number\skv@prova}%
+      \noexpand\fi
+      \skvexpandonce\skv@tester{%
+        \noexpand\skvpushnumber\skvexpandonce\skv@prova
+      }{}%
+    }%
+  \fi
+  \skvexpanded{\endgroup
+    \ifskv@foreach@swa
+      \skvcmdexit\skv@foreach@precallback
+    \else
+      \skvcmdexit\skv@foreach@itemcounter
+    \fi
+  }%
+}
+
+% remember=<holder.macro> as <child.macro> initially <value>
+%
+\skvrobustdef*\skv@foreachfox@parseremember#1{%
+  \begingroup
+  \def\skv@tempxifin##1##2{%
+    \skvxifinTF{\detokenize{##1}}{\detokenize{##2}}%
+  }%
+  \skv@tempxifin{(}{#1}{%
+    \skv@err{Value of key 'remember': '(' found.
+      \MessageBreak I don't accept this PGF format.
+      \MessageBreak Remove the parenthesis around '(<your input>)'}\skv@ehd
+  }{}%
+  \def\skv@tempa##1as##2initially##3\skv@nil{%
+    \edef\skv@prova{\skvtrimspace{##1}}%
+    \edef\skv@provb{\skvtrimspace{##2}}%
+    \edef\skv@provc{\skvtrimspace{##3}}%
+    \skv@foreach@swafalse
+    \ifx\skv@prova\@empty
+      \skv@err{Value of key 'remember' has no value to remember}\skv@ehd
+    \fi
+    \ifx\skv@provb\@empty
+      \skv@err{Value of key 'remember' has no child macro;
+        \MessageBreak i.e., no macro after 'as'}\skv@ehd
+    \else
+      \expandafter\skvifescapedTF\expandafter{\skv@provb}{%
+        \skv@foreach@swatrue
+      }{%
+        \skv@err{Value of key 'remember':
+          \MessageBreak child \skvoxdetok\skv@provb not escaped}\skv@ehd
+      }%
+    \fi
+  }%
+  \skv@tempxifin{initially}{#1}{%
+    \skv@tempxifin{as}{#1}{%
+      \skv@tempa#1\skv@nil
+    }{%
+      \skv@err{Value of key 'remember':
+        \MessageBreak there is 'initially', but no 'as'}\skv@ehd
+    }%
+  }{%
+    \skv@tempxifin{as}{#1}{%
+      \skv@tempa#1initially\skv@nil
+    }{%
+      % No 'as' and 'initially':
+      \ifx\@nnil#1\@nnil\else
+        % Unlike in \newforeach, we can't create an automatic retainer
+        % macro here, since \foreachfox uses parameters instead of
+        % holder macros.
+        \skv@err{Value of key 'remember' is incomplete: no 'as'}\skv@ehd
+      \fi
+    }%
+  }%
+  \ifskv@foreach@swa
+    % Initially:
+    \skv@foreach@addtocallback{pre}{%
+      % Don't remove this \ifnum, otherwise the initial assignment
+      % will be overwritten on subsequent returns:
+      \noexpand\ifnum\noexpand\foreachitemcount=\@ne
+        \edef\skvexpandonce\skv@provb{%
+          \noexpand\unexpanded{\skvexpandonce\skv@provc}%
+        }%
+      \noexpand\fi
+    }%
+    \skv@foreach@addtocallback{post}{%
+      \edef\skvexpandonce\skv@provb{%
+        \noexpand\unexpanded{\skvexpandonce\skv@prova}%
+      }%
+    }%
+  \fi
+  \skvexpanded{\endgroup
+    \ifskv@foreach@swa
+      \skvcmdexit\skv@foreach@precallback
+      \skvcmdexit\skv@foreach@postcallback
+    \fi
+  }%
+}
+
+\skvnewdef*\skv@foreachfox@kvlist{}
+% \setupforeachfox{<kvlist>}
+\skvrobustdef*\setupforeachfox#1{%
+  \skvifblankTF{#1}{}{%
+    \skvaddtolist\skv@foreachfox@kvlist{#1}%
+  }%
+}
+\skvrobustdef*\skv@foreachfox@setkeys#1{%
+  \def\reserved@a{\skvquickkeys.set{loops/foreachfox}}%
+  \expandafter\reserved@a\expandafter{\skv@foreachfox@kvlist,#1}%
+}
+\skvrobustdef*\foreachfox{%
+  \skv@inforeachtrue
+  \skvifnextchar i{%
+    \skv@foreachfox@prescan@a
+  }{%
+    \skv@teststopt\skv@foreachfox@prescan@b{}%
+  }%
+}
+\skvrobustdef*\skv@foreachfox@prescan@a#1#2{%
+  \skvifstrcmpTF{#1#2}{in}{%
+    \skv@teststopt\skv@foreachfox@prescan@b{}%
+  }{%
+    \skv@err{I have found 'i' before opening brace or
+      \MessageBreak bracket, but no 'in'}\skv@ehd
+  }%
+}
+\skvrobustdef*\skv@foreachfox@prescan@b[#1]{%
+  \skvifnextchar i{%
+    \skv@foreachfox@prescan@c[#1]%
+  }{%
+    \skv@foreachfox@a[#1]%
+  }%
+}
+\skvrobustdef*\skv@foreachfox@prescan@c[#1]#2#3{%
+  \skvifstrcmpTF{#2#3}{in}{%
+    \skv@foreachfox@a[#1]%
+  }{%
+    \skv@err{I have found 'i' after '[]', but no 'in'}\skv@ehd
+  }%
+}
+\skvrobustdef*\skv@foreachfox@a[#1]#2#3{%
+  \edef\skv@foreach@starform{0\ifskv@tempst0\else1\fi}%
+  \skv@foreach@pushstate
+  \skv@foreach@latehookerr
+  \def\foreachitemcount{0}%
+  \def\do##1{\def##1{}}%
+  \do\skv@foreach@itemcounter\do\skv@foreach@processupto
+  \do\skv@foreach@callback\do\skv@foreach@auxcallback
+  \do\skv@foreach@precallback\do\skv@foreach@afterprecallback
+  \do\skv@foreach@postcallback\do\skv@foreach@onlyinitially
+  \skv@foreachfox@setkeys{#1}%
+  \if\skv@foreach@starform
+    \def\skv@foreach@expandlistonce{00}%
+  \fi
+  \ifcase0%
+    % Take only one case:
+    \if\skv@foreach@expandlistonce\else
+    \if\skv@foreach@expandlisttwice\else
+    \if\skv@foreach@expandlistfully\else 1\fi\fi\fi\relax
+    \def\skv@foreach@listisamacro{00}%
+  \else
+    \def\skv@foreach@listisamacro{01}%
+    \skvifmacroFT{#2}{}{%
+      \ifskv@verbose
+        \skv@warn{One-item list '\detokenize{#2}' is a macro.
+          \MessageBreak If your list is indeed a macro, you can
+          \MessageBreak either put star (*) after \noexpand\foreachfox
+          \MessageBreak or use the key 'expand list once'
+          \MessageBreak or 'expand list twice' or 'list is a macro', etc}%
+      \fi
+    }%
+  \fi
+  \edef\skv@foreach@userlist{%
+    \if\skv@foreach@expandlistonce
+      \expandafter\skvexpandonce
+    \else
+      \if\skv@foreach@expandlisttwice
+        \expandafter\expandafter\expandafter\skvexpandtwice
+      \else
+        \if\skv@foreach@expandlistfully
+          \expandafter\expandafter\expandafter\expandafter
+          \expandafter\expandafter\expandafter\@iden
+        \else
+          \expandafter\expandafter\expandafter\expandafter
+          \expandafter\expandafter\expandafter\unexpanded
+        \fi
+      \fi
+    \fi
+    {#2}%
+  }%
+  \skvcsuse{skv@foreach@atbeginhook@\skvrom\foreachnestdepth}%
+  \skvifdefTF\foreachprevitem{}{\def\foreachprevitem{}}%
+  % Define the loop callback:
+  \edef\reserved@a{%
+    \skvexpandonce\skv@foreach@precallback
+    \ifx\skv@foreach@onlyinitially\@empty\else
+      \noexpand\ifnum\noexpand\foreachitemcount=\@ne
+        \skvexpandonce\skv@foreach@onlyinitially
+      \noexpand\fi
+    \fi
+    \ifx\skv@foreach@continuetester\@secondoftwo
+      \noexpand\skv@foreach@continuetester
+    \else
+      % We want to expose the parameter characters in
+      % \skv@foreach@continuetester:
+      \skvexpandonce\skv@foreach@continuetester
+    \fi
+    {}{%
+      \unexpanded{#3}%
+      \skvexpandonce\skv@foreach@postcallback
+    }%
+  }%
+  \edef\reserved@b{%
+    \def\noexpand\skv@foreach@callback\skvexpandonce
+    \skv@foreach@paramlist\noexpand\foreacheov
+  }%
+  \expandafter\reserved@b\expandafter{\reserved@a}%
+  \skvxifstrcmpTF\skv@foreach@listtype{csv}{%
+    \def\skv@foreach@lookahead@a##1{%
+      \def\skv@foreach@picknext{##1.}%
+      \futurelet\skv@foreach@next\skv@foreach@lookahead@b
+    }%
+    \def\skv@foreach@lookahead@c[##1]{\skv@foreach@picknext[{##1}]}%
+    \def\skv@foreach@lookahead@d(##1){\skv@foreach@picknext({##1})}%
+  }{%
+    % Token list (nsv/tsv):
+    \def\skv@foreach@lookahead@a##1{%
+      \let\skv@foreach@picknext##1%
+      \futurelet\skv@foreach@next\skv@foreach@lookahead@b
+    }%
+    % These \skv@foreach@lookahead@c and \skv@foreach@lookahead@d
+    % differ from those for 'csv' list (above):
+    \def\skv@foreach@lookahead@c[##1]{\skv@foreach@picknext{[##1]}}%
+    \def\skv@foreach@lookahead@d(##1){\skv@foreach@picknext{(##1)}}%
+  }%
+  \def\skv@foreach@lookahead@b{%
+    \skvifxTF\skv@foreach@next[{%
+      \skv@foreach@parenthesistrue\skv@foreach@lookahead@c
+    }{%
+      \skvifxTF\skv@foreach@next({%
+        \skv@foreach@parenthesistrue\skv@foreach@lookahead@d
+      }{%
+        \skv@foreach@parenthesisfalse\skv@foreach@picknext
+      }%
+    }%
+  }%
+  \ifnum\foreachnestdepth=\skvz@
+    \breakallforeachloopsfalse
+  \fi
+  \skvbreakloopfalse\foreachlastitemfalse\lastfoxfalse
+  \def\reserved@a##1{%
+    \skv@setupgetnextfox{##1}%
+    \skvxifstrcmpTF\skv@foreach@listtype{csv}{%
+      \if\skv@foreach@normalizelist
+        \skv@foreach@normalize[##1]\skv@foreach@userlist
+      \fi
+      \def\skv@foreach@do@a####1##1####2\skv@foreach@stop{%
+        \edef\foreachcurrentitem{\skvexpandonce{\@gobble####1}}%
+        \skv@foreachfox@b{##1}{####2}{csv}%
+      }%
+      \skvifemptyTF\skv@foreach@userlist{}{%
+        \def\do####1{\if####1true\else false\fi}%
+        \skvexpandsecond{\skvautocompletelist*}{[%
+          % Note: the value of 'expand list once', etc., can't be
+          % transferred automatically to \skvautocompletelist since they
+          % have been used above.
+          parser={\skv@foreach@parser},
+          link={\skvexpandonce\skv@foreach@link},
+          grow left=\do\skv@foreach@growleft,
+          grow right=\do\skv@foreach@growright,
+          keep decimals=\do\skv@foreach@keepdecimals,
+          keep high decimals=\do\skv@foreach@keephighdecimals,
+          expand before fill=\do\skv@foreach@expandbeforefill
+        ]}\skv@foreach@userlist\skv@foreach@userlist
+        \if\skv@foreach@reverselist
+          \expandafter\skv@foreach@doreverselist\expandafter
+            {\skv@foreach@parser}\skv@foreach@userlist
+        \fi
+      }%
+      % If \skv@foreach@userlist is empty, \foreachcurrentitem in
+      % \skv@foreachfox@c will terminate the loop.
+      \expandafter\skv@foreach@lookahead@a\expandafter\skv@foreach@do@a
+        \skv@foreach@userlist##1\skv@foreach@nil##1\skv@foreach@stop
+    }{%
+      \if\skv@foreach@normalizelist\skvafterfi
+        \edef\skv@foreach@userlist{%
+          \skvexpbracenext\skvtsvnormalize\skv@foreach@userlist
+        }%
+      \fi
+      \def\skv@foreach@do@a{%
+        \let\bgroup\relax
+        \futurelet\skv@foreach@next\skv@foreach@do@b
+      }%
+      \def\skv@foreach@do@b####1####2\skv@foreach@stop{%
+        \let\bgroup\skv@orig@bgroup
+        \ifskv@foreach@parenthesis
+          \edef\foreachcurrentitem{\unexpanded{####1}}%
+        \else
+          \skvifxTF\skv@foreach@next\bgroup{%
+            \edef\foreachcurrentitem{{\unexpanded{####1}}}%
+          }{%
+            \edef\foreachcurrentitem{\unexpanded{####1}}%
+          }%
+        \fi
+        \skv@foreachfox@b{}{####2}{tsv}%
+      }%
+      \expandafter\skv@foreach@lookahead@a\expandafter\skv@foreach@do@a
+        \skv@foreach@userlist\skv@foreach@nil\skv@foreach@stop
+    }%
+  }%
+  \expandafter\reserved@a\expandafter{\skv@foreach@parser}%
+  \skvcsuse{skv@foreach@atendhook@\romannumeral\foreachnestdepth}%
+  \skv@foreach@popstate
+  \skv@inforeachfalse
+}
+% \skv@setupgetnextfox<parser>
+\skvrobustdef*\skv@setupgetnextfox#1{%
+  \skvxifstrcmpTF\skv@foreach@listtype{csv}{%
+    \def\skv@foreach@getnext##1#1##2\skv@foreach@stop{%
+      \edef\foreachnextitem{\skvexpandonce{\@gobble##1}}%
+      % See \skv@foreachfox@c for \foreachlastitemtrue.
+    }%
+  }{%
+    \def\skv@foreach@getnext{%
+      \let\bgroup\relax
+      \futurelet\skv@foreach@next\skv@foreach@g@tnext
+    }%
+    \def\skv@foreach@g@tnext##1##2\skv@foreach@stop{%
+      \let\bgroup\skv@orig@bgroup
+      \ifskv@foreach@parenthesis
+        \edef\foreachnextitem{\unexpanded{##1}}%
+      \else
+        \skvifxTF\skv@foreach@next\bgroup{%
+          \edef\foreachnextitem{{\unexpanded{##1}}}%
+        }{%
+          \edef\foreachnextitem{\unexpanded{##1}}%
+        }%
+      \fi
+    }%
+  }%
+}
+% \skv@foreachfox@b<parser><remainder><list.type>
+\skvrobustdef*\skv@foreachfox@b#1#2#3{%
+  \skvifxTF\foreachcurrentitem\skv@foreach@nnil{%
+    \skvbreakloopfalse\foreachlastitemfalse\lastfoxfalse
+  }{%
+    \skvifxTF\foreachcurrentitem\skv@listbreakertoks{%
+      \skv@foreachfox@getrm{#1}{#2}%
+    }{%
+      \skvifxTF\foreachcurrentitem\skv@listpausertoks{%
+        \message{^^J! List pause:
+          ^^JType x or X to quit, or <RETURN> to proceed^^J}%
+        \bgroup\endlinechar\m@ne\global\read-1 to\@gtempa\egroup
+        \skvexpandarg\lowercase{\def\noexpand\@gtempa{\@gtempa}}%
+        \skvxifstrcmpTF\@gtempa{x}{%
+          \skv@foreachfox@getrm{#1}{#2}%
+        }{%
+          \skv@foreachfox@c{#1}{#2}{#3}%
+        }%
+      }{%
+        \skv@foreachfox@c{#1}{#2}{#3}%
+      }%
+    }%
+  }%
+}
+% \skv@foreachfox@c<parser><remainder><list.type>
+\skvrobustdef*\skv@foreachfox@c#1#2#3{%
+  \skv@foreach@lookahead@a\skv@foreach@getnext#2\skv@foreach@stop
+  \ifx\foreachnextitem\skv@foreach@nnil
+    \foreachlastitemtrue\lastfoxtrue
+    \def\foreachnextitem{}%
+  \fi
+  \edef\foreachitemcount{\the\numexpr\foreachitemcount+1}%
+  \ifx\skv@foreach@itemcounter\@empty\else
+    \expandafter\let\skv@foreach@itemcounter\foreachitemcount
+  \fi
+  \skvifemptyTF\foreachcurrentitem{%
+    \if\skv@foreach@useempty\skvafterfi
+      \skv@foreach@callback\foreacheov
+    \fi
+  }{%
+    % Test for \foreachlistpauser, in case the user decides to continue
+    % after \foreachlistpauser has been picked:
+    \skvifxTF\foreachcurrentitem\skv@listpausertoks{}{%
+      \skvifxTF\skv@foreach@paramlist\skv@simplearg{%
+        \skvexpbracenext\skv@foreach@callback\foreachcurrentitem\foreacheov
+      }{%
+        % Incomplete items like 3 in {1/a,2/b,3} can't be handled by
+        % \foreachfox; see \newforeach.
+        \expandafter\skv@foreach@callback\foreachcurrentitem\foreacheov
+      }%
+      \let\foreachprevitem\foreachcurrentitem
+    }%
+  }%
+  \ifx\skv@foreach@processupto\@empty\else
+    \ifnum\foreachitemcount<\skv@foreach@processupto\relax\else
+      \skvbreakloop
+    \fi
+  \fi
+  \skvifdefboolTF{skvbreakloop}{%
+    \ifbreakallforeachloops\else
+      \skvbreakloopfalse
+    \fi
+    \foreachlastitemfalse\lastfoxfalse
+    \skv@foreachfox@getrm{#1}{#2}%
+  }{%
+    \skv@foreach@lookahead@a\skv@foreach@do@a#2\skv@foreach@stop
+  }%
+}
+% \skv@foreachfox@getrm<parser><remaining.items>
+\skvrobustdef*\skv@foreachfox@getrm#1#2{%
+  \begingroup
+  \def\reserved@a##1\skv@foreach@nil#1{%
+    \endgroup
+    \edef\foreachlistremainder{\unexpanded{##1}}%
+  }%
+  \reserved@a#2%
+}
+
+% \cicadaloop[<parser>]{<list>}<\if...>\fi{<1.parameter.code>}
+% \cicadaloop*[<parser>]{<listcmd>}<\if...>\fi{<1.parameter.code>}
+%
+% 1. When the conditional <\if...> isn't true, the regular code
+%    will be executed for every member of the list.
+% 3. \ifskvbreakloop may be used as the conditional in <\if...>.
+% 5. The boolean \iflastcicada is available for accessing the last item
+%    of the list. There are also the macros \currentcicada, \lastcicada,
+%    \cicadacount, and the counter \cicadanestdepth.
+% 6. \cicadaloop can be nested.
+%
+% Example:
+%
+%  \let\romn\romannumeral
+%  \@tempcnta\z@
+%  \def\blist{{X};{Y};Z;\fi}
+%  \def\stack{}
+%  \cicadaloop{{a},{b},c,\if}\if01\fi{%
+%    \advance\@tempcnta\@ne
+%    \@tempcntb\z@
+%    \@tempswafalse
+%    \cicadaloop*[;]\blist\if@tempswa\fi{%
+%      \advance\@tempcntb\@ne
+%      \typeout{Doing \romn\@tempcnta,\romn\@tempcntb: \detokenize{#1,##1}}%
+%      \edef\stack{%
+%        \unexpanded\expandafter{\stack}\noexpand\do
+%        {\romn\@tempcnta,\romn\@tempcntb}{\unexpanded{#1;##1}}%
+%      }%
+%      \ifnum\@tempcntb>\@ne
+%        \@tempswatrue
+%        \skvcsedef{cmd@\romn\cicadanestdepth}{\lastcicada,\cicadacount}%
+%      \fi
+%    }%
+%  }
+% \show\stack
+%
+\skvnewregisters\bool{\iflastcicada}
+\skvbuildmacrostack\skv@cicada@state{%
+  \do\skv@cicada@do\do\skv@cicada@userlist\do\currentcicada
+  \do\nextcicada\do\cicadacount\do\lastcicada\do\skv@cicada@callback
+  \do\skv@cicada@getnext\do\ifskvprocessempty
+}\skv@stackdepthlimit
+
+\skvnewnumbers{cicadaloopdepth}
+\skvnewlet\skv@cicada@nil\relax
+\skvnewdef*\skv@cicada@nnil{\skv@cicada@nil}
+\skvnewlet\breakcicada\skvbreakloop
+
+\skvrobustdef*\cicadaloop{\skv@teststopt\skv@cicadaloop,}
+\skvrobustdef*\skv@cicadaloop[#1]#2#3\fi#4{%
+  \let\if@cicada@st\ifskv@tempst
+  \skvpushstate\skv@cicada@state\cicadanestdepth
+  \let\ifskv@tempst\if@cicada@st
+  \skv@usetempst{#2}\skv@cicada@userlist
+  \skv@foreach@normalize[#1]\skv@cicada@userlist
+  \def\skv@cicada@callback##1{#4}%
+  \def\lastcicada{}%
+  \def\skv@cicada@getnext##1#1##2\skv@cicada@stop{%
+    \edef\nextcicada{\skvexpandonce{\@gobble##1}}%
+    \ifx\nextcicada\skv@cicada@nnil
+      \lastcicadatrue
+      \def\nextcicada{}%
+    \fi
+  }%
+  \chardef\cicadacount\skvz@
+  \def\skv@cicada@do##1#1##2\skv@cicada@stop{%
+    \edef\currentcicada{\skvexpandonce{\@gobble##1}}%
+    \skvifxTF\currentcicada\skv@cicada@nnil{%
+      \skvbreakloopfalse\lastcicadafalse
+    }{%
+      \skvifxTF\currentcicada\skv@listbreakertoks{%
+        \skvbreakloopfalse\lastcicadafalse
+      }{%
+        \edef\cicadacount{\the\numexpr\cicadacount+1}%
+        \skv@cicada@lookahead@a\skv@cicada@getnext##2\skv@cicada@stop
+        \skvexpandbracenext\skv@cicada@callback\currentcicada\relax
+        \skvifcondFT#3\fi{}\skvbreakloop
+        \skvifdefboolTF{skvbreakloop}{%
+          \skvbreakloopfalse\lastcicadafalse
+          \begingroup
+          \def\skv@prova####1\skv@cicada@nil#1{%
+            \endgroup
+            \edef\skvremainder{\unexpanded{####1}}%
+          }%
+          \skv@prova##2%
+        }{%
+          \let\lastcicada\currentcicada
+          \skv@cicada@lookahead@a\skv@cicada@do##2\skv@cicada@stop
+        }%
+      }%
+    }%
+  }%
+  \def\skv@cicada@lookahead@a##1{%
+    \def\skv@cicada@picknext{##1.}%
+    \futurelet\skv@next\skv@cicada@lookahead@b
+  }%
+  \def\skv@cicada@lookahead@b{%
+    \ifx\skv@next[%
+      \expandafter\skv@cicada@lookahead@c
+    \else
+      \ifx\skv@next(%
+        \expandafter\expandafter\expandafter\skv@cicada@lookahead@d
+      \else
+        \expandafter\expandafter\expandafter\skv@cicada@picknext
+      \fi
+    \fi
+  }%
+  \def\skv@cicada@lookahead@c[##1]{\skv@cicada@picknext[{##1}]}%
+  \def\skv@cicada@lookahead@d(##1){\skv@cicada@picknext({##1})}%
+  \skvbreakloopfalse\lastcicadafalse
+  \skvifxTF\skv@cicada@userlist\@empty{%
+    \ifskvprocessempty\skv@cicada@callback{}\fi
+  }{%
+    \skvexpandnext{\skv@cicada@lookahead@a\skv@cicada@do}%
+      \skv@cicada@userlist#1\skv@cicada@nil#1\skv@cicada@stop
+  }%
+  \skvpopstate\skv@cicada@state\cicadanestdepth
+}
+
+% \cicadiloop[<parser>]{<list>}<\if...>\fi{<ini-code>}{<1.parameter.code>}
+% \cicadiloop*[<parser>]{<listcmd>}<\if...>\fi{<ini-code>}{<1.parameter.code>}
+%
+% It is easy to forget to turn conditional <\if...> off before commencing
+% the loop, especially if it is a boolean. The conditional might have
+% been set true before calling \cicadaloop, and this may invalidate
+% later tests to terminate the loop prematurely. <ini-code> can be used
+% to turn the condtional off before commencing the loop. This forces the
+% user to heed this term.
+%
+\skvrobustdef*\cicadiloop{\skv@teststopt\skv@cicadiloop,}
+\skvrobustdef*\skv@cicadiloop[#1]#2#3\fi#4{%
+  \skvexpandsecond
+    {#4\relax\skv@cicadiloop}{\ifskv@tempst*\fi}%
+    [#1]{#2}#3\fi
+}
+
+% Change the list separator of a given list.
+%
+% \lpschangelistseparator
+%  {<original.parser>}{<orig.listcmd>}{<new.parser>}{<new.listcmd>}
+%
+% Example:
+%  \def\alist{{a/1,a/2};b;c}
+%  \lpschangelistseparator{;}\alist{,}\blist
+%
+\skvrobustdef*\lpschangelistseparator#1#2#3#4{%
+  \def#4{}%
+  \cicadaloop*[#1]{#2}\if01\fi{%
+    \edef#4{%
+      \skvexpandonce#4{\unexpanded{##1}}%
+      \iflastcicada\else#3\fi
+    }%
+  }%
+}
+
+% Declare a list normalizer command for an arbitrary parser.
+%
+% \lpsdeclarelistnormalizer<normalizer.cmd>{<parser>}
+%
+% Example:
+%
+%  \lpsdeclarelistnormalizer\lpscommanormalize{,}
+%
+% \lpscommanormalize is defined later.
+%
+\skvrobustdef*\lpsdeclarelistnormalizer#1#2{%
+  \skvifescapedTF{#1}{}{%
+    \skv@err{Token \detokenize{#1} isn't escaped}\skv@ehd
+  }%
+  \def\reserved@a{\lps@declarelistnormalizer{#1}}%
+  \expandafter\reserved@a\expandafter{\string#2}%
+}
+\skvrobustdef*\lps@declarelistnormalizer#1#2{%
+  \begingroup
+  \lccode`\~=`#2 %
+  \lowercase{\endgroup
+    \skvnewdef#1##1{%
+      \unexpanded\expandafter{\romannumeral-`\q
+        \skvcsuse{\skvremovescape#1@activeparser}#2##1#2~\normal@nil}%
+    }%
+    \long\skvcsdef{\skvremovescape#1@activeparser}##1~##2\normal@nil{%
+      \skvifblankTF{##2}
+        {\skvcsuse{\skvremovescape#1@spaceparser}##1 #2\normal@nil}
+        {\skvcsuse{\skvremovescape#1@activeparser}##1#2##2\normal@nil}%
+    }%
+  }%
+  \long\skvcsdef{\skvremovescape#1@spaceparser}##1 #2##2\normal@nil{%
+    \skvifblankTF{##2}
+      {\skvcsuse{\skvremovescape#1@parserspace}##1#2 \normal@nil}
+      {\skvcsuse{\skvremovescape#1@spaceparser}##1#2##2\normal@nil}%
+  }%
+  \long\skvcsdef{\skvremovescape#1@parserspace}##1#2 ##2\normal@nil{%
+    \skvifblankTF{##2}
+      {\skvcsuse{\skvremovescape#1@doubleparser}##1#2#2\normal@nil}
+      {\skvcsuse{\skvremovescape#1@parserspace}##1#2##2\normal@nil}%
+  }%
+  \long\skvcsdef{\skvremovescape#1@doubleparser}##1#2#2##2\normal@nil{%
+    \skvifblankTF{##2}
+      {\skvifblankTF{##1}{}{\expandafter\expandafter\expandafter
+        \space\expandafter\noexpand\@gobble##1}}%
+      {\skvcsuse{\skvremovescape#1@doubleparser}##1#2##2\normal@nil}%
+  }%
+}
+
+\lpsdeclarelistnormalizer\lpscommanormalize{,}
+\lpsdeclarelistnormalizer\lpsslashnormalize{/}
+
+% Declare an expandable csv list parser. No premature stopping of the loop
+% is possible by this scheme. To use this scheme, first do
+%
+%  \lpsdeclareexpandablelistparser<processor.cmd><processor.func>{<parser>}
+%  \def<processor.func>{<1-parameter callback>}
+%
+% and then call
+%
+%  <processor.cmd><list> or <processor.cmd>*<listcmd>
+%
+% <list> or <listcmd> will be normalized before being parsed.
+%
+% Example:
+%
+%  \lpsdeclareexpandablelistparser\myloop\do{,}
+%
+%  \def\x{a,\if,b}
+%  \def\do#1{\unexpanded{{#1}}}
+%  \edef\x{\myloop*\x}
+%
+\skvrobustdef*\lpsdeclareexpandablelistparser#1#2#3{%
+  % No need to save the processor.cmd and processor.function in a list.
+  \skvaftercs\lpsdeclarelistnormalizer{\skvremovescape#1@normalizer}{#3}%
+  \begingroup
+  \let\x\skvnoexpandcs
+  \skvexpanded{\endgroup
+    \skvnewdef*\noexpand#1{%
+      \noexpand\skvxifnextchar*%
+        {\x{lps@parse@\skvremovescape#1@a}{\noexpand\@firstoftwo}}
+        {\x{lps@parse@\skvremovescape#1@a}{\noexpand\@secondoftwo}}%
+    }%
+    \def\x{lps@parse@\skvremovescape#1@a}####1####2{%
+      \noexpand\expandafter\x{lps@parse@\skvremovescape#1@b}%
+      \unexpanded{\romannumeral-`\q}####1{%
+        \noexpand\expandafter\x{\skvremovescape#1@normalizer}%
+        \noexpand\expandafter{####2}%
+      }{%
+        \x{\skvremovescape#1@normalizer}{####2}%
+      }%
+      #3\noexpand#1#3%
+    }%
+    \def\x{lps@parse@\skvremovescape#1@b}####1#3{%
+      \noexpand\skvifxTF{\noexpand#1}{####1}%
+      {}{\noexpand#2{####1}\x{lps@parse@\skvremovescape#1@b}}%
+    }%
+  }%
+}
+% Unfortunately, without the following patch, drawing instructions like
+%
+%   \draw[blue] (p) \newforeach \p in {1,...,8}{...};
+%
+% will not work, because of the way TikZ hardwires \foreach for this type
+% of task (ie, when \draw precedes \newforeach or \foreachfox). The fact
+% here is that in this case, both \newforeach and \foreachfox can't work
+% but leave everything for \foreach. This can be a problem when \newforeach
+% or \foreachfox is called to avoid a known bug in \foreach, such as at
+%
+%   <http://tex.stackexchange.com/questions/79586/foreach-has-a-problem%
+%   -with-initially-argument-in-remember-part/79644#79644>
+%
+%
+\skvAtBeginEnvironment{tikzpicture}{%
+  \def\tikz@handle@more{%
+    \ifx\@let@token a\let\@next=\tikz@arcA\else
+    \ifx\@let@token e\let\@next=\tikz@e@char\else
+    \ifx\@let@token g\let\@next=\tikz@g@char\else
+    \ifx\@let@token s\let\@next=\tikz@schar\else
+    \ifx\@let@token |\let\@next=\tikz@vh@lineto\else
+    \ifx\@let@token p\let\@next=\tikz@pchar\pgfsetmovetofirstplotpoint
+    \else\ifx\@let@token t\let\@next=\tikz@to\else
+    \ifx\@let@token\pgfextra\let\@next=\tikz@extra\else
+    \ifx\@let@token\foreach\let\@next=\tikz@foreach\else
+    \ifx\@let@token\newforeach\let\@next=\tikz@foreach\else
+    \ifx\@let@token\pgf@stop\let\@next=\relax\else
+    \ifx\@let@token\par\let\@next=\tikz@scan@next@command\else
+    \ifx\@let@token d\let\@next=\tikz@decoration\else
+    \ifx\@let@token l\let\@next=\tikz@l@char\else
+    \let\@next=\tikz@expand\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi
+    \fi\fi\fi\fi\@next
+  }%
+}
+
+\loops@restorecodes
+\endinput

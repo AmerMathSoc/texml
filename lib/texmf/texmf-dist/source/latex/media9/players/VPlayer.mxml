@@ -1,0 +1,342 @@
+<?xml version="1.0"?>
+<!--                                                               -->
+<!-- Apache Flex 4 source file of VPlayer.swf,                     -->
+<!-- a FlashPlayer-10 compatible component for playing             -->
+<!-- FLV and MP4/H.264 video files and streams.                    -->
+<!--                                                               -->
+<!-- version 20150730                                              -->
+<!--                                                               -->
+<!--                                                               -->
+<!-- The free Apache Flex 4 SDK is required to compile             -->
+<!-- this file. Get it from                                        -->
+<!--                                                               -->
+<!--         http://flex.apache.org/download-binaries.html         -->
+<!--                                                               -->
+<!-- and run                                                       -->
+<!--                                                               -->
+<!-- mxmlc -static-link-runtime-shared-libraries VPlayer.mxml      -->
+<!--                                                               -->
+<!-- on the command line.                                          -->
+<!--                                                               -->
+<!--                                                               -->
+<!-- Copyright (C) 2012-today  Alexander Grahn                     -->
+<!--                                                               -->
+<!-- This work may be distributed and/or modified under the        -->
+<!-- conditions of the LaTeX Project Public License, either        -->
+<!-- version 1.3 of this license or (at your option) any later     -->
+<!-- version.                                                      -->
+<!--                                                               -->
+<!-- The latest version of this license is in                      -->
+<!--   http://www.latex-project.org/lppl.txt                       -->
+<!-- and version 1.3 or later is part of all distributions of      -->
+<!-- LaTeX version 2005/12/01 or later.                            -->
+<!--                                                               -->
+<!-- This work has the LPPL maintenance status `maintained'.       -->
+<!--                                                               -->
+<!-- The current maintainer of this work is A. Grahn.              -->
+<!--                                                               -->
+
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+  xmlns:s="library://ns.adobe.com/flex/spark"
+  xmlns:mx="library://ns.adobe.com/flex/mx"
+  preinitialize="initialise(this.parameters);"
+  applicationComplete="initApp();"
+  backgroundAlpha="0"
+>
+  <fx:Script>
+    <![CDATA[
+      [Bindable] private var scaleMode:String='letterbox';
+      [Bindable] private var source:String;
+      [Bindable] private var autoPlay:Boolean=false;
+      [Bindable] private var autoRewind:Boolean=false;
+      [Bindable] private var loop:Boolean=false;
+      [Bindable] private var vol:Number=0.75;
+      private var vidComplete:Boolean=false;
+      private var deltaSeek:Number;
+      private var curTime:Number;
+      private var newPos:Number;
+      private var keyPressed:Boolean=false;
+      private var pauseAtPos:Number = -1;
+      private var toBePaused:Boolean = false;
+
+      private function initialise(flashVars:Object):void {
+        source=flashVars.source;
+        if(flashVars.autoPlay=='true'){autoPlay=true}
+        if(flashVars.autoRewind=='true'){autoRewind=true}
+        if(flashVars.loop=='true'){loop=true}
+        if(flashVars.volume){vol=Number(flashVars.volume)}
+        if(flashVars.scaleMode){scaleMode=flashVars.scaleMode}
+      }
+
+      private function onProgress(event:ProgressEvent):void {
+        if (event.bytesTotal) event.target.visible=true;
+        else event.target.visible=false;
+      }
+
+      import org.osmf.events.MediaPlayerStateChangeEvent;
+      import org.osmf.media.MediaPlayerState;
+      import mx.controls.Alert;
+      private function onStateChange(event:MediaPlayerStateChangeEvent):void {
+        vidComplete=false;
+        switch(event.state) {
+          case MediaPlayerState.PLAYBACK_ERROR: // ('playbackError')
+            Alert.show('Unable to play \''+event.target.source+'\'','Error');
+            break;
+          case MediaPlayerState.READY:
+            if(autoPlay) vidDisp.play();
+            break;
+          //MediaPlayerState.BUFFERING
+          //MediaPlayerState.LOADING
+          //MediaPlayerState.PAUSED
+          //MediaPlayerState.PLAYING
+          //MediaPlayerState.UNINITIALIZED
+        }
+      }
+
+      private function onKeyDown(e:KeyboardEvent):void {
+        switch(e.keyCode) {
+          case 32: //space bar
+            playPause();
+            break;
+          case 36: //home
+            vidDisp.pause();
+            vidDisp.seek(0);
+            break;
+          case 35: //end
+            if(vidDisp.bytesTotal){
+              vidDisp.pause();
+              vidDisp.seek(vidDisp.duration-0.1);
+            }
+            break;
+          case 37: //<--
+            fadeEffect.end();
+            playProgress.alpha=0.5;
+            playProgress.visible=true;
+            if(!keyPressed){
+              deltaSeek=Math.max(1,vidDisp.duration/1000);
+              curTime=vidDisp.currentTime;
+            }
+            keyPressed=true;
+            newPos=Math.max(0,curTime-deltaSeek);
+            playProgress.setProgress(newPos,vidDisp.duration);
+            playProgress.label=formatTime(newPos);
+            vidDisp.seek(newPos);
+            deltaSeek*=1.1;
+            break;
+          case 39: //-->
+            fadeEffect.end();
+            playProgress.alpha=0.5;
+            playProgress.visible=true;
+            if(!keyPressed){
+              deltaSeek=Math.max(1,vidDisp.duration/1000);
+              curTime=vidDisp.currentTime;
+            }
+            keyPressed=true;
+            newPos=Math.min(vidDisp.duration-0.1,curTime+deltaSeek);
+            playProgress.setProgress(newPos,vidDisp.duration);
+            playProgress.label=formatTime(newPos);
+            vidDisp.seek(newPos);
+            deltaSeek*=1.1;
+            break;
+          case 38:
+            vol=Math.min(1,vol+0.025);
+            volume(vol);
+            break;
+          case 40:
+            vol=Math.max(0,vol-0.025);
+            volume(vol);
+            break;
+          default:
+          if(e.charCode==109) mute(); //`m'
+        }
+      }
+
+      private function onKeyUp(e:KeyboardEvent):void {
+        switch(e.keyCode) {
+          case 37: //<--
+          case 39: //-->
+            deltaSeek=Math.max(1,vidDisp.duration/1000);
+            keyPressed=false;
+            fadeEffect.play();
+            break;
+        }
+      }
+
+      private function onCurrentTimeChange(e:Event):void {
+        if(vidDisp.playing&&pauseAtPos>=0&&vidDisp.currentTime<pauseAtPos)
+          toBePaused=true;
+        if(
+          vidDisp.playing&&pauseAtPos>=0&&
+          vidDisp.currentTime>=pauseAtPos&&toBePaused
+        ){
+          pause();
+          pauseAtPos=-1;
+          toBePaused=false;
+        }
+      }
+
+      private function play(p:Number=-1):void {
+        if(p>=0) seek(p);
+        if(vidComplete){seek(0);}vidDisp.play();
+      }
+
+      private function pause(p:Number=-1):void {
+        if(p>=0){pauseAtPos=p;return;}
+        vidDisp.pause();
+      }
+
+      private function playPause():void {
+        if(vidDisp.playing) vidDisp.pause(); else vidDisp.play();
+      }
+
+      private function seek(p:Number):void {
+        vidDisp.seek(p);
+      }
+
+      private function rewind():void {
+        vidDisp.seek(0);
+      }
+
+      private function volume(v:Number):void {
+        vidDisp.muted=false;
+        vidDisp.volume = v;
+      }
+
+      private function mute():void {
+        if(vidDisp.muted) {
+          vidDisp.muted=false;
+          if (vidDisp.volume==0) volume(0.75);
+        }
+        else {
+          vidDisp.muted=true;
+        }
+      }
+
+      private function setSource(s:Object):void {
+        vidDisp.source = s;
+      }
+
+      private function formatTime(s:Number):String {
+        var hrs:Number = Math.floor(s / 3600);
+        var min:Number = Math.floor(s / 60 % 60);
+        var sec:Number = Math.floor(s % 60);
+
+        var fmtd:String='';
+
+        if (hrs>0) fmtd = String(hrs)+':';
+
+        if (hrs>0 && min <10) fmtd+='0';
+        fmtd += String(min)+':';
+
+        if (sec<10) fmtd+='0';
+        fmtd += String(sec);
+
+        return fmtd;
+      }
+
+      private function currentTime():Number {
+        return vidDisp.currentTime;
+      }
+
+      private function playing():Boolean {
+        return vidDisp.playing;
+      }
+
+      private function duration():Number {
+        return vidDisp.duration;
+      }
+
+      private function muted():Boolean {
+        return vidDisp.muted;
+      }
+
+      private function initApp():void {
+        this.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+        this.addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
+        ExternalInterface.addCallback("play", play);
+        ExternalInterface.addCallback("pause", pause);
+        ExternalInterface.addCallback("playPause", playPause);
+        ExternalInterface.addCallback("seek", seek);
+        ExternalInterface.addCallback("rewind", rewind);
+        ExternalInterface.addCallback("volume", volume);
+        ExternalInterface.addCallback("mute", mute);
+        ExternalInterface.addCallback("setSource", setSource);
+        ExternalInterface.addCallback("currentTime", currentTime);
+        ExternalInterface.addCallback("duration", duration);
+        ExternalInterface.addCallback("playing", playing);
+        ExternalInterface.addCallback("muted", muted);
+
+        var itemPlayPause:ContextMenuItem = new ContextMenuItem("N.N.");
+        this.contextMenu.customItems.push(itemPlayPause);
+        itemPlayPause.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+          function(e:ContextMenuEvent):void{playPause();});
+
+        var itemRewind:ContextMenuItem = new ContextMenuItem("Rewind, [Home]");
+        this.contextMenu.customItems.push(itemRewind);
+        itemRewind.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+          function(e:ContextMenuEvent):void{vidDisp.pause();vidDisp.seek(0);});
+
+        var itemGotoEnd:ContextMenuItem = new ContextMenuItem("Goto End, [End]");
+        this.contextMenu.customItems.push(itemGotoEnd);
+        itemGotoEnd.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+          function(e:ContextMenuEvent):void{vidDisp.pause();
+            vidDisp.seek(vidDisp.duration-0.1);});
+
+        var itemMute:ContextMenuItem = new ContextMenuItem("N.N.");
+        this.contextMenu.customItems.push(itemMute);
+        itemMute.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+          function(e:ContextMenuEvent):void{mute();});
+
+        this.contextMenu.customItems.push(
+          new ContextMenuItem("via keyboard:", true, false, true));
+        this.contextMenu.customItems.push(
+          new ContextMenuItem("Seek, [\u2190]/[\u2192]", false, false, true));
+        this.contextMenu.customItems.push(
+          new ContextMenuItem("Volume, [\u2191]/[\u2193]", false, false, true));
+
+        this.contextMenu.addEventListener(ContextMenuEvent.MENU_SELECT,
+          function(e:ContextMenuEvent):void{
+            itemPlayPause.caption=(vidDisp.playing ? "Pause" : "Play")+", [Space]";
+            itemMute.caption=(vidDisp.muted ? "Unmute" : "Mute")+", [m]";}
+        );
+      }
+    ]]>
+  </fx:Script>
+
+  <fx:Declarations>
+    <s:Fade id="fadeEffect" target="{playProgress}" alphaFrom="0.5" alphaTo="0"
+            duration="2000"/>
+  </fx:Declarations>
+
+  <!-- autoPlay setting (autoPlay="{autoPlay}") is not reliable;
+    we handle this in MediaPlayerStateChange event -->
+  <s:VideoDisplay
+    id="vidDisp"
+    width="100%" height="100%" scaleMode="{scaleMode}"
+    source="{source}" volume="{vol}"
+    autoPlay="false"
+    autoRewind="{autoRewind}" loop="{loop}"
+    mediaPlayerStateChange="onStateChange(event);"
+    complete="vidComplete=true;"
+    durationChange="vidDisp.seek(0);"
+    currentTimeChange="onCurrentTimeChange(event);"
+  />
+
+  <mx:ProgressBar width="100%" mode="polled" source="vidDisp"
+    horizontalCenter="0" bottom="0" labelPlacement="center"
+    id="loadingProgress" alpha="0.5"
+    complete="loadingProgress.visible=false;"
+    progress="onProgress(event)"
+  />
+
+  <mx:ProgressBar width="100%" mode="manual"
+    horizontalCenter="0" bottom="0" labelPlacement="center"
+    id="playProgress" alpha="0.5"
+    visible="false"
+  />
+
+  <s:Button alpha="0" width="100%" height="100%"
+    mouseDown="vidDisp.pause();"
+    mouseUp="if(vidComplete) vidDisp.seek(0);vidDisp.play();"
+  />
+</s:Application>

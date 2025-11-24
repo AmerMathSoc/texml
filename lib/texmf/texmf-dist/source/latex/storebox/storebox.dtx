@@ -1,0 +1,706 @@
+% \iffalse meta-comment
+%<=*COPYRIGHT>
+%% Copyright (C) 2011 by Martin Scharrer <martin@scharrer-online.de>
+%% ---------------------------------------------------------------------------
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%   http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%%
+%% The Current Maintainer of this work is Martin Scharrer.
+%%
+%% This work consists of the files storebox.dtx and storebox.ins
+%% and the derived filebase storebox.sty and storebox-pgf.sty.
+%%
+%<=/COPYRIGHT>
+% \fi
+%
+% \iffalse
+%<*driver>
+\ProvidesFile{storebox.dtx}[%
+%<=*DATE>
+    2011/12/21
+%<=/DATE>
+%<=*VERSION>
+    v1.3a
+%<=/VERSION>
+    DTX file for storebox]
+\documentclass{ydoc}
+\GetFileInfo{storebox.dtx}
+\usepackage{storebox}[\filedate]
+\EnableCrossrefs
+\CodelineIndex
+\RecordChanges
+\begin{document}
+  \DocInput{\jobname.dtx}
+  \PrintChanges
+  \PrintIndex
+\end{document}
+%</driver>
+% \fi
+%
+% \CheckSum{680}
+%
+% \CharacterTable
+%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
+%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
+%   Digits        \0\1\2\3\4\5\6\7\8\9
+%   Exclamation   \!     Double quote  \"     Hash (number) \#
+%   Dollar        \$     Percent       \%     Ampersand     \&
+%   Acute accent  \'     Left paren    \(     Right paren   \)
+%   Asterisk      \*     Plus          \+     Comma         \,
+%   Minus         \-     Point         \.     Solidus       \/
+%   Colon         \:     Semicolon     \;     Less than     \<
+%   Equals        \=     Greater than  \>     Question mark \?
+%   Commercial at \@     Left bracket  \[     Backslash     \\
+%   Right bracket \]     Circumflex    \^     Underscore    \_
+%   Grave accent  \`     Left brace    \{     Vertical bar  \|
+%   Right brace   \}     Tilde         \~}
+%
+%
+% \changes{v0.99}{2011/08/05}{Converted to DTX file.}
+% \changes{v1.0}{2011/09/22}{First release.}
+% \changes{v1.1}{2011/10/21}{Fixed issue with \env{storebox} environment with new \pkg{collectbox} version.}
+% \changes{v1.2}{2011/12/19}{Added PDF resources argument to support transparent material.}
+% \changes{v1.3}{2011/12/20}{Added patch for PDF pdftex driver to fully support transparent material and shadings.}
+% \changes{v1.3a}{2011/12/21}{Made the use of \cs{immediate} optional so that unused storeboxes are not written to the PDF.}
+%
+% \DoNotIndex{\newcommand,\newenvironment}
+%
+% \GetFileInfo{storebox.dtx}
+% \author{Martin Scharrer}
+% \email{martin@scharrer.me}
+% \ifdefined\repository
+%   \repository{https://bitbucket.org/martin_scharrer/storebox}
+% \fi
+%
+% \maketitle
+%
+% \begin{abstract}\noindent
+% This package allows the placement of identical content multiple times in a document while only storing it once in the output file.
+% At the moment only \LaTeX\ compilers with native PDF output are supported (|pdflatex| or |lualatex|).
+% For other \LaTeX\ compilers a fallback to |\savebox| is implemented.
+% \end{abstract}
+%
+% \section{Introduction}
+% \LaTeX{} provides box registers to save content and use it later in the document once or multiple times (or none at all).
+% However, the box content is then written every time to the output file.
+% The PDF file format provides a way to store material as object and reference it later. A similar technique is theoretically
+% possible for PostScript output (but not yet implemented). This has the benefit that the content is really only stored once
+% in the output file. However, if file compression is used for the final output file the size benefit might be very small
+% if the content is only reused a low number of times.
+%
+% This package provides ``store boxes'' which have the same user interface like normal \LaTeX{} ``save boxes'', but only
+% store the content once in the output file even if it is used several times.
+% At the moment only PDF output is supported (i.e.\ \texttt{pdflatex} and \texttt{lualatex}).
+% If the stored content is not used in the document after all it is not written to the PDF except if the \opt{immediate} option was used.
+% For any other \TeX{} and output format the package simply falls back to use the normal savebox equivalents.
+%
+% \section{Known issues}
+% There are some known side effects with advanced graphic elements, namely transparencies and shadings.
+% These elements require special driver code which adds the required PDF instructions. For TikZ/PGF drawings this is done
+% by the |pdftex| driver of TikZ/PGF. However, due to a
+% \href{https://sourceforge.net/tracker/?func=detail&atid=752792&aid=3462542&group_id=142562}{bug in this driver}
+% transparent material is not supported, but shown fully opaque if the storebox also holds PDF shadings.
+% This affects \file{pgfsys-pdftex.def} in v1.26 from 2009/05/22 and earlier versions.
+% Since \pkg{storebox} v1.3 from 2011/12/20 a set of patches for the PGF |pdftex| driver is loaded (as support package \pkg{storebox-pgf}),
+% so that both transparencies and shadings are supported together. The patches are not loaded if a new version of the driver is detected.
+% Please report all issues with this patches to the \pkg{storebox} author, not to the TikZ/PGF authors.
+%
+% \section{Options}
+% The package allows to enable and disable the storebox feature. Normally this is selected automatically dependent if PDF output is used (using \pkg{ifpdf}).
+% It also provides two options \opt{enable} and \opt{disable} to explicitly switch the storebox feature on or off.
+% The \opt{disable} option is useful to see the resulting file size difference.
+% The usage of the \opt{enable} option should not be required and will lead to errors if used with unsupported \TeX{} formats.
+%
+% Two further complementary options \opt{delayed} (default) and \opt{immediate} are provided.
+% They control if a storebox (i.e.\ the underlying \Macro\pdfxform) is written to the PDF immediately or only after it gets referenced, i.e.\ is inserted into the document using
+% \Macro\usestorebox. With \opt{immediate} the storebox is always written into the PDF, even if it is not used. By default \opt{delayed} is used, but
+% it is possible that \opt{immediate} is required if \Macro\storebox is used inside other \Macro\pdfxform\relax's, e.g.\ inside certain TikZ/PGF nodes.
+% If any graphic issues occur in a document the \opt{immediate} option should first be tested before sending any bug reports.
+%
+% \Needspace*{3cm}
+% \section{Macros}
+%
+% \DescribeMacro{\newstorebox}{<\textbackslash boxname>}
+% Because storeboxes are stored as PDF objects and not as \TeX\ box registers
+% it is not required to allocate a register for them. However, in fall-back mode
+% the used control sequence \meta{\textbackslash boxname} must be defined as savebox.
+% This macro defines \meta{\textbackslash boxname} simply as \Macro\relax\relax (just as precaution) and is equal to
+% \Macro\newsavebox in fall-back mode.
+%
+%
+% \DescribeMacro{\storebox}{<\textbackslash boxname>}{<content>}
+% This stores the \meta{content} as \meta{\textbackslash boxname} (which is actually just a numeric reference) for later use.
+% The \pkg{collectbox} package is used to collect the \meta{content} as box and not as macro argument and therefore it can
+% contain verbatim and other special material. The braces can also be written in their explicit form \Macro\bgroup and \Macro\egroup
+% and then split in two different macros or across the begin and end of an environment.
+% It is possible to use \Macro\storebox multiple times with the same \meta{\textbackslash boxname}. This will create
+% a new PDF object without affected the old one.
+% In fall-back mode this macro is functional equal to \Macro\savebox\relax (but then still uses \pkg{collectbox}).
+%
+%
+% \DescribeEnv[<content>]{storebox}{<\textbackslash boxname>}
+% This is the environment version of \Macro\storebox. Special care is taken to allow for an identical name.
+% In fall-back mode this macro is equal to the \env{lrbox} environment.
+%
+%
+% \DescribeMacro{\usestorebox}{<\textbackslash boxname>}
+% This macro typesets the stored content at the current position (as horizontal box in horizontal mode).
+% This is realized by adding a PDF reference to the stored content.
+% In fall-back mode this macro is equal to \Macro\usebox.
+%
+%
+% \DescribeMacro{\ifstorebox}
+% This if-switch is set to \emph{true} if \Macro\storebox was successfully defined as intended
+% but to \emph{false} if the \Macro\savebox fall-back was used.
+%
+% \clearpage
+% \section{Example}
+% \begin{lstlisting}[gobble=2,language={[latex]tex},numbers=none]
+% \documentclass{article}
+%
+% \usepackage{storebox}
+%
+% \newstorebox{\mybox} % Not really required for PDF output
+% \begin{document}
+%
+% \storebox{\mybox}{\verb+Supports verbatim #$\empty+}
+%
+% \usestorebox{\mybox}
+% \usestorebox{\mybox}
+%
+% \storebox\mybox\bgroup
+% Can also be split
+% \verb+\empty+
+% \egroup
+%
+% \usestorebox{\mybox}
+% \usestorebox{\mybox}
+%
+% \begin{storebox}{\mybox}
+%     Or used as environment
+%     (then will ignore leading and trailing spaces)
+% \end{storebox}
+%
+% \usestorebox{\mybox}
+% \usestorebox{\mybox}
+%
+% \end{document}
+% \end{lstlisting}
+%
+% \setcounter{lstnumber}{1}
+% \StopEventually{}
+%
+% \clearpage
+% \section{Implementation}
+%
+% \iffalse
+%<*storebox.sty>
+% \fi
+%    \begin{macrocode}
+%<!COPYRIGHT>
+\ProvidesPackage{storebox}[%
+%<!DATE>
+%<!VERSION>
+%<*DRIVER>
+    2099/01/01 develop
+%</DRIVER>
+    Store and reuse boxes in a file size efficient way]
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\DeclareOption{disable}{\let\ifstorebox\iffalse}
+\DeclareOption{enable}{\let\ifstorebox\iftrue}
+\DeclareOption{immediate}{\let\storebox@immediate\immediate}
+\DeclareOption{delayed}{\let\storebox@immediate\relax}
+\ExecuteOptions{delayed}
+\ProcessOptions*
+\expandafter\ifx\csname ifstorebox\endcsname\relax
+    \RequirePackage{ifpdf}
+    \expandafter\let\csname ifstorebox\expandafter\endcsname\csname ifpdf\endcsname
+\fi
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\RequirePackage{collectbox}[2011/08/04]
+%    \end{macrocode}
+%
+% \begin{macro}{\storebox}
+%    \begin{macrocode}
+\newcommand*\storebox{%
+    \begingroup
+        \def\@tempa{storebox}%
+    \ifx\@currenvir\@tempa
+        \endgroup
+        \expandafter\@storebox@env
+    \else
+        \endgroup
+        \expandafter\@storebox
+    \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+%    \begin{macrocode}
+\ifstorebox
+%    \end{macrocode}
+%
+% \begin{macro}{\@storebox}
+% Macro version:
+%    \begin{macrocode}
+\def\@storebox#1{%
+    \begingroup
+    \@collectboxto\collectedbox{%
+        \storebox@immediate\pdfxform resources {\the\pdfpageresources}\collectedbox
+        \endgroup\mathchardef#1=\pdflastxform
+    }%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\@storebox@env}
+% Environment version. Code adapted from \env{lrbox} environment. The group added by \Macro\begin and \Macro\end must
+% be specially handled to allow for a local assignment.
+%    \begin{macrocode}
+\def\@storebox@env#1{%
+    \edef\@tempa{%
+        \setbox\collectedbox\hbox\bgroup%
+            \def\noexpand\the@storebox{\noexpand#1}%
+    }%
+    \@tempa
+    \begingroup
+    \aftergroup\@storebox@env@end
+    \@endpefalse
+    \color@setgroup
+    \begingroup
+    \def\@currenvir{storebox\empty}%
+    \ignorespaces
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\endstorebox}
+%    \begin{macrocode}
+\def\endstorebox{%
+    \unskip
+    \endgroup
+    \color@endgroup
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+%
+% \begin{macro}{\@storebox@env@end}
+% This ends the box assignment and stores the box as PDF xform.
+% Then the given control sequence is set to the xform number.
+%    \begin{macrocode}
+\def\@storebox@env@end{%
+    \edef\@tempa{%
+        \egroup
+        \immediate\pdfxform resources {\the\pdfpageresources}\collectedbox
+        \endgroup
+        \mathchardef\expandafter\noexpand\the@storebox=\pdflastxform
+    }%
+    \@tempa
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\newstorebox}
+%    \begin{macrocode}
+\newcommand*\newstorebox[1]{%
+    \@ifdefinable{#1}{\let#1\relax}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\usestorebox}
+%    \begin{macrocode}
+\newcommand*\usestorebox[1]{%
+    \mbox{\pdfrefxform#1}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% Load PGF driver patches if required:
+%    \begin{macrocode}
+\AtBeginDocument{%
+    \@ifpackageloaded{pgf}{\RequirePackage{storebox-pgf}{}}%
+}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\else
+%    \end{macrocode}
+%
+%
+% \begin{macro}{\@storebox}
+% Macro version:
+%    \begin{macrocode}
+\def\@storebox#1{\@collectboxto{#1}{}}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\@storebox@env}
+%    \begin{macrocode}
+\def\@storebox@env{%
+  \edef\@currenvir{\@currenvir\noexpand\noexpand\noexpand\empty}%
+  \lrbox
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\endstorebox}
+%    \begin{macrocode}
+\def\endstorebox{%
+    \endlrbox
+    \edef\@currenvir{\@currenvir}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\newsavebox}
+%    \begin{macrocode}
+\@ifdefinable\newstorebox{%
+\let\newstorebox\newsavebox
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\usestorebox}
+%    \begin{macrocode}
+\@ifdefinable\usestorebox{%
+\let\usestorebox\usebox
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+\fi
+%    \end{macrocode}
+%
+
+% \iffalse
+%</storebox.sty>
+% \fi
+%
+%
+% \subsection{PGF patches}
+%
+% \iffalse
+%<*storebox-pgf.sty>
+% \fi
+%    \begin{macrocode}
+%% This support package contains patches for the file 'pgfsys-pdftex.def' file from
+%% the TikZ/PGF bundle. All patches code is copyright by the TikZ/PGF authors
+%% and is used in this file according to the LPPL license.
+%% Please see the copyright and license notices in the 'pgfsys-pdftex.def' file.
+%%
+%% The rest of the code of this file is under the following copyright and licence:
+%%
+%<!COPYRIGHT>
+\ProvidesPackage{storebox-pgf}[%
+%<!DATE>
+%<!VERSION>
+%<*DRIVER>
+    2099/01/01 develop
+%</DRIVER>
+    Patches for PGF to support transparency and shadings inside storeboxes]
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\begingroup
+\let\on@line\@gobble
+%
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\@ifl@ter{def}{pgfsys-pdftex}{2009/05/23}{%
+   \PackageInfo{storebox-pgf}{Newer version of 'pgfsys-pdftex.def' found.\MessageBreak No patches applied.}%
+   \endgroup
+   \endinput
+}{}%
+%    \end{macrocode}
+%
+% \begin{macro}{\storebox@patch}
+%    \begin{macrocode}
+\def\storebox@patch#1#2#3#4{%
+    \ifx#1\@undefined
+        \PackageInfo{storebox-pgf}{Macro \string#1\space not defined.\MessageBreak No patch applied.}%
+    \else
+        \def\@tempa#2{#3}%
+        \ifx#1\@tempa
+            \PackageInfo{storebox-pgf}{Patching macro \string#1.}%
+            \gdef#1#2{#4}%
+        \else
+            \PackageInfo{storebox-pgf}{Macro \string#1\space with unknown definition.\MessageBreak No patch applied.}%
+        \fi
+    \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+\storebox@patch\pgfsys@horishading{#1#2#3}{%
+  {%
+    \pgf@parsefunc{#3}%
+    \pgfmathparse{#2}%
+    \setbox\pgfutil@tempboxa=\hbox to\pgf@max{\vbox to\pgfmathresult pt{\vfil\pgfsys@invoke{/Sh sh}}\hfil}%
+    \pgf@process{\pgfpoint{\pgf@max}{#2}}%
+    \pdfxform resources {%
+      /Shading << /Sh << /ShadingType 2
+      /ColorSpace /DeviceRGB
+      /Domain [\pgf@pdfparseddomain]
+      /Coords [\pgf@doma\space0 \pgf@domb\space0]
+      /Function \pgf@pdfparsedfunction
+      /Extend [false false] >> >>}\pgfutil@tempboxa% <<
+    \expandafter\xdef\csname @pgfshading#1!\endcsname{\leavevmode\noexpand\pdfrefxform\the\pdflastxform}%
+  }%
+}{%
+  {%
+    \pgf@parsefunc{#3}%
+    \pgfmathparse{#2}%
+    \setbox\pgfutil@tempboxa=\hbox to\pgf@max{\vbox to\pgfmathresult pt{\vfil\pgfsys@invoke{/Sh sh}}\hfil}%
+    \pgf@process{\pgfpoint{\pgf@max}{#2}}%
+    \immediate\pdfxform resources {%
+      /Shading << /Sh << /ShadingType 2
+      /ColorSpace /DeviceRGB
+      /Domain [\pgf@pdfparseddomain]
+      /Coords [\pgf@doma\space0 \pgf@domb\space0]
+      /Function \pgf@pdfparsedfunction
+      /Extend [false false] >> >>}\pgfutil@tempboxa% <<
+    \expandafter\xdef\csname @pgfshading#1!\endcsname{\leavevmode\noexpand\pdfrefxform\the\pdflastxform}%
+  }%
+}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\storebox@patch\pgfsys@vertshading{#1#2#3}{%
+  {%
+    \pgf@parsefunc{#3}%
+    \pgfmathparse{#2}%
+    \setbox\pgfutil@tempboxa=\hbox to\pgfmathresult pt{\vbox to\pgf@max{\vfil\pgfsys@invoke{/Sh sh}}\hfil}%
+    \pgf@process{\pgfpoint{#2}{\pgf@max}}%
+    \pdfxform resources {%
+      /Shading << /Sh << /ShadingType 2
+      /ColorSpace /DeviceRGB
+      /Domain [\pgf@pdfparseddomain]
+      /Coords [0 \pgf@doma\space0 \pgf@domb]
+      /Function \pgf@pdfparsedfunction
+      /Extend [false false] >> >>}\pgfutil@tempboxa% <<
+    \expandafter\xdef\csname @pgfshading#1!\endcsname{\leavevmode\noexpand\pdfrefxform\the\pdflastxform}%
+  }%
+}{%
+  {%
+    \pgf@parsefunc{#3}%
+    \pgfmathparse{#2}%
+    \setbox\pgfutil@tempboxa=\hbox to\pgfmathresult pt{\vbox to\pgf@max{\vfil\pgfsys@invoke{/Sh sh}}\hfil}%
+    \pgf@process{\pgfpoint{#2}{\pgf@max}}%
+    \immediate\pdfxform resources {%
+      /Shading << /Sh << /ShadingType 2
+      /ColorSpace /DeviceRGB
+      /Domain [\pgf@pdfparseddomain]
+      /Coords [0 \pgf@doma\space0 \pgf@domb]
+      /Function \pgf@pdfparsedfunction
+      /Extend [false false] >> >>}\pgfutil@tempboxa% <<
+    \expandafter\xdef\csname @pgfshading#1!\endcsname{\leavevmode\noexpand\pdfrefxform\the\pdflastxform}%
+  }%
+}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\storebox@patch\pgfsys@radialshading{#1#2#3}{%
+  {%
+    \pgf@parsefunc{#3}%
+    \setbox\pgfutil@tempboxa=\hbox to2\pgf@max{\vbox to2\pgf@max{\vfil\pgfsys@invoke{/Sh sh}}\hfil}%
+    \pgf@process{#2}%
+    \pgf@xa=\pgf@x%
+    \pgf@ya=\pgf@y%
+    \pgf@process{\pgfpoint{\pgf@max}{\pgf@max}}%
+    \advance\pgf@xa by \pgf@x%
+    \advance\pgf@ya by \pgf@y%
+    \pgf@sys@bp@correct{\pgf@x}%
+    \pgf@sys@bp@correct{\pgf@y}%
+    \pgf@sys@bp@correct{\pgf@xa}%
+    \pgf@sys@bp@correct{\pgf@ya}%
+    \pdfxform resources {%
+      /Shading << /Sh << /ShadingType 3
+      /ColorSpace /DeviceRGB
+      /Domain [\pgf@pdfparseddomain]
+      /Coords [\pgf@sys@tonumber{\pgf@xa} \pgf@sys@tonumber{\pgf@ya} \pgf@doma\space \pgf@sys@tonumber{\pgf@x} \pgf@sys@tonumber{\pgf@y} \pgf@domb]
+      /Function \pgf@pdfparsedfunction
+      /Extend [true false] >> >>}\pgfutil@tempboxa% <<
+    \expandafter\xdef\csname @pgfshading#1!\endcsname{\leavevmode\noexpand\pdfrefxform\the\pdflastxform}%
+  }%
+}{%
+  {%
+    \pgf@parsefunc{#3}%
+    \setbox\pgfutil@tempboxa=\hbox to2\pgf@max{\vbox to2\pgf@max{\vfil\pgfsys@invoke{/Sh sh}}\hfil}%
+    \pgf@process{#2}%
+    \pgf@xa=\pgf@x%
+    \pgf@ya=\pgf@y%
+    \pgf@process{\pgfpoint{\pgf@max}{\pgf@max}}%
+    \advance\pgf@xa by \pgf@x%
+    \advance\pgf@ya by \pgf@y%
+    \pgf@sys@bp@correct{\pgf@x}%
+    \pgf@sys@bp@correct{\pgf@y}%
+    \pgf@sys@bp@correct{\pgf@xa}%
+    \pgf@sys@bp@correct{\pgf@ya}%
+    \immediate\pdfxform resources {%
+      /Shading << /Sh << /ShadingType 3
+      /ColorSpace /DeviceRGB
+      /Domain [\pgf@pdfparseddomain]
+      /Coords [\pgf@sys@tonumber{\pgf@xa} \pgf@sys@tonumber{\pgf@ya} \pgf@doma\space \pgf@sys@tonumber{\pgf@x} \pgf@sys@tonumber{\pgf@y} \pgf@domb]
+      /Function \pgf@pdfparsedfunction
+      /Extend [true false] >> >>}\pgfutil@tempboxa% <<
+    \expandafter\xdef\csname @pgfshading#1!\endcsname{\leavevmode\noexpand\pdfrefxform\the\pdflastxform}%
+  }%
+}%
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\storebox@patch\pgfsys@functionalshading{#1#2#3#4}{%
+  {%
+    \pgf@process{#2}%
+    \pgf@xa=\pgf@x%
+    \pgf@ya=\pgf@y%
+    \pgf@process{#3}%
+    \pgf@xb=\pgf@x%
+    \pgf@yb=\pgf@y%
+    \advance\pgf@x by-\pgf@xa%
+    \advance\pgf@y by-\pgf@ya%
+    \setbox\pgfutil@tempboxa=\hbox to\pgf@x{\vbox to\pgf@y{\vfil\pgfsys@invoke{/Sh sh}}\hfil}%
+    \pgf@sys@bp@correct{\pgf@xa}%
+    \pgf@sys@bp@correct{\pgf@ya}%
+    \pgf@sys@bp@correct{\pgf@xb}%
+    \pgf@sys@bp@correct{\pgf@yb}%
+    \pgf@xc=-\pgf@xa%
+    \pgf@yc=-\pgf@ya%
+    % Now build the function
+    \pdfobj
+    stream
+    attr
+    {
+      /FunctionType 4
+      /Domain [\pgf@sys@tonumber{\pgf@xa}\space\pgf@sys@tonumber{\pgf@xb}\space\pgf@sys@tonumber{\pgf@ya}\space\pgf@sys@tonumber{\pgf@yb}]
+      /Range [0 1 0 1 0 1]
+    }
+    {{#4}}%
+    \edef\pgf@temp@num{\the\pdflastobj}%
+    \pdfxform resources {%
+      /Shading << /Sh << /ShadingType 1
+      /ColorSpace /DeviceRGB
+      /Matrix [1 0 0 1 \pgf@sys@tonumber{\pgf@xc}\space\pgf@sys@tonumber{\pgf@yc}]
+      /Domain [\pgf@sys@tonumber{\pgf@xa}\space\pgf@sys@tonumber{\pgf@xb}\space\pgf@sys@tonumber{\pgf@ya}\space\pgf@sys@tonumber{\pgf@yb}]
+      /Function \pgf@temp@num\space 0 R
+      >> >>}\pgfutil@tempboxa% <<
+    \expandafter\xdef\csname @pgfshading#1!\endcsname{%
+      \leavevmode%
+      \noexpand\pdfrefxform\the\pdflastxform%
+      \noexpand\pdfrefobj\pgf@temp@num%
+    }%
+  }%
+}{%
+  {%
+    \pgf@process{#2}%
+    \pgf@xa=\pgf@x%
+    \pgf@ya=\pgf@y%
+    \pgf@process{#3}%
+    \pgf@xb=\pgf@x%
+    \pgf@yb=\pgf@y%
+    \advance\pgf@x by-\pgf@xa%
+    \advance\pgf@y by-\pgf@ya%
+    \setbox\pgfutil@tempboxa=\hbox to\pgf@x{\vbox to\pgf@y{\vfil\pgfsys@invoke{/Sh sh}}\hfil}%
+    \pgf@sys@bp@correct{\pgf@xa}%
+    \pgf@sys@bp@correct{\pgf@ya}%
+    \pgf@sys@bp@correct{\pgf@xb}%
+    \pgf@sys@bp@correct{\pgf@yb}%
+    \pgf@xc=-\pgf@xa%
+    \pgf@yc=-\pgf@ya%
+    % Now build the function
+    \pdfobj
+    stream
+    attr
+    {
+      /FunctionType 4
+      /Domain [\pgf@sys@tonumber{\pgf@xa}\space\pgf@sys@tonumber{\pgf@xb}\space\pgf@sys@tonumber{\pgf@ya}\space\pgf@sys@tonumber{\pgf@yb}]
+      /Range [0 1 0 1 0 1]
+    }
+    {{#4}}%
+    \edef\pgf@temp@num{\the\pdflastobj}%
+    \immediate\pdfxform resources {%
+      /Shading << /Sh << /ShadingType 1
+      /ColorSpace /DeviceRGB
+      /Matrix [1 0 0 1 \pgf@sys@tonumber{\pgf@xc}\space\pgf@sys@tonumber{\pgf@yc}]
+      /Domain [\pgf@sys@tonumber{\pgf@xa}\space\pgf@sys@tonumber{\pgf@xb}\space\pgf@sys@tonumber{\pgf@ya}\space\pgf@sys@tonumber{\pgf@yb}]
+      /Function \pgf@temp@num\space 0 R
+      >> >>}\pgfutil@tempboxa% <<
+    \expandafter\xdef\csname @pgfshading#1!\endcsname{%
+      \leavevmode%
+      \noexpand\pdfrefxform\the\pdflastxform%
+      \noexpand\pdfrefobj\pgf@temp@num%
+    }%
+  }%
+}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\storebox@patch\pgfsys@fadingfrombox{#1#2}{%
+  {%
+    \pgf@sys@pdf@check@resources%
+    \pgf@x=-.5\wd#2%
+    \pgf@y=-.5\ht#2%
+    \advance\pgf@y by.5\dp#2%
+    \expandafter\xdef\csname pgfsmasktrans@#1\endcsname{%
+      \noexpand\pgftransformcm{1}{0}{0}{1}{\noexpand\pgfqpoint{\the\pgf@x}{\the\pgf@y}}}%
+    \pdfxform resources { \pgf@sys@pdf@possible@resources } #2%
+    \expandafter\xdef\csname pgfsmaskxform@#1\endcsname{\the\pdflastxform}%
+  }%
+}{%
+  {%
+    \pgf@sys@pdf@check@resources%
+    \pgf@x=-.5\wd#2%
+    \pgf@y=-.5\ht#2%
+    \advance\pgf@y by.5\dp#2%
+    \expandafter\xdef\csname pgfsmasktrans@#1\endcsname{%
+      \noexpand\pgftransformcm{1}{0}{0}{1}{\noexpand\pgfqpoint{\the\pgf@x}{\the\pgf@y}}}%
+    \immediate\pdfxform resources { \pgf@sys@pdf@possible@resources } #2%
+    \expandafter\xdef\csname pgfsmaskxform@#1\endcsname{\the\pdflastxform}%
+  }%
+}
+\storebox@patch\pgfsys@transparencygroupfrombox{#1}{%
+  \pgf@sys@pdf@check@resources%
+  \pdfxform
+  attr { /Group << /S /Transparency >> } %<<
+  resources { \pgf@sys@pdf@possible@resources }
+  #1%
+  \setbox#1=\hbox{\pdfrefxform\pdflastxform}%
+}{%
+  \pgf@sys@pdf@check@resources%
+  \immediate\pdfxform
+  attr { /Group << /S /Transparency >> } %<<
+  resources { \pgf@sys@pdf@possible@resources }
+  #1%
+  \setbox#1=\hbox{\pdfrefxform\pdflastxform}%
+}
+\endgroup
+%    \end{macrocode}
+%
+% \iffalse
+%</storebox-pgf.sty>
+% \fi
+%
+% \Finale
+\endinput

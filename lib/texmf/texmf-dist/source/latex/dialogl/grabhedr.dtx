@@ -1,0 +1,513 @@
+%%% ====================================================================
+%%%  @LaTeX-style-file{
+%%%     filename        = "grabhedr.dtx",
+%%%     version         = "1.99a",
+%%%     date            = "2013/01/24",
+%%%     author          = "Michael Downes",
+%%%     copyright       = "This file is part of the dialogl package, released
+%%%                        under the LPPL; see dialogl.ins for details."
+%%%     keywords        = "TeX, file header,
+%%%     supported       = "no",
+%%%     abstract        = "This file defines a macro \inputfwh
+%%%       to be used instead of \input, to allow TeX to grab
+%%%       information from standardized file headers in the form
+%%%       proposed by Nelson Beebe during his term as president of the
+%%%       TeX Users Group. Of which all this here is an example.",
+%%%  }
+%%% ====================================================================
+%
+% \iffalse
+%<*driver>
+\input{dia-driv.tex}
+%</driver>
+% \fi
+%
+% \section{Introduction}
+%    This file defines a function \cw{inputfwh} to be used instead of
+%    \cw{input}, to allow \tex/ to grab information from standardized
+%    file headers in the form proposed by Nelson Beebe during his term
+%    as president of the \tex/ Users Group. Usage:
+%\begin{usage}
+%\inputfwh{file.nam}
+%\end{usage}
+%    Functions \cw{localcatcodes} and \cw{restorecatcodes} for
+%    managing catcode changes are also defined herein, as well as a
+%    handful of utility functions, many of them borrowed from
+%    \fn{latex.tex}: \cw{@empty}, \cw{@gobble}, \cw{@gobbletwo},
+%    \cw{@car}, \cw{@@input}, \cw{toks@}, \cw{afterfi},
+%    \cw{fileversiondate}, \cw{trap.input}.
+%
+%    The use of \cw{inputfwh}, \cw{fileversiondate}, and
+%    \cw{trap.input} as illustrated in \fn{dialog.sty} is cumbersome
+%    klugery that in fact would better be handled by appropriate
+%    functionality built into the format file. But none of the major
+%    formats have anything along these lines yet. (It would also help
+%    if \tex/ made the current input file name accessible, like
+%    \cw{inputlineno}.)
+%
+% \StopEventually{}
+%
+% \section{Implementation}
+%    Standard package identification:
+%    \begin{macrocode}
+%<*2e>
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{grabhedr}[1994/11/08 v0.9j]
+%</2e>
+%    \end{macrocode}
+%
+%    By enclosing this entire file in a group, saving and restoring
+%    catcodes `by hand' is rendered unnecessary. This is perhaps the
+%    best way to locally change catcodes, better than the
+%    \cw{localcatcodes} function defined below. But it tends to be
+%    inconvenient for the \tex/ programmer: every time you add
+%    something you have to remember to make it global; if you're like
+%    me, you end up making every change twice, with an abortive test
+%    run of \tex/ in between, in which you discover that a certain
+%    control sequence is undefined because you didn't assign it
+%    globally. (Using \cw{globaldefs} = 1 is dangerous in my experience;
+%    you have to take care not to accidentally change any variables that
+%    you don't want to be changed globally.)
+%    \begin{macrocode}
+\begingroup
+%    \end{macrocode}
+%    Inside this group, enforce normal catcodes. All definitions must
+%    be global in order to persist beyond the \cw{endgroup}.
+%    \begin{macrocode}
+\catcode96 12 % left quote
+\catcode`\= 12
+\catcode`\{=1 \catcode`\}=2 \catcode`\#=6
+\catcode`\$=3 \catcode`\~=13 \catcode`\^=7
+\catcode`\_=8 \catcode`\^^M=5 \catcode`\"=12
+%    \end{macrocode}
+%    Make \qc{\@} a letter for use in `private' control sequences.
+%    \begin{macrocode}
+\catcode`\@=11
+%    \end{macrocode}
+%
+% \section{Preliminaries}
+%    For \cw{@empty}, \cw{@gobble}, \ldots{} we use the \latex/ names so
+%    that if \fn{grabhedr.sty} is used with \latex/ we won't waste hash
+%    table and string pool space.
+%
+% \begin{macro}{\@empty}
+%    Empty macro, for \cw{ifx} tests or initialization of variables.
+%    \begin{macrocode}
+\gdef\@empty{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@gobble}
+% \begin{macro}{\@gobbletwo}
+% \begin{macro}{\@gobblethree}
+%    Functions for gobbling unwanted tokens.
+%    \begin{macrocode}
+\long\gdef\@gobble#1{}
+\long\gdef\@gobbletwo#1#2{}
+\long\gdef\@gobblethree#1#2#3{}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\@car}
+%    The function \cw{@car}, though not really needed by
+%    \fn{grabhedr.sty}, is needed by the principal customers of
+%    \fn{grabhedr.sty} (e.g., \fn{dialog.sty}).
+%    \begin{macrocode}
+\long\gdef\@car#1#2\@nil{#1}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@@input}
+%    To define \cw{@@input} as in \latex/ we want to let it equal to
+%    the primitive \cw{input}. But if a \latex/ format is being used
+%    we don't want to execute that assignment because by now
+%    \cw{input} has changed its meaning. And if some other format is
+%    being used it behooves us to check, before defining \cw{@@input},
+%    whether \cw{input} still has its primitive meaning. Otherwise
+%    there's a good chance \cw{inputfwh} will fail to work properly.
+%    \begin{macrocode}
+\ifx\UndEFiNed\@@input % LaTeX not loaded.
+%    \end{macrocode}
+%    This code shows a fairly easy way to check whether the meaning of a
+%    primitive control sequence is still the original meaning.
+%    \begin{macrocode}
+  \edef\0{\meaning\input}\edef\1{\string\input}%
+  \ifx\0\1%
+    \global\let\@@input\input
+  \else
+    \errhelp{%
+Grabhedr.sty needs to know the name of the
+\input primitive in order to define \inputfwh
+properly. Consult a TeXnician for help.}
+    \errmessage{%
+      Non-primitive \noexpand\input detected}%
+  \fi
+\fi
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\toks@}
+%    Scratch token register.
+%    \begin{macrocode}
+\global\toksdef\toks@=0
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\afterfi}
+%    Sonja Maus's function for throwing code over the \cw{fi} (``An
+%    Expansion Power Lemma'', \TUB{} vol 12 no 2 June 1991). (Except
+%    that she called this function \cw{beforefi}.)
+%
+%    \begin{macrocode}
+\long\gdef\afterfi#1\fi{\fi#1}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\nx@}
+%    We will be using \cw{noexpand} a lot; this abbreviation improves
+%    the readability of the code.
+%    \begin{macrocode}
+\global\let\nx@\noexpand
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\xp@}
+%    Another convenient abbreviation.
+%    \begin{macrocode}
+\global\let\xp@\expandafter
+%    \end{macrocode}
+% \end{macro}
+%
+% \section{Reading standard file headers}
+%    The function \cw{inputfwh} (`input file with header') inputs
+%    the given file, checking first to see if it starts with a
+%    standardized file header; if so, the filename, version and date
+%    are scanned for and stored in a control sequence.
+%
+%    For maximum robustness, we strive to rely on the fewest possible
+%    assumptions about what the file that is about to be input might
+%    contain.
+%
+%    Assumption 1: Percent character \qc{\%} has category 14. I.e., if
+%    the first line of the file to be input starts with \qc{\%}, it is
+%    OK to throw away that line.
+%
+% \begin{macro}{\@percentchar}
+%    \begin{macrocode}
+\begingroup \lccode`\.=`\%%
+\lowercase{\gdef\@percentchar{.}}%
+\endgroup
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\fileversiondate}
+%    The function \cw{fileversiondate} is not only a useful support
+%    function for \cw{inputfwh}, it can also be used by itself at the
+%    beginning of a file to set file name, version, and date correctly
+%    even if the file is input by some means other than
+%    \cw{inputfwh}\Dash assuming that the arguments of the
+%    \cw{fileversiondate} command are kept properly up to date.
+%    \begin{macrocode}
+\gdef\fileversiondate#1#2#3{%
+  \xp@\xdef\csname#1\endcsname{#2 (#3)}%
+  \def\filename{#1}\def\fileversion{#2}%
+  \def\filedate{#3}%
+  \message{#1 \csname#1\endcsname}%
+}
+%    \end{macrocode}
+%    And now apply \cw{fileversiondate} to this file.
+%    \begin{macrocode}
+%<*209>
+\fileversiondate{grabhedr.sty}{0.9j}{1994/11/08}
+%</209>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@filehdrstart}
+%    \fn{filehdr.el} by default adds a string of equal signs (with an
+%    initial comment prefix) at the very top of a file header. This
+%    string must be scanned away first before we can start looking for
+%    the real information of the file header.
+%    \begin{macrocode}
+\xdef\@filehdrstart{%
+  \@percentchar\@percentchar\@percentchar\space
+  ==================================%
+  ==================================}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@scanfileheader}
+%    The purpose of this function is just to scan up to the opening
+%    brace that marks the beginning of the file header body.
+%    Everything before that is ignored, not needed for our present
+%    purposes.
+%    \begin{macrocode}
+\gdef\@scanfileheader#1@#2#{\@xscanfileheader}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@xscanfileheader}
+%    Throw in some dummy values of version and date at the end so that
+%    all we require from a file header is that the filename field must
+%    be present.
+%    \begin{macrocode}
+\long\gdef\@xscanfileheader#1{%
+  \@yscanfileheader#1{} version = "??",
+  date = "??",\@yscanfileheader}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@yscanfileheader}
+%    This function assumes that filename, version, and date of a file
+%    are listed in that order (but not necessarily adjacent). It's
+%    possible for the version and date to be missing, or out of order,
+%    but the corresponding \tex/ variables \cw{fileversion} and
+%    \cw{filedate} will not get set properly unless the order is:
+%    filename, [\ldots,] version, [\ldots,] date. Trying to handle
+%    different orderings would be desirable but I haven't yet been
+%    struck by a suitable flash of insight on how to do it without
+%    grubby, time-consuming picking apart of the entire file header.
+%    \begin{macrocode}
+\long\gdef\@yscanfileheader
+  #1 filename = "#2",#3 version = "#4",%
+  #5 date = "#6",#7\@yscanfileheader{%
+  \endgroup
+  \csname fileversiondate\endcsname{#2}{#4}{#6}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@readfirstheaderline}
+%    This function has to look at the first line of the file to see if
+%    it has the expected form for the first line of a file header.
+%    \begin{macrocode}
+\begingroup
+\lccode`\$=`\^^M
+\lowercase{\gdef\@readfirstheaderline#1$}{%
+  \toks@{#1}%
+  \edef\@tempa{\@percentchar\the\toks@}%
+  \ifx\@tempa\@filehdrstart
+    \endgroup \begingroup
+    \catcode`\%=9 \catcode`\^^M=5 \catcode`\@=11
+%    \end{macrocode}
+%    Double quote and equals sign need to be category 12 in order for
+%    the parameter matching of \cw{@xscanfileheader} to work, and
+%    space needs its normal catcode of 10.
+%    \begin{macrocode}
+    \catcode`\ =10 \catcode`\==12 \catcode`\"=12
+  \xp@\@scanfileheader
+  \else
+    \message{(* Missing file header? *)}%
+    \afterfi\endgroup
+  \fi}
+\endgroup
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@xinputfwh}
+%    An auxiliary function.
+%    \begin{macrocode}
+\gdef\@xinputfwh{%
+  \ifx\next\@readfirstheaderline
+%    \end{macrocode}
+%    Sanitize a few characters. Otherwise an unmatched brace or other
+%    special character might cause a problem in the process of reading
+%    the first line as a macro argument.
+%    \begin{macrocode}
+    \catcode`\%=12 \catcode`\{=12 \catcode`\}=12
+    \catcode`\\=12 \catcode`\^^L=12
+    \catcode`\^=12
+%    Unique terminator token for the first line.
+    \catcode`\^^M=3\relax
+  \else \endgroup\fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@inputfwh}
+%    Auxiliary function, carries out the necessary \cw{futurelet}.
+%    \begin{macrocode}
+\gdef\@inputfwh{\futurelet\next\@xinputfwh}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\inputfwh}
+%    Strategy for (almost) bulletproof reading of the first line of
+%    the input file is like this: Give the percent sign a special
+%    catcode, then use \cw{futurelet} to freeze the catcode of the
+%    first token in the input file. If the first token is {\em not\/}
+%    a percent character, then fine, just close the group wherein the
+%    percent character had its special catcode, and proceed with
+%    normal input; the first token will have its proper catcode
+%    because we did not change anything except the percent  character.
+%    Otherwise, we still proceed with `normal' input execution, but by
+%    making \qc{\%} active and defining it suitably, we can carry out
+%    further tests to see if the first file line has the expected form
+%    (three percent signs plus lots of equal signs).
+%    \begin{macrocode}
+\gdef\inputfwh#1{%
+  \begingroup\catcode`\%=\active
+  \endlinechar`\^^M\relax
+  \lccode`\~=`\%\relax
+  \lowercase{\let~}\@readfirstheaderline
+  \xp@\@inputfwh\@@input #1\relax
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \section{Managing catcode changes}
+%
+%    A survey of other methods for saving and restoring catcodes would
+%    be more work than I have time for at the moment. The method
+%    given here is the best one I know (other methods use up one extra
+%    control sequence name per file, or don't robustly
+%    handle multiple levels of file nesting).
+%
+% \begin{macro}{\localcatcodes}
+%    The \cw{localcatcodes} function changes catcodes according to the
+%    character/catcode pairs given in its argument, saving the
+%    previous catcode values of those characters on a stack so that
+%    they can be retrieved later with \cw{restorecatcodes}. Example:
+%\begin{usage}
+%\localcatcodes{\@{11}\"\active}
+%\end{usage}
+%    to change the catcode of \cs{\@} to 11 (letter) and the catcode
+%    of \qc{\"} to 13 (active). In \plaintex/ you'd better be careful
+%    to use \qc{\+} instead of \cs{\+} in the argument of
+%    \cw{localcatcodes} because of the outerness of \cs{\+}.
+%
+%    This function works by using token registers 0 and 4
+%    to accumulate catcode assignment statements: in \cw{toks0} we put
+%    the statements necessary to restore catcodes to their previous
+%    values, while in \cw{toks 4} we put the statements necessary to
+%    set catcodes to their new values.
+%    \begin{macrocode}
+\gdef\localcatcodes#1{%
+  \ifx\@empty\@catcodestack
+    \gdef\@catcodestack{{}}%
+  \fi
+  \def\do##1##2{%
+    \ifnum##2>\z@
+      \catcode\number`##1 \space
+      \number\catcode`##1\relax
+    \expandafter\do\fi}%
+  \xdef\@catcodestack{{\do#1\relax\m@ne}%
+    \@catcodestack}%
+  \def\do##1##2{\catcode`##1 ##2\relax\do}%
+  \do#1\ {\catcode32\let\do}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@catcodestack}
+%    Init the stack with an empty element; otherwise popping the
+%    next-to-last element would wrongly remove braces from the last
+%    element. But as a matter of fact we could just as well initialize
+%    \cw{@catcodestack} to empty because \cw{localcatcodes} is careful
+%    to add an empty final element if necessary.
+%    \begin{macrocode}
+\gdef\@catcodestack{{}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\restorecatcodes}
+%    The function \cw{restorecatcodes} has to pop the stack and
+%    execute the popped code.
+%    \begin{macrocode}
+\gdef\restorecatcodes{%
+  \begingroup
+  \ifx\@empty\@catcodestack
+    \errmessage{Can't pop catcodes;
+      \nx@\@catcodestack = empty}%
+    \endgroup
+  \else
+    \def\do##1##2\do{%
+      \gdef\@catcodestack{##2}%
+%    \end{macrocode}
+%    Notice the placement of \arg{1} after the \cw{endgroup}, so that
+%    the catcode assignments are local assignments.
+%    \begin{macrocode}
+      \endgroup##1}%
+    \xp@\do\@catcodestack\do
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \section{Trapping redundant input statements}
+%    The utility \fn{listout.tex} calls \fn{menus.sty}, which calls
+%    \fn{dialog.sty}, and all three of these files start by loading
+%    \fn{grabhedr.sty} in order to take advantage of its functions
+%    \cw{fileversiondate}, \cw{localcatcodes}, and \cw{inputfwh}. But
+%    consequently, when \fn{listout.tex} is used there will be two
+%    redundant attempts to load \fn{grabhedr.sty}. The straightforward
+%    way to avoid the redundant input attempts would be to surround
+%    them with an \cw{ifx} test:
+%
+%^^V \ifx\undefined\fileversiondate
+%^^V   \input grabhedr.sty \relax
+%^^V   \fileversiondate{foo.bar}{0.9e}{10-Jun-1993}
+%^^V \fi
+%
+%    This method has a few drawbacks, however: (1)~the conditional
+%    remains open throughout the processing of everything in
+%    \fn{grabhedr.sty} and the \cw{fileversiondate} statement, which
+%    makes any \cw{else} or \cw{fi} mismatch problems harder to debug;
+%    (2)~if \cw{undefined} becomes accidentally defined the \cw{ifx}
+%    test will fail; (3)~choosing the right control sequence to test
+%    against \cw{undefined} requires a little care.
+%
+%    In a situation where we know that the file to be input has had
+%    \cw{fileversiondate} applied to it, if it was already input, then
+%    we have a failsafe control sequence that we can test to find out
+%    whether the file has already been input\Dash the name
+%    of the file. Assuming a standard form for the input statement
+%    (one that will work with either plain \tex/ or \latex/, and makes
+%    as few assumptions as possible), we can write a function that
+%    will trap input statements and execute them only if the given
+%    file has not yet been loaded:
+%
+%^^V \csname trap.input\endcsname
+%^^V \input grabhedr.sty \relax
+%^^V \fileversiondate{foo.bar}{1.2}{1993-Jun-07}
+%
+% \begin{macro}{\trap.input}
+%    The function \cw{trap.input} scans for an input statement in
+%    canonical form and executes it if and only if the file has not yet
+%    been input (more precisely, if the control sequence consisting of
+%    the file name is undefined, which means that it has not had
+%    \cw{fileversiondate} applied to it). The canonical form
+%    that I consider to be the best is \cw{input} \meta{full file
+%    name}{\tt\char32 }\cw{relax}. Having the \cw{relax} means that the
+%    input statement will not try to expand beyond the end of the line
+%    if \cw{endlinechar} is catcoded to 9 (ignore), as is done rather
+%    frequently now by progressive \tex/ programmers. The \cw{relax}
+%    would ordinarily render the space after the file name unnecessary,
+%    but I prefer leaving the space in to avoid interfering with
+%    redefinitions of \cw{input} to take a space-delimited argument
+%    that are occasionally done to achieve other special effects (see,
+%    for example, ``Organizing a large collection of stylefiles'', by
+%    Angelika Binding, {\sl Cahiers GUTenberg}, num\'ero 10--11,
+%    septembre 1991, p.~175.) \latex/'s argument form
+%    \cw{input}\verb"{...}" cannot, unfortunately, be the
+%    canonical form if \plaintex/ compatibility is required.
+%    \begin{macrocode}
+\expandafter\gdef\csname trap.input\endcsname
+  \input#1 \relax{%
+    \expandafter\ifx\csname#1\endcsname\relax
+      \afterfi\inputfwh{#1}\relax
+    \fi}
+%    \end{macrocode}
+% \end{macro}
+%
+%    End the group that encloses this entire file, and then call
+%    \cw{endinput}.
+%    \begin{macrocode}
+\endgroup
+\endinput
+%    \end{macrocode}
+%
+% \CheckSum{294}
+% \Finale

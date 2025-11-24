@@ -1,0 +1,170 @@
+% \subsection{List list of tokens}
+%
+% Two-dimensional arrays of tokens, or lists of lists of tokens.
+%
+%
+% Format of the list:
+%
+% \begin{verbatim}
+% {...tokens1...}{...tokens2...}...{...tokensN...}
+% \end{verbatim}
+%
+% Token manipulation should not belong to the ``cals'' package,
+% and the macros from this section have the prefix |llt@|
+% instead of |cals@|. Probably it is better to use some CTAN
+% package, but initially the llt-code was small and simple, so
+% I did not want dependencies, and now I do not want to replace
+% working code with something new.
+%
+% In comments to these functions, a parameter of type \textit{token list}
+% is a macro which will be expanded once to get the tokens, and
+% \textit{list list} is a macro which stores the two-dimensional array.
+%
+% An example of use:
+% \begin{verbatim}
+% \def\aaa{aaa}
+% \def\bbb{bbb}
+% \def\ccc{ccc}
+% \def\lst{}         % empty list
+% \llt@cons\bbb\lst  % \lst -> "{bbb}"
+% \llt@snoc\lst\ccc  % \lst -> "{bbb}{ccc}"
+% \llt@cons\aaa\lst  % \lst -> "{aaa}{bbb}{ccc}"
+% \llt@decons\lst    % \llt@car -> "aaa", \lst -> "{bbb}{ccc}"
+% \llt@rot\lst       % \llt@car -> "bbb", \lst -> "{ccc}{bbb}"
+% \end{verbatim}
+%
+%
+
+%
+% \begin{macro}{\llt@cons}
+% Prepends the token list \#1 to the list list \#2.
+% Corrupts the token registers 0 and~2.
+%    \begin{macrocode}
+\def\llt@cons#1#2{%
+\toks0=\expandafter{#1}%
+\toks2=\expandafter{#2}%
+\edef#2{\noexpand{\the\toks0}\the\toks2 }%
+}
+%    \end{macrocode}
+% \end{macro}
+
+%
+% \begin{macro}{\llt@snoc}
+% Appends the token list \#2 to the list list \#1 (note the order
+% of parameters).
+% Macro corrupts the token registers 0 and 2.
+%
+%    \begin{macrocode}
+\def\llt@snoc#1#2{%
+\toks0=\expandafter{#1}%
+\toks2=\expandafter{#2}%
+\edef#1{\the\toks0 \noexpand{\the\toks2}}%
+}
+%    \end{macrocode}
+% \end{macro}
+
+%
+% \begin{macro}{\llt@car}
+% A token list, set as a side-effect of the list deconstruction
+% and rotation functions.
+% \end{macro}
+
+%
+% \begin{macro}{\llt@decons}
+% List deconstruction. The first item is removed from the list list \#1
+% and its tokens are put to the token list |\llt@car|.
+% Corrupts the token register 0.
+% Undefined behaviour if the list list has no items.
+%
+% The actual work happens on the |\expandafter| line.
+% It's hard to explain, let me show the macro expansion,
+% I hope it's self-explaining.
+%
+% \begin{verbatim}
+% \expandafter\llt@decons@open\lst}      -->
+% \llt@decons@open{aaa}{bbb}{ccc}{ddd}}  -->
+% \def\llt@car{aaa} \toks0=\llt@opengroup {bbb}{ccc}{ddd}}  -->
+% \def\llt@car{aaa} \toks0={{bbb}{ccc}{ddd}}
+% \end{verbatim}
+% 
+% Why I use |\let\llt@opengroup={| inside the definition?
+% Only to balance the number of opening and closing brackets.
+% Otherwise TeX will not compile the definition.
+%
+% Initially I tried to use the following helper:
+%
+% \begin{verbatim}
+% \def\decons@helper#1#2\relax{%
+%   \def\llt@car{#1}%
+%   \def\list{#2}}
+% \end{verbatim}
+%
+% If a call is |\decons@helper{aaa}{bbb}{ccc}\relax| then
+% all is ok, the helper gets: \#1 is |aaa| and \#2 is
+% |{bbb}{ccc}|.
+%
+% Unfortunately, if the list has two items and the call is
+% |\decons@helper{aaa}{bbb}}\relax|, then the helper gets:
+% \#1 is |aaa| and \#2 is |bbb| instead of |{bbb}|.
+% The grouping tokens are lost, and we can't detect it.
+%
+%    \begin{macrocode}
+\def\llt@decons@open#1{%
+\def\llt@car{#1}%
+\toks0=\llt@opengroup
+}
+
+\def\llt@decons#1{%
+\let\llt@opengroup={%
+\expandafter\llt@decons@open#1}%
+\edef#1{\the\toks0}%
+}
+%    \end{macrocode}
+% \end{macro}
+
+%
+% \begin{macro}{\llt@rot}
+% Rotates the list list \#1. The first item becomes the last. Also,
+% its tokens are saved to token list |\llt@car|.
+% The second item becomes the first item, the third the second etc.
+% Corrupts the token registers 0 and 2.
+%
+%    \begin{macrocode}
+\def\llt@rot#1{%
+\ifx#1\empty
+\let\llt@car=\relax
+\else
+\llt@decons#1%
+\llt@snoc#1\llt@car%
+\fi
+}
+%    \end{macrocode}
+% \end{macro}
+
+%
+% \begin{macro}{\llt@desnoc}
+% Very unefficient list deconstruction. The last item is removed
+% from the list list \#1 % and its tokens are put to the token
+% list |\llt@car|. Corrupts the token registers 0 and 2.
+% Undefined behaviour if the list list has no items.
+%
+% |\llt@desnocII| is used to hide |\if| from the loop.
+%    \begin{macrocode}
+\def\llt@desnocII#1{
+\ifx\empty#1%
+\let\llt@tmp=n%
+\else
+\llt@snoc{\llt@newlist}{\llt@car}%
+\let\llt@tmp=y%
+\fi
+}
+
+\def\llt@desnoc#1{%
+\def\llt@newlist{}%
+\loop
+\llt@decons{#1}%
+\llt@desnocII{#1}%
+\if y\llt@tmp \repeat
+\let#1=\llt@newlist}
+%    \end{macrocode}
+% \end{macro}

@@ -1,0 +1,3190 @@
+% NATH.STY --- a LaTeX document style implementing NAtural maTH notation
+%
+% Copyright (c) 1996-2003 by Michal Marvan
+%
+
+\ifx\nathstyle\undefined
+\else \typeout{NATH.STY will not be loaded twice.}
+ \expandafter\endinput
+\fi
+
+\newlinechar`\^^J
+
+\typeout{^^JNath as of 21 March 2003 
+ ^^JImplementing NAtural maTH notation}
+%
+%   U s a g e 
+%
+%     \documentstyle[nath]{article}
+%
+% or
+%
+%     \documentclass{article}
+%     \usepackage{nath}
+%
+
+%
+%   L i c e n s e
+%
+
+% Nath is a free software distributed under the terms of the GNU General 
+% Public License <http://www.gnu.org/copyleft/gpl.html> as published by 
+% the Free Software Foundation; either version 2 of the License, or 
+% (at your option) any later version.
+%
+% In particular, Nath comes with ABSOLUTELY NO WARRANTY.
+
+%
+%   O p t i o n s
+%
+
+% Options may be also set in the body by \nathstyle.
+
+\def\nathstyle#1{\@for\@tempa:={#1}\do{\expandafter\nathstyle@\@tempa==\relax}%
+ \ignorespaces}
+
+\def\on@@@{on}
+\def\off@@@{off}
+
+\def\nathstyle@#1=#2=#3{\def\@tempa{#1}%
+ \expandafter\ifx\csname if#1\endcsname\relax
+  \n@err{Unknown nath style}{I am ignoring the option `#1' in \nathstyle}
+ \else \def\@tempb{#2}%  #3 is `\relax' or `='
+  \ifx\@tempb\empty \csname #1true\endcsname \else 
+   \ifx\@tempb\on@@@ \csname #1true\endcsname \else 
+    \ifx\@tempb\off@@@ \csname #1false\endcsname \else 
+     \n@err{Invalid argument in \string\nathstyle}%
+      {Nath style argument must be either name or name=on or name=off}%
+  \fi\fi\fi
+ \fi}
+
+\newif\ifgeometry
+\newif\iftensors
+\newif\ifleqno
+\newif\ifdebug
+\newif\ifsilent
+
+%
+%   E r r o r    m e s s a g e s   a n d   w a r n i n g s
+%
+ 
+% Nath errors are marked by a black box, sometimes wrongly placed. 
+
+\def\natherrormark{\hbox{\vrule \@height\prorated@ em \@width\prorated@ ex}}
+
+\def\n@err#1#2{\errhelp\expandafter{#2}\errmessage{#1}\natherrormark}
+
+\def\n@warning#1{\ifsilent\else\typeout{Nath Warning: #1\on@line.}\fi}
+
+\ifx\Nath\undefined\else 
+ \n@warning{NATH.STY will not be loaded again}
+\expandafter\endinput\fi
+
+%
+%   F o n t s
+%
+
+% This style does not introduce any new fonts. It is recommended (but not 
+% required) to have a standard set of AMS fonts introduced independently.
+
+%
+%   D i m e n s i o n s
+%
+
+% A new dimension called \mex (math ex) is equal to 1 ex prorated 
+% according to the level of \mathcount@ (see currstyle)
+
+\newdimen\mex
+\mex=1ex
+
+% Approximately, 1 mex = 8 mu, but can be used where mu cannot, e.g,
+% with \ifdim, height, depth, width, etc.
+
+\def\prorated@{\ifcase\mathcount@ 1 \or.7 \else.5 \fi}
+
+%
+%   P r o t e c t e d   d e f s
+%
+
+% I want that all math commands are robust:
+
+\newtoks\protect@toks
+
+\def\pdef#1{\protect@toks=\expandafter{\the\protect@toks
+ \pdef@#1}%
+ \def#1}
+
+\def\pdef@#1{\def#1{\protect#1}}
+
+% ... even begin and end
+
+\let\o@begin\begin
+\pdef\begin{\o@begin}
+
+\let\o@end\end
+\pdef\end{\o@end}
+
+% Macro to make an existing command robust
+
+\def\makerobust#1{%
+ \expandafter\let\csname @o@\expandafter\@gobble\string #1\endcsname=#1
+ \edef#1{\noexpand\protect
+ \expandafter\noexpand\csname @o@\expandafter\@gobble\string #1\endcsname}}
+
+% Making composed math symbols robust:
+
+\makerobust\cong
+\makerobust\notin
+
+%
+%   C o n t r o l   m a c r o s  
+%
+
+% Here is a global version of TeX's loop macro:
+
+\def\g@loop#1\repeat{\gdef\g@body{#1}\g@iterate}
+
+\def\g@iterate{\g@body\global\let\gnext=\g@iterate
+  \else \global\let\gnext=\relax \fi
+ \gnext}
+
+% Some tests put their result into \ifresult@
+
+\newif\ifresult@
+
+\def\old#1{\csname o@#1\endcsname}
+
+%
+%   S t a c k s
+%
+
+\def\put@#1#2{\edef#2{#1\relax#2}}
+
+\def\get@#1#2{\expandafter\get@@#2\endget@@#1#2}
+
+\def\get@@#1\relax#2\endget@@#3#4{\edef#3{#1}\edef#4{#2}}
+
+%
+%   M a t h c o d e s
+%
+
+% Many characters are live (\mathcode = "8000) in math mode. 
+
+% After saving their original mathcodes:
+
+\edef\mc@lparenthesis{\mathchar\the\mathcode`(\relax}
+\edef\mc@rparenthesis{\mathchar\the\mathcode`)\relax} 
+\edef\mc@lbrack{\mathchar\the\mathcode`[\relax} 
+\edef\mc@rbrack{\mathchar\the\mathcode`]\relax} 
+\edef\mc@comma{\mathchar\the\mathcode`,\relax}
+\edef\mc@semicolon{\mathchar\the\mathcode`;\relax}
+\edef\lt{\mathchar\the\mathcode`<\relax}
+\edef\gt{\mathchar\the\mathcode`>\relax}
+\edef\mc@factorial{\mathchar\the\mathcode`!\relax}
+\edef\mc@slash{\mathchar\the\mathcode`/\relax}
+\edef\vert{\mathchar\the\mathcode`|\relax} 
+
+% we assign new ones:
+
+\mathcode`\(="8000 \mathcode`\[="8000 \mathcode`\<="8000 
+\mathcode`\)="8000 \mathcode`\]="8000 \mathcode`\>="8000 
+\mathcode`\,="8000 \mathcode`\;="8000 \mathcode`\^="8000
+\mathcode`\!="8000 \mathcode`\`="8000 \mathcode`\_="8000
+
+% Before defining live characters, one must call \livechars@ to
+% set catcodes to 13 (active).
+
+\def\livechars@{
+ \catcode`\(=13 \catcode`\[=13 \catcode`\<=13 
+ \catcode`\)=13 \catcode`\]=13 \catcode`\>=13 
+ \catcode`\,=13 \catcode`\;=13
+ \catcode`\!=13 \catcode`\`=13} 
+
+\def\killchars@{
+ \catcode`\(=12 \catcode`\[=12 \catcode`\<=12 
+ \catcode`\)=12 \catcode`\]=12 \catcode`\>=12 
+ \catcode`\,=12 \catcode`\;=12
+ \catcode`\!=12 \catcode`\`=12} 
+
+% Here are the definitions:
+
+\livechars@
+
+\def({\delim@l 1\ch@lparenthesis}
+\def){\delim@r 1\ch@rparenthesis}
+\def[{\delim@l 1\o@lbrack}
+\def]{\delim@r 1\o@rbrack}
+\def!{\factorial}
+\def,{\@comma}
+\def;{\@semicolon}
+\def`{\abbreviation}
+
+% Every math calls \mathoptions@on to set live definition of <, >
+% depending on the current value of ifgeometry; and to set 
+% fontdimens according to the current value of iftensors
+
+% The following control sequences contain
+
+\def\mathoptions@on{%
+ \ifgeometry % if geometry=on
+  \def<{\delim@l 1\o@langle}%
+  \def>{\delim@r 1\o@rangle}%
+ \else % if geometry=off
+  \def<{\lt}%
+  \def>{\gt}%
+ \fi
+ \iftensors % if tensors=on
+  \edef\fdviii@textfontiii{\the\fontdimen8\textfont3}% 
+  \edef\fdxiii@textfontii{\the\fontdimen13\textfont2}% 
+  \edef\fdxiv@textfontii{\the\fontdimen14\textfont2}% 
+  \edef\fdxv@textfontii{\the\fontdimen15\textfont2}% 
+  \edef\fdxvi@textfontii{\the\fontdimen16\textfont2}% 
+  \fontdimen 8\textfont3=.075ex% 1/4 of min superscript/subscript clearance
+  \fontdimen13\textfont2=1.3ex% min superscript shift in displaystyle
+  \fontdimen14\textfont2=1.3ex% min superscript shift otherwise
+  \fontdimen15\textfont2=1.3ex% min superscript shift in restricted style
+  \fontdimen16\textfont2=.65ex% min subscript shift if no superscript
+  \fontdimen17\textfont2=0ex% min subscript shift if no superscript
+  \relax
+ \fi
+}
+
+\def\mathoptions@off{%
+ \iftensors
+  \fontdimen 8\textfont3=\fdviii@textfontiii
+  \fontdimen13\textfont2=\fdxiii@textfontii
+  \fontdimen14\textfont2=\fdxiv@textfontii
+  \fontdimen15\textfont2=\fdxv@textfontii
+  \fontdimen16\textfont2=\fdxvi@textfontii
+  \relax
+ \fi}
+
+
+\killchars@
+
+%
+%   D o l l a r s
+%
+
+% Math mode is inline or displayed.
+% Top level macros to start either mode are:
+
+%      To start         use 
+%   ----------------  ------------------------ 
+%    inline math       $ ... $
+%    displayed math    $$ ... $$ or \[ ... \]
+%                      or math environments such
+%                      as equation, eqns, eqns*
+
+% The $ is active (catcode = 13).
+%
+% The original $ (catcode = 3) is stored in \o@dollar.
+% \o@math is the original $ followed by \relax.
+% \o@display is the original double $$.
+
+\let\o@dollar=$
+\def\o@math{\o@dollar\relax}       % calls \everymath 
+\def\o@display{\o@dollar\o@dollar}  % calls \everydisplay  
+
+% \everymath and \everydisplay
+
+\everymath{} % keep empty
+\everydisplay{} % keep empty
+
+
+\catcode`\$=13
+
+\def$#1${\@@dollar{#1}}
+
+\pdef\@@dollar#1{%
+ \ifmmode\else\begingroup\fi % no begingroup if closing $
+ \def\next{#1}% 
+ \ifx\next\empty % if $$
+  \ifmmode % if closing $$
+   \] \def\next{\endgroup\ignorespaces}%
+  \else \[ \def\next{\relax}%
+  \fi 
+ \else                     % if $; #1 = the whole content between $'s
+  \imath@{#1}%
+  \let\next\endgroup
+ \fi
+ \next}
+
+\catcode`\$=3
+
+
+% $'s eventually call internal commands to start math mode, which are
+%    \imath@{ ... } 
+%     ... \dmathoff@
+
+\def\dmathon@{\o@math
+ \setbox\sizebox\delimstrut@ % initialize sizebox
+ \begingroup
+ \mathoptions@on
+ \displayon@ % start displayed
+}
+
+% \dmathoff@ == end displayed style
+%   end group
+
+\def\dmathoff@{\enddisplaydelims@
+ \mathoptions@off
+ \endgroup
+ \o@math}
+
+\def\imath@#1{\mathoptions@on\o@math\inline{#1}\o@math\mathoptions@off}
+
+\def\(#1\){\imath@{#1}}
+
+% The math environment is disabled
+
+\def\math{\n@err{Disabled environment. Use $ to begin math}
+ {I am inserting $ to start inline math mode.}\o@math}
+\def\endmath{\n@err{Obsolete command. Use $ to end math.}
+ {I am inserting $ to end inline math mode.}\o@math}
+
+%
+%   G e n e r i c   d i s p l a y   m a t h   m a c r o
+%
+
+% $$, \[, \], and all displayed math environments use low-level macros 
+% make@eq/endmake@eq to format a displayed formula.
+% Usage:
+%
+%    \o@display \make@eq
+%    ...
+%    \endmake@eq \o@display
+
+% There is a dimension register called \mathindent to control the 
+% positioning. If \mathindent > 0, formulas are left-indented that
+% amount, otherwise they are centered.
+
+\newdimen\mathindent     
+\mathindent=4pc
+
+\newdimen\disp@box@width 
+\newdimen\disp@width     
+
+\let\o@label=\label % store the original \label
+
+\newif\ifmultiline@
+
+\let\o@eqno=\eqno % store the TeX's \eqno
+\let\o@leqno=\leqno % store the TeX's \leqno
+
+\def\make@eq{%
+ \global\let\do@eqno=\curr@eqno 
+ \def\the@eqlabel{}%
+ \def\label##1{\gdef\the@eqlabel{##1}}%
+ \display@true
+ \nodisplay@false
+ \protectinline@false
+ \ifdim\mathindent<0pc  % if centered then nothing
+ \else  % if flushleft
+  \disp@box@width=\linewidth \advance\disp@box@width -\mathindent
+  \disp@width=\disp@box@width \advance\disp@width -\mathindent
+  \hbox to \disp@width\bgroup 
+  \vbox\bgroup % \ifdebug\hrule\fi
+  \hsize\disp@box@width
+  \parindent=0pt
+  \parfillskip=0pt
+  \leavevmode\o@math
+ \fi
+ \global\multiline@false
+ \setbox0 \vbox\bgroup} % starting (multiline) vbox
+
+\def\endmake@eq{\egroup % ending (multiline) vbox
+ \ifeqnumbering@ 
+  \ifmultiline@
+   \vcenter{\box0} % make the equation number vertically centered
+  \else \box0
+  \fi
+  \ifdim\mathindent<0pc  % if centered
+   \ifleqno\else \o@eqno{\do@eqno}\fi
+  \else % if flushleft
+   \o@math
+   \hfil\null
+   \ifleqno\else \hfil\null\hfil \hbox{\do@eqno} \fi
+   \egroup
+   \hss\egroup
+  \fi
+  \ifleqno \o@leqno{\do@eqno} \fi
+ \else % if no numbering
+  \ifdim\mathindent<0pc  % if centered
+   \box0 
+  \else \box0\o@math \hfil \null\egroup \hss \egroup
+  \fi
+ \fi
+}
+
+% The purpose of the vbox with parfillskip = 0 and triple filling
+% is that the equation number will go on the line following the
+% formula if the formula is too long.
+
+% Catch the global option `leqno':
+
+\def\ds@leqno{\leqnotrue}
+
+%
+%   D i s p l a y   l i n e s   a n d   b l o c k s 
+%
+
+% A single natural-width hbox with displayed material inside 
+% is produced by \displayline@.
+
+% Here is the skip between adjacent displaylines
+
+\newskip\interdisplayskip
+\interdisplayskip=1.67 ex
+
+% An empty displayline must not produce any vertical space. 
+% Empty is if of length < or = to zero
+
+\def\displayline@{\setbox0\hbox\bgroup
+ \o@math\dcurrstyle@}
+
+\def\enddisplayline{\o@math\egroup 
+ \ifdim\wd0>0pt \box0
+ \else \box0
+  \vskip-\interdisplayskip
+ \fi}
+
+% The formula inside may actually be a wall-return block, i.e.,
+% may be multiline.
+
+% A multiline block is a top-aligned vbox, followed by new line.
+% The command to start a block is \wall, the command to end it 
+% is \return. Adjacent returns must not generate an empty line.
+%
+%      \wall
+%        formula; lines separated with \\
+%      \return
+%
+
+\newif\ifinnerwall@ % if inside another wall-return block
+\innerwall@false
+
+% We define generic \d@wall and \d@return here. Actual wall and return 
+% are defined in displaydelims, after some escape machinery.
+
+\def\d@wall#1{\hbox\bgroup 
+%\ifdebug\vrule\@width 1pt\fi
+ \vtop\bgroup\offinterlineskip 
+ \if0#1 % if wall 
+  \edef\pad@{\relax}
+ \else % if shifted
+  \edef\pad@{\pad@\@cdr#1\@nil}
+ \fi
+ \innerwall@true
+ \displayline@
+}
+
+\def\d@return{\enddisplayline 
+ \egroup % end vtop
+%\ifdebug\vrule \@width 1pt\fi
+ \egroup % end hbox
+ \ifinnerwall@ \curr@cr \fi
+}
+
+%Inside any wall-return block, \\ should be \d@cr:
+
+\def\d@cr#1{\enddisplayline\vskip\interdisplayskip
+ \global\multiline@true
+ \displayline@
+ #1 % may be \pad@ or \relax
+ }
+
+%If \wall is misplaced
+
+\newif\ifwallallowed@
+\wallallowed@true
+
+%
+%   D i s p l a y m a t h   e n v i r o n m e n t s 
+%
+
+% A single equation; unnumbered:
+%
+%      $$ complete formula $$
+% or
+%      \[ complete formula \]
+
+% numbered:
+%
+%      \begin{equation} complete formula \end{equation}
+
+% A pile of equations; unnumbered:
+%
+%      \begin{eqns*}
+%        complete formulas separated with \\
+%      \end{eqns*}
+
+% numbered:
+%
+%      \begin{eqns}
+%        complete formulas separated with \\
+%      \end{eqns}
+
+% holding the same number; followed by a letter:
+%
+%      \begin{eqnabc}
+%        complete formulas separated with \\
+%      \end{eqnabc}
+
+% The environments set ifeqnumbering@
+% and call make@eq.
+% $$, \[ and \begin{equation} start a wall-return block.
+% This means that 
+
+\def\[{\begingroup 
+ \global\eqnumbering@false
+ \curr@cr@is@wall@cr
+ \o@display\make@eq\hbox\bgroup\dmathon@\wall\mathopen{}}
+
+\def\]{\return\dmathoff@\egroup\endmake@eq\o@display
+ \endgroup\ignorespaces}
+ 
+\newif\ifeqnumbering@     % global
+
+\def\equation{\begingroup
+ \global\eqnumbering@true
+ \curr@cr@is@wall@cr
+ \o@display\make@eq\hbox\bgroup\dmathon@\wall\mathopen{}}
+
+\def\endequation{\return\dmathoff@\egroup\endmake@eq\o@display
+ \endgroup \global\@ignoretrue}
+
+% Unnumbered equation for backward compatibility
+
+\expandafter\def\csname equation*\endcsname{\[}
+\expandafter\def\csname endequation*\endcsname{\]\global\@ignoretrue}
+
+% Important! The \mathopen{} after \wall protects active characters from
+% being scanned prematurely. 
+
+\def\eqns{\begingroup
+ \belowdisplayskip@=\belowdisplayskip
+ \belowdisplayskip=0pt
+ \belowdisplayshortskip=0pt
+ \global\eqnumbering@true
+ \def\curr@cr{\eqns@cr \global\eqnumbering@true}
+ \let\\\curr@cr
+ \postdisplaypenalty=9999
+ \belowdisplayshortskip=\belowdisplayskip
+ \o@display\make@eq\hbox\bgroup\dmathon@}
+
+\def\endeqns{\dmathoff@\egroup
+ \endmake@eq\o@display
+ \vskip\belowdisplayskip@
+ \endgroup
+ \global\@ignoretrue
+ \noindent}
+
+\expandafter
+\def\csname eqns*\endcsname{\begingroup
+ \belowdisplayskip@=\belowdisplayskip
+ \belowdisplayskip=0pt
+ \belowdisplayshortskip=0pt
+ \global\eqnumbering@false
+ \def\curr@cr{\eqns@cr \global\eqnumbering@false}
+ \let\\\curr@cr
+ \postdisplaypenalty=10000
+ \belowdisplayshortskip=\belowdisplayskip
+ \o@display\make@eq\hbox\bgroup\dmathon@}
+
+\expandafter
+\def\csname endeqns*\endcsname{\endeqns}
+
+\def\eqns@cr{\dmathoff@\egroup\endmake@eq\o@display
+ \hrule\@height 0pt
+ \abovedisplayshortskip=0pt plus 0pt minus 0pt
+ \vglue\intereqnsskip
+ \hrule\@height 0pt
+ \o@display \make@eq\hbox\bgroup\dmathon@}
+
+\def\nonumber{\global\eqnumbering@false}
+
+\def\numbered{\global\eqnumbering@true}
+
+\newskip\intereqnsskip
+\intereqnsskip=1ex
+
+\newskip\belowdisplayskip@
+
+%
+%   E q u a t i o n   n u m b e r i n g 
+%
+
+% Displaymath (namely \endmake@eq) calls \do@eqno to create the
+% equation number. At the beginning of each display, \do@eqno is
+% set to \curr@eqno. Numbering macros should define \curr@eqno,
+% while \eqno changes \do@eqno directly.
+
+% \do@eqno calls \make@eqno, a generic command to make its   
+% argument into both the equation number and the currentlabel.
+
+\def\make@eqno#1{\def\make@eqno@{#1}  % \rm removed thanks to E.H. Lohse
+ \def\@currentlabel{\make@eqno@} 
+ \ifx\the@eqlabel\empty \n@warning{No label in equation (#1)}
+ \else 
+  \ifeqnumbering@ \o@label{\the@eqlabel}
+  \else \n@warning{Label occurs in an unnumbered formula}
+  \fi
+ \fi 
+ \hbox{\rm(\make@eqno@)%
+ \ifnum\overfullrule>0 % if draft
+  \hbox to 0pt{\hglue 1pc``{\tt\the@eqlabel}''\hss}%
+ \fi}%
+}
+
+% The command \eqno defines \do@eqno to call \make@eqno on the
+% \eqno's argument.
+
+\def\eqno#1{\global\eqnumbering@true \gdef\do@eqno{\make@eqno{#1}}}
+
+% Default \curr@eqno creates the default numbering (N), where 
+% N is the current value of \theequation, stepped each time
+% \curr@eqno is called.
+
+\def\curr@eqno{\refstepcounter{equation} 
+ \make@eqno{\theequation}}
+
+% subabc is an environment to change numbering from (1), (2), (3)
+% to (1a), (1b), (1c), i.e., to (NL) where N is the value of 
+% \theequation (stepped only when the environment starts) and L is
+% the letter corresponding to the current value of the counter
+% eqnabc (stepped each time \curr@eqno is called, starting
+% from 0 in the beginning of subabc).
+
+\newcount\c@eqnabc
+
+\def\subabc{\refstepcounter{equation}
+ \c@eqnabc=0
+ \def\curr@eqno{\refstepcounter{eqnabc}
+  \make@eqno{\theequation\alph{eqnabc}}}
+}
+
+\def\endsubabc{\global\@ignoretrue}
+
+%
+%   A l i g n m e n t   e n v i r o n m e n t s
+%
+
+\newskip\displaylineskip 
+\newskip\displaybaselineskip
+\newdimen\displaylineskiplimit
+
+\displaylineskip=1.2ex plus 0.2ex
+\displaybaselineskip=3.8ex plus 0.2ex
+\displaylineskiplimit=.01ex
+
+\def\dmstrut@{\hbox{\vrule\@height 1.7ex\@depth .7ex\@width 0ex}}
+
+\newdimen\eqnnumlowering@
+
+\def\eqnarray{%
+ \global\let\do@eqno=\curr@eqno
+ \def\the@eqlabel{}%
+ \def\label##1{\gdef\the@eqlabel{##1}}%
+ \x@eqnarray}
+
+\expandafter\def\csname eqnarray*\endcsname{\def\@eqnarray@cr{\cr}
+ \x@eqnarray}
+
+\def\x@eqnarray{%
+ \ifdim\mathindent<\z@ \mathindent=-\mathindent
+  \n@warning{Negative \mathindent in eqnarray}
+ \fi  
+ \o@display\make@eq
+ \def\curr@cr{\@eqnarray@cr
+  \global\multiline@false
+  \global\eqnumbering@true
+  \global\let\do@eqno=\curr@eqno}
+ \let\\\curr@cr 
+ \global\eqnumbering@true
+ \vbox\bgroup %%%%
+ \ddelimalign@errhelp
+ \displaydefs@
+ \lineskip\displaylineskip \baselineskip\displaybaselineskip
+ \lineskiplimit\displaylineskiplimit
+ \ialign to\disp@box@width 
+ \bgroup 
+  \gdef\missing@tabs{&&&}% 
+  \hfil\hbox{\wallallowed@false\dmathon@\dmstrut@##\dmathoff@}% 
+  \tabskip 0pt      
+  \gdef\missing@tabs{&&}%
+ &\hfil\hbox{\wallallowed@false\o@dollar\null##\null\o@dollar}\hfil 
+  \tabskip 0pt      
+  \gdef\missing@tabs{&}%
+ &\setbox0\vbox{\hbox{\o@dollar\dmathon@\dmstrut@\mathopen{}##\dmathoff@
+   \o@dollar}}%
+  \global\eqnnumlowering@=0pt 
+  \global\advance\eqnnumlowering@\dp0
+  \box0\hfil
+  \tabskip 0pt plus 1000pt 
+  \gdef\missing@tabs{}%
+ &\setbox0\llap{##}%
+ \ifmultiline@ \lower.5\eqnnumlowering@\box0
+ \else \box0
+ \fi \tabskip 0pt\crcr}
+
+\def\endeqnarray{
+ \@eqnarray@cr
+ \egroup\egroup
+ \global\eqnumbering@false
+ \endmake@eq\o@display
+ \global\@ignoretrue}
+
+\expandafter\def\csname endeqnarray*\endcsname{\endeqnarray}
+
+\def\@eqnarray@cr{\missing@tabs
+ \ifeqnumbering@\do@eqno\fi
+ \global\@eqnswtrue\crcr
+}
+
+\def\eqnsabc{\subabc\eqns}
+
+\def\endeqnsabc{\endeqns\endsubabc}
+
+\def\eqnarrayabc{\subabc\eqnarray}
+
+\def\endeqnarrayabc{\endeqnarray\endsubabc}
+
+\def\ddelimalign@errhelp{\def\ldelim@errhelp{%
+ Alignments interfere badly with display mode of delimiters.
+ ^^JEvery alignment cell must be balanced.
+ ^^JWhen cells are as follows:
+ ^^J alignment A & B1 \\ & B2 \\ & ... endalignment
+ ^^Jthen alignment may be replaced with
+ ^^J ... A \wall B1 \\ B2 \\ ... \return}
+ \let\rdelim@errhelp\ldelim@errhelp}
+
+% The purpose of LaTeX alignment math environments eqnarray
+% and eqnarray* is, basically, to align binary relation symbols 
+% in two typographically relevant situations:
+% 
+% (1) a long formula broken into n lines; 
+% (2) a pile of n distinct formulas, one below another.
+
+% In case (1), a single wall-return block provides a simple solution
+% that saves the 2n alignment symbols `&' required by eqnarray:
+%
+% A \wall = B1 \\
+%         = B2 \\
+%           ...
+%
+%         = Bn \return
+%
+% In case (2), the alignment of relation symbols is somewhat 
+% controversial; this style provides limited support for it. 
+
+%
+%   P a r a g r a p h   i t e m s 
+%
+
+\expandafter\ifx\csname paritemwd\endcsname\relax
+ \newdimen\paritemwd\paritemwd=2pc
+\fi
+
+\def\paritem#1{%
+ \ifmmode 
+  \ifdisplay@
+   \ifdim\mathindent<0pt % if centered formula
+    \ifleqno % equation numbers on the left
+     \paritem@leqno{#1}
+    \else
+     \n@err{Disallowed \string\paritem}
+      {Sorry, I am not programmed to handle this case.
+      ^^JSet \mathindent to a positive length to
+      circumvent the problem.}
+    \fi
+   \else % if left-aligned formula
+    \ifleqno % equation numbers on the left
+     \paritem@leqno{#1}
+    \else
+     \llap{\hbox to \mathindent{\paritem@{#1}\hfil}}
+    \fi
+   \fi
+  \else \n@err{Misplaced \string\paritem}
+    {It is disallowed to start \paritem in inline math mode}
+  \fi
+ \else
+  \par\noindent\paritem@{#1}\kern 1ex
+ \fi
+ \ignorespaces}
+
+\def\paritem@#1{\hbox to\paritemwd{\hss\rm#1}\ignorespaces}
+
+\def\paritem@leqno#1{
+ \ifeqnumbering@
+  \n@warning{Left numbering superseded by \string\paritem}
+ \else \global\eqnumbering@true 
+ \fi
+ \global\def\do@eqno{\paritem@{#1}}
+}
+
+%
+%   M a t h   m o d e s
+%
+
+% The four math styles of plain TeX (displaystyle, textstyle, scriptstyle, 
+% scriptscriptstyle) are abandoned.
+% We distinguish two math mode: inline and displayed. 
+% They must always apply to a whole subformula and it is not possible to 
+% switch between them arbitrarily. 
+
+% While in math mode, 
+
+%      to start          use
+%   ----------------   ------------------------
+%    inline style       \inline{ ... } 
+%    displayed style    \displayed{ ... }
+
+% displayed
+
+\newif\ifnodisplay@
+
+\def\displayon@{%
+ \ifnodisplay@ \n@err{Misplaced displayed}%
+  {Do not start display mode between inline delimiters.}%
+ \else \mspaces@
+  \displaydelims@ \dcurrstyle@ 
+ \fi}
+
+\def\displayoff@{\enddisplaydelims@}
+
+\pdef\displayed#1{\displayon@#1\displayoff@}
+
+\def\mspaces@{\relax}
+
+% Inline -- I want that user macros expand to reveal Nath behind them
+
+\newif\ifprotectinline@
+\protectinline@true
+
+\pdef\inline#1{%
+ \begingroup
+ \ifprotectinline@
+  \begingroup 
+  \the\protect@toks 
+  \def\protect{\noexpand} 
+  \xdef\inline@{\noexpand\wrapfrac@{ #1}}
+  \endgroup
+  \protectinline@false
+ \else
+  \def\inline@{\wrapfrac@{#1}}%
+ \fi
+ \display@false
+ \inlinedelims@\icurrstyle@ 
+ \inline@ 
+ \ldelim@warningcheck{\idelimlevel@}%
+ \endgroup}
+
+% We need a script level count
+
+\newcount\mathcount@  % means the level of sub- and super-script (0,1,2,...)
+
+% and an \ifdisplay
+
+\newif\ifdisplay@  % if a displayed formula
+
+% We store the four math style switches for future use.
+
+\let\o@displaystyle=\displaystyle
+\let\o@textstyle=\textstyle
+\let\o@scriptstyle=\scriptstyle
+\let\o@scriptscriptstyle=\scriptscriptstyle
+
+% We redefine \displaystyle and \textstyle; their original effect is disabled.
+% \displaystyle is useful in the context of the principle of smallest fences.
+% 
+% We also redefine \scriptstyle and \scriptscriptstyle to advance \mathcount@
+% by 1 and 2, respectively. 
+% Observe that \scriptstyle\scriptstyle now has the same effect as
+% \scriptscriptstyle
+
+\def\displaystyle{\setbox0
+ \hbox{\vrule\@height 3.2\mex \@depth 2\mex \@width 1pt}%
+ \resizebox@0}
+
+\let\textstyle\relax
+
+\def\scriptstyle{\advance\mathcount@1 \currstyle@}
+
+\def\scriptscriptstyle{\advance\mathcount@2 \currstyle@}
+
+%
+%   M a t h   s i z e s
+%
+
+\newdimen\delimaxis@
+\newdimen\strutsize@
+
+\delimaxis@=.3ex
+\strutsize@=2.1ex
+
+\def\delimstrut@{\hbox{\@tempdima=\delimaxis@ \@tempdimb=\delimaxis@
+ \advance\@tempdima .5\strutsize@ \advance\@tempdimb -.5\strutsize@
+ \vrule height\prorated@\@tempdima depth\prorated@\@tempdimb width 0pt}}
+
+\def\dcurrstyle@{\display@true
+ \ifcase\mathcount@ \o@displaystyle \mex=1ex 
+ \or\o@scriptstyle \mex=.7ex 
+ \else\o@scriptscriptstyle \mex=.5ex 
+ \fi}
+
+\def\icurrstyle@{\display@false
+ \ifcase\mathcount@ \o@textstyle \mex=1ex
+ \or\o@scriptstyle \mex=.7ex
+ \else\o@scriptscriptstyle \mex=.5ex
+ \fi}
+
+\def\currstyle@{%
+ \ifcase\mathcount@ \mex=1ex
+  \ifdisplay@\o@displaystyle
+  \else\o@textstyle
+  \fi 
+ \or\o@scriptstyle \mex=.7ex
+ \else\o@scriptscriptstyle \mex=.5ex
+ \fi}
+
+% One step smaller than currstyle is \iscriptstyle@:
+
+\def\iscriptstyle@{\display@false\scriptstyle}
+
+\def\currstyle@hbox#1{%
+ \ifdisplay@
+  \hbox{\dmathon@\dcurrstyle@ #1%
+  \global\setbox\sizebox@\box\sizebox 
+  \dmathoff@}%
+  \resizebox@{\sizebox@}%
+ \else
+  \hbox{\imath@{\icurrstyle@#1}}%
+ \fi}
+
+\def\scriptstylehbox@#1{\hbox{\imath@{\iscriptstyle@#1}}}
+
+% Frame around a subformula
+
+\let\o@fbox\fbox
+
+\pdef\framed#1{\o@fbox{\o@math\currstyle@hbox{#1}\o@math}}
+
+% A repeated sizebox:
+
+\def\samesize@{\mathopen{}\copy\sizebox}
+
+% We redefine \mathpalette and \mathchoice, although they are no 
+% more needed
+
+\def\mathpalette#1#2{{#1\currstyle@{#2}}}
+
+\def\mathchoice#1#2#3#4{%
+ \ifcase\mathcount@
+  \ifdisplay@ #1 \else #2 \fi 
+ \or #3
+ \else #4
+ \fi }
+
+%
+%   R e s t r i c t e d   m o d e 
+%
+
+\newif\iftoprestricted@
+\toprestricted@true
+
+\newif\ifbotrestricted@
+\botrestricted@true
+
+%
+%   T e x t
+%
+
+\newtoks\curr@rm % global needed?
+
+\pdef\text#1{\mathclose{}\text@
+ \hbox\expandafter{\protect\the\curr@rm #1}\mathopen{}
+ \penalty\punctpenalty\relax}  % Fixed 5.9.2002 thanks to Hedevang Lohse
+
+\def\text@{%
+ \ifcase\mathcount@ \global\curr@rm\expandafter{\the\textfont0 }%
+ \or \global\curr@rm\expandafter{\the\scriptfont0 }%
+ \else \global\curr@rm\expandafter{\the\scriptscriptfont0 }%
+ \fi}
+
+%
+%  S i z i n g   c o m m a n d s
+%
+ 
+% The size of delimiters is determined by the ``heavy'' part of the 
+% sub formula enclosed. ``Ignorable'' elements (sub- and superscripts,
+% diacritics) do not contribute.
+
+% We use a local box register called \sizebox. Although empty,
+% it has its height and depth, equal to the height and depth of the  
+% ``main part'' of the current subformula in displayed style.
+
+\newbox\sizebox % local
+\newbox\sizebox@ % global
+
+\def\setsize@#1{%
+ \ifdisplay@
+  \setbox0\hbox{\o@math\dcurrstyle@#1\o@math}%
+  \resizebox@{0}%
+ \fi}
+
+% Called by \setsize@ and \currstyle@hbox, the command \resizebox@ compares
+% vertical dimensions of \sizebox to those of box#1 and sets them to
+% whichever is bigger. 
+
+\def\resizebox@#1{%
+ \ifdim\ht\sizebox<\ht#1 \ht\sizebox=\ht#1 \fi
+ \ifdim\dp\sizebox<\dp#1 \dp\sizebox=\dp#1 \fi}
+
+% A debugging tool - visualize vertical dimensions of certain boxes
+
+\def\showverticaldimensionsofthebox#1{%
+ \hbox{\vrule \@height \ht#1 \@depth \dp#1 \@width .667pt}}
+
+% Sizing commands for every large operator from TeXbook p. 435
+
+\let\o@sum=\sum
+\let\o@prod=\prod           
+\let\o@coprod=\coprod       
+\let\o@int=\int             
+\let\o@oint=\oint           
+\let\o@bigcap=\bigcap       
+\let\o@bigcup=\bigcup       
+\let\o@bigsqcup=\bigsqcup   
+\let\o@bigvee=\bigvee       
+\let\o@bigwedge=\bigwedge   
+\let\o@bigodot=\bigodot     
+\let\o@bigotimes=\bigotimes 
+\let\o@bigoplus=\bigoplus   
+\let\o@biguplus=\biguplus   
+
+\pdef\big@op#1{\setsize@{#1}\mathop{#1}}
+
+\def\sum{\big@op\o@sum}
+\def\prod{\big@op\o@prod}
+\def\coprod{\big@op\o@coprod}
+\def\oint{\big@op\o@oint\nolimits}
+\def\bigcap{\big@op\o@bigcap}
+\def\bigcup{\big@op\o@bigcup}
+\def\bigsqcup{\big@op\o@bigsqcup}
+\def\bigvee{\big@op\o@bigvee}
+\def\bigwedge{\big@op\o@bigwedge}
+\def\bigodot{\big@op\o@bigodot}
+\def\bigotimes{\big@op\o@bigotimes}
+\def\bigoplus{\big@op\o@bigoplus}
+\def\biguplus{\big@op\o@biguplus}
+
+% \int sticks to any following \int.
+
+\pdef\int{\setsize@\o@int \int@stick}
+
+\def\int@stick{\afterassignment\int@stick@\let\next=}
+
+\def\int@stick@{
+ \ifx\next\int
+  \def\next@comm{\intop\int@kern\int}
+ \else
+  \def\next@comm{\intop\nolimits\next}
+ \fi
+ \next@comm}
+
+\def\int@kern{\ifdisplay@ \kern-1.4\mex \else \kern -.9\mex \fi} 
+
+%
+%   L i v e   d e l i m i t e r s 
+%
+
+% Every delimiter stands for itself. No additional presentation markup 
+% (such as \biggl,\biggr or \left,\right) is needed. 
+% Warning: In math mode [,] no more denote optional arguments.
+
+\newcount\idelimlevel@
+
+% Store \TeX's delimiters for character tests
+
+\let\ch@lparenthesis=( 
+\let\ch@rparenthesis=)
+
+\let\ch@lbrack=[ 
+\let\ch@rbrack=]
+
+\let\ch@langle=< 
+\let\ch@rangle=> 
+
+\let\o@lbrack=\lbrack 
+\let\o@rbrack=\rbrack 
+
+\let\o@lfloor=\lfloor  \let\o@lceil=\lceil
+\let\o@rfloor=\rfloor  \let\o@rceil=\rceil
+
+\def\o@lbrace{\delimiter"4266308 } \let\{=\o@lbrace
+\def\o@rbrace{\delimiter"5267309 } \let\}=\o@rbrace
+
+\let\o@langle=\langle
+\let\o@rangle=\rangle
+
+\let\o@uparrow=\uparrow 
+\let\o@downarrow=\downarrow 
+\let\o@updownarrow=\updownarrow
+\let\o@Uparrow=\Uparrow 
+\let\o@Downarrow=\Downarrow 
+\let\o@Updownarrow=\Updownarrow
+
+\let\o@backslash=\backslash 
+\let\o@vert=|
+\let\o@Vert=\Vert
+ 
+\pdef\{{\delim@l 1\o@lbrace}
+\pdef\}{\delim@r 1\o@rbrace}
+
+\pdef\lvert{\delim@l 1|}
+\pdef\rvert{\delim@r 1|}
+\pdef\lVert{\delim@l 1\Vert}
+\pdef\rVert{\delim@r 1\Vert}
+\pdef\lbrack{\delim@l 1\o@lbrack}
+\pdef\rbrack{\delim@r 1\o@rbrack}
+\pdef\langle{\delim@l 1\o@langle}
+\pdef\rangle{\delim@r 1\o@rangle}
+\pdef\lbrace{\delim@l 1\o@lbrace}
+\pdef\rbrace{\delim@r 1\o@rbrace}
+\pdef\lfloor{\delim@l 1\o@lfloor}
+\pdef\rfloor{\delim@r 1\o@rfloor}
+\pdef\lceil{\delim@l 1\o@lceil}
+\pdef\rceil{\delim@r 1\o@rceil}
+
+\pdef\lBrack{\delim@l 2\o@lbrack}
+\pdef\rBrack{\delim@r 2\o@rbrack}
+\pdef\lAngle{\delim@l 2\o@langle}
+\pdef\rAngle{\delim@r 2\o@rangle}
+\pdef\lFloor{\delim@l 2\o@lfloor}
+\pdef\rFloor{\delim@r 2\o@rfloor}
+\pdef\lCeil{\delim@l 2\o@lceil}
+\pdef\rCeil{\delim@r 2\o@rceil}
+
+% Null delimiters
+
+\pdef\lnull{\delim@l 0.}
+\pdef\rnull{\delim@r 0.}
+
+% Obsolete commands:
+
+\let\Big\relax    \let\Bigg\relax
+\let\Bigl\left    \let\Biggl\left
+\let\Bigr\right   \let\Biggr\right
+\let\Bigm\middle  \let\Biggm\middle
+
+%
+%   L e f t,   r i g h t   a n d   m i d d l e
+%
+
+% Store \TeX's definitions
+
+\let\o@left=\left    
+\let\o@right=\right  
+\let\@stop=.
+
+% Here is the new definition for \left:
+
+\livechars@
+
+\pdef\left#1{\left@#1}
+
+\def\left@{\afterassignment\left@@\let\next=}
+
+\def\left@@{\ifx\next\@stop \lnull\else
+ \ifx\next|\delim@l 1\o@vert \else
+ \ifx\next\|\delim@l 1\o@Vert \else
+ \ifx\next\vert\delim@l 1\o@vert \else
+ \ifx\next\Vert\delim@l 1\o@Vert \else
+ \ifx\next\ch@rbrack\delim@l 1\o@rbrack \else
+ \next
+ \fi\fi\fi\fi\fi\fi}
+
+% Here is the new definition for \right:
+
+\pdef\right#1{\right@#1}
+
+\def\right@{\afterassignment\right@@\let\next=}
+
+\def\right@@{\ifx\next\@stop \rnull\else
+ \ifx\next|\delim@r 1\o@vert \else
+ \ifx\next\|\delim@r 1\o@Vert \else
+ \ifx\next\vert\delim@r 1\o@vert \else
+ \ifx\next\Vert\delim@r 1\o@Vert \else
+ \ifx\next\ch@lbrack\delim@r 1\o@lbrack \else
+  \next
+ \fi\fi\fi\fi\fi\fi}
+
+% Here is the new definition for \middle 
+% (a bug fixed 21 Sept. 2002 thanks to E.H. Lohse)
+
+\pdef\middle#1{\mathrel{}\middle@#1\mathrel{}} 
+                                                
+\def\middle@#1{\def\next{#1}
+ \ifx\next\@stop \else
+ \ifx\next\o@vert\delim@m 1\o@vert \else
+ \delim@m 1#1%
+ \fi\fi}
+
+\killchars@
+
+% Some other middle delimiters:
+
+\def\mid{\middle|}
+
+%
+%   D o u b l e
+%
+
+\pdef\double{\afterassignment\double@@\let\next=}
+
+\def\double@@{%
+ \ifx\next\ch@lbrack\delim@l 2\o@lbrack \else
+ \ifx\next\ch@langle\delim@l 2\o@langle \else
+ \ifx\next\ch@rbrack\delim@r 2\o@rbrack \else
+ \ifx\next\ch@rangle\delim@r 2\o@rangle \else
+ \ifx\next|\delim@m 2\o@vert \else
+ \ifx\next\vert\delim@m 2\o@vert \else
+ \ifx\next/\delim@m 2/ \else
+ \ifx\next\backslash\delim@m 2\backslash \else
+ \n@err{Missing delimiter}{\double must be followed by [,],<,> or |}
+ \fi\fi\fi\fi\fi\fi\fi\fi}
+
+\pdef\ldouble{\afterassignment\ldouble@@\let\next=}
+
+\def\ldouble@@{\ifx\next\@stop \lnull\else
+ \ifx\next|\delim@l 2\o@vert \else
+ \ifx\next\vert\delim@l 2\o@vert \else
+ \n@err{Missing delimiter}{\ldouble must be followed by |}\lnull
+ \fi\fi\fi}
+
+\pdef\rdouble{\afterassignment\rdouble@@\let\next=}
+
+\def\rdouble@@{\ifx\next\@stop \rnull\else
+ \ifx\next|\delim@r 2\o@vert \else
+ \ifx\next\vert\delim@r 2\o@vert \else
+ \n@err{Missing delimiter}{\rdouble must be followed by |}\rnull
+ \fi\fi\fi}
+
+
+\def\Mid{\double|}
+
+%
+%   T r i p l e 
+%
+
+\pdef\triple#1{\triple@ #1}
+
+\def\triple@{\afterassignment\triple@@\let\next=}
+
+\def\triple@@{%
+ \ifx\next\ch@lbrack\delim@l 3\o@lbrack \else
+ \ifx\next\ch@langle\delim@l 3\o@langle \else
+ \ifx\next\ch@rbrack\delim@r 3\o@rbrack \else
+ \ifx\next\ch@rangle\delim@r 3\o@rangle \else
+ \ifx\next|\delim@m 3\o@vert \else
+ \ifx\next\vert\delim@m 3\o@vert \else
+ \ifx\next\vert\delim@m 3\o@vert \else
+ \ifx\next/\delim@m 3/ \else
+ \ifx\next\backslash\delim@m 3\backslash \else
+ \n@err{Missing delimiter}{\triple must be followed by [,],<,> or |}
+ \fi\fi\fi\fi\fi\fi\fi\fi\fi}
+
+\pdef\ltriple#1{\ltriple@ #1}
+
+\def\ltriple@{\afterassignment\ltriple@@\let\next=}
+
+\def\ltriple@@{\ifx\next\@stop \lnull\else
+ \ifx\next|\delim@l 3\o@vert \else
+ \ifx\next\vert\delim@l 3\o@vert \else
+ \n@err{Missing delimiter}{\ltriple must be followed by |}\lnull
+ \fi\fi\fi}
+
+\pdef\rtriple#1{\rtriple@ #1}
+
+\def\rtriple@{\afterassignment\rtriple@@\let\next=}
+
+\def\rtriple@@{\ifx\next\@stop \rnull\else
+ \ifx\next|\delim@r 3\o@vert \else
+ \ifx\next\vert\delim@r 3\o@vert \else
+ \n@err{Missing delimiter}{\rtriple must be followed by |}\rnull
+ \fi\fi\fi}
+
+%
+%   N e s t e d   d e l i m i t e r s
+%
+
+% Here is a count to count nesting of delimiters
+
+\newcount\ddelimlevel@
+
+% Missing delimiters checking
+
+\def\rdelim@error{\n@err{Unmatched right delimiter}%
+  \rdelim@errhelp
+  \ddelimlevel@=0}
+
+\def\rdelim@errhelp{Delimiters must be balanced within groups
+ and alignment cells.
+   ^^JI am ignoring whatever is superfluous.}
+
+\def\ldelim@error#1{\n@err{Unmatched \number#1 left delimiter(s)}%
+ \ldelim@errhelp
+ \\\ddcount@@=#1
+ \loop\ifnum\ddcount@@>0 \rnull \advance\ddcount@@-1 \repeat}
+
+\def\ldelim@errhelp{Delimiters must be balanced within groups
+ and alignment cells.
+  ^^JI am inserting `)' for every missing left delimiter.
+  ^^JLots of error messages may follow; better fix it before going on.}
+
+\def\ldelim@warningcheck#1{\ifnum#1>0
+  \n@warning{Unmatched \number#1 left delimiter(s)}%
+ \fi}
+
+\def\mdelim@error{\n@err{Misplaced \string\middle}%
+  {This command must occur between a left and a right delimiter.
+   ^^JDoesn't, so I am ignoring it.}%
+  \ddelimlevel@=0}
+
+% Default mode of delimiters
+
+\def\defaultdelims@{%
+ \def\delim@l##1##2{\if##10\else\o@left##2\o@right.\fi}%
+ \def\delim@r##1##2{\if##10\else\o@left##2\o@right.\fi}%
+ \def\delim@m##1##2{\if##10\else\o@left##2\o@right.\fi}% 
+}
+
+\defaultdelims@
+
+%
+%   D i s p l a y   d e l i m i t e r s 
+%
+
+% Displayed material is put into box registers numbered by \ddelim@count
+% starting from \firstddelim@no. All they are hboxes.
+
+% Token registers with the same numbers contain material whose typesetting
+% is postponed. They may be:
+%   (i) extensible tokens (left and middle; e.g., delimiters).
+%       Typesetting of extensibles is postponed until their size is
+%       known (after the same level right delimiter is found);
+%  (ii) escape tokens = interspersed macros (such as \wall, \return, etc.).
+%       Typesetting postponed until all box registers are ejected.
+
+\newcount\ddelim@count
+
+% \firstddelim@no is set by \setfirstddelim@no to the first unused
+% box and toks register pair.
+% Every \displaydelims@ calls \setfirstddelim@no.
+
+\def\setfirstddelim@no{%
+ \edef\firstddelim@no{\the\count14 }% unused box register
+ \ifnum\firstddelim@no<\the\count15 %
+  \edef\firstddelim@no{\the\count15 }% unused toks register
+ \fi}
+
+% The commands to fill the hboxes are \startddelimbox@ and \finishddelimbox@.
+
+\def\startddelimbox@{\hbox\bgroup\o@math
+ \ifnum\ddelim@count<\insc@unt % if less than the insertion count
+ \else \n@err{Formula too large}%
+   {No free box to store the next chunk of displayed material.
+    ^^JThe rest of the formula will be ignored.
+    ^^JDivide big formulas into small parts.}%
+  \o@math\egroup
+ \fi
+ \dcurrstyle@
+ \mathopen{}
+}
+
+\def\finishddelimbox@{\mathclose{}
+ \o@math\egroup}
+
+% To distinguish between extensibles and escape tokens, they start with
+% control sequence \ext@tok and \esc@tok, respectively.
+% The nth token register may be tested by 
+%
+%   \if\ext@tok\first@tok{n} yes \else no \fi
+%
+% etc.
+
+\def\ext@tok{1}
+\def\esc@tok{2}
+
+\def\@car#1#2\@nil{#1} % LaTeX's definition
+\def\@cdr#1#2\@nil{#2} % LaTeX's definition
+\def\@cadr#1#2#3\@nil{#2}
+
+\def\first@tok#1{\expandafter\@car\the\toks#1\relax \noexpand\@nil}
+\def\second@tok#1{\expandafter\@cadr\the\toks#1\relax \noexpand\@nil}
+\def\tail@toks#1{\expandafter\@cdr\the\toks#1\relax \noexpand\@nil}
+
+\def\first@token#1{\expandafter\@car#1\relax \noexpand\@nil}
+\def\second@token#1{\expandafter\@cadr#1\relax \noexpand\@nil}
+\def\tail@tokens#1{\expandafter\@cdr#1\relax \noexpand\@nil}
+
+% \displaydelims@ is called by \displayon@ to start display mode of
+% delimiters, which includes defining \delim@l, \delim@r and
+% \delim@m within displayed formulas and starting the first delimbox.
+
+\def\displaydelims@{\global\setbox\sizebox@\delimstrut@
+ \displaydefs@
+ \setfirstddelim@no 
+ \ddelim@count=\firstddelim@no % the first dbox has this number
+ \ddelimlevel@=0 %
+ \def\f@stack{\relax}% initiating \f@stack
+ \def\ht@stack{\relax}% initiating \ht@stack
+ \def\dp@stack{\relax}% initiating \dp@stack
+ \toks\number\ddelim@count={\ext@tok 0x}% void extensible token
+ \put@{\number\ddelim@count}\f@stack % store the number of the starting box
+ \setbox\number\ddelim@count\startddelimbox@ % now inside ddelimbox
+}
+
+\def\displaydefs@{%
+ \let\delim@l=\ddelim@l
+ \let\delim@m=\ddelim@m
+ \let\delim@r=\ddelim@r}
+
+
+\def\ddelim@l#1#2{\mathopen{} 
+ \finishddelimbox@ % now outside ddelimbox
+ \put@{\the\ht\sizebox}\ht@stack % save height of sizebox
+ \put@{\the\dp\sizebox}\dp@stack % save depth of sizebox
+ \setbox\sizebox\delimstrut@% set minimal size of delimiters
+ \advance\ddelimlevel@ by 1
+ \advance\ddelim@count by 1 
+ % left delimiter -> extensible token:
+ \toks\number\ddelim@count={\ext@tok#1#2}%
+ \put@{\number\ddelim@count}\f@stack % store the number of the starting box
+ \setbox\number\ddelim@count\startddelimbox@ % now inside ddelimbox
+}
+
+\def\ddelim@m#1#2{%
+ \ifnum\ddelimlevel@>-1
+  \finishddelimbox@ % now outside ddelimbox
+  \advance\ddelim@count by 1 
+  % middle delimiter -> extensible token:
+  \toks\number\ddelim@count={\ext@tok#1#2}%
+  \setbox\number\ddelim@count\startddelimbox@ % now inside ddelimbox
+ \else
+  \mdelim@error#2%
+ \fi}
+
+\def\ddelim@r#1#2{\ifnum\ddelimlevel@<1 \rdelim@error \fi
+ \finishddelimbox@ % now outside ddelimbox
+ \advance\ddelimlevel@ by -1
+ \ifnum\ddelimlevel@>-1 % if not error
+ \unite@dboxes#1#2% unite box registers on this delimlevel;
+  % append #1 times #2
+ \fi 
+ \setbox0\copy\sizebox % save the sizebox in box0, then let it grow:
+ \sizebox@grow
+ \advance\ddelim@count by 1
+ % empty delimiter -> extensible token:
+ \toks\number\ddelim@count={\ext@tok 0.}% emptying toks ddelim@count
+ \setbox\number\ddelim@count\startddelimbox@ % now inside ddelimbox
+ % eject the sizebox as stored in box0 -- for placement of sub- and
+ % superscripts:
+ \box0}
+
+
+
+\def\checkleftdelims@{\ifnum\ddelimlevel@>0 \ldelim@error{\ddelimlevel@}\fi}
+
+\def\enddisplaydelims@{\checkleftdelims@
+ \finishddelimbox@ % now outside ddelimbox
+ \unite@dboxes 0.% unite all box registers
+ \eject@dboxes
+}
+
+% Called by \delim@r, the command \unite@dboxes runs through box registers 
+% between \f@ddelim and the current value of \ddelim@count. Collapsed
+% into a single hbox is every contiguous interval of hboxes, interspersed
+% with extensible elements that were stored in token registers and in #1,
+% adjusted to the size of the current \ddelimstrutbox.
+
+% Two global counts are needed:
+
+\newcount\ddcount@  % to count boxes to be collapsed; global
+\newcount\ddcount@@ % to count boxes to gather the former; local
+
+\def\unite@dboxes#1#2{% now outside ddelimbox; #1#2 = the right delimiter
+ \get@\f@ddelim\f@stack
+ \global\ddcount@=\f@ddelim % set ddcount@ to starting position
+ \ddcount@@=\f@ddelim % set ddcount@@ to starting position
+ \advance\ddelim@count 1
+ % starting box number ddcount@@
+ \setbox\number\ddcount@@\hbox\bgroup % now inside ddelimbox
+ \g@loop\ifnum\ddcount@<\ddelim@count
+  \if\ext@tok\first@tok{\number\ddcount@}\relax % if extensible element
+   \if0\second@tok{\number\ddcount@}\relax % if `0' then do nothing 
+   \else % else eject the resized extensible
+    \expandafter\size@\the\toks\number\ddcount@\relax 
+   \fi 
+   \unhbox\number\ddcount@ % unbox the box
+  \else 
+   \if\esc@tok\first@tok{\number\ddcount@}\relax % else if escape element
+    \egroup % finishing box number ddcount@@; now outside ddelimbox
+    \advance\ddcount@@ by 1 
+    % moving toks ddcount@ to toks ddcount@@ -- if unequal
+    \ifnum\ddcount@=\ddcount@@ \else
+     \toks\number\ddcount@@=\expandafter{\the\toks\number\ddcount@}%
+     \toks\number\ddcount@={\ext@tok 0.}% emptying toks ddcount@
+    \fi
+    % starting box ddcount@@:
+    \setbox\number\ddcount@@\hbox\bgroup % now inside ddelimbox 
+    \unhbox\number\ddcount@ 
+   \else
+    \n@err{Unexpected contents in toks \number\ddcount@}{Shocked? Me too.}%
+   \fi
+  \fi 
+  \global\advance\ddcount@ by 1 
+ \repeat 
+ \size@ \ext@tok#1#2 \delimtype@right\relax % resized right delimiter
+ \egroup % now outside ddelimbox
+ \toks\f@ddelim={\ext@tok 0.}% emptying toks f@ddelim
+ \ddelim@count=\ddcount@@}
+
+%
+%   D e l i m i t e r   g r o w t h
+%
+
+\newdimen\delimincrement@
+\newcount\delimgrowth@
+
+\def\delimgrowth{\afterassignment\delimgrowth@@\delimgrowth@}
+
+\def\delimgrowth@@{\ifnum\delimgrowth@<1 \delimgrowth@=1
+  \n@warning{\string\delimgrowth\space must be a positive natural number}%
+ \fi
+ \delimincrement@=.66ex 
+ \divide\delimincrement@ by \delimgrowth@}
+
+\def\sizebox@grow{\@tempdima=\ht\sizebox 
+ \advance\@tempdima\delimincrement@ %\relax
+ \ht\sizebox=\@tempdima
+ \@tempdima=\dp\sizebox
+ \advance\@tempdima\delimincrement@ %\relax
+ \dp\sizebox=\@tempdima
+ \get@\@tempa\ht@stack
+ \ifdim\the\ht\sizebox<\@tempa \ht\sizebox=\@tempa\fi 
+ \get@\@tempa\dp@stack
+ \ifdim\the\dp\sizebox<\@tempa \dp\sizebox=\@tempa\fi
+} 
+
+% Called by the last \delim@r, the command \eject@dboxes ejects all the
+% box and token registers filled. Uses the global count \ddcount@
+
+\newcount\ddcount@ % global
+
+\def\eject@dboxes{\global\ddcount@=\firstddelim@no{}%
+ \box\number\ddcount@
+ \g@loop\ifnum\ddcount@<\ddelim@count
+  \global\advance\ddcount@ by 1
+  \if\ext@tok\first@tok{\number\ddcount@}\relax
+   \n@err{Forgotten extensible \number\ddcount@\space}%
+    {An internal error, induced by the previous errors. 
+     ^^JSomething will be lost.}
+  \else
+   \if\esc@tok\first@tok{\number\ddcount@}\relax
+    \tail@toks{\number\ddcount@}\relax
+   \else\n@err{Unable to eject \number\ddcount@}%
+    {Sorry, the box or toks have never been filled.
+     ^^JIs an internal error and should never happen.}%
+   \fi
+  \fi
+  \box\number\ddcount@ 
+  \repeat}
+
+%
+%   S i z i n g   d e l i m i t e r s
+%
+
+% The following commands are called by \unite@dboxes.
+% Parameters:
+%
+% #1 = always \ext@tok, hence ignored
+% if #2 = ":" then sizable fraction
+%   #3 = numerator and #4 = denominator
+% otherwise
+%   #2 = number of repetitions (from 0 to 9),
+%   #3 = a delimiter 
+%   #4 = a type (\delimtype@right or \relax)
+
+\def\size@#1#2#3#4{%
+ \if:#2\relax % if a numeric fraction 
+  \o@math\size@frac{#3}{#4}\relax\o@math 
+ \else % else a delimiter
+  \if0#2\relax % zero repetitions -- do nothing
+  \else 
+   \ifx#4\delimtype@right % if right delimiter, set sizebox
+    \setbox0\hbox{\o@math \extend@delim#2#3\sizebox\o@math}%
+%%% \ht\sizebox=\ht0 \dp\sizebox=\dp0 % 
+    \box0 % 
+   \else
+    \o@math \extend@delim#2#3\sizebox \o@math
+   \fi
+  \fi
+ \fi}
+
+%
+%   E x t e n d i n g   d e l i m i t e r s
+%
+
+% Not all expressions have their height equal to depth. So we put
+% the expression in a vcenter, create delimiters that match the vcenter,
+% and then shift the delimiter vertically the appropriate amount.
+
+% A surprise was that [ sometimes acquired bigger size than (.
+% So I had to modify the procedure: first extend [, then (.
+
+% The three arguments to \extend@delim are: 
+% #1 = the number of repetitions
+% #2 = a delimiter
+% #3 = a box register of zero width, or -1 to indicate base size
+
+% Setting values of \delimiterfactor and \delimitershortfall such that
+% \delimfactor works well:
+
+\delimiterfactor=920
+\delimitershortfall=3pt
+
+% Not all expressions have their height equal to depth. So we put
+% the expression in a vcenter, create delimiters that match the vcenter,
+% and then shift the delimiter vertically the appropriate amount.
+
+% A surprise was that [ sometimes acquired bigger size than (.
+% So I had to modify the procedure: first extend [, then (.
+
+% The three arguments to \extend@delim are: 
+% #1 = the number of repetitions
+% #2 = a delimiter
+% #3 = a box register of zero width, or -1 to indicate base size
+
+\def\extend@delim#1#2#3{%
+ \ifnum#1<1 
+  % do absolutely nothing
+ \else\begingroup % do box0 = extended delimiter
+  \nulldelimiterspace=0pt
+  \ifnum#3<0 % if #3 not a box register
+   \setbox0\hbox{\o@math\icurrstyle@\o@left#2\o@right.\o@math}%
+   \@tempdima=0pt 
+  \else % if #3 = box register
+   \setbox\@tempboxa\hbox{\o@math\vcenter{\copy#3}\o@math}%
+   \@tempdima=\ht\@tempboxa %\hbox{\the\@tempdima/\the\dp\@tempboxa}%
+   \ifdim\@tempdima>3\mex \checkangle@{#2}%
+    \ifresult@\n@warning{angle brackets do not grow that size}\fi
+   \fi
+   \advance\@tempdima -\ht#3
+   \setbigstrutbox@
+   \setbox0\hbox{\o@math\icurrstyle@\o@left#2 
+   \ifdim\ht\@tempboxa>.86\ht\bigstrut@box
+    \vrule height \ht\bigstrut@box width 0pt
+   \fi 
+   \ifdim\dp\@tempboxa>.86\dp\bigstrut@box
+    \vrule depth \dp\bigstrut@box width 0pt
+   \fi
+   \box\@tempboxa\o@right.\o@math}%
+  \fi % now copy box0 #1 times
+  \count@=1 
+  \loop\ifnum\count@<#1 
+   \lower\@tempdima\copy0
+   \hskip -.75\wd0 \hskip .25\mex
+   \advance\count@ 1
+  \repeat
+  \lower\@tempdima\box0
+  \endgroup
+ \fi}
+
+% Check for an angle bracket
+
+\def\checkangle@#1{\def\@tempa{#1}
+ \def\@tempb{\o@langle}
+ \ifx\@tempa\@tempb\result@true
+ \else
+  \def\@tempb{\o@rangle}
+  \ifx\@tempa\@tempb\result@true
+  \else
+   \result@false
+ \fi\fi}
+
+%
+%   E s c a p e   c o m m a n d s 
+%
+
+% Escape commands are ones that, if not stored, would interfere with the
+% display mode. 
+
+\def\wall@cr{\checkpunct@ 
+ \ifpunct@ \global\punct@false 
+  \ifnum\ddelimlevel@>0  % elements of a list
+   \store@ec{\d@cr{\pad@}}{}% padded
+   \mathopen{} % new expression
+  \else % separate equations
+   \store@ec{\d@cr{\relax}}{}% unpadded
+   \mathopen{} % new expression
+  \fi
+ \else % broken formula
+  \store@ec{\d@cr{\pad@}}{}% padded
+  \mkern-\thickmuskip \mathinner{} % continuing expression
+ \fi}
+
+\def\curr@cr@is@wall@cr{\def\curr@cr{\wall@cr}\let\\\curr@cr}
+
+\def\wall{\mathrel{}
+ \ifwallallowed@
+  \ifdisplay@
+   \store@ec{\d@wall{0}}{\let\\\wall@cr}%
+  \else
+   \n@warning{Non-display. I am ignoring the misplaced \string\wall}%
+  \fi 
+ \else \n@err{Misplaced \string\wall}{\wall is disallowed here}%
+ \fi
+ \mathopen{}
+}
+ 
+
+\def\return{\checkpunct@
+ \ifdisplay@ 
+  \store@ec{\d@return}{\let\\\curr@cr}
+ \else
+  \n@warning{Non-display. I am ignoring the misplaced \string\return}%
+ \fi 
+ \ifpunct@ \global\punct@false
+  \mathopen{}
+ \else
+  \mkern-\thickmuskip \mathinner{}
+ \fi
+}
+
+
+% \padded is another form of \wall.
+% \padded{A} prefixes each line except the first with A.
+% Typically A is a void box or a kern.
+% Nested \padded have cummulative effect.
+
+\def\padded#1{%
+ \ifwallallowed@
+  \ifdisplay@
+   \store@ec{\d@wall{1#1}}{\let\\\wall@cr}%
+  \else
+   \n@warning{Non-display. I am ignoring the misplaced \string\padded}%
+  \fi 
+ \else \n@err{Misplaced \string\padded}{\padded is disallowed here}%
+ \fi 
+ \mathopen{}
+}
+
+\def\pad@{}
+
+
+% \store@ec is the generic command to store an escape command #1 in token
+% registers. It also performs #2 while outside ddelimbox.
+
+\def\store@ec#1#2{\finishddelimbox@ % now outside ddelimbox
+ \advance\ddelim@count 1
+ \toks\number\ddelim@count={\esc@tok#1}% #1 -> escape token
+ #2% keep % here
+ \setbox\number\ddelim@count\startddelimbox@ % now inside ddelimbox
+}
+
+
+%
+%   I n l i n e   d e l i m i t e r s 
+%
+
+\newcount\big@ \big@=0
+\newcount\big@@ \big@@=0
+\newbox\bigstrut@box
+
+\mathchardef\biglbracket@="0302  %% \biglbracket@ is of fixed size in LaTeX !!
+
+\def\setbigstrutbox@{\setbox\bigstrut@box
+ \hbox{\o@math\vcenter{\hbox{\o@math\icurrstyle@
+  \mathchar\biglbracket@\o@math}}\o@math}
+ \setbox\bigstrut@box\hbox{\vrule height\prorated@\ht\bigstrut@box
+  depth\prorated@\dp\bigstrut@box
+  width 0pt}
+}
+
+\pdef\big{\advance\big@ 1\relax}
+\pdef\bigg{\advance\big@ 2\relax}
+\pdef\biggg{\advance\big@ 3\relax}
+
+\def\bigl{\big\left}
+\def\biggl{\bigg\left}
+
+\let\bigm=\middle
+\let\biggm=\middle
+
+\let\bigr=\right
+\let\biggr=\right
+
+
+% inline mode 
+
+\def\inlinedelims@{%
+ \idelimlevel@=0\relax
+ \big@=0\relax
+ \big@@=0\relax
+ \let\delim@l=\idelim@l
+ \let\delim@m=\idelim@m
+ \let\delim@r=\idelim@r
+}
+
+\def\idelim@l#1#2{\mathopen{}
+ \nodisplay@true
+ \advance\idelimlevel@ by 1 
+ \ifnum\big@>0 \advance\big@@\big@ 
+  \ifnum\idelimlevel@>\big@@ \n@err{Misplaced \string\big}
+    {Too late for \big -- a big must not occur inside a non-big}
+  \fi
+  \ifnum\idelimlevel@<1 \n@err{Misplaced \string\big}
+    {\big must not occur on negative level of fencing.}
+  \fi
+ \fi
+ \big@=0 
+ \ifnum\idelimlevel@>\big@@ \extend@delim#1#2{-1} % normal size
+ \else
+  \ifnum\idelimlevel@<1 \extend@delim#1#2{-1} % normal size
+  \else
+   \setbigstrutbox@ \extend@delim#1#2\bigstrut@box
+  \fi
+ \fi
+ \mathopen{}}
+
+\def\idelim@m#1#2{\mathclose{}
+ \nodisplay@true
+ \big@=0 
+ \ifnum\idelimlevel@>\big@@ \extend@delim#1#2{-1} % normal size
+ \else
+  \ifnum\idelimlevel@<1 \extend@delim#1#2{-1} % normal size
+  \else
+   \setbigstrutbox@ \extend@delim#1#2\bigstrut@box
+  \fi
+ \fi
+ \mathopen{}}
+ 
+\def\idelim@r#1#2{\mathclose{}
+ \big@=0 
+ \ifnum\idelimlevel@>\big@@ \extend@delim#1#2{-1} % normal size
+ \else
+  \ifnum\idelimlevel@<1 \extend@delim#1#2{-1} % normal size
+  \else
+   \setbigstrutbox@ \extend@delim#1#2\bigstrut@box
+   \advance\big@@ -1
+  \fi
+ \fi
+ \advance\idelimlevel@ by -1
+ \mathclose{}}
+
+%
+%   A u x i l i a r y   p r o c e d u r e s
+%
+\def\replacebindelims@#1#2{\begingroup
+ \idelimlevel@=0\relax
+ \def\delim@l##1##2{#2\advance\idelimlevel@ by 1 
+  \setbox0\hbox\bgroup\o@math}%
+ \def\delim@r##1##2{\mathclose{}\advance\idelimlevel@ by -1
+  \o@math\egroup}%
+ \def\delim@m##1##2{}%
+ \def\inlineopen@{#2\advance\idelimlevel@ by 1 
+  \setbox0\hbox\bgroup\o@math}%
+ \def\inlineclose@{\mathclose{}\advance\idelimlevel@ by -1
+  \o@math\egroup}%
+ #1
+ \endgroup}
+
+%
+%  S u b s c r i p t s   a n d   s u p e r s c r i p t s 
+%
+
+\let\o@sp^
+\let\o@sb_ % (MathTime macros destroy plain TeX's \sp,\sb)
+
+\catcode`\^=13
+\catcode`\_=13
+
+\pdef_#1{\o@sb{\display@false\advance\mathcount@ 1 \inline{#1}}}
+
+\pdef^#1{\o@sp{\display@false\advance\mathcount@ 1 \inline{#1}}}
+
+\catcode`\^=12
+\catcode`\_=12
+
+%
+%  P a r s i n g   o f   s u b -   a n d   s u p e r s c r i p t s
+%
+
+% The comand \parse@ detects whether sub- or superscripts follow.
+% If yes, then \sb@true or \sp@true is set and the arguments
+% are stored in \sb@toks or \sp@toks, respectively.
+% Then \afterparse@ is executed.
+
+\newtoks\sp@toks
+\newtoks\sb@toks
+
+\newif\ifsb@
+\newif\ifsp@
+
+\def\parse@{\sb@false\sp@false
+ \def\next@comm{\afterassignment\parse@@\let\next=}
+ \next@comm}
+
+\def\parse@@{%
+ \ifx\next_
+  \ifsb@\n@err{Double subscript}{The notation x_y_z is ambiguous.}
+  \else\sb@true
+  \fi
+  \def\next@comm{\sb@@}
+ \else
+  \ifx\next^
+   \ifsp@\n@err{Double superscript}{The notation x^y^z is ambiguous.}
+   \else\sp@true
+   \fi
+   \def\next@comm{\sp@@}
+  \else
+   \def\next@comm{\afterparse@}
+  \fi
+ \fi
+ \next@comm}
+
+\def\sp@@#1{\sp@toks={#1} \afterassignment\parse@@\let\next=}
+
+\def\sb@@#1{\sb@toks={#1} \afterassignment\parse@@\let\next=}
+
+\def\parse@next{\parse@\next}
+
+%
+%  O p e r a t o r s
+%
+
+% \mathop is redefined to stop misinterpretation of following Bins 
+% as unary operators (cf. TeXbook, p. 170). 
+
+\let\o@mathop\mathop
+
+% The following definition determines spacing between Op and Bin.
+% (According to [TeXBook, p. 170], ``such case never arises, 
+% so plain TeX leaves it undefined, making the Bin into unary.'')
+
+\newif\iflimits@
+\limits@true
+
+\pdef\mathop#1{%
+ \ifnum\mathcount@>0  % in sub- and superscripts 
+  \def\next@comm{\o@mathop{#1}}       % just @mathop
+ \else \def\mathop@arg{#1}
+  \def\afterparse@{\mathop@@}
+  \sb@false\sp@false
+  \ifdisplay@\limits@true\else\limits@false\fi
+  \def\next@comm{\afterassignment\mathop@\let\next=}
+ \fi
+ \next@comm}
+
+\def\mathop@{\def\next@comm{\parse@next}
+ \ifx\next\limits 
+  \ifdisplay@ \limits@true 
+  \else \iflimits@ \else \n@warning{Ignoring inline \string\limits}\fi
+  \fi
+  \def\next@comm{\parse@}
+ \else
+  \ifx\next\nolimits \limits@false \def\next@comm{\parse@}\fi
+ \fi
+ \next@comm}
+
+\def\mathop@@{\mathoptest@ % sets \ifresult@ true if a left delimiter follows
+ \ifresult@
+  \iflimits@ 
+   \o@mathop{\mathop@arg}\mathop@@@l
+  \else 
+   \o@mathop{\mathop@arg}\nolimits\mathop@@@
+  \fi
+ \else
+  \iflimits@ 
+   \mathinner{\o@mathop{\mathop@arg}\mathop@@@l}
+  \else 
+   \mathinner{\mathop@arg}\mathop@@@
+  \fi
+ \fi
+ \next}
+
+
+\catcode`\^=13
+\catcode`\_=13
+
+\def\mathop@@@{%
+ \ifsp@
+  ^{\hbox{\edef\@tempa{\noexpand\imath@{\the\sp@toks}}%
+   \def\\{,\ }\@tempa}}
+ \fi
+ \ifsb@
+  _{\hbox{\edef\@tempa{\noexpand\imath@{\the\sb@toks}}%
+   \def\\{,\ }\@tempa}}
+ \fi}
+
+\def\mathop@@@l{\limits
+ \ifsp@ ^{\lmathop@@@l@{\the\sp@toks}} \fi
+ \ifsb@ _{\lmathop@@@l@{\the\sb@toks}} \fi}
+
+\def\lmathop@@@l@#1{\vbox{\let\\=\crcr 
+ \baselineskip=0pt \lineskip=2pt
+ \edef\@tempa{\vbox{\noexpand\ialign{%
+  \hfil\noexpand\imath@{####}\hfil\crcr
+  #1 \crcr}}}  
+ \@tempa}}
+
+\catcode`\^=12
+\catcode`\_=12
+
+
+\catcode`\(=13 \catcode`\[=13 \catcode`\<=13 
+
+\newif\iftesting@
+\testing@false
+
+\def\mathoptest@{%
+ \iftesting@
+  \result@true
+ \else 
+  \result@false
+  \ifx\next\ch@lparenthesis\result@true \else
+  \ifx\next\ch@lbrack\result@true \else
+  \ifx\next<\result@true \else
+  \ifx\next\{\result@true \else
+  \ifx\next\left\result@true \else
+  \ifx\next\langle\result@true \else
+  \ifx\next\lfloor\result@true \else
+  \ifx\next\lceil\result@true \else
+  \ifx\next\mathopen\result@true 
+  \fi\fi\fi\fi\fi\fi\fi\fi\fi 
+ \fi}
+
+% \lvert and \lVert are intentionally omitted
+
+\catcode`\(=12 \catcode`\[=12 \catcode`\<=12 
+
+%
+%  A b b r e v i a t i o n s
+%
+\newcount\abbrevlength@
+
+\pdef\abbreviation{\def\abbrev@@{}\abbrevlength@=0
+   \def\abbrev@@@{\afterassignment\abbrev@\let\abbrev@next= }%
+   \result@false\abbrev@@@}
+
+\long\def\abbrev@{%
+ \ifx`\abbrev@next \result@false
+ \else 
+  \edef\next{\meaning\abbrev@next}
+  \expandafter\letter@test\next\endletter@test
+ \fi
+ \ifresult@
+  \edef\abbrev@@{\abbrev@@\theletter@}
+  \advance\abbrevlength@ 1\relax
+ \else
+  \ifnum\abbrevlength@>1 
+   \ifnum\mathcount@>0 \o@mathop\bgroup
+   \else \mathinner\bgroup
+   \fi
+  \else\bgroup
+  \fi
+  {\rm \abbrev@@\kern 0pt}
+  \def\abbrev@@@{\egroup\result@false
+   \mathclose{}\mathopen{}\mathop{}\nolimits\abbrev@next}
+ \fi
+ \abbrev@@@}
+
+\def\letter@test #1#2#3#4#5\endletter@test{
+ \if l#4\result@true\letter@test@#5 
+ \else\result@false\fi}
+
+\def\letter@test@#1#2#3#4#5#6{\def\theletter@{#6}}
+
+%
+%   S p e c i a l   s y m b o l s
+%
+
+% Inequalities
+
+%\let\leq=\le           \let\geq=\ge
+%\let\leqq=\le          \let\geqq=\ge
+
+% factorial
+
+\def\factorial{\mc@factorial\mathopen{}\mathinner{}}
+
+% vingl
+
+\pdef\vin{\mathrel{\hbox{\hglue .1\mex
+  \vrule \@height .06\mex \@width 1\mex
+  \vrule \@height 1.33\mex \@width .06\mex
+  \hglue .4\mex}}}
+
+\pdef\niv{\mathrel{\hbox{\hglue .2\mex
+  \vrule \@height 1.33\mex \@width .06\mex
+  \vrule \@height .06\mex \@width 1\mex
+  \hglue .5\mex}}}
+
+\def\stackrel#1#2{\mathrel{\limits@true\mathop{#2}\limits^{\rm #1}}} %%%%%%%%%%
+
+\makerobust\stackrel
+
+%
+%   E x p a n d a b l e   b a r s   a n d   a r r o w s
+%
+
+% Save even if not needed
+
+\let\o@overline=\overline
+\let\o@underline=\underline
+
+\newdimen\er@wd
+
+\def\er@sep{.06ex}
+\def\er@gap{.33\mex}
+\def\er@short{.6\mex}
+\def\er@rulewd{.05ex}
+\def\er@minwd{.6\mex}
+\def\er@kerna{.15\mex}
+\def\er@kernb{.15\mex}
+
+\def\overline#1{\setmathtype@{#1}%
+ {\o@er@{#1}{\leaders\hrule \@height\er@rulewd \hfill}}
+}
+\def\underline#1{\setmathtype@{#1}%
+ {\u@er@{#1}{\leaders\hrule \@height\er@rulewd \hfill}}
+}
+\def\overrightarrow#1{\setmathtype@{#1}%
+ {\o@er@{#1}{\o@math\iscriptstyle@ \longrightarrowfill\o@math}}
+}
+\def\underrightarrow#1{\setmathtype@{#1}%
+ {\u@er@{#1}{\o@math\iscriptstyle@ \longrightarrowfill\o@math}}
+}
+\def\overleftarrow#1{\setmathtype@{#1}%
+ {\o@er@{#1}{\o@math\iscriptstyle@ \longleftarrowfill\o@math}}
+}
+\def\underleftarrow#1{\setmathtype@{#1}%
+ {\u@er@{#1}{\o@math\iscriptstyle@ \longleftarrowfill\o@math}}
+}
+\def\overleftrightarrow#1{\setmathtype@{#1}%
+ {\o@er@{#1}{\o@math\iscriptstyle@ \longleftrightarrowfill\o@math}}
+}
+\def\underleftrightarrow#1{\setmathtype@{#1}%
+ {\u@er@{#1}{\o@math\iscriptstyle@ \longleftrightarrowfill\o@math}}
+}
+
+% Inside
+
+\pdef\o@er@#1#2{\inlineopen@
+ \begingroup
+ \setbox0\currstyle@hbox{\toprestricted@true #1}
+ \er@wd=\wd0 \advance\er@wd-\er@short
+ \ifdim \er@wd<\er@minwd \er@wd=\er@minwd \fi
+ \kern\er@kerna
+ \hbox to\wd0{\hss
+  \vbox{\offinterlineskip
+   \vglue\er@sep
+   \hbox to\er@wd{#2}%
+   \vskip\er@gap
+   \hbox to\er@wd{\hss\box0\hss}}%
+  \hss}
+ \kern\er@kernb
+ \endgroup
+ \inlineclose@}
+
+\pdef\u@er@#1#2{\inlineopen@
+ \begingroup
+ \setbox0\currstyle@hbox{\botrestricted@true #1}
+ \er@wd=\wd0 \advance\er@wd -\er@short
+ \ifdim \er@wd<\er@minwd \er@wd=\er@minwd \fi
+ \kern\er@kerna
+ \hbox to\wd0{\hss
+  \vtop{\offinterlineskip
+   \hbox to\er@wd{\hss\box0\hss}
+   \vskip\er@gap
+   \hbox to\er@wd{#2}%
+   \vglue\er@sep}%
+  \hss}
+ \kern\er@kernb
+ \endgroup
+ \inlineclose@}
+
+\def\longrightarrowfill{\axis@@@\hfill\mskip-6mu\rightarrow}
+\def\longleftarrowfill{\leftarrow\mskip-6mu\axis@@@\hfill}
+\def\longleftrightarrowfill{\leftarrow\mskip-6mu
+ \axis@@@\hfill\mskip-6mu\rightarrow}
+
+% Setting math type
+
+\def\setmathtype@#1#2{
+ \setbox0\hbox{\o@math \setmathtype@@@000 x#1x\o@math}
+ \@tempdima=\wd0
+ \setbox0\hbox{\o@math \setmathtype@@@100 x#1x\o@math}
+ \ifdim\wd0>\@tempdima \o@mathop{#2}
+ \else \setbox0\hbox{\o@math \setmathtype@@@010 x#1x\o@math}
+  \ifdim\wd0>\@tempdima \mathrel{#2}
+  \else \setbox0\hbox{\o@math \setmathtype@@@001 x#1x\o@math}
+   \ifdim\wd0>\@tempdima \mathbin{#2}
+   \else \mathord{#2}
+   \fi
+  \fi
+ \fi}
+
+\def\setmathtype@@@#1#2#3{\thinmuskip=#1mu \thickmuskip=#2mu \medmuskip=#3mu
+ \relax}
+
+%
+%   M u l t i p l e   a n d   e x t e n s i b l e   a c c e n t s
+%
+
+% Extensible accents: 
+
+\let\o@hat=\hat
+\let\o@widehat=\widehat
+
+\let\o@tilde=\tilde
+\let\o@widetilde=\widetilde
+
+\let\o@bar=\bar
+
+\def\widebar#1{\ifdim\wd0<\prorated@ em \mathaccent"07B {#1}
+ \else \mathaccent"07C {#1}
+ \fi}
+ 
+% Limits of extensibility: 
+%
+% narrow accent
+%   threshold = \widethr@
+% wide accent
+%   threshold = \wrapthr@
+% attached accent
+
+\def\widethr@{1.6ex}
+\def\wrapthr@{5.8\mex}
+
+% Non-extensible accents
+
+\let\o@dot=\dot
+\let\o@ddot=\ddot
+\let\o@breve=\breve
+\let\o@check=\check
+
+\def\uo{\mathaccent"017 }
+
+% Multiple accents
+
+\newtoks\acc@toks % toks to store a sequence of accents in reverse order
+
+\newif\ifextacc@
+
+\pdef\hat{\acc@toks={\H@} \extacc@true \acc@@}
+\pdef\tilde{\acc@toks={\T@} \extacc@true \acc@@}
+\pdef\bar{\acc@toks={\B@} \extacc@true \acc@@}
+\pdef\dot{\acc@toks={\D@} \extacc@false \acc@@}
+\pdef\ddot{\acc@toks={\DD@} \extacc@false \acc@@}
+\pdef\breve{\acc@toks={\BR@} \extacc@false \acc@@}
+\pdef\check{\acc@toks={\CH@} \extacc@false \acc@@}
+
+% Defaults are printable (for debugging purposes)
+
+\def\H@{H} \def\T@{T} \def\B@{B}
+ \def\D@{D} \def\DD@{DD}
+ \def\BR@{BR} \def\CH@{CH}
+
+% See TeXbook p. 374 for the trick with \expandafter:
+
+\def\acc@@#1{\def\next@comm{\acc@@} \def\@tempa{#1} \def\@tempb{\hat}
+ \ifx \@tempa\@tempb
+  \acc@toks=\expandafter{\expandafter \H@\the\acc@toks}
+ \else \def\@tempb{\tilde}
+  \ifx \@tempa\@tempb
+   \acc@toks=\expandafter{\expandafter \T@\the\acc@toks}
+  \else \def\@tempb{\bar}
+   \ifx \@tempa\@tempb
+    \acc@toks=\expandafter{\expandafter \B@\the\acc@toks}
+   \else \def\@tempb{\dot}
+    \ifx \@tempa\@tempb
+     \acc@toks=\expandafter{\expandafter \D@\the\acc@toks}
+     \extacc@false
+    \else \def\@tempb{\ddot}
+     \ifx \@tempa\@tempb
+      \acc@toks=\expandafter{\expandafter \DD@\the\acc@toks}
+      \extacc@false
+     \else \def\@tempb{\breve}
+      \ifx \@tempa\@tempb
+       \acc@toks=\expandafter{\expandafter \BR@\the\acc@toks}
+       \extacc@false
+      \else \def\@tempb{\check}
+       \ifx \@tempa\@tempb
+        \acc@toks=\expandafter{\expandafter \CH@\the\acc@toks}
+        \extacc@false
+       \else \def\next@comm{\acc@@@{#1}} 
+       \fi
+      \fi
+     \fi
+    \fi
+   \fi
+  \fi
+ \fi
+ \next@comm}
+
+\def\acc@@@#1{
+ \inlineopen@   
+ \setbox0\currstyle@hbox{#1} 
+ \ifdim\wd0>\wrapthr@ % long
+  \wrap@@@acc{#1}
+ \else 
+  \checkcompound@{#1}% #1=accented material
+  \ifcompound@ % not a single character
+   \ifextacc@
+    \ifdim\wd0>\widethr@ \wide@@@acc{#1} 
+     \else \@@@acc{#1}
+    \fi \acc@kern 
+   \else \wrap@@@acc{#1}
+   \fi 
+  \else % single character
+   \ifdim\wd0>\widethr@ \wide@@@acc{#1} 
+   \else \@@@acc{#1}
+   \fi \acc@kern 
+  \fi
+ \fi 
+ \inlineclose@}
+
+\def\acc@kern {\mkern1.2mu }
+
+% Checking if single character
+
+\newif\ifcompound@
+
+\def\checkcompound@#1{\compound@false 
+ \edef\fdxxii@textfontii{\the\fontdimen22\textfont2}% 
+ \fontdimen22\textfont2=300pc
+ \setbox\@tempboxa\hbox{\o@math\defaultdelims@
+  \def\frac{xx\@gobbletwo}
+  #1\o@math} 
+ \@tempdima=\ht\@tempboxa
+ \setbox\@tempboxa\hbox{\o@math\defaultdelims@
+  \def\frac{xx\@gobbletwo}
+  \o@mathop{#1}\o@math} 
+ \ifdim\ht\@tempboxa=\@tempdima
+  \compound@true  
+ \fi
+ \fontdimen22\textfont2=\fdxxii@textfontii
+}
+
+
+% Attaching accents to #1, putting parentheses around if necessary.
+
+\def\wrap@@@acc#1{
+ \setbox\@tempboxa\currstyle@hbox{\nodisplay@false
+  \replacebindelims@{#1}{x}}
+ \ifdim\wd\@tempboxa>2\mex 
+  \ifdisplay@ \currstyle@hbox{(#1)} \else (\inline{#1}) \fi
+  \samesize@^{\wrap@@@acc@}
+ \else
+  \ifdisplay@ \currstyle@hbox{#1} \else \inline{#1} \fi
+  \samesize@^{\wrap@@@acc@}
+ \fi
+}
+
+\def\wrap@@@acc@{\begingroup 
+ \def\H@{\land} \def\T@{\sim} \def\B@{-}
+ \def\D@{\raise.5\mex\hbox{\bf.}} \def\DD@{\raise.5\mex\hbox{\bf..}}
+ \def\BR@{\smile} \def\CH@{\lor}
+ \the\acc@toks \endgroup}
+
+% Stacked accents
+
+\newdimen\xheight@
+
+\def\acc@def#1#2#3#4{\def#1{\fontdimen5 #4=\@tempdima
+ \ifcompound@ % if compound
+  \rlap{\o@math#2{\currstyle@hbox{#3}}\o@math} 
+ \else % if single character
+  \rlap{\currstyle@hbox{#2{#3}}}
+ \fi
+ \advance\@tempdima\@tempdimb}}
+
+\def\xacc@def#1#2#3#4{\def#1{\begingroup
+ \advance\@tempdima 1.5\@tempdimb
+ \fontdimen5 #4=\@tempdima
+ \ifcompound@ % if compound
+  \rlap{\o@math#2{\currstyle@hbox{#3}}\o@math}
+ \else
+  \rlap{\currstyle@hbox{#2{#3}}}
+ \fi
+ \endgroup
+ \fontdimen5 #4=\xxheight@
+ \advance\@tempdima\@tempdimb}}
+
+\def\wide@@@acc#1{% uses fontdimens
+ \ifcase\mathcount@ \def\acc@font{\textfont3 } \def\xacc@font{\textfont0 }
+ \or \def\acc@font{\scriptfont3 } \def\xacc@font{\scriptfont0 }
+ \else \def\acc@font{\scriptscriptfont3 } \def\xacc@font{\scriptscriptfont0 }
+ \fi 
+ \edef\xheight@{\the\fontdimen5\acc@font}%
+ \edef\xxheight@{\the\fontdimen5\xacc@font}%
+ \@tempdima=\xheight@ \@tempdimb=-.55\@tempdima
+ \acc@def{\H@}{\o@widehat}{#1}\acc@font
+ \acc@def{\T@}{\o@widetilde}{#1}\acc@font
+ \xacc@def{\B@}{\widebar}{#1}\xacc@font
+ \acc@def{\D@}{\o@dot}{#1}\xacc@font
+ \acc@def{\DD@}{\o@ddot}{#1}\xacc@font
+ \acc@def{\BR@}{\o@breve}{#1}\xacc@font
+ \acc@def{\CH@}{\o@check}{#1}\xacc@font
+ \the\acc@toks 
+ \currstyle@hbox{#1} 
+ \fontdimen5\acc@font=\xheight@
+ \fontdimen5\xacc@font=\xxheight@
+}
+
+\def\@@@acc#1{% uses fontdimens!
+ \ifcase\mathcount@ \def\acc@font{\textfont0 }
+ \or \def\acc@font{\scriptfont0 }
+ \else \def\acc@font{\scriptscriptfont0 }
+ \fi
+ \edef\xheight@{\the\fontdimen5\acc@font}%
+ \@tempdima=\xheight@ \@tempdimb=-.55\@tempdima
+ \acc@def{\H@}{\o@hat}{#1}\acc@font
+ \acc@def{\T@}{\o@tilde}{#1}\acc@font
+ \acc@def{\B@}{\o@bar}{#1}\acc@font
+ \acc@def{\D@}{\o@dot}{#1}\acc@font
+ \acc@def{\DD@}{\o@ddot}{#1}\acc@font
+ \acc@def{\BR@}{\o@breve}{#1}\acc@font
+ \acc@def{\CH@}{\o@check}{#1}\acc@font
+ \the\acc@toks
+ \currstyle@hbox{#1}
+ \fontdimen5\acc@font=\xheight@
+}
+
+\let\inlineopen@\relax
+\let\inlineclose@\relax
+
+%
+%  E x p a n d a b l e   h o r i z o n t a l  a r r o w s
+%
+
+\def\longrightarrow@#1#2{\mathrel{\mathopen-\axis@@
+ \axis@{#1}{#2}
+ \axis@@\mathclose\rightarrow}}
+
+\def\longleftarrow@#1#2{\mathrel{\mathopen\leftarrow\axis@@
+ \axis@{#1}{#2}
+ \axis@@\mathclose-}}
+
+\def\longleftrightarrow@#1#2{\mathrel{\mathopen\leftarrow\axis@@
+ \axis@{#1}{#2}
+ \axis@@\mathclose\rightarrow}}
+
+\pdef\to{\def\afterparse@{
+ \longrightarrow@{\ifsp@\sp@toks@\fi}{\ifsb@\sb@toks@\fi}\next}
+ \sb@false\sp@false
+ \def\next@comm{\afterassignment\parse@next\let\next=}
+ \next@comm}
+
+\pdef\ot{\def\afterparse@{
+ \longleftarrow@{\ifsp@\sp@toks@\fi}{\ifsb@\sb@toks@\fi}\next}
+ \sb@false\sp@false
+ \def\next@comm{\afterassignment\parse@next\let\next=} 
+ \next@comm}
+
+\pdef\otto{\def\afterparse@{
+ \longleftrightarrow@{\ifsp@\sp@toks@\fi}{\ifsb@\sb@toks@\fi}\next}
+ \sb@false\sp@false
+ \def\next@comm{\afterassignment\parse@next\let\next=} 
+ \next@comm}
+
+\pdef\mapsto{\mathrel{\mapstochar}\nobreak\mathclose{}\mathopen{}\to}
+ % \nobreak inserted thanks to E.H. Lohse
+
+\def\sp@toks@{\edef\@tempa{\noexpand\noexpand\noexpand\inline{\the\sp@toks}}
+ \@tempa}
+
+\def\sb@toks@{\edef\@tempa{\noexpand\noexpand\noexpand\inline{\the\sb@toks}}
+ \@tempa}
+
+\def\axis@#1#2{\setbox0\scriptstylehbox@{\protectinline@true #1}
+ \er@wd=\wd0
+ \setbox\@tempboxa\scriptstylehbox@{\protectinline@true #2}
+ \ifdim\wd\@tempboxa>\er@wd \er@wd=\wd\@tempboxa\fi
+ \@tempdima=\ht\@tempboxa
+ \advance\@tempdima\dp\@tempboxa
+ \advance\@tempdima-.42\mex
+ \vtop{\offinterlineskip
+ \hbox{\vbox{\hbox to\er@wd{\hss\box0\hss}%
+ \vskip -.26\mex
+ \hbox to\er@wd{\axis@@@\hfill}}}
+ \vskip -.26\mex
+ \hbox to\er@wd{\hss\box\@tempboxa\hss}}
+ }
+
+\def\axis@@{\mkern-4.5mu    %%% mkern setting adjusted 24 Sept. 2002
+ \axis@@@\mskip 3mu plus \arrow@expandability mu   %%% thanks to E.H. Lohse
+ \mkern-4.5mu}
+
+\def\axis@@@{%
+ \cleaders\hbox{\o@math\mkern-3mu \icurrstyle@\mathord- \mkern-3mu\o@math}}
+
+\def\arrow@expandability{1.2}
+
+%
+%   R o o t s
+%
+\def\o@sqrt{\radical"270370 }
+
+\pdef\sqrt#1{\inlineopen@\kern.4\mex\root@{}{#1}\inlineclose@} 
+% \def changed to \pdef on 25 Sept. 2002 thanks to Michal Malek
+
+\pdef\root#1#2{\inlineopen@\kern.5\mex\root@{#1}{#2}\inlineclose@}
+% \def changed to \pdef on 25 Sept. 2002 thanks to Michal Malek
+
+\def\root@#1#2{%
+ \setbox0\currstyle@hbox{\toprestricted@true #2
+  \vrule \@height 1.6\mex \@depth0pt \@width 0pt} % mathstrut's top
+ \setbox\@tempboxa\hbox{\o@math\currstyle@
+  \ifdisplay@ \@tempdima=.6\dp\sizebox@ % bottom is half of that of sizebox 
+  \else \@tempdima=.2\mex % bottom is a bit below the baseline
+  \fi
+  \setbox\@tempboxa\hbox to\wd0{%
+   \vrule \@height\ht0 \@depth\@tempdima \@width 0pt\hss}%
+  \global\setbox\sizebox@\copy\@tempboxa
+  \setbox\@tempboxa\hbox{\o@math\currstyle@\o@sqrt{\box\@tempboxa}\o@math}%
+  \@tempdima=\ht\@tempboxa \advance\@tempdima-\dp\@tempboxa
+  \advance\@tempdima 1.6\mex
+  \raise.4\@tempdima\hbox{\advance\mathcount@2\imath@{#1}}%
+  \kern-.3\mex
+  \box\@tempboxa
+  \o@math} % tempboxa := the radical sign with #1 and without #2
+ \resizebox@{\sizebox@} % sizebox matches top of #2 and bottom at @tempdima
+ \setbox0\hbox to\wd\@tempboxa{\hss\box0} % box0 = #1 shifted right
+ \setbox0\vbox{\offinterlineskip
+  \vskip-.1\mex
+  \@tempdima=\ht\@tempboxa
+  \dimen@=\dp\@tempboxa
+  \advance\@tempdima \dimen@
+  \advance\@tempdima -.55\mex
+  \box\@tempboxa
+  \vskip -\@tempdima
+  \box0} % box0 = the result
+ \box0\kern.3\mex\relax % space following the root
+} 
+
+%
+%   U n d e r b r a c e   a n d   o v e r b r a c e
+%
+
+% Underbrace and overbrace are designed as escape commands, because they
+% may extend accross unbalanced delimiters:
+
+\def\@underbrace#1{\o@mathop{\vtop{%
+ \ialign{##\crcr 
+ \o@math\hfil\dcurrstyle@{#1}\hfil\o@math\crcr
+ \noalign{\kern 3pt\nointerlineskip} \upbracefill \crcr 
+ \noalign{\kern 3pt}}}}\limits}
+
+\def\underbrace#1#2#3{\null\!
+ \def\@tempa{#2}\def\@tempb{_}%
+ \ifx\@tempa\@tempb
+  \b@ubrace@#1\e@ubrace@{#3}\!
+ \else\n@err{Missing _ after \string\underbrace}
+  {Wrong syntax. I expected something like \underbrace{...}_{...}}
+  #1
+ \fi}
+
+\def\b@ubrace@{%
+ \ifdisplay@ \store@ec{\b@ubrace@@}{}
+ \else \b@ubrace@@
+ \fi}
+
+\def\b@ubrace@@{\setbox0\hbox\bgroup}
+
+\def\e@ubrace@#1{%
+ \ifdisplay@ \store@ec{\e@ubrace@@{#1}}{}
+ \else \e@ubrace@@{#1}
+ \fi}
+
+\def\e@ubrace@@#1{\egroup\@underbrace{\box0}_{#1}}
+
+\def\@overbrace#1{\o@mathop{\vbox{%
+ \ialign{##\crcr 
+ \noalign{\kern 3pt\nointerlineskip}
+ \downbracefill \crcr 
+ \noalign{\kern 3pt}\crcr
+ \o@math\hfil\dcurrstyle@{#1}\hfil\o@math\crcr}}}\limits}
+
+\def\overbrace#1#2#3{\null\!
+ \def\@tempa{#2}\def\@tempb{^}%
+ \ifx\@tempa\@tempb
+  \b@obrace@#1\e@obrace@{#3}\!
+ \else\n@err{Missing ^ after \string\overbrace}
+  {Wrong syntax. I expected something like \overbrace{...}^{...}}
+  #1
+ \fi}
+
+\def\b@obrace@{%
+ \ifdisplay@ \store@ec{\b@obrace@@}{}
+ \else \b@obrace@@
+ \fi}
+
+\def\b@obrace@@{\setbox0\hbox\bgroup}
+
+\def\e@obrace@#1{%
+ \ifdisplay@ \store@ec{\e@obrace@@{#1}}{}
+ \else \e@obrace@@{#1}
+ \fi}
+
+\def\e@obrace@@#1{\egroup\@overbrace{\box0}^{#1}}
+
+%
+%   F r a c t i o n s
+%
+
+% This is tricky.
+% See Natural TeX notation in mathematics,
+% in: Proc. Conf. EuroTeX 2001, Kerkrade, 23--27 September 2001;
+% online at www.ntg.nl/eurotex/proceedings.html
+
+\let\o@over=\over
+\let\o@atop=\atop
+\let\o@choose=\choose
+
+\def\over{\n@err{Disabled command \string\over }
+ {No more a valid command. Replace {A \over B} with \frac A B.}}
+\def\atop{\n@err{Disabled command \string\atop }
+ {No more a valid command. Use array instead.}}
+\def\choose{\n@err{Disabled command \string\choose }
+ {No more a valid command. Replace {A \choose B} with \binom A B.}}
+
+% \frac is defined here
+
+\pdef\frac#1#2{%
+ \checknumeric@{#1#2} 
+ \ifdisplay@
+  \ifresult@ % numeric extensible
+   \ext@frac{#1}{#2}
+  \else \d@Frac{#1}{#2}
+  \fi
+ \else \inlinefrac@{#1}{#2}
+ \fi
+}
+
+% displayed fraction with setsize.
+
+\newdimen\htdecrement@ % global
+\newdimen\dpdecrement@ % global
+
+\def\d@Frac#1#2{\begingroup 
+ \setbox\@tempboxa\hbox{\o@math\dcurrstyle@ 
+  {\setbox0\currstyle@hbox{\vrule\@depth .7\mex\@width 0pt
+    \botrestricted@false #1}%
+   \@tempdima=\ht0 \advance\@tempdima-\ht\sizebox@ 
+   \global\htdecrement@=\@tempdima
+%  \@tempdima=\dp0 \advance\@tempdima .5ex \dp0=\@tempdima
+   \box0
+  \above\fracrulethickness@
+   \setbox0\currstyle@hbox{\vrule\@height 2\mex\@width 0pt
+    \toprestricted@false #2}%
+   \@tempdimb=\dp0 \advance\@tempdimb-\dp\sizebox@
+   \global\dpdecrement@=\@tempdimb
+%  \@tempdimb=\ht0 \advance\@tempdimb .5ex \ht0=\@tempdimb
+   \box0
+   }%
+  \o@math}%
+ \setbox0\copy\@tempboxa  
+ \iftoprestricted@ \else
+   \@tempdimb=\ht0 \advance\@tempdimb .4\mex \ht0=\@tempdimb
+ \fi
+ \ifbotrestricted@ \else
+   \@tempdimb=\dp0 \advance\@tempdimb .5\mex \dp0=\@tempdimb
+ \fi 
+ \box0  % print
+ \@tempdima=\ht\@tempboxa \advance\@tempdima-\htdecrement@
+ \ht\@tempboxa=\@tempdima  
+ \@tempdima=\dp\@tempboxa \advance\@tempdima-\dpdecrement@
+ \dp\@tempboxa=\@tempdima  
+ \global\setbox\sizebox@\copy\@tempboxa 
+ \endgroup 
+ \resizebox@{\sizebox@}}
+
+\newdimen\fracrulethickness@
+\fracrulethickness@=.3pt
+
+\def\shillingsign@{/}
+
+\def\inlinefrac@#1#2{%
+  \checkcompact@{#1}{\medmuskip=0mu\thickmuskip=0mu\thinmuskip=0mu}%
+  \ifresult@ \wrapfrac@{#1} \else (\wrapfrac@{#1}) \fi
+ \shillingsign@
+  \checkcompact@{\mathord{}#2}{\medmuskip=0mu\thickmuskip=0mu}%
+  \ifresult@ \wrapfrac@{#2} \else (\wrapfrac@{#2}) \fi
+}
+
+% Extensible fractions are middle delimiters:
+
+\def\ext@frac#1#2{\mathinner{}\ddelim@m:{{#1}{#2}}\mathinner{}}
+
+% Here is the command to size a numeric fraction: small if sizebox fits
+% into some bounds. The bounds themselves are bigger than smallest size 
+% parentheses.
+
+\def\size@frac#1#2{%
+ \ifdim\ht\sizebox>2.3\mex {\dcurrstyle@{#1\o@over#2}}
+ \else
+  \ifdim\dp\sizebox>1.4\mex {\dcurrstyle@{#1\o@over#2}}
+  \else {\icurrstyle@{#1\o@over#2}}
+  \fi
+ \fi
+}
+
+% Here is a macro to recognize a numeric argument. The criterion is that after
+% removal of all characters 0--9 the typeset box is of height no greater than 
+% 1/2 ex.
+
+\def\checknumeric@#1{\setbox0\hbox{\defaultdelims@
+  \o@math\removenums@{#1}\o@math}
+ \ifdim\ht0>.5ex\relax  
+  \global\result@false
+ \else\global\result@true 
+ \fi}
+
+\def\removenums@#1{\begingroup \def\frac##1##2{X}
+ \uccode``=`|
+ \uccode`0=`.\uccode`1=`.\uccode`2=`.\uccode`3=`.\uccode`4=`. 
+ \uccode`5=`.\uccode`6=`.\uccode`7=`.\uccode`8=`.\uccode`9=`.\uppercase{#1}
+\endgroup}
+
+\def\checkcompact@#1#2{\setbox\@tempboxa\hbox{\o@math
+  \def\frac##1##2{\mskip\medmuskip}
+  \lowercase{\remove@ss\replacebindelims@{#1}{\mathord{}}}\o@math}
+ \@tempdima=\wd\@tempboxa
+ \setbox\@tempboxa\hbox{\o@math\def\frac##1##2{\mskip\medmuskip} #2
+  \remove@compact{\remove@ss\replacebindelims@{#1}{\mathord{}}}\o@math}
+ \advance\@tempdima-\wd\@tempboxa
+ \ifdim\@tempdima>0pt \relax\result@false\else\result@true\fi}
+
+\catcode`\^=13
+\catcode`\_=13
+
+\def\remove@ss{\def^##1{}\def_##1{}}
+
+\catcode`\^=12  
+\catcode`\_=12  
+
+
+\def\remove@compact#1{\begingroup
+ \def\shillingsign@{} \def\backslash{}
+ \def\vert{}         \def\Vert{}
+ \def\uparrow{}      \def\Uparrow{}
+ \def\downarrow{}    \def\Downarrow{}
+ \def\updownarrow{}  \def\Updownarrow{}
+ \removeslashes@{#1}\endgroup}
+
+\def\removeslashes@#1{\lccode`/=` \lccode`|=` \lowercase{#1}}
+
+\newdimen\wrapfrac@dim
+\newbox\wrapfrac@box
+
+\def\wrapfrac@#1{%
+ \begingroup
+ \@wrapfrac\mathopen{}#1 \relax\mathclose{}\frac\relax\relax\frac
+ \endgroup
+}
+% \relax after #1 added 4.4.2001 
+% space after #1 added 7.5.2001
+
+\def\@wrapfrac#1\frac#2#3#4\frac{%
+ \def\frac@test{#2}\def\@relax{\relax}
+ \ifx\frac@test\@relax #1 
+  \def\next@frac{}
+ \else 
+  \@@wrapfrac{#1}{#2}{#3}{#4} 
+  \def\next@frac{\next@frac@#4\frac} 
+ \fi
+ \next@frac}
+
+\newif\ifwrap@
+
+\def\@@wrapfrac#1#2#3#4{%
+ \checknumeric@{#2#3} 
+ \ifresult@ #1{#2\o@over#3} \def\next@frac@{\@wrapfrac}
+ \else \def\next@frac@{\@wrapfrac\mathord{}}
+  \wrap@false % to be true iff #4 starts with Ord, Op, Open, Inner
+  \setbox\wrapfrac@box\hbox{\o@math\mathord{}#4\mathinner{}\o@math} 
+  \wrapfrac@dim=\wd\wrapfrac@box            
+  \setbox\wrapfrac@box\hbox{\o@math\mathrel{}#4\mathinner{}\o@math}  
+  \advance\wrapfrac@dim-\wd\wrapfrac@box   
+  \ifdim\wrapfrac@dim<0pt \wrap@true\fi
+  \ifwrap@ % relax
+  \else % now \wrap@false; to be true if #1 ends with Ord, Op, Close, Inner
+   \setbox\wrapfrac@box\hbox{\o@math\mathinner{}#1\mathopen{}\o@math}       
+   \wrapfrac@dim=\wd\wrapfrac@box             
+   \setbox\wrapfrac@box\hbox{\o@math\mathinner{}#1\mathrel{}\o@math} 
+   \advance\wrapfrac@dim-\wd\wrapfrac@box  
+   \ifdim\wrapfrac@dim<0pt \wrap@true\fi
+   \ifwrap@ % now #1 ends with Ord, Op, Close, Inner 
+    % now \wrap@true; check whether #1 ends with +,-,\pm,\mp
+    \setbox\wrapfrac@box\hbox{\o@math\testing@true \def\pm{=}\def\mp{=}
+     \uccode`+=`=\uccode`-=`= \uppercase{#1}\mathclose{}\o@math}       
+    \wrapfrac@dim=\wd\wrapfrac@box             
+    \setbox\wrapfrac@box\hbox{\o@math\testing@true \def\pm{=}\def\mp{=}
+     \uccode`+=`=\uccode`-=`= \uppercase{#1}\mathopen{}\o@math} 
+    \advance\wrapfrac@dim-\wd\wrapfrac@box  
+    \ifdim\wrapfrac@dim<0pt \wrapexception@{#2}
+     \ifresult@\wrap@true \else\wrap@false \fi
+    \fi
+    \ifwrap@ % now Ord, Op, Close, Inner; test whether Inner
+     \setbox\wrapfrac@box\hbox{\o@math\testing@true\mathinner{}#1\mathclose{}
+       \o@math}       
+     \wrapfrac@dim=\wd\wrapfrac@box             
+     \setbox\wrapfrac@box\hbox{\o@math\testing@true\mathinner{}#1\mathpunct{}
+       \o@math} 
+     \advance\wrapfrac@dim-\wd\wrapfrac@box  
+     \ifdim\wrapfrac@dim<0pt \result@true % #1 ends with Inner
+     \else % now test whether #1 ends with a digit
+      \checkwrapexception@{#1}
+     \fi
+     \ifresult@ % if wrapexception
+      \wrapexception@{\uccode`.=`+ % make numbers into Bins
+      \uccode`0=`+ \uccode`1=`+ \uccode`2=`+ \uccode`3=`+ \uccode`4=`+
+      \uccode`5=`+ \uccode`6=`+ \uccode`7=`+ \uccode`8=`+ \uccode`9=`+
+      \uppercase{#2}}
+      \ifresult@\wrap@true \else\wrap@false \fi
+     \else \wrap@true 
+     \fi
+    \fi
+   \else % now #1 ends with Bin, Rel, Open, Punct
+    \setbox\wrapfrac@box\hbox{\o@math\mathinner{}#1\mathclose{}\o@math}       
+    \wrapfrac@dim=\wd\wrapfrac@box             
+    \setbox\wrapfrac@box\hbox{\o@math\mathinner{}#1\mathrel{}\o@math} 
+    \advance\wrapfrac@dim-\wd\wrapfrac@box  
+    \ifdim\wrapfrac@dim<0pt % #1 ends with Bin*
+     \wrapexception@{#2}
+     \ifresult@\wrap@true \else\wrap@false \fi
+    \else \wrap@false
+    \fi
+   \fi
+  \fi
+  \ifwrap@ 
+   #1(\inlinefrac@{#2}{#3}) 
+  \else 
+   #1\mathopen{}\inlinefrac@{#2}{#3}\mathclose{} 
+  \fi
+ \fi}
+
+% Called when #1 ends with Ord, Op, Close, Inner; checks whether
+% it ends with a digit. 
+
+\def\checkwrapexception@#1{% checks whether #1 ends with a digit
+ \result@false
+ \setbox\wrapfrac@box\hbox{\o@math\testing@true
+ \uccode`0=`= \uccode`1=`= \uccode`2=`= \uccode`3=`= \uccode`4=`=
+ \uccode`5=`= \uccode`6=`= \uccode`7=`= \uccode`8=`= \uccode`9=`=
+ \uppercase{#1}\mathclose{}\o@math}       
+ \wrapfrac@dim=\wd\wrapfrac@box             
+ \setbox\wrapfrac@box\hbox{\o@math\testing@true
+ \uccode`0=`= \uccode`1=`= \uccode`2=`= \uccode`3=`= \uccode`4=`=
+ \uccode`5=`= \uccode`6=`= \uccode`7=`= \uccode`8=`= \uccode`9=`=
+ \uppercase{#1}\mathopen{}\o@math} 
+ \advance\wrapfrac@dim-\wd\wrapfrac@box  
+ \ifdim\wrapfrac@dim<0pt \result@true \else \fi}
+ 
+\def\wrapexception@#1{% checks whether #1 starts with Bin
+ \result@false
+ \setbox\wrapfrac@box\hbox{\o@math\mathord{}#1\mathclose{}\o@math}       
+ \wrapfrac@dim=\wd\wrapfrac@box             
+ \setbox\wrapfrac@box\hbox{\o@math\mathinner{}#1\mathclose{}\o@math} 
+ \advance\wrapfrac@dim-\wd\wrapfrac@box  
+ \ifdim\wrapfrac@dim=0pt \result@true \fi}
+
+%
+%   A r g u m e n t   p l a c e h o l d e r
+%
+
+\pdef\adot{\checkpunct@\mathclose{}
+ \ifpunct@\else\mkern 1.8mu\fi
+ {\cdot}\, \mathopen{}}
+
+%
+%   S p a c e s 
+%
+
+% Firstly, disable spacefactor -- this makes typesetting easier.
+% (US TeXperts may wish to restore.)
+
+\frenchspacing
+
+% Secondly, we redefine `\ ' to produce breakable space in math mode.
+% To be used after a punctuation, which itself adds a thinmuskip.
+
+\def\space@{{} } 
+\def\mspace@{\mskip 2.4mu plus 3.6mu minus 1.8mu} 
+
+\def\ {\ifmmode\penalty0\mspace@\else\space@\fi}
+
+% Quads are 1pc long:
+
+\def\quad{\null\hskip1pc\relax}
+\def\qquad{\null\hskip2pc\relax}
+\def\qqquad{\null\hskip3pc\relax}
+
+% Nath also introduces a new environment to set math material tight.
+
+\def\tight{\def\mspaces@{\thinmuskip=2.4mu
+ \medmuskip=1.2mu
+ \thickmuskip=4.5mu
+ \def\mspace@{\mskip 1.5mu}%
+ \def\quad{\null\hskip .6pc\relax}%
+ \def\qquad{\null\hskip 1.2pc\relax}%
+ \def\qqquad{\null\hskip 1.8pc\relax}%
+}}
+ 
+\def\endtight{\global\@ignoretrue}
+
+%
+%   P u n c t u a t i o n
+%
+
+\newif\ifpunct@ % global
+
+\def\punctpenalty{12756} % Earth's diameter in kilometers (> 10000)
+
+\def\@comma{\mc@comma\penalty\punctpenalty\relax}
+\def\@semicolon{\mc@semicolon\penalty\punctpenalty\relax}
+
+\def\checkpunct@{\ifnum\lastpenalty=\punctpenalty\relax
+ \global\punct@true \else \global\punct@false \fi}
+
+\let\o@dots\dots
+
+\pdef\dots{%
+ \ifmmode
+  \checkpunct@
+  \ifpunct@ \ldots
+   \global\punct@false
+  \else \cdots
+  \fi
+ \else \o@dots
+ \fi}
+
+%
+%   A r r a y
+%
+
+\let\o@array=\array
+\let\o@endarray=\endarray
+
+\newif\iflasthline@
+\global\lasthline@false
+
+\pdef\array{\hskip-\arraycolsep
+ \def\@arstrut{}
+ \let\hline\arr@hline
+ \amp@count=0
+ \setbox0\hbox\bgroup
+ \ifdisplay@\else\advance\mathcount@ 1
+  \n@warning{Array in in-line mode}
+ \fi
+ \o@math\o@array}
+
+% \@arraycr is \\, but must insert a strut at the end of the line
+
+
+
+\def\arraystrut{\vrule height 1.9\mex depth .75\mex width 0pt}
+
+\def\@arraycr{\mathclose{} % no math space 
+ \hbox{\arraystrut}%
+ \arraycr@@}
+
+\def\arraycr@@{\crcr  % nothing if following another \cr or \halign
+ \def\@amp{\hbox{\vrule height\arrayrowsep width 0pt}} 
+ \@tempcnta=\amp@count 
+ \loop\ifnum\@tempcnta>1
+  \edef\@amp{\@amp&} % line sep
+  \advance\@tempcnta-1
+ \repeat
+ \@amp
+ \cr}
+
+\pdef\endarray{% may follow after \hline; corrected 18 March 2003
+ \iflasthline@ \else \hbox{\arraystrut} \fi
+ \o@endarray  % LaTeX's \endarray
+ \o@math\egroup
+ \@tempdima=\ht0 \advance\@tempdima -.15ex \ht0=\@tempdima
+ \@tempdima=\dp0 \advance\@tempdima -.15ex \dp0=\@tempdima
+ \resizebox@{0}\box0
+ \hskip-\arraycolsep\relax}
+\newcount\hline@num
+
+\pdef\arr@hline{\noalign\bgroup   % begin noalign
+ \hline@num=1 \result@false 
+ \def\hline@@@{\afterassignment\hline@ \global\let\hline@@=}%
+ \hline@@@}
+
+\def\hline@{
+ \ifx\hline@@\hline \result@false
+  \advance\hline@num 1\relax
+ \else \result@true 
+  \ifx\hline@@\end \global\lasthline@true
+  \else \global\lasthline@false
+  \fi
+ \fi
+ \ifresult@ 
+  \@tempcnta=\hline@num
+  \loop\ifnum \@tempcnta > 0
+   \hrule height \arrayrulewidth
+   \vskip \doublerulesep
+  \vskip -\arrayrulewidth
+   \advance \@tempcnta -1
+  \repeat
+  \vskip -\doublerulesep
+  \egroup    % end noalign
+  \iflasthline@ % if the bottom line
+  \else \arraycr@@
+   \mathopen{\hbox{\arraystrut}} 
+  \fi
+  \def\hline@@@{\hline@@}
+ \fi 
+ \hline@@@}
+
+\doublerulesep=\arrayrulewidth
+
+% \@arrayclassz now uses display mode, and
+% calls \@addamp if \@lastchclass = 4
+
+\def\@arrayclassz{\ifcase\@lastchclass\@acolampacol
+ \or\@ampacol \or \or \or\@addamp \or\@acolampacol \or\@firstampfalse\@acol 
+ \fi
+ \edef\@preamble{\@preamble
+  \ifcase \@chnum
+   \hfil\protect\dmathon@\@sharp\protect\dmathoff@\hfil
+  \or \protect\dmathon@\@sharp\protect\dmathoff@\hfil
+  \or \hfil\protect\dmathon@\@sharp\protect\dmathoff@
+  \fi}
+ }
+
+% New \arraycolsep.
+
+\let\arraycolsepdim=\arraycolsep
+
+\def\arraycolsep{\prorated@\arraycolsepdim}
+
+% New \arrayrowsepdim
+
+\newdimen\arrayrowsepdim
+
+\arrayrowsepdim=.4ex
+\def\arrayrowsep{\prorated@\arrayrowsepdim}
+
+% Counting &'s
+
+\newcount\amp@count
+
+\def\@addamp{%
+ \if@firstamp \amp@count=1
+  \@firstampfalse
+ \else \advance\amp@count by 1
+  \edef\@preamble{\@preamble &}%
+ \fi}
+
+
+
+% Cases is arrays
+
+\def\cases{\displayon@\{\hskip.5ex \array{ll}}
+\def\endcases{\endarray\right.\displayoff@}
+
+%
+%   M a t r i c e s
+%
+
+\pdef\matrix{\setbox0\hbox\bgroup\o@math
+ \ifdisplay@\else \advance\mathcount@ 1
+  \n@warning{Matrix in in-line mode}
+ \fi
+ \vcenter\bgroup %\vskip-.00005ex
+ \let\\=\crcr \baselineskip=2.7\mex \lineskip=1.2\mex
+ \ialign\bgroup
+ &\hfil\hbox{\dmathon@##\dmathoff@}\hfil\hskip2\mex\crcr}
+
+\pdef\endmatrix{\crcr\egroup %\vskip-.00005ex
+ \egroup \o@math\hskip-2\mex\egroup \resizebox@{0}\box0}
+
+%\def\suppressminus@{\afterassignment\suppressminus@@\let\next=}
+%\def\@@@minus{-}
+%\def\suppressminus@@{\if\next\@@@minus \llap{$-$}\let\next\relax\fi \next}
+
+% Binom is a matrix:
+
+\pdef\binom#1#2{%
+ \ifdisplay@ (\matrix\inline{#1}\\\inline{#2}\endmatrix)
+ \else \advance\mathcount@ 1
+  \vcenter{\hbox{\o@math\biglp@\o@math}}
+  \displayed{\matrix\inline{#1}\\\inline{#2}\endmatrix}
+  \vcenter{\hbox{\o@math\bigrp@\o@math}}
+ \fi}
+
+\mathchardef\biglp@="0300
+\mathchardef\bigrp@="0301
+
+%
+%   T a b l e   o f   c o n t e n t s
+%
+
+\let\o@addcontentsline\addcontentsline
+
+\def\addcontentsline#1#2#3{%
+ \begingroup
+ \def\acl@{#3}% 
+ \the\protect@toks \def\protect{\noexpand}%
+ \edef\acl@{\acl@}% 
+ \o@addcontentsline{#1}{#2}{\acl@}%
+ \endgroup
+}
+
+%
+%   A M S - L a T e X 
+%
+
+% Detecting AmSLaTeX
+
+\ifx\primfrac\undefined
+\else \typeout{} \typeout{AmSLaTeX detected.}
+ \typeout{Do not expect too much from this combination.}
+ \typeout{Consult Nath Guide if things go bad.}
+ \gdef\resetMathstrut@{}
+ \let\over=\@@over   % restore \over
+ \let\above=\@@above % restore \above
+\fi
+
+%
+%   I n i t i a l i z a t i o n
+%
+
+\catcode`\$=13
+
+\geometryfalse
+\silentfalse
+
+\frenchspacing
+
+%
+%   T h e   l o g o
+%
+
+\def\Nath{$`Nath$}
+
+%
+%   E n d
+%
+
+\endinput
+
+

@@ -1,0 +1,1102 @@
+%
+% \iffalse
+% psfrag.dtx Copyright (C) 1996 Craig Barratt, Michael C. Grant,
+%                               and David Carlisle.
+%            All rights are reserved.
+%
+%            This system is distributed in the hope that it will be
+%            useful, but WITHOUT ANY WARRANTY; without even the
+%            implied warranty of MERCHANTABILITY or FITNESS FOR A
+%            PARTICULAR PURPOSE. Don't come complaining to us if you
+%            modify this file and it doesn't work! If this file is
+%            modified by anyone but the authors, those changes and
+%            their authors must be explicitly stated HERE.
+%
+%<package>\NeedsTeXFormat{LaTeX2e}[1995/12/01]
+%<package>\ProvidesPackage{psfrag}[1998/04/11 v3.04 PSfrag (MCG)]
+% \fi
+%
+% \iffalse
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{graphicx,psfrag}
+\begin{document}
+ \DocInput{psfrag.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \GetFileInfo{psfrag.sty}
+% \RecordChanges
+%
+% \let\pkg\textsf
+% \let\fname\texttt
+% \let\pscom\texttt
+% \newcommand{\pfg}{\textsf{PSfrag}}
+% \newcommand{\bsl}{\protect\bslash}
+% \newcommand{\ie}{\emph{i.e.}}
+% \newcommand{\eg}{\emph{e.g.}}
+% \newcommand{\etc}{\emph{etc.}}
+% \newcommand{\netaddress}[1]{\texttt{#1}}
+% \marginparsep 0pt
+%
+% \title{\fname{psfrag.sty} and \fname{psfrag.pro}%^^A
+% \thanks{This file has version number \fileversion,
+%         last revised \filedate.}}
+%
+% \author{Michael Grant, David Carlisle, and Craig Barratt \\
+%         \netaddress{psfrag@rascals.stanford.edu}}
+% \date{\filedate}
+% \maketitle
+% \PrintChanges
+%
+% \changes{3.04}{1998/04/11}{Made some (theoretically) back-compatible
+%	  changes to \fname{psfrag.pro} which should make it more friendly
+%	  to EPS and page-manipulation packages like \pkg{psnup}. Fixed
+%	  orientation problem for DVIPSone. Added support for EPS files
+%	  as \pfg\ replacements.}
+% \changes{3.03}{1997/01/21}{Fixed some typographical errors that
+%     broke the \pscom{awidthshow} command. Improved the scanner to
+%     handle multi-line \cs{tex} commands. Fixed a bug in the
+%     \pscom{replace} command which would break some legal EPS files.}
+% \changes{3.02}{1996/12/06}{Continued to improve the transformation
+%     code to make it more robust to rotations and odd scaling.
+%     Improved the range of strings accepted as PSfrag tags.}
+% \changes{3.01}{1996/11/26}{Expanded the PSfrag dictionary
+%     for Level 1 printers. Fixed bugs that produce incorrect output
+%     for rotated figures. Output should now print properly when
+%     combined with page-manipulation programs like \pkg{psnup}.}
+% \changes{3.0}{1996/10/31}{Major rewrite. Elimination of the
+%     preprocessing step, deprecation of the \pscom{tex} command. I've
+%     wiped most of the source-level change entries as a result.}
+% \changes{2.0}{1995/04/04}{Bug fixes}
+% \changes{2.0}{1995/03/14}{Bug fixes. Better support for \LaTeX\ 2.09
+%     \pfg\ files, including both naming schemes. Improved
+%     documentation and separated it from this file.}
+% \changes{1.99}{1995/02/14}{Taken over from Craig, completely
+%     overhauled for \LaTeXe. Completely changed the placement code;
+%     baseline alignment added. Integrated \pscom{psfrag} commands into
+%     the PostScript file. \textsf{graphics} package used for
+%     portability across multiple DVI-to-PostScript packages.
+%     Improved ps2frag.ps file provides improved (correct) support
+%     for ashow, widthshow, awidthshow, and kshow.}
+% \changes{1.1}{1992/10/20}{Released version 1.1, adding support for
+%     ashow, widthshow, awidthshow, and kshow.}
+% \changes{1.0}{1992/06/01}{Released version 1.0.}
+%
+% \section{\fname{psfrag.sty}}
+%
+%    \begin{macrocode}
+%<*package>
+%    \end{macrocode}
+%
+% \subsection{Intialization}
+%
+%    \begin{macrocode}
+\newif\ifpfg@compat
+\newif\ifpfg@prepass
+\newif\ifpfg@debug \pfg@debugfalse
+\if@compatibility
+  \pfg@compattrue\pfg@prepasstrue
+\else
+  \pfg@compatfalse\pfg@prepassfalse
+\fi
+\def\psfragscanon{\pfg@prepasstrue}
+\def\psfragscanoff{\pfg@prepassfalse}
+\def\psfragdebugon{\pfg@debugtrue}
+\def\psfragdebugoff{\pfg@debugfalse}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\DeclareOption{scanall}{\pfg@prepasstrue}
+\DeclareOption{2emode}{\pfg@compatfalse\pfg@prepassfalse}
+\DeclareOption{209mode}{\pfg@compattrue\pfg@prepasstrue}
+\DeclareOption{debugshow}{\pfg@debugtrue
+                         \PassOptionsToPackage\CurrentOption{graphics}}
+\DeclareOption*{\PassOptionsToPackage\CurrentOption{graphics}}
+\ProcessOptions
+%    \end{macrocode}
+%
+% \fname{psfrag.sty} requires the \pkg{graphics} package and the
+% support file \fname{psfrag.pro}. (\fname{epsf.sty} can still be
+% used,but \pkg{graphics} package is still used for internal
+% purposes.) To load \fname{psfrag.pro} in a portable way, we provide
+% and use the \cs{Gin@PS@file@header} command, which the
+% \pkg{graphics} will eventually provide for us.
+% \changes{3.01}{1996/11/25}{Added the \cs{AtBeginDocument} command
+% to save some important global transformation information.}
+% \changes{3.02}{1996/12/03}{Deleted this \cs{AtBeginDocument} info;
+% see \cs{pfg@orient}.}
+%    \begin{macrocode}
+\RequirePackage{graphics}
+\providecommand\Gin@PS@file@header[1]{\AtBeginDvi{\special{header=#1}}}
+\Gin@PS@file@header{psfrag.pro}
+%    \end{macrocode}
+%
+% \begin{macro}{\pfg@orient}
+% In order to properly handle all cases of rotation, scaling,
+% \etc\ that \pfg\ may encounter, it is necessary that we know a bit
+% about the transformations that the DVI to PS driver uses itself.
+% Specifically, we need to know what transformations, if any, the
+% DVI to PS driver appends to PostScript's \pscom{defaultmatrix}
+% before it starts to typeset text. At the moment, all of the drivers
+% which work with \pfg\ reverse the orientation of the $y$ axis;
+% new drivers may not. But until we can find a portable way to make 
+% this determination in PostScript itself, we have to supply that
+% information here.
+% \changes{3.02}{1996/12/03}{Created. Added \pkg{dvips} and
+% \pkg{textures} as ``$y$-reversers.''}
+% \changes{3.04}{1998/04/11}{\pkg{dvipsone} now uses the same
+% orientation as \pkg{dvips}, so we added a line for it here.}
+%    \begin{macrocode}
+\def\pfg@orient{1}
+\def\@tempa{dvipsone.def}\ifx\Gin@driver\@tempa\def\pfg@orient{-1}\fi%
+\def\@tempa{dvips.def}\ifx\Gin@driver\@tempa\def\pfg@orient{-1}\fi%
+\def\@tempa{textures.def}\ifx\Gin@driver\@tempa\def\pfg@orient{-1}\fi%
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Interface to the \pkg{graphics}
+% and \pkg{epsf} packages}
+%
+% \begin{macro}{\pfg@epsfbox}
+% The original definition of \cs{epsfbox} from \pkg{epsf.sty} or \pkg{graphics}.
+% \begin{macro}{\pfg@Ginclude@eps}
+% The original definition of \cs{Ginclude@eps} from \pkg{graphics},
+% the key routine inside the \cs{includegraphics} routine for EPS files.
+%
+% Below we redefine these two commands to add \pfg\ functionality.
+%    \begin{macrocode}
+\let\pfg@epsfbox\epsfbox
+\let\pfg@Ginclude@eps\Ginclude@eps
+%    \end{macrocode}
+% \end{macro}\end{macro}
+%
+% \begin{macro}{\pfg@pcount}
+% Counts how many fragments are active in the current figure.
+% \begin{macro}{\pfg@scount}
+% Counts how many replacements strings are active in the current
+% figure. 
+%
+% Since it is possible for a single string to accept multiple
+% replacements, \cs{pfg@scount} $\le$ \cs{pfg@pcount}.
+%    \begin{macrocode}
+\newcount\pfg@pcount \pfg@pcount=\z@
+\newcount\pfg@scount \pfg@scount=\z@
+%    \end{macrocode}
+% \end{macro}\end{macro}
+%
+% \begin{macro}{\epsfbox}
+% Here we intercept calls to \cs{epsfbox} and wrap them with the
+% \pfg\ processing. The first thing we do is revert \cs{epsfbox}
+% and \cs{Ginclude@eps} back to their original definitions, to
+% prevent recursion---which could occur if some of the replacements
+% are themselves EPS files.
+% \changes{3.04}{1998/04/11}
+%	   {Improved the recursion protection by reverting
+% \cs{epsfbox} and \cs{Ginclude@eps} back to their original
+% definitions within the block. Deleted \cs{ifpfg@epsf}, which
+% is no longer needed in this new system.}
+%    \begin{macrocode}
+\def\epsfbox#1{%
+    \begingroup
+    \let\Ginclude@eps\pfg@Ginclude@eps
+    \let\epsfbox\pfg@epsfbox
+    \ifpfg@prepass\pfg@scan{#1}\fi
+    \ifnum\pfg@scount>\z@\pfg@hidestart\fi
+    \pfg@epsfbox{#1}%
+    \ifnum\pfg@scount>\z@\pfg@hideend\fi
+    \endgroup}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\Ginclude@eps}
+% We need to override this function from the \pkg{graphics}
+% package in a similar fashion to \cs{epsfbox}. As we did for
+% \cs{epsfbox}, we revert \cs{epsfbox} and \cs{Ginclude@eps}
+% back to their original definitions in order to prevent recursion.
+% \changes{3.01}{1996/11/26}
+%      {Added the \cs{pfg@hideinit} functionality.}
+% \changes{3.02}{1996/12/01}
+%      {Removed \cs{pfg@hideinit}.}
+% \changes{3.04}{1998/04/11}
+%	   {Improved the recursion protection by reverting
+% \cs{epsfbox} and \cs{Ginclude@eps} back to their original
+% definitions within the block.}
+%    \begin{macrocode}
+\def\Ginclude@eps#1{%
+    \begingroup
+    \let\Ginclude@eps\pfg@Ginclude@eps
+    \let\epsfbox\pfg@epsfbox
+    \ifpfg@prepass\pfg@scan{#1}\fi
+    \ifnum\pfg@scount>\z@\pfg@hidestart\fi
+    \pfg@Ginclude@eps{#1}%
+    \ifnum\pfg@scount>\z@\pfg@hideend\fi
+    \endgroup}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{psfrags}
+% Defines a dummy environment to delimit the scope of \pfg\
+% replacements.
+%    \begin{macrocode}
+\newenvironment{psfrags}{\ignorespaces}{\global\@ignoretrue}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\psfragspecial}
+% This macro is no longer supported.
+%    \begin{macrocode}
+\ifpfg@compat
+\def\psfragspecial#1#2#3#4#5#6{%
+   \PackageError{PSfrag}%
+     {\string\psfragspecial no longer implemented.}{}}
+\fi
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\psfrag}
+% \marg{tag}\oarg{posn}\oarg{psposn}\oarg{scl}\oarg{rot}\\
+% The main macro \cs{psfrag} must be defined specially in order
+% to handle its odd combination of optional and required arguments.
+% In addition, catcode tricks (thanks to David Carlisle and others)
+% allow special characters to be used inside the tag text. It also
+% replaces spaces with their octal equivalents to prevent drivers
+% like \pkg{dvips} from breaking one in the middle.
+% \changes{3.01}{1996/11/26}{Now changes every space in the tag
+% text by its octal code. Some DVI to PS drivers were breaking the
+% strings onto multiple lines; this should prevent that from happening.}
+% \changes{3.01}{1996/11/26}{Removed octal code in favour of convert
+% routine in the prologue}
+% \changes{3.03}{1997/1/6}{Added another ``special'' character.}
+%    \begin{macrocode}
+\newif\ifpfg@star
+\def\psfrag{\@ifstar{\pfg@startrue\@psfraga}{\pfg@starfalse\@psfraga}}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\def\@psfraga{\begingroup
+   \@makeother\"\@makeother\*\@makeother\!\@makeother\~%
+   \@makeother\:\@makeother\\\@makeother\%\@makeother\#%
+   \@makeother\ \@psfragb}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\ifpfg@compat
+\def\@psfragb#1{\xdef\@gtempa{#1}\endgroup
+                \@ifnextchar[{\@psfragc{\@gtempa}}%
+                             {\@psfrag{\@gtempa}[bl][bl][1][0]}}
+\def\@psfragc#1[#2]{\@ifnextchar [{\@psfragd{#1}[#2]}%
+                                  {\@psfrag{#1}[#2][bl][1][0]}}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\else
+\def\@psfragb#1{\xdef\@gtempa{#1}\endgroup
+                \@ifnextchar [{\@psfragc{\@gtempa}}%
+                              {\@psfrag{\@gtempa}[Bl][Bl][1][0]}}
+\def\@psfragc#1[#2]{\@ifnextchar [{\@psfragd{#1}[#2]}%
+                                  {\@psfrag{#1}[#2][Bl][1][0]}}
+\fi
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\def\@psfragd#1[#2][#3]{\@ifnextchar [{\@psfrage{#1}[#2][#3]}%
+                                      {\@psfrag{#1}[#2][#3][1][0]}}
+\def\@psfrage#1[#2][#3][#4]{\@ifnextchar [{\@psfrag{#1}[#2][#3][#4]}%
+                                       {\@psfrag{#1}[#2][#3][#4][0]}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@psfrag}\marg{tag}\\
+% Now that we have all of the arguments, we need to check to check to
+% see if the string has been used yet; if not, increment the string
+% count and create a place for the new string. Then pass the string
+% number on down the line to \cs{@@psfrag}.
+%    \begin{macrocode}
+\def\pfg@newstring#1.#2{%
+    \@nameedef{pfg@using@#2}{#1}%
+    \pfg@starfalse\advance\pfg@scount\@ne}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\def\@psfrag#1{%
+    \@ifundefined{pfg@using@#1}%
+      {\expandafter\pfg@newstring\the\pfg@scount.{#1}}%
+      {}%
+    \edef\@tempa{\@nameuse{pfg@using@#1}}%
+    \expandafter\@@psfrag\@tempa.{#1}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@@psfrag}\marg{tag-key}.\marg{tag}\\
+% \cs{@@psfrag} passes along the current \emph{replacement} number to
+% to \cs{@@@psfrag}, which is doing all of the dirty work.
+%    \begin{macrocode}
+\def\@@psfrag{\expandafter\@@@psfrag\the\pfg@pcount.}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@@@psfrag}
+% \marg{repl-key}.\marg{tag-key}.\marg{tag}\oarg{posn}%
+% \oarg{psposn}\oarg{scl}\oarg{rot}\oarg{repl}
+% \begin{macro}{\pfg@align}\marg{tag-key}.
+% \begin{macro}{\pfg@place}\marg{repl-key}.\\
+% \cs{@@@psfrag}, armed with numeric keys for the tag string and the
+% replacement, creates a \cs{pfg@place} procedure call for this
+% fragment and appends the control point, scale, and rotation
+% information to the proper tag's list, found in
+% \cs{pfg@align\emph{<tag-key>}.}
+% \changes{3.01}{1996/11/26}{Added some extra spaces in
+% \cs{pfg@align@} to encourage more benevlolent line-breaking
+% by DVI to PS drivers.}
+%    \begin{macrocode}
+\def\@nameedef#1#2{\expandafter\edef\csname #1\endcsname{#2}}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\def\@@@psfrag#1.#2.#3[#4][#5][#6][#7]#8{%
+    \advance\pfg@pcount\@ne
+    \ifpfg@star\else\@nameedef{pfg@align@#2}{(#3)[}\fi
+    \@nameedef{pfg@align@#2}{\@nameuse{pfg@align@#2}[#1(#5)#6 #7]}%
+    \@namedef{pfg@place@#1}{\pfg@@place{#1}{#4}{#8}}\ignorespaces}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\def\pfg@align#1.{\@nameuse{pfg@align@#1}}
+\def\pfg@place#1.{\@nameuse{pfg@place@#1}}
+%    \end{macrocode}
+% \end{macro}\end{macro}\end{macro}
+%
+% \subsection{Fragment processing}
+%
+% \begin{macro}{\pfg@hidestart}
+% This procedure provides PostScript with a list of the strings that
+% \pfg\ would like to replace, and the control points, scales, and
+% rotations of each one. The PostScript code in \fname{psfrag.pro}
+% will use this information to construct transformation matrices for
+% each replacement to move them into proper position.
+% \changes{3.01}{1996/11/26}{Moved the \pkg{xdvi} stub to
+% \cs{pfg@hideinit}}.
+% \changes{3.02}{1996/12/01}{Moved it back.}
+%    \begin{macrocode}
+\def\pfg@hidestart{%
+    \def\pfg@{}\count@=\z@\loop\ifnum\count@<\pfg@scount
+        \toks@=\expandafter{\expandafter\pfg@align\the\count@.}%
+        \edef\pfg@{\pfg@\the\toks@]}%
+        \advance\count@ by\@ne\repeat
+    \Gin@PS@raw{/PSfrag where{pop\pfg@\the\pfg@scount\space
+                \ifpfg@debug1\else0\fi\space\pfg@orient/Begin
+                PSfrag}{userdict /PSfrag{pop}put}ifelse}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\pfg@hideend}
+% Now that the EPS file has been loaded, and (therefore) all of the
+% replacement positions have been determined, move each replacement
+% to its proper position by calling the \cs{pfg@place} procedure for
+% each one. Except for the calls to \cs{Gin@PS@raw}, it looks like
+% we're building a vertical list of the replacements: that's the idea,
+% because we want it to look decent when viewed by a DVI viewer.
+%    \begin{macrocode}
+\def\pfg@hideend{%
+    \Gin@PS@raw{/End PSfrag}%
+    \vbox to\z@{\vss
+        \Gin@PS@raw{/Hide PSfrag}%
+        \hbox to\z@{\hss \raisebox{\depth}{%
+            \underline{PSfrag replacements}}}%
+        \Gin@PS@raw{/Unhide PSfrag}%
+        \count@=\z@\loop\ifnum\count@<\pfg@pcount
+            \expandafter\pfg@place\the\count@.%
+            \advance\count@ by\@ne\repeat}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\pfg@@place}
+% \marg{repl-key}\marg{posn}\marg{replacement}\\
+% The following macro does the dirty work. Its job is to insert the
+% appropriate code so that the \TeX\ replacement is transformed to
+% its requested location; and, if desired, repeated for as many times
+% as the PostScript tag text appeared in the figure.
+%
+% It performs this magic by first surrounding the \TeX-produced code
+% in curly braces, so we can defer its execution while we figure out
+% where to place it. Then, we call the \pscom{Place} routine in
+% \fname{psfrag.pro}, which takes \marg{repl-key}
+% and provides the proper coordinate transformations.
+%
+% We're allowed to reassign these dimension registers because we are
+% always inside a group when we use them. This technique is taken from
+% \fname{graphics.sty}...
+%    \begin{macrocode}
+\let\pfg@dp\leftmargini\let\pfg@wd\leftmarginii
+\let\pfg@dx\leftmarginiii\let\pfg@dy\leftmarginiv
+%    \end{macrocode}
+% We need to stuff the curly braces into macros.
+%    \begin{macrocode}
+\edef\pfg@bchar{ \string{ }
+\edef\pfg@echar{ \string} }
+\def\pfg@@place#1#2#3{\begingroup
+%    \end{macrocode}
+% Typeset the replacement into a box and determine its dimensions.
+%    \begin{macrocode}
+    \sbox\z@{#3}%
+    \dimen@=\ht\z@ \advance\dimen@ by\dp\z@%
+%    \end{macrocode}
+% Determine the desired alignment of the \TeX\ box, and the glue
+% that will be needed in order to achieve this alignment.
+%    \begin{macrocode}
+    \pfg@wd=0.5\wd\z@\pfg@dp=0.5\dimen@
+    \pfg@dx=\pfg@wd\pfg@dy=\pfg@dp
+    \@tfor\@tempa:=#2\do{%
+        \if l\@tempa \pfg@dx=\z@    \pfg@wd=\wd\z@ \else
+        \if r\@tempa \pfg@dx=\wd\z@ \pfg@wd=\z@    \else
+        \if b\@tempa \pfg@dy=\z@    \pfg@dp=\z@    \else
+        \if t\@tempa \pfg@dy=\dimen@\pfg@dp=\dimen@\else
+        \if B\@tempa \pfg@dy=\dp\z@ \pfg@dp=\dp\z@ \fi\fi\fi\fi\fi}%
+%    \end{macrocode}
+% Create a zero-area box with the desired \pfg\ replacement
+% text typeset inside of it (and aligned with the glue). This
+% is actually the box that will be moved, rotated, and/or scaled.
+%    \begin{macrocode}
+    \setbox\z@\hbox to\z@{\hskip-\pfg@dx\box\z@\hss}%
+    \setbox\z@\vbox to\z@{\vss\box\z@\vskip-\pfg@dy}%
+%    \end{macrocode}
+% Typeset the box. The inner, zero-size box is the one we place
+% with the PostScript code, and the outer, full-height, right-\
+% justified box is the one that we use to stack up the preview
+% list.
+%    \begin{macrocode}
+    \vbox to\dimen@{\vss\hbox to\z@{\hss
+        \Gin@PS@raw{\pfg@bchar}\box\z@
+        \Gin@PS@raw{\pfg@echar#1/Place PSfrag}%
+        \hskip\pfg@wd}\vskip\pfg@dp}%
+    \endgroup}
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+%</package>
+%<*filepro>
+%    \end{macrocode}
+%
+% \section{The PostScript library, \fname{psfrag.pro}}
+% This code must perform two functions: 1) determine and save the
+% alignment point, rotation, and scaling for each piece of PostScript
+% text that is going to serve as a \pfg\ tag; and 2) use that
+% information to properly transform the coordinate system for each
+% \TeX\ replacement.
+%
+% The only two symbols that we define globally are \pscom{PSfragLib},
+% the library of support routines, \pscom{PSfragDict}, the dictionary
+% containing the ``magic'' \pscom{show} commands,
+% and \pscom{PSfrag}, the gateway from
+% the global namespace to \pscom{PSfragLib}. This technique minimizes
+% the possibility that our procedure names will conflict with those
+% defined by the PostScript driver or the figure itself.
+% \changes{3.02}{1996/12/03}{Added code to insure that \pscom{PSfragLib}
+% and \pscom{PSfrag} are stored in \pscom{userdict}. Some cruel DVI to
+% PostScript drivers try and force these into their own dictionary. Also
+% moved \pscom{PSfragDict} out of \pscom{PSfragLib}.}
+%    \begin{macrocode}
+userdict begin
+/PSfragLib 90 dict def
+/PSfragDict 6 dict def
+/PSfrag { PSfragLib begin load exec end } bind def
+end
+%    \end{macrocode}
+%
+% \begin{macro}{PSfragLib}
+% \pscom{PSfragLib} is the dictionary with the meaty stuff. We're also
+% defining some useful abbreviations. Of note is the \pscom{OE} command
+% (``outside exec''), which executes some code after removing
+% \pscom{PSfragLib} from the stack (to insure that there are no
+% collisions with \pscom{PSfragLib}'s internal names.
+% \changes{3.01}{1996/11/26}{Fixed \pscom{islev2}.}
+% \changes{3.02}{1996/12/03}{Added \pscom{readonly} to \pscom{BD} to
+% help insure that this dictionary isn't being trampled on.}
+% \changes{3.02}{1996/12/03}{Added some abbreviations.}
+% \changes{3.04}{1998/04/11}{Added the default definition of \pscom{S} to
+% avert potential problems if it is defined elsewhere. Thanks again to
+% J. Scott Berg for this fix.}
+%    \begin{macrocode}
+PSfragLib begin
+/RO /readonly      load def
+/CP /currentpoint  load def
+/CM /currentmatrix load def
+/B { bind RO def } bind def
+/X { exch def } B
+/MD { { X } forall } B
+/OE { end exec PSfragLib begin } B
+/S false def
+/tstr 8 string def
+/islev2 { languagelevel } stopped { false } { 2 ge } ifelse def
+%    \end{macrocode}
+% Allocate some space for matrices that we will use frequently.
+% \pscom{sM} is the matrix we encounter at the time this library
+% is defined; this should theoretically be \pscom{initmatrix}, unless
+% we are in an EPS/psnup situation.
+% \pscom{srcFM} contains a matrix which describes the difference
+% between PostScript's \pscom{defaultmatrix} and the transformation
+% defined by the DVI-to-PS driver's ``default matrix.'' This information
+% is crucial to the proper placing of the \pfg\ replacements.
+% \changes{3.02}{1996/12/01}{Changed the names to be a tiny bit
+% more descriptive, and added a couple.}
+% \changes{3.02}{1996/12/03}{Added the \pscom{readonly} commands.}
+% \changes{3.04}{1998/04/11}{Added \pscom{sM}, which stores the 
+% \pscom{currentmatrix} found at the time \pscom{PSfragLib} is defined. 
+% See the \pscom{replace} command for its use. Thanks to J. Scott Berg.}
+%    \begin{macrocode}
+[ /sM /tM /srcM /dstM /dM /idM /srcFM /dstFM ] { matrix def } forall
+sM currentmatrix RO pop
+dM defaultmatrix RO idM invertmatrix RO pop
+srcFM identmatrix pop
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{Hide}
+% \begin{macro}{Unhide}
+% Surrounding a (fairly) arbitrary piece of PostScript code with calls
+% to \pscom{Hide} and \pscom{Unhide} should render it invisible.
+% \pfg\ uses these calls to hide unused replacements. Note that we are
+% assuming that the DVI-to-PS driver isn't relying on any of the
+% information that will be wiped out by the \pscom{grestore}, except
+% for the \pscom{currentpoint}.
+%    \begin{macrocode}
+/Hide { gsave { CP } stopped not newpath clip { moveto } if } B
+/Unhide { { CP } stopped not grestore { moveto } if } B
+%    \end{macrocode}
+% \end{macro}\end{macro}
+%
+% \begin{macro}{setrepl}
+% \begin{macro}{getrepl}
+% These macros are defined differently for Level 1 and Level 2
+% PostScript. \pscom{setrepl} accepts an array of N elements,
+% followed by the length N, and store them in a global variable (or
+% the equivalent) for later use. \pscom{getrepl} restores that exact
+% information to the stack. This is used to store the replacement
+% information in a persistent fashion.
+%    \begin{macrocode}
+/setrepl islev2 {{ /glob currentglobal def true setglobal array astore
+                   globaldict exch /PSfrags exch put glob setglobal }}
+                {{ array astore /PSfrags X }} ifelse B
+/getrepl islev2 {{ globaldict /PSfrags get aload length }}
+                {{ PSfrags aload length }} ifelse B
+%    \end{macrocode}
+% \end{macro}\end{macro}
+%
+% \begin{macro}{convert}
+% This routine takes a string and replaces every character whose
+% ASCII code is less than 32 with a space. This makes the replacement
+% dictionary robust to multiple-line tags, etc.
+%    \begin{macrocode}
+/convert {
+   /src X src length string
+   /c 0 def src length {
+      dup c src c get dup 32 lt { pop 32 } if put /c c 1 add def
+   } repeat
+} B
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{Begin}
+% \pfg\ calls this routine once per figure, once it has placed
+% on the stack all of each tag's alignment, rotation, and scaling
+% information. This information is collected into a dictionary:
+% each tag has an entry which is an array of [ repl-key, (psposn),
+% scl, rot ] quads. Then it saves the current transformation
+% information in a form ready for \pscom{/replace} to use.
+% \changes{3.02}{1996/12/03}{\pscom{PSfragDict} now goes at the
+% \emph{bottom} of the read-write portion of the dictionary stack,
+% to insure that it does not conflict with dictionary manipulation
+% by the EPS file or the DVI to PS driver.}
+% \changes{3.02}{1996/12/03}{Changes to account for transformation
+% rearrangement; see \pscom{/replace}.}
+%    \begin{macrocode}
+/Begin {
+    /saver save def
+    srcFM exch 3 exch put
+    0 ne /debugMode X 0 setrepl
+    dup /S exch dict def { S 3 1 roll exch convert exch put } repeat
+    srcM CM dup invertmatrix pop
+    mark { currentdict { end } stopped { pop exit } if } loop
+    PSfragDict counttomark { begin } repeat pop
+} B
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{End}
+% End converts the alignment information that has been collected
+% into a dictionary: each repl-key that was encountered in
+% \pscom{Begin} has an entry which is an array of
+% transformation matrices.
+% \changes{3.02}{1996/12/03}{Changes to the dictionary placement
+% as discussed in \pscom{/Begin}.}
+%    \begin{macrocode}
+/End {
+    mark { currentdict end dup PSfragDict eq { pop exit } if } loop
+    counttomark { begin } repeat pop
+    getrepl saver restore
+    7 idiv dup /S exch dict def {
+        6 array astore /mtrx X tstr cvs /K X
+        S K [ S K known { S K get aload pop } if mtrx ] put
+    } repeat
+} B
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{Place}
+% This macro is called once for each \pfg\ replacement. It checks to
+% see if the replacement's tag was actually encountered in the PS
+% figure; if not, it surrounds the code in a ``clip all'' context and
+% executes it. This makes it invisible, as requested, but still allows
+% it to run so that any side effects that the code may have will take
+% place.
+%
+% If the replacement's tag \emph{was} encountered, however, it
+% retrieves the transformation matrix that was calculated for it; it
+% prepends this calculation to the current (\TeX) transformation matrix
+% (some tricky math to wade through there!), and then draws the
+% replacement.
+%
+% If there are multiple copies of the replacement to be laid down,
+% this will do it, surrounding all but the last replacement in a
+% \pscom{save}-\pscom{restore} pair. This \pscom{save}-\pscom{restore}
+% pair may slow things down, but theoretically it is necessary,
+% because the procedure might modify other variables in the PostScript
+% namespace. We need to be sure that those modifications do not
+% ``accumulate''.
+%
+% For multiple replacements to work, the code that \pfg\ surrounds with
+% curly braces must leave the stack the same way it found it. So far,
+% we have confirmed this fact for \pkg{dvips} and \pkg{DVIPSONE}.
+% \changes{3.02}{1996/12/03}{Changes to account for transformation
+% rearrangement; see \pscom{/replace}.}
+%    \begin{macrocode}
+/Place {
+    tstr cvs /K X
+    S K known {
+        bind /proc X tM CM pop
+        CP /cY X /cX X
+        0 0 transform idtransform neg /aY X neg /aX X
+        S K get dup length /maxiter X
+        /iter 1 def {
+            iter maxiter ne { /saver save def } if
+            tM setmatrix aX aY translate
+            [ exch aload pop idtransform ] concat
+            cX neg cY neg translate cX cY moveto
+            /proc load OE
+            iter maxiter ne { saver restore /iter iter 1 add def } if
+        } forall
+        /noXY { CP /cY X /cX X } stopped def
+        tM setmatrix noXY { newpath } { cX cY moveto } ifelse
+    } {
+        Hide OE Unhide
+    } ifelse
+} B
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{normalize}
+% This function accepts three numbers, $x$, $y$, and $s$, and returns
+% $sx/\sqrt{x^2+y^2}$ and $sy/\sqrt{x^2+y^2}$.
+%    \begin{macrocode}
+/normalize {
+    2 index dup mul 2 index dup mul add sqrt div
+    dup 4 -1 roll exch mul 3 1 roll mul
+} B
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{replace}
+% This routine is called for every string in the string list. It
+% must determine the translation, scaling, and rotation necessary to
+% move a piece of \TeX code to the proper orientation. It stores in
+% \pscom{replArray}, for each alignment/scale/rotation combination, a
+% transformation matrix that achieves this.
+%    \begin{macrocode}
+/replace {
+    aload pop MD
+%    \end{macrocode}
+% Trace out the text and determine its bounding box. We need to
+% temporarily revert to an identity transformation matrix, so that
+% we can be sure to get the tightest bounding box possible. If the
+% text is rotated, the bounding box that PostScript produces with the
+% \pscom{pathbbox} command is not optimal.
+%
+% We also need to save the position of the point following the text
+% placement, and move to that position when we've finished, to fool
+% the PS interpreter into thinking we actually drew that text.
+% \changes{3.01}{1996/11/22}{Modified this transformation to put the
+% beginning of the text at the origin, and forced its width to be
+% $\sim5$ in. Some figures were using coordinate systems that were
+% so ``large'' that they would break PostScript with
+% ``limitcheck'' errors here.}
+% \changes{3.01}{1996/12/03}{The added transformation is no longer
+% ``slipped under'' the CTM, but now it is more properly appended.
+% this should allow the replacements to move properly if the entire
+% figure is rotated or transformed. This required changes throughout
+% the code, but primarily here.}
+% \changes{3.03}{1997/01/06}{Added a \pscom{gsave}/\pscom{grestore}
+% pair around the bounding-box calculations. I thought I was being
+% clever by avoiding it; but it wasn't infallible, so I was wrong.}
+% \changes{3.04}{1998/04/11}{Changed \pscom{initmatrix} to \pscom{sM}
+% \pscom{setmatrix}, to be more EPS-friendly. Thanks to J. Scott Berg.}
+%    \begin{macrocode}
+    CP /bY X /lX X gsave sM setmatrix
+    str stringwidth abs exch abs add dup 0 eq
+        { pop } { 360 exch div dup scale } ifelse
+    lX neg bY neg translate newpath lX bY moveto
+    str { /ch X ( ) dup 0 ch put false charpath ch Kproc } forall
+    flattenpath pathbbox [ /uY /uX /lY /lX ] MD
+    CP grestore moveto
+%    \end{macrocode}
+% If the FontMatrix shows that the font is draw in the opposite X or
+% opposite Y direction, then the X or Y coordinates of the bounding
+% box, respectively, need to be swapped. This actually occurs quite
+% often. Here we also determine the center of the box.
+%    \begin{macrocode}
+    currentfont /FontMatrix get dstFM copy dup
+    0 get 0 lt { uX lX /uX X /lX X } if
+    3 get 0 lt { uY lY /uY X /lY X } if
+    /cX uX lX add 0.5 mul def
+    /cY uY lY add 0.5 mul def
+%    \end{macrocode}
+% If debug mode has been enabled, we draw the bounding box, the
+% baseline, and the center lines of the text.
+%    \begin{macrocode}
+    debugMode { gsave 0 setgray 1 setlinewidth
+        lX lY moveto lX uY lineto uX uY lineto uX lY lineto closepath
+        lX bY moveto uX bY lineto lX cY moveto uX cY lineto
+        cX lY moveto cX uY lineto stroke
+    grestore } if
+%    \end{macrocode}
+% Add each replacement's alignment to \pscom{replArray}.
+% \changes{3.02}{1996/12/01}{Now saves the current CTM here.}
+%    \begin{macrocode}
+    dstFM dup invertmatrix dstM CM srcM
+    2 { dstM concatmatrix } repeat pop
+    getrepl /temp X
+        S str convert get {
+%    \end{macrocode}
+% Retrieve the replacement information
+%    \begin{macrocode}
+            aload pop [ /rot /scl /loc /K ] MD
+%    \end{macrocode}
+% Determine the PostScript alignment point.
+%    \begin{macrocode}
+            /aX cX def /aY cY def
+            loc {
+                dup 66  eq { /aY bY def } { % B
+                dup 98  eq { /aY lY def } { % b
+                dup 108 eq { /aX lX def } { % l
+                dup 114 eq { /aX uX def } { % r
+                dup 116 eq { /aY uY def }   % t
+                if } ifelse } ifelse } ifelse } ifelse pop
+            } forall
+%    \end{macrocode}
+% Store the replacement key, and the transformation information, in
+% \pscom{replArray}. These transformations are appended to the CTM
+% encountered when \pscom{Place} is run. Indeed, this and
+% \pscom{Place} are the two most difficult pieces of code to
+% understand.
+% \changes{3.03}{1996/12/03}{The added transformation is no longer
+% ``slipped under'' the CTM, but now it is more properly appended.
+% this should allow the replacements to move properly if the entire
+% figure is rotated or transformed. This required changes throughout
+% the code, but primarily here.}
+%    \begin{macrocode}
+            K srcFM rot tM rotate dstM
+            2 { tM concatmatrix } repeat aload pop pop pop
+            2 { scl normalize 4 2 roll } repeat
+            aX aY transform
+            /temp temp 7 add def
+        } forall
+    temp setrepl
+} B
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{rs}
+% \begin{macro}{rks}
+% \begin{macro}{ras}
+% \begin{macro}{rws}
+% \begin{macro}{raws}
+% These macros intercept calls to their PostScript
+% counterparts and execute \pscom{replace} in their stead if the
+% argument string matches one in the replacement list.
+% \changes{3.03}{1996/12/17}{Corrected typo for \pscom{raws}.}
+%    \begin{macrocode}
+/Rif {
+    S 3 index convert known { pop replace } { exch pop OE } ifelse
+} B
+/XA { bind [ /Kproc /str } B /XC { ] 2 array astore def } B
+/xs   { pop } XA XC
+/xks  { /kern load OE } XA /kern XC
+/xas  { pop ax ay rmoveto } XA /ay /ax XC
+/xws  { c eq { cx cy rmoveto } if } XA /c /cy /cx XC
+/xaws { ax ay rmoveto c eq { cx cy rmoveto } if }
+    XA /ay /ax /c /cy /cx XC
+/raws { xaws { awidthshow } Rif } B
+/rws  { xws { widthshow } Rif } B
+/rks  { xks { kshow } Rif } B
+/ras  { xas { ashow } Rif } B
+/rs   { xs { show } Rif } B
+%    \end{macrocode}
+% \end{macro}\end{macro}\end{macro}\end{macro}\end{macro}
+%
+% \begin{macro}{restore}
+% In Level 1 PostScript, this is necessary because global variables
+% do not exist (and we need one!). Every call to \pscom{restore}
+% wipes out any variables that were modified since the previous call
+% to \pscom{save}. Unfortunately, this is not guaranteed to work,
+% although it does work for \pkg{dvips}.
+%
+% For Level 2, we can use global variables so this is not necessary.
+% We make this distinction \emph{at print time}, so a file that does
+% not seem to work on a Level 1 printer for which it was originally
+% intended should still work on a Level 2 printer without
+% modification.
+% \changes{3.04}{1998/04/11}{Added a fix recommended by J. Scott Berg.}
+%    \begin{macrocode}
+/rrs { getrepl dup 2 add -1 roll //restore exec setrepl } B
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{Dict}
+% This dictionary is added to the stack just before the figure, so
+% that its definitions of the \pscom{show} operators can substitute
+% for the originals.
+% \changes{3.02}{1996/12/03}{Made \pscom{Dict} read-only to help
+% track down problems.}
+% \changes{3.03}{1996/12/17}{Corrected typo in \pscom{awidthshow}.}
+%    \begin{macrocode}
+PSfragDict begin
+islev2 not { /restore { /rrs PSfrag } B } if
+/show       { /rs   PSfrag } B
+/kshow      { /rks  PSfrag } B
+/ashow      { /ras  PSfrag } B
+/widthshow  { /rws  PSfrag } B
+/awidthshow { /raws PSfrag } B
+end PSfragDict RO pop
+end
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+%</filepro>
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%<*package>
+%    \end{macrocode}
+%
+% \section{The scanner}
+% This code implements the \TeX-based scanner that performs the work
+% that the \pfg\ Perl script used to perform. This is
+% very similar to the code used
+% to scan for bounding boxes in \fname{graphics.sty}.
+%
+% We need to read the string with two sets of catcodes: as `verbatim
+% text' for using in the first argument of |\psfrag|, and as normal
+% \TeX\ commands for using in the replacemnt text argument.
+% The only way to do this sensibly in standard \TeX\ is to write
+% the string to a file and then read it back. So while reading the
+% EPS file, the character |\| will be `active'.
+% Then the argument can be duplicated
+% before writing this temp file, once with |\| expanding to |\\| (two
+% catcode 12 tokens) and once to |\| (one catcode 12 token). When this
+% is read back, these tokens will be re-catcoded by the |psfrag|
+% command.
+%    \begin{macrocode}
+\newwrite\pfg@temp
+%    \end{macrocode}
+%
+% \begin{macro}{\pfg@scan}
+% The main command. |#1| is the name of the file. It might be better
+% to use the bounding box (`|.bb|') file name so
+% that compressed files could work by you copying any lines with
+% |(\\tex|\ldots strings in them to the |bb| file before compressing.
+% However, if you are
+% doing that, you may as well just move the |\psfrag| commands to the
+% main \TeX\ file. So currently compression is not supported by this
+% system.
+%    \begin{macrocode}
+\def\pfg@scan#1{\begingroup
+%    \end{macrocode}
+% First the standard making `safe' of illegal characters.
+%    \begin{macrocode}
+    \@tempcnta\z@
+    \loop
+    \ifnum\@tempcnta<\@xxxii
+        \catcode\@tempcnta12 \advance\@tempcnta\@ne
+    \repeat
+%    \end{macrocode}
+%
+% Now normalise some catcodes we need. Most things are treated verbatim,
+% but |{}| have their normal catcodes so |\read| will read multi-line
+% |\\tex| expresions; and, as discussed above, |\| is made active.
+% The end of a line is treated as space. Originally this meant that
+% multi-line |\tex| commands did not work, but with v3.02, the PS side
+% of things normalises white space to `space', as well so everyone is in
+% agreement.
+%    \begin{macrocode}
+    \let\do\@makeother\dospecials\catcode`\ 10 %
+    \catcode`\{=1\catcode`\}=2\catcode127=12 %
+    \catcode`\\=\active\catcode\endlinechar5 %
+%    \end{macrocode}
+%
+% Open the scratch file. Don't complain if it already exists as that
+% is probably just a previous graphic, or a previous run.
+% \fname{pfgguide.tex} warns that any existing file of this name will
+% be zapped, so: you've been warned.
+%    \begin{macrocode}
+    \immediate\openout\pfg@temp=\jobname.pfg %
+%    \end{macrocode}
+%
+% If the graphic file is not there, complain, else start reading it
+% line by line. Look at each line with |\pfg@find|. Unlike the looking
+% for |%%BoundingBox| where you can stop once you've found it, here
+% you need to go to the end of the file looking for all the occurrences
+% of |\tex| so if you give it megabytes of data, this may take a while.
+%    \begin{macrocode}
+    \immediate\openin\@inputcheck=#1 %
+    \ifeof\@inputcheck
+      \PackageWarning{psfrag}{Could not scan #1...}\endgroup
+    \else
+      \message{<psfrag:#1>}%
+      \@tempswatrue
+      \loop
+        \ifeof\@inputcheck
+          \@tempswafalse
+        \else
+          \read\@inputcheck to\@tempa
+          \expandafter\pfg@find\@tempa{\@nil}%
+        \fi
+      \if@tempswa
+      \repeat
+      \closein\@inputcheck
+    \fi
+    \immediate\closeout\pfg@temp
+    \endgroup
+    \@input{\jobname.pfg}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\pfg@find}
+% \changes{3.03}{1997/01/07}
+%   {Find strings even if nested inside brace groups}
+% This command first looks for an explicit brace group |{ }|.
+% (one definitely exists as |{\@nil}| is added at the end as
+% a `marker').
+%    \begin{macrocode}
+\long\def\pfg@find#1#{\pfg@finda{#1}}
+%    \end{macrocode}
+% \end{macro}
+%
+% To enable an `active' copy or |\| to be accessed easily, use a special
+% lowercase table while defining these macros.
+%    \begin{macrocode}
+\begingroup
+  \lccode`\~=`\\
+  \lowercase{\endgroup
+%    \end{macrocode}
+%
+% \begin{macro}{\pfg@finda}
+% If the group found contained the |\@nil| marker stop, else
+% start looking for |(\\tex| in the tokens before the group.
+%    \begin{macrocode}
+\long\def\pfg@finda#1#2{%
+  \def\@tempa{#2}%
+  \ifx\@tempa\@nnil
+  \else
+    \pfg@findb#1(~~tex(~~tex%
+  \fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\pfg@findb}
+% Having found a brace group, look for the string |\\tex| in the
+% preceding tokens. If there is such, discard any tokens before that
+% then take all tokens after |\\tex| (up to the brace already found)
+% to be the optional arguments. In that case write out a suitable
+% call to |\psfrag|, and then continue after the brace group.
+% Otherwise if no |\\tex| is found, Add the contents of the brace group
+% (without the braces) back in front of the list before restarting the
+% search. In that way any strings inside brace groups will be found.
+%
+% As |{}| have their normal catcodes, multiline |\tex| commands work
+% as long as any line breaks occur inside the main |{ }| argument, not
+% between the optional arguments (normally there is no space at all
+% there, so no possibility of a break). This is because \TeX\ will
+% read more than a line if necessary to ensure that braces balance.
+%
+% The arguments are delimited by |(\\tex| sequences:\\
+% |#1| Is always discarded; the tokens before any |(\\tex| string.\\
+% |#2| contains any optional arguments (complete with |[]| brackets).\\
+% |#3| Will be the `dummy tokens' placed at the end, unless
+%      no |(\\tex| is in the string, in which case |#3| will be empty.
+%      This argument is |\fi| delimited which allows for tail recursion
+%      in a slightly sneaky way.
+%    \begin{macrocode}
+\long\def\pfg@findb#1(~~tex#2(~~tex#3\fi{%
+  \fi
+  \ifx\box#3\box
+  \else
+%    \end{macrocode}
+% Since |\| is the PS escape character in strings, as well as the \TeX\
+% escape character, the following looks a bit weird, but it's probably
+% right. A |\| will appear in the PS string as |\\|, so\ldots
+%
+% First set |\| to be |\string| (recall |\| is active, and can be written
+% as |~| due to the |\lowercase| above).
+% This means that
+% |\\foo| expands to |\foo| (one catcode 12 |\| coming from |\string\|
+% and then a catcode 11 |foo|). This expansion is frozen by an |\edef|
+% for use in the second argument. Then redefine |\| to be |\relax|
+% so it is a non-expandable active token, which writes as itself.
+%
+% Now write a call to |\psfrag| to the temp file.
+% The `user' string |\foo| which was the literal PS |\\foo| thus ends
+% up as:\\
+%  |\psfrag{|\ldots |\\foo| \ldots |}{| \ldots |\foo| |}%|
+%
+% When this file is read back |\psfrag| will read the first argument
+% verbatim, and the second argument with normal catcodes so finally
+% |\foo| gets to be a single token instead of 4, and is executed
+% as part of the replacement text.
+%
+% Finally reset |\@tempa| (which contatined the contents of the brace group
+% to empty, as we've done with that.
+%    \begin{macrocode}
+     {\let~\string
+        \edef\@tempb{\@tempa}%
+      \let~\relax
+        \immediate\write\pfg@temp{%
+          \string\psfrag\space
+            {\string\\tex#2{\@tempa}}#2\@percentchar
+          ^^J\@spaces\@spaces{\@tempb}\@percentchar}}%
+    \let\@tempa\@empty
+  \fi
+%    \end{macrocode}
+%
+% Now start looking for the next brace group to test. First tip
+% the contents of |\@tempa| in front of the tokens not yet seen, so that
+% the contents of a brace group will be searched if they were not
+% used as the argument to |\tex|.
+%    \begin{macrocode}
+  \expandafter\pfg@find\@tempa}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% Finally close the call to |\lowercase|.
+%    \begin{macrocode}
+}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+%
+%

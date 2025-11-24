@@ -1,0 +1,770 @@
+% \iffalse
+%%
+%% File `tabularew.dtx'.
+%% Copyright (C) 2009 Diego Saba
+%% This file may be distributed under the terms of the LPPL.
+%%
+%
+%<*dtx>
+          \ProvidesFile{tabularew.dtx}
+%</dtx>
+%<package>\NeedsTeXFormat{LaTeX2e}
+%<package>\ProvidesPackage{tabularew}
+% \fi
+%         \ProvidesFile{tabularew.dtx}
+          [2009/05/23 v0.1 tabularew package (DPC)]
+%
+% \iffalse
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{tabularew}
+\EnableCrossrefs
+\CodelineIndex
+\GetFileInfo{tabularew.dtx}
+\title{The \textsf{tabularew} package\thanks{This file
+         has version number \fileversion, last
+         revised \filedate.}}
+\author{Diego Saba}
+\date{\filedate}
+\RecordChanges
+\begin{document}
+\maketitle
+\DocInput{tabularew.dtx}
+\PrintChanges
+\end{document}
+%</driver>
+% \fi
+% \CheckSum{458}
+%
+% \MakeShortVerb{\"}
+% \def\<#1>{$\langle$#1\/$\rangle$}%
+%
+% \def\dataa{\ignorespaces
+%   1&7,4&2,9&0,83&0,83&37,0&54,7&30,7&1,2\\
+%   2&59,9&8,9&0,83&0,83&4,61&17,9&4,46&1,2\\
+%   3&64,0&7,5&0,83&0,83&4,31&21,1&4,22&1,2\\
+%   4&46,3&4,8&0,83&0,83&5,95&33,5&5,86&1,2\\
+%   5&48,4&6,8&0,83&0,83&5,70&23,3&5,53&1,2
+%   }
+% \def\datab{\ignorespaces
+%   1&7&,4&2&,9&0&,83&0&,83&37&,0&54&,7&30&,7&1&,2\\
+%   2&59&,9&8&,9&0&,83&0&,83&4&,61&17&,9&4&,46&1&,2\\
+%   3&64&,0&7&,5&0&,83&0&,83&4&,31&21&,1&4&,22&1&,2\\
+%   4&46&,3&4&,8&0&,83&0&,83&5&,95&33&,5&5&,86&1&,2\\
+%   5&48&,4&6&,8&0&,83&0&,83&5&,70&23&,3&5&,53&1&,2
+%   }
+%
+% \begin{abstract}
+%
+% This article proposes an extended implementation of the \LaTeX\
+% \textsf{tabular} environment. It adds a new command to gain access
+% to a quantity, called here the \emph{excess width}, involved in
+% the process of
+% calculating the column widths. This allows to modify the default
+% algorithm, that produces undesirable effects in some circumstances.
+%
+% The same extension can easily be added in the future to the similar
+% \textsf{array} environment and to the star forms of both.
+%
+% This extension evaluates the whole table three times. It consumes
+% more resources than the standard environment and cannot be made 100\%
+% compatible, as it conceptually should.
+%
+% \end{abstract}
+%
+%
+% \section{Introduction}
+%
+% This package extends the implementation of the \textsf{tabular}
+% environment contained in the \textsf{array} package. More
+% information can be found in \cite{bk:companion}.
+%
+% Let us start with an example. Suppose that you have to modify
+% the following table, in order to align the decimal separators.
+%
+% \begin{center}
+%   \begin{tabular}{*{9}{c}}
+%     sez. &
+%     $\sigma$ &
+%     $\tau$ &
+%     $\beta_{\mathrm{pl},\sigma}$ &
+%     $\beta_{\mathrm{pl},\tau}$ &
+%     $S_{\mathrm{pl},\sigma}$ &
+%     $S_{\mathrm{pl},\tau}$ &
+%     $S_{\mathrm{pl}}$ &
+%     $S_{\mathrm{pl,am}}$ \\[-.2\normalbaselineskip]
+%     &
+%     \scriptsize [MPa] &
+%     \scriptsize [MPa] \\[.2\normalbaselineskip]
+%     \hline
+%     \hbox{\vrule height .9\normalbaselineskip width0pt}\dataa
+%   \end{tabular}
+% \end{center}
+%
+% This can be done using a well known stratagem:
+% each number can be split so that the integer part belongs to a column,
+% and the separator sign and the fractional part belong to the following
+% column. The labels must now span two columns.
+%
+% The code will change accordingly:
+%
+% \begin{center}
+%   \begin{tabular}{m{.4\textwidth}@{}c@{}m{.5\textwidth}}
+%     "\begin{tabular}{*{9}{c}}" \par
+%     "  sez. &" \par
+%     "  $\sigma$ &" \par
+%     "  $\tau$ &" \par
+%     "  "~\dots \par
+%     "  \hline" \par
+%     "  1 & 7,4 & 2,9 &"~\dots \par
+%     "  "~\dots \par
+%     "\end{tabular}"        
+%     &
+%     $\Rightarrow$
+%     &
+%     "\begin{tabular}{c*{8}{r@{}l}}" \par
+%     "  sez. &" \par
+%     "  \multicolumn{2}{c}{$\sigma$} &" \par
+%     "  \multicolumn{2}{c}{$\tau$} &" \par
+%     "  "~\dots \par
+%     "  \hline" \par
+%     "  1 & 7&,4 & 2&,9 &"~\dots \par
+%     "  "~\dots \par
+%     "\end{tabular}"
+%   \end{tabular}
+% \end{center}
+%
+% The result is probably unexpected:
+%
+% \begin{center}
+%   \begin{tabular}{c*{8}{r@{}l}}
+%     sez. &
+%     \multicolumn{2}{c}{$\sigma$} &
+%     \multicolumn{2}{c}{$\tau$} &
+%     \multicolumn{2}{c}{$\beta_{\mathrm{pl},\sigma}$} &
+%     \multicolumn{2}{c}{$\beta_{\mathrm{pl},\tau}$} &
+%     \multicolumn{2}{c}{$S_{\mathrm{pl},\sigma}$} &
+%     \multicolumn{2}{c}{$S_{\mathrm{pl},\tau}$} &
+%     \multicolumn{2}{c}{$S_{\mathrm{pl}}$} &
+%     \multicolumn{2}{c}{$S_{\mathrm{pl,am}}$} \\[-.2\normalbaselineskip]
+%     &
+%     \multicolumn{2}{c}{\scriptsize [MPa]} &
+%     \multicolumn{2}{c}{\scriptsize [MPa]} \\[.2\normalbaselineskip]
+%     \hline
+%     \hbox{\vrule height .9\normalbaselineskip width0pt}\datab
+%   \end{tabular}
+% \end{center}
+%
+% Note that the last label is not centered on its data: it is aligned
+% to the left and hangs to the right. The same is true of the third label.
+% Actually, seven of the nine labels are wider than their data, though some
+% of them by very little.
+% When a |\multicolumn| is wider than the columns it spans, it is aligned
+% to the left, disregarding the alignment directive.
+%
+% The intent was to center all the labels, like this:
+% \newcolumntype{w}{>{\spew{.5}{+1}}}
+% \begin{center}
+%   \begin{tabularew}{c*{8}{wr@{}l}}
+%     sez. &
+%     \multicolumn{2}{c}{$\sigma$} &
+%     \multicolumn{2}{c}{$\tau$} &
+%     \multicolumn{2}{c}{$\beta_{\mathrm{pl},\sigma}$} &
+%     \multicolumn{2}{c}{$\beta_{\mathrm{pl},\tau}$} &
+%     \multicolumn{2}{c}{$S_{\mathrm{pl},\sigma}$} &
+%     \multicolumn{2}{c}{$S_{\mathrm{pl},\tau}$} &
+%     \multicolumn{2}{c}{$S_{\mathrm{pl}}$} &
+%     \multicolumn{2}{c}{$S_{\mathrm{pl,am}}$} \\[-.2\normalbaselineskip]
+%     &
+%     \multicolumn{2}{c}{\scriptsize [MPa]} &
+%     \multicolumn{2}{c}{\scriptsize [MPa]} \\[.2\normalbaselineskip]
+%     \hline
+%     \hbox{\vrule height .9\normalbaselineskip width0pt}%
+%     \datab
+%   \end{tabularew}
+% \end{center}
+%
+% To understand the reason of this behaviour, and the difficulty to
+% ``correct'' it, the algorithm used by \LaTeX\ and by the underlying
+% \TeX\ to compute the column widths must be examined in greater detail.
+%
+% The column widths are first calculated without
+% considering
+% the |\multicolumn| cells, unless they span just one column and so
+% are ``fake'' |\multicolumn|s. Let us call the result of this first
+% computation the \emph{intrinsic width} of a column. Then each
+% |\multicolumn| in turn is taken into consideration. If it is
+% wider than the columns it spans, comprehensive of the space
+% between adjacent columns, the last column
+% is widened to accommodate the |\multicolumn|.
+% The order matters:
+% first the |\multicolumn|s that end at the second column are
+% considered, then those that end at the third column, and so on.
+% Let us call the column widths so obtained the
+% \emph{extrinsic widths}.
+% The difference between the extrinsic width and the intrinsic width is
+% the \emph{excess width}\footnote{Other names that I have considered are
+% \emph{proper}, \emph{inherent}, \emph{implicit}, \emph{essential},
+% \emph{innate} for \emph{intrinsic} and \emph{relational},
+% \emph{explicit}, \emph{accidental}, \emph{acquired} for
+% \emph{extrinsic}.}.
+%
+% The \textsf{tabular} environment relies on the \TeX\ primitive
+% |\halign|, from which it inherits the algorithm. It is
+% explained in a different and more formal way in
+% The~\TeX book~\cite[page~235]{bk:texbook}, but the result is
+% the same.
+%
+% This algorithm sometimes produces undesirable effects, as the
+% example above shows and Donald Knuth
+% himself points out~\cite[\textit{ibidem}]{bk:texbook}.
+%
+%
+% \section{Features}
+%
+% The \textsf{tabularew} environment has the same syntax as the
+% \textsf{tabular} environment, and should behave in the same
+% way, except for the new features (and a new bunch of incompatibilities
+% and bugs \dots).
+% \begin{quote}
+%   "\begin{tabularew}"\marg{pream}" " \ldots\ "\end{tabularew}"
+% \end{quote}
+%
+% \DescribeMacro\GetExcessWidth
+% In the body of the environment a new command is available.
+% \begin{quote}
+%   |\GetExcessWidth|\marg{column} \\
+%   \<\textit{column}>\ $\longrightarrow$~%
+%     \<optional sign>\ \<number>
+% \end{quote}
+% The \<\textit{column}> indication can be absolute or relative to
+% the current position. It is relative if
+% the first character is `\texttt{+}' or
+% `\texttt{-}', otherwise it is absolute\footnote{I cannot see
+% a useful application for the `\texttt{-}' form, but it was natural
+% to include it.}.
+% \DescribeMacro\ExcessWidth
+% Its effect is to set the dimension register |\ExcessWidth| to
+% the excess width of \<\textit{column}>.
+%
+% \DescribeMacro\spew
+% The command\footnote{The name stands for \emph{add a \textsc{sp}ace
+% proportional to the \textsc{e}xcess \textsc{w}idth}, but the effect
+% seems a bit unfortunate.}
+% \begin{quote}
+%   "\spew"\marg{factor}\marg{column}
+% \end{quote}
+% is just a shorthand for the idiom
+% \begin{quote}
+%   "\GetExcessWidth"\marg{column}"\hspace{"\<\textit{factor}>"\ExcessWidth}"
+% \end{quote}
+%
+% Since there is no way to access the widths directly during
+% the evaluation of a table, a trick must be used.
+% The table is evaluated three times. During the first pass
+% every call to |\GetExcessWidth| sets |\ExcessWidth| to
+% a null length and every call to
+% |\multicolumn| generates an empty cell; thus the \emph{intrinsic widths}
+% are collected.
+% The second pass restores the normal behaviour of |\multicolumn|; the
+% \emph{extrinsic widths} are collected and the \emph{excess widths}
+% calculated.
+% In the third and last pass every call to |\ExcessWidth| returns the
+% requested measure.
+%
+% The column widths can change between the second and third pass,
+% but the total width of the table will not,
+% if |\spew| is used in the following way, that is the
+% way I had in mind when this package was conceived.
+%
+% When there is a |\multicolumn| cell, the columns crossed by it
+% form a group. It is sometimes
+% useful to access the excess width of the \emph{last} column of the
+% group from within the preceding columns \emph{of the same group}.
+% Moreover, the sum of the spaces |\spew|ed in each of the preceding
+% columns should not exceed the excess width of the last column; that is,
+% the sum of all the \<\textit{factor}> arguments should not exceed one.
+% In this way the net result is to redistribute the excess width in a
+% flexible way among the group of columns.
+%
+% \DescribeMacro\CurrentColumn
+% \DescribeMacro\NumberOfColumns
+% The two counters |\CurrentColumn| and |\NumberOfColumns| need not
+% normally be used explicitly, since |\GetExcessWidth| makes use
+% of them behind the scenes. Nonetheless I decided to expose them too
+% to the user. They should only be read and not assigned to.
+%
+%
+% \section{Example}
+%
+% The ``correct'' table shown in the introduction was obtained by
+% \begin{quote}
+%   "\begin{tabularew}{c*{8}{>{\spew{.5}{+1}}r@{}l}}" \\
+%   "  sez. &" \\
+%   "  \multicolumn{2}{c}{$\sigma$} &" \\
+%   "  \multicolumn{2}{c}{$\tau$} &" \\
+%   "  "~\dots \\
+%   "  \hline" \\
+%   "  1 & 7&,4 & 2&,9 &"~\dots \\
+%   "  "~\dots \\
+%   "\end{tabularew}"
+% \end{quote}
+%
+%
+% \StopEventually{
+% \begin{thebibliography}{1}
+%    \bibitem{bk:companion} \textsc{M.~Goossens}, \textsc{F.~Mittelbach}
+%       and \textsc{A.~Samarin}.
+%       \newblock The \LaTeX{} Companion.
+%       \newblock
+%       Addison-Wesley, Reading, Massachusetts, 1994.
+%    \bibitem{bk:texbook}  \textsc{D. E. Knuth}.
+%       \newblock  The \TeX{}book (Computers \& Typesetting Volume A).
+%       \newblock
+%       Addison-Wesley, Reading, Massachusetts, 1986.
+% \end{thebibliography}
+% \PrintChanges
+% }
+%
+%
+% \clearpage
+% \section{The Code}
+%
+% I have succeeded in writing this code, thanks to David Carlisle's
+% \textsf{tabulary} environment and his well-commented code.
+% I have boldly and shamelessly copied it, without even fully
+% understanding it, and modified it to suite my needs.
+%
+% To simplify things, I have eliminated the |\verb| and \textsf{colortbl}
+% support (at least for the moment).
+%
+%    \begin{macrocode}
+%<*package>
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\RequirePackage{array}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\catcode`\Z=14
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\DeclareOption{debugshow}{\catcode`\Z=9\relax}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\ProcessOptions
+%    \end{macrocode}
+%    
+% \begin{macro}{\ExcessWidth}
+% \begin{macro}{\CurrentColumn}
+% \begin{macro}{\NumberOfColumns}
+% Allocate the registers for the user interface.
+%    \begin{macrocode}
+\newdimen\ExcessWidth
+\newcount\CurrentColumn
+\newcount\NumberOfColumns
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\tabularew}
+% \begin{macro}{\TEW@get@body}
+% \begin{macro}{\TEW@find@end}
+% \begin{macro}{\endtabularew}
+% The \textsf{tabularew} environment uses the same mechanism of grabbing
+% its body as \textsf{tabulary}, \textsf{tabularx}, and the AMS alignment
+% environments.
+% The use of "{\ifnum0=`}\fi" to begin a grouping and of "\ifnum0=`{\fi}"
+% to end it is discussed in \textsf{tabularx}. See also
+% The \TeX book \cite[page 385]{bk:texbook}.
+% It is needed to allow the environment inside an alignment.
+%    \begin{macrocode}
+\def\tabularew{%
+  \edef\TEW@{\@currenvir}%
+  {\ifnum0=`}\fi
+  \TEW@setup
+  \toks@{}\TEW@get@body}
+%    \end{macrocode}
+
+%    \begin{macrocode}
+\long\def\TEW@get@body#1\end
+  {\toks@\expandafter{\the\toks@#1}\TEW@find@end}
+%    \end{macrocode}
+
+%    \begin{macrocode}
+\def\TEW@find@end#1{%
+  \def\@tempa{#1}%
+  \ifx\@tempa\TEW@\def\@tempa{\end{#1}}\expandafter\@tempa
+  \else\toks@\expandafter
+    {\the\toks@\end{#1}}\expandafter\TEW@get@body\fi}
+%    \end{macrocode}
+
+%    \begin{macrocode}
+\def\endtabularew{%
+Z \message{^^J^^JEW Table - first pass^^J}%
+  \TEW@firstpass
+Z \message{\@spaces\@spaces\space - second pass^^J}%
+  \TEW@secondpass
+Z \message{\@spaces\@spaces\space - last pass^^J}%
+  \TEW@lastpass
+  \TEW@cleanup
+  \ifnum0=`{\fi}}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+
+% \begin{macro}{\TEW@setup}
+% Save locally all the things that \textsf{tabularew} will assign to
+% globally. The values will be restored at the end by |\TEW@cleanup|.
+%    \begin{macrocode}
+\def\TEW@setup{%
+  \edef\@restorecounters{%
+    \global\NumberOfColumns\the\NumberOfColumns
+    \global\CurrentColumn\the\NumberOfColumns\relax}%
+%    \end{macrocode}
+% The excess widths are stored as macro definitions because
+% this way is easier, and probably more efficient, than dealing with
+% an ``array'' of dimension registers.
+%    \begin{macrocode}
+  \count@\z@
+  \@tempswatrue
+  \@whilesw\if@tempswa\fi{%
+    \advance\count@\@ne
+    \expandafter\ifx\csname TEW@\the\count@\endcsname\relax
+      \@tempswafalse
+    \else
+      \expandafter\let\csname TEW@S\the\count@
+        \expandafter\endcsname\csname TEW@\the\count@\endcsname
+    \fi}%
+%    \end{macrocode}
+% These will only change locally.
+%    \begin{macrocode}
+  \let\@arraycr\TEW@arraycr
+  \let\multicolumn\TEW@multicolumn
+  \ExcessWidth\z@
+%    \end{macrocode}
+% This will only exist locally. But I'm not sure of this choice.
+%    \begin{macrocode}
+  \let\spew\TEW@spew
+  }
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@cleanup}
+%    \begin{macrocode}
+\def\TEW@cleanup{%
+  \count@\z@
+  \@tempswatrue
+  \@whilesw\if@tempswa\fi{%
+    \advance\count@\@ne
+    \expandafter\ifx\csname TEW@S\the\count@\endcsname\relax
+      \@tempswafalse
+    \else
+      \global\expandafter\let\csname TEW@\the\count@
+        \expandafter\endcsname\csname TEW@S\the\count@\endcsname
+    \fi}%
+  \@restorecounters
+  }
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@firstpass}
+% Build a table that will never show up and
+% is built in a special way with the purpose of taking measures.
+% |\ExcessWidth| is null and |\multicolumn|s are empty.
+% The \emph{intrinsic widths} are collected.
+%    \begin{macrocode}
+\def\TEW@firstpass{%
+  \let\multicolumn\TEW@multicolumnempty
+  \TEW@tabsample
+  \let\multicolumn\TEW@multicolumn
+  \let\@computation\TEW@firstcomp
+  \TEW@measure
+  }
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@secondpass}
+% Now |\multicolumn|s are honoured and
+% the \emph{extrinsic widths} are collected.
+%    \begin{macrocode}
+\def\TEW@secondpass{%
+  \TEW@tabsample
+  \let\@computation\TEW@secondcomp
+  \TEW@measure
+  }
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@lastpass}
+% Just build the real table.
+%    \begin{macrocode}
+\def\TEW@lastpass{%
+  \TEW@tabfinal
+  }
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@tabsample}
+% Add a row at the end of the table that won't affect the
+% column widths. This row will later be analyzed to collect
+% the widths. The last row provided by the user can't serve
+% this purpose because it could contain multicolumns or be
+% hidden by an hline.
+%    \begin{macrocode}
+\def\TEW@tabsample{%
+  \let\GetExcessWidth\@GetExcessWidthz@
+  \let\@mkpream\TEW@mkpream
+  \setbox\z@\hbox{%
+  \gdef\@halignto{}%
+  \col@sep\tabcolsep
+  \let\d@llarbegin\begingroup\let\d@llarend\endgroup
+    \expandafter\TEW@tabarray\the\toks@
+      \crcr\omit
+      {\count@\NumberOfColumns
+        \xdef\TEW@save@row{}%
+        \loop
+          \advance\count@\m@ne
+        \ifnum\count@>\z@
+          \xdef\TEW@save@row{\TEW@save@row&\omit}%
+        \repeat}%
+      \TEW@save@row
+      \endarray
+    \global\setbox\@ne\lastbox
+    }%
+  }
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@tabfinal}
+% This mimics a regular \textsf{tabular}, the only difference
+% being that |\CurrentColumn| is updated before evaluating
+% the content of each cell and the command |\GetExcessWidth| is
+% made available.
+%    \begin{macrocode}
+\def\TEW@tabfinal{%
+  \leavevmode
+  \let\GetExcessWidth\@GetExcessWidth
+  \let\@mkpream\TEW@mkpream
+  \gdef\@halignto{}%
+  \col@sep\tabcolsep
+  \let\d@llarbegin\begingroup\let\d@llarend\endgroup
+  \expandafter\TEW@tabarray\the\toks@\endarray}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@tabarray}
+% \begin{macro}{\TEW@array}
+% Handle the optional position argument.
+%    \begin{macrocode}
+\def\TEW@tabarray{\@ifnextchar[{\TEW@array}{\@array[t]}}
+%    \end{macrocode}
+
+%    \begin{macrocode}
+\def\TEW@array[#1]{\@array[t]}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+
+% \begin{macro}{\TEW@@mkpream}
+% \begin{macro}{\TEW@@arraycr}
+% \begin{macro}{\TEW@@multicolumn}
+% Saved versions.
+%    \begin{macrocode}
+\let\TEW@@mkpream\@mkpream
+\let\TEW@@arraycr\@arraycr
+\let\TEW@@multicolumn\multicolumn
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+
+% \begin{macro}{\TEW@mkpream}
+% This is a one-shot customized version, that redifines itself
+% to the regular version. It's not clear to me why this is
+% needed. Maybe because the regular version is used to process
+% the multicolumns' preambles?
+%    \begin{macrocode}
+\def\TEW@mkpream{%
+  \global\NumberOfColumns\@ne
+  \global\CurrentColumn\@ne
+  \let\@addamp\TEW@addamp
+  \global\let\@mkpream\TEW@@mkpream % needed!
+  \TEW@@mkpream}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@arraycr}
+%    \begin{macrocode}
+\def\TEW@arraycr{%
+  \global\CurrentColumn\@ne
+  \TEW@@arraycr
+  }
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@multicolumn}
+% For the multicolumn mechanism to work, the first token of the
+% expansion must be |\omit|.
+%    \begin{macrocode}
+\long\def\TEW@multicolumn#1#2#3{%
+  % Can't place anything before \omit
+  \TEW@@multicolumn{#1}{#2}{\global\advance\CurrentColumn\@ne#3}%
+  \global\advance\CurrentColumn#1%
+  \global\advance\CurrentColumn\m@ne
+  \ignorespaces}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@multicolumnempty}
+% To behave exactly as explained in the introduction, the special case
+% of a ``fake'' multicolumn should be dealt with. I don't think this
+% would give any practical advantage, though.
+%    \begin{macrocode}
+\long\def\TEW@multicolumnempty#1#2#3{\multispan#1\relax}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@addamp}
+% During the evaluation of |\@mkpream|, while processing the pramble,
+% each `\texttt{\&}' increases |\NumberOfColumns|. After that, it will
+% keep it's value. During the evaluation of |\@preamble|, while
+% building a row, each `\texttt{\&}' increases |\CurrentColumn|.
+% The latter is reset at the end of each row when
+% |\@arraycr| is evaluated.
+%    \begin{macrocode}
+\def\TEW@addamp{%
+  \if@firstamp\@firstampfalse
+  \else
+    \global\advance\NumberOfColumns\@ne
+    \expandafter\def\expandafter\@preamble\expandafter{\@preamble
+      &\global\advance\CurrentColumn\@ne}%
+  \fi
+  }%
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@measure}
+% Take the last row apart, unbox it, take each cell in turn
+% and note its width.
+%    \begin{macrocode}
+\def\TEW@measure{%
+  \setbox\z@\vbox{\unvbox\@ne\unskip\global\setbox\@ne\lastbox}%
+  \setbox\tw@\hbox{%
+    \count@\NumberOfColumns
+    \unhbox\@ne
+    \loop
+      \unskip
+      \setbox\tw@\lastbox
+    \ifhbox\tw@
+      \@computation{\wd\tw@}%
+      \advance\count@\m@ne
+    \repeat
+    }%
+  }
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@firstcomp}
+% The argument is stored in the database.
+%    \begin{macrocode}
+\def\TEW@firstcomp#1{%
+Z \message{Col \the\count@: Intrinsic Width=\the#1^^J}%
+  \TEW@width\xdef{\the#1}}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@secondcomp}
+% The argument is used to compute the excess width which is then stored
+% in the database.
+%    \begin{macrocode}
+\def\TEW@secondcomp#1{%
+  \TEW@width\dimen@
+  \advance\dimen@-#1%
+  \multiply\dimen@\m@ne
+Z \message{Col \the\count@: Excess width=\the\dimen@^^J}%
+  \TEW@width\xdef{\the\dimen@}}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@width}
+% A shorthand.
+%    \begin{macrocode}
+\def\TEW@width#1{%
+  \expandafter#1\csname TEW@\the\count@\endcsname}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\@GetExcessWidth}
+% Look up the excess widths database.
+%    \begin{macrocode}
+\def\@GetExcessWidth#1{%
+  \count@\CurrentColumn
+%    \end{macrocode}
+% Process the optional sign. Need
+% to |\relax| at the end of the assignment, to prevent the following
+% token from
+% being expanded too early.
+%    \begin{macrocode}
+  \@ifnextchar+{\advance\count@}{%
+    \@ifnextchar-{\advance\count@}{\count@}}#1\relax
+%    \end{macrocode}
+% Check that the column exists.
+%    \begin{macrocode}
+  \@tempswafalse
+  \ifnum\count@>\z@
+    \ifnum\count@>\NumberOfColumns
+    \else\@tempswatrue
+    \fi\fi
+%    \end{macrocode}
+% Retrieve the datum.
+%    \begin{macrocode}
+  \if@tempswa\TEW@width\ExcessWidth
+  \else\ExcessWidth\z@
+    \TEW@warn{nonexistent column \the\count@, assuming EW=0pt}%
+  \fi
+Z \message{EW in col. \the\CurrentColumn\space references
+Z   col. \the\count@: \the\ExcessWidth^^J}%
+  }
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\@GetExcessWidthz@}
+% To be used in the first two passes, when the excess widths are still
+% unknown.
+%    \begin{macrocode}
+\def\@GetExcessWidthz@#1{\ExcessWidth\z@}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@spew}
+% A useful shorthand.
+%    \begin{macrocode}
+\def\TEW@spew#1#2{\GetExcessWidth{#2}\hspace{#1\ExcessWidth}}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\TEW@warn}
+% Warning messages.
+%    \begin{macrocode}
+\def\TEW@warn{%
+  \PackageWarning{tabularew}}
+%    \end{macrocode}
+% \end{macro}
+
+%    \begin{macrocode}
+\catcode`\Z=11
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+% \PrintIndex
+% \Finale
+%

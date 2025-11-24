@@ -1,0 +1,152 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{refenums}
+  [2014/01/03 v1.1.1 Referenceable enumerated items (refenums.sty)]
+
+% This package provides commands to define enumerable items with a number
+% and a long name, which can be referenced referenced later with the name
+% or just the short form. For instance, "Milestone M1: Specification created"
+% can be defined and later on be referenced with `M1` or
+% `M1 ("Specification created")`. The text in the references is derived from
+% the definition and also rendered as hyperlink to the definition.
+% Thus, a change of the definition also leads to a change of all references
+% to the text. This ensures consistency in the text.
+
+% The latest source code is available at https://github.com/koppor/refenums
+
+\RequirePackage{csquotes}
+\RequirePackage{ifthen}
+\RequirePackage{hyperref}
+\RequirePackage{cleveref}
+
+%Defines command \refenumenclosing and \refenuminlineenclosing if it is not already defined
+\ifthenelse{\isundefined{\refenumenclosing}}{\newcommand{\refenumenclosing}[1]{#1}}{}
+\ifthenelse{\isundefined{\refenuminlineenclosing}}{\newcommand{\refenuminlineenclosing}[1]{\emph{#1}}}{}
+
+% tip by http://tex.stackexchange.com/a/73710/9075
+\makeatletter
+ \newcommand{\labelname}[1]{% \labelname{<stuff>}
+  \def\@currentlabelname{#1}}%
+\makeatother
+
+% Setup environment
+% Called ONCE for each enum
+%
+% #1: (optional) the seperator between EnumId and Number. Default: "-". If set to COMBINED, the output format changes to <PrintName> <EnumId><Number>
+% #2: Enum Id (no spaces, only characters), also used later in defineReferenceableEnumElement
+% #3: Print Name of enum type, if "ONLYSHORT" then only the short name is used and a long name never printed
+\newcommand{\setupRefEnums}[3][-]{%
+%Define global counter
+\newcounter{#2}
+
+%Store print name
+\expandafter\newcommand\csname #2PrintName\endcsname{#3}
+
+%Store separator
+%tipp by http://tex.stackexchange.com/a/64019/9075
+\expandafter\newcommand\csname #2Separator\endcsname{#1}
+
+%Store COMBINED and setup cref
+\newtoggle{#2Combined}
+\ifthenelse{%
+\equal{#1}{COMBINED}}{%
+\toggletrue{#2Combined}
+\crefformat{#2}{##2#2##1##3}
+\Crefformat{#2}{##2#2##1##3}
+}{%
+\togglefalse{#2Combined}
+\crefformat{#2}{##2#2#1##1##3}
+\Crefformat{#2}{##2#2#1##1##3}
+}
+
+%Store ONLYSHORTCONFIG
+\newtoggle{#2OnlyShort}
+\ifthenelse{%
+\equal{#3}{ONLYSHORT}}{%
+\toggletrue{#2OnlyShort}
+}{%
+\togglefalse{#2OnlyShort}
+}
+
+%End of definition of setupRefEnums
+}
+
+%internal command, used only at defineReferenceableEnumElement
+% #1: Enum Id (no spaces, only characters), also used to print short form of enum and to reference the setup at setupRefEnums
+% #2: Full Name of the enum to be defined
+\newcommand{\defRefEnumHelper}[2]{%
+% \arabic{#1} returns the counter value
+\iftoggle{#1OnlyShort}{%
+#1\csname #1Separator\endcsname\arabic{#1}: #2%
+}{%
+\iftoggle{#1Combined}{%
+\csname #1PrintName\endcsname\ #1\arabic{#1}: #2%
+}{%
+\csname #1PrintName\endcsname\ \arabic{#1} (#1\csname #1Separator\endcsname\arabic{#1}): #2%
+}%
+}%
+}%
+
+% Generic command to define counter elements
+% Called for EACH element
+%
+% #1: (optional) the command to wrap the text under. Defaults to refenumenclosing
+% #2: Enum Id (no spaces, only characters), also used to print short form of enum and to reference the setup at setupRefEnums
+% #3: Full Name of the enum to be defined
+% #4: Label Id of the enum when referencing it
+\newcommand{\defRefEnum}[4][refenumenclosing]{%
+%increase counter
+\refstepcounter{#2}%
+%
+%store the ``caption'' into a sepcial variable being used later for referencing
+\labelname{#3}%
+%
+%label directly put after refstepcounter to enable sectioning commands to be used as enumeration
+\label{enum:#2:#4}%
+%
+%Print out the thing
+\csname #1\endcsname{\defRefEnumHelper{#2}{#3}}%
+%
+}
+
+
+% Same as \defRefEnum but for inline referenceable elements!
+% One uses either without ``Inline'' or with ``Inline'' for a group of types
+\newcommand{\defRefEnumInline}[4][refenuminlineenclosing]{%
+ \refstepcounter{#2}%
+ \csname #1\endcsname{(#2\csname #2Separator\endcsname\arabic{#2}) #3}%
+ \labelname{#3}%
+ \label{enum:#2:#4}%
+}
+
+
+% Generic command to reference to an enum. The print name is put in brackets after the identifier.
+%
+% Output: <EnumId><Num> (``<PrintName>'')
+%
+% #1: Enum Id (no spaces, only characters!)
+% #2: Label Id
+\newcommand{\refEnumFullP}[2]{%
+ \refEnum{#1}{#2}
+ (\enquote{\nameref{enum:#1:#2}})%
+}
+
+
+% Generic command to reference to an enum. The print name is put in quotes after the identifier.
+%
+% Output: <EnumId><Num>: ``<PrintName>''
+%
+% #1: Enum Id (no spaces, only characters!)
+% #2: Label Id
+\newcommand{\refEnumFullT}[2]{%
+ \refEnum{#1}{#2}: \enquote{\nameref{enum:#1:#2}}%
+}
+
+
+% \refEnumFull defaults to \efEnumFullP
+\let\refEnumFull\refEnumFullP
+
+
+\newcommand{\refEnum}[2]{%
+  \cref{enum:#1:#2}%
+}
+\endinput

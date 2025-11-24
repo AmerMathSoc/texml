@@ -1,0 +1,877 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% ocgx2.sty
+%
+% Copyright 2015--\today, Alexander Grahn
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% The intent of this package is to be a drop-in replacement for the already
+% existing CTAN package `ocgx' by Paul Gaborit, and also for `ocg-p' and `ocg'.
+%
+% It re-implements the functionality of the ocg, ocgx and ocg-p packages
+% and adds support for all known engines and backends including
+% latex+dvips+ps2pdf, xelatex, latex+dvipdfmx, lualatex.
+%
+% With ocgx2, PDF layers may extend across page breaks.
+%
+% Adds some minor improvements, such as package options, remembering option
+% settings of reopened ocgs, correct behaviour of ocg switching links that were
+% themselves placed on layers, compatibility with the animate and media9
+% packages.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://mirrors.ctan.org/help/Catalogue/licenses.lppl.html
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+%
+% The Current Maintainer of this work is A. Grahn.
+
+\RequirePackage{xparse}
+\RequirePackage{l3keys2e}
+
+\ProvidesExplPackage{ocgx2}{2016/03/22}{0.17}
+{ports `ocgx' functionality to dvips+ps2pdf, xelatex and dvipdfmx}
+
+%creating global definitions
+\cs_new:Npn\ocgxii@newkey#1#2{\tl_gset:cx{#1}{#2}}
+
+%package opts
+%unknown package option error message
+\msg_set:nnnn{ocgx2}{unknown~package~option}{Unknown~package~option~`#1'.}{
+  Package option~'#1'~is~unknown;\\
+  perhaps~it~is~spelled~incorrectly.
+}
+
+\bool_new:N\g_ocgxii_dvipdfmx_bool
+\bool_new:N\l_ocgxii_tikz_bool
+\bool_new:N\l_ocgxii_ocgcolorlinks_bool
+
+\keys_define:nn{ocgx2}{
+  xetex .code:n = {
+    \PassOptionsToPackage{xetex}{pdfbase}
+  },
+
+  dvipdfmx .code:n = {
+    \PassOptionsToPackage{dvipdfmx}{pdfbase}
+    \bool_gset_true:N\g_ocgxii_dvipdfmx_bool
+  },
+
+  viewocg .choice:,
+  viewocg / always .code:n={
+    \tl_gset:Nn\g_ocgxii_view_tl{/View<</ViewState/ON>>}},
+  viewocg / never .code:n={
+    \tl_gset:Nn\g_ocgxii_view_tl{/View<</ViewState/OFF>>}},
+  viewocg / ifvisible .code:n={\tl_gclear_new:N\g_ocgxii_view_tl},
+  viewocg .default:n={ifvisible},
+
+  printocg .choice:,
+  printocg / always .code:n={
+    \tl_gset:Nn\g_ocgxii_print_tl{/Print<</PrintState/ON>>}},
+  printocg / never .code:n={
+    \tl_gset:Nn\g_ocgxii_print_tl{/Print<</PrintState/OFF>>}},
+  printocg / ifvisible .code:n={\tl_gclear_new:N\g_ocgxii_print_tl},
+  printocg .default:n={ifvisible},
+
+  exportocg .choice:,
+  exportocg / always .code:n={
+    \tl_gset:Nn\g_ocgxii_export_tl{/Export<</ExportState/ON>>}},
+  exportocg / never .code:n={
+    \tl_gset:Nn\g_ocgxii_export_tl{/Export<</ExportState/OFF>>}},
+  exportocg / ifvisible .code:n={\tl_gclear_new:N\g_ocgxii_export_tl},
+  exportocg .default:n={ifvisible},
+
+  listintoolbar .choices:nn = {always,never,iffirstuse}{
+    \tl_gset:Nx\g_ocgxii_listno_tl{\int_eval:n{\l_keys_choice_int-\c_one}}
+  },
+  listintoolbar .default:n={iffirstuse},
+
+  showingui .meta:n = {listintoolbar=#1},
+  showingui .default:n={iffirstuse},
+
+  tikz .bool_set:N = \l_ocgxii_tikz_bool,
+  tikz .default:n = true,
+
+  ocgcolorlinks .bool_set:N = \l_ocgxii_ocgcolorlinks_bool,
+  ocgcolorlinks .default:n = true,
+
+  unknown .code:n = {
+    \msg_error:nnx{ocgx2}{unknown~package~option}{\l_keys_key_tl}
+  }
+}
+
+%package options preset
+\keys_set:nn{ocgx2}{viewocg,printocg,exportocg,showingui,tikz=false}
+
+%process package options
+\ProcessKeysOptions{ocgx2}
+\sys_if_engine_xetex:T{\bool_gset_true:N\g_ocgxii_dvipdfmx_bool}
+
+\RequirePackage{ocgbase} %also loads pdfbase.sty
+\msg_set:nnnn{ocgx2}{support~outdated}{
+  Support~package~`#1'~too~old.
+}{
+  Get~an~up~to~date~version~of~`#1'.\\
+  Aborting.
+}
+\@ifpackagelater{pdfbase}{2016/03/11}{}{
+  \msg_error:nnn{xsavebox}{support~outdated}{pdfbase.sty}
+  \tex_endinput:D
+}
+
+%re-implement ocg-p's `ocg' environment
+\DeclareDocumentEnvironment{ocg}{O{}mmm}{
+  \ocgxii_beginocg:nnnn{#1}{#2}{#3}{#4}
+}{
+  \ocgxii_endocg:
+}
+
+\cs_new_nopar:Nn\ocgxii_beginocg:nnnn{
+  \bool_if:NT\g_ocgxii_nestedB_bool{
+    \seq_gput_left:Nx\g_ocgxii_nested_seq{
+      \seq_item:Nn\g_ocgxii_ocgstack_seq{\c_one}
+    }
+    \ocgbase_add_to_order_list:n{[}
+  }
+  \bool_gset_true:N\g_ocgxii_nestedB_bool
+  \bool_gset_false:N\g_ocgxii_nestedE_bool
+  \group_begin:
+    \ocgxii_reset_cmd_opts:  % ... to the user-set package options
+    \tl_if_exist:cTF{ocgxii@#3}{ %re-open existing layer
+      \tl_set:Nx\l_tempa_tl{\tl_use:c{ocgxii@#3.opts},#1}
+      \tl_gset:cx{ocgxii@#3.opts}{\l_tempa_tl} %new options appended
+      \keys_set:nV{ocgx2/user}\l_tempa_tl
+      \int_compare:nTF{\l_ocgxii_listno_tl=\c_zero}{
+        \ocgbase_add_to_order_list:n{\tl_use:c{ocgxii@#3}}
+      }{
+        \bool_gset_false:N\g_ocgxii_nestedB_bool
+      }
+      \bool_if:nTF{ %initial visibility
+        \str_if_eq_x_p:nn{#4}{1} ||
+        \str_if_eq_x_p:nn{#4}{on} ||
+        \str_if_eq_x_p:nn{#4}{true}
+      }{
+        \ocgbase_del_from_off_list:n{\tl_use:c{ocgxii@#3}}
+      }{
+        \ocgbase_add_to_off_list:n{\tl_use:c{ocgxii@#3}}
+      }
+    }{
+      \tl_set:Nx\l_tempa_tl{#1}
+      \tl_gset:cx{ocgxii@#3.opts}{\l_tempa_tl}
+      \keys_set:nV{ocgx2/user}\l_tempa_tl
+      \ocgbase_new_ocg:nnn{#2}{
+        \l_ocgxii_view_tl\l_ocgxii_print_tl\l_ocgxii_export_tl
+      }{#4}
+      \tl_gset:cx{ocgxii@#3}{\ocgbase_last_ocg:}
+      \int_compare:nTF{\l_ocgxii_listno_tl=\c_one}{
+        \bool_gset_false:N\g_ocgxii_nestedB_bool
+      }{
+        \ocgbase_add_to_order_list:n{\ocgbase_last_ocg:}
+      }
+      \iow_now:Nx\@mainaux{
+        \token_to_str:N\ocgxii@newkey{ocgx2.ocg.#3}{\ocgbase_last_ocg:}
+      }
+    }
+    \seq_map_inline:Nn\l_ocgxii_rbgrps_seq{% process list of radio btn groups
+      \ocgbase_add_ocg_to_radiobtn_grp:nnn{##1}{\tl_use:c{ocgxii@#3}}{
+        \int_compare:nTF{\l_ocgxii_listno_tl=\c_one}{false}{true}
+      }
+    }
+    \bool_if:nT{
+      !\cs_if_exist:cTF{ocgx2.ocg.#3}{
+        \str_if_eq_x_p:nn{\tl_use:c{ocgx2.ocg.#3}}{\tl_use:c{ocgxii@#3}}
+      }{
+        \c_false_bool
+      }
+    }{
+      \tl_if_exist:NF\g_ocgxii_rerunwarned_tl{
+        \tl_new:N\g_ocgxii_rerunwarned_tl
+        \AtEndDocument{\msg_warning:nn{ocgx2}{rerun}}
+      }
+    }
+    \tl_gset:cx{ocgx2.ocg.#3}{\tl_use:c{ocgxii@#3}}
+    \seq_gput_left:Nx\g_ocgxii_ocgstack_seq{\tl_use:c{ocgxii@#3}}
+    \ocgxii_ocgstack_shipout:N\g_ocgxii_ocgstack_seq
+  \group_end:
+  \ocgbase_oc_bdc:n{\tl_use:c{ocgxii@#3}}
+  \ignorespaces
+}
+
+\cs_new_nopar:Nn\ocgxii_endocg:{
+  \unskip
+  \ocgbase_oc_emc:
+  \bool_if:nT{
+    \g_ocgxii_nestedE_bool &&
+    \str_if_eq_x_p:nn{
+      \seq_item:Nn\g_ocgxii_nested_seq{\c_one}
+    }{
+      \seq_item:Nn\g_ocgxii_ocgstack_seq{\c_one}
+    }
+  }{
+    \ocgbase_add_to_order_list:n{]}
+    \seq_gpop_left:NN\g_ocgxii_nested_seq\l_trash_tl
+  }
+  \seq_gpop_left:NN\g_ocgxii_ocgstack_seq\l_trash_tl
+  \ocgxii_ocgstack_shipout:N\g_ocgxii_ocgstack_seq
+  \bool_gset_false:N\g_ocgxii_nestedB_bool
+  \bool_gset_true:N\g_ocgxii_nestedE_bool
+}
+
+\bool_new:N\g_ocgxii_nestedB_bool % nested OCG begin
+\bool_new:N\g_ocgxii_nestedE_bool % nested OCG end
+\seq_new:N\g_ocgxii_nested_seq % for keeping track of parent OCGs
+
+\cs_new_nopar:Nn\ocgxii_ocgstack_shipout:N{
+  \iow_shipout_x:Nx\@mainaux{
+    \token_to_str:N\ocgxii@stack@on@page{
+      \exp_not:N\int_use:N\g_ocgxii_page_int
+    }{\seq_use:Nn#1{,}}
+  }
+}
+\cs_new_nopar:Npn\ocgxii@stack@on@page#1#2{
+  \seq_gset_from_clist:cn{g_pending_ocgs_on_#1_seq}{#2}
+  %re-add braces around items for dvips
+  \bool_if:nT{\sys_if_output_dvi_p: && !\g_ocgxii_dvipdfmx_bool}{
+    \seq_map_inline:cn{g_pending_ocgs_on_#1_seq}{
+      \seq_gpop_left:cN{g_pending_ocgs_on_#1_seq}\l_trash_tl
+      \seq_gput_right:cn{g_pending_ocgs_on_#1_seq}{{##1}}
+    }
+  }
+}
+\ocgxii@stack@on@page{0}{} %initialize
+
+%end-of-page action in output routine
+\cs_new_nopar:Nn\ocgxii_at_end_page:{
+  %check whether end-of-page ocg stack has settled
+  \iow_shipout:Nx\@mainaux{
+    \token_to_str:N\ocgxii@newkey{ocgx2.oldstack.\int_use:N\g_ocgxii_page_int}{
+      \seq_use:cn{g_pending_ocgs_on_\int_use:c{g_ocgxii_page_int}_seq}{,}
+    }
+  }
+  \bool_if:nT{
+    !\cs_if_exist:cTF{ocgx2.oldstack.\int_use:N\g_ocgxii_page_int}{
+      \str_if_eq_x_p:nn{
+        \tl_use:c{ocgx2.oldstack.\int_use:N\g_ocgxii_page_int}
+      }{
+        \seq_use:cn{g_pending_ocgs_on_\int_use:c{g_ocgxii_page_int}_seq}{,}
+      }
+    }{
+      \c_false_bool
+    }
+  }{
+    \tl_if_exist:NF\g_ocgxii_rerunwarned_tl{
+      \tl_new:N\g_ocgxii_rerunwarned_tl
+      \AtEndDocument{\msg_warning:nn{ocgx2}{rerun}}
+    }
+  }
+  %now close pending ocgs
+  \seq_map_variable:cNn{
+    g_pending_ocgs_on_\int_use:c{g_ocgxii_page_int}_seq
+  }\l_ocgxii_arg_tl{
+    \ocgbase_oc_emc:
+  }
+}
+
+%begin-of-page action in output routine
+\cs_new_nopar:Nn\ocgxii_at_begin_page:{
+  % re-open pending ocgs
+  \seq_set_eq:Nc\l_ocgxii_temp_seq{
+    g_pending_ocgs_on_\int_use:c{g_ocgxii_page_int}_seq
+  }
+  \seq_reverse:N\l_ocgxii_temp_seq
+  \seq_map_variable:NNn\l_ocgxii_temp_seq\l_ocgxii_arg_tl{
+    \ocgbase_oc_bdc:n{\l_ocgxii_arg_tl}
+  }
+  \int_gincr:N\g_ocgxii_page_int
+  % copy pending ocg stack from previous page, if it has not been initialized
+  % yet from aux file
+  \seq_if_exist:cF{g_pending_ocgs_on_\int_use:c{g_ocgxii_page_int}_seq}{
+    \seq_gset_eq:cc{
+      g_pending_ocgs_on_\int_use:c{g_ocgxii_page_int}_seq
+    }{
+      g_pending_ocgs_on_\int_eval:n{\g_ocgxii_page_int-\c_one}_seq
+    }
+  }
+}
+\int_new:N\g_ocgxii_page_int %abs. page counter
+
+%modify output routine to manage ocgs spanning multiple pages
+\cs_set_eq:NN\ocgxii_outputpage_orig:\@outputpage
+\cs_set_nopar:Npn\@outputpage{
+  \vbox_set:Nn\@outputbox{
+    \ocgxii_at_begin_page:
+    \box_use_clear:N\@outputbox
+    \ocgxii_at_end_page:
+  }
+  \ocgxii_outputpage_orig:
+}
+
+%stack of PDF obj references of currently open OCGs
+\seq_new:N\g_ocgxii_ocgstack_seq
+
+%macro that inserts /OC <<OCMD with currently open OCGs>> entry;
+%for use within annotation dicts
+\cs_new_nopar:Npn\ocgxii@insert@OC{
+  \seq_if_empty:NF\g_ocgxii_ocgstack_seq{
+    /OC~<</Type/OCMD/OCGs~[\seq_use:Nn\g_ocgxii_ocgstack_seq{~}]/P/AllOn>>
+  }
+}
+
+\cs_new_nopar:Nn\ocgxii_ocglist_reset:{
+  \tl_clear_new:N\l_ocgxii_u_list_tl
+  \tl_clear_new:N\l_ocgxii_d_list_tl
+  \tl_clear_new:N\l_ocgxii_e_list_tl
+  \tl_clear_new:N\l_ocgxii_x_list_tl
+}
+
+\cs_new_nopar:Nn\ocgxii_ocglist_build:Nn{
+  \tl_set:Nx\l_ocglistarg_tl{#2}\tl_trim_spaces:N\l_ocglistarg_tl
+  \seq_set_split:NnV\l_ocgxii_ocglistarg_seq{~}\l_ocglistarg_tl
+  \seq_map_variable:NNn\l_ocgxii_ocglistarg_seq\l_tempa_tl{
+    \ocgxii_process_ocgref:NN#1\l_tempa_tl
+  }
+}
+
+\cs_new:Nn\ocgxii_commalist_process:n{
+  \seq_set_split:Nnn\l_tmpa_seq{,}{#1}
+  \ocgxii_ocglist_build:Nn\l_ocgxii_e_list_tl{\seq_item:Nn\l_tmpa_seq{1}}
+  \ocgxii_ocglist_build:Nn\l_ocgxii_x_list_tl{\seq_item:Nn\l_tmpa_seq{2}}
+  \ocgxii_ocglist_build:Nn\l_ocgxii_d_list_tl{\seq_item:Nn\l_tmpa_seq{3}}
+  \ocgxii_ocglist_build:Nn\l_ocgxii_u_list_tl{\seq_item:Nn\l_tmpa_seq{4}}
+}
+
+\cs_new_nopar:Nn\ocgxii_ocglist_process_idlist:nn{
+  \ocgxii_ocglist_reset:
+  \tl_set:Nx\l_ocgxii_opt_tl{#1}\tl_remove_all:Nn\l_ocgxii_opt_tl{~}
+  \str_case_x:nnF{\l_ocgxii_opt_tl}{
+    {triggerocg=onmouseup}{
+      \ocgxii_ocglist_build:Nn\l_ocgxii_u_list_tl{#2}
+    }
+    {triggerocg=onmousedown}{
+      \ocgxii_ocglist_build:Nn\l_ocgxii_d_list_tl{#2}
+    }
+    {triggerocg=onmouseenter}{
+      \ocgxii_ocglist_build:Nn\l_ocgxii_e_list_tl{#2}
+    }
+    {triggerocg=onmouseexit}{
+      \ocgxii_ocglist_build:Nn\l_ocgxii_x_list_tl{#2}
+    }
+    {triggerocg=allactions}{
+      \ocgxii_commalist_process:n{#2}
+    }
+  }{
+    \msg_error:nnx{ocgx2}{unknown~option}{\l_ocgxii_opt_tl}
+  }
+}
+
+\int_new:N\g_ocgxii_widcount_int% widget counter
+
+%re-implement commands from ocg-p.sty / ocgx.sty (all engines including
+%ps2pdf [gs>=9.15])
+\DeclareDocumentCommand\switchocg{o m +m}{
+  \leavevmode
+  \IfNoValueTF{#1}{
+    \ocgxii_ocglist_process_idlist:nn{triggerocg=onmouseup}{#2}
+    \ocgxii_pdflink:nn{
+      /Subtype/Link\ocgxii@insert@OC
+      /A <</S/SetOCGState/State [
+        \str_if_eq:VnF\l_ocgxii_u_list_tl{}{/Toggle~\l_ocgxii_u_list_tl}]>>
+      /Border [0~0~0]
+    }{#3}
+  }{
+    \ocgxii_ocglist_process_idlist:nn{#1}{#2}
+    \ocgxii_pdflink:nn{
+      /Subtype/Widget/Ff~65536/FT/Btn/H/I
+      /T~(ocgx2@\int_use:N\g_ocgxii_widcount_int)
+      \ocgxii@insert@OC
+      /AA <<
+        \str_if_eq:VnF\l_ocgxii_u_list_tl{}{
+          /U <</S/SetOCGState/State [/Toggle~\l_ocgxii_u_list_tl]>>
+        }
+        \str_if_eq:VnF\l_ocgxii_d_list_tl{}{
+          /D <</S/SetOCGState/State [/Toggle~\l_ocgxii_d_list_tl]>>
+        }
+        \str_if_eq:VnF\l_ocgxii_e_list_tl{}{
+          /E <</S/SetOCGState/State [/Toggle~\l_ocgxii_e_list_tl]>>
+        }
+        \str_if_eq:VnF\l_ocgxii_x_list_tl{}{
+          /X <</S/SetOCGState/State [/Toggle~\l_ocgxii_x_list_tl]>>
+        }
+      >>
+    }{\mbox{#3}} %Widget annots should not be broken across lines
+    \pbs_appendtofields:n{\pbs_pdflastann:}
+    \int_gincr:N\g_ocgxii_widcount_int
+  }
+}
+
+\DeclareDocumentCommand\showocg{o m +m}{
+  \leavevmode
+  \IfNoValueTF{#1}{
+    \ocgxii_ocglist_process_idlist:nn{triggerocg=onmouseup}{#2}
+    \ocgxii_pdflink:nn{
+      /Subtype/Link\ocgxii@insert@OC
+      /A <</S/SetOCGState/State [
+        \str_if_eq:VnF\l_ocgxii_u_list_tl{}{/ON~\l_ocgxii_u_list_tl}]>>
+      /Border [0~0~0]
+    }{#3}
+  }{
+    \ocgxii_ocglist_process_idlist:nn{#1}{#2}
+    \ocgxii_pdflink:nn{
+      /Subtype/Widget/Ff~65536/FT/Btn/H/I
+      /T~(ocgx2@\int_use:N\g_ocgxii_widcount_int)
+      \ocgxii@insert@OC
+      /AA <<
+        \str_if_eq:VnF\l_ocgxii_u_list_tl{}{
+          /U <</S/SetOCGState/State [/ON~\l_ocgxii_u_list_tl]>>
+        }
+        \str_if_eq:VnF\l_ocgxii_d_list_tl{}{
+          /D <</S/SetOCGState/State [/ON~\l_ocgxii_d_list_tl]>>
+        }
+        \str_if_eq:VnF\l_ocgxii_e_list_tl{}{
+          /E <</S/SetOCGState/State [/ON~\l_ocgxii_e_list_tl]>>
+        }
+        \str_if_eq:VnF\l_ocgxii_x_list_tl{}{
+          /X <</S/SetOCGState/State [/ON~\l_ocgxii_x_list_tl]>>
+        }
+      >>
+    }{\mbox{#3}} %Widget annots should not be broken across lines
+    \pbs_appendtofields:n{\pbs_pdflastann:}
+    \int_gincr:N\g_ocgxii_widcount_int
+  }
+}
+
+\DeclareDocumentCommand\hideocg{o m +m}{
+  \leavevmode
+  \IfNoValueTF{#1}{
+    \ocgxii_ocglist_process_idlist:nn{triggerocg=onmouseup}{#2}
+    \ocgxii_pdflink:nn{
+      /Subtype/Link\ocgxii@insert@OC
+      /A <</S/SetOCGState/State [
+        \str_if_eq:VnF\l_ocgxii_u_list_tl{}{/OFF~\l_ocgxii_u_list_tl}]>>
+      /Border [0~0~0]
+    }{#3}
+  }{
+    \ocgxii_ocglist_process_idlist:nn{#1}{#2}
+    \ocgxii_pdflink:nn{
+      /Subtype/Widget/Ff~65536/FT/Btn/H/I
+      /T~(ocgx2@\int_use:N\g_ocgxii_widcount_int)
+      \ocgxii@insert@OC
+      /AA <<
+        \str_if_eq:VnF\l_ocgxii_u_list_tl{}{
+          /U <</S/SetOCGState/State [/OFF~\l_ocgxii_u_list_tl]>>
+        }
+        \str_if_eq:VnF\l_ocgxii_d_list_tl{}{
+          /D <</S/SetOCGState/State [/OFF~\l_ocgxii_d_list_tl]>>
+        }
+        \str_if_eq:VnF\l_ocgxii_e_list_tl{}{
+          /E <</S/SetOCGState/State [/OFF~\l_ocgxii_e_list_tl]>>
+        }
+        \str_if_eq:VnF\l_ocgxii_x_list_tl{}{
+          /X <</S/SetOCGState/State [/OFF~\l_ocgxii_x_list_tl]>>
+        }
+      >>
+    }{\mbox{#3}} %Widget annots should not be broken across lines
+    \pbs_appendtofields:n{\pbs_pdflastann:}
+    \int_gincr:N\g_ocgxii_widcount_int
+  }
+}
+
+\DeclareDocumentCommand\actionsocg{o m m m +m}{
+  \leavevmode
+  \IfNoValueTF{#1}{
+    \ocgxii_ocglist_process_idlist:nn{triggerocg=onmouseup}{#2}
+    \tl_set_eq:NN\l_ocgxii_toswitch_u_tl\l_ocgxii_u_list_tl
+    \ocgxii_ocglist_process_idlist:nn{triggerocg=onmouseup}{#3}
+    \tl_set_eq:NN\l_ocgxii_toshow_u_tl\l_ocgxii_u_list_tl
+    \ocgxii_ocglist_process_idlist:nn{triggerocg=onmouseup}{#4}
+    \tl_set_eq:NN\l_ocgxii_tohide_u_tl\l_ocgxii_u_list_tl
+    \ocgxii_pdflink:nn{
+      /Subtype/Link\ocgxii@insert@OC
+      /A <</S/SetOCGState
+        /State [
+          \str_if_eq:VnF{\l_ocgxii_toswitch_u_tl}{}{
+            /Toggle~\l_ocgxii_toswitch_u_tl}~
+          \str_if_eq:VnF{\l_ocgxii_toshow_u_tl}{}{/ON~\l_ocgxii_toshow_u_tl}~
+          \str_if_eq:VnF{\l_ocgxii_tohide_u_tl}{}{/OFF~\l_ocgxii_tohide_u_tl}
+        ]
+      >>
+      /Border [0~0~0]
+    }{#5}
+  }{
+    \ocgxii_ocglist_process_idlist:nn{#1}{#2}
+    \tl_set_eq:NN\l_ocgxii_toswitch_e_tl\l_ocgxii_e_list_tl
+    \tl_set_eq:NN\l_ocgxii_toswitch_x_tl\l_ocgxii_x_list_tl
+    \tl_set_eq:NN\l_ocgxii_toswitch_d_tl\l_ocgxii_d_list_tl
+    \tl_set_eq:NN\l_ocgxii_toswitch_u_tl\l_ocgxii_u_list_tl
+    \ocgxii_ocglist_process_idlist:nn{#1}{#3}
+    \tl_set_eq:NN\l_ocgxii_toshow_e_tl\l_ocgxii_e_list_tl
+    \tl_set_eq:NN\l_ocgxii_toshow_x_tl\l_ocgxii_x_list_tl
+    \tl_set_eq:NN\l_ocgxii_toshow_d_tl\l_ocgxii_d_list_tl
+    \tl_set_eq:NN\l_ocgxii_toshow_u_tl\l_ocgxii_u_list_tl
+    \ocgxii_ocglist_process_idlist:nn{#1}{#4}
+    \tl_set_eq:NN\l_ocgxii_tohide_e_tl\l_ocgxii_e_list_tl
+    \tl_set_eq:NN\l_ocgxii_tohide_x_tl\l_ocgxii_x_list_tl
+    \tl_set_eq:NN\l_ocgxii_tohide_d_tl\l_ocgxii_d_list_tl
+    \tl_set_eq:NN\l_ocgxii_tohide_u_tl\l_ocgxii_u_list_tl
+    \ocgxii_pdflink:nn{
+      /Subtype/Widget/Ff~65536/FT/Btn/H/I
+      /T~(ocgx2@\int_use:N\g_ocgxii_widcount_int)
+      \ocgxii@insert@OC
+      /AA <<
+        \str_if_eq_x:nnF{}{
+          \l_ocgxii_toswitch_u_tl\l_ocgxii_toshow_u_tl\l_ocgxii_tohide_u_tl
+        }{
+          /U <</S/SetOCGState/State [
+            \str_if_eq:VnF\l_ocgxii_toswitch_u_tl{}{
+              /Toggle~\l_ocgxii_toswitch_u_tl
+            }
+            \str_if_eq:VnF\l_ocgxii_toshow_u_tl{}{
+              /ON~\l_ocgxii_toshow_u_tl
+            }
+            \str_if_eq:VnF\l_ocgxii_tohide_u_tl{}{
+              /OFF~\l_ocgxii_tohide_u_tl
+            }
+          ]>>
+        }
+        \str_if_eq_x:nnF{}{
+          \l_ocgxii_toswitch_d_tl\l_ocgxii_toshow_d_tl\l_ocgxii_tohide_d_tl
+        }{
+          /D <</S/SetOCGState/State [
+            \str_if_eq:VnF\l_ocgxii_toswitch_d_tl{}{
+              /Toggle~\l_ocgxii_toswitch_d_tl
+            }
+            \str_if_eq:VnF\l_ocgxii_toshow_d_tl{}{
+              /ON~\l_ocgxii_toshow_d_tl
+            }
+            \str_if_eq:VnF\l_ocgxii_tohide_d_tl{}{
+              /OFF~\l_ocgxii_tohide_d_tl
+            }
+          ]>>
+        }
+        \str_if_eq_x:nnF{}{
+          \l_ocgxii_toswitch_e_tl\l_ocgxii_toshow_e_tl\l_ocgxii_tohide_e_tl
+        }{
+          /E <</S/SetOCGState/State [
+            \str_if_eq:VnF\l_ocgxii_toswitch_e_tl{}{
+              /Toggle~\l_ocgxii_toswitch_e_tl
+            }
+            \str_if_eq:VnF\l_ocgxii_toshow_e_tl{}{
+              /ON~\l_ocgxii_toshow_e_tl
+            }
+            \str_if_eq:VnF\l_ocgxii_tohide_e_tl{}{
+              /OFF~\l_ocgxii_tohide_e_tl
+            }
+          ]>>
+        }
+        \str_if_eq_x:nnF{}{
+          \l_ocgxii_toswitch_x_tl\l_ocgxii_toshow_x_tl\l_ocgxii_tohide_x_tl
+        }{
+          /X <</S/SetOCGState/State [
+            \str_if_eq:VnF\l_ocgxii_toswitch_x_tl{}{
+              /Toggle~\l_ocgxii_toswitch_x_tl
+            }
+            \str_if_eq:VnF\l_ocgxii_toshow_x_tl{}{
+              /ON~\l_ocgxii_toshow_x_tl
+            }
+            \str_if_eq:VnF\l_ocgxii_tohide_x_tl{}{
+              /OFF~\l_ocgxii_tohide_x_tl
+            }
+          ]>>
+        }
+      >>
+    }{\mbox{#5}} %Widget annots should not be broken across lines
+    \pbs_appendtofields:n{\pbs_pdflastann:}
+    \int_gincr:N\g_ocgxii_widcount_int
+  }
+}
+
+% mimic commands from ocg-p
+\let\toggleocgs\switchocg
+\let\showocgs\showocg
+\let\hideocgs\hideocg
+\let\setocgs\actionsocg
+
+\cs_new:Nn\ocgxii_process_ocgref:NN{
+  \str_if_eq_x:nnF{#2}{}{
+    \tl_if_exist:cTF{ocgx2.ocg.#2}{
+      \tl_put_right:Nx#1{~\tl_use:c{ocgx2.ocg.#2}}
+    }{
+      \msg_warning:nnx{ocgx2}{undefined~OCG}{#2}
+      \tl_if_exist:NF\g_ocgxii_refundefwarned_tl{
+        \tl_new:N\g_ocgxii_refundefwarned_tl
+        \AtEndDocument{\msg_warning:nn{ocgx2}{undefined~OCGs}}
+      }
+    }
+  }
+}
+
+%command opts
+\keys_define:nn{ocgx2/user}{
+  viewocg .choice:,
+  viewocg / always .code:n={
+    \tl_set:Nn\l_ocgxii_view_tl{/View<</ViewState/ON>>}},
+  viewocg / never .code:n={
+    \tl_set:Nn\l_ocgxii_view_tl{/View<</ViewState/OFF>>}},
+  viewocg / ifvisible .code:n={
+    \tl_clear:N\l_ocgxii_view_tl},
+  viewocg .default:n={ifvisible},
+
+  printocg .choice:,
+  printocg / always .code:n={
+    \tl_set:Nn\l_ocgxii_print_tl{/Print<</PrintState/ON>>}},
+  printocg / never .code:n={
+    \tl_set:Nn\l_ocgxii_print_tl{/Print<</PrintState/OFF>>}},
+  printocg / ifvisible .code:n={
+    \tl_clear:N\l_ocgxii_print_tl},
+  printocg .default:n={ifvisible},
+
+  exportocg .choice:,
+  exportocg / always .code:n={
+    \tl_set:Nn\l_ocgxii_export_tl{/Export<</ExportState/ON>>}},
+  exportocg / never .code:n={
+    \tl_set:Nn\l_ocgxii_export_tl{/Export<</ExportState/OFF>>}},
+  exportocg / ifvisible .code:n={\tl_clear:N\l_ocgxii_export_tl},
+  exportocg .default:n={ifvisible},
+
+  listintoolbar .choices:nn = {always,never,iffirstuse}{
+    \tl_set:Nx\l_ocgxii_listno_tl{\int_eval:n{\l_keys_choice_int-\c_one}}
+  },
+  listintoolbar .default:n={iffirstuse},
+
+  showingui .meta:n = {listintoolbar=#1},
+  showingui .default:n={iffirstuse},
+
+  radiobtngrp .code:n = {
+    \seq_put_right:Nx\l_ocgxii_rbgrps_seq{#1}
+  },
+  radiobtngrp .value_required:n = {true}
+}
+
+\cs_new:Nn\ocgxii_reset_cmd_opts:{
+  \tl_set_eq:NN\l_ocgxii_view_tl\g_ocgxii_view_tl
+  \tl_set_eq:NN\l_ocgxii_print_tl\g_ocgxii_print_tl
+  \tl_set_eq:NN\l_ocgxii_export_tl\g_ocgxii_export_tl
+  \tl_set_eq:NN\l_ocgxii_listno_tl\g_ocgxii_listno_tl
+  %stack of radio button group names the current ocg belongs to
+  \seq_clear_new:N\l_ocgxii_rbgrps_seq
+}
+
+\msg_set:nnn{ocgx2}{rerun}{Rerun~to~get~OCG~references~right!}
+\msg_set:nnn{ocgx2}{undefined~OCG}{
+  Line~\msg_line_number: :~OCG~`#1'~is~not~defined.
+}
+\msg_set:nnn{ocgx2}{undefined~OCGs}{There~were~undefined~OCGs!}
+\msg_set:nnn{ocgx2}{unknown~option}{
+  Line~\msg_line_number: :~unknown~option~`#1'.
+}
+
+% dvipdfmx and xelatex workaround for ocg buttons within `tikzpicture' context
+\cs_new:Nn\ocgxii_pdflink:nn{
+  \bool_if:nTF{
+    \g_ocgxii_dvipdfmx_bool && \cs_if_exist_p:N\pgfpictureid
+  }{
+    \hbox_set:Nn\l_tmpa_box{#2}
+    \pbs_pdfannot:nnnn{
+      \dim_use:N\box_wd:N\l_tmpa_box}{
+      \dim_use:N\box_ht:N\l_tmpa_box}{
+      \dim_use:N\box_dp:N\l_tmpa_box
+    }{#1}
+    \box_use_clear:N\l_tmpa_box
+  }{
+    \pbs_pdflink:nn{#1}{#2}
+  }
+}
+
+\cs_gset_eq:NN\ocgxii_atenddvi_checkimpl_orig:\AtEndDvi@CheckImpl%
+\def\AtEndDvi@CheckImpl{
+  \ocgxii_atenddvi_checkimpl_orig:
+  \cs_if_exist:NTF\AtEndDvi@LastPage{
+    \int_compare:nF{\AtEndDvi@LastPage=\value{abspage}}{
+      \cs_if_exist:NF\g_ocgxii_rerunwarned_tl{
+        \tl_new:N\g_ocgxii_rerunwarned_tl
+        \msg_warning:nn{ocgx2}{rerun}
+      }
+    }
+  }{
+    \cs_if_exist:NF\g_ocgxii_rerunwarned_tl{
+      \tl_new:N\g_ocgxii_rerunwarned_tl
+      \msg_warning:nn{ocgx2}{rerun}
+    }
+  }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% patch hyperref to ensure compatibility with our `ocgcolorlinks' option
+% similar to http://tex.stackexchange.com/a/104227;
+% add `ocgcolorlinks' support to all drivers
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\cs_new_nopar:Nn\ocgxii_enable_ocglinks:{
+  \def\Hy@colorlink##1{
+    \begingroup
+    \def\Hy@ocgcolor{##1}
+    \setbox0=\hbox\bgroup\color@begingroup\let\color@setgroup\begingroup
+  }
+  \def\Hy@endcolorlink{
+    \color@endgroup\egroup
+    \mbox{
+      \ocgbase@oc@bdc{\OBJ@OCG@print}
+      \rlap{\copy0}
+      \ocgbase@oc@emc\ocgbase@oc@bdc{\OBJ@OCG@view}
+      \begingroup
+        \expandafter\HyColor@UseColor\Hy@ocgcolor
+        \box0
+      \endgroup
+      \ocgbase@oc@emc
+    }
+    \endgroup
+  }
+}
+
+\RequirePackage{scrlfile}
+\bool_if:NT\l_ocgxii_ocgcolorlinks_bool{
+  \PassOptionsToPackage{colorlinks}{hyperref}
+  \AfterPackage*{hyperref}{
+    \Hy@colorlinkstrue
+    \Hy@AtBeginDocument{
+      \ocgbase_new_ocg:nnn{OCView}{/Print<</PrintState/OFF>>}{on}
+      \tl_gset:Nx\OBJ@OCG@view{\ocgbase_last_ocg:}
+      \ocgbase_new_ocg:nnn{OCPrint}{/Print<</PrintState/ON>>}{off}
+      \tl_gset:Nx\OBJ@OCG@print{\ocgbase_last_ocg:}
+      \ocgxii_enable_ocglinks:
+    }
+  }
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% tikz related code follows (to be enabled with package option `tikz')
+
+\bool_if:NF\l_ocgxii_tikz_bool{\endinput}
+\ExplSyntaxOff
+\RequirePackage{tikz}
+\usetikzlibrary{calc}
+
+% Copyright notice: The code that follows until the end of the file was
+% taken from Paul Gaborit's `tikzlibraryocgx.code.tex' with minor modification.
+\tikzset{
+  ocg/.style={ocg/.cd,#1,/tikz/.cd},
+  ocg={
+    % parameters
+    name/.store in=\ocgxii@name,
+    opts/.store in=\ocgxii@opts,
+    visibility/.store in=\ocgxii@visibility,
+    status/.is choice,
+    status/visible/.style={visibility=1},
+    status/invisible/.style={visibility=0},
+    status/true/.style={visibility=1},
+    status/false/.style={visibility=0},
+    status/on/.style={visibility=1},
+    status/off/.style={visibility=0},
+    % default values
+    name=,
+    opts=,
+    status=visible,
+    % ref
+    ref/.style={
+      /tikz/execute at begin scope={%
+        \begin{ocg}[\ocgxii@opts]{\ocgxii@name}{#1}{\ocgxii@visibility}},
+      /tikz/execute at end scope={\end{ocg}},
+    },
+  },
+  switch ocg/.style={
+    postaction={
+      path picture={
+        \path let
+        \p1 = (path picture bounding box.south west),
+        \p2 = (path picture bounding box.north east),
+        \p3 = (\x2-\x1,\y2-\y1)
+        in
+        (path picture bounding box.center)
+        node[inner sep=0pt,anchor=center,outer sep=0pt]
+        {\switchocg{#1}{\phantom{\rule{\x3}{\y3}}}};
+      }
+    },
+  },
+  switch ocg with mark on/.style 2 args={
+    postaction={
+      path picture={
+        \begin{ocg}{#1}{#1}{1}
+          \draw
+          (path picture bounding box.south west)
+          --
+          (path picture bounding box.north east)
+          (path picture bounding box.south east)
+          --
+          (path picture bounding box.north west)
+          ;
+        \end{ocg}
+      },
+      switch ocg={#1 #2},
+    }
+  },
+  switch ocg with mark off/.style 2 args={
+    postaction={
+      path picture={
+        \begin{ocg}{#1}{#1}{0}
+          \draw
+          (path picture bounding box.south west)
+          --
+          (path picture bounding box.north east)
+          (path picture bounding box.south east)
+          --
+          (path picture bounding box.north west)
+          ;
+        \end{ocg}
+      },
+      switch ocg={#1 #2},
+    }
+  },
+  show ocg/.style={
+    postaction={
+      path picture={
+        \path let
+        \p1 = (path picture bounding box.south west),
+        \p2 = (path picture bounding box.north east),
+        \p3 = (\x2-\x1,\y2-\y1)
+        in
+        (path picture bounding box.center)
+        node[inner sep=0pt,anchor=center]
+        {\showocg{#1}{\phantom{\rule{\x3}{\y3}}}};
+      },
+    },
+  },
+  hide ocg/.style={
+    postaction={
+      path picture={
+        \path let
+        \p1 = (path picture bounding box.south west),
+        \p2 = (path picture bounding box.north east),
+        \p3 = (\x2-\x1,\y2-\y1)
+        in
+        (path picture bounding box.center)
+        node[inner sep=0pt,anchor=center]
+        {\hideocg{#1}{\phantom{\rule{\x3}{\y3}}}};
+      },
+    },
+  },
+  actions ocg/.style n args={3}{
+    postaction={
+      path picture={
+        \path let
+        \p1 = (path picture bounding box.south west),
+        \p2 = (path picture bounding box.north east),
+        \p3 = (\x2-\x1,\y2-\y1)
+        in
+        (path picture bounding box.center)
+        node[inner sep=0pt,anchor=center]
+        {\actionsocg{#1}{#2}{#3}{\phantom{\rule{\x3}{\y3}}}};
+      },
+    },
+  },
+}

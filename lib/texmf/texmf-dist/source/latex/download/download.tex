@@ -1,0 +1,497 @@
+%% download - download files with LaTeX
+%%
+%% Copyright (C) 2012-2013 by Simon Sigurdhsson <sigurdhsson@gmail.com>
+%% 
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%   http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%% 
+%% This work has the LPPL maintenance status `maintained'.
+%% 
+%% The Current Maintainer of this work is Simon Sigurdhsson.
+%% 
+%% This work consists of the file download.tex
+%% and the derived file download.sty.
+\documentclass{skdoc}
+\usepackage{hologo}
+\usepackage[style=authoryear,backend=biber]{biblatex}
+%%\usepackage{chslacite}
+
+\ExplSyntaxOn
+\cs_set_protected_nopar:Npn\ExplHack{
+    \char_set_catcode_letter:n{ 58 }
+    \char_set_catcode_letter:n{ 95 }
+}
+\ExplSyntaxOff
+\ExplHack
+
+\begin{filecontents}{download.bib}
+@online{Klinger12,
+    author = {Max Klinger},
+    title = {Creating a URL downloading command to be used with e.g. \texttt{\textbackslash includegraphics}},
+    year = {2012},
+    url = {http://tex.stackexchange.com/questions/88430/creating-a-url-downloading-command-to-be-used-with-e-g-includegraphics}
+}
+\end{filecontents}
+\addbibresource{download.bib}
+
+\begin{document}
+    % Change & version info
+    \version{1.1}
+    \changes{1.0}{Initial version}
+    \changes{1.1}{Added aria2 and axel engines}
+
+    % Metadata
+    \package[ctan=download,vcs=https://github.com/urdh/download]{download}
+    \author{Simon Sigurdhsson}
+    \email{sigurdhsson@gmail.com}
+
+    % First page
+    \maketitle
+    \begin{abstract}
+        The \thepackage\ package allows \LaTeX\ to download files using
+        cURL, wget, aria2 or axel.
+    \end{abstract}
+
+    \section{Introduction}
+    This package, inspired by a question on \TeX.SE\footcite{Klinger12},
+    allows \LaTeX\ to download files using one of four engines.
+    Since it needs
+    to run external commands, it requires unrestricted \cs{write18}
+    access \Notice{do not indiscriminately run \hologo{pdfLaTeX} with
+    the \texttt{--shell-escape} flag; using this package it would be
+    possible to download malicious \texttt{.tex} that may abuse the
+    \cs{write18} access to harm your system}. 
+
+    \section{Usage}
+    The package is very simple to use, but requires a *nix platform with
+    any of the engines installed and present in the \texttt{PATH}.
+
+    \subsection{Options}
+    \Option{engine}\WithValues{auto,curl,wget,aria2,axel}\AndDefault{auto}
+    The package only has one option, which controls what underlying
+    software is used to download the file. As of version \theversion,
+    the four engines available are cURL, wget, aria2 and axel.
+    The default, which is
+    used when no option is supplied, is \texttt{auto}. In this mode,
+    \thepkg\ will look for wget, cURL, aria2 and axel, in that order,
+    and use the first one available.
+
+    \subsection{Macros}
+    \DescribeMacro\download[<filename>]{<url>}
+    The only macro provided by \thepkg\ is \cs{download}. With it, you
+    can download any file from any \meta{url} supported by the underlying
+    engine (wget supports \texttt{http(s)} and \texttt{ftp}, cURL
+    supports a few more, aria2 supports torrent downloads and axel
+    supports downloading from multiple mirrors at once\footnote{See the
+    manpage of the respective command for more information.}; for most 
+    cases  wget should be enough). The
+    optional argument \meta{filename} makes the underlying engine save
+    the file with the specified filename \Notice{this also enables file
+    existence checking; without it, the engine will attempt to
+    download the file even if it exists --- wget and aria2 see the 
+    existing file and do nothing, and axel probably replaces any existing
+    file but cURL will download a new copy with a numeral suffix}.
+
+    \Implementation
+    \SelfPreambleTo{\mypreamble}
+    \section{Implementation}
+    \DeclareFile[key=package,preamble=\mypreamble]{download.sty}
+    Let's have a look at the simple implementation. The package is based
+    on \LaTeX3, and should comply with the standards described i the
+    \pkg{expl3} manual. In any case, we begin by loading a few packages
+    (\pkg{expl3} for the \LaTeX3 core, \pkg{l3keys2e} for applying
+    \pkg*{l3keys} functionality to \LaTeXe\ package option parsing,
+    \pkg{pdftexcmds} for the \cs{pdf@shellescape} macro and \pkg{xparse}
+    for the public API definitions).
+\begin{MacroCode}{package}
+\RequirePackage{expl3,l3keys2e,pdftexcmds,xparse}
+\end{MacroCode}
+    
+    Then, we declare ourselves to provide the \thepkg\ \LaTeX3 package.
+\begin{MacroCode}{package}
+\ProvidesExplPackage{download}
+    {2013/04/08}{1.1}{download files with LaTeX}
+\end{MacroCode}
+
+    \subsection{Messages}
+    We define a couple of messages using \pkg*{l3keys} functionality.
+
+    The two first messages will be used as fatal errors, when we notice
+    that functionality we absolutely \emph{require} (\emph{e.g.} either
+    unrestricted \cs{write18} or the specified engine) is missing.
+\begin{MacroCode}{package}
+\msg_new:nnnn{download}{no-write18}{Could~not~use~\string\write18!}
+    {Please~run~`latex`~with~the~`--shell-escape`~flag.}
+\msg_new:nnnn{download}{no-engine}{Could~not~find~any~engine!}
+    {Please~make~sure~one~of~the~engines~is~installed~and~in~your~PATH.}
+\end{MacroCode}
+    
+    We also have a message being displayed when \cs{download} is being
+    used without its optional argument. This is a warning, since it may
+    imply that cURL is creating a lot of unwanted files.
+\begin{MacroCode}{package}
+\msg_new:nnnn{download}{no-name}{Using~\string\download\space~with~no~filename!}
+    {This~means~I~will~download~the~file~even~if~it~already~exists.}
+\end{MacroCode}
+    
+    The last two messages are diagnostics written to the log when
+    \opt{engine} is set to \texttt{auto}.
+\begin{MacroCode}{package}
+\msg_new:nnn{download}{use-curl}{Using~cURL.}
+\msg_new:nnn{download}{use-wget}{Using~wget.}
+\msg_new:nnn{download}{use-ariaII}{Using~aria2.}
+\msg_new:nnn{download}{use-axel}{Using~axel.}
+\end{MacroCode}
+
+    \subsection{The \cs{write18} test}
+    We require unrestricted \cs{write18} and as such we must test for
+    it. Using the \cs{pdf@shellescape} macro from \pkg{pdftexcmds}, we
+    can define a new conditional that decides if we have unrestricted
+    \cs{write18}.
+    \begin{macro}{\__download_if_shellescape:F}
+\begin{MacroCode}{package}
+\prg_new_conditional:Nnn\__download_if_shellescape:{F}{
+    \if_cs_exist:N\pdf@shellescape
+\end{MacroCode}
+    If the command sequence exists (it really should), we test to see
+    if it is equal to one. The \cs{pdf@shellescape} macro will be zero
+    if no \cs{write18} access is available, two if we have restricted
+    access and one if access is unrestricted.
+\begin{MacroCode}{package}
+        \if_int_compare:w\pdf@shellescape=\c_one
+            \prg_return_true:
+        \else:
+            \prg_return_false:
+        \fi:
+\end{MacroCode}
+    If the command sequence doesn't exist, we assume that we have
+    unrestricted \cs{write18} access (we probably don't), and let
+    \LaTeX\ complain about it later.
+\begin{MacroCode}{package}
+    \else:
+        \prg_return_true:
+    \fi:
+}
+\end{MacroCode}
+    \end{macro}
+
+    \subsection{Utility functions}
+    The existence tests for cURL and wget, explained later, create
+    a temporary file. We might as well clean that up at once, since
+    the user probably won't do that after each run of \LaTeX, and
+    an old file may break the check.
+    \begin{macro}{\__download_rm:n}[1]
+        {The file to be removed}
+\begin{MacroCode}{package}
+\cs_new:Npn\__download_rm:n#1{
+    \immediate\write18{rm~#1}
+}
+\end{MacroCode}
+    \end{macro}
+
+    \subsection{Testing for the applications}
+    Testing for the existence of executables is done by calling
+    the standard *nix \texttt{which} command. We define one conditional
+    for all engines:
+    \begin{macro*}{\__download_if_executable_test:nF}
+    \begin{macro*}{\__download_if_executable_test:nT}
+    \begin{macro}{\__download_if_executable_test:nTF}[1]
+                 {The executable to test the existence of}
+    \changes{1.1}{Condensed test macros into one macro with an argument}
+\begin{MacroCode}{package}
+\prg_new_conditional:Npnn\__download_if_executable_test:n#1{TF,T,F,p}{
+\end{MacroCode}
+    First, run \texttt{which} to create the temporary file.
+\begin{MacroCode}{package}
+    \immediate\write18{which~#1~&&~touch~\jobname.aex}
+\end{MacroCode}
+    If the temporary file exists, we delete it and return true.
+    Otherwise, we return false.
+\begin{MacroCode}{package}
+    \file_if_exist:nTF{\jobname.aex}{
+        \__download_rm:n{\jobname.aex}
+        \prg_return_true:
+    }{
+        \prg_return_false:
+    }
+}
+\end{MacroCode}
+    \end{macro}
+    \end{macro*}
+    \end{macro*}
+
+    \subsection{Using cURL and wget}
+    Actually using cURL and wget for downloading is simple, issuing
+    two different commands depending on wether we have the optional
+    argument or not (i.e. it is \cs{NoValue}).
+
+    \begin{macro}{\__download_curl_do:nn}[2]
+        {Filename to save file to, or \cs{NoValue}}
+        {URL to fetch the file from}
+    \changes{1.1}{cURL now follows redirects}
+\begin{MacroCode}{package}
+\cs_new:Npn\__download_curl_do:nn#1#2{
+    \IfNoValueTF{#1}{
+\end{MacroCode}
+    When no optional argument is given, we just invoke cURL with the
+    \texttt{-s} (silent) flag as well as the \texttt{-L} (follow
+    redirects) flag.
+\begin{MacroCode}{package}
+        \immediate\write18{curl~-L~-s~#2}
+    }{
+\end{MacroCode}
+    When we \emph{do} have an optional argument, we add the \texttt{-o}
+    flag to specify the output file.
+\begin{MacroCode}{package}
+        \immediate\write18{curl~-L~-s~-o~#1~#2}
+    }
+}
+\end{MacroCode}
+    \end{macro}
+
+    \begin{macro}{\__download_wget_do:nn}[2]
+        {Filename to save file to, or \cs{NoValue}}
+        {URL to fetch the file from}
+\begin{MacroCode}{package}
+\cs_new:Npn\__download_wget_do:nn#1#2{
+    \IfNoValueTF{#1}{
+\end{MacroCode}
+    With wget, we pass the \texttt{-q} (quiet) flag as well as the
+    \texttt{-nc} (no clobber) flag, to avoid downloading files that
+    already exist.
+\begin{MacroCode}{package}
+        \immediate\write18{wget~-q~-nc~#2}
+    }{
+\end{MacroCode}
+    Again, when we have an optional argument we add the \texttt{-O}
+    flag to specify the output file.
+\begin{MacroCode}{package}
+        \immediate\write18{wget~-q~-nc~-O~#1~#2}
+    }
+}
+\end{MacroCode}
+    \end{macro}
+
+    \begin{macro}{\__download_ariaII_do:nn}[2]
+        {Filename to save file to, or \cs{NoValue}}
+        {URL to fetch the file from}
+\begin{MacroCode}{package}
+\cs_new:Npn\__download_ariaII_do:nn#1#2{
+    \IfNoValueTF{#1}{
+\end{MacroCode}
+    With aria2, we pass the \texttt{-q} (quiet) flag as well as the
+    \texttt{--auto-file-renaming=false} (no clobber) flag, to avoid
+    creating a lot of duplicate files.
+\begin{MacroCode}{package}
+        \immediate\write18{aria2c~-q~--auto-file-renaming=false~#2}
+    }{
+\end{MacroCode}
+    Again, when we have an optional argument we add the \texttt{-o}
+    flag to specify the output file.
+\begin{MacroCode}{package}
+        \immediate\write18{aria2c~-q~--auto-file-renaming=false~-o~#1~#2}
+    }
+}
+\end{MacroCode}
+    \end{macro}
+
+    \begin{macro}{\__download_axel_do:nn}[2]
+        {Filename to save file to, or \cs{NoValue}}
+        {URL to fetch the file from}
+\begin{MacroCode}{package}
+\cs_new:Npn\__download_axel_do:nn#1#2{
+    \IfNoValueTF{#1}{
+\end{MacroCode}
+    With axel, we pass the \texttt{-q} (quiet) flag.
+\begin{MacroCode}{package}
+        \immediate\write18{axel~-q~#2}
+    }{
+\end{MacroCode}
+    Again, when we have an optional argument we add the \texttt{-o}
+    flag to specify the output file.
+\begin{MacroCode}{package}
+        \immediate\write18{axel~-q~-o~#1~#2}
+    }
+}
+\end{MacroCode}
+    \end{macro}
+
+    \subsection{The \texttt{auto} engine}
+    The automatic engine uses the tests and macros of the other engines
+    to provide functionality without selecting an engine. We first
+    define a conditional that, in essence, steps through the available
+    engines testing for their existence. If any of them exist, we're in
+    business.
+    \begin{macro*}{\__download_if_auto_test:TF}
+    \begin{macro}{\__download_if_auto_test:F}
+    \changes{1.1}{Added aria2c and axel engines to stack}
+\begin{MacroCode}{package}
+\prg_new_conditional:Nnn\__download_if_auto_test:{F,TF}{
+    \__download_if_executable_test:nTF{wget}{
+        \prg_return_true:
+    }{
+        \__download_if_executable_test:nTF{curl}{
+            \prg_return_true:
+        }{
+            \__download_if_executable_test:nTF{aria2c}{
+                \prg_return_true:
+            }{
+                \__download_if_executable_test:nTF{axel}{
+                    \prg_return_true:
+                }{
+                    \prg_return_false:
+                }
+            }
+        }
+    }
+}
+\end{MacroCode}
+    \end{macro}
+    \end{macro*}
+
+    We also define an automatic equivalent of the engine \texttt{_do}
+    macros, which selects the engines in the order wget, cURL, aria2 
+    and axel.
+    \begin{macro}{\__download_auto_do:nn}[2]
+        {Filename to save file to, or \cs{NoValue}}
+        {URL to fetch the file from}
+\begin{MacroCode}{package}
+\cs_new:Npn\__download_auto_do:nn#1#2{
+    \__download_if_executable_test:nTF{wget}{
+        \msg_info:nn{download}{use-wget}
+        \__download_wget_do:nn{#1}{#2}
+    }{
+        \__download_if_executable_test:nTF{curl}{
+            \msg_info:nn{download}{use-curl}
+            \__download_curl_do:nn{#1}{#2}
+        }{
+            \__download_if_executable_test:nTF{aria2c}{
+                \msg_info:nn{download}{use-ariaII}
+                \__download_ariaII_do:nn{#1}{#2}
+            }{
+                \msg_info:nn{download}{use-axel}
+                \__download_axel_do:nn{#1}{#2}
+            }
+        }
+    }
+}
+\end{MacroCode}
+    \end{macro}
+
+    \subsection{Package options}
+    As detailed earlier in the documentation, the only option of the
+    package is \opt{engine}. Here, we use the \pkg*{l3keys} functionality
+    to define a key-value system which we later use to read the package
+    options.
+\begin{MacroCode}{package}
+\keys_define:nn{download}{
+    engine .choice:,
+\end{MacroCode}
+    \begin{macro}{\__download_do:nn}[2]
+        {Filename to save file to, or \cs{NoValue}}
+        {URL to fetch the file from}
+    \begin{macro}{\__download_if_auto_test:F}
+    First, the \texttt{auto} value. We globally define two macros as
+    aliases to the underlying \texttt{_do} and \texttt{_if_test} macros.
+\begin{MacroCode}{package}
+    engine / auto .code:n =
+        {\cs_gset_eq:NN\__download_do:nn\__download_auto_do:nn
+         \prg_set_conditional:Nnn\__download_if_test:{F}{
+            \__download_if_auto_test:TF
+                {\prg_return_true:}{\prg_return_false:}}},
+\end{MacroCode}
+    We do the same for the other options.
+\begin{MacroCode}{package}
+    engine / curl .code:n =
+        {\cs_gset_eq:NN\__download_do:nn\__download_curl_do:nn
+         \prg_set_conditional:Nnn\__download_if_test:{F}{
+            \__download_if_executable_test:nTF{curl}
+                {\prg_return_true:}{\prg_return_false:}}},
+    engine / wget .code:n =
+        {\cs_gset_eq:NN\__download_do:nn\__download_wget_do:nn
+         \prg_set_conditional:Nnn\__download_if_test:{F}{
+            \__download_if_executable_test:nTF{wget}
+                {\prg_return_true:}{\prg_return_false:}}},
+    engine / aria2 .code:n =
+        {\cs_gset_eq:NN\__download_do:nn\__download_ariaII_do:nn
+         \prg_set_conditional:Nnn\__download_if_test:{F}{
+            \__download_if_executable_test:nTF{aria2c}
+                {\prg_return_true:}{\prg_return_false:}}},
+    engine / axel .code:n =
+        {\cs_gset_eq:NN\__download_do:nn\__download_axel_do:nn
+         \prg_set_conditional:Nnn\__download_if_test:{F}{
+            \__download_if_executable_test:nTF{axel}
+                {\prg_return_true:}{\prg_return_false:}}},
+\end{MacroCode}
+    \end{macro}
+    \end{macro}
+    Lastly, we initialize the option with the \texttt{auto} value.
+\begin{MacroCode}{package}
+    engine .initial:n = auto,
+    engine .default:n = auto,
+}
+\end{MacroCode}
+    Now, given the key-value system, we parse the options.
+\begin{MacroCode}{package}
+\ProcessKeysPackageOptions{download}
+\end{MacroCode}
+
+    \subsection{Performing the tests}
+    Now that we know what engine we will be using, we can check for
+    \cs{write18} support and engine existence.
+\begin{MacroCode}{package}
+\__download_if_shellescape:F{\msg_fatal:nn{download}{no-write18}}
+\__download_if_test:F{\msg_fatal:nn{download}{no-engine}}
+\end{MacroCode}
+
+    \subsection{Public API}
+    The public API consists of only one macro, \cs{download}. It
+    simply calls the backend macro, unless the optional argument
+    is given and the file exists. If the file doesn't exist, it
+    also emits a friendly warning.
+    \begin{macro}{\download}[2]
+        {Filename to save file to, or \cs{NoValue}}
+        {URL to fetch the file from}
+\begin{MacroCode}{package}
+\DeclareDocumentCommand\download{om}{
+    \IfNoValueTF{#1}{
+        \msg_warning:nn{download}{no-name}
+        \__download_do:nn{#1}{#2}
+    }{
+        \file_if_exist:nTF{#1}{}{\__download_do:nn{#1}{#2}}
+    }
+}
+\end{MacroCode}
+    \end{macro}
+    
+    And we're done.
+\begin{MacroCode}{package}
+\endinput
+\end{MacroCode}
+
+    \Finale
+    \section{Installation}
+    The easiest way to install this package is using the package
+    manager provided by your \LaTeX\ installation if such a program
+    is available. Failing that, provided you have obtained the package
+    source (\file{download.tex} and \file{Makefile}) from either CTAN
+    or Github, running \texttt{make install} inside the source directory
+    works well. This will extract the documentation and code from
+    \file{download.tex}, install all files into the TDS tree at
+    \texttt{TEXMFHOME} and run \texttt{mktexlsr}.
+
+    If you want to extract code and documentation without installing
+    the package, run \texttt{make all} instead. If you insist on not
+    using \texttt{make}, remember that packages distributed using
+    \pkg{skdoc} must be extracted using \texttt{pdflatex}, \emph{not}
+    \texttt{tex} or \texttt{latex}.
+
+    \PrintChanges
+    \PrintIndex
+    \printbibliography
+\end{document}

@@ -1,0 +1,258 @@
+
+% Francesco Zigliotto
+% The Labyrinth Package
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{labyrinth}[2014/04/12 v1.0
+	Labyrinths typeset with LaTeX]
+
+\RequirePackage{calc}
+\RequirePackage{xkeyval}
+\RequirePackage{picture}
+
+\newcommand\lab@addtomacro[2]{%
+	\let\lab@oldmacro#1
+	\global\edef#1{\lab@oldmacro#2}}
+
+\providecommand\@nameedef[1]{%
+	\expandafter\edef\csname #1\endcsname}
+
+\providecommand\truncdiv[2]{((#1-(#2-1)/2)/#2)}
+
+%******************************************************************
+% Cat-codes of + - *
+%******************************************************************
+
+\begingroup
+\catcode`\+=\active
+\catcode`\-=\active
+\catcode`\*=\active
+\gdef\lab@catcodes{%
+	\catcode`\+=\active\def+{\lab@line}%
+	\catcode`\-=\active\def-{\lab@noline}%
+	\catcode`\*=\active\def*{\lab@repeat}}
+\endgroup
+\newcounter{lab@h}
+\newcounter{lab@v}
+
+%******************************************************************
+% Labyrinth Options
+%******************************************************************
+
+\newcommand*\labyrinthset{\setkeys{labyrinth}}
+
+\define@key{labyrinth}{unit}{\setlength\unitlength{#1}}
+\define@key{labyrinth}{thickness}{\linethickness{#1}}
+\define@boolkey{labyrinth}[lab@]{centered}{}
+
+\setkeys{labyrinth}{%
+	unit=11pt,%
+	centered=true}
+
+\newcommand*\solutionset{\setkeys{solution}}
+
+\define@boolkey{solution}[lab@]{hidden}{}
+\define@boolkey{solution}[lab@]{thicklines}{}
+\define@key{solution}{up}{\def\lab@key@u{#1}}
+\define@key{solution}{left}{\def\lab@key@l{#1}}
+\define@key{solution}{down}{\def\lab@key@d{#1}}
+\define@key{solution}{right}{\def\lab@key@r{#1}}
+\define@key{solution}{hcorr}{\def\lab@key@hcorr{#1}}
+\define@key{solution}{vcorr}{\def\lab@key@vcorr{#1}}
+\define@key{solution}{font}{\def\lab@key@font{#1}}
+
+\setkeys{solution}{%
+	thicklines=true,%
+	hidden=false,%
+	up={\line(0,1){1}},%
+	left={\line(-1,0){1}},%
+	down={\line(0,-1){1}},%
+	right={\line(1,0){1}},%
+	hcorr=0.5\unitlength,%
+	vcorr=0.5\unitlength}
+
+\@ifundefined{color}
+	{\setkeys{solution}{font=}}
+	{\setkeys{solution}{font=\color{red}}}
+
+%******************************************************************
+% Lines Definitions
+%******************************************************************
+
+\def\lab@hline{%
+	\put(\thelab@h,\thelab@v){\line(1,0){1}}%
+	\@namedef{(\number\numexpr\thelab@h*2+1,%
+		\number\numexpr\thelab@v*2)}{}%
+	\stepcounter{lab@h}}%
+\def\lab@vline{%
+	\put(\thelab@h,\thelab@v){\line(0,1){1}}%
+	\@namedef{(\number\numexpr\thelab@h*2,%
+		\number\numexpr\thelab@v*2+1)}{}%
+	\stepcounter{lab@h}}%
+\def\lab@noline{\stepcounter{lab@h}}
+\def\lab@repeat#1#2{%
+	\count@=#1\relax\@whilenum\count@>\z@
+		\do{#2\advance\count@\m@ne}}
+
+%******************************************************************
+% Labyrinth Environment
+%******************************************************************
+
+\newenvironment{labyrinth}[3][]{%
+	\iflab@centered\begin{center}\fi
+	\setkeys{labyrinth}{#1}
+	\def\lab@width{#2}
+	\def\lab@height{#3}
+	\def\h{%
+		\setcounter{lab@h}{0}%
+		\let\lab@line\lab@hline}%
+	\def\v{%
+		\addtocounter{lab@v}{-1}%
+		\setcounter{lab@h}{0}%
+		\let\lab@line\lab@vline}%
+	\def\putsymbol(##1)##2{\put(##1){\makebox[\unitlength]{##2}}}
+	\def\plus{+}\def\minus{-}\def\ast{*}
+	\begin{picture}(#2,#3)(0,0)
+	\setcounter{lab@v}{#3}%
+	\lab@catcodes
+		}{%
+	\end{picture}
+	\iflab@centered\end{center}\fi}
+
+%******************************************************************
+% Labyrinth Solution
+%******************************************************************
+
+\newcounter{lab@key@h}
+\newcounter{lab@key@v}
+
+\newcommand*\labyrinthsolution[1][]{%
+	\setkeys{solution}{#1}%
+	\lab@solution}
+
+\def\lab@solution(#1,#2)#3{%
+	\unless\iflab@hidden
+	\begingroup
+	\iflab@thicklines\thicklines\fi
+	\setcounter{lab@key@h}{#1}%
+	\setcounter{lab@key@v}{#2}%
+	\edef\lab@keycode{#3}%
+	\expandafter\lab@forany\lab@keycode.%
+	\endgroup
+	\fi}
+
+\def\lab@forany#1{\if#1.\else\lab@key{#1}%
+	\expandafter\lab@forany\fi}
+
+\def\lab@key#1{\@nameuse{lab@#1}}
+\@namedef{lab@u}{	\lab@key@put{u}\stepcounter{lab@key@v}}
+\@namedef{lab@l}{\lab@key@put{l}\addtocounter{lab@key@h}{-1}}
+\@namedef{lab@d}{\lab@key@put{d}\addtocounter{lab@key@v}{-1}}
+\@namedef{lab@r}{\lab@key@put{r}\stepcounter{lab@key@h}}
+
+\def\lab@key@put#1{%
+	\put(\lab@key@h,\lab@key@v){\lab@key@font\@nameuse{lab@key@#1}}}
+
+\def\lab@key@h{\thelab@key@h\unitlength+\lab@key@hcorr}
+\def\lab@key@v{\thelab@key@v\unitlength+\lab@key@vcorr}
+
+%******************************************************************
+% Automatic Solution
+%******************************************************************
+
+\newif\iflab@isin
+\newcommand\lab@ifisin[2]
+ {\def\lab@@isin##1#1##2|end@isin|%
+   {\if|##2|\lab@isinfalse
+    \else\lab@isintrue
+    \fi}%
+  \lab@@isin#2#1|end@isin|%
+  \iflab@isin}
+
+\newcounter{lab@x}
+\newcounter{lab@y}
+\newcounter{lab@xtry}
+\newcounter{lab@ytry}
+
+\def\lab@f#1{%
+	\setcounter{lab@xtry}{\thelab@x}%
+	\setcounter{lab@ytry}{\thelab@y}%
+	\edef\lab@f@try{\number\numexpr#1+4-\truncdiv{#1+4}{4}*4}%
+	\@nameuse{lab:\lab@f@try}%
+	\lab@check}
+
+\@namedef{lab:0}{\addtocounter{lab@ytry}{2}}
+\@namedef{lab:1}{\addtocounter{lab@xtry}{2}}
+\@namedef{lab:2}{\addtocounter{lab@ytry}{-2}}
+\@namedef{lab:3}{\addtocounter{lab@xtry}{-2}}
+
+\def\lab@step{%
+	\lab@f{\lab@f@last+1}\iflab@ok\lab@ok\else
+	\lab@f{\lab@f@last}\iflab@ok\lab@ok\else
+	\lab@f{\lab@f@last-1}\iflab@ok\lab@ok\else
+	\lab@f{\lab@f@last-2}\lab@ok\fi\fi\fi}
+
+\newif\iflab@ok
+\def\lab@check{%
+	\@ifundefined{(\number\numexpr(\thelab@x+\thelab@xtry)/2,%
+			\number\numexpr(\thelab@y+\thelab@ytry)/2)}%
+		{\lab@oktrue}{\lab@okfalse}}
+
+\def\lab@ok{%
+	\edef\lab@f@last{\lab@f@try}%
+	\setcounter{lab@x}{\thelab@xtry}%
+	\setcounter{lab@y}{\thelab@ytry}%
+	\edef\lab@f@char{\ifcase\lab@f@last u\or r\or d\or l\fi}%
+	\lab@addtomacro\lab@pos@list{%
+		(\lab@f@char:\thelab@x,\thelab@y)}}
+
+\def\lab@deleted@cyc{}
+\def\lab@f@list{}
+
+\def\lab@del@cyc(#1:#2)#3.{%
+	\lab@addtomacro\lab@deleted@cyc{(#1:#2)}%
+	\lab@addtomacro\lab@f@list{#1}%
+	\def\lab@del@@cyc##1(##2:#2){}%
+	\lab@ifisin{:#2)}{#3}%
+		\edef\lab@next@del@cyc{\lab@del@@cyc#3.}\else
+		\edef\lab@next@del@cyc{#3.}\fi
+	\if.\lab@next@del@cyc
+		\else\expandafter\lab@del@cyc\lab@next@del@cyc\fi} 
+
+\def\lab@deletecyc#1;{%
+	\def\lab@deleted@cyc{}%
+	\def\lab@f@list{}%
+	\lab@del@cyc#1.%
+	\loop\unless\ifx\lab@deleted@cyc\lab@last@deleted@cyc
+		\let\lab@last@deleted@cyc\lab@deleted@cyc
+		\def\lab@deleted@cyc{}%
+		\def\lab@f@list{}%
+		\expandafter\lab@del@cyc\lab@last@deleted@cyc.%
+	\repeat}
+
+\@namedef{lab:u}{0}
+\@namedef{lab:r}{1}
+\@namedef{lab:d}{2}
+\@namedef{lab:l}{3}
+
+\newcommand*\autosolution[1][]{\lab@autokey[#1]}
+
+\def\lab@autokey[#1](#2,#3)(#4,#5)#6{%
+	\setcounter{lab@x}{#2*2+1}%
+	\setcounter{lab@y}{#3*2+1}%
+	\edef\lab@f@last{\@nameuse{lab:#6}}%
+	\lab@f\lab@f@last
+	\setcounter{lab@x}{\thelab@xtry}%
+	\setcounter{lab@y}{\thelab@ytry}%
+	\edef\lab@pos@list{(#6:\thelab@x,\thelab@y)}%
+	\edef\lab@pos@final{%
+		(\number\numexpr#4*2+1,\number\numexpr#5*2+1)}%
+	\loop\unless\ifx\lab@pos@final\lab@pos@current
+		\lab@step
+		\edef\lab@pos@current{(\thelab@x,\thelab@y)}%
+	\repeat
+	\expandafter\lab@deletecyc\lab@pos@list;%
+	\labyrinthsolution[#1](#2,#3)\lab@f@list
+	\edef\solutionpath{\lab@f@list}}
+
+\endinput

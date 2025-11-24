@@ -1,0 +1,915 @@
+% \iffalse meta-comment
+%
+%% File: morewrites.dtx Copyright (C) 2011-2013 Bruno Le Floch
+%%
+%% It may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License (LPPL), either version 1.3c of this
+%% license or (at your option) any later version.  The latest version
+%% of this license is in the file
+%%
+%%    http://www.latex-project.org/lppl.txt
+%%
+%% -----------------------------------------------------------------------
+%
+%<*driver>
+\RequirePackage{morewrites}
+\documentclass[full]{l3doc}
+\newwrite\foo \newwrite\foo \newwrite\foo \newwrite\foo
+\newwrite\foo \newwrite\foo \newwrite\foo \newwrite\foo
+\newwrite\foo \newwrite\foo \newwrite\foo \newwrite\foo
+\newcommand{\proc}[1]{\texttt{#1}}
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \title{The \textsf{morewrites} package: \\
+%   Always room for a new \cs{write}\thanks{This
+%     file has version number v0.2e, last revised 2013/01/08.}}
+% \author{Bruno Le Floch}
+% \date{2013/01/08}
+%
+% \maketitle
+% \tableofcontents
+%
+% \begin{documentation}
+%
+% \section{\pkg{morewrites} documentation}
+%
+% This \LaTeX{} package is meant to be a solution for the error
+% \enquote{no room for a new \cs{write}}, which occurs when too many
+% macro packages reserve streams to write data to various auxiliary
+% files.  It is in principle possible to rewrite packages so that they
+% are less greedy on resources, but that is often unpractical for the
+% end-user.  Instead, \pkg{morewrites} hooks at the lowest level (\TeX{}
+% primitives).  If I did my job correctly, you simply need to add the
+% line |\usepackage{morewrites}| somewhere near the beginning of your
+% \LaTeX{} file, and the \enquote{no room for a new \cs{write}} error
+% should vanish.
+%
+% I have tried to make the code as robust as possible, but there may
+% still be bugs lurking as this package has not been tested very
+% thoroughly yet.  I thus encourage you to check that references are
+% correct after loading that package: if they are correct without
+% \pkg{morewrites}, but wrong with, please send me a minimal file
+% showing the problem, or post a question on the
+% \url{tex.stackexchange.com} question and answers website, or the
+% \url{comp.text.tex} newsgroup.
+%
+% This package loads the \pkg{expl3} package, hence the \pkg{l3kernel}
+% bundle needs to be up to date.  If Heiko Oberdiek's package
+% \pkg{atbegshi} is available, it will be used.
+%
+% \section{Known deficiencies and open questions}
+%
+% Some distributions of \TeX{} allow a quoted syntax for file names with
+% spaces. I haven't yet coded that. A temporary fix is to avoid file
+% names with spaces.
+%
+% The current code trims spaces at the end of every line that is written
+% to a file.  I might be able to change the code to avoid this.
+%
+% The package code is not very legible, and definitely uses too many
+% |:D| control sequences, whose name means \enquote{do not use}.  The
+% author does not see a way to avoid using primitives in this package,
+% since hooking into the primitives \tn{immediate}, \tn{write},
+% \emph{etc.} requires having a very strong control on what every
+% command does.  \emph{Do not take this package as an example of how to
+%   code with \pkg{expl3}; go and see Joseph Wright's \pkg{siunitx}
+%   instead.}
+%
+% Things that I need to do.
+% \begin{itemize}
+% \item Redefine the \LaTeX3 functions to use \pkg{morewrites} too?
+% \item Should \tn{newwrite} be protected?
+% \end{itemize}
+%
+% \end{documentation}
+%
+% \begin{implementation}
+%
+% \section{\pkg{morewrites} implementation}
+%
+%<*package>
+%    \begin{macrocode}
+\RequirePackage {expl3} [2012/08/14]
+\RequirePackage {primargs} [2013/01/08]
+\ProvidesExplPackage
+  {morewrites} {2013/01/08} {0.2e} {Always room for a new write}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%<@@=morewrites>
+%    \end{macrocode}
+%
+% \subsection{Overview of relevant \TeX{} facts}
+%
+% The aim of the \pkg{morewrites} package is to lift \TeX{}'s
+% restriction of only having $16$ files open for writing at the same
+% time.  We must thus patch $4$ primitives, \tn{openout}, \tn{write},
+% \tn{closeout} and \tn{immediate}, and the \cs{newwrite} macro, defined
+% by \LaTeX{} (and plain \TeX{}).  Each of those commands must be made
+% to accept numbers outside the range $[0,15]$.  Let us review the
+% syntax of the various commands we need to alter (see Chapter~24 of the
+% \TeX{}book).
+%
+% We start with the three \enquote{actions}.
+% \begin{syntax}
+%   \tn{openout} \meta{integer} \meta{equals} \meta{file name}
+% \end{syntax}
+% \TeX{} searches the path for a file with a name given by
+% \meta{file name}.  If found, this file is opened in the writing stream
+% \meta{integer}, which must be a number in the range $[0,15]$.
+% \begin{syntax}
+%   \tn{write} \meta{integer} \meta{filler} \meta{general text}
+% \end{syntax}
+% \TeX{} expands the \meta{general text} as for an \texttt{x}-type
+% expansion, with the caveat that macro parameter characters do not need
+% to be doubled; converts the result to a string, and writes it in the
+% writing stream \meta{integer}.  If the writing stream \meta{integer}
+% is open (in particular it must be in the range $[0,15]$), then this
+% writes to the corresponding file.  Otherwise, if the \meta{integer} is
+% negative, the text is written to the log file, and a non-negative
+% \meta{integer} writes to the terminal.  One exception: if the
+% \meta{integer} is $18$, the text is sent to a shell to be run as shell
+% code.
+% \begin{syntax}
+%   \tn{closeout} \meta{integer}
+% \end{syntax}
+% If the writing stream \meta{integer} is open, it is closed.
+% Otherwise, if the \meta{integer} is not in the range $[0,15]$ an error
+% may be raised, or nothing happens.
+%
+% By default, each one of those three \enquote{actions} are recorded in
+% a whatsit node in the current list, and will be performed when the box
+% containing the whatsit node is sent to the final \texttt{pdf},
+% \emph{i.e.}, at \enquote{shipout} time.  In particular, the
+% \meta{general text} for the \tn{write} primitive is expanded at
+% shipout time.  This behaviour may be modified by putting
+% \tn{immediate} before any of the three \enquote{actions} to force
+% \TeX{} to perform the action immediately instead of recording it in a
+% whatsit node.
+%
+% Since the \tn{openout}, \tn{write}, and \tn{closeout} primitives
+% operate at \tn{shipout} time, we will have to hook into this primitive
+% too.  It expects to be followed by a box specification such as
+% \tn{box}\meta{integer}, or \tn{hbox}\Arg{material to typeset}.
+%
+% Finally, the \cs{newwrite} macro expects one token as its argument,
+% and defines this token (with \tn{chardef}) to be an integer
+% corresponding to the first available writing stream.  We must extend
+% it to let it allocate higher (virtual) write registers.
+%
+% All of the primitives above perform full expansion of all tokens when
+% looking for their operands.  In most cases, only the \tn{meaning} of
+% tokens encountered in this way matters.  Specifically,
+% \begin{itemize}
+% \item \meta{integer} denotes an integer in any form that \TeX{}
+%   accepts as the right-hand side of a primitive integer assignment of
+%   the form \tn{count}|0=|\meta{integer};
+% \item \meta{equals} is an arbitrary (optional) number of explicit or
+%   implicit space characters, an optional explicit equal sign of
+%   category other, and further (optional) explicit or implicit space
+%   characters;
+% \item \meta{file name} is an arbitrary sequence of explicit or implicit
+%   characters with arbitrary category codes (except active characters,
+%   which are expanded before reaching \TeX{}'s mouth), ending either
+%   with a space character (character code $32$, arbitrary non-active
+%   category code, explicit or implicit), which is removed, or with a
+%   non-expandable token, with some care needed for the case of a
+%   \tn{notexpanded:} expandable token;
+% \item \meta{filler} is an arbitrary combination of tokens whose
+%   meaning is \tn{relax} or a character with category code $10$;
+% \item \meta{general text} is formed of braced tokens, starting with an
+%   explicit or implicit begin-group character, and ending with the
+%   matching explicit end-group character (both with any character
+%   code), with an equal number of explicit begin-group and end-group
+%   characters in between: this is precisely the right-hand side of an
+%   assignment of the form \tn{toks}|0=|\meta{general text}.
+% \end{itemize}
+%
+% \subsection{Variants}
+%
+% \begin{macro}[aux]{\prop_gpop:NVNT}
+%   We need this function later.
+%    \begin{macrocode}
+\cs_generate_variant:Nn \prop_gpop:NnNT { NV }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Renaming primitives (again)}
+%
+% \begin{macro}[int]
+%   {
+%     \@@_tex_immediate:w ,
+%     \@@_tex_openout:w   ,
+%     \@@_tex_write:w     ,
+%     \@@_tex_closeout:w
+%   }
+%   First save the output-related primitives.
+%    \begin{macrocode}
+\cs_new_eq:NN \@@_tex_immediate:w \tex_immediate:D
+\cs_new_eq:NN \@@_tex_openout:w   \tex_openout:D
+\cs_new_eq:NN \@@_tex_write:w     \tex_write:D
+\cs_new_eq:NN \@@_tex_closeout:w  \tex_closeout:D
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{\@@_tex_shipout:w}
+%   Since the non-\tn{immediate} output primitives act at \tn{shipout}
+%   time, we need to alter this primitive too.
+%   %^^A Not sure if the shipout primitive is done right.
+%    \begin{macrocode}
+\cs_new_eq:NN \@@_tex_shipout:w   \tex_shipout:D
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Variables}
+%
+% \begin{variable}{\g_@@_late_write_int}
+%   The integer \cs{g_@@_late_write_int} labels the various
+%   non-immediate operations in the order in which they appear in the
+%   source.  We can never reuse a number because there is no way to know
+%   if a whatsit was recorded in a box register, which could be reused
+%   in a shipped-out box:
+%   \begin{quote}
+%     \cs{vbox_set:Nn} \cs{l_my_box} \\
+%     ~~|{| \cs{iow_shipout_x:Nn} \cs{c_term_iow} \Arg{text} |}|
+%     \cs{tex_shipout:D} \cs{tex_copy:D} \cs{l_my_box}
+%     \cs{tex_shipout:D} \cs{tex_copy:D} \cs{l_my_box}
+%   \end{quote}
+%   will print \meta{text} to the terminal twice.
+%    \begin{macrocode}
+\int_new:N \g_@@_late_write_int
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\g_@@_iow_prop}
+%   The property list \cs{g_@@_iow_prop} associates a file name to each
+%   open stream.
+%    \begin{macrocode}
+\prop_new:N \g_@@_iow_prop
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\g_@@_iow, \g_@@_ior, \g_@@_tmp_file_tl}
+%   The expansion that \tn{write} performs is impossible to emulate with
+%   anything else than \tn{write}.  We will write on the stream
+%   \cs{g_@@_iow} to the file \cs{g_@@_tmp_file_tl} and read back from
+%   it in the stream \cs{g_@@_ior} for things to work properly.
+%   Unfortunately, this means that the file is repeatedly opened and
+%   closed, leaving a trace of that in the log.
+%    \begin{macrocode}
+\newwrite \g_@@_iow
+\newread \g_@@_ior
+\tl_new:N \g_@@_tmp_file_tl
+\tl_gset:Nn \g_@@_tmp_file_tl { \jobname.mw }
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}{\g_@@_reserved_iow_clist}
+%   Some of the writing streams are already allocated when loading this
+%   package, and we let the engine manage them.  This variable is a
+%   clist because it only contains integers and the main task is to test
+%   if a given integer is in the comma list.
+%    \begin{macrocode}
+\clist_new:N \g_@@_reserved_iow_clist
+\int_step_inline:nnnn {0} {1} { \g_@@_iow - 1 }
+  { \clist_gput_right:Nn \g_@@_reserved_iow_clist {#1} }
+\clist_gput_right:Nn \g_@@_reserved_iow_clist {18}
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}[int]{\g_@@_stream_int}
+%   An integer holding the \meta{number} argument of various primitives,
+%   namely a writing stream.
+%    \begin{macrocode}
+\int_new:N \g_@@_stream_int
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}[int]{\s_@@}
+%   A recognizable version of \cs{scan_stop:}.  This is inspired
+%   from\footnote{Historically, this might have happened the other way
+%     around, since the author of this package is also on the \LaTeX3
+%     Team.} scan marks (see the \pkg{l3quark} module of \LaTeX3), but
+%   note that we don't use \cs{__scan_new:N} directly, since it is
+%   internal to \LaTeX3.
+%    \begin{macrocode}
+\cs_new_eq:NN \s_@@ \scan_stop:
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{variable}[int]{\l_@@_internal_tl}
+%   Temporary token list, used for scratch purposes.
+%    \begin{macrocode}
+\tl_new:N  \l_@@_internal_tl
+%    \end{macrocode}
+% \end{variable}
+%
+% \subsection{Parsing}
+%
+% \begin{macro}[aux]{\@@_equals_file_name:N}
+%   Most of the parsing for primitive arguments is done using
+%   \pkg{primargs}, except for one case we care about: after its
+%   \meta{number} argument, the \tn{openout} primitive expects an
+%   \meta{equals} (optional spaces and |=|) and a \meta{file name}.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_equals_file_name:N #1
+  {
+    \group_begin:
+      \tex_aftergroup:D #1
+      \primargs_remove_equals:N \@@_parse_file_name:
+  }
+\cs_new_protected_nopar:Npn \@@_parse_file_name:
+  { \primargs_get_file_name:N \group_end: }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Immediate (writing)}
+%
+% In the context of immediate writing, we can store the text
+% in a token list, and only write it at the corresponding
+% \tn{closeout} command. We keep track of a property list,
+% \cs{g_@@_iow_prop}, of the writes which are
+% open (from the point of view of the user), with the
+% corresponding file name.
+%
+% \subsubsection{What follows \tn{immediate}}
+%
+% \begin{macro}[aux, updated = 2012-12-05]{\@@_immediate:w}
+% \begin{macro}[aux, updated = 2012-12-05]{\@@_immediate_ii:}
+% \begin{macro}[aux]{\@@_immediate_iii:N}
+% \begin{macro}[aux]{\@@_immediate_iv:NN}
+% \begin{macro}[aux, EXP]{\@@_immediate_v:w}
+%   This is a little bit subtle: \TeX{}'s \tn{immediate} primitive
+%   raises a flag which is cancelled once \TeX{} sees a non-expandable
+%   token.  We use \pkg{primargs}'s \texttt{read_x_token} function to
+%   fully expand in the \TeX{} way, then test for \tn{openout},
+%   \tn{write}, or \tn{closeout}.  We don't test for the primitives
+%   themselves, but rather for a recognizable marker, \cs{s_@@}, equal
+%   to \tn{relax}.  If present, replace |morewrites| by
+%   |morewrites_immediate| in the csname of the second token after it
+%   (it turns out that this is the correct structure).  If absent, what
+%   follows may be a command that should not appear after
+%   \tn{immediate}, but it may also be a non-\TeX\ primitive such as
+%   \tn{pdfobj} that the \pkg{morewrite} does not know about; hence we
+%   must still call the primitive \tn{immediate}.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_immediate:w
+  { \primargs_read_x_token:N \@@_immediate_ii: }
+\cs_new_protected_nopar:Npn \@@_immediate_ii:
+  {
+    \token_if_eq_meaning:NNTF \g_primargs_token \s_@@
+      { \@@_immediate_iii:N }
+      { \@@_tex_immediate:w }
+  }
+\cs_new_protected:Npn \@@_immediate_iii:N #1
+  {
+    \tl_if_eq:nnTF { #1 } { \s_@@ }
+      { \@@_immediate_iv:NN }
+      { #1 }
+  }
+\cs_new_protected:Npn \@@_immediate_iv:NN #1 #2
+  {
+    \exp_args:Nc #1
+      {
+        \exp_after:wN \@@_immediate_v:w
+        \token_to_str:N #2
+      }
+  }
+\use:x
+  {
+    \cs_new:Npn \exp_not:N \@@_immediate_v:w
+        ##1 \tl_to_str:n { @@ } { @@_immediate }
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \subsubsection{Immediate closeout}
+%
+% \begin{macro}[aux]{\@@_immediate_closeout_test:n}
+%   When the user requests to close a stream, we look in
+%   \cs{g_@@_reserved_iow_clist} to see if it is a reserved
+%   stream: in this case, we simply use the primitive.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_immediate_closeout_test:n #1
+  {
+    \int_gset:Nn \g_@@_stream_int {#1}
+    \clist_if_in:NnTF \g_@@_reserved_iow_clist {#1}
+      { \@@_tex_immediate:w \@@_tex_closeout:w \g_@@_stream_int }
+      { \@@_immediate_closeout_aux: }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_immediate_closeout_aux:}
+%   We then look in \cs{g_@@_iow_prop} to find the file name
+%   corresponding to that stream number.  If the stream does not appear
+%   as a key in the property list, then it was not open yet, and we do
+%   nothing.  Otherwise, the key is removed, and we write the collected
+%   material to the file.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_immediate_closeout_aux:
+  {
+    \prop_gpop:NVNT \g_@@_iow_prop \g_@@_stream_int \l_@@_internal_tl
+      {
+        \@@_immediate_write_and_close:nn
+          { \g_@@_stream_int } { \l_@@_internal_tl }
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_immediate_write_and_close:nn}
+%   The code to write the material collected so far for a given output
+%   \meta{stream} is in the token list \cs{g_@@_iow_\meta{stream}_tl}.
+%   We do this writing in the actual stream \cs{g_@@_iow}, briefly
+%   opened and closed on the file |#2|.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_immediate_write_and_close:nn #1#2
+  {
+    \@@_tex_immediate:w \@@_tex_openout:w
+      \g_@@_iow #2 \scan_stop:
+    \group_begin:
+      \int_set_eq:NN \tex_newlinechar:D \c_minus_one
+      \tl_use:c { g_@@_iow_ \int_eval:n {#1} _tl }
+      \tl_gclear:c { g_@@_iow_ \int_eval:n {#1} _tl }
+    \group_end:
+    \@@_tex_immediate:w \@@_tex_closeout:w \g_@@_iow
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsubsection{Immediate openout}
+%
+% \begin{macro}[aux]{\@@_immediate_openout_test:n}
+%   Read the stream number.  If it is one of the reserved streams, we
+%   use the primitive.  Otherwise, parse an optional equal sign,
+%   followed by the file name.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_immediate_openout_test:n #1
+  {
+    \int_gset:Nn \g_@@_stream_int {#1}
+    \clist_if_in:NnTF \g_@@_reserved_iow_clist {#1}
+      { \@@_tex_immediate:w \@@_tex_openout:w \g_@@_stream_int }
+      { \@@_equals_file_name:N \@@_immediate_openout_aux:n }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_immediate_openout_aux:n}
+%   When the user requests to open a stream, it might already be open,
+%   with another file as its destination. We thus need to first close
+%   the stream, writing all that we collected so far to that other
+%   file. This has no effect if the stream was not open yet.
+%
+%   We then put the stream and its associated file name in the property
+%   list, and empty/create the corresponding token list.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_immediate_openout_aux:n #1
+  {
+    \@@_immediate_closeout_aux:
+    \prop_gput:NVn \g_@@_iow_prop \g_@@_stream_int {#1}
+    \tl_gclear_new:c { g_@@_iow_ \int_use:N \g_@@_stream_int _tl }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsubsection{Immediate write}
+%
+% \begin{macro}[aux]{\@@_immediate_write_test:n}
+%   Read the stream number.  If it is one of the reserved streams, we
+%   use the primitive.  Otherwise, parse the text.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_immediate_write_test:n #1
+  {
+    \int_gset:Nn \g_@@_stream_int {#1}
+    \clist_if_in:NnTF \g_@@_reserved_iow_clist {#1}
+      { \@@_tex_immediate:w \@@_tex_write:w \g_@@_stream_int }
+      { \primargs_get_general_text:N \@@_immediate_write_aux:n }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_immediate_write_aux:n}
+%   Test whether the stream is allocated or not.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_immediate_write_aux:n
+  {
+    \prop_get:NVNTF \g_@@_iow_prop \g_@@_stream_int \l_@@_internal_tl
+      { \@@_immediate_write_open:n }
+      { \@@_immediate_write_closed:n }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_immediate_write_closed:n}
+%   If the stream \cs{g_@@_stream_int} is not allocated, then write
+%   either to the terminal or only to the log file, depending on the
+%   sign.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_immediate_write_closed:n #1
+  {
+    \@@_tex_immediate:w \@@_tex_write:w
+      \if_int_compare:w \g_@@_stream_int < \c_zero
+        -1
+      \else:
+        16
+      \fi:
+      {#1}
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_immediate_write_open:n}
+% \begin{macro}[aux]{\@@_immediate_write_readlines_loop:}
+%   Only \tn{write} itself can emulate how \tn{write} expands tokens,
+%   because |#| don't have to be doubled, and because the
+%   \tn{newlinechar} has to be changed to new lines.  Hence, we start by
+%   writing |#1| to a file, yielding some lines.  The lines are then
+%   read one at a time using \eTeX{}'s \tn{readline} with
+%   \tn{endlinechar} set to $-1$ to avoid spurious characters.  Each
+%   line becomes a \tn{immediate} \tn{write} statement added to the
+%   token list \cs{g_@@_iow_\meta{stream}_tl}.  This token list will be
+%   called when it is time to actually write to the file.  At that time,
+%   \tn{newlinechar} will be $-1$, so that writing each line will
+%   produce no extra line.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_immediate_write_open:n #1
+  {
+    \@@_tex_immediate:w \@@_tex_openout:w \g_@@_iow
+      \g_@@_tmp_file_tl \scan_stop:
+    \@@_tex_immediate:w \@@_tex_write:w \g_@@_iow {#1}
+    \@@_tex_immediate:w \@@_tex_closeout:w \g_@@_iow
+    \group_begin:
+      \int_set_eq:NN \tex_endlinechar:D \c_minus_one
+      \tex_openin:D \g_@@_ior \g_@@_tmp_file_tl \scan_stop:
+      \@@_immediate_write_readlines_loop:
+      \tex_closein:D \g_@@_ior
+    \group_end:
+  }
+\cs_new_protected_nopar:Npn \@@_immediate_write_readlines_loop:
+  {
+    \etex_readline:D \g_@@_ior to \l_@@_internal_tl
+    \ior_if_eof:NF \g_@@_ior
+      {
+        \tl_gput_right:cx
+          { g_@@_iow_ \int_use:N \g_@@_stream_int _tl }
+          {
+            \@@_tex_immediate:w \@@_tex_write:w \g_@@_iow
+              { \l_@@_internal_tl }
+          }
+        \@@_immediate_write_readlines_loop:
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+%
+% \subsection{Non-immediate writing}
+%
+% This is trickier, because the expansion of the text for a
+% non-immediate \tn{write} takes place immediately after the page
+% containing it is shipped out.  We store each non-immediate
+% \tn{openout}, \tn{write}, or \tn{closeout} without expansion in
+% separate token lists \cs{g_@@_late_write_\meta{stream}_tl} to be used
+% later, and instead write |`(|\meta{stream}|)| to a file (including the
+% strange delimiters).  After each shipout, we can read the file to see
+% which output operations we need to perform, and in what order.
+%
+% \subsubsection{Replacement for primitives}
+%
+% \begin{macro}[aux]{\@@_late:n}
+%   Store the action to be done at shipout in a token list, and
+%   non-immediately write the label \cs{g_@@_late_write_int} of the
+%   output operation to the temporary file.  Here, |#1| holds an
+%   assignment similar to the lines above it, and |#2| holds the
+%   relevant immediate action to be performed after shipout.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_late:n #1
+  {
+    \int_gincr:N \g_@@_late_write_int
+    \tl_const:cx
+      {
+        c_@@_late_write_
+        \int_use:N \g_@@_late_write_int
+        _tl
+      }
+      {
+        \int_gset:Nn \exp_not:N \g_@@_stream_int
+          { \exp_not:V \g_@@_stream_int }
+        \exp_not:n {#1}
+      }
+    \exp_args:NNx \@@_tex_write:w \g_@@_iow
+      { `( \int_use:N \g_@@_late_write_int ) }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_openout:w}
+% \begin{macro}[aux]{\@@_openout_test:n, \@@_openout_aux:n}
+%   \tn{openout} tests if the number to come is among reserved streams.
+%   If it is, use the primitive, otherwise, parse a file name.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_openout:w
+  { \s_@@ \primargs_get_number:N \@@_openout_test:n }
+\cs_new_protected:Npn \@@_openout_test:n #1
+  {
+    \int_gset:Nn \g_@@_stream_int {#1}
+    \clist_if_in:NnTF \g_@@_reserved_iow_clist {#1}
+      { \@@_tex_openout:w \g_@@_stream_int }
+      { \@@_equals_file_name:N \@@_openout_aux:n }
+  }
+\cs_new_protected:Npn \@@_openout_aux:n #1
+  { \@@_late:n { \@@_immediate_openout_aux:n {#1} } }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_write:w}
+% \begin{macro}[aux]{\@@_write_test:n, \@@_write_aux:n}
+%   Same idea for \tn{write}, except that we parse a text.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_write:w
+  { \s_@@ \primargs_get_number:N \@@_write_test:n }
+\cs_new_protected:Npn \@@_write_test:n #1
+  {
+    \int_gset:Nn \g_@@_stream_int {#1}
+    \clist_if_in:NnTF \g_@@_reserved_iow_clist {#1}
+      { \@@_tex_write:w \g_@@_stream_int }
+      { \primargs_get_general_text:N \@@_write_aux:n }
+  }
+\cs_new_protected:Npn \@@_write_aux:n #1
+  { \@@_late:n { \@@_immediate_write_aux:n {#1} } }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_closeout:w}
+% \begin{macro}[aux]{\@@_closeout_test:n, \@@_closeout_aux:}
+%   Same idea for \tn{closeout}, and we don't need to parse
+%   anything else than the number.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_closeout:w
+  { \s_@@ \primargs_get_number:N \@@_closeout_test:n }
+\cs_new_protected:Npn \@@_closeout_test:n #1
+  {
+    \int_gset:Nn \g_@@_stream_int {#1}
+    \clist_if_in:NnTF \g_@@_reserved_iow_clist {#1}
+      { \@@_tex_closeout:w \g_@@_stream_int }
+      { \@@_closeout_aux: }
+  }
+\cs_new_protected_nopar:Npn \@@_closeout_aux:
+  { \@@_late:n { \@@_immediate_closeout_aux: } }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \subsubsection{Shipout business}
+%
+% In this section, we hook into the \cs{shipout} primitive, and redefine
+% it to first build a box with the material to ship out, then perform
+% \begin{quote}
+%   \cs{@@_before_shipout:} \\
+%   \meta{primitive shipout} \meta{collected box} \\
+%   \cs{@@_after_shipout:}
+% \end{quote}
+% This is correct even if the values of the \tn{newlinechar} is changed
+% within the user code which builds the shipped out box, because the
+% value that \TeX{} uses is the value in effect immediately after
+% \tn{shipout}.
+%
+% \begin{macro}[aux]{\@@_before_shipout:}
+%   Immediately before the shipout, we must open the writing stream
+%   \cs{g_@@_iow}.  Each delayed output operation has been replaced by
+%   \tn{write} \cs{g_@@_iow} |{`(|\meta{operation number}|}|.  The
+%   delimiters we chose to put around numbers must be at least two
+%   distinct characters on the left (then \cs{tex_newlinechar:D} cannot
+%   be equal to the delimiter), and at least one non-digit character on
+%   the right.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_before_shipout:
+  {
+    \@@_tex_immediate:w \@@_tex_openout:w \g_@@_iow
+      \g_@@_tmp_file_tl \scan_stop:
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_after_shipout:}
+% \begin{macro}[aux, rEXP]{\@@_after_shipout_loop:ww}
+%   Immediately after all the \tn{write}s are performed, close the file,
+%   then read the file with \tn{endlinechar} set to
+%   \tn{newlinechar}\footnote{Note that the \tn{newlinechar} used by
+%     \tn{write}s at \tn{shipout} time are those in effect when the page
+%     is shipped out, \emph{i.e.}, just after the closing brace of the
+%     \tn{shipout} construction, which is exactly where we have added
+%     this hook.} to get exactly the original characters that have been
+%   written, possibly with extra characters between |`(|\ldots{}|)|
+%   groups.  The file is then read with all the appropriate category
+%   codes set up (no other character can appear in the file).  The
+%   looping auxiliary \cs{@@_after_shipout_loop:ww} extract the
+%   \meta{operation} numbers from the file, and makes a token list out
+%   of those.  This token list is then used in a mapping function to
+%   perform the appropriate \tn{write} operations.  Note that those
+%   operations may reuse the file, so we have to fully parse the file
+%   before moving on.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_after_shipout:
+  {
+    \@@_tex_immediate:w \@@_tex_closeout:w \g_@@_iow
+    \group_begin:
+      \int_set_eq:NN \tex_endlinechar:D \tex_newlinechar:D
+      \char_set_catcode_other:n { \tex_endlinechar:D }
+      \tl_map_inline:nn { `(0123456789) }
+        { \char_set_catcode_other:n {`##1} }
+      \etex_everyeof:D { `() \exp_not:N }
+      \tl_gset:Nx \g_@@_internal_tl
+        {
+          \exp_after:wN \@@_after_shipout_loop:ww
+          \tex_input:D \g_@@_tmp_file_tl \c_space_tl
+        }
+    \group_end:
+    \tl_map_inline:Nn \g_@@_internal_tl
+      { \tl_use:c { c_@@_late_write_ ##1 _tl } }
+  }
+\cs_new:Npn \@@_after_shipout_loop:ww #1 `( #2 )
+  {
+    \tl_if_empty:nF {#2}
+      {
+        {#2}
+        \@@_after_shipout_loop:ww
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}[aux]{\shipout}
+% \begin{macro}[aux]{\@@_shipout:w}
+% \begin{variable}{\g_@@_group_level_int, \g_@@_shipout_box}
+%   If \pkg{atbegshi} is available, patch it by adding
+%   \cs{@@_before_shipout:} and \cs{@@_after_shipout:} at the right
+%   place: the two transformations are needed to cover several versions
+%   of the package.  Otherwise, redefine \tn{shipout} to add a hook (see
+%   Heiko's \pkg{atbegshi} for details).
+%    \begin{macrocode}
+\IfFileExists{atbegshi.sty}
+  {
+    \RequirePackage{atbegshi}
+    \tl_replace_once:Nnn \AtBegShi@Output
+      { \AtBegShi@OrgShipout \box \AtBeginShipoutBox }
+      {
+        \@@_before_shipout:
+        \AtBegShi@OrgShipout \box \AtBeginShipoutBox
+        \@@_after_shipout:
+      }
+    \tl_replace_once:Nnn \AtBegShi@Output
+      { \AtBeginShipoutOriginalShipout \box \AtBeginShipoutBox }
+      {
+        \@@_before_shipout:
+        \AtBeginShipoutOriginalShipout \box \AtBeginShipoutBox
+        \@@_after_shipout:
+      }
+  }
+  {
+    \int_new:N \g_@@_group_level_int
+    \box_new:N \g_@@_shipout_box
+    \cs_new_protected_nopar:Npn \@@_shipout:w
+      {
+        \int_gset_eq:NN \g_@@_group_level_int \etex_currentgrouplevel:D
+        \tex_afterassignment:D \@@_shipout_i:
+        \tex_global:D \tex_setbox:D \g_@@_shipout_box
+      }
+    \cs_new_protected_nopar:Npn \@@_shipout_i:
+      {
+        \int_compare:nNnTF { \g_@@_group_level_int }
+                         = { \etex_currentgrouplevel:D }
+          { \@@_shipout_ii: }
+          { \tex_aftergroup:D \@@_shipout_ii: }
+      }
+    \cs_new_protected_nopar:Npn \@@_shipout_ii:
+      {
+        \@@_before_shipout:
+        \@@_tex_shipout:w \tex_box:D \g_@@_shipout_box
+        \@@_after_shipout:
+      }
+    \AtBeginDocument { \cs_gset_eq:NN \shipout \@@_shipout:w }
+  }
+%    \end{macrocode}
+% \end{variable}
+% \end{macro}
+% \end{macro}
+%
+% \subsection{Hook at the very end}
+%
+% \begin{variable}{\g_@@_at_end_int}
+%   At the end of the run, we try very hard to put some material at the
+%   |\@@end|.  This integer controls how many times to call
+%   \cs{@@_close_all_at_end:w}, to avoid infinite loops in case two
+%   packages compete for that last place.
+%    \begin{macrocode}
+\int_new:N \g_@@_at_end_int
+\int_gset:Nn \g_@@_at_end_int { 10 }
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}[aux]{\@@_close_all:}
+%   At the end of the document, close all the files.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_close_all:
+  {
+    \prop_map_function:NN \g_@@_iow_prop
+      \@@_immediate_write_and_close:nn
+    \prop_gclear:N \g_@@_iow_prop
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_close_all_at_end:w}
+%   This pushes its first argument to the very end of the \LaTeX{} run,
+%   recursively (at most $10$ times, initial value of
+%   \cs{g_@@_at_end_int}), just in case some other code adds things
+%   there.
+%    \begin{macrocode}
+\cs_set:Npn \@@_tmp:w #1
+  {
+    \cs_new_protected:Npn \@@_close_all_at_end:w ##1 #1
+      {
+        \int_gdecr:N \g_@@_at_end_int
+        \int_compare:nNnTF \g_@@_at_end_int > \c_zero
+          {
+            \tl_if_empty:nTF {##1}
+              { ##1 \@@_close_all: }
+              { ##1 \@@_close_all_at_end:w }
+          }
+          { \@@_close_all: ##1 }
+        #1
+      }
+  }
+\exp_args:Nc \@@_tmp:w { @ @ end }
+\AtEndDocument { \@@_close_all_at_end:w }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Modified \cs{newwrite}}
+%
+% \begin{variable}{\g_@@_alloc_int}
+%   The counter that \LaTeXe{} uses to allocate \tn{write} registers.
+%    \begin{macrocode}
+\tex_countdef:D \g_@@_alloc_int 17 \scan_stop:
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}[aux]{\newwrite}
+%   We need to allow \cs{newwrite} to allocate more than $16$ writes,
+%   but beware that $18$ is reserved, and that packages might expect
+%   $16$ or $17$ to write to the terminal. So instead skip until $20$,
+%   to be on the safe side.  This really ought to be \tn{protected}, but
+%   none of the formats does that.
+%    \begin{macrocode}
+\cs_new:Npn \@@_newwrite:N #1
+  {
+    \int_gincr:N \g_@@_alloc_int
+    \if_int_compare:w \g_@@_alloc_int = \c_sixteen
+      \int_gset:Nn \g_@@_alloc_int { 20 }
+    \fi:
+    \int_set_eq:NN \allocationnumber \g_@@_alloc_int
+    \cs_undefine:N #1
+    \int_const:Nn #1 { \allocationnumber }
+    \wlog
+      {
+        \token_to_str:N #1
+        = \token_to_str:N \write \int_use:N \allocationnumber
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Redefining the ``normal'' control sequences}
+%
+% \begin{macro}[aux, updated = 2012-12-05]{\immediate}
+% \begin{macro}[aux]{\openout, \write, \closeout, \newwrite}
+%   \tn{shipout} has been redefined earlier.
+%    \begin{macrocode}
+\cs_gset_eq:NN \immediate \@@_immediate:w
+\cs_gset_eq:NN \openout   \@@_openout:w
+\cs_gset_eq:NN \write     \@@_write:w
+\cs_gset_eq:NN \closeout  \@@_closeout:w
+\cs_gset_eq:NN \newwrite  \@@_newwrite:N
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+%</package>
+%
+% \end{implementation}
+%
+% \endinput

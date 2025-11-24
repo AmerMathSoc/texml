@@ -1,0 +1,501 @@
+% sgamevar.sty (variant of sgame.sty that uses \> for tabs instead of & and
+% avoids \catcode changes)
+% <title>LaTeX style file for typesetting strategic games</title>
+% Martin J. Osborne (based on suggestions of Michael Carter)
+% Version 2.15, 2012-6-24
+% Please report bugs to: martin.osborne@utoronto.ca
+% The latest version may be found at
+% http://www.economics.utoronto.ca/osborne/latex
+%
+% This material is subject to the LaTeX Project Public License.  See
+%   http://www.ctan.org/tex-archive/help/Catalogue/licenses.lppl.html
+% for details.
+
+\RequirePackage{color}
+
+\def\sglinecolor{black}
+\def\sgtextcolor{black}
+
+% The character to be centrally vertically aligned in a cell.
+\def\sg@alignchar{I}
+
+\newskip\sglabelsep
+\sglabelsep=5pt
+
+\newdimen\sgcolsep
+\sgcolsep=\tabcolsep
+
+\let\gamestretch=\arraystretch
+
+\newdimen\sg@colwd
+\newdimen\sg@xcolwd
+
+\newcount\sg@colnum
+\newcount\sg@colindex
+\newcount\sg@numcols
+\newcount\sg@xnumcols
+\newcount\sg@rowindex
+\newcount\sg@numrows
+
+\newbox\sg@strutbox
+\def\sg@strut{\relax\ifmmode\copy\sg@strutbox\else\unhcopy\sg@strutbox\fi}
+
+\newif\ifsg@label
+\newif\ifgamemath\gamemathfalse
+\newif\ifgamevalign\gamevalignfalse
+\newif\ifssual\ssualtrue
+\newif\ifirpawcgl
+\newif\ifirplwcgl
+
+\newdimen\sg@tempsep
+
+% Redefine @array from LATEX.LTX so that when \gamevaligntrue (as within a
+% game environment), \@arstrutbox has correct depth and height to position
+% rows in tabular environment so that distance from bottom of row to baseline
+% of text is equal to distance from top of text to top of row.  (Note that
+% characters with positive "depth" (like y, g, and commas) hang below the
+% baseline.)
+
+\def\@array[#1]#2{%
+  \if #1t\vtop \else \if#1b\vbox \else \vcenter \fi\fi
+  \bgroup
+  \ifgamevalign
+    \setbox0=\hbox{\sg@alignchar}%
+    \@tempdima\arraystretch\baselineskip
+    \advance\@tempdima -\ht0
+    \@tempdimb .5\@tempdima
+    \@tempdima \@tempdimb
+    \advance\@tempdima \ht0
+    \setbox\@arstrutbox=\hbox{%
+       \vrule\@height\@tempdima
+             \@depth\@tempdimb
+             \@width\z@}%
+  \else
+    \setbox\@arstrutbox\hbox{%
+       \vrule\@height\arraystretch\ht\strutbox
+             \@depth\arraystretch \dp\strutbox
+             \@width\z@}%
+  \fi%
+  \@mkpream{#2}%
+  \edef\@preamble{%
+    \ialign \noexpand\@halignto
+      \bgroup \@arstrut \@preamble \tabskip\z@skip \cr}%
+  \let\@startpbox\@@startpbox \let\@endpbox\@@endpbox
+  \let\tabularnewline\\%
+    \let\par\@empty
+    \let\@sharp##%
+    \set@typeset@protect
+    \lineskip\z@skip\baselineskip\z@skip
+    \ifhmode \@preamerr\z@ \@@par\fi
+    \@preamble}
+
+% The \sg@strut in the following is needed to put some space between the first
+% row (which contains no verticals) and the following row.  It differs from
+% \@arstrut (used in the second and following rows) in that its height
+% is the height of an u.c. letter in the current font plus half the
+% difference between the \baselineskip (*not* \arraystretch times
+% \baselineskip) and that height (so that extra white space is not
+% added above the labels in the top row beyond that normally above a row of
+% text on a page).  (Definition of \@gifnextchar is at end of this file.)
+
+\let\@@amp=&
+
+\def\sg@initgame{%
+  \global\gamevaligntrue%
+  \color{\sgtextcolor}%
+  \sg@colwd 0pt%
+  \sg@colnum 1%
+  \sg@rowindex 0%
+  \let\tempstretch=\arraystretch%
+  \let\arraystretch=\gamestretch%
+  \let\sg@tempsep=\tabcolsep%
+  \let\tabcolsep=\sgcolsep%
+}
+
+%------------------%
+% game environment %
+%------------------%
+
+\def\game#1#2{%
+  \sg@initgame%
+  \sg@xcolwd 0pt%
+  \@gifnextchar[{\@gameo{#1}{#2}}{\sg@labelfalse\@game{#1}{#2}}%
+}
+
+\def\@gameo#1#2[#3]{%
+  \@gifnextchar[{\@gameoo{#1}{#2}[#3]}{\sg@labeltrue\@gamelabel{#1}{#2}[#3]}%
+}
+
+\def\@gameoo#1#2[#3][#4]{%
+  \@gifnextchar[{\sg@labeltrue\@gameplslabel{#1}{#2}[#3][#4]}%
+        {\sg@labelfalse\@gamepls{#1}{#2}[#3][#4]}%
+}
+
+\gdef\@gamelab{}
+
+\def\sg@makegstrutbox#1{%
+  \setbox0=\hbox{#1}%
+  \@tempdima\arraystretch\baselineskip%
+  \advance\@tempdima -\ht0%
+  \@tempdima .5\@tempdima%
+  \@tempdimb\baselineskip%
+  \advance\@tempdimb-\ht0%
+  \@tempdimb .5\@tempdimb%
+  \ifssual\else\@tempdima\@tempdimb\fi%
+  \advance\@tempdimb \ht0%
+  \setbox\sg@strutbox=\hbox{\vrule height\@tempdimb depth\@tempdima width\z@}%
+}
+
+{%\catcode`\&=\active
+%
+  \gdef\@gamelabel#1#2[#3]{\gdef\@gamelab{#3}\@game{#1}{#2}}
+%
+  \gdef\@game#1#2{%
+%    \catcode`\&=\active%
+    \sg@makegstrutbox{\sg@alignchar}%
+    \def\>{%
+      \unskip\egroup%
+      \ifdim\sg@colwd<\wd0%
+        \global\sg@colwd\wd0%
+      \else\fi%
+      \hfil\box0\hfil\sg@strut\@@amp\omit%
+% \color setting on next line can be removed if it causes problems
+      \setbox0=\hbox\bgroup\color{\sgtextcolor}\ignorespaces%
+    }%
+    \sg@numrows=#1\sg@numcols=#2\sg@xnumcols=#2\advance\sg@numcols by 1%
+% setting on next line reestablishes black as text color after sgame is done
+% (in case of a float to the top of the page(?))
+    \color{black}%
+    \begin{gtabular}{@{}r|*{#2}{c|}}\omit\setbox0=\hbox\bgroup\ignorespaces%
+  }
+
+  \gdef\@gameplslabel#1#2[#3][#4][#5]{%
+\gdef\@gamelab{#5}\@gamepls{#1}{#2}[#3][#4]}
+
+  \gdef\@gamepls#1#2[#3][#4]{%
+%    \catcode`\&=\active%
+    \sg@makegstrutbox{\sg@alignchar}%
+    \gdef\@rowpllabel{#3}%
+    \def\>{\unskip\egroup%
+       \ifdim\sg@colwd<\wd0%
+         \global\sg@colwd\wd0%
+       \else\fi%
+       \hfil\box0\hfil\sg@strut\@@amp\omit%
+% \color setting on next line can be removed if it causes problems
+       \setbox0=\hbox\bgroup\color{\sgtextcolor}\ignorespaces%
+    }%
+    \sg@numrows=#1\sg@numcols=#2\sg@xnumcols=#2\advance\sg@numcols by 1%
+% Row player label is not part of alignment.  To get its vertical position
+% right, need to compensate for rows of action labels at top of game, column
+% player label, and, if it exists, game label at bottom plus \sglabelsep.
+    \@tempdima\ht\sg@strutbox%
+    \advance\@tempdima\dp\sg@strutbox%
+    \multiply\@tempdima by -1%
+    \ifsg@label%
+      \@tempdimb\sglabelsep%
+      \divide\@tempdimb by 2%
+      \advance\@tempdima by \@tempdimb%
+      \@tempdimb\ht\sg@strutbox%
+      \advance\@tempdimb by\dp\sg@strutbox%
+      \divide\@tempdimb by 2%
+      \advance\@tempdima by \@tempdimb%
+    \fi%
+    \raisebox{\@tempdima}{#3}\nobreak\hskip\sgcolsep\nobreak%
+% setting on next line reestablishes black as text color after sgame is done
+% (in case of a float to the top of the page(?))
+    \color{black}%
+    \begin{gtabular}{@{}r|*{#2}{c|}}\omit\@@amp%
+% \color command on next line can be omitted if it causes problems
+    \multispan{#2}\hfil\makebox[0pt]{\color{\sgtextcolor}#4}\sg@strut\hfil%
+    \@tabularcr\omit\setbox0=\hbox\bgroup%
+    \ignorespaces%
+  }%
+}
+
+\def\gtabular{\def\@halignto{}\@gtabular}
+
+% In the following, \\ redefines & the first time it is executed (so that
+% the second and subsequent rows can be set differently from the first one);
+% & redefines \\ to be null on the bottom row, so that the final row can
+% end in \\.  [Other less convoluted ways of achieving the same effect fail
+% because parts of \if can't contains \cr and \omit has to immediately follow
+% \cr.]
+
+{%\catcode`\&=\active
+  \gdef\@gtabular{%
+    \leavevmode \hbox \bgroup $\let\@acol\@tabacol%
+    \let\@classz\@tabclassz%
+    \let\@classiv\@tabclassiv%
+    \def\\{\unskip%
+      \gdef\>{\unskip\color{\sglinecolor}%
+        \ifgamemath%
+          \ifnum\sg@colindex=1%
+          \else$\fi%
+        \fi%
+        \unskip\egroup%
+        \ifdim\sg@colwd<\wd0%
+          \global\sg@colwd\wd0%
+        \else\fi%
+        \hfil\box0%
+        \ifnum\sg@colindex=1%
+          {\global\sg@colwd\sg@xcolwd\global\sg@colindex2}%
+        \else\hfil\fi%
+        \sg@strut\@@amp%
+        \setbox0=\hbox\bgroup\ignorespaces%
+        \ifgamemath$\fi%
+        \ifnum\sg@rowindex=\sg@numrows%
+%          \gdef\\{\unskip}%
+          \let\\=\unskip%
+        \else\fi\ignorespaces%
+      }%
+      \color{\sglinecolor}%
+      \ifgamemath%
+        \ifnum\sg@rowindex=0%
+          \else$%
+        \fi%
+      \fi%
+      \unskip\egroup%
+      \ifdim\sg@colwd<\wd0%
+        \global\sg@colwd\wd0%
+      \else\fi%
+      \hfil\box0\hfil\global\sg@colindex 1\relax%
+      \sg@strut\cr\noalign{\vskip-\arrayrulewidth}\cline{2-\sg@numcols}%
+      {\global\advance\sg@rowindex by 1}%
+      {\global\sg@xcolwd\sg@colwd}%
+      {\global\sg@colwd 0pt}%
+      \setbox0=\hbox\bgroup\ignorespaces%
+    }%
+    \@tabarray%
+  }
+}
+
+\def\endgame{%
+  \end{gtabular}%
+  \global\gamevalignfalse%
+  \let\arraystretch=\tempstretch%
+  \let\tabcolsep=\sg@tempsep%
+%  \catcode`\&=4%
+\relax%
+}
+
+\def\sg@putlabel#1{%
+  \ifirpawcgl%
+    \noalign{\vspace\sglabelsep}%
+    \multispan\sg@numcols\hfil%
+    \hbox to 0pt{\color{\sgtextcolor}\hss\@gamelab\hss}\hfil\sg@strut\cr%
+  \else\ifirplwcgl%
+    \noalign{\vspace\sglabelsep}%
+    \multispan\sg@numcols\hfil\hbox to 0pt{%
+      \setbox1=\hbox{\@rowpllabel}%
+      \@tempdima\wd1%
+      \advance\@tempdima by \sgcolsep%
+      \color{\sgtextcolor}\hss\@gamelab\hss\hspace*{\@tempdima}}%
+    \hfil\sg@strut\cr%
+  \else%
+    \noalign{\vspace\sglabelsep}%
+    \if#1u
+      \omit&\multispan\sg@xnumcols\hfil%
+    \else
+      \multispan\sg@numcols\hfil%
+    \fi
+  \hbox to 0pt{\color{\sgtextcolor}\hss\@gamelab\hss}\hfil\sg@strut\cr
+  \fi\fi
+}
+
+% The following sets a "phantom" line below the table in which each
+% entry under the payoff matrix has the width of the widest entry in 
+% the payoff matrix (so that all columns of the matrix have the same width).
+
+\def\endgtabular{%
+  \unskip\color{\sglinecolor}%
+  \ifgamemath$\fi%
+  \egroup%
+  \ifdim\sg@colwd<\wd0
+    \global\sg@colwd\wd0
+  \fi
+  \hfil\box0\hfil\sg@strut%
+  \cr%
+  \noalign{\vskip-\arrayrulewidth}\cline{2-\sg@numcols}%
+% If game has a label, add a row with the label
+  \ifsg@label%
+    \sg@putlabel{u}%
+  \fi
+%
+  \omit
+% Set a phantom row to make all the columns have the same width
+  \xdef\enoughcols{}%       see p. 373 of TeXbook re. next few lines
+  \loop
+    \ifnum\sg@colnum<\sg@numcols
+    \xdef\enoughcols{%
+      \enoughcols\@@amp%
+      \omit\hskip\sgcolsep\hbox to\sg@colwd{\hfil}\hskip\sgcolsep%
+    }
+    \advance\sg@colnum by1%
+  \repeat%
+  \enoughcols\crcr\egroup\egroup $\egroup%
+}
+
+%---------------------%
+%  game* environment  %
+%---------------------%
+
+\expandafter \def\csname game*\endcsname #1#2{%
+  \sg@initgame%
+  \advance\sg@rowindex by1
+  \@gifnextchar[{\@gamestaro{#1}{#2}}{\sg@labelfalse\@gamestar{#1}{#2}}%
+}
+
+\def\@gamestaro#1#2[#3]{%
+  \@gifnextchar[{\@gamestaroo{#1}{#2}[#3]}%
+{\sg@labeltrue\@gamestarlabel{#1}{#2}[#3]}%
+}
+
+\def\@gamestaroo#1#2[#3][#4]{%
+  \@gifnextchar[{\sg@labeltrue\@gamestarplslabel{#1}{#2}[#3][#4]}%
+        {\sg@labelfalse\@gamestarpls{#1}{#2}[#3][#4]}%
+}
+
+{%\catcode`\&=\active
+%
+  \gdef\@gamestarlabel#1#2[#3]{\gdef\@gamelab{#3}\@gamestar{#1}{#2}}
+%
+  \gdef\@gamestar#1#2{%
+%    \catcode`\&=\active%
+    \sg@makegstrutbox{\sg@alignchar}%
+    \gdef\>{\unskip\color{\sglinecolor}%
+      \ifgamemath$\fi%
+      \unskip\egroup%
+      \ifdim\sg@colwd<\wd0
+        \global\sg@colwd\wd0
+      \else\fi%
+      \hfil\box0\hfil%
+      \sg@strut\@@amp%
+      \setbox0=\hbox\bgroup\ignorespaces%
+      \ifgamemath$\fi%
+      \ifnum\sg@rowindex=\sg@numrows%
+%        \gdef\\{\unskip}%
+        \let\\=\unskip%
+      \else\fi\ignorespaces%
+    }%
+    \sg@numrows=#1\sg@numcols=#2%
+    \color{\sglinecolor}%
+    \begin{gstartabular}{@{}|*{#2}{c|}}%
+\hline\setbox0=\hbox\bgroup\ignorespaces%
+  }
+
+  \gdef\@gamestarplslabel#1#2[#3][#4][#5]{%
+\gdef\@gamelab{#5}\@gamestarpls{#1}{#2}[#3][#4]}
+
+  \gdef\@gamestarpls#1#2[#3][#4]{%
+%    \catcode`\&=\active%
+    \sg@makegstrutbox{\sg@alignchar}%
+    \gdef\@rowpllabel{#3}%
+    \def\>{\unskip\egroup%
+       \ifdim\sg@colwd<\wd0%
+         \global\sg@colwd\wd0%
+       \else\fi%
+       \hfil\color{\sgtextcolor}\box0\hfil\sg@strut\@@amp%
+       \setbox0=\hbox\bgroup\ignorespaces%
+    }%
+    \sg@numrows=#1\sg@numcols=#2%
+% Row player label is not part of alignment.  To get its vertical position
+% right, need to compensate for rows of action labels at top of game, column
+% player label, and, if it exists, game label at bottom plus \sglabelsep.
+    \@tempdima\ht\sg@strutbox%
+    \advance\@tempdima\dp\sg@strutbox%
+    \multiply\@tempdima by -1%
+    \divide\@tempdima by2%
+    \ifsg@label%
+      \@tempdimb\sglabelsep%
+      \divide\@tempdimb by 2%
+      \advance\@tempdima by \@tempdimb%
+      \@tempdimb\ht\sg@strutbox%
+      \advance\@tempdimb by\dp\sg@strutbox%
+      \divide\@tempdimb by 2%
+      \advance\@tempdima by\@tempdimb%
+    \fi%
+    \raisebox{\@tempdima}{#3}\nobreak\hskip\sgcolsep\nobreak%
+    \color{\sglinecolor}%
+    \begin{gstartabular}{@{}|*{#2}{c|}}%
+    \multispan#2\hfil\makebox[0pt]{\color{\sgtextcolor}#4}\sg@strut\hfil%
+    \@tabularcr\hline\setbox0=\hbox\bgroup%
+    \ignorespaces%
+  }
+}
+
+\def\gstartabular{\def\@halignto{}\@gstartabular}
+
+{%\catcode`\&=\active%
+  \gdef\@gstartabular{%
+    \leavevmode \hbox \bgroup $\let\@acol\@tabacol%
+    \let\@classz\@tabclassz%
+    \let\@classiv\@tabclassiv%
+    \def\\{\unskip%
+      \color{\sglinecolor}%
+      \ifgamemath$\fi%
+      \unskip\egroup%
+      \ifdim\sg@colwd<\wd0%
+        \global\sg@colwd\wd0%
+      \else\fi%
+      \hfil\box0\hfil%
+      \sg@strut\cr\hline%
+      {\global\advance\sg@rowindex by 1}%
+      \setbox0=\hbox\bgroup\ignorespaces%
+    }%
+    \@tabarray%
+  }%
+}
+
+\expandafter \def \csname endgame*\endcsname{%
+  \end{gstartabular}%
+  \global\gamevalignfalse%
+  \let\arraystretch=\tempstretch%
+  \let\tabcolsep=\sg@tempsep%
+%  \catcode`\&=4%
+\relax%
+}
+
+% The following sets a "phantom" line below the matrix in which each
+% entry has the width of the widest entry in the matrix (so that all
+% columns have the same width).
+
+\def\endgstartabular{%
+  \unskip\color{\sglinecolor}%
+  \ifgamemath$\fi%
+  \egroup%
+  \ifdim\sg@colwd<\wd0%
+    \global\sg@colwd\wd0%
+  \fi%
+  \hfil\box0\hfil\sg@strut%
+  \cr%
+  \hline%
+% If game has a label, add a row with the label
+  \ifsg@label%
+    \sg@putlabel{s}%
+  \fi%
+%
+  \omit\hskip\sgcolsep\hbox to\sg@colwd{\hfil}\hskip\sgcolsep%
+% Set a phantom row to make all the columns have the same width
+  \xdef\enoughcols{}%       see p. 373 of TeXbook re. next few lines
+  \loop
+    \ifnum\sg@colnum<\sg@numcols%
+    \xdef\enoughcols{%
+      \enoughcols\@@amp%
+      \omit\hskip\sgcolsep\hbox to\sg@colwd{\hfil}\hskip\sgcolsep%
+    }%
+    \advance\sg@colnum by1%
+  \repeat%
+  \enoughcols\crcr\egroup\egroup $\egroup%
+}
+
+%--------------------------------------------------------------------%
+% Define \@gifnextchar along the lines of LATEX's \@ifnextchar,      %
+% except do not gobble spaces: if next token is a space then execute %
+% #3.  (\@ifnextchar doesn't work for some reason: if & is the next  %
+% token then something goes wrong.)                                  %
+%--------------------------------------------------------------------%
+\def\@gifnextchar#1#2#3{\let\@tempe#1\def\@tempa{#2}\def\@tempb{#3}%
+\futurelet\@tempc\@gifnch}
+
+\def\@gifnch{\ifx\@tempc\@sptoken\let\@tempd\@tempb%
+\else\ifx\@tempc\@tempe\let\@tempd\@tempa\else\let\@tempd\@tempb\fi\fi\@tempd}

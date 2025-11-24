@@ -1,0 +1,1682 @@
+% --------------------------------------------------------------------------
+% the ENdiagram package
+%
+%   easy creation of potential energy curve diagrams
+%
+% --------------------------------------------------------------------------
+% Clemens Niederberger
+% Web:    https://www.bitbucket.org/cgnieder/endiagram
+% E-Mail: contact@mychemistry.eu
+% --------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% --------------------------------------------------------------------------
+% Copyright 2012--2013 Clemens Niederberger
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+%
+% The Current Maintainer of this work is Clemens Niederberger.
+%
+% This work consists of the files endiagram.sty, endiagram_en.tex,
+% README and the derived file endiagram_en.pdf.
+% --------------------------------------------------------------------------
+\RequirePackage{ expl3 , xparse , l3keys2e , tikz , siunitx }
+\usetikzlibrary{calc}
+\ProvidesExplPackage
+  {endiagram}
+  {2014/06/28}
+  {0.1d}
+  {Easy creation of potential energy curve diagrams}
+
+% --------------------------------------------------------------------------
+% check expl3 version:
+\@ifpackagelater { expl3 } { 2013/12/14 }
+  { }
+  {
+    \PackageError { endiagram } { Support~package~expl3~too~old }
+      {
+        You~need~to~update~your~installation~of~the~bundles~'l3kernel'~and~
+        'l3packages'.\MessageBreak
+        Loading~endiagram~will~abort!
+      }
+    \tex_endinput:D
+  }
+
+% --------------------------------------------------------------------------- %
+% error and warning messages
+\msg_new:nnnn { ENdiagram } { points-missing }
+  {
+    You~need~at~least~three~values~for~drawing~the~energy~curve~
+    \msg_line_context:
+  }
+  {
+    You~need~at~least~three~values~for~drawing~the~energy~curve~
+    \msg_line_context:
+  }
+
+\msg_new:nnnn { ENdiagram } { ShowEa }
+  { Wrong~argument~syntax.~ \msg_line_context: }
+  { Wrong~argument~syntax.~ \msg_line_context: }
+
+\msg_new:nnnn { ENdiagram } { MakeOrigin }
+  {
+    You~can't~use~\token_to_str:N \ENcurve \c_space_tl after~
+    \token_to_str:N \MakeOrigin \c_space_tl \msg_line_context:
+  }
+  {
+    You~can't~use~\token_to_str:N \ENcurve \c_space_tl after~
+    \token_to_str:N \MakeOrigin \c_space_tl \msg_line_context:
+  }
+
+\msg_new:nnnn { ENdiagram } { outside-ENdiagram }
+  {
+    The~command~\token_to_str:N #1 \c_space_tl can~only~be~used~inside~the~
+    `endiagram'~environment.
+  }
+  {
+    It~seems~you~have~used~\token_to_str:N #1 \c_space_tl outside~the~
+    `endiagram'~environment~where~it~isn't~allowed~(and~not~at~all~useful,~
+    anyway).~ However,~it~can~only~be~used~inside~the~`endiagram'~environment.
+  }
+
+% --------------------------------------------------------------------------- %
+% tikz helper functions
+\cs_new:Npn \endiagram_node:n #1
+  { \node [ #1 ] }
+\cs_generate_variant:Nn \endiagram_node:n { o,f,x }
+
+\cs_new:Npn \endiagram_draw:n #1
+  { \draw [ #1 ] }
+\cs_generate_variant:Nn \endiagram_draw:n { o,f,x }
+
+\cs_new:Npn \endiagram_draw:nn #1#2
+  { \draw [ #1 ] #2 ; }
+\cs_generate_variant:Nn \endiagram_draw:nn
+  { no,nf,nx,oo,of,ox,fn,fo,ff,fx,xn,xo,xf,xx }
+
+\cs_new:Npn \endiagram_tikz:n #1
+  { \tikz [ #1 ] }
+\cs_generate_variant:Nn \endiagram_tikz:n { o,f,x }
+
+\cs_new:Npn \endiagram_tikz:nn #1#2
+  { \tikz [ #1 ] { #2 } }
+\cs_generate_variant:Nn \endiagram_tikz:nn
+  { no,nf,nx,oo,of,ox,fn,fo,ff,fx,xn,xo,xf,xx }
+
+\cs_new:Npn \endiagram_start_tikzpicture:n #1
+  { \tikzpicture [ #1 ] }
+\cs_generate_variant:Nn \endiagram_start_tikzpicture:n { o,f,x }
+
+\cs_new_eq:NN \endiagram_end_tikzpicture: \endtikzpicture
+
+% --------------------------------------------------------------------------- %
+% temporary variables:
+\tl_new:N \l__Endiagram_tmpa_tl
+\tl_new:N \l__Endiagram_tmpb_tl
+\tl_new:N \l__Endiagram_tmpc_tl
+
+\fp_new:N \l__Endiagram_tmpa_fp
+\fp_new:N \l__Endiagram_tmpb_fp
+\fp_new:N \l__Endiagram_tmpc_fp
+\fp_new:N \g__Endiagram_tmpa_fp
+
+\dim_new:N \l__endiagram_tmpa_dim
+\dim_new:N \g__Endiagram_tmpa_dim
+
+% --------------------------------------------------------------------------- %
+% restrict commands to use inside the endiagram environment:
+\bool_new:N \l__Endiagram_inside_env_bool
+
+\cs_new_protected:Npn \Endiagram_new_environment_command:Nnn #1#2#3
+  {
+    \NewDocumentCommand #1 { #2 }
+      {
+        \bool_if:NTF \l__Endiagram_inside_env_bool
+          { #3 }
+          { \msg_warning:nnn { ENdiagram } { outside-ENdiagram } { #1 } }
+      }
+  }
+
+% --------------------------------------------------------------------------- %
+% draw the curve
+\clist_new:N \l__endiagram_points_clist
+\prop_new:N \l__endiagram_points_prop
+\int_new:N \l__endiagram_points_int
+\int_zero:N \l__endiagram_points_int
+
+\int_new:N \g__endiagram_curve_int
+\int_gzero:N \g__endiagram_curve_int
+
+\int_new:N \g__endiagram_points_max_int
+
+\int_new:N \l__endiagram_points_counter_int
+\int_set:Nn \l__endiagram_points_counter_int { 1 }
+
+\tl_new:N \l__endiagram_draw_curve_tl
+\tl_new:N \l__endiagram_curve_tikz_tl
+
+\tl_new:N \l__endiagram_curve_looseness_tl
+\tl_set:Nn \l__endiagram_curve_looseness_tl { .5 }
+
+\tl_new:N \l__endiagram_points_step_tl
+\tl_set:Nn \l__endiagram_points_step_tl { 2 }
+\tl_new:N \l__endiagram_points_step_default_tl
+\tl_set_eq:NN \l__endiagram_points_step_default_tl \l__endiagram_points_step_tl
+
+\fp_new:N \g__endiagram_y_min_fp
+\fp_gzero:N \g__endiagram_y_min_fp
+\fp_new:N \g__endiagram_y_max_fp
+\fp_gzero:N \g__endiagram_y_max_fp
+
+\fp_new:N \g__endiagram_x_min_fp
+\fp_gzero:N \g__endiagram_x_min_fp
+\fp_new:N \g__endiagram_x_max_fp
+\fp_gzero:N \g__endiagram_x_max_fp
+
+\bool_new:N \l__endiagram_debug_bool
+\bool_new:N \l__endiagram_curve_minima_bool
+
+\keys_define:nn { ENdiagram / ENcurve }
+  {
+    step      .tl_set:N   = \l__endiagram_points_step_tl ,
+    looseness .tl_set:N   = \l__endiagram_curve_looseness_tl ,
+    tikz      .tl_set:N   = \l__endiagram_curve_tikz_tl ,
+    minima    .bool_set:N = \l__endiagram_curve_minima_bool
+  }
+
+\cs_new_protected:Npn \__endiagram_determine_yaxis_length:n #1
+  {
+    \fp_compare:nNnT { #1 } < { \g__endiagram_y_min_fp }
+      { \fp_gset:Nn \g__endiagram_y_min_fp { #1 } }
+    \fp_compare:nNnT { #1 } > { \g__endiagram_y_max_fp }
+      { \fp_gset:Nn \g__endiagram_y_max_fp { #1 } }
+  }
+
+\cs_new_protected:Npn \__endiagram_determine_xaxis_length:
+  {
+    % TODO: adapt to (not so) new l3fp:
+    \fp_gset:Nn \g__endiagram_x_max_fp
+      { \int_to_arabic:n { \g__endiagram_points_max_int } }
+    \fp_gsub:Nn \g__endiagram_x_max_fp { 1 }
+    \exp_args:NNo \fp_gset:Nn \g__endiagram_x_max_fp
+      { \g__endiagram_x_max_fp * \l__endiagram_points_step_tl }
+  }
+
+\Endiagram_new_environment_command:Nnn \ENcurve { o m }
+  {
+    \bool_if:NT \l__endiagram_origin_made_bool
+      { \msg_error:nn { ENdiagram } { MakeOrigin } }
+    \int_gincr:N \g__endiagram_curve_int
+    \tl_set_eq:NN \l__endiagram_points_step_tl \l__endiagram_points_step_default_tl
+    \IfNoValueF { #1 } { \keys_set:nn { ENdiagram / ENcurve } { #1 } }
+    \clist_clear:N \l__endiagram_points_clist
+    \tl_clear:N \l__endiagram_draw_curve_tl
+    \int_set:Nn \l__endiagram_points_counter_int { 1 }
+    \clist_map_inline:nn { #2 }
+      {
+        \fp_set:Nn \l__Endiagram_tmpa_fp
+          { ( \int_to_arabic:n { \l__endiagram_points_int } ) * \l__endiagram_points_step_tl }
+        \tl_if_in:nnTF { ##1 } { [ }
+          {
+            \__endiagram_save_points:fxnn
+              { \int_use:N \l__endiagram_points_int }
+              { \fp_to_tl:N \l__Endiagram_tmpa_fp } ##1
+          }
+          {
+            \__endiagram_save_points:fxnn
+              { \int_use:N \l__endiagram_points_int }
+              { \fp_to_tl:N \l__Endiagram_tmpa_fp } { ##1 } [ 0 ]
+          }
+      }
+    \int_zero:N \l__endiagram_points_int
+    \int_gset:Nn \g__endiagram_points_max_int
+      { \clist_count:N \l__endiagram_points_clist }
+    \int_compare:nT { \g__endiagram_points_max_int < 3 }
+      { \msg_error:nn { ENdiagram } { points-missing } }
+    \clist_map_inline:Nn \l__endiagram_points_clist
+      {
+        \int_compare:nT { \l__endiagram_points_counter_int = 1 }
+          {
+            \fp_gset:Nn \g__endiagram_y_min_fp { ##1 }
+            \bool_if:NT \l__endiagram_curve_minima_bool
+              {
+                \tl_put_right:Nn \l__endiagram_draw_curve_tl
+                  { ($(-.5,##1)+(0,.2)$) to [bend~right] }
+              }
+          }
+        \__endiagram_determine_yaxis_length:n { ##1 }
+        \__endiagram_determine_xaxis_length:
+        \fp_set:Nn \l__Endiagram_tmpa_fp
+          { \int_to_arabic:n { \l__endiagram_points_counter_int } -1 }
+        \prop_get:NxN \l__endiagram_points_prop
+          { \fp_to_tl:N \l__Endiagram_tmpa_fp } \l__Endiagram_tmpb_tl
+        \tl_put_right:Nx \l__endiagram_draw_curve_tl
+          {
+            ($
+              {
+                \l__Endiagram_tmpb_tl
+              }
+              *(1,0)+(0,##1)
+            $)
+            node[inner~sep=0]
+            (
+              N \int_to_arabic:n { \g__endiagram_curve_int } -
+              \int_to_arabic:n { \l__endiagram_points_counter_int }
+            ) {}
+          }
+        \bool_if:NT \l__endiagram_debug_bool
+          {
+            \tl_put_right:Nx \l__endiagram_draw_curve_tl
+              {
+                node[anchor=north~west,font={\exp_not:N \tiny},inner~sep=0,color=black,fill=yellow!20]
+                  {
+                    N \int_to_arabic:n { \g__endiagram_curve_int } -
+                    \int_to_arabic:n { \l__endiagram_points_counter_int }
+                  }
+                node[inner~sep=0,above,color=red,font={\exp_not:N \tiny}]
+                  {(\l__Endiagram_tmpb_tl,##1)}
+              }
+          }
+        \int_compare:nT { \l__endiagram_points_counter_int < \g__endiagram_points_max_int }
+          { \tl_put_right:Nn \l__endiagram_draw_curve_tl { to } }
+        \int_compare:nT { \l__endiagram_points_counter_int = \g__endiagram_points_max_int }
+          {
+            \bool_if:NT \l__endiagram_curve_minima_bool
+              {
+                \tl_put_right:Nx \l__endiagram_draw_curve_tl
+                  {
+                    to [bend~right]
+                    ($
+                      {
+                        \l__endiagram_points_step_tl *
+                        (\int_to_arabic:n { \l__endiagram_points_counter_int } - 1 )
+                      }
+                      *(1,0)+(0,##1)+(.5,.2)
+                    $)
+                  }
+              }
+          }
+        \int_incr:N \l__endiagram_points_counter_int
+      }
+    
+    \endiagram_draw:xo
+      {
+        \l__endiagram_curve_tikz_tl,
+        out=0,in=180,
+        looseness=\l__endiagram_curve_looseness_tl
+      }
+      { \l__endiagram_draw_curve_tl }
+    \tl_clear:N \l__endiagram_curve_tikz_tl
+  }
+\cs_generate_variant:Nn \tl_put_right:Nn { Nx }
+
+\cs_new_protected:Npn \__endiagram_save_points:nnnn #1#2#3[#4]
+  {
+    \fp_set:Nn \l__Endiagram_tmpa_fp { #2 + #4 }
+    \clist_put_right:Nn \l__endiagram_points_clist { #3 }
+    \prop_put:Nox \l__endiagram_points_prop
+      { #1 }
+      { \fp_to_tl:N \l__Endiagram_tmpa_fp }
+    \int_incr:N \l__endiagram_points_int
+  }
+\cs_generate_variant:Nn \__endiagram_save_points:nnnn { fx }
+\cs_generate_variant:Nn \prop_put:Nnn { Nox }
+
+% --------------------------------------------------------------------------- %
+% show the energy levels
+\int_new:N   \l__endiagram_niveau_counter_int
+\int_set:Nn  \l__endiagram_niveau_counter_int { 1 }
+\tl_new:N    \l__endiagram_niveau_tikz_tl
+\tl_new:N    \l__endiagram_niveau_length_tl
+\tl_set:Nn   \l__endiagram_niveau_length_tl { 1 }
+\tl_new:N    \l__endiagram_niveau_shift_tl
+\tl_set:Nn   \l__endiagram_niveau_shift_tl { 0 }
+\bool_new:N  \l__endiagram_niveau_pick_bool
+\clist_new:N \l__endiagram_niveau_clist
+
+\keys_define:nn { ENdiagram / ShowNiveaus }
+  {
+    tikz   .tl_set:N = \l__endiagram_niveau_tikz_tl ,
+    length .tl_set:N = \l__endiagram_niveau_length_tl ,
+    shift  .tl_set:N = \l__endiagram_niveau_shift_tl ,
+    niveau .code:n   = 
+      {
+        \bool_set_true:N \l__endiagram_niveau_pick_bool
+        \clist_clear:N \l__endiagram_niveau_clist
+        \clist_set:Nn \l__endiagram_niveau_clist { #1 }
+      }
+  }
+
+\Endiagram_new_environment_command:Nnn \ShowNiveaus { o }
+  {
+    \group_begin:
+      \IfNoValueF { #1 } { \keys_set:nn { ENdiagram / ShowNiveaus } { #1 } }
+      \bool_if:NTF \l__endiagram_niveau_pick_bool
+        {
+           \clist_map_inline:Nn \l__endiagram_niveau_clist
+             {
+               \endiagram_draw:xn
+                 { \exp_not:V \l__endiagram_niveau_tikz_tl }
+                 {
+                   (##1) ++ (\l__endiagram_niveau_shift_tl,0)
+                   ++(-.5*\l__endiagram_niveau_length_tl,0) -- ++(\l__endiagram_niveau_length_tl,0)
+                 }
+             }
+        }
+        {
+          \int_do_until:nn
+            { \l__endiagram_niveau_counter_int > \g__endiagram_points_max_int }
+            {
+              \endiagram_draw:xn
+                { \exp_not:V \l__endiagram_niveau_tikz_tl }
+                {
+                  (
+                    N
+                    \int_to_arabic:n { \g__endiagram_curve_int }
+                    -
+                    \int_to_arabic:n { \l__endiagram_niveau_counter_int }
+                  )
+                  ++ (\l__endiagram_niveau_shift_tl,0)
+                  ++(-.5*\l__endiagram_niveau_length_tl,0) -- ++(\l__endiagram_niveau_length_tl,0)
+                }
+              \int_incr:N \l__endiagram_niveau_counter_int
+            }
+        }
+    \group_end:
+  }
+
+% --------------------------------------------------------------------------- %
+% show the energy gain
+\bool_new:N \l__endiagram_show_gain_right_bool
+\bool_new:N \l__endiagram_gain_label_bool
+\bool_new:N \l__endiagram_gain_own_label_bool
+\bool_new:N \l__endiagram_gain_connect_from_niveau_bool
+
+\tl_new:N   \l__endiagram_gain_label_text_tl
+\tl_new:N   \l__endiagram_gain_label_side_tl
+\tl_set:Nn  \l__endiagram_gain_label_side_tl { right }
+\tl_new:N   \l__endiagram_gain_label_pos_tl
+\tl_set:Nn  \l__endiagram_gain_label_pos_tl { .5 }
+\tl_new:N   \l__endiagram_gain_label_tikz_tl
+\tl_new:N   \l__endiagram_gain_tikz_tl
+\tl_set:Nn  \l__endiagram_gain_tikz_tl { <-> }
+\tl_new:N   \l__endiagram_gain_connect_tikz_tl
+\tl_set:Nn  \l__endiagram_gain_connect_tikz_tl { dashed,help~lines }
+\tl_new:N   \l__endiagram_gain_x_value_tl
+\tl_new:N   \l__endiagram_gain_offset_tl
+\tl_set:Nn  \l__endiagram_gain_offset_tl { 0 }
+\tl_new:N   \g__endiagram_gain_offset_tl
+\tl_gset:Nn \g__endiagram_gain_offset_tl { 0 }
+\tl_new:N   \l__endiagram_gain_value_tl
+
+\keys_define:nn { ENdiagram / ShowGain }
+  {
+    tikz              .tl_set:N   = \l__endiagram_gain_tikz_tl ,
+    connect           .tl_set:N   = \l__endiagram_gain_connect_tikz_tl ,
+    connect-from-line .bool_set:N = \l__endiagram_gain_connect_from_niveau_bool ,
+    connect-from-line .default:n  = true ,
+    offset            .tl_set:N   = \l__endiagram_gain_offset_tl ,
+    label             .code:n     =
+      {
+        \tl_if_eq:nnTF { true } { #1 }
+          { \bool_set_true:N \l__endiagram_gain_label_bool }
+          {
+            \tl_if_eq:nnF { false } { #1 }
+              {
+                \bool_set_true:N \l__endiagram_gain_label_bool
+                \bool_set_true:N \l__endiagram_gain_own_label_bool
+                \tl_set:Nn \l__endiagram_gain_label_text_tl { #1 }
+              }
+          }
+      } ,
+    label             .default:n  = true ,
+    label-side        .choice: ,
+    label-side / right .code:n    =
+      { \tl_set:Nn \l__endiagram_gain_label_side_tl { right } } ,
+    label-side / left .code:n     =
+      { \tl_set:Nn \l__endiagram_gain_label_side_tl { left } } ,
+    label-pos         .tl_set:N   = \l__endiagram_gain_label_pos_tl ,
+    label-tikz        .tl_set:N   = \l__endiagram_gain_label_tikz_tl
+  }
+
+\Endiagram_new_environment_command:Nnn \ShowGain { o }
+  {
+    \bool_set_true:N \l__endiagram_show_gain_right_bool
+    \group_begin:
+      \IfNoValueF { #1 } { \keys_set:nn { ENdiagram / ShowGain } { #1 } }
+      \fp_compare:nNnT { \g__endiagram_gain_offset_tl } < { \l__endiagram_gain_offset_tl }
+        { \tl_gset_eq:NN \g__endiagram_gain_offset_tl \l__endiagram_gain_offset_tl }
+      \tl_set:Nx \l__endiagram_gain_x_value_tl
+        { \int_to_arabic:n { \int_eval:n { \g__endiagram_points_max_int - 1} } }
+      \endiagram_draw:xn { \exp_not:V \l__endiagram_gain_tikz_tl }
+        {
+          let \p1 = (N\int_to_arabic:n { \g__endiagram_curve_int }-1) ,
+              \p2 = (N\int_to_arabic:n { \g__endiagram_curve_int }-\int_to_arabic:n { \g__endiagram_points_max_int })
+          in
+            ($\l__endiagram_points_step_tl*(\l__endiagram_gain_x_value_tl,0)+(\l__endiagram_gain_offset_tl+1,\y1)$)
+            --
+            ($\l__endiagram_points_step_tl*(\l__endiagram_gain_x_value_tl,0)+(\l__endiagram_gain_offset_tl+1,\y2)$)
+          node[pos=0,inner~sep=0] (gain-start\int_to_arabic:n { \g__endiagram_curve_int }) {}
+          node[pos=1,inner~sep=0] (gain-end\int_to_arabic:n { \g__endiagram_curve_int }) {}
+        }
+      \fp_set:Nn \l__Endiagram_tmpa_fp
+        { \clist_item:Nn \l__endiagram_points_clist { 1 } }
+      \fp_set:Nn \l__Endiagram_tmpb_fp
+        { \clist_item:Nn \l__endiagram_points_clist { \g__endiagram_points_max_int } }
+%       \fp_sub:Nn \l__Endiagram_tmpb_tl { 1 }
+      \fp_set:Nn \l__Endiagram_tmpc_fp
+        {
+          \l__endiagram_gain_x_value_tl * \l__endiagram_points_step_tl
+          + \l__endiagram_gain_offset_tl + 1
+        }
+      \bool_if:NT \l__endiagram_debug_bool
+        {
+          \endiagram_draw:nn {font=\tiny,inner~sep=0}
+            {
+              let \p1 = ( gain-start\int_to_arabic:n { \g__endiagram_curve_int } ) ,
+                  \p2 = ( gain-end\int_to_arabic:n { \g__endiagram_curve_int } )
+              in
+                  node[right=2pt,fill=yellow!10]
+                    at ( \p1 )
+                    { gain-start\int_to_arabic:n { \g__endiagram_curve_int } }
+                  node[right=2pt,fill=yellow!10]
+                    at ( \p2 )
+                    { gain-end\int_to_arabic:n { \g__endiagram_curve_int } }
+                  node[above~right,red]
+                    at (\p1)
+                    {(\fp_to_tl:N \l__Endiagram_tmpc_fp,\fp_to_tl:N \l__Endiagram_tmpa_fp)}
+                  node[above~right,red]
+                    at (\p2)
+                    {(\fp_to_tl:N \l__Endiagram_tmpc_fp,\fp_to_tl:N \l__Endiagram_tmpb_fp)}
+            }
+        }
+      \bool_if:NT \l__endiagram_gain_label_bool
+        {
+          \bool_if:NF \l__endiagram_gain_own_label_bool
+            {
+              \bool_if:nTF
+                { \l__endiagram_energy_unit_bool && \l__endiagram_calculate_bool }
+                {
+                  \fp_set:Nn \l__Endiagram_tmpb_fp
+                    {
+                      (\l__Endiagram_tmpb_fp - \l__Endiagram_tmpa_fp) *
+                      \l__endiagram_energy_step_tl
+                    }
+                  \fp_set:Nn \l__Endiagram_tmpb_fp
+                    { round( \l__Endiagram_tmpb_fp , \l__endiagram_energy_round_tl ) }
+                  \tl_set:Nx \l__endiagram_gain_value_tl
+                    {
+                      = \exp_not:N \SI
+                        { \fp_to_tl:N \l__Endiagram_tmpb_fp }
+                        { \exp_not:V \l__endiagram_energy_unit_tl }
+                    }
+                  % \tl_show:N \l__endiagram_gain_value_tl
+                }
+                {
+                  \fp_compare:nNnTF { \l__Endiagram_tmpa_fp } > { \l__Endiagram_tmpb_fp }
+                    { \tl_set:Nn \l__endiagram_gain_value_tl { < 0 } }
+                    { \tl_set:Nn \l__endiagram_gain_value_tl { > 0 } }
+                }
+              \tl_set:Nn \l__endiagram_gain_label_text_tl
+                { $\Delta H \l__endiagram_gain_value_tl$ }
+            }
+          \endiagram_draw:nx {}
+            {
+              ($
+                (gain-end\int_to_arabic:n { \g__endiagram_curve_int })
+                !\l__endiagram_gain_label_pos_tl!
+                (gain-start\int_to_arabic:n { \g__endiagram_curve_int })$)
+              node
+                [
+                  \l__endiagram_gain_label_side_tl ,
+                  \exp_not:V \l__endiagram_gain_label_tikz_tl
+                ]
+              { \exp_not:V \l__endiagram_gain_label_text_tl }
+            }
+        }
+      \bool_if:NTF \l__endiagram_gain_connect_from_niveau_bool
+        {
+          \endiagram_draw:xf
+            { \exp_not:V \l__endiagram_gain_connect_tikz_tl }
+            {
+              let \p1 = (N\int_to_arabic:n { \g__endiagram_curve_int }-1) ,
+                  \p2 = (N\int_to_arabic:n { \g__endiagram_curve_int }-\int_to_arabic:n { \g__endiagram_points_max_int })
+              in
+                (gain-end\int_to_arabic:n { \g__endiagram_curve_int }) ++ (.5,0) -- ($(\p2)+(.5*\l__endiagram_niveau_length_tl,0)$)
+                (gain-start\int_to_arabic:n { \g__endiagram_curve_int }) ++ (.5,0) -- ($(\p1)+(.5*\l__endiagram_niveau_length_tl,0)$)
+            }
+        }
+        {
+          \endiagram_draw:xf
+            { \exp_not:V \l__endiagram_gain_connect_tikz_tl }
+            {
+              let \p1 = (N\int_to_arabic:n { \g__endiagram_curve_int }-1) ,
+                  \p2 = (N\int_to_arabic:n { \g__endiagram_curve_int }-\int_to_arabic:n { \g__endiagram_points_max_int })
+              in
+                (gain-end\int_to_arabic:n { \g__endiagram_curve_int }) ++ (.5,0) -- (\p2)
+                (gain-start\int_to_arabic:n { \g__endiagram_curve_int }) ++ (.5,0) -- (\p1)
+            }
+        }
+    \group_end:
+  }
+
+% --------------------------------------------------------------------------- %
+% show the activation energy
+\bool_new:N  \l__endiagram_ea_all_bool
+\bool_new:N  \l__endiagram_ea_coordinates_bool
+\bool_new:N  \l__endiagram_ea_coordinates_points_bool
+\bool_new:N  \l__endiagram_ea_label_bool
+\bool_new:N  \l__endiagram_ea_own_label_bool
+
+\int_new:N   \g__endiagram_ea_int
+\int_gzero:N \g__endiagram_ea_int
+\int_new:N   \l__endiagram_ea_count_int
+\int_zero:N  \l__endiagram_ea_count_int
+
+\tl_new:N    \l__endiagram_ea_tikz_tl
+\tl_set:Nn   \l__endiagram_ea_tikz_tl { <-> }
+\tl_new:N    \l__endiagram_ea_connect_tikz_tl
+\tl_set:Nn   \l__endiagram_ea_connect_tikz_tl { dashed, help~lines }
+\tl_new:N    \l__endiagram_ea_label_text_tl
+\tl_set_rescan:Nnn \l__endiagram_ea_label_text_tl
+  { \char_set_catcode_math_subscript:N \_ } { $E_{\mathrm{a}}$ }
+\tl_new:N    \l__endiagram_ea_value_tl
+\tl_new:N    \l__endiagram_ea_label_tikz_tl
+\tl_new:N    \l__endiagram_ea_label_side_tl
+\tl_set:Nn   \l__endiagram_ea_label_side_tl { right }
+\tl_new:N    \l__endiagram_ea_label_pos_tl
+\tl_set:Nn   \l__endiagram_ea_label_pos_tl { .5}
+\tl_new:N    \l__endiagram_ea_start_node_tl
+\tl_new:N    \l__endiagram_ea_end_node_tl
+
+\fp_new:N    \l__endiagram_ea_connect_start_fp
+\fp_new:N    \l__endiagram_ea_connect_end_fp
+
+\keys_define:nn { ENdiagram / ShowEa }
+  {
+    max         .choice: ,
+    max / all   .code:n    = \bool_set_true:N \l__endiagram_ea_all_bool ,
+    max / first .code:n    = \bool_set_false:N \l__endiagram_ea_all_bool ,
+    tikz        .tl_set:N  = \l__endiagram_ea_tikz_tl ,
+    connect     .tl_set:N  = \l__endiagram_ea_connect_tikz_tl ,
+    from        .code:n    =
+      {
+        \bool_set_true:N \l__endiagram_ea_coordinates_bool
+        \__endiagram_detect_ea:n { #1 }
+      } ,
+    label       .code:n    =
+      {
+        \tl_if_eq:nnTF { true } { #1 }
+          { \bool_set_true:N \l__endiagram_ea_label_bool }
+          {
+            \tl_if_eq:nnF { false } { #1 }
+              {
+                \bool_set_true:N \l__endiagram_ea_own_label_bool
+                \bool_set_true:N \l__endiagram_ea_label_bool
+                \tl_set:Nn \l__endiagram_ea_label_text_tl { #1 }
+              }
+          }
+      } ,
+    label       .default:n = true ,
+    label-side  .choice: ,
+    label-side / right .code:n =
+      { \tl_set:Nn \l__endiagram_ea_label_side_tl { right } } ,
+    label-side / left .code:n =
+      { \tl_set:Nn \l__endiagram_ea_label_side_tl { left } } ,
+    label-pos   .tl_set:N  = \l__endiagram_ea_label_pos_tl ,
+    label-tikz  .tl_set:N  = \l__endiagram_ea_label_tikz_tl
+  }
+
+\cs_new_protected:Npn \__endiagram_detect_ea:n #1
+  {
+    % remember blanks
+    \tl_set:Nn \l__Endiagram_tmpa_tl { #1 }
+    \tl_replace_all:Nnn \l__Endiagram_tmpa_tl { ~ } { @@@ }
+    \exp_after:wN \__endiagram_detect_ea_auxi:nn \l__Endiagram_tmpa_tl \q_nil
+  }
+
+\cs_new_protected:Npn \__endiagram_detect_ea_auxi:nn (#1) #2 \q_nil
+  {
+    % recover blanks in node #1
+    \tl_set:Nn \l__Endiagram_tmpa_tl { #1 }
+    \tl_replace_all:Nnn \l__Endiagram_tmpa_tl { @@@ } { ~ }
+    \tl_set_eq:NN \l__endiagram_ea_start_node_tl \l__Endiagram_tmpa_tl
+    \__endiagram_detect_ea_auxii:nn #2
+  }
+
+\cs_new_protected:Npn \__endiagram_detect_ea_auxii:nn #1 (#2)
+  {
+    % recover blanks in node #2
+    \tl_set:Nn \l__Endiagram_tmpa_tl { #2 }
+    \tl_set:Nn \l__Endiagram_tmpb_tl { #1 }
+    \tl_replace_all:Nnn \l__Endiagram_tmpa_tl { @@@ } { ~ }
+    \tl_set_eq:NN \l__endiagram_ea_end_node_tl \l__Endiagram_tmpa_tl
+    % ignore blanks in between and test for right syntax
+    \tl_remove_all:Nn \l__Endiagram_tmpb_tl { @@@ }
+    \tl_if_eq:VnF \l__Endiagram_tmpb_tl { to }
+      { \msg_error:nn { ENdiagram } { ShowEa } }
+  }
+\cs_generate_variant:Nn \tl_if_eq:nnF { V }
+
+\Endiagram_new_environment_command:Nnn \ShowEa { o }
+  {
+    \int_gincr:N \g__endiagram_ea_int
+    \group_begin:
+    \IfNoValueF { #1 } { \keys_set:nn { ENdiagram / ShowEa } { #1 } }
+    \bool_if:NTF \l__endiagram_ea_coordinates_bool
+      {
+        \endiagram_draw:xn
+          { \exp_not:V \l__endiagram_ea_tikz_tl }
+          {
+            ( \l__endiagram_ea_end_node_tl |- \l__endiagram_ea_start_node_tl )
+            --
+            ( \l__endiagram_ea_end_node_tl )
+          }
+        \bool_if:NT \l__endiagram_ea_label_bool
+          {
+            \bool_if:nT
+              {
+                \l__endiagram_energy_unit_bool &&
+                \l__endiagram_calculate_bool &&
+                !\l__endiagram_ea_own_label_bool
+              }
+              {
+                % determine length of Ea-line
+                \endiagram_draw:nn { }
+                  {
+                    let \p1 = (\l__endiagram_ea_start_node_tl),
+                        \p2 = (\l__endiagram_ea_end_node_tl)
+                    in
+                    node at (\p2) { \dim_gset:Nn \g__Endiagram_tmpa_dim { \y2 - \y1 } }
+                  }
+                % convert length of Ea-line into energy value
+                \fp_set:Nn \l__Endiagram_tmpb_fp { \dim_to_fp:Nn { 1cm } }
+                \fp_set:Nn \l__Endiagram_tmpa_fp
+                  {
+                    \dim_to_fp:n { \g__Endiagram_tmpa_dim } /
+                    \l__Endiagram_tmpb_fp *
+                    \l__endiagram_energy_step_tl
+                  }
+                \fp_set:Nn \l__Endiagram_tmpb_fp
+                  { round( \l__Endiagram_tmpb_fp , \l__endiagram_energy_round_tl ) }
+                \tl_set:Nx \l__endiagram_ea_value_tl
+                  {
+                    ~ = ~ \exp_not:N \SI
+                      { \fp_to_tl:N \l__Endiagram_tmpa_fp }
+                      { \exp_not:V \l__endiagram_energy_unit_tl }
+                  }
+              }
+            \endiagram_draw:xn
+              { \exp_not:V \l__endiagram_ea_label_tikz_tl }
+              {
+                node[\l__endiagram_ea_label_side_tl] at
+                ($
+                  (\l__endiagram_ea_end_node_tl)
+                  !\l__endiagram_ea_label_pos_tl!
+                  (\l__endiagram_ea_end_node_tl |- \l__endiagram_ea_start_node_tl)
+                $)
+                { \l__endiagram_ea_label_text_tl \l__endiagram_ea_value_tl }
+              }
+          }
+        \endiagram_draw:xn
+          { \exp_not:V \l__endiagram_ea_connect_tikz_tl }
+          {
+            ( \l__endiagram_ea_start_node_tl )
+            --
+            ( \l__endiagram_ea_end_node_tl |- \l__endiagram_ea_start_node_tl )
+            node
+            (
+              ea-end
+              \int_to_arabic:n { \g__endiagram_curve_int }-
+              \int_to_arabic:n { \g__endiagram_ea_int }-
+              0
+            ) {}
+          }
+        \bool_if:NT \l__endiagram_debug_bool
+          {
+            \endiagram_draw:nn { inner~sep=0,font=\tiny }
+              {
+                (
+                  ea-end
+                  \int_to_arabic:n { \g__endiagram_curve_int }-
+                  \int_to_arabic:n { \g__endiagram_ea_int }-
+                  0
+                )
+                node[below~right,fill=yellow!10]
+                  {
+                     ea-end
+                     \int_to_arabic:n { \g__endiagram_curve_int }-
+                     \int_to_arabic:n { \g__endiagram_ea_int }-
+                     0
+                  }
+              }
+          }
+      }
+      {
+        \int_do_until:nn
+          { \l__endiagram_ea_count_int >= \g__endiagram_points_max_int - 1 }
+          {
+            \fp_set:Nn \l__Endiagram_tmpa_fp
+              {
+                \clist_item:Nn \l__endiagram_points_clist
+                  { \int_eval:n { \l__endiagram_ea_count_int + 1 } }
+              }
+            \fp_set:Nn \l__Endiagram_tmpb_fp
+              {
+                \clist_item:Nn \l__endiagram_points_clist
+                  { \int_eval:n { \l__endiagram_ea_count_int + 2 } }
+              }
+            \fp_compare:nNnT { \l__Endiagram_tmpa_fp } < { \l__Endiagram_tmpb_fp }
+              {
+                \prop_get:NfN \l__endiagram_points_prop
+                  { \int_eval:n { \l__endiagram_ea_count_int + 1 } } \l__Endiagram_tmpc_tl
+                \fp_set:Nn \l__endiagram_ea_connect_end_fp { \l__Endiagram_tmpc_tl }
+                \prop_get:NfN \l__endiagram_points_prop
+                  { \int_eval:n { \l__endiagram_ea_count_int } } \l__Endiagram_tmpc_tl
+                \fp_set:Nn \l__endiagram_ea_connect_start_fp { \l__Endiagram_tmpc_tl }
+                \endiagram_draw:xn
+                  { \exp_not:V \l__endiagram_ea_tikz_tl }
+                  {
+                    (
+                      \fp_to_tl:N \l__endiagram_ea_connect_end_fp ,
+                      \fp_to_tl:N \l__Endiagram_tmpa_fp
+                    )
+                    node
+                      (
+                        ea-end
+                        \int_to_arabic:n { \g__endiagram_curve_int }-
+                        \int_to_arabic:n { \g__endiagram_ea_int }-
+                        \int_to_arabic:n { \l__endiagram_ea_count_int }
+                      ) { }
+                    --
+                    (
+                      \fp_to_tl:N \l__endiagram_ea_connect_end_fp ,
+                      \fp_to_tl:N \l__Endiagram_tmpb_fp
+                    )
+                  }
+                \bool_if:NT \l__endiagram_ea_label_bool
+                  {
+                    \bool_if:nT
+                      {
+                        \l__endiagram_energy_unit_bool &&
+                        \l__endiagram_calculate_bool &&
+                        !\l__endiagram_ea_own_label_bool
+                      }
+                      {
+                        \fp_set:Nn \l__Endiagram_tmpc_fp
+                          {
+                            ( \l__Endiagram_tmpb_fp - \l__Endiagram_tmpa_fp ) *
+                            \l__endiagram_energy_step_tl
+                          }
+                        \tl_gset:Nx \l__endiagram_ea_value_tl
+                          {
+                            ~ = ~ \exp_not:N \SI
+                              { \fp_to_tl:N \l__Endiagram_tmpc_fp }
+                              { \exp_not:V \l__endiagram_energy_unit_tl }
+                          }
+                      }
+                    \endiagram_draw:xn
+                      { \exp_not:V \l__endiagram_ea_label_tikz_tl }
+                      {
+                        node[\l__endiagram_ea_label_side_tl] at
+                          ($
+                            (
+                              \fp_to_tl:N \l__endiagram_ea_connect_end_fp ,
+                              \fp_to_tl:N \l__Endiagram_tmpa_fp
+                            )
+                           !\l__endiagram_ea_label_pos_tl!
+                            (
+                              \fp_to_tl:N \l__endiagram_ea_connect_end_fp ,
+                              \fp_to_tl:N \l__Endiagram_tmpb_fp
+                            )
+                          $)
+                          { \l__endiagram_ea_label_text_tl \l__endiagram_ea_value_tl }
+                       }
+                  }
+                \endiagram_draw:xn
+                  { \exp_not:V \l__endiagram_ea_connect_tikz_tl }
+                  {
+                    (
+                      \fp_to_tl:N \l__endiagram_ea_connect_end_fp ,
+                      \fp_to_tl:N \l__Endiagram_tmpa_fp
+                    )
+                    --
+                    ++
+                    (
+                      \fp_to_tl:N \l__endiagram_ea_connect_start_fp
+                      -
+                      \fp_to_tl:N \l__endiagram_ea_connect_end_fp , 0
+                    )
+                  }
+                \bool_if:NT \l__endiagram_debug_bool
+                  {
+                    \endiagram_draw:nn
+                      { inner~sep=0,font=\tiny }
+                      {
+                        (
+                           ea-end
+                          \int_to_arabic:n { \g__endiagram_curve_int }-
+                          \int_to_arabic:n { \g__endiagram_ea_int }-
+                          \int_to_arabic:n { \l__endiagram_ea_count_int }
+                        )
+                        node[below~right,fill=yellow!10]
+                        {
+                           ea-end
+                          \int_to_arabic:n { \g__endiagram_curve_int }-
+                          \int_to_arabic:n { \g__endiagram_ea_int }-
+                          \int_to_arabic:n { \l__endiagram_ea_count_int }
+                        }
+                        node[above~right,red]
+                        { ( \fp_to_tl:N \l__endiagram_ea_connect_end_fp , \fp_to_tl:N \l__Endiagram_tmpa_fp ) }
+                      }
+                  }
+                \bool_if:NF \l__endiagram_ea_all_bool
+                  {
+                    % set count unreasonably high to ensure we're over
+                    % \g__endiagram_points_max_int
+                    \int_add:Nn \l__endiagram_ea_count_int { 1000 }
+                  }
+              }
+            \int_incr:N \l__endiagram_ea_count_int
+          }
+      }
+    \group_end:
+  }
+\cs_generate_variant:Nn \prop_get:NnN { Nf , Nx }
+
+% --------------------------------------------------------------------------- %
+% add axis labels
+\bool_new:N \l__endiagram_add_axis_yl_bool
+\bool_set_true:N \l__endiagram_add_axis_yl_bool
+\bool_new:N \l__endiagram_add_axis_yr_bool
+\bool_new:N \l__endiagram_add_axis_x_bool
+
+\tl_new:N \l__endiagram_add_axis_connect_tl
+\tl_set:Nn \l__endiagram_add_axis_connect_tl { dashed,help~lines }
+\tl_new:N \l__endiagram_add_axis_font_tl
+
+\keys_define:nn { ENdiagram / AddAxisLabel }
+  {
+    axis        .choice: ,
+    axis / y-l  .code:n   =
+      {
+        \bool_set_true:N \l__endiagram_add_axis_yl_bool
+        \bool_set_false:N \l__endiagram_add_axis_yr_bool
+        \bool_set_false:N \l__endiagram_add_axis_x_bool
+      } ,
+    axis / y-r  .code:n   =
+      {
+        \bool_set_false:N \l__endiagram_add_axis_yl_bool
+        \bool_set_true:N \l__endiagram_add_axis_yr_bool
+        \bool_set_false:N \l__endiagram_add_axis_x_bool
+      } ,
+    axis / x    .code:n   =
+      {
+        \bool_set_false:N \l__endiagram_add_axis_yl_bool
+        \bool_set_false:N \l__endiagram_add_axis_yr_bool
+        \bool_set_true:N \l__endiagram_add_axis_x_bool
+      } ,
+    connect     .tl_set:N = \l__endiagram_add_axis_connect_tl ,
+    font        .tl_set:N = \l__endiagram_add_axis_font_tl
+  } 
+
+\Endiagram_new_environment_command:Nnn \AddAxisLabel { so > { \SplitList { ; } } m }
+  {
+    \MakeOrigin
+    \group_begin:
+      \tl_clear:N \l__Endiagram_tmpa_tl
+      \tl_clear:N \l__Endiagram_tmpb_tl
+      \tl_clear:N \l__Endiagram_tmpc_tl
+      \IfNoValueF { #2 } { \keys_set:nn { ENdiagram / AddAxisLabel } { #2 } }
+      \IfBooleanTF { #1 }
+        { % list of "ticks"
+          \bool_if:NT \l__endiagram_add_axis_yl_bool
+            { \__endiagram_add_axis_label_yl_ticks:n { #3 } }
+          \bool_if:NT \l__endiagram_add_axis_yr_bool
+            { \__endiagram_add_axis_label_yr_ticks:n { #3 } }
+          \bool_if:NT \l__endiagram_add_axis_x_bool
+            { \__endiagram_add_axis_label_x_ticks:n { #3 } }
+        }
+        { % list of points
+          \bool_if:NT \l__endiagram_add_axis_yl_bool
+            { \__endiagram_add_axis_label_yl_points:n { #3 } }
+          \bool_if:NT \l__endiagram_add_axis_yr_bool
+            { \__endiagram_add_axis_label_yr_points:n { #3 } }
+          \bool_if:NT \l__endiagram_add_axis_x_bool
+            { \__endiagram_add_axis_label_x_points:n { #3 } }
+        }
+    \group_end:
+  }
+
+\cs_new_protected:Npn \__endiagram_add_axis_label_yl_ticks:n #1
+  {
+    \tl_map_inline:nn { #1 }
+      {
+        \tl_if_in:nnTF { ##1 } { [ }
+          {
+            \group_begin:
+            \__endiagram_get_tick_arg_and_label:w ##1 \q_stop
+            \fp_set:Nn \l__Endiagram_tmpb_fp { \l__Endiagram_label_tl }
+            \bool_if:NT \l__endiagram_energy_bool
+              {
+                \fp_set:Nn \l__Endiagram_tmpb_fp
+                  {
+                    \l__Endiagram_tmpb_fp * \l__endiagram_energy_step_tl
+                    - \l__endiagram_energy_zero_tl
+                  }
+                % \bool_if:NTF \l__endiagram_energy_round_places_bool
+                %   {
+                      \fp_set:Nn \l__Endiagram_tmpb_fp
+                        { round( \l__Endiagram_tmpb_fp , \l__endiagram_energy_round_tl ) }
+                %     \fp_round_places:Nn \l__Endiagram_tmpb_fp
+                %       { \l__endiagram_energy_round_tl }
+                %   }
+                %   {
+                %     \fp_round_figures:Nn \l__Endiagram_tmpb_fp
+                %       { \l__endiagram_energy_round_tl }
+                %   }
+                \tl_set:Nn \l__Endiagram_tmpb_tl { \fp_to_tl:N \l__Endiagram_tmpb_fp }
+              }
+            \endiagram_draw:nx { }
+              {
+                let \exp_not:N \p1 = (origin-l)
+                in
+                  ( \exp_not:N \x1 , \fp_to_tl:N \l__Endiagram_tmpa_fp ) -- ++ (-3pt,0)
+                  node
+                    [
+                      left ,
+                      font = \exp_not:V \l__endiagram_add_axis_font_tl ,
+                      \exp_not:V \l__Endiagram_label_tikz_tl
+                    ]
+                    { \exp_not:V \l__Endiagram_label_tl }
+              }
+            \group_end:
+          }
+          {
+            \fp_set:Nn \l__Endiagram_tmpa_fp { ##1 }
+            \bool_if:NT \l__endiagram_energy_bool
+              {
+                \fp_set:Nn \l__Endiagram_tmpa_fp
+                  {
+                    \l__Endiagram_tmpa_fp * \l__endiagram_energy_step_tl
+                    - \l__endiagram_energy_zero_tl
+                  }
+              }
+            \endiagram_draw:nn { }
+              {
+                let \p1 = (origin-l)
+                in
+                  ( \x1 , ##1 ) -- ++ (-3pt,0)
+                  node[left,font=\l__endiagram_add_axis_font_tl]
+                    { \fp_to_tl:N \l__Endiagram_tmpa_fp }
+              }
+           }
+      }
+  }
+
+% TODO: sollte Energie-Skala und Rundung beachten!
+\cs_new_protected:Npn \__endiagram_add_axis_label_yr_ticks:n #1
+  {
+    \tl_map_inline:nn { #1 }
+      {
+        \tl_if_in:nnTF { ##1 } { [ }
+          {
+            \group_begin:
+            \__endiagram_get_tick_arg_and_label:w ##1 \q_stop
+            \endiagram_draw:nx { }
+              {
+                  ( \fp_to_tl:N \g__endiagram_x_max_fp , \l__Endiagram_point_tl ) -- ++ (3pt,0)
+                  node
+                    [
+                      right ,
+                      font = \exp_not:V \l__endiagram_add_axis_font_tl ,
+                      \exp_not:V \l__Endiagram_label_tikz_tl
+                    ]
+                    { \exp_not:V \l__Endiagram_label_tl }
+              }
+            \group_end:
+          }
+          {
+            \endiagram_draw:nn { }
+              {
+                let \p1 = (origin-r)
+                in
+                  ( \x1 , ##1 ) -- ++ (3pt,0)
+                  node[right,font=\l__endiagram_add_axis_font_tl] { ##1 }
+              }
+           }
+      }
+  }
+
+\cs_new_protected:Npn \__endiagram_add_axis_label_x_ticks:n #1
+  {
+    \tl_map_inline:nn { #1 }
+      {
+        \tl_if_in:nnTF { ##1 } { [ }
+          {
+            \group_begin:
+            \__endiagram_get_tick_arg_and_label:w ##1 \q_stop
+            \endiagram_draw:nx { }
+              {
+                let \exp_not:N \p1 = (origin-l)
+                in
+                  ( \l__Endiagram_point_tl , \exp_not:N \y1 ) -- ++ (-3pt,0)
+                  node
+                    [
+                      below ,
+                      font = \exp_not:V \l__endiagram_add_axis_font_tl ,
+                      \exp_not:V \l__Endiagram_label_tikz_tl
+                    ]
+                    { \exp_not:V \l__Endiagram_label_tl }
+              }
+            \group_end:
+          }
+          {
+            \endiagram_draw:nn { }
+              {
+                let \p1 = (origin-l)
+                in
+                  ( ##1 , \y1 ) -- ++ (-3pt,0)
+                  node[below,font=\l__endiagram_add_axis_font_tl] { ##1 }
+              }
+           }
+      }
+  }
+
+\cs_new_protected:Npn \__endiagram_add_axis_label_yl_points:n #1
+  {
+    \tl_map_inline:nn { #1 }
+      {
+        \tl_if_in:nnTF { ##1 } { [ }
+          {
+            \group_begin:
+              \__endiagram_get_tick_point_and_label:w ##1 \q_stop
+              \endiagram_draw:xn
+                { \exp_not:V \l__endiagram_add_axis_connect_tl }
+                {
+                  (\l__Endiagram_point_tl)
+                    --
+                  (\l__Endiagram_point_tl -| origin-l)
+                }
+              \endiagram_draw:nx { }
+                {
+                  (\l__Endiagram_point_tl -| origin-l) -- ++ (-3pt,0)
+                  node
+                    [
+                      left ,
+                      font = \exp_not:V \l__endiagram_add_axis_font_tl ,
+                      \exp_not:V \l__Endiagram_label_tikz_tl
+                    ]
+                    { \exp_not:V \l__Endiagram_label_tl }
+                }
+            \group_end:
+          }
+          {
+            \group_begin:
+              \__endiagram_get_tick_node:w ##1 \q_stop
+              \endiagram_draw:xn
+                { \exp_not:V \l__endiagram_add_axis_connect_tl }
+                {
+                  (\l__Endiagram_tick_node_tl) -- (\l__Endiagram_tick_node_tl -| origin-l)
+                }
+              \endiagram_draw:nn { }
+                {
+                  (\l__Endiagram_tick_node_tl -| origin-l) -- ++ (-3pt,0)
+                }
+            \group_end:
+          }
+      }
+  }
+
+\cs_new_protected:Npn \__endiagram_add_axis_label_yr_points:n #1
+  {
+    \tl_map_inline:nn { #1 }
+      {
+        \tl_if_in:nnTF { ##1 } { [ }
+          {
+            \group_begin:
+              \__endiagram_get_tick_point_and_label:w ##1 \q_stop
+              \endiagram_draw:xn
+                { \exp_not:V \l__endiagram_add_axis_connect_tl }
+                {
+                  (\l__Endiagram_point_tl)
+                    --
+                  (\l__Endiagram_point_tl -| origin-r)
+                }
+              \endiagram_draw:nx { }
+                {
+                  (\l__Endiagram_point_tl -| origin-r) -- ++ (3pt,0)
+                  node
+                    [
+                      right ,
+                      font = \exp_not:V \l__endiagram_add_axis_font_tl ,
+                      \exp_not:V \l__Endiagram_label_tikz_tl
+                    ]
+                    { \exp_not:V \l__Endiagram_label_tl }
+                }
+            \group_end:
+          }
+          {
+            \group_begin:
+              \__endiagram_get_tick_node:w ##1 \q_stop
+              \endiagram_draw:xn
+                { \exp_not:V \l__endiagram_add_axis_connect_tl }
+                {
+                  (\l__Endiagram_tick_node_tl)
+                   --
+                  (\l__Endiagram_tick_node_tl -| origin-r)
+                }
+              \endiagram_draw:nn { }
+                { (\l__Endiagram_tick_node_tl -| origin-r) -- ++ (3pt,0) }
+            \group_end:
+          }
+      }
+  }
+
+\cs_new_protected:Npn \__endiagram_add_axis_label_x_points:n #1
+  {
+    \tl_map_inline:nn { #1 }
+      {
+        \tl_if_in:nnTF { ##1 } { [ }
+          {
+            \group_begin:
+              \__endiagram_get_tick_point_and_label:w ##1 \q_stop
+              \endiagram_draw:xn
+                { \exp_not:V \l__endiagram_add_axis_connect_tl }
+                {
+                  (\l__Endiagram_point_tl)
+                    --
+                  (\l__Endiagram_point_tl |- origin-l)
+                }
+              \endiagram_draw:nx { }
+                {
+                  (\l__Endiagram_point_tl |- origin-l) -- ++ (-3pt,0)
+                  node
+                    [
+                      below ,
+                      font = \exp_not:V \l__endiagram_add_axis_font_tl ,
+                      \exp_not:V \l__Endiagram_label_tikz_tl
+                    ]
+                    { \exp_not:V \l__Endiagram_label_tl }
+                }
+            \group_end:
+          }
+          {
+            \group_begin:
+              \__endiagram_get_tick_node:w ##1 \q_stop
+              \endiagram_draw:xn
+                { \exp_not:V \l__endiagram_add_axis_connect_tl }
+                {
+                  (\l__Endiagram_tick_node_tl)
+                    --
+                  (\l__Endiagram_tick_node_tl |- origin-l)
+                }
+              \endiagram_draw:nn { }
+                { (\l__Endiagram_tick_node_tl |- origin-l) -- ++ (-3pt,0) }
+            \group_end:
+          }
+      }
+  }
+
+\cs_new_protected:Npn \__endiagram_get_tick_arg_and_label:w #1[#2] \q_stop
+  {
+    \fp_set:Nn \l__Endiagram_tmpa_fp { #1 }
+    \endiagram_get_label_and_tikz:n { #2 }
+  }
+
+\tl_new:N \l__Endiagram_point_tl
+\tl_new:N \l__Endiagram_tick_node_tl
+\tl_new:N \l__Endiagram_label_tl
+\tl_new:N \l__Endiagram_label_tikz_tl
+
+\cs_new_protected:Npn \__endiagram_get_tick_point_and_label:w (#1)[#2] \q_stop
+  {
+    \tl_set:Nn \l__Endiagram_point_tl { #1 }
+    \endiagram_get_label_and_tikz:n { #2 }
+  }
+
+\cs_new_protected:Npn \__endiagram_get_tick_node:w (#1) \q_stop
+  { \tl_set:Nn \l__Endiagram_tick_node_tl { #1 } }
+
+\cs_new_protected:Npn \endiagram_get_label_and_tikz:n #1
+  {
+    \tl_if_in:nnTF { #1 } { , }
+      { \__endiagram_get_label_and_tikz_aux:w #1 \q_stop }
+      { \tl_set:Nn \l__Endiagram_label_tl { #1 } }
+  }
+
+\cs_new_protected:Npn \__endiagram_get_label_and_tikz_aux:w #1,#2 \q_stop
+  {
+    \tl_set:Nn \l__Endiagram_label_tl { #1 }
+    \tl_set:Nn \l__Endiagram_label_tikz_tl { #2 }
+  }
+
+% --------------------------------------------------------------------------- %
+% make origin
+\bool_new:N \l__endiagram_origin_made_bool
+  
+\Endiagram_new_environment_command:Nnn \MakeOrigin {}
+  {
+    \bool_if:NF \l__endiagram_origin_made_bool
+      {
+        \bool_set_true:N \l__endiagram_origin_made_bool
+        \fp_gsub:Nn \g__endiagram_y_min_fp { 1 }
+        \fp_gadd:Nn \g__endiagram_y_max_fp { 1 }
+        \fp_gsub:Nn \g__endiagram_x_min_fp { 1.5 }
+        \fp_gsub:Nn \g__endiagram_x_min_fp { \l__endiagram_diagram_l_offset_tl }
+        \fp_gadd:Nn \g__endiagram_x_max_fp { 1.5 }
+        \endiagram_draw:nn {}
+            {
+              coordinate (origin-l) at
+              (-1.5-\l__endiagram_diagram_l_offset_tl,\fp_to_tl:N \g__endiagram_y_min_fp )
+            }
+          \bool_if:NT \l__endiagram_debug_bool
+            {
+              \fp_set:Nn \l__Endiagram_tmpa_tl { -1.5 }
+              \fp_sub:Nn \l__Endiagram_tmpa_tl { \l__endiagram_diagram_l_offset_tl }
+              \endiagram_draw:nn { red } { (origin-l) circle (2pt) }
+              \endiagram_draw:nn { font=\tiny,inner~sep=0 }
+                {
+                  node[above~right,red] at (origin-l)
+                    { ( \fp_to_tl:N \l__Endiagram_tmpa_tl , \fp_to_tl:N \g__endiagram_y_min_fp ) }
+                  node[fill=yellow!10,below~right] at (origin-l)
+                    { origin-l }
+                }
+            }
+        \endiagram_draw:nn {}
+          {
+            coordinate (origin-r) at
+            (\fp_to_tl:N \g__endiagram_x_max_fp ,\fp_to_tl:N \g__endiagram_y_min_fp )
+          }
+        \bool_if:NT \l__endiagram_debug_bool
+          {
+            \endiagram_draw:nn { red } { (origin-r) circle (2pt) }
+            \endiagram_draw:nn { font=\tiny,inner~sep=0 }
+              {
+                node[above~right,red] at (origin-r)
+                  { ( \fp_to_tl:N \g__endiagram_x_max_fp ,\fp_to_tl:N \g__endiagram_y_min_fp ) }
+                node[fill=yellow!10,below~right] at (origin-r)
+                  { origin-r }
+              }
+          }
+      }
+  }
+
+% --------------------------------------------------------------------------- %
+% main environment
+\bool_new:N \l__endiagram_y_axis_left_bool
+\bool_set_true:N \l__endiagram_y_axis_left_bool
+\bool_new:N \l__endiagram_y_axis_right_bool
+\bool_new:N \l__endiagram_y_label_pos_bool
+\bool_set_true:N \l__endiagram_y_label_pos_bool
+\bool_new:N \l__endiagram_x_axis_bool
+\bool_set_true:N \l__endiagram_x_axis_bool
+\bool_new:N \l__endiagram_x_label_pos_bool
+\bool_set_true:N \l__endiagram_x_label_pos_bool
+\bool_new:N \l__endiagram_axes_all_bool
+\bool_new:N \l__endiagram_axes_ticks_bool
+\bool_new:N \l__endiagram_axes_ticks_yl_bool
+\bool_new:N \l__endiagram_axes_ticks_yr_bool
+\bool_new:N \l__endiagram_axes_add_ticks_bool
+\bool_new:N \l__endiagram_energy_bool
+\bool_new:N \l__endiagram_energy_unit_bool
+% \bool_new:N \l__endiagram_energy_round_places_bool
+\bool_new:N \l__endiagram_calculate_bool 
+\bool_set_true:N \l__endiagram_calculate_bool 
+
+\tl_new:N \l__endiagram_tikz_tl
+\tl_new:N \l__endiagram_y_axis_tikz_tl
+\tl_new:N \l__endiagram_x_axis_tikz_tl
+\tl_new:N \l__endiagram_axes_ticks_step_tl
+\tl_set:Nn \l__endiagram_axes_ticks_step_tl { 1 }
+\tl_new:N \l__endiagram_y_label_pos_tl
+\tl_set:Nn \l__endiagram_y_label_pos_tl { pos = .5 , }
+\tl_new:N \l__endiagram_y_label_anchor_tl
+\tl_set:Nn \l__endiagram_y_label_anchor_tl { sloped }
+\tl_new:N \l__endiagram_y_label_text_tl
+\tl_set:Nn \l__endiagram_y_label_text_tl { $E$ }
+\tl_new:N \l__endiagram_y_label_angle_tl
+\tl_set:Nn \l__endiagram_y_label_angle_tl { 0 }
+\tl_new:N \l__endiagram_y_label_offset_tl
+\tl_new:N \l__endiagram_x_label_pos_tl
+\tl_set:Nn \l__endiagram_x_label_pos_tl { pos = .5 , }
+\tl_new:N \l__endiagram_x_label_anchor_tl
+\tl_set:Nn \l__endiagram_x_label_anchor_tl { below }
+\tl_new:N \l__endiagram_x_label_text_tl
+\tl_set:Nn \l__endiagram_x_label_text_tl { $\xi$ }
+\tl_new:N \l__endiagram_x_label_angle_tl
+\tl_set:Nn \l__endiagram_x_label_angle_tl { 0 }
+\tl_new:N \l__endiagram_x_label_offset_tl
+\tl_new:N \l__endiagram_diagram_l_offset_tl
+\tl_set:Nn \l__endiagram_diagram_l_offset_tl { 0 }
+\tl_new:N \l__endiagram_diagram_r_offset_tl
+\tl_set:Nn \l__endiagram_diagram_r_offset_tl { 0 }
+\tl_new:N \l__endiagram_diagram_scale_tl
+\tl_set:Nn \l__endiagram_diagram_scale_tl { 1 }
+\tl_new:N \l__endiagram_diagram_unit_factor_tl
+\tl_set:Nn \l__endiagram_diagram_unit_factor_tl { .5 }
+\tl_new:N \l__endiagram_energy_step_tl
+\tl_set:Nn \l__endiagram_energy_step_tl { 1 }
+\tl_new:N \l__endiagram_energy_unit_tl
+\tl_new:N \l__endiagram_energy_unit_separator_tl
+\tl_set:Nn \l__endiagram_energy_unit_separator_tl { / }
+\tl_new:N \l__endiagram_energy_zero_tl
+\tl_set:Nn \l__endiagram_energy_zero_tl { 0 }
+\tl_new:N \l__endiagram_energy_round_tl
+\tl_set:Nn \l__endiagram_energy_round_tl { 3 }
+
+\cs_new_protected:Npn \__endiagram_determine_unit:n #1
+  {
+    \dim_set:Nn \l__endiagram_tmpa_dim { 1pt * \dim_ratio:nn { #1 } { 1cm } }
+    \tl_set:Nn \l__endiagram_diagram_unit_factor_tl { \dim_use:N \l__endiagram_tmpa_dim }
+    \tl_remove_once:Nn \l__endiagram_diagram_unit_factor_tl { pt }
+  }
+
+\keys_define:nn { ENdiagram }
+  {
+    debug                 .bool_set:N = \l__endiagram_debug_bool ,
+    debug                 .default:n  = true ,
+    draft                 .bool_set:N = \l__endiagram_debug_bool ,
+    draft                 .default:n  = true ,
+    final                 .choice: ,
+    final / true          .code:n     =
+      { \bool_set_false:N \l__endiagram_debug_bool } ,
+    final / false         .code:n     =
+      { \bool_set_true:N \l__endiagram_debug_bool } ,
+    final                 .default:n  = true ,
+    axes                  .choice: ,
+    axes / y              .code:n     =
+      {
+        \bool_set_true:N \l__endiagram_y_axis_left_bool
+        \bool_set_false:N \l__endiagram_y_axis_right_bool
+        \bool_set_false:N \l__endiagram_x_axis_bool
+      } ,
+    axes / y-l            .code:n     =
+      {
+        \bool_set_true:N \l__endiagram_y_axis_left_bool
+        \bool_set_false:N \l__endiagram_y_axis_right_bool
+        \bool_set_false:N \l__endiagram_x_axis_bool
+      } ,
+    axes / y-r            .code:n     =
+      {
+        \bool_set_false:N \l__endiagram_y_axis_left_bool
+        \bool_set_true:N \l__endiagram_y_axis_right_bool
+        \bool_set_false:N \l__endiagram_x_axis_bool
+      } ,
+    axes / x              .code:n     =
+      {
+        \bool_set_false:N \l__endiagram_y_axis_left_bool
+        \bool_set_false:N \l__endiagram_y_axis_right_bool
+        \bool_set_true:N \l__endiagram_x_axis_bool
+      } ,
+    axes / xy             .code:n     =
+      {
+        \bool_set_true:N \l__endiagram_y_axis_left_bool
+        \bool_set_false:N \l__endiagram_y_axis_right_bool
+        \bool_set_true:N \l__endiagram_x_axis_bool
+      } ,
+    axes / all            .code:n     =
+      { \bool_set_true:N \l__endiagram_axes_all_bool } ,
+    axes / false          .code:n     =
+      {
+        \bool_set_false:N \l__endiagram_y_axis_left_bool
+        \bool_set_false:N \l__endiagram_y_axis_right_bool
+        \bool_set_false:N \l__endiagram_x_axis_bool
+      } ,
+    y-axis                .tl_set:N   = \l__endiagram_y_axis_tikz_tl ,
+    x-axis                .tl_set:N   = \l__endiagram_x_axis_tikz_tl ,
+    y-label               .choice: ,
+    y-label / above       .code:n     =
+      {
+        \bool_set_false:N \l__endiagram_y_label_pos_bool
+        \tl_clear:N \l__endiagram_y_label_anchor_tl
+      } ,
+    y-label / left        .code:n     =
+      {
+        \bool_set_true:N \l__endiagram_y_label_pos_bool
+        \tl_set:Nn \l__endiagram_y_label_anchor_tl { sloped }
+      } ,
+%     y-label-axis          .code:n     = , % TODO: left/right/both
+    % darauf achten, dass das mit "axes" korreliert.
+    y-label-pos           .code:n     =
+      { \tl_set:Nn \l__endiagram_y_label_pos_tl { pos = #1 , } } ,
+    y-label-offset        .code:n     =
+      { \tl_set:Nn \l__endiagram_y_label_offset_tl { = #1 } } ,
+    y-label-text          .tl_set:N   = \l__endiagram_y_label_text_tl ,
+    y-label-angle         .tl_set:N   = \l__endiagram_y_label_angle_tl ,
+    x-label               .choice: ,
+    x-label / right       .code:n     =
+      {
+        \bool_set_false:N \l__endiagram_x_label_pos_bool
+        \tl_set:Nn \l__endiagram_x_label_anchor_tl { right }
+      } ,
+    x-label / below       .code:n     =
+      {
+        \bool_set_true:N \l__endiagram_x_label_pos_bool
+        \tl_set:Nn \l__endiagram_x_label_anchor_tl { below }
+      } ,
+    x-label-pos           .code:n     =
+      { \tl_set:Nn \l__endiagram_x_label_pos_tl { pos = #1 , } } ,
+    x-label-offset        .code:n     =
+      { \tl_set:Nn \l__endiagram_x_label_offset_tl { = #1 } } ,
+    x-label-text          .tl_set:N   = \l__endiagram_x_label_text_tl ,
+    x-label-angle         .tl_set:N   = \l__endiagram_x_label_angle_tl ,
+    offset                .code:n     =
+      {
+        \tl_set:Nn \l__endiagram_diagram_l_offset_tl { #1 }
+        \tl_set:Nn \l__endiagram_diagram_r_offset_tl { #1 }
+      } ,
+    l-offset              .tl_set:N   = \l__endiagram_diagram_l_offset_tl ,
+    r-offset              .tl_set:N   = \l__endiagram_diagram_r_offset_tl ,
+    scale                 .tl_set:N   = \l__endiagram_diagram_scale_tl ,
+    unit                  .code:n     = \__endiagram_determine_unit:n { #1 } ,
+    tikz                  .tl_set:N   = \l__endiagram_tikz_tl ,
+    energy-step           .code:n     =
+      \tl_set:Nn \l__endiagram_energy_step_tl { #1 }
+      \bool_set_true:N \l__endiagram_energy_bool ,
+    energy-zero           .tl_set:N   = \l__endiagram_energy_zero_tl ,
+    energy-unit           .code:n     =
+      \tl_set:Nn \l__endiagram_energy_unit_tl { #1 }
+      \bool_set_true:N \l__endiagram_energy_unit_bool ,
+    energy-unit-separator .tl_set:N   = \l__endiagram_energy_unit_separator_tl ,
+    % energy-round-places   .bool_set:N = \l__endiagram_energy_round_places_bool ,
+    % energy-round-places   .default:n  = true ,
+    energy-round          .tl_set:N   = \l__endiagram_energy_round_tl ,
+    calculate             .bool_set:N = \l__endiagram_calculate_bool ,
+    calculate             .default:n  = true ,
+% TODO darauf achten, dass das mit "axes" korreliert
+    ticks                 .choice: ,
+    ticks / y             .code:n     =
+      \bool_set_true:N \l__endiagram_axes_ticks_bool ,
+    ticks / y-l           .code:n     =
+      \bool_set_true:N \l__endiagram_axes_ticks_yl_bool ,
+    ticks / y-r           .code:n     =
+      \bool_set_true:N \l__endiagram_axes_ticks_yr_bool ,
+    ticks / none          .code:n     =
+      \bool_set_false:N \l__endiagram_axes_ticks_bool
+      \bool_set_false:N \l__endiagram_axes_ticks_yl_bool
+      \bool_set_false:N \l__endiagram_axes_ticks_yr_bool ,
+    ticks                 .default:n  = y ,
+    ticks-step            .tl_set:N   = \l__endiagram_axes_ticks_step_tl
+  }
+
+\NewDocumentEnvironment { endiagram } { o }
+  {
+    \IfNoValueF { #1 } { \keys_set:nn { ENdiagram } { #1 } }
+    \bool_set_true:N \l__Endiagram_inside_env_bool
+    \int_gzero:N \g__endiagram_curve_int
+    \endiagram_start_tikzpicture:x
+      {
+        scale=\l__endiagram_diagram_scale_tl*\l__endiagram_diagram_unit_factor_tl ,
+        \l__endiagram_tikz_tl
+      }
+  }
+  {
+    \MakeOrigin
+    % linke y-Achse
+    \bool_if:NT \l__endiagram_energy_unit_bool
+      {
+        \tl_put_right:Nx \l__endiagram_y_label_text_tl
+          {
+            \exp_not:V \l__endiagram_energy_unit_separator_tl
+            \exp_not:N \si { \exp_not:V \l__endiagram_energy_unit_tl }
+          }
+      }
+    \bool_if:nT { \l__endiagram_y_axis_left_bool || \l__endiagram_axes_all_bool }
+      {
+        \bool_if:NF \l__endiagram_y_label_pos_bool
+          { \tl_clear:N \l__endiagram_y_label_pos_tl }
+        \endiagram_draw:xx
+          { -> , \exp_not:V \l__endiagram_y_axis_tikz_tl }
+          {
+            (-1.5-\l__endiagram_diagram_l_offset_tl,\fp_to_tl:N \g__endiagram_y_min_fp )
+            --
+            (-1.5-\l__endiagram_diagram_l_offset_tl,\fp_to_tl:N \g__endiagram_y_max_fp )
+            node
+              [
+                \l__endiagram_y_label_pos_tl
+                above \l__endiagram_y_label_offset_tl ,
+                rotate = \l__endiagram_y_label_angle_tl ,
+                \l__endiagram_y_label_anchor_tl
+              ]
+              { \exp_not:V \l__endiagram_y_label_text_tl }
+          }
+        % TODO: "energy-zero" beachten: ticks auch am Nullpunkt starten, egal ob dort auch ein niveau sitzt
+        \bool_if:nT { \l__endiagram_axes_ticks_bool || \l__endiagram_axes_ticks_yl_bool }
+          {
+            \bool_set_true:N \l__endiagram_axes_add_ticks_bool
+            \fp_set:Nn \l__Endiagram_tmpa_fp
+              { \g__endiagram_y_min_fp + \l__endiagram_axes_ticks_step_tl }
+            \bool_while_do:Nn \l__endiagram_axes_add_ticks_bool
+              {
+                \fp_set_eq:NN \l__Endiagram_tmpb_fp \l__Endiagram_tmpa_fp
+                \tl_clear:N \l__Endiagram_tmpc_tl
+                \__endiagram_add_axis_label_yl_ticks:n
+                  { { \l__Endiagram_tmpa_fp [ \fp_to_tl:N \l__Endiagram_tmpb_fp ] } }
+                \fp_add:Nn \l__Endiagram_tmpa_fp { \l__endiagram_axes_ticks_step_tl }
+                \fp_compare:nNnF { \l__Endiagram_tmpa_fp } < { \g__endiagram_y_max_fp }
+                  { \bool_set_false:N \l__endiagram_axes_add_ticks_bool }
+              }
+          }
+      }
+    % x-Achse
+    \bool_if:NT \l__endiagram_show_gain_right_bool
+      { 
+        \fp_gadd:Nn \g__endiagram_x_max_fp { \g__endiagram_gain_offset_tl }
+        \fp_gadd:Nn \g__endiagram_x_max_fp { 1 }
+      }
+    \fp_gadd:Nn \g__endiagram_x_max_fp { \l__endiagram_diagram_r_offset_tl }
+    \bool_if:nT { \l__endiagram_x_axis_bool || \l__endiagram_axes_all_bool }
+      {
+        \bool_if:NF \l__endiagram_x_label_pos_bool { \tl_clear:N \l__endiagram_x_label_pos_tl }
+        \endiagram_draw:xx
+          {
+            \bool_if:nT
+              { \l__endiagram_x_axis_bool && !\l__endiagram_y_axis_right_bool && !\l__endiagram_axes_all_bool }
+              { -> , }
+            \exp_not:V \l__endiagram_x_axis_tikz_tl
+          }
+          {
+            (-1.5-\l__endiagram_diagram_l_offset_tl,\fp_to_tl:N \g__endiagram_y_min_fp )
+            --
+            (\fp_to_tl:N \g__endiagram_x_max_fp ,\fp_to_tl:N \g__endiagram_y_min_fp )
+            node
+              [
+                \l__endiagram_x_label_pos_tl
+                rotate = \l__endiagram_x_label_angle_tl ,
+                sloped ,
+                \l__endiagram_x_label_anchor_tl \l__endiagram_x_label_offset_tl ,
+              ]
+              { \exp_not:V \l__endiagram_x_label_text_tl }
+          }
+      }
+    % rechte y-Achse
+    \bool_if:nT { \l__endiagram_y_axis_right_bool || \l__endiagram_axes_all_bool }
+      {
+        \endiagram_draw:xf
+          { -> , \exp_not:V \l__endiagram_y_axis_tikz_tl }
+          {
+            (\fp_to_tl:N \g__endiagram_x_max_fp,\fp_to_tl:N \g__endiagram_y_min_fp)
+            --
+            (\fp_to_tl:N \g__endiagram_x_max_fp,\fp_to_tl:N \g__endiagram_y_max_fp )
+          }
+        % TODO "energy-zero" beachten! Ticks werden nicht gezeichnet, wenn nicht extra spezifiziert
+        \bool_if:nT { \l__endiagram_axes_ticks_bool || \l__endiagram_axes_ticks_yr_bool }
+          {
+            \bool_set_true:N \l__endiagram_axes_add_ticks_bool
+            \fp_set:Nn \l__Endiagram_tmpa_fp
+              { \g__endiagram_y_min_fp + \l__endiagram_axes_ticks_step_tl }
+            \bool_while_do:Nn \l__endiagram_axes_add_ticks_bool
+              {
+                \fp_set:Nn \l__Endiagram_tmpb_fp
+                  { \l__Endiagram_tmpa_fp * \l__endiagram_energy_step_tl }
+                \tl_clear:N \l__Endiagram_tmpc_tl
+                \__endiagram_add_axis_label_yr_ticks:n
+                  { { \l__Endiagram_tmpa_fp [ \fp_to_tl:N \l__Endiagram_tmpb_fp ] } }
+                \fp_add:Nn \l__Endiagram_tmpa_fp { \l__endiagram_axes_ticks_step_tl }
+                \fp_compare:nNnF { \l__Endiagram_tmpa_fp } < { \g__endiagram_y_max_fp }
+                  { \bool_set_false:N \l__endiagram_axes_add_ticks_bool }
+              }
+          }
+      }
+    \bool_if:NT \l__endiagram_debug_bool
+      {
+        \fp_add:Nn \g__endiagram_x_max_fp { 1 }
+        \fp_add:Nn \g__endiagram_y_max_fp { 1 }
+        \fp_sub:Nn \g__endiagram_x_min_fp { 1 }
+        \fp_sub:Nn \g__endiagram_y_min_fp { 1 }
+        \draw[help~lines,densely~dotted,opacity=.7]
+          (\fp_to_tl:N \g__endiagram_x_min_fp,\fp_to_tl:N \g__endiagram_y_min_fp)
+          grid
+          (\fp_to_tl:N \g__endiagram_x_max_fp,\fp_to_tl:N \g__endiagram_y_max_fp) ;
+        \draw[red] (0,0) circle (3pt) node[right,font=\tiny] at (0,0) {(0,0)} ;
+      }
+    \endiagram_end_tikzpicture:
+    \fp_gzero:N \g__endiagram_y_min_fp
+    \fp_gzero:N \g__endiagram_y_max_fp
+    \fp_gzero:N \g__endiagram_x_max_fp
+    \fp_gzero:N \g__endiagram_x_min_fp
+    \tl_gset:Nn \g__endiagram_gain_offset_tl { 0 }
+    \int_gzero:N \g__endiagram_ea_int
+  }
+
+% --------------------------------------------------------------------------- %
+% setup
+\NewDocumentCommand \ENsetup { om }
+  {
+    \IfNoValueTF { #1 }
+      { \keys_set:nn { ENdiagram } { #2 } }
+      { \keys_set:nn { ENdiagram / #1 } { #2 } }
+  }
+
+% --------------------------------------------------------------------------- %
+% package options:
+\ProcessKeysOptions { ENdiagram }
+
+\tex_endinput:D
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Version history
+2012/02/31 v0.0
+2012/06/26 v0.1
+2012/08/20 v0.1a - most basic necessary changes due to new l3fp module => more
+                   revisions on various places still needed!
+2013/04/04 v0.1b - changed deprecated \clist_length:N into \clist_count:N 
+2013/04/18 v0.1c - bug fix: the y- and x-labels should not be expanded, made
+                   internal commands protected where appropriate
+                 - various internal changes, most importantly care of not
+                   expanding user input that is not supposed to
+2014/06/28 v0.1d - adapt to deprecated expl3 function
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TODO
+- the whole code should be cleaned up... an embarrising mess!
+- \ENcurve und \AddAxisLabel so anpassen, dass Eingaben der Energieskala folgen?!
+- revise the whole code especially with respect  to fp calculations

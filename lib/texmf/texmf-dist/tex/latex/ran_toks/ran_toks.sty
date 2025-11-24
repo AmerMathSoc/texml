@@ -1,0 +1,231 @@
+%%
+%% This is file `ran_toks.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% ran_toks.dtx  (with options: `copyright,package')
+%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ran_toks.sty package,           2013/08/03           %%
+%% Copyright (C) 2012  D. P. Story                      %%
+%%   dpstory@uakron.edu                                 %%
+%%                                                      %%
+%% This program can redistributed and/or modified under %%
+%% the terms of the LaTeX Project Public License        %%
+%% Distributed from CTAN archives in directory          %%
+%% macros/latex/base/lppl.txt; either version 1 of the  %%
+%% License, or (at your option) any later version.      %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{ran_toks}
+ [2016/02/06 v1.0e Randomizing tokens]
+\RequirePackage{verbatim}
+\@ifundefined{nextrandom}{\input{random.tex}}{}
+\def\nextrandom{\begingroup
+ \ifnum\randomi<\@ne % then initialize with time
+    \global\randomi\time
+    \global\multiply\randomi388 \global\advance\randomi\year
+    \global\multiply\randomi31 \global\advance\randomi\day
+    \global\multiply\randomi97 \global\advance\randomi\month
+    \message{Randomizer initialized to \the\randomi.}%
+    \nextrandom \nextrandom \nextrandom
+    \xdef\InitSeedValue{\the\randomi}%
+ \fi
+ \count@ii\randomi
+ \divide\count@ii 127773 % modulus = multiplier * 127773 + 2836
+ \count@\count@ii
+ \multiply\count@ii 127773
+ \global\advance\randomi-\count@ii % random mod 127773
+ \global\multiply\randomi 16807
+ \multiply\count@ 2836
+ \global\advance\randomi-\count@
+ \ifnum\randomi<\z@ \global\advance\randomi 2147483647\relax\fi
+ \endgroup
+}
+\newtoks\rt@listIn \rt@listIn={}
+\newtoks\rt@newListIn \rt@newListIn={}
+\newtoks\rt@listOut \rt@listOut={}
+\newcount\rt@nMax
+\newcount\rt@nCnt
+\newcount\rt@getRanNum
+\newif\ifrtdebug \rtdebugfalse
+\newif\ifwerandomize \werandomizetrue
+\newif\ifsaveseed\saveseedtrue
+\newwrite\rt@Verb@write
+\def\rt@nameedef#1{\expandafter\edef\csname #1\endcsname}
+\def\ranToksOn{\werandomizetrue}
+\def\ranToksOff{\werandomizefalse}
+\def\useThisSeed#1{\saveseedfalse\randomi=#1}
+\@onlypreamble\useThisSeed
+\def\useLastAsSeed{\rt@useLastAsSeed}
+\@onlypreamble\useLastAsSeed
+\def\rt@useLastAsSeed{%
+    \IfFileExists{\jobname_rt.sav}{%
+        \PackageInfo{ran_toks}{Inputting \jobname_rt.sav}%
+        \@ifundefined{readsavfile}{\newread\readsavfile}{}%
+        \openin\readsavfile=\jobname_rt.sav
+        \read\readsavfile to \InitSeedValue
+        \read\readsavfile to \lastRandomNum
+        \closein\readsavfile
+        \randomi=\lastRandomNum
+        \xdef\InitSeedValue{\the\randomi}
+    }{%
+        \PackageInfo{ran_toks}{\jobname_rt.sav cannot
+        be found, \MessageBreak
+        using the random initializer}%
+    }%
+}
+\@ifundefined{aeb@randomizeChoices}{%
+    \let\inputRandomSeed\useLastAsSeed
+    \let\useRandomSeed\useThisSeed}{}
+\def\verbatimwrite{\@bsphack
+    \let\do\@makeother\dospecials
+    \catcode`\^^M\active \catcode`\^^I=12
+    \def\verbatim@processline{%
+        \immediate\write\verbatim@out
+        {\the\verbatim@line}}%
+    \verbatim@start}
+\def\endverbatimwrite{\@esphack}
+\def\rt@IWVO{\immediate\write\verbatim@out}
+\def\InitSeedValue{\the\randomi}
+\def\rt@writeSeedData{%
+    \ifsaveseed
+        \@ifundefined{saveseedinfo}{\newwrite\saveseedinfo}{}
+        \immediate\openout \saveseedinfo \jobname_rt.sav
+        \let\verbatim@out\saveseedinfo
+        \def\rt@msgi{initializing seed value}%
+        \def\rt@msgii{last random number used}%
+        \uccode`c=`\%\uppercase{%
+        \rt@IWVO{\InitSeedValue\space c \rt@msgi}%
+        \rt@IWVO{\the\randomi\space c \rt@msgii}%
+        }\immediate\closeout\saveseedinfo
+    \fi
+}
+\AtEndDocument{\rt@writeSeedData}%
+\def\rt@populateList#1{%
+    \rt@listIn={}%
+    \rt@nCnt=0
+    \@whilenum\rt@nCnt<#1\do{%
+        \advance\rt@nCnt1
+        \edef\rt@listInHold{\the\rt@listIn\noexpand\\{\the\rt@nCnt}}%
+        \rt@listIn=\expandafter{\rt@listInHold}%
+    }%
+}
+\def\rt@RandomizeList#1{%
+    \global\rt@listIn={}\global\rt@newListIn={}\global\rt@listOut={}%
+    \rt@nMax=#1\relax\rt@populateList{\the\rt@nMax}%
+    \ifwerandomize
+        \expandafter\rt@randomizeList\else
+        \global\rt@listOut=\expandafter{\the\rt@listIn}\fi
+}
+\def\rt@randomizeList{%
+    \let\\=\rt@processi
+    \setrannum{\rt@getRanNum}{1}{\the\rt@nMax}%
+\ifrtdebug\typeout{\string\rt@getRanNum=\the\rt@getRanNum}\fi
+    \rt@nCnt=0\relax
+\ifrtdebug\typeout{LISTING: \the\rt@listIn}\fi
+    \the\rt@listIn
+    \rt@loopTest
+}
+\def\rt@loopTest{\advance\rt@nMax-1\relax
+    \ifnum\rt@nMax>0\relax
+        \def\rt@next{%
+            \rt@listIn=\expandafter{\the\rt@newListIn}%
+            \rt@newListIn={}\rt@randomizeList}%
+    \else
+        \let\rt@next\relax
+        \global\rt@listOut=\expandafter{\the\rt@listOut}%
+\ifrtdebug\typeout{Final Result: \string\rt@listOut=\the\rt@listOut}\fi
+    \fi
+    \rt@next
+}
+\def\rt@processi#1{\advance\rt@nCnt1
+    \ifnum\rt@nCnt=\rt@getRanNum
+        \edef\rt@listOutHold{\the\rt@listOut}%
+        \global\rt@listOut=\expandafter{\rt@listOutHold\\{#1}}%
+\ifrtdebug\typeout{Found it: \string\\{#1}}%
+\typeout{New \string\rt@listOut: \the\rt@listOut}\fi
+    \else
+        \edef\rt@listInHold{\the\rt@newListIn}%
+        \rt@newListIn=\expandafter{\rt@listInHold\\{#1}}%
+\ifrtdebug\typeout{\string\rt@newListIn: \the\rt@newListIn}\fi
+    \fi
+}
+\def\ranToks#1{\begingroup
+    \useRTName{#1}%
+    \r@nToks
+}
+\long\def\r@nToks#1{%
+    \rt@nMax=0
+    \r@ndToks#1\rt@NIL
+}
+\def\rt@NIL{@nil}
+\newcommand{\useRTName}[1]{\gdef\rt@BaseName{#1}}%
+\let\rt@BaseName\@empty
+\newcommand{\bRTVToks}[1]{%
+    \rt@nCnt=0
+    \useRTName{#1}%
+}
+\newcommand{\eRTVToks}{%
+    \global\rt@nameedef{\rt@BaseName Cnt}{\the\rt@nCnt}%
+    \expandafter\r@nVToks\expandafter{\rt@BaseName}%
+}
+\def\reVerbEnd{\ifhmode\unskip\fi}
+\newenvironment{rtVW}{%
+    \global\advance\rt@nCnt1
+    \immediate\openout\rt@Verb@write
+        \jobname_\rt@BaseName\the\rt@nCnt.cut
+    \let\verbatim@out\rt@Verb@write
+    \verbatimwrite
+}{%
+    \endverbatimwrite
+    \immediate\write\rt@Verb@write{\string\reVerbEnd}%
+    \immediate\closeout\rt@Verb@write
+}
+\def\r@nVToks#1{\begingroup
+    \gdef\rt@BaseName{#1}%
+    \expandafter\rt@nMax\@nameuse{#1Cnt}%
+    \rt@listIn={}\rt@nCnt=0\relax\let\rt@listInHold\@empty
+    \@whilenum\rt@nCnt<\rt@nMax\do{%
+    \advance\rt@nCnt1
+    \edef\rt@listInHold{%
+        \the\rt@listIn{\noexpand\rt@inputVerb{#1\the\rt@nCnt}}}%
+    \rt@listIn=\expandafter{\rt@listInHold}%
+    }%
+\ifrtdebug\typeout{\string\r@nVToks: \the\rt@listIn}\fi
+    \expandafter\r@nToks\expandafter{\the\rt@listIn}%
+}
+\def\rt@inputVerb#1{\input{\jobname_#1.cut}}
+\def\rt@PAR{\par}
+\long\def\r@ndToks#1{\def\rt@rgi{#1}%
+    \ifx\rt@rgi\rt@PAR\def\rt@next{\r@ndToks}\else
+        \advance\rt@nMax1\relax
+        \global\@namedef{rtTok\the\rt@nMax\rt@BaseName}{#1}%
+        \def\rt@next{\@ifnextchar\rt@NIL
+            {\rt@endToks\@gobble}{\r@ndToks}}%
+    \fi\rt@next
+}
+\def\rt@endToks{%
+    \global\rt@nameedef{nMax4\rt@BaseName}{\the\rt@nMax}%
+    \rt@RandomizeList{\the\rt@nMax}%
+    \rt@nCnt=0
+    \let\\\assignRanToks
+    \the\rt@listOut
+    \endgroup
+}
+\def\assignRanToks#1{\advance\rt@nCnt1
+    \global\rt@nameedef{rtRanTok\the\rt@nCnt\rt@BaseName}%
+        {\noexpand\@nameuse{rtTok#1\rt@BaseName}}%
+}
+\newcommand{\nToksFor}[1]{\@nameuse{nMax4#1}}
+\newcommand{\rtTokByNum}[2][\rt@BaseName]{\@nameuse{rtTok#2#1}%
+    \ignorespaces}
+\newcommand{\useRanTok}[2][\rt@BaseName]{\@nameuse{rtRanTok#2#1}}
+\newcommand{\displayListRandomly}[2][]{\rt@nCnt=0\relax
+    \@whilenum\rt@nCnt<\nToksFor{#2}\advance\rt@nCnt1\relax
+    \do{#1\useRanTok{\the\rt@nCnt}}%
+}
+\endinput
+%%
+%% End of file `ran_toks.sty'.

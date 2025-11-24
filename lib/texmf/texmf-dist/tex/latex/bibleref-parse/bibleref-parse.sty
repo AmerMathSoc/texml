@@ -1,0 +1,1390 @@
+%% bibleref-parse.sty
+%% Copyright (c) 2011 Sebastian Kuhnert
+% 
+% This work may be distributed and/or modified under the conditions
+% of the LaTeX Project Public License, either version 1.3c of this
+% license or (at your option) any later version. The latest version
+% of this license is at http://www.latex-project.org/lppl.txt
+% and version 1.3c or later is part of all distributions of LaTeX
+% version 2008/05/04 or later.
+% 
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Sebastian Kuhnert.
+% 
+% This work consists of the files listed in README
+%
+\ProvidesPackage{bibleref-parse}[2011/04/10 v1.1 Parsing of Bible references]
+
+% command definitions
+\RequirePackage{etoolbox}
+
+% dependency handling
+\RequirePackage{scrlfile}
+
+% Booknames and passage description formatting
+\RequirePackage{bibleref}
+
+% store the option set, provide default
+\def\brp@opt@@comma{preferlikeBR}
+
+% options
+\csdef{brp@opt@comma=list}{% always list
+  \def\brp@opt@@comma{list}}
+\csdef{brp@opt@comma=chvsep}{% always separate chapter and verse
+  \def\brp@opt@@comma{chvsep}}
+\csdef{brp@opt@comma=likeBR}{% select chvsep if \BRchvsep contains a "," and list otherwise
+  \def\brp@opt@@comma{likeBR}}
+%\csdef{brp@opt@comma=preferlist}{% synonym for list
+%  \def\brp@opt@@comma{preferlist}}
+\csdef{brp@opt@comma=preferchvsep}{% select chvsep unless the passage has a ":"
+  \def\brp@opt@@comma{preferchvsep}}
+\csdef{brp@opt@comma=preferlikeBR}{% select preferchvsep if \BRchvsep contains a "," and list otherwise
+  \def\brp@opt@@comma{preferlikeBR}}
+
+% process package options package options
+\DeclareOption*{%
+  \ifcsdef{brp@opt@\CurrentOption}{\csuse{brp@opt@\CurrentOption}}{%
+    \PackageError{bibleref-parse}{unknown option '\CurrentOption'}{}%
+  }}%
+\ProcessOptions\relax
+
+% setting of options
+\newcommand*{\biblerefparseset}[1]{%
+  \def\do##1{%
+    \ifcsdef{brp@opt@##1}{\csuse{brp@opt@##1}}{%
+      \PackageError{bibleref-parse}{unknown option '##1'}{}%
+    }}%
+  \docsvlist{#1}%
+}
+
+% is comma used to separate verses from chapters?
+\newtoggle{brp@commaischvsep}
+\newtoggle{brp@commalikeBR}
+\newtoggle{brp@commaauto}
+\newtoggle{brp@commapreferchvsep}
+
+% setting options in effect
+\csdef{brp@optset@comma=list}{% always list
+  \togglefalse{brp@commaauto}%
+  \togglefalse{brp@commalikeBR}%
+  \togglefalse{brp@commaischvsep}}
+\csdef{brp@optset@comma=chvsep}{% always separate chapter and verse
+  \togglefalse{brp@commaauto}%
+  \togglefalse{brp@commalikeBR}%
+  \toggletrue{brp@commaischvsep}}
+\csdef{brp@optset@comma=likeBR}{% select chvsep if \BRchvsep contains a "," and list otherwise
+  \togglefalse{brp@commaauto}%
+  \toggletrue{brp@commalikeBR}}
+%\csdef{brp@optset@comma=preferlist}{% synonym for list
+%  \toggletrue{brp@commaauto}%
+%  \togglefalse{brp@commalikeBR}%
+%  \togglefalse{brp@commapreferchvsep}}
+\csdef{brp@optset@comma=preferchvsep}{% select chvsep unless the passage has a ":"
+  \toggletrue{brp@commaauto}%
+  \togglefalse{brp@commalikeBR}%
+  \toggletrue{brp@commapreferchvsep}}
+\csdef{brp@optset@comma=preferlikeBR}{% select preferchvsep if \BRchvsep contains a "," and list otherwise
+  \toggletrue{brp@commaauto}%
+  \toggletrue{brp@commalikeBR}}
+
+% apply saved options
+\def\brp@applyoptions{%
+  \csuse{brp@optset@comma=\brp@opt@@comma}%
+}
+
+% Provide standard OSIS book names as aliases if they are not predefined by bibleref
+\newcommand*{\brp@providecs}[2]{%
+  \ifcsundef{#1}{%
+    \csdef{#1}{#2}%
+  }{}%
+}
+\brp@providecs{br@1Sam}{\br@ISamuel}
+\brp@providecs{br@2Sam}{\br@IISamuel}
+\brp@providecs{br@1Kgs}{\br@IKings}
+\brp@providecs{br@2Kgs}{\br@IIKings}
+\brp@providecs{br@1Chr}{\br@IChronicles}
+\brp@providecs{br@2Chr}{\br@IIChronicles}
+\brp@providecs{br@Song}{\br@SongofSongs}
+
+\brp@providecs{br@1Cor}{\br@ICorinthians}
+\brp@providecs{br@2Cor}{\br@IICorinthians}
+\brp@providecs{br@1Thess}{\br@IThessalonians}
+\brp@providecs{br@2Thess}{\br@IIThessalonians}
+\brp@providecs{br@1Tim}{\br@ITimothy}
+\brp@providecs{br@2Tim}{\br@IITimothy}
+\brp@providecs{br@Phlm}{\br@Philemon}
+\brp@providecs{br@1Pet}{\br@IPeter}
+\brp@providecs{br@2Pet}{\br@IIPeter}
+\brp@providecs{br@1John}{\br@IJohn}
+\brp@providecs{br@2John}{\br@IIJohn}
+\brp@providecs{br@3John}{\br@IIIJohn}
+
+\brp@providecs{br@Tob}{\br@Tobit}
+\brp@providecs{br@1Macc}{\br@IMaccabees}
+\brp@providecs{br@2Macc}{\br@IIMaccabees}
+\brp@providecs{br@Wis}{\br@Wisdom}
+\brp@providecs{br@Sir}{\br@Ecclesiasticus}%=Sirach
+\brp@providecs{br@Bar}{\br@Baruch}
+
+% bibleref-german uses \newcommand* to provides \br@ aliases
+% To avoid conflicts, undefine this before it is loaded:
+%\BeforePackage{bibleref-german}{%
+%  \csundef{br@Phlm}%
+%  \csundef{br@Tob}%
+%  \csundef{br@Sir}%
+%  \csundef{br@Bar}%
+%}
+
+% these are not in bibleref.sty
+\providecommand{\BRadditionsto}{Additionsto}
+\brp@providecs{br@AddDan}{\BRadditionsto Daniel}
+\brp@providecs{br@AddEsth}{\BRadditionsto Esther}
+\brp@providecs{br@EpJer}{Epistle of Jeremiah}
+\preto\brfullname{%
+  \def\BRadditionsto{Additions to }%
+  \def\br@AddDan{\BRadditionsto Daniel}%
+  \def\br@AddEsth{\BRadditionsto Esther}%
+  \def\br@EpJer{Epistle of Jeremiah}}
+\preto\brabbrvname{%
+  \def\BRadditionsto{Add\BRperiod~}%
+  \def\br@AddDan{\BRadditionsto Dn\BRperiod}%
+  \def\br@AddEsth{\BRadditionsto Est\BRperiod}%
+  \def\br@EpJer{Ep\BRperiod Jer\BRperiod}}
+\preto\brabbrvname{%
+  \def\BRadditionsto{Add\BRperiod~}%
+  \def\br@AddDan{\BRadditionsto Dan\BRperiod}%
+  \def\br@AddEsth{\BRadditionsto Esther\BRperiod}%
+  \def\br@EpJer{Ep\BRperiod Jer\BRperiod}}
+\AfterPackage*{bibleref-german}{%
+  \preto\brg@fullname{%
+    \def\BRadditionsto{St\"ucke zu }%
+    \def\br@AddDan{\BRadditionsto Daniel}%
+    \def\br@AddEsth{\BRadditionsto Esther}%
+    \def\br@EpJer{\BRder Brief des Jeremia}}%
+  \preto\brg@abbrvname{%
+    \def\BRadditionsto{St\BRperiod{} }%
+    \def\br@AddDan{\BRadditionsto Dan\BRperiod}%
+    \def\br@AddEsth{\BRadditionsto Est\BRperiod}%
+    \def\br@EpJer{Br\BRperiod Jer\BRperiod}}%
+}%
+
+% define book names and prefixes
+\newcommand*{\brpDefineBookPrefix}[2]{%
+  \csdef{brp@bkp@\detokenize{#1}}{#2}}
+\newcommand*{\brpUndefBookPrefix}[1]{%
+  \csundef{brp@bkp@\detokenize{#1}}}
+\newcommand*{\brpDefineBook}[2]{%
+  \csdef{brp@bk@\detokenize{#1}}{#2}}
+\newcommand*{\brpUndefBook}[1]{%
+  \csundef{brp@bk@\detokenize{#1}}}
+
+% default book prefixes and names
+\brpDefineBookPrefix{Ge}{Gen}
+\brpDefineBookPrefix{Gn}{Gen}
+\brpDefineBookPrefix{1Mo}{Gen}
+\brpDefineBookPrefix{IMo}{Gen}
+\brpDefineBook{1M}{Gen}
+\brpDefineBook{IM}{Gen}
+\brpDefineBookPrefix{Ex}{Exod}
+\brpDefineBookPrefix{2Mo}{Exod}
+\brpDefineBookPrefix{IIMo}{Exod}
+\brpDefineBook{2M}{Exod}
+\brpDefineBook{IIM}{Exod}
+\brpDefineBookPrefix{Le}{Lev}
+\brpDefineBookPrefix{Lv}{Lev}
+\brpDefineBookPrefix{3M}{Lev}
+\brpDefineBookPrefix{IIIM}{Lev}
+\brpDefineBookPrefix{Nu}{Num}
+\brpDefineBookPrefix{Nb}{Num}
+\brpDefineBookPrefix{4}{Num}
+\brpDefineBookPrefix{IV}{Num}
+\brpDefineBookPrefix{De}{Deut}
+\brpDefineBookPrefix{Dt}{Deut}
+\brpDefineBookPrefix{5}{Deut}
+\brpDefineBookPrefix{V}{Deut}
+\brpDefineBookPrefix{Jos}{Josh}
+\brpDefineBookPrefix{Judg}{Judg}
+\brpDefineBook{Jd}{Judg}
+\brpDefineBookPrefix{Jdg}{Judg}
+\brpDefineBookPrefix{Jg}{Judg}
+\brpDefineBookPrefix{Ri}{Judg}
+\brpDefineBookPrefix{Ru}{Ruth}
+\brpDefineBookPrefix{Rt}{Ruth}
+\brpDefineBookPrefix{1S}{1Sam}
+\brpDefineBookPrefix{IS}{1Sam}
+\brpDefineBookPrefix{2S}{2Sam}
+\brpDefineBookPrefix{IIS}{2Sam}
+\brpDefineBookPrefix{1Ki}{1Kgs}
+\brpDefineBookPrefix{1Kg}{1Kgs}
+\brpDefineBookPrefix{IKi}{1Kgs}
+\brpDefineBookPrefix{IKg}{1Kgs}
+\brpDefineBookPrefix{1K\"o}{1Kgs}
+\brpDefineBookPrefix{1K"o}{1Kgs}
+\brpDefineBookPrefix{1Koe}{1Kgs}
+\brpDefineBookPrefix{1K^^c3^^b6}{1Kgs}% utf8 \"o
+\brpDefineBookPrefix{1K^^f6}{1Kgs}% latin1 \"o
+\brpDefineBookPrefix{IK\"o}{1Kgs}
+\brpDefineBookPrefix{IK"o}{1Kgs}
+\brpDefineBookPrefix{IKoe}{1Kgs}
+\brpDefineBookPrefix{IK^^c3^^b6}{1Kgs}% utf8 \"o
+\brpDefineBookPrefix{IK^^f6}{1Kgs}% latin1 \"o
+\brpDefineBook{1K}{1Kgs}
+\brpDefineBook{IK}{1Kgs}
+\brpDefineBookPrefix{2Ki}{2Kgs}
+\brpDefineBookPrefix{2Kg}{2Kgs}
+\brpDefineBookPrefix{IIKi}{2Kgs}
+\brpDefineBookPrefix{IIKg}{2Kgs}
+\brpDefineBookPrefix{2K\"o}{2Kgs}
+\brpDefineBookPrefix{2K"o}{2Kgs}
+\brpDefineBookPrefix{2Koe}{2Kgs}
+\brpDefineBookPrefix{2K^^c3^^b6}{2Kgs}% utf8 \"o
+\brpDefineBookPrefix{2K^^f6}{2Kgs}% latin1 \"o
+\brpDefineBookPrefix{IIK\"o}{2Kgs}
+\brpDefineBookPrefix{IIK"o}{2Kgs}
+\brpDefineBookPrefix{IIKoe}{2Kgs}
+\brpDefineBookPrefix{IIK^^c3^^b6}{2Kgs}% utf8 \"o
+\brpDefineBookPrefix{IIK^^f6}{2Kgs}% latin1 \"o
+\brpDefineBook{2K}{2Kgs}
+\brpDefineBook{IIK}{2Kgs}
+\brpDefineBookPrefix{1Ch}{1Chr}
+\brpDefineBookPrefix{ICh}{1Chr}
+\brpDefineBookPrefix{2Ch}{2Chr}
+\brpDefineBookPrefix{IICh}{2Chr}
+\brpDefineBookPrefix{Ezr}{Ezra}
+\brpDefineBookPrefix{Esr}{Ezra}
+\brpDefineBookPrefix{Ne}{Neh}
+\brpDefineBookPrefix{Est}{Esth}
+\brpDefineBookPrefix{Job}{Job}
+\brpDefineBook{Jo}{Job}
+\brpDefineBookPrefix{Jb}{Job}
+\brpDefineBookPrefix{Hi}{Job}
+\brpDefineBookPrefix{Ij}{Job}
+\brpDefineBookPrefix{Ps}{Ps}
+\brpDefineBookPrefix{Pro}{Prov}
+\brpDefineBookPrefix{Prv}{Prov}
+\brpDefineBookPrefix{Sp}{Prov}
+\brpDefineBook{Pr}{Prov}
+\AfterPackage*{babel}{
+  \appto\extrasngerman{\brpDefineBook{Pr}{Eccl}}
+  \appto\extrasgerman{\brpDefineBook{Pr}{Eccl}}
+  \appto\extrasnaustrian{\brpDefineBook{Pr}{Eccl}}
+  \appto\extrasaustrian{\brpDefineBook{Pr}{Eccl}}
+  \appto\noextrasngerman{\brpDefineBook{Pr}{Prov}}
+  \appto\noextrasgerman{\brpDefineBook{Pr}{Prov}}
+  \appto\noextrasnaustrian{\brpDefineBook{Pr}{Prov}}
+  \appto\noextrasaustrian{\brpDefineBook{Pr}{Prov}}
+}
+\brpDefineBookPrefix{Ecclesiaste}{Eccl}
+\brpDefineBook{Ec}{Eccl}
+\brpDefineBook{Ecc}{Eccl}
+\brpDefineBook{Ecl}{Eccl}
+\brpDefineBook{Eccl}{Eccl}
+\brpDefineBook{Eccle}{Eccl}
+\brpDefineBook{Eccles}{Eccl}
+\brpDefineBook{Ecclesi}{Eccl}
+\brpDefineBook{Ecclesia}{Eccl}
+\brpDefineBook{Ecclesias}{Eccl}
+\brpDefineBook{Ecclesiast}{Eccl}
+\brpDefineBookPrefix{Q}{Eccl}
+\brpDefineBookPrefix{Pre}{Eccl}
+\brpDefineBookPrefix{Koh}{Eccl}
+\brpDefineBookPrefix{So}{Song}
+\brpDefineBookPrefix{Sg}{Song}
+\brpDefineBookPrefix{Hoh}{Song}
+\brpDefineBookPrefix{Hl}{Song}
+\brpDefineBookPrefix{Hh}{Song}
+\brpDefineBookPrefix{Li}{Song}
+\brpDefineBookPrefix{Is}{Isa}
+\brpDefineBookPrefix{Jesa}{Isa}
+\brpDefineBook{Jes}{Isa}
+\brpDefineBookPrefix{Jer}{Jer}
+\brpDefineBookPrefix{Jr}{Jer}
+\brpDefineBookPrefix{La}{Lam}
+\brpDefineBookPrefix{Lm}{Lam}
+\brpDefineBookPrefix{Kl}{Lam}
+\brpDefineBook{Ez}{Ezek}
+\brpDefineBookPrefix{Eze}{Ezek}
+\brpDefineBookPrefix{Ezk}{Ezek}
+\brpDefineBookPrefix{Hes}{Ezek}
+\brpDefineBookPrefix{Da}{Dan}
+\brpDefineBookPrefix{Dn}{Dan}
+\brpDefineBookPrefix{Hos}{Hos}
+\brpDefineBook{Ho}{Hos}
+\brpDefineBookPrefix{Jl}{Joel}
+\brpDefineBookPrefix{Joe}{Joel}
+\brpDefineBookPrefix{Jo\"e}{Joel}
+\brpDefineBookPrefix{Jo"e}{Joel}
+\brpDefineBookPrefix{Jo^^c3^^ab}{Joel}% utf \"e
+\brpDefineBookPrefix{Jo^^eb}{Joel}% latin1 \"e
+\brpDefineBookPrefix{Am}{Amos}
+\brpDefineBookPrefix{Ob}{Obad}
+\brpDefineBookPrefix{Jon}{Jonah}
+\brpDefineBookPrefix{Mi}{Mic}
+\brpDefineBookPrefix{Na}{Nah}
+\brpDefineBookPrefix{Hab}{Hab}
+\brpDefineBookPrefix{Hak}{Hab}
+\brpDefineBookPrefix{Hb}{Hab}
+\brpDefineBookPrefix{Hk}{Hab}
+\brpDefineBookPrefix{Zep}{Zeph}
+\brpDefineBookPrefix{Zp}{Zeph}
+\brpDefineBookPrefix{Zef}{Zeph}
+\brpDefineBookPrefix{Hag}{Hag}
+\brpDefineBookPrefix{Hg}{Hag}
+\brpDefineBookPrefix{Zec}{Zech}
+\brpDefineBookPrefix{Zc}{Zech}
+\brpDefineBookPrefix{Sa}{Zech}
+\brpDefineBookPrefix{Mal}{Mal}
+\brpDefineBookPrefix{Ml}{Mal}
+
+\brpDefineBookPrefix{Mat}{Matt}
+\brpDefineBookPrefix{Mt}{Matt}
+\brpDefineBookPrefix{Mar}{Mark}
+\brpDefineBookPrefix{Mk}{Mark}
+\brpDefineBookPrefix{Lu}{Luke}
+\brpDefineBookPrefix{Lk}{Luke}
+\brpDefineBookPrefix{Joh}{John}
+\brpDefineBookPrefix{Jn}{John}
+\brpDefineBookPrefix{Jh}{John}
+\brpDefineBookPrefix{Ac}{Acts}
+\brpDefineBookPrefix{Apos}{Acts}
+\brpDefineBookPrefix{Apg}{Acts}
+\brpDefineBook{Apo}{Acts}
+\brpDefineBookPrefix{Ro}{Rom}
+\brpDefineBookPrefix{Rm}{Rom}
+\brpDefineBookPrefix{R\"o}{Rom}
+\brpDefineBookPrefix{R"o}{Rom}
+\brpDefineBookPrefix{Roe}{Rom}
+\brpDefineBookPrefix{R^^c3^^b6}{Rom}% utf8 \"o
+\brpDefineBookPrefix{R^^f6}{Rom}% latin1 \"o
+\brpDefineBookPrefix{1Co}{1Cor}
+\brpDefineBookPrefix{ICo}{1Cor}
+\brpDefineBookPrefix{1Kor}{1Cor}
+\brpDefineBookPrefix{IKor}{1Cor}
+\brpDefineBook{1Ko}{1Cor}
+\brpDefineBook{IKo}{1Cor}
+\brpDefineBookPrefix{2Co}{2Cor}
+\brpDefineBookPrefix{IICo}{2Cor}
+\brpDefineBookPrefix{2Kor}{2Cor}
+\brpDefineBookPrefix{IIKor}{2Cor}
+\brpDefineBook{2Ko}{2Cor}
+\brpDefineBook{IIKo}{2Cor}
+\brpDefineBookPrefix{Ga}{Gal}
+\brpDefineBookPrefix{Eph}{Eph}
+\brpDefineBook{Ep}{Eph}
+\brpDefineBookPrefix{Phili}{Phil}
+\brpDefineBook{Ph}{Phil}
+\brpDefineBook{Phi}{Phil}
+\brpDefineBook{Phil}{Phil}
+\brpDefineBookPrefix{C}{Col}
+\brpDefineBookPrefix{Kol}{Col}
+\brpDefineBookPrefix{1Th}{1Thess}
+\brpDefineBookPrefix{ITh}{1Thess}
+\brpDefineBookPrefix{2Th}{2Thess}
+\brpDefineBookPrefix{IITh}{2Thess}
+\brpDefineBookPrefix{1Ti}{1Tim}
+\brpDefineBookPrefix{1Tm}{1Tim}
+\brpDefineBookPrefix{ITi}{1Tim}
+\brpDefineBookPrefix{ITm}{1Tim}
+\brpDefineBookPrefix{2Ti}{2Tim}
+\brpDefineBookPrefix{2Tm}{2Tim}
+\brpDefineBookPrefix{IITi}{2Tim}
+\brpDefineBookPrefix{IITm}{2Tim}
+\brpDefineBookPrefix{Ti}{Titus}
+\brpDefineBookPrefix{Tt}{Titus}
+\brpDefineBookPrefix{Phile}{Phlm}
+\brpDefineBookPrefix{Phl}{Phlm}
+\brpDefineBookPrefix{Phm}{Phlm}
+\brpDefineBookPrefix{Heb}{Heb}
+\brpDefineBook{He}{Heb}
+\brpDefineBookPrefix{Ja}{Jas}
+\brpDefineBookPrefix{Js}{Jas}
+\brpDefineBookPrefix{Jm}{Jas}
+\brpDefineBookPrefix{Jk}{Jas}
+\brpDefineBookPrefix{1P}{1Pet}
+\brpDefineBookPrefix{IP}{1Pet}
+\brpDefineBookPrefix{2P}{2Pet}
+\brpDefineBookPrefix{IIP}{2Pet}
+\brpDefineBookPrefix{1J}{1John}
+\brpDefineBookPrefix{IJ}{1John}
+\brpDefineBookPrefix{2J}{2John}
+\brpDefineBookPrefix{IIJ}{2John}
+\brpDefineBookPrefix{3J}{3John}
+\brpDefineBookPrefix{IIIJ}{3John}
+\brpDefineBookPrefix{Jude}{Jude}
+\brpDefineBookPrefix{Juda}{Jude}
+\brpDefineBook{Jud}{Jude}
+\brpDefineBookPrefix{Rev}{Rev}
+\brpDefineBookPrefix{Rv}{Rev}
+\brpDefineBookPrefix{Of}{Rev}
+\brpDefineBookPrefix{Apok}{Rev}
+\brpDefineBookPrefix{Apk}{Rev}
+
+\brpDefineBookPrefix{Judi}{Jdt}
+\brpDefineBookPrefix{Jdt}{Jdt}
+\brpDefineBookPrefix{To}{Tob}
+\brpDefineBookPrefix{1Ma}{1Macc}
+\brpDefineBookPrefix{IMa}{1Macc}
+\brpDefineBookPrefix{2Ma}{2Macc}
+\brpDefineBookPrefix{IIMa}{2Macc}
+\brpDefineBookPrefix{W}{Wis}
+\brpDefineBookPrefix{Si}{Sir}
+\brpDefineBookPrefix{Ecclesiasti}{Sir}
+\brpDefineBookPrefix{Ecclu}{Sir}
+\brpDefineBookPrefix{JesusS}{Sir}
+\brpDefineBookPrefix{Ba}{Bar}
+\brpDefineBookPrefix{AddD}{AddDan}
+\brpDefineBookPrefix{AdditionsD}{AddDan}
+\brpDefineBookPrefix{AdditionstoD}{AddDan}
+\brpDefineBookPrefix{GreekD}{AddDan}
+\brpDefineBookPrefix{GrD}{AddDan}
+\brpDefineBookPrefix{St\"uckezuD}{AddDan}
+\brpDefineBookPrefix{St"uckezuD}{AddDan}
+\brpDefineBookPrefix{StueckezuD}{AddDan}
+\brpDefineBookPrefix{St^^c3^^bcckezuD}{AddDan}% utf8 \"u
+\brpDefineBookPrefix{St^^fcckezuD}{AddDan}% latin1 \"u
+\brpDefineBookPrefix{St\"uckeD}{AddDan}
+\brpDefineBookPrefix{St"uckeD}{AddDan}
+\brpDefineBookPrefix{StueckeD}{AddDan}
+\brpDefineBookPrefix{St^^c3^^bcckeD}{AddDan}% utf8 \"u
+\brpDefineBookPrefix{St^^fcckeD}{AddDan}% latin1 \"u
+\brpDefineBookPrefix{StD}{AddDan}
+\brpDefineBookPrefix{AddE}{AddEsth}
+\brpDefineBookPrefix{AdditionsE}{AddEsth}
+\brpDefineBookPrefix{AdditionstoE}{AddEsth}
+\brpDefineBookPrefix{GreekE}{AddEsth}
+\brpDefineBookPrefix{GrE}{AddEsth}
+\brpDefineBookPrefix{St\"uckezuE}{AddEsth}
+\brpDefineBookPrefix{St"uckezuE}{AddEsth}
+\brpDefineBookPrefix{StueckezuE}{AddEsth}
+\brpDefineBookPrefix{St^^c3^^bcckezuE}{AddEsth}% utf8 \"u
+\brpDefineBookPrefix{St^^fcckezuE}{AddEsth}% latin1 \"u
+\brpDefineBookPrefix{St\"uckeE}{AddEsth}
+\brpDefineBookPrefix{St"uckeE}{AddEsth}
+\brpDefineBookPrefix{StueckeE}{AddEsth}
+\brpDefineBookPrefix{St^^c3^^bcckeE}{AddEsth}% utf8 \"u
+\brpDefineBookPrefix{St^^fcckeE}{AddEsth}% latin1 \"u
+\brpDefineBookPrefix{StE}{AddEsth}
+\brpDefineBookPrefix{EpistleofJer}{EpJer}
+\brpDefineBookPrefix{EpistleJer}{EpJer}
+\brpDefineBookPrefix{EpJer}{EpJer}
+\brpDefineBookPrefix{BriefdesJer}{EpJer}
+\brpDefineBookPrefix{BriefJer}{EpJer}
+\brpDefineBookPrefix{BrJer}{EpJer}
+
+% \brp@ifdigit{char}{true}{false}
+\newcommand*{\brp@ifdigit}[1]{%
+  \ifboolexpe{ not ( test{\ifnumcomp{`#1}{<}{`0}} or test{\ifnumcomp{`#1}{>}{`9}} ) }%
+}
+
+% \brp@ifcs{token}{true}{false}
+\newcommand*{\brp@ifcs}[1]{%
+  \expandafter\brp@@ifcs\detokenize{#1}aa\brp@endlist
+}
+\def\brp@@ifcs #1#2\brp@endlist{%
+  \ifnumcomp{`#1}{=}{92}%test for backslash
+}
+
+% \brp@expandcs{tokens}
+% Expand all control sequences, but leave active characters as is
+% The result is stored in \brp@expanded
+\newcommand*{\brp@expandcs}[1]{%
+  \let\brp@expanded\@empty
+  \brp@@expandcs #1\brp@endlist
+}
+\newcommand*{\brp@@expandcs}[1]{%
+  \ifx#1\brp@endlist
+    \let\brp@next\@empty
+  \else
+    \brp@ifcs{#1}{%
+      \def\brp@next{\expandafter\brp@@expandcs #1}%
+    }{%
+      \appto\brp@expanded{#1}%
+      \let\brp@next\brp@@expandcs
+    }%
+  \fi
+  \brp@next
+}
+
+
+% The main macro:
+% \brp@parse{passagedesc}
+% This will set \brp@result to a sequence of
+% \brp@range{bookname}{from-chapter}{from-verse}{to-chapter}{to-verse}
+% If a complete book is specified, the numbers are all empty.
+% If a complete from-/to-chapter is specified, the corresponding verse is empty.
+% For non-ranges, the from- and to- values will be equal.
+% For books consisting of a single chapter, the chapter values will be 0.
+% When expanding \brp@result, set \brp@range to a suitable handler
+\newcommand*{\brp@parse}[2][]{%
+  % load saved options (not in group ...)
+  \brp@applyoptions
+  % process options
+  \def\do##1{%
+    \ifcsdef{brp@optset@##1}{\csuse{brp@optset@##1}}{%
+      \PackageError{bibleref-parse}{unknown option '##1'}{}%
+    }}%
+  \docsvlist{#1}%
+  % expand all control sequences in #2, result in \brp@expanded
+  \brp@expandcs{#2}%
+  % determine what to do with a comma
+  \iftoggle{brp@commaauto}{%
+    \iftoggle{brp@commalikeBR}{%
+      \brp@ifsubstring{,}{\BRchvsep}{%
+        \toggletrue{brp@commapreferchvsep}%
+      }{%
+        \togglefalse{brp@commapreferchvsep}%
+      }%
+    }{}%
+    \iftoggle{brp@commapreferchvsep}{%
+      \brp@ifsubstring{:}{\brp@expanded}{%
+        \togglefalse{brp@commaischvsep}%
+      }{%
+        \toggletrue{brp@commaischvsep}%
+      }%
+    }{%
+      \togglefalse{brp@commaischvsep}%
+    }%
+  }{%
+    \iftoggle{brp@commalikeBR}{%
+      \brp@ifsubstring{,}{\BRchvsep}{%
+        \toggletrue{brp@commaischvsep}%
+      }{%
+        \togglefalse{brp@commaischvsep}%
+      }%
+    }{}%
+  }%
+  % initialisation
+  \let\brp@result\@empty
+  \let\brp@data@book\@empty
+  % the actual parsing
+  \expandafter\brp@parse@book\brp@expanded\brp@endlist
+}
+
+% helper macro to determine if a string has a substring
+% \brp@ifsubstring{substring}{string}{true}{false}
+\def\brp@ifsubstring#1#2{%
+  \def\brp@@test##1#1##2##3\brp@endlist{%
+    \ifstrequal{##2}{\brp@marker}{\@secondoftwo}{\@firstoftwo}}%
+  \expandafter\brp@@test #2#1\brp@marker\brp@endlist
+}
+% special marker for above detection macro
+\def\brp@marker{\noexpand\brp@marker}
+
+% end-of-passagedesc marker
+\def\brp@endlist{\noexpand\brp@endlist}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% The following macros parse a passagedesc step by step
+% and store the resulting ranges in \brp@result
+
+% expect a book name
+\def\brp@parse@book#1{%
+  \ifx#1\brp@endlist
+    % reference to a complete book
+    \expandafter\brp@bookname\expandafter{\brp@data@book}%
+    \eappto\brp@result{\noexpand\brp@range{\brp@bk}{}{}{}{}}%
+    \let\brp@nextcom=\@empty
+  \else
+    \ifx\brp@data@book\@empty
+      % always take the first char as part of the bookname, even if it is a digit
+      \def\brp@data@book{#1}%
+      \let\brp@nextcom\brp@parse@book%
+    \else%
+      % nonempty: read up to first digit
+      \brp@ifdigit{#1}{%
+        \let\brp@data@chapterstart=\@empty
+        \let\brp@data@versestart=\@empty
+        % skip to verse parsing for one-chapter books
+        \expandafter\brp@bookname\expandafter{\brp@data@book}%
+        \def\tempa{Obad}\ifx\tempa\brp@bk
+          \def\brp@data@chapter{0}\def\brp@nextcom{\brp@parse@verse #1}\else
+        \def\tempa{Phlm}\ifx\tempa\brp@bk
+          \def\brp@data@chapter{0}\def\brp@nextcom{\brp@parse@verse #1}\else
+        \def\tempa{2John}\ifx\tempa\brp@bk
+          \def\brp@data@chapter{0}\def\brp@nextcom{\brp@parse@verse #1}\else
+        \def\tempa{3John}\ifx\tempa\brp@bk
+          \def\brp@data@chapter{0}\def\brp@nextcom{\brp@parse@verse #1}\else
+        % else switch to chapter mode
+        \let\brp@data@chapter=\@empty
+        \def\brp@nextcom{\brp@parse@chapter #1}%
+        \fi\fi\fi\fi
+      }{%
+        \if;#1%
+          % reference to a complete book
+          \expandafter\brp@bookname\expandafter{\brp@data@book}%
+          \eappto\brp@result{\noexpand\brp@range{\brp@bk}{}{}{}{}}%
+          \let\brp@data@book\@empty
+          \let\brp@nextcom\brp@parse@book
+        \else\if+#1%
+          % reference to a complete book
+          \expandafter\brp@bookname\expandafter{\brp@data@book}%
+          \eappto\brp@result{\noexpand\brp@range{\brp@bk}{}{}{}{}}%
+          \let\brp@data@book\@empty
+          \let\brp@nextcom\brp@parse@book
+        \else
+          % append char to bookname
+          \appto\brp@data@book{#1}%
+          \let\brp@nextcom\brp@parse@book
+        \fi\fi
+      }%
+    \fi
+  \fi
+  \brp@nextcom
+}
+
+% expect a chapter number
+\def\brp@parse@chapter#1{%
+  \ifx#1\brp@endlist
+    \ifx\brp@data@chapterstart\@empty
+      % reference to a single, complete chapter
+      \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+        {\brp@data@chapter}{}{\brp@data@chapter}{}}%
+    \else
+      % reference range which ends with a complete chapter
+      \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+        {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{}}%
+      \let\brp@data@chapterstart\@empty
+    \fi
+    \let\brp@data@verse\@empty
+    \let\brp@data@versestart\@empty
+    \let\brp@nextcom=\@empty
+  \else
+    \brp@ifdigit{#1}{%
+      % append char to chapter
+      \appto\brp@data@chapter{#1}%
+      \let\brp@nextcom\brp@parse@chapter
+    }{%
+      \if,#1%
+        \iftoggle{brp@commaischvsep}{%
+          \let\brp@data@verse=\@empty
+          \let\brp@nextcom\brp@parse@verse
+        }{%
+          \ifx\brp@data@chapterstart\@empty
+            % reference to a single, complete chapter
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapter}{}{\brp@data@chapter}{}}%
+          \else
+            % reference range which ends with a complete chapter
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{}}%
+            \let\brp@data@chapterstart\@empty
+          \fi
+          \let\brp@data@verse\@empty
+          \let\brp@data@versestart\@empty
+          \let\brp@data@chapter\@empty
+          \let\brp@nextcom\brp@parse@chapter
+        }%
+      \else\if:#1%
+        \let\brp@data@verse=\@empty
+        \let\brp@nextcom\brp@parse@verse
+      \else\if;#1%
+        \ifx\brp@data@chapterstart\@empty
+          % reference to a single, complete chapter
+          \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+            {\brp@data@chapter}{}{\brp@data@chapter}{}}%
+        \else
+          % reference range which ends with a complete chapter
+          \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+            {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{}}%
+          \let\brp@data@chapterstart\@empty
+        \fi
+        \let\brp@data@verse\@empty
+        \let\brp@data@versestart\@empty
+        \let\brp@data@chapter\@empty
+        \let\brp@nextcom\brp@parse@bookorchapter
+      \else\if+#1%
+        \ifx\brp@data@chapterstart\@empty
+          % reference to a single, complete chapter
+          \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+            {\brp@data@chapter}{}{\brp@data@chapter}{}}%
+        \else
+          % reference range which ends with a complete chapter
+          \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+            {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{}}%
+          \let\brp@data@chapterstart\@empty
+        \fi
+        \let\brp@data@verse\@empty
+        \let\brp@data@versestart\@empty
+        \let\brp@data@chapter\@empty
+        \let\brp@nextcom\brp@parse@bookorchapter
+      \else\if-#1%
+        \let\brp@data@versestart\@empty%
+        \let\brp@data@chapterstart\brp@data@chapter
+        \let\brp@data@chapter\@empty
+        \let\brp@nextcom\brp@parse@chapter
+      \else
+        \PackageError{bibleref-parse}%
+          {unsupported syntax: chapter-number followed by #1}%
+          {A chapter-number must be followed by one of ',:;+-' or end-of-string}%
+        \let\brp@nextcom=\@empty
+      \fi\fi\fi\fi\fi
+    }%
+  \fi
+  \brp@nextcom
+}
+
+% expect a verse number
+\def\brp@parse@verse#1{%
+  \ifx#1\brp@endlist
+    \ifx\brp@data@versestart\@empty
+      \ifx\brp@data@chapterstart\@empty
+        % reference to single verse
+        \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+          {\brp@data@chapter}{\brp@data@verse}{\brp@data@chapter}{\brp@data@verse}}%
+      \else
+        % reference starting with a complete different chapter
+        \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+          {\brp@data@chapterstart}{}{\brp@data@chapter}{\brp@data@verse}}%
+      \fi
+    \else
+      % reference starting with another verse
+      \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+        {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{\brp@data@verse}}%
+    \fi
+    \let\brp@data@verse\@empty
+    \let\brp@data@versestart\@empty
+    \let\brp@data@chapterstart\@empty
+    \let\brp@nextcom=\@empty
+  \else
+    \brp@ifdigit{#1}{%
+      % append char to verse
+      \appto\brp@data@verse{#1}%
+      \let\brp@nextcom\brp@parse@verse
+    }{%
+      \if#1.%
+        \ifx\brp@data@versestart\@empty
+          \ifx\brp@data@chapterstart\@empty
+            % reference to single verse
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapter}{\brp@data@verse}{\brp@data@chapter}{\brp@data@verse}}%
+          \else
+            % reference starting with a complete different chapter
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapterstart}{}{\brp@data@chapter}{\brp@data@verse}}%
+          \fi
+        \else
+          % reference starting with another verse
+          \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+            {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{\brp@data@verse}}%
+        \fi
+        \let\brp@data@verse\@empty
+        \let\brp@data@versestart\@empty
+        \let\brp@data@chapterstart\@empty
+        \let\brp@nextcom\brp@parse@verse
+      \else\if#1+%
+        \ifx\brp@data@versestart\@empty
+          \ifx\brp@data@chapterstart\@empty
+            % reference to single verse
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapter}{\brp@data@verse}{\brp@data@chapter}{\brp@data@verse}}%
+          \else
+            % reference starting with a complete different chapter
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapterstart}{}{\brp@data@chapter}{\brp@data@verse}}%
+          \fi
+        \else
+          % reference starting with another verse
+          \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+            {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{\brp@data@verse}}%
+        \fi
+        \let\brp@data@verse\@empty
+        \let\brp@data@versestart\@empty
+        \let\brp@data@chapterstart\@empty
+        \let\brp@nextcom\brp@parse@bookorchapterorverse
+      \else\if#1-%
+        \let\brp@data@versestart=\brp@data@verse
+        \let\brp@data@verse=\@empty
+        \let\brp@data@chapterstart=\brp@data@chapter
+        \let\brp@nextcom\brp@parse@chapterorverse
+      \else\if#1,%
+        \iftoggle{brp@commaischvsep}{%
+          \PackageError{bibleref-parse}%
+            {unsupported syntax: unexpected use of "," to list verses}%
+            {See the documentation of the 'comma=' options for details.}%
+        }{%
+          \ifx\brp@data@versestart\@empty
+            \ifx\brp@data@chapterstart\@empty
+              % reference to single verse
+              \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+                {\brp@data@chapter}{\brp@data@verse}{\brp@data@chapter}{\brp@data@verse}}%
+            \else
+              % reference starting with a complete different chapter
+              \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+                {\brp@data@chapterstart}{}{\brp@data@chapter}{\brp@data@verse}}%
+            \fi
+          \else
+            % reference starting with another verse
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{\brp@data@verse}}%
+          \fi
+          \let\brp@data@verse\@empty
+          \let\brp@data@versestart\@empty
+          \let\brp@data@chapterstart\@empty
+          \let\brp@nextcom\brp@parse@chapterorverse
+        }%
+      \else\if#1;%
+        \ifx\brp@data@versestart\@empty
+          \ifx\brp@data@chapterstart\@empty
+            % reference to single verse
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapter}{\brp@data@verse}{\brp@data@chapter}{\brp@data@verse}}%
+          \else
+            % reference starting with a complete different chapter
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapterstart}{}{\brp@data@chapter}{\brp@data@verse}}%
+          \fi
+        \else
+          % reference starting with another verse
+          \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+            {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{\brp@data@verse}}%
+        \fi
+        \let\brp@data@verse\@empty
+        \let\brp@data@chapter\@empty
+        \let\brp@data@versestart\@empty
+        \let\brp@data@chapterstart\@empty
+        \let\brp@nextcom\brp@parse@bookorchapter
+      \else
+        \PackageError{bibleref-parse}%
+          {unsupported syntax: verse-number followed by '#1'}%
+          {A verse-number must be followed by one of ',.+-;' or end-of-string.}%
+      \fi\fi\fi\fi\fi
+    }%
+  \fi
+  \brp@nextcom
+}
+
+% expect a verse number which might later turn out to be a chapter number
+\def\brp@parse@chapterorverse#1{%
+  \ifx#1\brp@endlist
+    % it was a verse.
+    \ifx\brp@data@versestart\@empty
+      \ifx\brp@data@chapterstart\@empty
+        % reference to single verse
+        \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+          {\brp@data@chapter}{\brp@data@verse}{\brp@data@chapter}{\brp@data@verse}}%
+      \else
+        % reference starting with a complete different chapter
+        \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+          {\brp@data@chapterstart}{}{\brp@data@chapter}{\brp@data@verse}}%
+      \fi
+    \else
+      % reference starting with another verse
+      \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+        {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{\brp@data@verse}}%
+    \fi
+    \let\brp@data@verse\@empty
+    \let\brp@data@versestart\@empty
+    \let\brp@data@chapterstart\@empty
+    \let\brp@nextcom=\@empty
+  \else
+    \brp@ifdigit{#1}{%
+      % append char to verse
+      \appto\brp@data@verse{#1}%
+      \let\brp@nextcom\brp@parse@chapterorverse
+    }{%
+      \if#1.%
+        % it was a verse.
+        \ifx\brp@data@versestart\@empty
+          \ifx\brp@data@chapterstart\@empty
+            % reference to single verse
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapter}{\brp@data@verse}{\brp@data@chapter}{\brp@data@verse}}%
+          \else
+            % reference starting with a complete different chapter
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapterstart}{}{\brp@data@chapter}{\brp@data@verse}}%
+          \fi
+        \else
+          % reference starting with another verse
+          \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+            {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{\brp@data@verse}}%
+        \fi
+        \let\brp@data@verse\@empty
+        \let\brp@data@versestart\@empty
+        \let\brp@data@chapterstart\@empty
+        \let\brp@nextcom\brp@parse@verse
+      \else\if#1+%
+        % it was a verse.
+        \ifx\brp@data@versestart\@empty
+          \ifx\brp@data@chapterstart\@empty
+            % reference to single verse
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapter}{\brp@data@verse}{\brp@data@chapter}{\brp@data@verse}}%
+          \else
+            % reference starting with a complete different chapter
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapterstart}{}{\brp@data@chapter}{\brp@data@verse}}%
+          \fi
+        \else
+          % reference starting with another verse
+          \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+            {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{\brp@data@verse}}%
+        \fi
+        \let\brp@data@verse\@empty
+        \let\brp@data@versestart\@empty
+        \let\brp@data@chapterstart\@empty
+        \let\brp@nextcom\brp@parse@bookorchapterorverse
+      \else\if#1-%
+        % assume it was a verse.
+        \let\brp@data@versestart=\brp@data@verse
+        \let\brp@data@verse=\@empty
+        \let\brp@data@chapterstart=\brp@data@chapter
+        \let\brp@nextcom\brp@parse@chapterorverse
+      \else\if,#1%
+        \iftoggle{brp@commaischvsep}{%
+          % our hypothesis was wrong - we were actually looking at a chapter
+          \let\brp@data@chapter\brp@data@verse
+          \let\brp@data@verse\@empty
+          \let\brp@nextcom\brp@parse@verse
+        }{%
+          % assume it was a verse.
+          \ifx\brp@data@versestart\@empty
+            \ifx\brp@data@chapterstart\@empty
+              % reference to single verse
+              \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+                {\brp@data@chapter}{\brp@data@verse}{\brp@data@chapter}{\brp@data@verse}}%
+            \else
+              % reference starting with a complete different chapter
+              \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+                {\brp@data@chapterstart}{}{\brp@data@chapter}{\brp@data@verse}}%
+            \fi
+          \else
+            % reference starting with another verse
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{\brp@data@verse}}%
+          \fi
+          \let\brp@data@verse\@empty
+          \let\brp@data@versestart\@empty
+          \let\brp@data@chapterstart\@empty
+          \let\brp@nextcom\brp@parse@chapterorverse
+        }%
+      \else\if:#1%
+        % our hypothesis was wrong - we were actually looking at a chapter
+        \let\brp@data@chapter\brp@data@verse
+        \let\brp@data@verse\@empty
+        \let\brp@nextcom\brp@parse@verse
+      \else\if;#1%
+        % assume it was a verse.
+        \ifx\brp@data@versestart\@empty
+          \ifx\brp@data@chapterstart\@empty
+            % reference to single verse
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapter}{\brp@data@verse}{\brp@data@chapter}{\brp@data@verse}}%
+          \else
+            % reference starting with a complete different chapter
+            \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+              {\brp@data@chapterstart}{}{\brp@data@chapter}{\brp@data@verse}}%
+          \fi
+        \else
+          % reference starting with another verse
+          \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+            {\brp@data@chapterstart}{\brp@data@versestart}{\brp@data@chapter}{\brp@data@verse}}%
+        \fi
+        \let\brp@data@verse\@empty
+        \let\brp@data@chapter\@empty
+        \let\brp@data@versestart\@empty
+        \let\brp@data@chapterstart\@empty
+        \let\brp@nextcom\brp@parse@bookorchapter
+      \else
+        \PackageError{bibleref-parse}%
+          {unsupported syntax: unexpected token '#1'}%
+          {Expected one of ',.+-;:' or end-of-string.}%
+      \fi\fi\fi\fi\fi\fi
+    }%
+  \fi
+  \brp@nextcom
+}
+% expect a verse number which might later turn out to be a chapter number or book name
+\def\brp@parse@bookorchapterorverse#1{%
+  \ifx#1\brp@endlist
+    % it was a verse.
+    \def\brp@nextcom{\brp@parse@verse\brp@endlist}%
+  \else
+    \brp@ifdigit{#1}{%
+      \ifx\brp@data@verse\@empty
+        % this might still be the digit at the start of a bookname.
+        \def\brp@data@verse{#1}%
+        \let\brp@nextcom\brp@parse@bookorchapterorverse
+      \else
+        % it was a chapter or a verse.
+        \appto\brp@data@verse{#1}%
+        \let\brp@nextcom\brp@parse@chapterorverse
+      \fi
+    }{%
+      \if#1.%
+        % it is a verse or a book - find out with the next char
+        \let\brp@nextcom\brp@parse@bookorverse
+      \else\if#1+%
+        % it was a verse.
+        \def\brp@nextcom{\brp@parse@verse +}%
+      \else\if#1-%
+        % assume it was a verse.
+        \let\brp@data@versestart=\brp@data@verse
+        \let\brp@data@verse=\@empty
+        \let\brp@data@chapterstart=\brp@data@chapter
+        \let\brp@nextcom\brp@parse@chapterorverse
+      \else\if,#1%
+        \iftoggle{brp@commaischvsep}{%
+          % our hypothesis was wrong - we were actually looking at a chapter
+          \let\brp@data@chapter\brp@data@verse
+          \let\brp@data@verse\@empty
+          \let\brp@nextcom\brp@parse@verse
+        }{%
+          % assume it was a verse.
+          \def\brp@nextcom{\brp@parse@verse ,}%
+        }%
+      \else\if:#1%
+        % our hypothesis was wrong - we were actually looking at a chapter
+        \let\brp@data@chapter\brp@data@verse
+        \let\brp@data@verse\@empty
+        \let\brp@nextcom\brp@parse@verse
+      \else\if;#1%
+        % assume it was a verse.
+        \def\brp@nextcom{\brp@parse@verse ,}%
+      \else
+        % our hypothesis was wrong - we are looking at a book name
+        \edef\brp@data@book{\brp@data@verse #1}%
+        \let\brp@data@verse\@empty
+        \let\brp@nextcom\brp@parse@book
+      \fi\fi\fi\fi\fi\fi
+    }%
+  \fi
+  \brp@nextcom
+}
+% decide if the current contents of \brp@data@verse is a verse or the start of a
+% book name
+\def\brp@parse@bookorverse#1{%
+  \ifx#1\brp@endlist
+    \PackageError{bibleref-parse}%
+      {unsupported syntax: unexpected end-of-string.}%
+      {After a '.' a verse number or the continuation of a bookname is expected.}%
+  \else
+    \brp@ifdigit{#1}{%
+      % it was a verse.
+      \edef\brp@data@book{\brp@data@verse #1}%
+      \let\brp@data@verse\@empty
+      \def\brp@nextcom{\brp@parse@verse .#1}%
+    }{%
+      % it was a book.
+      \edef\brp@data@book{\brp@data@verse #1}%
+      \let\brp@data@verse\@empty
+      \let\brp@nextcom\brp@parse@book
+    }%
+  \fi
+  \brp@nextcom
+}
+
+% expect a chapter number which might turn out to be a book name
+\def\brp@parse@bookorchapter#1{%
+  \ifx#1\brp@endlist
+    \ifx\brp@data@chapter\@empty
+      \PackageError{bibleref-parse}%
+        {unsupported syntax: unexpected end-of-string.}%
+        {After a ';' a chapter-number or bookname is expected.}%
+    \else
+      % it was a chapter. reference it completely.
+      \eappto\brp@result{\noexpand\brp@range{\brp@bk}%
+        {\brp@data@chapter}{}{\brp@data@chapter}{}}%
+      \let\brp@data@verse\@empty
+      \let\brp@data@versestart\@empty
+      \let\brp@data@chapterstart\@empty
+      \let\brp@nextcom=\@empty
+    \fi
+  \else
+    \brp@ifdigit{#1}{%
+      \ifx\brp@data@chapter\@empty
+        % this might still be the digit at the start of a bookname.
+        \def\brp@data@chapter{#1}%
+        \let\brp@nextcom\brp@parse@bookorchapter
+      \else
+        % it was a chapter.
+        \appto\brp@data@chapter{#1}%
+        \let\brp@nextcom\brp@parse@chapter
+      \fi
+    }{%
+      % catch the remaining cases where we were looking at a chapter
+      \if#1,%
+        \def\brp@nextcom{\brp@parse@chapter ,}%
+      \else\if#1:%
+        \def\brp@nextcom{\brp@parse@chapter :}%
+      \else\if#1-%
+        \def\brp@nextcom{\brp@parse@chapter -}%
+      \else\if#1;%
+        \def\brp@nextcom{\brp@parse@chapter ;}%
+      \else\if#1+%
+        \def\brp@nextcom{\brp@parse@chapter +}%
+      \else
+        % our hypothesis was wrong - we were actually looking at a book
+        \edef\brp@data@book{\brp@data@chapter #1}%
+        \let\brp@data@chapter\@empty
+        \let\brp@nextcom\brp@parse@book
+      \fi\fi\fi\fi\fi
+    }%
+  \fi
+  \brp@nextcom
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% \brp@bookname{book}
+% This sets \brp@bk to the canonical OSIS name of the given book.
+% It should work for all English and German naming variants and their abbreviations.
+\def\brp@bookname#1{%
+  \let\brp@book=\@empty
+  \brp@parsebook #1\brp@endlist
+}
+
+\def\brp@parsebook#1{%
+  \ifx#1\brp@endlist
+    \ifcsdef{brp@bk@\expandafter\detokenize\expandafter{\brp@book}}{%
+      \letcs\brp@bk{brp@bk@\expandafter\detokenize\expandafter{\brp@book}}%
+    }{%
+      \PackageError{bibleref-parse}{unknown bookname '\brp@book'}{}%
+      % leave it non-canonical and hope for the best ...
+      \let\brp@bk\brp@book%
+    }%
+    \let\brp@next\relax
+  \else
+    \if.#1\relax\else
+      \appto\brp@book{#1}%
+      \ifcsdef{brp@bkp@\expandafter\detokenize\expandafter{\brp@book}}{%
+        \edef\brp@bk{\csuse{brp@bkp@\expandafter\detokenize\expandafter{\brp@book}}}%
+        \let\brp@next\brp@gobblelist
+      }{%
+        \let\brp@next\brp@parsebook
+      }%
+    \fi
+  \fi
+  \brp@next
+}
+
+% helper macro to skip the rest of the bookname once we have identified it
+\def\brp@gobblelist#1{%
+  \ifx#1\brp@endlist
+    \let\brp@next=\@empty
+  \else
+    \let\brp@next=\brp@gobblelist
+  \fi
+  \brp@next
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Convert \brp@result to a list of bibleref calls with compact arguments.
+% The result is stored in \brp@brlist. \brp@do is used as command and should be
+% \let to \bibleref or the like before evaluating \brp@brlist.
+\def\brp@convert{%
+  \def\brp@brlist{}%
+  \let\brp@lastbook\@empty
+  \let\brp@lastchap\@empty
+  \def\brp@chaplist{}%
+  \def\brp@verselist{}%
+  \let\brp@range\brp@convert@range
+  \brp@result
+  \brp@convert@clearcache
+  \appto\brp@brlist{\relax}%
+  \undef\brp@lastbook
+  \undef\brp@lastchap
+  \undef\brp@chaplist
+  \undef\brp@verselist
+  \undef\brp@range
+  \undef\brp@startchap
+  \undef\brp@startverse
+  \undef\brp@endchap
+  \undef\brp@endverse
+}
+\def\brp@convert@clearcache{%
+  \ifdefempty{\brp@chaplist}{%
+    \ifdefempty{\brp@verselist}{}{%
+      % special handling of one-chapter books
+      \eappto\brp@brlist{(\brp@verselist:)}}%
+  }{%
+    \eappto\brp@brlist{(\brp@chaplist:\brp@verselist)}}%
+}
+% helper macro for \brp@convert that does the real work
+\def\brp@convert@range#1#2#3#4#5{%
+  \ifdefstring{\brp@lastbook}{#1}{}{%
+    % different books: start a new command
+    \ifdefempty{\brp@lastbook}{}{%
+      \brp@convert@clearcache
+      \appto\brp@brlist{\BRbksep}%
+    }%
+    \appto\brp@brlist{\brp@do{#1}}%
+    \def\brp@chaplist{}%
+    \def\brp@verselist{}%
+    \def\brp@lastbook{#1}%
+    \def\brp@lastchap{}%
+  }%
+  \ifstrequal{#2}{0}{%
+    % special handling for single-chapter books
+    \def\brp@startchap{}%
+    \def\brp@startverse{#3}%
+    \def\brp@endchap{}%
+    \def\brp@endverse{#5}%
+  }{%
+    \def\brp@startchap{#2}%
+    \def\brp@startverse{#3}%
+    \def\brp@endchap{#4}%
+    \def\brp@endverse{#5}%    
+  }%
+  \ifdefequal{\brp@lastchap}{\brp@startchap}{%
+    % we start in the same chapter where we left before
+    \ifdefequal{\brp@startchap}{\brp@endchap}{%
+      % ... and we remain there
+      \ifdefequal{\brp@startverse}{\brp@endverse}{%
+        % add just one verse
+        \ifdefempty{\brp@verselist}{%
+          % strange. better start a new paren ...
+          \brp@convert@clearcache
+          \let\brp@chaplist\brp@startchap%
+          \let\brp@verselist\brp@startverse%
+        }{%
+          % add to already begun list
+          \eappto\brp@verselist{,\brp@startverse}%
+        }%
+      }{%
+        % add a verse range
+        \ifdefempty{\brp@verselist}{%
+          % strange. better start a new paren ...
+          \brp@convert@clearcache
+          \let\brp@chaplist\brp@startchap%
+          \edef\brp@verselist{\brp@startverse-\brp@endverse}%
+        }{%
+          \eappto\brp@verselist{,\brp@startverse-\brp@endverse}%
+        }%
+      }%
+    }{%
+      % we have a range over multiple chapters, starting in the current one
+      \ifdefempty{\brp@verselist}{%
+        % strange. better start a new paren ...
+        \brp@convert@clearcache
+        \let\brp@chaplist\brp@startchap%
+        \let\brp@verselist\brp@startverse%
+      }{%
+        \eappto\brp@verselist{,\brp@startverse}%
+      }%
+      % now to our target
+      \eappto\brp@brlist{(\brp@chaplist:\brp@verselist)-(\brp@endchap:\brp@endverse)}%
+      \def\brp@chaplist{}%
+      \def\brp@verselist{}%
+      \def\brp@lastchap{}%
+    }%
+  }{%
+    % we start in a different chapter
+    \ifdefempty{\brp@verselist}{%
+      \ifdefempty{\brp@startverse}{%
+        \ifdefempty{\brp@chaplist}{}{%
+          % \appto\brp@chaplist{,}
+          % bibleref syntax requires us to start a new paren
+          \brp@convert@clearcache
+          \let\brp@verselist\@empty
+          \let\brp@chaplist\@empty
+        }%
+        \ifdefempty{\brp@endverse}{%
+          % no verses known, just append the chapters. 
+          \ifdefequal{\brp@startchap}{\brp@endchap}{%
+            % single chapter
+            \eappto\brp@chaplist{\brp@startchap}%
+          }{%
+            % chapter range
+            \eappto\brp@chaplist{\brp@startchap-\brp@endchap}%
+          }%
+          \let\brp@lastchap\brp@endchap%
+        }{%
+          \eappto\brp@brlist{(\brp@chaplist\brp@startchap:)-(\brp@endchap:\brp@endverse)}%
+          \def\brp@chaplist{}%
+          \def\brp@verselist{}%
+          \def\brp@lastchap{}%
+        }%
+      }{%
+        \ifdefequal{\brp@startchap}{\brp@endchap}{%
+          \brp@convert@clearcache
+          \let\brp@chaplist\brp@startchap%
+          \ifdefequal{\brp@startverse}{\brp@endverse}{%
+            \let\brp@verselist\brp@startverse%
+          }{%
+            \edef\brp@verselist{\brp@startverse-\brp@endverse}%
+          }%
+          \let\brp@lastchap\brp@endchap%
+        }{%
+          \brp@convert@clearcache
+          \eappto\brp@brlist{(\brp@startchap:\brp@startverse)-(\brp@endchap:\brp@endverse)}%
+          \def\brp@chaplist{}%
+          \def\brp@verselist{}%
+          \def\brp@lastchap{}%
+        }%
+      }%
+    }{%
+      \brp@convert@clearcache
+      \ifdefequal{\brp@startchap}{\brp@endchap}{%
+        % we stay in one chapter
+        \let\brp@chaplist\brp@startchap%
+        \ifdefequal{\brp@startverse}{\brp@endverse}{%
+          % single verse
+          \let\brp@verselist\brp@startverse%
+        }{%
+          % verse range
+          \edef\brp@verselist{\brp@startverse-\brp@endverse}%
+        }%
+        \let\brp@lastchap\brp@endchap%
+      }{%
+        % we span several chapters
+        \ifdefempty{\brp@startverse}{%
+          \ifdefempty{\brp@endverse}{%
+            % no verses given: compact chapter range
+            \edef\brp@chaplist{\brp@startchap-\brp@endchap}%
+            \def\brp@verselist{}%
+            \let\brp@lastchap\brp@endchap%
+          }{%
+            % only to-verse given
+            \eappto\brp@brlist{(\brp@startchap:)-(\brp@endchap:\brp@endverse)}%
+            \def\brp@chaplist{}%
+            \def\brp@verselist{}%
+            \def\brp@lastchap{}%
+          }%
+        }{%
+          \eappto\brp@brlist{(\brp@startchap:\brp@startverse)-(\brp@endchap:\brp@endverse)}%
+          \def\brp@chaplist{}%
+          \def\brp@verselist{}%
+          \def\brp@lastchap{}%
+        }%
+      }%
+    }%
+  }%
+}
+
+\newcommand{\pbibleverse}[2][]{%
+  \brp@parse[#1]{#2}%
+  \brp@convert%
+  \let\brp@do\bibleverse%
+  \brp@brlist
+}
+
+\newcommand{\pibibleverse}[2][]{%
+  \brp@parse[#1]{#2}%
+  \brp@convert%
+  \let\brp@do\ibibleverse%
+  \brp@brlist
+}
+
+\newcommand{\pibiblechvs}[2][]{%
+  \brp@parse[#1]{#2}%
+  \brp@convert%
+  \let\brp@do\ibiblechvs%
+  \brp@brlist
+}
+
+\newcommand{\pibiblevs}[2][]{%
+  \brp@parse[#1]{#2}%
+  \brp@convert%
+  \let\brp@do\ibiblevs%
+  \brp@brlist
+}
+
+\providecommand{\BRbksep}{;\space}
+
+\endinput
+

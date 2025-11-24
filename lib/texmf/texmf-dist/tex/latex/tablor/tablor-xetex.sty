@@ -1,0 +1,3374 @@
+% Last modified: <tablor-xetex.sty modifié par  Guillaume CONNAN le dimanche 6 octobre 2013 à 14h 46min 27s>
+
+\NeedsTeXFormat{LaTeX2e}[1995/12/01]
+\ProvidesPackage{tablor-xetex}[06/10/2013 v4.07-g  la machine a  creer des
+tableaux de signes et variations compatible xetex]
+
+% \copyleft Connan le Barbare (aka Guillaume Connan) \copyright
+% This work may be distributed and/or mofified under the conditions
+% or the LaTeX Project Public Licence, either v1.3 or (at your option)
+% any later version. The latest version is in
+%   http://www.latex-project.org/lppl/
+% This work consists of the files tablor.sty, tablor-xetex.sty, tablor.cfg, tablor.tex,
+% tablor.pdf and tablor.html
+
+
+%% Cree 16 environnements :
+%% tableau de signes de 2 facteurs affines
+% \begin{TSa}
+% TSa(-2,3,-1,5,\tv);
+% \end{TSa}
+% %%%%%% Pour des tableaux de plus de 2 facteurs
+%
+% \begin{TS}
+% TS("P",[-2*x+3,x^2-1,x^2+1,x-1,x^2-2],[a,b],n,\tv);
+% \end{TS}
+%
+% pour les tableaux de signes avec quotient
+%\begin{TSq}
+%TSq("Q",[-2*x+3,-4*x+5],[x^2-16,x-2],[a,b],n,\tv)
+%%\end{TSq}
+% un tableau de variation :
+%
+% pour les tableaux de signes à une seule ligne
+% \begin{TSc}
+% TSc((x+10)/((x-5)*(x-2)),[-10,5],[2,5],n,0)
+% \end{TSc}
+%
+%
+% \begin{TV}
+% TV([0,+infinity],[0],"h","x",ln(x)-(ln(x))^2,1,n,\tv)
+% \end{TV}
+%
+% tableau de variation avec liste de valeurs
+% \begin{TVS}
+% TVS([1,2,3,4],[-1,-infinity,+infinity,2,9],[2],"f","x",\tv)
+% \end{TVS}
+%
+% tableau de variation avec zones interdites
+%
+% \begin{TVZ}
+%   TVZ([-infinity,+infinity],[],[[-1,1]],"f","x",sqrt(x^2-1),1,n,\tv)
+% \end{TVZ}
+%
+%
+% tableau avec valeurs intermediares
+%\begin{TVI}
+%TVI([-1,+infinity],[-1],"f","x",x2/sqrt(x+1)-1,1,2,n,\tv)
+%\end{TVI}
+%%%
+%%%
+% tableau avec valeurs intermediares et racines exactes
+%\begin{TVIex}
+%TVIex([-1,+infinity],[-1],"f","x",x2/sqrt(x+1)-1,1,2,n,\tv)
+%\end{TVIex}
+%%%
+%
+%
+% tableau de variations avec f' sans zero formel
+%\begin{TVapp}
+% TVapp([0,+infinity],[0],"g","x",ln(x)-x*exp(2-x),1,\tv)
+% \end{TVapp}
+%
+%
+% tableau de variations avec f' sans zero formel
+%\begin{TVIapp}
+% TVIapp([0,+infinity],[0],"g","x",ln(x)-x*exp(2-x),1,0,\tv)
+% \end{TVIapp}
+%
+%
+%%%
+% et leurs pendants etoiles qui permettent l'affichage intermediaire du 
+% fichier metapost pour le modifier
+%
+%
+% Courbes parametrees
+%  \begin{TVP}
+%  TVP([-infinity,+infinity],[[-1,2],[-1]],["x","y"],"t",[t^2/((t+1)*(t-2)),t^2*(t+2)/(t+1)],1,n,\tv)
+%  \end{TVP}
+%
+%
+% \begin{TVP}
+%  TVP([0,pi/2],[[],[]],["x","y"],"t",[2*cos(t),sin(2*t)],1,t,\tv)
+%  \end{TVP}
+% %
+% %
+% Fonctions prolongeables par continuité
+% TVPC([intervalles d'étude],[valeurs prolongeables],[valeurs interdites pour f'],"g","t",e^(-1/x^2),1,n,\tv); 
+% \begin{TVPC}
+% TVPC([-infinity,+infinity],[0],[0],"g","t",e^(-1/x^2),1,n,\tv); 
+% \end{TVPC}
+
+
+
+
+%% extensions requises
+%% Il faudra rajouter dans le preambule \usepackage{graphicx} si vous 
+%% ne l'avez pas de base 
+
+
+\RequirePackage{filecontents}
+\RequirePackage{ifthen}
+\RequirePackage{fancyvrb}
+\RequirePackage{ifpdf}
+\RequirePackage{ifxetex}
+\fvset{gobble=0}
+
+% option xcas present 
+
+
+\newboolean{xcas}\setboolean{xcas}{false}
+\DeclareOption{xcas}{\setboolean{xcas}{true}}
+
+
+%% Initialisation du choix d'OS
+\newboolean{windows}\setboolean{windows}{false}
+\DeclareOption{windows}{\setboolean{windows}{true}}
+
+\ProcessOptions\relax
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% pour xelatex (ne marche que sur unix....)
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\ifxetex
+
+\begin{filecontents*}{convert-mp-pdf.sh}
+#!/bin/sh
+mpost -interaction=nonstopmode $1 ;
+
+cat>$1.tex<<EOF
+\documentclass{article}
+\usepackage[T1]{fontenc}
+\usepackage[frenchb]{babel}
+\usepackage{graphicx}
+\usepackage{pst-eps}
+\thispagestyle{empty}
+\begin{document}
+\begin{TeXtoEPS}
+\includegraphics{$1.$2}
+\end{TeXtoEPS}
+\end{document}
+EOF
+latex $1
+dvips -o $1.eps -E $1.dvi
+epstopdf $1.eps;
+## Fin de convert-mp-pdf.sh
+\end{filecontents*}
+
+%$>>
+
+
+\immediate\write18{chmod 775 ./convert-mp-pdf.sh}
+
+\fi
+
+
+
+%% on configure  tablor  dans un fichier exterieur pour la plateforme
+%% et l'editeur
+
+\IfFileExists{tablor.cfg}{\input{tablor.cfg}}%\typeout{pas de fichier tablor.cfg}}
+
+
+%% Definit des commandes disque selon l'OS utilise
+\ifthenelse{\boolean{windows}}%
+    {\newcommand{\rem}{DEL } \newcommand{\cat}{TYPE }
+      \newcommand{\cp}{COPY }\newcommand{\echod}{ECHO }
+         \newcommand{\echof}{}}%
+    {\newcommand{\rem}{rm }\newcommand{\cat}{cat }
+      \newcommand{\cp}{cp }\newcommand{\echod}{echo "}
+        \newcommand{\echof}{"}}
+
+
+
+
+
+
+
+%% pour ceux compilant via pdflatex
+
+\ifpdf
+\DeclareGraphicsRule{*}{mps}{*}{}
+\fi
+
+%% pour nettoyer les fichiers auxiliaires
+
+\AtEndDocument{\immediate\write18{\rem *.user XCas* Xcas* *.mpx}
+                         }
+
+
+
+
+%% Pour clore les fichiers metapost 
+
+
+  \begin{VerbatimOut}{queue.mp}
+  
+  end
+
+  \end{VerbatimOut}
+
+
+
+%% Nettoie les fichiers log dont le nom depend du choix de l'utilisateur
+%% Par defaut, c'est le nom du fichier tex courant (\jobname)
+%% Clôt le fichier metapost contenant le recapitulatif de tous les tableaux
+
+
+
+\newcommand{\nettoyer}[1][\jobname]%
+{\immediate\write18{\rem #1_Tab.log  queue.mp enteteMP.cfg session.tex config.cxx}
+}
+
+
+
+
+%% Donne comme prefixe aux tableaux le prefixe courant
+%% Peut-être modifie par \initablor
+
+\newcommand{\nomtravail}{\jobname}
+
+%% initialise les compteurs
+
+\newcounter{TVn}
+\newcommand{\tv}{\theTVn}
+
+\newcounter{TVnbis}
+\newcommand{\tvbis}{\theTVnbis}
+
+
+
+%% permet de donner un prefixe aux tableaux produits (\jobname par defaut)
+%% effectue quelques verifications :
+
+
+\newcommand{\initablor}[1][\jobname]{%
+\renewcommand{\nomtravail}{#1}%     Arret du nom des tableaux
+\setcounter{TVn}{0}%     Initialisation du compteur de tableaux.
+\ifthenelse{\boolean{xcas}}%    Avec l'option XCas
+{\IfFileExists{\nomtravail_Tab.mp}%      Si Tableaux.mp est present...
+        {\immediate\write18{\rem \nomtravail_Tab.mp}}%  le detruire
+        {}%   
+ \immediate\write18{\cp  enteteMP.cfg \nomtravail_Tab.mp}% Reconstituer l'entête de Tableaux.mp
+} 
+{\IfFileExists{\nomtravail_Tab.mp}%      Sans l'option XCas, si
+                                %      Tableaux.mp existe
+{\immediate\write18{mpost -interaction=batchmode \nomtravail_Tab}}% l'executer pour reconstituer les figures
+{\PackageWarning{tablor}{Pas de source metapost pour creer les tableaux.}}% sinon message d'erreur
+                                % (mais pas d'arret car les tableaux
+                                % peuvent être presents )
+}}%
+
+
+
+%% commande pour lancer giac selon l'OS
+
+\makeatletter
+\newcommand{\executGiacmp}[1]{%
+\ifthenelse{\boolean{windows}}%
+{\immediate\write18{giac #1 }}%
+{\immediate\write18{giac  <#1 }}}
+\makeatother
+
+
+
+
+%%%
+%
+%%% LES SCRIPTS GIAC/XCAS
+%
+%%%
+
+
+
+
+%%
+%% Code giac/Xcas pour les Tableaux de Variations
+%%
+
+
+\begin{VerbatimOut}{XcasTV.cxx}
+TV(L,F,nom,nomv,f,ftt,trigo,nmr):={
+nl:=size(L);
+f:=unapply(f,x);
+fp:=function_diff(f);
+Z:=concat(L,F);
+S:=[];
+
+
+if(trigo==t){
+all_trig_solutions:=1;
+reset_solve_counter(-1,-1);
+SS:=solve(factor(simplify(fp(x))),x);
+ns:=size(SS);
+for(k:=0;k<ns;k++){
+m:=0;
+while(evalf(simplify(subst(SS[k],n_1=m)))<=evalf(L[nl-1])){
+S:=concat(S,simplify(subst(SS[k],n_1=m)));m:=m+1;
+};m:=-1;
+while(evalf(subst(SS[k],n_1=m))>=L[0]){
+S:=concat(S,simplify(subst(SS[k],n_1=m)));m:=m-1;
+}
+}
+}else{
+S:=solve(factor(simplify(fp(x))),x);
+}
+
+
+  si size(S)>0 alors   pour j de 0 jusque size(S)-1 faire
+                             qq:=member(simplify(S[j]),Z)==0;
+                             kk:=(evalf(S[j])>=evalf(L[0])) and (evalf(S[j])<=evalf(L[nl-1]));
+                          if(kk==1){if(qq==1){Z:=append(Z,simplify(S[j]))}};
+                          fpour
+  fsi;
+Z:=sort(Z);
+nz:=size(Z);
+
+
+ tantque evalf(Z[0])==evalf(Z[1]) faire Z:=Z[1..nz-1];nz:=size(Z);
+     ftantque;
+
+
+
+
+
+
+
+  si size(S)>0 alors   pour j de 0 jusque size(S)-1 faire 
+                             kk:=(evalf(S[j])>=evalf(L[0])) and (evalf(S[j])<=evalf(L[nl-1]));
+                          if(kk==1){Z:=append(Z,simplify(S[j]))};
+                          fpour
+  fsi;
+
+
+Z:=sort([op(set[op(Z)])]);
+
+nz:=size(Z);
+l0:=" newLigneVariables(btex $"+nomv+"$ etex);";lp:=" "; lf:=" ";lsp:=" ";
+pour m de 0 jusque nz-1 faire l0:=l0+"val(btex $"+latex(Z[m])+"$ etex);
+";fpour; 
+
+       k0:= evalf(limit(f(x),x,Z[0],1))> evalf(limit(f(x),x,Z[1],-1));
+       kz:=evalf(limit(f(x),x,Z[nz-1],-1))> evalf(limit(f(x),x,Z[nz-2],1));
+                          
+lsi:=lsic+nom+"'("+nomv+")}$ etex);"+
+     if(Z[0]==-infinity){if(sign(evalf(fp(if(Z[1]==+infinity){0}else{Z[1]-10^(-5)})))==1.0){"plus;"}else{"moins;"}}else{if(member(Z[0],F)==0){
+                                                    if(fp(Z[0])==0){"valBarre(btex 0 etex);"}else{" "}+
+                                                    if(evalf(sign(fp(Z[0]+10^(-5))))==1.0){"plus;"}else{"moins;"}}else{"nonDefBarre;"+
+                                                         if(evalf(sign(fp((Z[0]+10^(-5)))))==1.0){"plus;"}else{"moins;"} }}
+ 
+if(nz>2){ for(r:=1; r<=nz-2;r++){      ksp:=evalf(fp(Z[r]+0.1))>0;                     
+                                               lsp:=lsp+if(member(Z[r],F)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"}+
+                                                if(ksp==1){"plus;"}else{"moins;"}
+                                                  }; }
+
+lsf:=if(member(Z[nz-1],F)==0){""}else{"nonDefBarre;
+"}
+lm0:=limit(f(x),x,Z[0],1)==-infinity;
+     li:=lvic+nom+"}$ etex);"+
+           if(member(Z[0],F)==0){"valPos(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}
+             else{"nonDefBarre;limDroite(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}+                               
+           if(k0==1){"1"}else{"0"}+
+                         ");";
+            
+                     if(nz>2){ for(r:=1; r<=nz-2;r++){ krm:=evalf(limit(f(x),x,Z[r-1],1))< evalf(limit(f(x),x,Z[r],-1));
+                                                 krp:=evalf(limit(f(x),x,Z[r],1))> evalf(limit(f(x),x,Z[r+1],-1)) ;  
+                         lmrm:=limit(f(x),x,Z[r],-1)==-infinity;lmrp:=limit(f(x),x,Z[r],1)==-infinity;
+                                                  lp:=lp+if(member(Z[r],F)){
+                                    "limGauche(btex
+                                    $"+if(lmrm==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],-1)))}+"$
+                                    etex,"+if(krm==1){"1);"}else{"0);"}+"nonDefBarre;limDroite(btex $"+if(lmrp==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],1)))}+"$ etex,"+if(krp==1){"1);"}else{"0);"}}
+                                          else{"valPos(btex          $"+latex(simplify(f(Z[r])))+"$
+                                            etex,"+if(sign(evalf(fp(Z[r]-0.01)))==sign(fp(Z[r]+0.01))){"0.5);"}else{if(krp==1){"1);"}else{"0);
+"}}}
+                                                   }; }
+
+lnz:=limit(f(x),x,Z[nz-1],-1)==-infinity;
+                          
+
+
+lf:=if(member(Z[nz-1],F)==0){"valPos(btex $"+
+           if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+
+             if(kz==1){"1);"}else{"0);"}}
+    else{"limGauche(btex $"+
+         if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+ 
+           if(kz==1){"1);nonDefBarre;"}else{"0);nonDefBarre;"}};    
+    
+
+
+
+
+MetaLfc:=if(ftt==2){if(nz>2){"
+
+beginTableau("+nmr+")"+
+        l0+lsi+lsp+lsf+"
+endTableau;
+
+";}else{
+"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+"
+endTableau;
+
+";
+}
+}else{ if(ftt==0){if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+li+
+lf
++"
+endTableau;
+
+";}}else{
+if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+lsi+lsp+lsf+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+
+li+
+lf
++"
+endTableau;
+
+";}
+}}
+
+
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,MetaLfc);
+fclose(sortie);
+
+
+ }:;
+
+\end{VerbatimOut}
+
+
+
+
+
+
+%%%%
+
+
+%
+%
+%  TVPC : pour les fonctions prolongeables par continuité.
+%%
+%%
+
+
+
+
+\begin{VerbatimOut}{XcasTVPC.cxx}
+TVPC(L,F,FP,nom,nomv,f,ftt,trigo,nmr):={
+nl:=size(L);
+f:=unapply(f,x);
+fp:=function_diff(f);
+Z:=concat(L,F);
+Z:=concat(Z,FP);
+S:=[];
+
+
+if(trigo==t){
+all_trig_solutions:=1;
+reset_solve_counter(-1,-1);
+SS:=solve(factor(simplify(fp(x))),x);
+ns:=size(SS);
+for(k:=0;k<ns;k++){
+m:=0;
+while(evalf(simplify(subst(SS[k],n_1=m)))<=evalf(L[nl-1])){
+S:=concat(S,simplify(subst(SS[k],n_1=m)));m:=m+1;
+};m:=-1;
+while(evalf(subst(SS[k],n_1=m))>=L[0]){
+S:=concat(S,simplify(subst(SS[k],n_1=m)));m:=m-1;
+}
+}
+}else{
+S:=solve(factor(simplify(fp(x))),x);
+}
+
+
+  si size(S)>0 alors   pour j de 0 jusque size(S)-1 faire
+                             qq:=member(simplify(S[j]),Z)==0;
+                             kk:=(evalf(S[j])>=evalf(L[0])) and (evalf(S[j])<=evalf(L[nl-1]));
+                          if(kk==1){if(qq==1){Z:=append(Z,simplify(S[j]))}};
+                          fpour
+  fsi;
+Z:=sort(Z);
+nz:=size(Z);
+
+
+ tantque evalf(Z[0])==evalf(Z[1]) faire Z:=Z[1..nz-1];nz:=size(Z);
+     ftantque;
+
+
+
+
+
+
+
+  si size(S)>0 alors   pour j de 0 jusque size(S)-1 faire 
+                             kk:=(evalf(S[j])>=evalf(L[0])) and (evalf(S[j])<=evalf(L[nl-1]));
+                          if(kk==1){Z:=append(Z,simplify(S[j]))};
+                          fpour
+  fsi;
+
+
+Z:=sort([op(set[op(Z)])]);
+
+nz:=size(Z);
+l0:=" newLigneVariables(btex $"+nomv+"$ etex);";lp:=" "; lf:=" ";lsp:=" ";
+pour m de 0 jusque nz-1 faire l0:=l0+"val(btex $"+latex(Z[m])+"$ etex);
+";fpour; 
+
+       k0:= evalf(limit(f(x),x,Z[0],1))> evalf(limit(f(x),x,Z[1],-1));
+       kz:=evalf(limit(f(x),x,Z[nz-1],-1))> evalf(limit(f(x),x,Z[nz-2],1));
+                          
+lsi:=lsic+nom+"'("+nomv+")}$ etex);"+
+     if(Z[0]==-infinity){if(sign(evalf(fp(if(Z[1]==+infinity){0}else{Z[1]-10^(-5)})))==1.0){"plus;"}else{"moins;"}}else{if(member(Z[0],FP)==0){
+                                                    if(fp(Z[0])==0){"valBarre(btex 0 etex);"}else{" "}+
+                                                    if(evalf(sign(fp(Z[0]+10^(-5))))==1.0){"plus;"}else{"moins;"}}else{"nonDefBarre;"+
+                                                         if(evalf(sign(fp((Z[0]+10^(-5)))))==1.0){"plus;"}else{"moins;"} }}
+ 
+if(nz>2){ for(r:=1; r<=nz-2;r++){      ksp:=evalf(fp(Z[r]+0.1))>0;                     
+                                               lsp:=lsp+if(member(Z[r],FP)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"}+
+                                                if(ksp==1){"plus;"}else{"moins;"}
+                                                  }; }
+
+lsf:=if(member(Z[nz-1],FP)==0){""}else{"nonDefBarre;
+"}
+lm0:=limit(f(x),x,Z[0],1)==-infinity;
+     li:=lvic+nom+"}$ etex);"+
+           if(member(Z[0],F)==0){"valPos(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}
+             else{"limDroite(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}+                               
+           if(k0==1){"1"}else{"0"}+
+                         ");";
+            
+                     if(nz>2){ for(r:=1; r<=nz-2;r++){ krm:=evalf(limit(f(x),x,Z[r-1],1))< evalf(limit(f(x),x,Z[r],-1));
+                                                 krp:=evalf(limit(f(x),x,Z[r],1))> evalf(limit(f(x),x,Z[r+1],-1)) ;  
+                         lmrm:=limit(f(x),x,Z[r],-1)==-infinity;lmrp:=limit(f(x),x,Z[r],1)==-infinity;
+                                                  lp:=lp+if(member(Z[r],F)){ 
+                                    "valPos(btex
+                                    $"+if(lmrm==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],-1)))}+"$
+                                    etex,"+if(krm==1){"1);"}else{"0);"} }
+                                          else{"valPos(btex          $"+latex(simplify(f(Z[r])))+"$
+                                            etex,"+if(sign(evalf(fp(Z[r]-0.01)))==sign(fp(Z[r]+0.01))){"0.5);"}else{if(krp==1){"1);"}else{"0);
+"}}}
+                                                   }; }
+
+lnz:=limit(f(x),x,Z[nz-1],-1)==-infinity;
+                          
+
+
+lf:=if(member(Z[nz-1],F)==0){"valPos(btex $"+
+           if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+
+             if(kz==1){"1);"}else{"0);"}}
+    else{"limGauche(btex $"+
+         if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+ 
+           if(kz==1){"1);"}else{"0);"}};    
+    
+
+
+
+
+MetaLfc:=if(ftt==2){if(nz>2){"
+
+beginTableau("+nmr+")"+
+        l0+lsi+lsp+lsf+"
+endTableau;
+
+";}else{
+"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+"
+endTableau;
+
+";
+}
+}else{ if(ftt==0){if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+li+
+lf
++"
+endTableau;
+
+";}}else{
+if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+lsi+lsp+lsf+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+
+li+
+lf
++"
+endTableau;
+
+";}
+}}
+
+
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,MetaLfc);
+fclose(sortie);
+
+
+ }:;
+
+\end{VerbatimOut}
+
+
+
+
+
+
+
+
+
+
+
+
+%%
+%%
+%% TV avec une zone interdite : on rajoute comme argument la liste des intervalles interdits
+%% par exemple, pour sqrt(x^2-1) : TVZ([-infinity,100],[],[[-1,1]],"f","x",sqrt(x^2-1),1,1)
+%%
+
+\begin{VerbatimOut}{XcasTVZ.cxx}
+
+
+TVZ(L,F,FF,nom,nomv,f,ftt,trigo,nmr):={
+nl:=size(L);
+nf:=size(FF);
+ Ff:=NULL;IMIN:=NULL;IMAX:=NULL;
+for(k:=0;k<nf;k++){
+if(FF[k][0]>L[0]){Imin[k]:=FF[k][0];LL:=L}else{Imin[k]:=L[0];LL:=[L[1]]};
+if(FF[k][1]<L[1]){Imax[k]:=FF[k][1];LL:=L}else{Imax[k]:=L[1];LL:=[L[0]]};
+ Ff:=Ff,[Imin[k],Imax[k]];
+ IMIN:=IMIN,Imin[k];
+ IMAX:=IMAX,Imax[k];
+ }
+ FF:=[Ff];
+ IMIN:=[IMIN];
+ IMAX:=[IMAX];
+ f:=unapply(f,x);
+fp:=function_diff(f);
+Z:=concat(LL,F);
+
+for(k:=0;k<nf;k++){
+Z:=concat(Z,FF[k]);
+}
+
+S:=[];
+
+
+if(trigo==t){
+all_trig_solutions:=1;
+reset_solve_counter(-1,-1);
+SS:=solve(factor(simplify(fp(x))),x);
+ns:=size(SS);
+for(k:=0;k<ns;k++){
+m:=0;
+while(evalf(simplify(subst(SS[k],n_1=m)))<=evalf(L[nl-1])){
+S:=concat(S,simplify(subst(SS[k],n_1=m)));m:=m+1;
+};m:=-1;
+while(evalf(subst(SS[k],n_1=m))>=L[0]){
+S:=concat(S,simplify(subst(SS[k],n_1=m)));m:=m-1;
+}
+}
+}else{
+S:=solve(factor(simplify(fp(x))),x);
+}
+
+
+
+
+
+
+  si size(S)>0 alors   pour j de 0 jusque size(S)-1 faire 
+                         for(k:=0;k<nf;k++){  
+                           kk:=(evalf(S[j])>=evalf(L[0])) and (evalf(S[j])<=evalf(L[nl-1]));
+                             kK:=(evalf(S[j])<evalf(Imin[k])) or (evalf(S[j])>evalf(Imax[k]));
+                             Kk:=(kk) and kK;
+                          if(Kk==1){Z:=append(Z,simplify(S[j]))};
+                          }
+                        fpour
+  fsi;
+
+
+Z:=sort([op(set[op(Z)])]);
+
+nz:=size(Z);
+
+for(j:=0;j<nf;j++){
+ for(k:=1;k<nz;k++){
+   if ((Z[k]>Imin[j])and(Z[k]<Imax[j])){Z:=augment(Z[0..k-1],Z[k+1..nz-1]);nz:=nz-1;
+   }
+  }
+}
+nz:=size(Z);
+
+l0:=" newLigneVariables(btex $"+nomv+"$ etex);";lp:=" "; lf:=" ";lsp:=" ";
+pour m de 0 jusque nz-1 faire l0:=l0+"val(btex $"+latex(Z[m])+"$ etex);
+";fpour; 
+
+       k0:= evalf(limit(f(x),x,Z[0],1))> evalf(limit(f(x),x,Z[1],-1));
+       kz:=evalf(limit(f(x),x,Z[nz-1],-1))> evalf(limit(f(x),x,Z[nz-2],1));
+                          
+lsi:=lsic+nom+"'("+nomv+")}$ etex);"+
+if(member(Z[0],IMIN)!=0){if((member(Z[0],F)==0) and (fp(Z[0])!=undef)){"debutNonDef;"}else{"debutNonDefStrict;"}}else{if(Z[0]==-infinity){if(sign(evalf(fp(if(Z[1]==+infinity){0}else{Z[1]-10^(-5)})))==1.0){"plus;"}else{"moins;"}}else{if(member(Z[0],F)==0){
+                                                    if(fp(Z[0])==0){"valBarre(btex 0 etex);"}else{" "}+
+                                                    if(evalf(sign(fp(Z[0]+10^(-5))))==1.0){"plus;"}else{"moins;"}}else{"nonDefBarre;"+
+                                                         if(evalf(sign(fp((Z[0]+10^(-5)))))==1.0){"plus;"}else{"moins;"} }}}
+
+
+
+
+
+
+
+
+
+// modif 3 avril 2010
+
+if(nz>2){ for(r:=1; r<=nz-2;r++){ 
+             lsp:=lsp+
+              if(member(Z[r],IMIN)!=0){
+                if((member(Z[r],F)==0) and (fp(Z[r])!=undef)){"debutNonDef;"}
+                else{"debutNonDefStrict;"}}
+              else{if(member(Z[r],IMAX)!=0){if((member(Z[r],F)==0) and (fp(Z[r])!=undef)){"finNonDef;"}
+                                                else{"finNonDefStrict;"}+
+                                                if(evalf(fp(Z[r]+0.01))>0){"plus;"}
+                                                else{"moins;"}}
+                    else{if(member(Z[r],F)==0){"valBarre(btex 0 etex);"}
+                          else{"nonDefBarre;"}+
+                          if(evalf(fp(Z[r]+0.01))>0){"plus;"}
+                          else{"moins;"}
+                                                  }}
+                            }}; 
+
+// fin modif
+
+
+
+
+
+
+
+
+lsf:=if(member(Z[nz-1],IMAX)!=0){if((member(Z[nz-1],F)==0) and (fp(Z[nz-1])!=undef)){"finNonDef;"}else{"finNonDefStrict;"}}else{if(member(Z[nz-1],F)==0){""}else{"nonDefBarre;
+"}}
+
+
+lm0:=limit(f(x),x,Z[0],1)==-infinity;
+     li:=lvic  +nom+"}$ etex);"+
+           if(member(Z[0],F)==0){"valPos(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}
+             else{"nonDefBarre;limDroite(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}+                               
+           if(k0==1){"1"}else{"0"}+
+                         ");";
+            
+if(nz>2){ 
+   for(r:=1; r<=nz-2;r++){ 
+     krm:=evalf(limit(f(x),x,Z[r-1],1))< evalf(limit(f(x),x,Z[r],-1));
+     krp:=evalf(limit(f(x),x,Z[r],1))> evalf(limit(f(x),x,Z[r+1],-1)) ;  
+     lmrm:=limit(f(x),x,Z[r],-1)==-infinity;lmrp:=limit(f(x),x,Z[r],1)==-infinity;
+
+     lp:=lp+if(member(Z[r],IMIN)!=0){"limGauche(btex $"+if(lmrm==1){
+             "-\\infty"}else{
+                latex(simplify(limit(f(x),x,Z[r],-1)))}
+         +"$ etex,"+if(krm==1){
+             "1);"}else{"0);"} 
+         +if(member(Z[r],F)==0){"debutNonDef;"}else{"debutNonDefStrict;"}
+       }//fsi Zr=Imin
+      else{
+        if (member(Z[r],IMAX)!=0){if(member(Z[r],F)==0){"finNonDef;"}else{"finNonDefStrict;"}+"limDroite(btex $"+if(lmrp==1){
+             "-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],1)))}
+         +"$ etex,"+if(krp==1){
+             "1);"}else{"0);"}          
+       }else{
+          if(member(Z[r],F)){
+         "limGauche(btex $"+if(lmrm==1){
+             "-\\infty"}else{
+                latex(simplify(limit(f(x),x,Z[r],-1)))}
+         +"$ etex,"+if(krm==1){
+             "1);"}else{"0);"}
+         +"nonDefBarre;limDroite(btex $"+if(lmrp==1){
+             "-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],1)))}
+         +"$ etex,"+if(krp==1){
+             "1);"}else{"0);"}
+         }//fsi (member Zr F)
+          else{"valPos(btex$"+latex(simplify(f(Z[r])))+"$etex,"+
+             if(sign(evalf(fp(Z[r]-0.01)))==sign(fp(Z[r]+0.01))){
+               "0.5);"}else{
+                    if(krp==1){
+                       "1);"}else{"0);"}//felse(krp)
+                    }//felse(valpos)
+               }//felse(member Zr F)
+               } //felse(Zr=Imax)
+              }//felse(Zr=Imin)
+           };//ffor 
+         }//fsi nz
+
+lnz:=limit(f(x),x,Z[nz-1],-1)==-infinity;
+
+
+
+lf:=if(member(Z[nz-1],F)==0){"valPos(btex $"+
+           if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+
+             if(kz==1){"1);"}else{"0);"}}
+    else{"limGauche(btex $"+
+         if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+ 
+           if(kz==1){"1);nonDefBarre;"}else{"0);nonDefBarre;"}};    
+    
+
+
+    
+
+MetaLfc:=if(ftt==2){if(nz>2){"
+
+beginTableau("+nmr+")"+
+        l0+lsi+lsp+lsf+"
+endTableau;
+
+";}else{
+"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+"
+endTableau;
+
+";
+}
+}else{ if(ftt==0){if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+li+
+lf
++"
+endTableau;
+
+";}}else{
+if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+lsi+lsp+lsf+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+
+li+
+lf
++"
+endTableau;
+
+";}
+}}
+
+
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,MetaLfc);
+fclose(sortie);
+
+ }
+:;
+
+
+\end{VerbatimOut}
+
+
+%%
+%%
+%% Quand les solutions formelles de f'(x)=0 ne sont pas calculables
+%%
+
+
+
+\begin{VerbatimOut}{XcasTVapp.cxx}
+
+
+
+
+
+
+
+TVapp(L,F,nom,nomv,f,ftt,nmr):={
+
+
+nl:=size(L);
+f:=unapply(f,x);
+fp:=function_diff(f);
+z0:=concat(L,F);z:=sort(z0);
+nz:=size(z);
+
+
+
+
+
+
+S:=op(fsolve(fp(x),x));
+
+
+
+if(L==[-infinity,+infinity]){j:=[seq(-50+2*k,k=0..50)]minus F;
+  for k in j do for(m:=-5;m<=5;m++){S:=S,resoudre_numerique(fp(y),y,k+m*0.1,k+(m+1)*0.1,bisection_solver)};end_for}
+else{if(L[0]==-infinity){j:=[seq(2*k,k=-25..0.5*floor(L[1]))] minus F;
+  for k in j do for(m:=-5;m<=5;m++){ S:=S,resoudre_numerique(fp(y),y,k+m*0.1,k+(m+1)*0.1,bisection_solver)};end_for}
+else{if(L[1]==+infinity){
+j:=[seq(2*k,k=floor(0.5*L[0])..0.5*50)] minus F;
+  for k in j do for(m:=-5;m<=5;m++){ S:=S,resoudre_numerique(fp(y),y,k+m*0.1,k+(m+1)*0.1,bisection_solver)};end_for
+}
+else{ j:=[seq(2*k,k=0.5*floor(z[0])..0.5*floor(z[nz-1]))] minus F;
+  for k in j do  for(m:=-5;m<=5;m++){S:=S,resoudre_numerique(fp(y),y,k+m*0.1,k+(m+1)*0.1,bisection_solver)};end_for }
+  }};
+
+
+
+
+
+
+
+si size(S)>0 alors   pour j de 0 jusque size(S)-1 faire 
+                             kk:=(re(S[j])==S[j]);kok:=(evalf(S[j])>=L[0]) and (evalf(S[j])<=L[1]);
+                          if(kk==1){if(kok==1){z:=append(z,simplify(S[j]))}};
+                          fpour;
+fsi;
+
+
+S:=NULL;
+S:=S,z[0];
+for(j:=1;j<size(z);j++){
+ if(z[j]!=undef and (abs(z[j])>1e-15 or z[j]==0)){
+   S:=S,z[j]};
+}
+z:=[S];
+
+Z:=sort(z);
+nz:=size(Z);
+
+S:=NULL;
+S:=S,Z[0];
+for(j:=1;j<nz;j++){
+ if(Z[j]!=S[size(S)-1]){
+   S:=S,Z[j]};
+}
+Z:=[S]; 
+
+
+nz:=size(Z);
+l0:=" newLigneVariables(btex $"+nomv+"$ etex);";lp:=" "; lf:=" ";lsp:=" ";
+pour m de 0 jusque nz-1 faire l0:=l0+"val(btex $"+latex(Z[m])+"$ etex);
+";fpour; 
+
+       k0:= evalf(limit(f(x),x,Z[0],1))> evalf(limit(f(x),x,Z[1],-1));
+       kz:=evalf(limit(f(x),x,Z[nz-1],-1))> evalf(limit(f(x),x,Z[nz-2],1));
+                          
+lsi:=lsic+nom+"'("+nomv+")}$ etex);"+
+     if(Z[0]==-infinity){if(sign(evalf(fp(if(Z[1]==+infinity){0}else{Z[1]-10^(-5)})))==1.0){"plus;"}else{"moins;"}}else{if(member(Z[0],F)==0){
+                                                    if(fp(Z[0])==0){"valBarre(btex 0 etex);"}else{" "}+
+                                                    if(evalf(sign(fp(Z[0]+10^(-5))))==1.0){"plus;"}else{"moins;"}}else{"nonDefBarre;"+
+                                                         if(evalf(sign(fp((Z[0]+10^(-5)))))==1.0){"plus;"}else{"moins;"} }}
+ 
+if(nz>2){ for(r:=1; r<=nz-2;r++){      ksp:=evalf(fp(Z[r]+0.01))>0;                     
+                                               lsp:=lsp+if(member(Z[r],F)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"}+
+                                                if(ksp==1){"plus;"}else{"moins;"}
+                                                  }; }
+
+lsf:=if(member(Z[nz-1],F)==0){""}else{"nonDefBarre;
+"}
+lm0:=limit(f(x),x,Z[0],1)==-infinity;
+     li:=lvic+nom+"}$ etex);"+
+           if(member(Z[0],F)==0){"valPos(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}
+             else{"nonDefBarre;limDroite(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}+                               
+           if(k0==1){"1"}else{"0"}+
+                         ");";
+            
+                     if(nz>2){ for(r:=1; r<=nz-2;r++){  krm:=evalf(limit(f(x),x,Z[r-1],1))< evalf(limit(f(x),x,Z[r],-1));
+                                                 krp:=evalf(limit(f(x),x,Z[r],1))> evalf(limit(f(x),x,Z[r+1],-1)) ;  
+                         lmrm:=limit(f(x),x,Z[r],-1)==-infinity;lmrp:=limit(f(x),x,Z[r],1)==-infinity;
+                                                  lp:=lp+if(member(Z[r],F)){
+                                    "limGauche(btex $"+if(lmrm==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],-1)))}+"$ etex,"+if(krm==1){"1);"}else{"0);"}+"nonDefBarre;limDroite(btex $"+if(lmrp==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],1)))}+"$ etex,"+if(krp==1){"1);"}else{"0);"}}
+                                          else{"valPos(btex          $"+latex(simplify(f(Z[r])))+"$
+                                            etex,"+if(sign(evalf(fp(Z[r]-0.01)))==sign(fp(Z[r]+0.01))){"0.5);"}else{if(krp==1){"1);"}else{"0);
+"}}}
+                                                   }; }
+
+lnz:=limit(f(x),x,Z[nz-1],-1)==-infinity;
+ 
+
+lf:=if(member(Z[nz-1],F)==0){"valPos(btex $"+
+           if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+
+             if(kz==1){"1);"}else{"0);"}}
+    else{"limGauche(btex $"+
+         if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+ 
+           if(kz==1){"1);nonDefBarre;"}else{"0);nonDefBarre;"}};    
+    
+
+
+MetaLfc:=if(ftt==2){if(nz>2){"
+
+beginTableau("+nmr+")"+
+        l0+lsi+lsp+lsf+"
+endTableau;
+
+";}else{
+"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+"
+endTableau;
+
+";
+}
+}else{ if(ftt==0){if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+li+
+lf
++"
+endTableau;
+
+";}}else{
+if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+lsi+lsp+lsf+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+
+li+
+lf
++"
+endTableau;
+
+";}
+}}
+
+
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,MetaLfc);
+fclose(sortie);
+
+
+ }:;
+
+
+
+
+
+
+
+\end{VerbatimOut}
+
+
+
+
+
+
+
+%%
+%% Code giac/Xcas pour les Tableaux de Variations avec 
+%% Valeurs intermediaires
+%%
+
+
+
+
+
+\begin{VerbatimOut}{XcasTVI.cxx}
+
+
+TVI(L,F,nom,nomv,f,ftt,ao,trigo,nmr):={
+nl:=size(L);
+f:=unapply(f,x);
+fp:=function_diff(f);
+Z:=concat(L,F);
+S:=[];
+
+
+if(trigo==t){
+all_trig_solutions:=1;
+reset_solve_counter(-1,-1);
+SS:=solve(factor(simplify(fp(x))),x);
+ns:=size(SS);
+for(k:=0;k<ns;k++){
+m:=0;
+while(evalf(simplify(subst(SS[k],n_1=m)))<=evalf(L[nl-1])){
+S:=concat(S,simplify(subst(SS[k],n_1=m)));m:=m+1;
+};m:=-1;
+while(evalf(subst(SS[k],n_1=m))>=L[0]){
+S:=concat(S,simplify(subst(SS[k],n_1=m)));m:=m-1;
+}
+}
+}else{
+S:=solve(factor(simplify(fp(x))),x);
+}
+
+  si size(S)>0 alors   pour j de 0 jusque size(S)-1 faire 
+                            kk:=(evalf(S[j])>=evalf(L[0])) and (evalf(S[j])<=evalf(L[nl-1]));
+                          if(kk==1){Z:=append(Z,simplify(S[j]))};
+                          fpour
+  fsi;
+
+
+Z:=sort([op(set[op(Z)])]);
+
+
+
+nz:=size(Z);
+l0:=" newLigneVariables(btex $"+nomv+"$ etex);";lp:=" "; lf:=" ";lsp:=" ";
+
+
+
+LI:=limit(f(x),x,Z[0],1);
+LF:=limit(f(x),x,Z[nz-1],-1);
+LP:=NULL;
+PB:=1;
+if(nz>2){                                                       for(r:=1;
+  r<=nz-2;r++){LP:=LP,if(member(Z[r],F)){limit(f(x),x,Z[r],-1),limit(f(x),x,Z[r],1)}else{f(Z[r])};
+if(member(Z[r],F)){PB:=PB,0,1}else{PB:=PB,1};
+}
+};
+if(nz>2){ LL:=[LI,LP,LF]; PB:=[PB,1]}else{LL:=[LI,LF];PB:=[1,1]};
+      
+NL:=size(LL);
+A:=NULL;aa:=1;
+kk:=0;
+
+
+
+if(NL==nz){for(k:=0;k<nz-1;k++){TestS:=(evalf(sign(LL[k]-ao))==evalf(sign(LL[k+1]-ao))) or (evalf(sign(LL[k]-ao))==0.0)or (evalf(sign(LL[k+1]-ao))==0.0);
+if(TestS==0){A:=A,aa;l0:=l0+"val(btex $"+latex(Z[k])+"$ etex);"+"val(btex $\\alpha_"+aa+"$ etex);";aa:=aa+1;}else{l0:=l0+"val(btex $"+latex(Z[k])+"$ etex);"}}
+l0:=l0+"val(btex $"+latex(Z[nz-1])+"$ etex);"};
+//chgmt NL->nz
+if(NL>nz){for(k:=0;k<NL-1;k++){TestS:=(evalf(sign(LL[k]-ao))==evalf(sign(LL[k+1]-ao))) or (evalf(sign(LL[k]-ao))==0.0)or (evalf(sign(LL[k+1]-ao))==0.0);
+  
+if(PB[k]==1){if(TestS==0){
+   A:=A,aa;l0:=l0+"val(btex $"+latex(Z[kk])+"$ etex);"+"val(btex $\\alpha_"+aa+"$ etex);";aa:=aa+1;kk:=kk+1}
+else{l0:=l0+"val(btex $"+latex(Z[kk])+"$ etex);";kk:=kk+1}};
+}
+
+ l0:=l0+"val(btex $"+latex(Z[nz-1])+"$ etex);"
+
+ };
+
+
+TestS:=(evalf(sign(LL[0]-ao))==evalf(sign(LL[1]-ao))) or (evalf(sign(LL[0]-ao))==0.0) or (evalf(sign(LL[1]-ao))==0.0);
+       k0:= evalf(limit(f(x),x,Z[0],1))> evalf(limit(f(x),x,Z[1],-1));
+       kz:=evalf(limit(f(x),x,Z[nz-1],-1))> evalf(limit(f(x),x,Z[nz-2],1));
+                          
+lsi:=lsic+nom+"'("+nomv+")}$ etex);"+
+     if(Z[0]==-infinity){if(evalf(sign(fp(if(Z[1]==+infinity){0}else{Z[1]-10^(-5)})))==1.0){"plus;"}else{"moins;"}}else{if(member(Z[0],F)==0){
+                                                    if(fp(Z[0])==0){"valBarre(btex 0 etex);"}else{" "}+
+                                                    if(evalf(sign(fp((Z[0]+10^(-3)))))==1.0){"plus;"}else{"moins;"}}else{"nonDefBarre;"+
+                                                         if(evalf(sign(fp(10^(-3)+Z[0])))==1.0){"plus;"}else{"moins;"} }}+if(TestS==0){"valBarre(btex$
+                                                       $ etex);"+ 
+if(evalf(sign(fp(10^(-3)+ifte(Z[0]==-infinity,ifte(Z[1]==+infinity,ifte(member(0,F)==0,0,0.01),ifte(member(Z[1]-1,F)==0,Z[1]-1,Z[1]-1.1)),Z[0]))))==1.0){"plus;"}else{"moins;"}}else{" "}; 
+
+
+
+
+
+if(nz>2){rr:=1; if(nz==NL){for(r:=1; r<=NL-2;r++){ TestS:=(evalf(sign(LL[r]-ao))==evalf(sign(LL[r+1]-ao))) or (evalf(sign(LL[r]-ao))==0.0)or (evalf(sign(LL[r+1]-ao))==0.0); 
+                                                 ksp:=evalf(fp(Z[r]+0.01))>0;  
+                                                 TestL:=(abs(LL[r])==abs(LL[r+1]));
+                                 lsp:=lsp+if(member(Z[r],F)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"}+
+                                  if(ksp==1){"plus;"}else{"moins;"}+if(TestS==0){"valBarre(btex $  $ etex);"}else{" "}+if(TestS==0){if(ksp==1){"plus;"}else{"moins;"}}else{" "};
+                                          }}  
+else{for(r:=1; r<=NL-2;r++){kspp:=evalf(fp(Z[rr]+0.01))>0;TestS:=(evalf(sign(LL[r]-ao))==evalf(sign(LL[r+1]-ao))) or (evalf(sign(LL[r]-ao))==0.0)or (evalf(sign(LL[r+1]-ao))==0.0);
+                                         
+                      if(PB[r]==1){if(TestS==0){lsp:=lsp+if(member(Z[rr],F)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"}+
+                                  if(kspp==1){"plus;"}else{"moins;"}+"valBarre(btex $  $ etex);"+if(kspp==1){"plus;"}else{"moins;"};rr:=rr+1;}
+                                    else{lsp:=lsp+if(member(Z[rr],F)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"}+
+                                  if(kspp==1){"plus;"}else{"moins;"};rr:=rr+1;}        
+}}}}; 
+
+
+
+
+ lsf:=if(member(Z[nz-1],F)==0){" "}else{"nonDefBarre;"}
+
+
+
+lm0:=limit(f(x),x,Z[0],1)==-infinity;
+
+
+
+
+TestS:=(evalf(sign(LL[0]-ao))==evalf(sign(LL[1]-ao))) or (evalf(sign(LL[0]-ao))==0.0) or (evalf(sign(LL[1]-ao))==0.0);
+
+     li:=lvic+nom+"}$ etex);
+"+  if(member(Z[0],F)==0){"valPos(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}
+             else{"nonDefBarre;limDroite(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}+                               
+           if(k0==1){"1);"}else{"0);"}+if(TestS==0){"valPos(btex $ "+ao+" $ etex,0.5);"}else{" "}; 
+                         
+            
+                     if(nz>2){if(nz==NL){for(r:=1; r<=nz-2;r++){TestS:=(evalf(sign(LL[r]-ao))==evalf(sign(LL[r+1]-ao))) or (evalf(sign(LL[r]-ao))==0.0)or (evalf(sign(LL[r+1]-ao))==0.0); 
+                                                 krm:=evalf(limit(f(x),x,Z[r-1],1))< evalf(limit(f(x),x,Z[r],-1));
+                                                 krp:=evalf(limit(f(x),x,Z[r],1))> evalf(limit(f(x),x,Z[r+1],-1)) ;  
+                         lmrm:=limit(f(x),x,Z[r],-1)==-infinity;lmrp:=limit(f(x),x,Z[r],1)==-infinity;
+                                                  lp:=lp+if(member(Z[r],F)) {
+                                    "limGauche(btex $"+if(lmrm==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],-1)))}+"$ etex,"+if(krm==1){"1);"}else{"0);"}+"nonDefBarre;limDroite(btex $"+if(lmrp==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],1)))}+"$ etex,"+if(krp==1){"1);"}else{"0);"}}
+                                          else{"valPos(btex          $"+latex(simplify(f(Z[r])))+"$
+                                            etex,"+if(evalf(sign(fp(Z[r]-0.01)))==sign(fp(Z[r]+0.01))){"0.5);"}else{if(krp==1){"1);"}else{"0);"}}}+if(TestS==0){"valPos(btex
+                                            $ "+ao+" $ etex,0.5);"
+                                                           }else{" "}; 
+};//for                
+}else{rr:=1;for(r:=1; r<=NL-2;r++){TestS:=(evalf(sign(LL[r]-ao))==evalf(sign(LL[r+1]-ao))) or (evalf(sign(LL[r]-ao))==0.0)or (evalf(sign(LL[r+1]-ao))==0.0); 
+                                                 krm:=evalf(limit(f(x),x,Z[rr-1],1))< evalf(limit(f(x),x,Z[rr],-1));
+                                                 krp:=evalf(limit(f(x),x,Z[rr],1))> evalf(limit(f(x),x,Z[rr+1],-1)) ;  
+                         lmrm:=limit(f(x),x,Z[rr],-1)==-infinity;lmrp:=limit(f(x),x,Z[rr],1)==-infinity; TestL:=(abs(LL[r])==abs(LL[r+1]));
+                   
+if(PB[r]==1){if(TestS==0){lp:=lp+if(member(Z[rr],F)){
+                                    "limGauche(btex $"+if(lmrm==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[rr],-1)))}+"$ etex,"+if(krm==1){"1);"}else{"0);"}+"nonDefBarre;limDroite(btex $"+if(lmrp==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[rr],1)))}+"$ etex,"+if(krp==1){"1);"}else{"0);"}}
+                                          else{"valPos(btex          $"+latex(simplify(f(Z[rr])))+"$
+                                            etex,"+if(evalf(sign(fp(Z[rr]-0.01)))==sign(fp(Z[rr]+0.01))){"0.5);"}else{if(krp==1){"1);"}else{"0);"}}}+"valPos(btex
+                                            $ "+ao+" $ etex,0.5);
+                                                                 ";rr:=rr+1;
+}//  testS==0
+else{lp:=lp+if(member(Z[rr],F)){
+                                    "limGauche(btex $"+if(lmrm==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[rr],-1)))}+"$ etex,"+if(krm==1){"1);"}else{"0);"}+"nonDefBarre;limDroite(btex $"+if(lmrp==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[rr],1)))}+"$ etex,"+if(krp==1){"1);"}else{"0);"}}
+                                          else{"valPos(btex          $"+latex(simplify(f(Z[rr])))+"$
+                                            etex,"+if(evalf(sign(fp(Z[rr]-0.01)))==sign(fp(Z[rr]+0.01))){"0.5);"}else{if(krp==1){"1);"}else{"0);
+                                                            "}}};rr:=rr+1;
+}//else testS==0
+}//PB[r]==1
+}//for nz<NL
+}// else nz<NL
+//if nz=NL
+};//if nz>2
+
+
+
+lnz:=limit(f(x),x,Z[nz-1],-1)==-infinity;
+
+
+lf:=if(member(Z[nz-1],F)==0){"valPos(btex $"+
+           if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+
+             if(kz==1){"1);"}else{"0);"}}
+    else{"limGauche(btex $"+
+         if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+ 
+           if(kz==1){"1);nonDefBarre;"}else{"0);nonDefBarre;"}};    
+
+
+
+
+
+
+
+MetaLfc:= if(ftt==2){if(nz>2){"beginTableau("+nmr+")"+
+        l0+lsi+lsp+lsf+"
+endTableau;
+
+";}else{
+"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+"
+endTableau;
+
+";
+}
+}else{
+if(ftt==0){if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+li+
+lf
++"
+endTableau;
+";}}else{
+if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+lsi+lsp+lsf+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+
+li+
+lf
++"
+endTableau;
+
+";}
+}};
+
+
+
+
+
+
+
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,MetaLfc);
+fclose(sortie);
+
+
+ }:;
+
+
+
+\end{VerbatimOut}
+
+
+
+%%
+%
+%
+%
+% Pour avoir les racines sous forme exacte.... quand c'est possible !
+%
+%
+%
+%%%%%%%%%
+
+
+\begin{VerbatimOut}{XcasTVIex.cxx}
+
+
+
+TVIex(L,F,nom,nomv,f,ftt,ao,trigo,nmr):={
+nl:=size(L);
+f:=unapply(f,x);
+fp:=function_diff(f);
+Z:=concat(L,F);
+S:=[];
+
+Sex:=NULL;
+Zex:=solve(f(x)=ao);
+Zex:=sort(Zex);
+for(j:=0;j<size(Zex);j++){
+if((evalf(Zex[j])>=evalf(L[0])) and (evalf(Zex[j])<=evalf(L[nl-1]))){Sex:=Sex,Zex[j]};
+};
+Sex:=[Sex];
+
+
+
+
+
+
+
+
+if(trigo==t){
+all_trig_solutions:=1;
+reset_solve_counter(-1,-1);
+SS:=solve(factor(simplify(fp(x))),x);
+ns:=size(SS);
+for(k:=0;k<ns;k++){
+m:=0;
+while(evalf(simplify(subst(SS[k],n_1=m)))<=evalf(L[nl-1])){
+S:=concat(S,simplify(subst(SS[k],n_1=m)));m:=m+1;
+};m:=-1;
+while(evalf(subst(SS[k],n_1=m))>=L[0]){
+S:=concat(S,simplify(subst(SS[k],n_1=m)));m:=m-1;
+}
+}
+}else{
+S:=solve(factor(simplify(fp(x))),x);
+}
+
+  si size(S)>0 alors   pour j de 0 jusque size(S)-1 faire 
+                            kk:=(evalf(S[j])>=evalf(L[0])) and (evalf(S[j])<=evalf(L[nl-1]));
+                          if(kk==1){Z:=append(Z,simplify(S[j]))};
+                          fpour
+  fsi;
+
+
+
+ Z:=sort([op(set[op(Z)])]);
+
+
+nz:=size(Z);
+l0:=" newLigneVariables(btex $"+nomv+"$ etex);";lp:=" "; lf:=" ";lsp:=" ";
+
+
+
+LI:=limit(f(x),x,Z[0],1);
+LF:=limit(f(x),x,Z[nz-1],-1);
+LP:=NULL;
+PB:=1;
+if(nz>2){                                                       for(r:=1;
+  r<=nz-2;r++){LP:=LP,if(member(Z[r],F)){limit(f(x),x,Z[r],-1),limit(f(x),x,Z[r],1)}else{f(Z[r])};
+if(member(Z[r],F)){PB:=PB,0,1}else{PB:=PB,1};
+}
+};
+if(nz>2){ LL:=[LI,LP,LF]; PB:=[PB,1]}else{LL:=[LI,LF];PB:=[1,1]};
+      
+NL:=size(LL);
+A:=NULL;aa:=0;
+kk:=0;
+
+
+
+if(NL==nz){for(k:=0;k<nz-1;k++){TestS:=(evalf(sign(LL[k]-ao))==evalf(sign(LL[k+1]-ao))) or (evalf(sign(LL[k]-ao))==0.0)or (evalf(sign(LL[k+1]-ao))==0.0);
+if(TestS==0){A:=A,aa;l0:=l0+"val(btex $"+latex(Z[k])+"$ etex);"+"val(btex $"+latex(simplify(Sex[aa]))+"$ etex);";aa:=aa+1;}else{l0:=l0+"val(btex $"+latex(Z[k])+"$ etex);"}}
+l0:=l0+"val(btex $"+latex(Z[nz-1])+"$ etex);"};
+//chgmt NL->nz
+if(NL>nz){for(k:=0;k<NL-1;k++){TestS:=(evalf(sign(LL[k]-ao))==evalf(sign(LL[k+1]-ao))) or (evalf(sign(LL[k]-ao))==0.0)or (evalf(sign(LL[k+1]-ao))==0.0);
+  
+if(PB[k]==1){if(TestS==0){
+   A:=A,aa;l0:=l0+"val(btex $"+latex(Z[kk])+"$ etex);"+"val(btex $"+latex(simplify(Sex[aa]))+"$ etex);";aa:=aa+1;kk:=kk+1}
+else{l0:=l0+"val(btex $"+latex(Z[kk])+"$ etex);";kk:=kk+1}};
+}
+
+ l0:=l0+"val(btex $"+latex(Z[nz-1])+"$ etex);"
+
+ };
+
+
+TestS:=(evalf(sign(LL[0]-ao))==evalf(sign(LL[1]-ao))) or (evalf(sign(LL[0]-ao))==0.0) or (evalf(sign(LL[1]-ao))==0.0);
+       k0:= evalf(limit(f(x),x,Z[0],1))> evalf(limit(f(x),x,Z[1],-1));
+       kz:=evalf(limit(f(x),x,Z[nz-1],-1))> evalf(limit(f(x),x,Z[nz-2],1));
+                          
+lsi:=lsic+nom+"'("+nomv+")}$ etex);"+
+     if(Z[0]==-infinity){if(evalf(sign(fp(if(Z[1]==+infinity){0}else{Z[1]-10^(-5)})))==1){"plus;"}else{"moins;"}}else{if(member(Z[0],F)==0){
+                                                    if(fp(Z[0])==0){"valBarre(btex 0 etex);"}else{" "}+
+                                                    if(sign(fp((Z[0]+10^(-3))))==1){"plus;"}else{"moins;"}}else{"nonDefBarre;"+
+                                                         if(sign(fp(10^(-3)+Z[0]))==1){"plus;"}else{"moins;"} }}+if(TestS==0){"valBarre(btex$
+                                                       $ etex);"+
+if(evalf(sign(fp(10^(-3)+ifte(Z[0]==-infinity,ifte(Z[1]==+infinity,ifte(member(0,F)==0,0,0.01),ifte(member(Z[1]-1,F)==0,Z[1]-1,Z[1]-1.1)),Z[0]))))==1.0){"plus;"}else{"moins;"}}else{" "}; 
+
+
+
+
+if(nz>2){rr:=1; if(nz==NL){for(r:=1; r<=NL-2;r++){ TestS:=(evalf(sign(LL[r]-ao))==evalf(sign(LL[r+1]-ao))) or (evalf(sign(LL[r]-ao))==0.0)or (evalf(sign(LL[r+1]-ao))==0.0); 
+                                                 ksp:=evalf(fp(Z[r]+0.01))>0;  
+                                                 TestL:=(abs(LL[r])==abs(LL[r+1]));
+                                 lsp:=lsp+if(member(Z[r],F)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"}+
+                                  if(ksp==1){"plus;"}else{"moins;"}+if(TestS==0){"valBarre(btex $  $ etex);"}else{" "}+if(TestS==0){if(ksp==1){"plus;"}else{"moins;"}}else{" "};
+                                          }}  
+else{for(r:=1; r<=NL-2;r++){kspp:=evalf(fp(Z[rr]+0.01))>0;TestS:=(evalf(sign(LL[r]-ao))==evalf(sign(LL[r+1]-ao))) or (evalf(sign(LL[r]-ao))==0.0)or (evalf(sign(LL[r+1]-ao))==0.0);
+                                         
+                      if(PB[r]==1){if(TestS==0){lsp:=lsp+if(member(Z[rr],F)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"}+
+                                  if(kspp==1){"plus;"}else{"moins;"}+"valBarre(btex $  $ etex);"+if(kspp==1){"plus;"}else{"moins;"};rr:=rr+1;}
+                                    else{lsp:=lsp+if(member(Z[rr],F)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"}+
+                                  if(kspp==1){"plus;"}else{"moins;"};rr:=rr+1;}        
+}}}}; 
+
+
+
+
+ lsf:=if(member(Z[nz-1],F)==0){" "}else{"nonDefBarre;"}
+
+
+
+lm0:=limit(f(x),x,Z[0],1)==-infinity;
+
+
+
+
+TestS:=(evalf(sign(LL[0]-ao))==evalf(sign(LL[1]-ao))) or (evalf(sign(LL[0]-ao))==0.0) or (evalf(sign(LL[1]-ao))==0.0);
+
+     li:=lvic+nom+"}$ etex);
+"+  if(member(Z[0],F)==0){"valPos(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}
+             else{"nonDefBarre;limDroite(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}+                               
+           if(k0==1){"1);"}else{"0);"}+if(TestS==0){"valPos(btex $ "+ao+" $ etex,0.5);"}else{" "}; 
+                         
+            
+                     if(nz>2){if(nz==NL){for(r:=1; r<=nz-2;r++){TestS:=(evalf(sign(LL[r]-ao))==evalf(sign(LL[r+1]-ao))) or (evalf(sign(LL[r]-ao))==0.0)or (evalf(sign(LL[r+1]-ao))==0.0); 
+                                                 krm:=evalf(limit(f(x),x,Z[r-1],1))< evalf(limit(f(x),x,Z[r],-1));
+                                                 krp:=evalf(limit(f(x),x,Z[r],1))> evalf(limit(f(x),x,Z[r+1],-1)) ;  
+                         lmrm:=limit(f(x),x,Z[r],-1)==-infinity;lmrp:=limit(f(x),x,Z[r],1)==-infinity;
+                                                  lp:=lp+if(member(Z[r],F)) {
+                                    "limGauche(btex $"+if(lmrm==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],-1)))}+"$ etex,"+if(krm==1){"1);"}else{"0);"}+"nonDefBarre;limDroite(btex $"+if(lmrp==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],1)))}+"$ etex,"+if(krp==1){"1);"}else{"0);"}}
+                                          else{"valPos(btex          $"+latex(simplify(f(Z[r])))+"$
+                                            etex,"+if(evalf(sign(fp(Z[r]-0.01)))==sign(fp(Z[r]+0.01))){"0.5);"}else{if(krp==1){"1);"}else{"0);"}}}+if(TestS==0){"valPos(btex
+                                            $ "+ao+" $ etex,0.5);"
+                                                           }else{" "}; 
+};//for                
+}else{rr:=1;for(r:=1; r<=NL-2;r++){TestS:=(evalf(sign(LL[r]-ao))==evalf(sign(LL[r+1]-ao))) or (evalf(sign(LL[r]-ao))==0.0)or (evalf(sign(LL[r+1]-ao))==0.0); 
+                                                 krm:=evalf(limit(f(x),x,Z[rr-1],1))< evalf(limit(f(x),x,Z[rr],-1));
+                                                 krp:=evalf(limit(f(x),x,Z[rr],1))> evalf(limit(f(x),x,Z[rr+1],-1)) ;  
+                         lmrm:=limit(f(x),x,Z[rr],-1)==-infinity;lmrp:=limit(f(x),x,Z[rr],1)==-infinity; TestL:=(abs(LL[r])==abs(LL[r+1]));
+                   
+if(PB[r]==1){if(TestS==0){lp:=lp+if(member(Z[rr],F)){
+                                    "limGauche(btex $"+if(lmrm==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[rr],-1)))}+"$ etex,"+if(krm==1){"1);"}else{"0);"}+"nonDefBarre;limDroite(btex $"+if(lmrp==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[rr],1)))}+"$ etex,"+if(krp==1){"1);"}else{"0);"}}
+                                          else{"valPos(btex          $"+latex(simplify(f(Z[rr])))+"$
+                                            etex,"+if(evalf(sign(fp(Z[rr]-0.01)))==sign(fp(Z[rr]+0.01))){"0.5);"}else{if(krp==1){"1);"}else{"0);"}}}+"valPos(btex
+                                            $ "+ao+" $ etex,0.5);
+                                                                 ";rr:=rr+1;
+}//  testS==0
+else{lp:=lp+if(member(Z[rr],F)){
+                                    "limGauche(btex $"+if(lmrm==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[rr],-1)))}+"$ etex,"+if(krm==1){"1);"}else{"0);"}+"nonDefBarre;limDroite(btex $"+if(lmrp==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[rr],1)))}+"$ etex,"+if(krp==1){"1);"}else{"0);"}}
+                                          else{"valPos(btex          $"+latex(simplify(f(Z[rr])))+"$
+                                            etex,"+if(evalf(sign(fp(Z[rr]-0.01)))==sign(fp(Z[rr]+0.01))){"0.5);"}else{if(krp==1){"1);"}else{"0);
+                                                            "}}};rr:=rr+1;
+}//else testS==0
+}//PB[r]==1
+}//for nz<NL
+}// else nz<NL
+//if nz=NL
+};//if nz>2
+
+
+
+lnz:=limit(f(x),x,Z[nz-1],-1)==-infinity;
+
+
+lf:=if(member(Z[nz-1],F)==0){"valPos(btex $"+
+           if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+
+             if(kz==1){"1);"}else{"0);"}}
+    else{"limGauche(btex $"+
+         if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+ 
+           if(kz==1){"1);nonDefBarre;"}else{"0);nonDefBarre;"}};    
+
+
+
+
+
+
+
+MetaLfc:= if(ftt==2){if(nz>2){"beginTableau("+nmr+")"+
+        l0+lsi+lsp+lsf+"
+endTableau;
+
+";}else{
+"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+"
+endTableau;
+
+";
+}
+}else{
+if(ftt==0){if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+li+
+lf
++"
+endTableau;
+";}}else{
+if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+lsi+lsp+lsf+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+
+li+
+lf
++"
+endTableau;
+
+";}
+}};
+
+
+
+
+
+
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,MetaLfc);
+fclose(sortie);
+
+
+ }:;
+
+
+\end{VerbatimOut}
+
+
+
+
+
+
+
+%%
+%%
+%% Quand les solutions de f'(x)=0 ne sont pas formellement calculables
+%%
+
+
+
+
+\begin{VerbatimOut}{XcasTVIapp.cxx}
+
+TVIapp(L,F,nom,nomv,f,ftt,ao,nmr):={
+
+
+nl:=size(L);
+f:=unapply(f,x);
+fp:=function_diff(f);
+z0:=concat(L,F);z:=sort(z0);
+nz:=size(z);
+
+
+
+
+
+
+
+S:=op(fsolve(fp(x),x));
+
+
+
+
+
+if(L==[-infinity,+infinity]){j:=[seq(-50+2*k,k=0..50)]minus F;
+  for k in j do for(m:=-5;m<=5;m++){S:=S,resoudre_numerique(fp(y),y,k+m*0.1,k+(m+1)*0.1,bisection_solver)};end_for}
+else{if(L[0]==-infinity){j:=[seq(2*k,k=-25..0.5*floor(L[1]))] minus F;
+  for k in j do for(m:=-5;m<=5;m++){ S:=S,resoudre_numerique(fp(y),y,k+m*0.1,k+(m+1)*0.1,bisection_solver)};end_for}
+else{if(L[1]==+infinity){
+j:=[seq(2*k,k=floor(0.5*L[0])..0.5*50)] minus F;
+  for k in j do for(m:=-5;m<=5;m++){ S:=S,resoudre_numerique(fp(y),y,k+m*0.1,k+(m+1)*0.1,bisection_solver)};end_for
+}
+else{ j:=[seq(2*k,k=0.5*floor(z[0])..0.5*floor(z[nz-1]))] minus F;
+  for k in j do  for(m:=-5;m<=5;m++){S:=S,resoudre_numerique(fp(y),y,k+m*0.1,k+(m+1)*0.1,bisection_solver)};end_for }
+  }};
+
+
+
+
+
+
+
+
+si size(S)>0 alors   pour j de 0 jusque size(S)-1 faire 
+                             kk:=(re(S[j])==S[j]);kok:=(evalf(S[j])>=L[0]) and (evalf(S[j])<=L[1]);
+                          if(kk==1){if(kok==1){z:=append(z,simplify(S[j]))}};
+                          fpour;
+fsi;
+
+
+S:=NULL;
+S:=S,z[0];
+for(j:=1;j<size(z);j++){
+ if(z[j]!=undef and (abs(z[j])>1e-15 or z[j]==0)){
+   S:=S,z[j]};
+}
+z:=[S];
+
+
+
+Z:=sort(z);
+nz:=size(Z);
+
+S:=NULL;
+S:=S,Z[0];
+for(j:=1;j<nz;j++){
+ if(Z[j]!=S[size(S)-1]){
+   S:=S,Z[j]};
+}
+Z:=[S]; 
+
+
+nz:=size(Z);
+l0:=" newLigneVariables(btex $"+nomv+"$ etex);";lp:=" "; lf:=" ";lsp:=" ";
+
+
+
+LI:=limit(f(x),x,Z[0],1);
+LF:=limit(f(x),x,Z[nz-1],-1);
+LP:=NULL;
+PB:=1;
+if(nz>2){                                                       for(r:=1;
+  r<=nz-2;r++){LP:=LP,if(member(Z[r],F)){limit(f(x),x,Z[r],-1),limit(f(x),x,Z[r],1)}else{f(Z[r])};
+if(member(Z[r],F)){PB:=PB,0,1}else{PB:=PB,1};
+}
+};
+if(nz>2){ LL:=[LI,LP,LF]; PB:=[PB,1]}else{LL:=[LI,LF];PB:=[1,1]};
+      
+NL:=size(LL);
+A:=NULL;aa:=1;
+kk:=0;
+
+
+if(NL==nz){for(k:=0;k<nz-1;k++){TestS:=(evalf(sign(LL[k]-ao))==evalf(sign(LL[k+1]-ao))) or (evalf(sign(LL[k]-ao))==0.0)or (evalf(sign(LL[k+1]-ao))==0.0);
+if(TestS==0){A:=A,aa;l0:=l0+"val(btex $"+latex(Z[k])+"$ etex);"+"val(btex $\\alpha_"+aa+"$ etex);";aa:=aa+1;}else{l0:=l0+"val(btex $"+latex(Z[k])+"$ etex);"}}
+l0:=l0+"val(btex $"+latex(Z[nz-1])+"$ etex);"};
+//chgmt NL->nz
+if(NL>nz){for(k:=0;k<NL-1;k++){TestS:=(evalf(sign(LL[k]-ao))==evalf(sign(LL[k+1]-ao))) or (evalf(sign(LL[k]-ao))==0.0)or (evalf(sign(LL[k+1]-ao))==0.0);
+  
+if(PB[k]==1){if(TestS==0){
+   A:=A,aa;l0:=l0+"val(btex $"+latex(Z[kk])+"$ etex);"+"val(btex $\\alpha_"+aa+"$ etex);";aa:=aa+1;kk:=kk+1}
+else{l0:=l0+"val(btex $"+latex(Z[kk])+"$ etex);";kk:=kk+1}};
+}
+
+ l0:=l0+"val(btex $"+latex(Z[nz-1])+"$ etex);"
+
+ };
+
+
+TestS:=(evalf(sign(LL[0]-ao))==evalf(sign(LL[1]-ao))) or (evalf(sign(LL[0]-ao))==0.0) or (evalf(sign(LL[1]-ao))==0.0);
+       k0:= evalf(limit(f(x),x,Z[0],1))> evalf(limit(f(x),x,Z[1],-1));
+       kz:=evalf(limit(f(x),x,Z[nz-1],-1))> evalf(limit(f(x),x,Z[nz-2],1));
+                          
+lsi:=lsic+nom+"'("+nomv+")}$ etex);"+
+     if(Z[0]==-infinity){if(evalf(sign(fp(if(Z[1]==+infinity){0}else{Z[1]-10^(-5)})))==1){"plus;"}else{"moins;"}}else{if(member(Z[0],F)==0){
+                                                    if(fp(Z[0])==0){"valBarre(btex 0 etex);"}else{" "}+
+                                                    if(sign(fp((Z[0]+10^(-3))))==1){"plus;"}else{"moins;"}}else{"nonDefBarre;"+
+                                                         if(sign(fp(10^(-3)+Z[0]))==1){"plus;"}else{"moins;"} }}+if(TestS==0){"valBarre(btex$
+                                                       $ etex);"+
+
+if(evalf(sign(fp(10^(-3)+ifte(Z[0]==-infinity,ifte(Z[1]==+infinity,ifte(member(0,F)==0,0,0.01),ifte(member(Z[1]-1,F)==0,Z[1]-1,Z[1]-1.1)),Z[0]))))==1.0){"plus;"}else{"moins;"}}else{" "}; 
+
+
+
+if(nz>2){rr:=1; if(nz==NL){for(r:=1; r<=NL-2;r++){ TestS:=(evalf(sign(LL[r]-ao))==evalf(sign(LL[r+1]-ao))) or (evalf(sign(LL[r]-ao))==0.0)or (evalf(sign(LL[r+1]-ao))==0.0); 
+                                                 ksp:=evalf(fp(Z[r]+0.01))>0;  
+                                                 TestL:=(abs(LL[r])==abs(LL[r+1]));
+                                 lsp:=lsp+if(member(Z[r],F)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"}+
+                                  if(ksp==1){"plus;"}else{"moins;"}+if(TestS==0){"valBarre(btex $  $ etex);"}else{" "}+if(TestS==0){if(ksp==1){"plus;"}else{"moins;"}}else{" "};
+                                          }}  
+else{for(r:=1; r<=NL-2;r++){kspp:=evalf(fp(Z[rr]+0.01))>0;TestS:=(evalf(sign(LL[r]-ao))==evalf(sign(LL[r+1]-ao))) or (evalf(sign(LL[r]-ao))==0.0)or (evalf(sign(LL[r+1]-ao))==0.0);
+                                         
+                      if(PB[r]==1){if(TestS==0){lsp:=lsp+if(member(Z[rr],F)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"}+
+                                  if(kspp==1){"plus;"}else{"moins;"}+"valBarre(btex $  $ etex);"+if(kspp==1){"plus;"}else{"moins;"};rr:=rr+1;}
+                                    else{lsp:=lsp+if(member(Z[rr],F)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"}+
+                                  if(kspp==1){"plus;"}else{"moins;"};rr:=rr+1;}        
+}}}}; 
+
+
+
+
+ lsf:=if(member(Z[nz-1],F)==0){" "}else{"nonDefBarre;"}
+
+
+
+lm0:=limit(f(x),x,Z[0],1)==-infinity;
+
+
+
+
+TestS:=(evalf(sign(LL[0]-ao))==evalf(sign(LL[1]-ao))) or (evalf(sign(LL[0]-ao))==0.0) or (evalf(sign(LL[1]-ao))==0.0);
+
+     li:=lvic+nom+"}$ etex);
+"+  if(member(Z[0],F)==0){"valPos(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}
+             else{"nonDefBarre;limDroite(btex $"+if(lm0==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[0],1)))}+"$ etex,"}+                               
+           if(k0==1){"1);"}else{"0);"}+if(TestS==0){"valPos(btex $ "+ao+" $ etex,0.5);"}else{" "}; 
+                         
+            
+                     if(nz>2){if(nz==NL){for(r:=1; r<=nz-2;r++){TestS:=(evalf(sign(LL[r]-ao))==evalf(sign(LL[r+1]-ao))) or (evalf(sign(LL[r]-ao))==0.0)or (evalf(sign(LL[r+1]-ao))==0.0); 
+                                                 krm:=evalf(limit(f(x),x,Z[r-1],1))< evalf(limit(f(x),x,Z[r],-1));
+                                                 krp:=evalf(limit(f(x),x,Z[r],1))> evalf(limit(f(x),x,Z[r+1],-1)) ;  
+                         lmrm:=limit(f(x),x,Z[r],-1)==-infinity;lmrp:=limit(f(x),x,Z[r],1)==-infinity;
+                                                  lp:=lp+if(member(Z[r],F)) {
+                                    "limGauche(btex $"+if(lmrm==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],-1)))}+"$ etex,"+if(krm==1){"1);"}else{"0);"}+"nonDefBarre;limDroite(btex $"+if(lmrp==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[r],1)))}+"$ etex,"+if(krp==1){"1);"}else{"0);"}}
+                                          else{"valPos(btex          $"+latex(simplify(f(Z[r])))+"$
+                                            etex,"+if(evalf(sign(fp(Z[r]-0.01)))==sign(fp(Z[r]+0.01))){"0.5);"}else{if(krp==1){"1);"}else{"0);"}}}+if(TestS==0){"valPos(btex
+                                            $ "+ao+" $ etex,0.5);"
+                                                           }else{" "}; 
+};//for                
+}else{rr:=1;for(r:=1; r<=NL-2;r++){TestS:=(evalf(sign(LL[r]-ao))==evalf(sign(LL[r+1]-ao))) or (evalf(sign(LL[r]-ao))==0.0)or (evalf(sign(LL[r+1]-ao))==0.0); 
+                                                 krm:=evalf(limit(f(x),x,Z[rr-1],1))< evalf(limit(f(x),x,Z[rr],-1));
+                                                 krp:=evalf(limit(f(x),x,Z[rr],1))> evalf(limit(f(x),x,Z[rr+1],-1)) ;  
+                         lmrm:=limit(f(x),x,Z[rr],-1)==-infinity;lmrp:=limit(f(x),x,Z[rr],1)==-infinity; TestL:=(abs(LL[r])==abs(LL[r+1]));
+                   
+if(PB[r]==1){if(TestS==0){lp:=lp+if(member(Z[rr],F)){
+                                    "limGauche(btex $"+if(lmrm==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[rr],-1)))}+"$ etex,"+if(krm==1){"1);"}else{"0);"}+"nonDefBarre;limDroite(btex $"+if(lmrp==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[rr],1)))}+"$ etex,"+if(krp==1){"1);"}else{"0);"}}
+                                          else{"valPos(btex          $"+latex(simplify(f(Z[rr])))+"$
+                                            etex,"+if(evalf(sign(fp(Z[rr]-0.01)))==sign(fp(Z[rr]+0.01))){"0.5);"}else{if(krp==1){"1);"}else{"0);"}}}+"valPos(btex
+                                            $ "+ao+" $ etex,0.5);
+                                                                 ";rr:=rr+1;
+}//  testS==0
+else{lp:=lp+if(member(Z[rr],F)){
+                                    "limGauche(btex $"+if(lmrm==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[rr],-1)))}+"$ etex,"+if(krm==1){"1);"}else{"0);"}+"nonDefBarre;limDroite(btex $"+if(lmrp==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[rr],1)))}+"$ etex,"+if(krp==1){"1);"}else{"0);"}}
+                                          else{"valPos(btex          $"+latex(simplify(f(Z[rr])))+"$
+                                            etex,"+if(evalf(sign(fp(Z[rr]-0.01)))==sign(fp(Z[rr]+0.01))){"0.5);"}else{if(krp==1){"1);"}else{"0);
+                                                            "}}};rr:=rr+1;
+}//else testS==0
+}//PB[r]==1
+}//for nz<NL
+}// else nz<NL
+//if nz=NL
+};//if nz>2
+
+
+
+lnz:=limit(f(x),x,Z[nz-1],-1)==-infinity;
+
+
+lf:=if(member(Z[nz-1],F)==0){"valPos(btex $"+
+           if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+
+             if(kz==1){"1);"}else{"0);"}}
+    else{"limGauche(btex $"+
+         if(lnz==1){"-\\infty"}else{latex(simplify(limit(f(x),x,Z[nz-1],-1)))}+"$ etex,"+ 
+           if(kz==1){"1);nonDefBarre;"}else{"0);nonDefBarre;"}};    
+
+
+
+
+
+
+
+MetaLfc:= if(ftt==2){if(nz>2){"beginTableau("+nmr+")"+
+        l0+lsi+lsp+lsf+"
+endTableau;
+
+";}else{
+"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+"
+endTableau;
+
+";
+}
+}else{
+if(ftt==0){if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+li+
+lf
++"
+endTableau;
+";}}else{
+if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+lsi+lsp+lsf+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+lsi+lsf+
+li+
+lf
++"
+endTableau;
+
+";}
+}};
+
+
+
+
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,MetaLfc);
+fclose(sortie);
+
+
+ }:;
+
+
+
+
+\end{VerbatimOut}
+
+
+
+
+
+
+
+%%
+%% Code giac/Xcas pour les Tableaux de variations de courbes parametrees
+%%
+
+
+
+
+
+
+
+\begin{VerbatimOut}{XcasTVP.cxx}
+TVP(L,F,nom,nomv,ff,ftt,trigo,nmr):={
+
+nl:=size(L);
+fp:=[];
+S:=[];
+f:=[unapply(ff[0],t),unapply(ff[1],t)];
+fp:=[function_diff(f[0]),function_diff(f[1])];
+Z:=[];
+LLL:=[];
+
+
+all_trig_solutions:=1;
+reset_solve_counter(-1,-1);
+
+for(d:=0;d<=1;d++){
+LLL:=concat(L,F[d]);
+Z:=LLL union Z;
+SS:=solve(factor(simplify(fp[d](t))),t);
+ns:=size(SS);
+
+
+for(k:=0;k<ns;k++){
+if(trigo==t){
+m:=0;
+while(evalf(simplify(subst(SS[k],n_1=m)))<=evalf(L[nl-1])){
+
+S:=concat(S,simplify(subst(SS[k],n_1=m)));m:=m+1;
+
+};m:=-1;
+while(evalf(subst(SS[k],n_1=m))>=L[0]){
+
+S:=concat(S,simplify(subst(SS[k],n_1=m)));m:=m-1;
+
+}
+}else{
+S:=concat(S,SS);
+}
+}
+
+
+  si size(S)>0 alors   pour j de 0 jusque size(S)-1 faire
+                             qq:=member(simplify(S[j]),Z)==0;
+                             kk:=(evalf(S[j])>=evalf(L[0])) and (evalf(S[j])<=evalf(L[nl-1]));
+                          if(kk==1){if(qq==1){Z:=append(Z,simplify(S[j]))}};
+                          fpour
+  fsi;
+Z:=sort(Z);
+nz:=size(Z);
+
+
+ tantque evalf(Z[0])==evalf(Z[1]) faire Z:=Z[1..nz-1];nz:=size(Z);
+     ftantque;
+
+
+
+
+nz:=size(Z);
+u:=1;
+ tantque (u<nz-2) and (nz>2) faire
+     tantque evalf(Z[u])==evalf(Z[u+1]) faire
+         Z:=augment(Z[0..u-1],Z[u+1..nz-1]);nz:=size(Z);
+     ftantque;
+  u:=u+1;
+ ftantque;
+
+
+ };
+
+Z:=sort(Z);
+nz:=size(Z);
+
+
+
+ l0:=" newLigneVariables(btex $"+nomv+"$ etex);";lp:="",""; lf:="","";lsp:="","";
+pour m de 0 jusque nz-1 faire l0:=l0+"val(btex $"+latex(Z[m])+"$ etex);
+";fpour;
+
+ lsi:="","";
+
+FFF:=[[],[]];
+
+for(d:=0;d<=1;d++){
+FFF[d]:=concat(F[d],[-infinity,+infinity]);
+       k0:= evalf(limit(f[d](x),x=Z[0],1))> evalf(limit(f[d](x),x=Z[1],-1));
+       kz:=evalf(limit(f[d](x),x=Z[nz-1],-1))> evalf(limit(f[d](x),x=Z[nz-2],1));
+//}
+//$
+ lsi[d]:=lsic+nom[d]+"'("+nomv+")}$ etex);"+if(member(Z[0],FFF[d])==0){"valBarre(btex $"+latex(simplify(fp[d](Z[0])))+"$ etex);"}else{if(Z[0]==-infinity){" "}else{"nonDefBarre;
+"}}+
+     if(Z[0]==-infinity){if(sign(evalf(fp[d](if(Z[1]==+infinity){0}else{Z[1]-10^(-5)})))==1){"plus;"}else{"moins;"}}else{if(member(Z[0],F[d])==0){
+                                                    if(sign(fp[d](Z[0]+10^(-5)))==1){"plus;"}else{"moins;"}}else{
+                                                         if(sign(fp[d]((Z[0]+10^(-5))))==1){"plus;"}else{"moins;"} }}
+
+if(nz>2){ for(r:=1; r<=nz-2;r++){      ksp:=evalf(fp[d](Z[r]+0.01))>0;
+                                               lsp[d]:=lsp[d]+if(member(Z[r],F[d])==0){"valBarre(btex $"+latex(simplify(fp[d](Z[r])))+"$ etex);"}else{"nonDefBarre;"}+
+                                                if(ksp==1){"plus;"}else{"moins;"}
+                                                  }; }
+
+lsf[d]:=if(member(Z[nz-1],FFF[d])==0){"valBarre(btex $"+latex(simplify(fp[d](Z[nz-1])))+"$ etex);"}else{if(Z[nz-1]==+infinity){" "}else{"nonDefBarre;"}}
+
+
+
+
+ }
+
+
+
+
+
+
+
+
+
+
+
+ lm0:=1,2; li:=1,2; krm:=1,2; krp:=1,2; lmrm:=1,2; lmrp:=1,2; lp:="",""; lnz:=1,2; lf:=1,2; Kz:=1,2;K0:=1,2;
+
+
+for(d:=0;d<=1;d++){
+   K0[d]:= evalf(limit(f[d](x),x=Z[0],1))> evalf(limit(f[d](x),x=Z[1],-1));
+  Kz[d]:=evalf(limit(f[d](x),x,Z[nz-1],-1))> evalf(limit(f[d](x),x,Z[nz-2],1));
+//{
+//$
+lm0[d]:=limit(f[d](x),x,Z[0],1)==-infinity;
+     li[d]:=lvic+nom[d]+"}$ etex);"+
+           if(member(Z[0],F[d])==0){"valPos(btex $"+if(lm0[d]==1){"-\\infty"}else{latex(simplify(limit(f[d](x),x,Z[0],1)))}+"$ etex,"}
+             else{"nonDefBarre;limDroite(btex $"+if(lm0[d]==1){"-\\infty"}else{latex(simplify(limit(f[d](x),x,Z[0],1)))}+"$ etex,"}+
+           if(K0[d]==1){"1"}else{"0"}+
+                         ");";
+
+                     if(nz>2){ for(r:=1; r<=nz-2;r++){ krm[d]:=evalf(limit(f[d](x),x=Z[r-1],1))< evalf(limit(f[d](x),x=Z[r],-1));
+                                                 krp[d]:=evalf(limit(f[d](x),x=Z[r],1))> evalf(limit(f[d](x),x,Z[r+1],-1)) ;
+                         lmrm[d]:=limit(f[d](x),x,Z[r],-1)==-infinity;lmrp[d]:=limit(f[d](x),x,Z[r],1)==-infinity;
+                                                  lp[d]:=lp[d]+if(member(Z[r],F[d])){
+                                    "limGauche(btex
+                                    $"+if(lmrm[d]==1){"-\\infty"}else{latex(simplify(limit(f[d](x),x,Z[r],-1)))}+"$
+                                    etex,"+if(krm[d]==1){"1);"}else{"0);"}+"nonDefBarre;limDroite(btex $"+if(lmrp[d]==1){"-\\infty"}else{latex(simplify(limit(f[d](x),x,Z[r],1)))}+"$ etex,"+if(krp[d]==1){"1);"}else{"0);"}}
+                                          else{"valPos(btex          $"+latex(simplify(f[d](Z[r])))+"$
+                                            etex,"+if(sign(evalf(fp[d](Z[r]-0.001)))==sign(evalf((fp[d](Z[r]+0.001))) )){"0.5);"}else{if(krp[d]==1){"1);"}else{"0);
+"}}}
+                                                   }; }
+
+lnz[d]:=limit(f[d](x),x=Z[nz-1],-1)==-infinity;
+
+
+lf[d]:=if(member(Z[nz-1],F[d])==0){"valPos(btex $"+
+           if(lnz[d]==1){"-\\infty"}else{latex(simplify(limit(f[d](x),x=Z[nz-1],-1)))}+"$ etex,"+
+             if(Kz[d]==1){"1);"}else{"0);"}}
+    else{"limGauche(btex $"+
+         if(lnz[d]==1){"-\\infty"}else{latex(simplify(limit(f[d](x),x=Z[nz-1],-1)))}+"$ etex,"+ 
+           if(Kz[d]==1){"1);nonDefBarre;"}else{"0);nonDefBarre;"}};    
+    
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+MetaLfc:=if(ftt==2){if(nz>2){"
+
+beginTableau("+nmr+")"+
+        l0+lsi[0]+lsp[0]+lsf[0]+lsi[1]+lsp[1]+lsf[1]+"
+endTableau;
+
+";}else{
+"beginTableau("+nmr+")"+
+        l0+
+lsi[0]+lsf[0]+lsi[1]+lsf[1]+"
+endTableau;
+
+";
+}
+}else{ if(ftt==0){if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+li[0]+
+lp[0]+
+lf[0]+
+li[1]+
+lp[1]+
+lf[1]
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+li[0]+
+lf[0]+
+li[1]+
+lf[1]
++"
+endTableau;
+
+";}}else{
+if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+lsi[0]+lsp[0]+lsf[0]+
+li[0]+
+lp[0]+
+lf[0]+
+lsi[1]+lsp[1]+lsf[1]+
+li[1]+
+lp[1]+
+lf[1]
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+lsi[0]+lsf[0]+
+li[0]+
+lf[0]+
+lsi[1]+lsf[1]+
+li[1]+
+lf[1]
++"
+endTableau;
+
+";}
+}
+}
+
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,MetaLfc);
+fclose(sortie);
+
+}:;
+\end{VerbatimOut}
+
+
+
+
+%%
+%% Code giac/Xcas pour les Tableaux de signes de produits
+%%
+
+
+
+
+\begin{VerbatimOut}{XcasTabSignL.cxx}
+
+
+TS(nomf,L,D,trigo,nmr):={
+L:=apply(f->unapply(f,x),L)
+n:=size(L);
+Z:=NULL;
+nl:=size(L);
+S:=[];
+mini:=D[0]; maxi:=D[1];
+
+pour k de 0 jusque n-1 faire 
+
+
+
+
+if(trigo==t){
+all_trig_solutions:=1;
+reset_solve_counter(-1,-1);
+SS:=solve(factor(simplify(L[k](x))),x);
+ns:=size(SS);
+for(j:=0;j<ns;j++){
+m:=0;
+while(evalf(simplify(subst(SS[j],n_1=m)))<=evalf(maxi)){
+S:=concat(S,simplify(subst(SS[j],n_1=m)));m:=m+1;
+};m:=-1;
+while(evalf(subst(SS[j],n_1=m))>=evalf(mini)){
+S:=concat(S,simplify(subst(SS[j],n_1=m)));m:=m-1;
+}
+}
+
+}else{
+S:=solve(L[k](x),x);
+}
+
+
+
+
+  si size(S)>0 alors  pour j de 0 jusque size(S)-1 faire 
+                          if(S[j]>mini and S[j]<maxi){Z:=Z,simplify(S[j]);}
+                      fpour;
+  fsi;
+fpour;
+
+
+
+
+
+Z:=sort(Z);
+nz:=size(Z);
+
+
+ Z:=sort([op(set[(Z)])]);
+
+
+nz:=size(Z);
+
+if(nz==0){li:="";l0:="val(btex $"+latex(D[0])+"$ etex);val(btex $"+latex(D[1])+"$ etex);";
+          for(p:=0;p<=n-1;p++){li:=li+lsic+latex(L[p](x))+"}$ etex);"+
+if(mini!=-infinity and L[p](mini)==0){"
+                                valBarre(btex 0 etex);"}else{"
+                              "}+ 
+if(L[p]((mini+maxi)*0.5>0)){"plus;"}else{"moins;"}+if(maxi!=+infinity and L[p](maxi)==0){"
+                                valBarre(btex 0 etex);"}else{"
+                              "}
+
+}
+           lf:=if(product(L[s]((mini+maxi)*.5),s,0,n-1)>0){"plus;"}else{"moins;"};
+
+
+MetaLfc:="    beginTableau("+nmr+")
+newLigneVariables(btex $ {x}$ etex);
+   "+l0+li+ lsic+nomf+"(x)}$ etex);"+
+               if(mini!=-infinity and product(L[s](mini),s,0,n-1)==0){"
+                                valBarre(btex 0 etex);"}else{"
+                              "}+  lf+
+                               if(maxi!=+infinity and product(L[s](maxi),s,0,n-1)==0){"
+                                valBarre(btex 0 etex);"}else{"
+                              "}+"
+endTableau;
+"
+;
+
+}else{
+
+l0:="val(btex $"+latex(D[0])+"$ etex);";li:=" ";lr:=" "; 
+pour m de 0 jusque nz-1 faire l0:=l0+"val(btex $"+latex(Z[m])+"$ etex);
+";fpour; 
+l0:=l0+"val(btex $"+latex(D[1])+"$ etex);";
+
+
+for(p:=0;p<=n-1;p++){lp:="";                                     
+     li:=li+lsic+latex(L[p](x))+"}$ etex);"+
+           if(mini!=-infinity and L[p](mini)==0){"
+                                valBarre(btex 0 etex);"}else{"
+                              "}+ 
+           if(L[p](Z[0]-0.01)>0){"plus;"}else{"moins;"};
+                               
+                           for(r:=0; r<=nz-2;r++){  
+                             lp:=lp+if(simplify(L[p](Z[r]))==0){"
+                                valBarre(btex 0 etex);"}else{"barre;
+                              "}+ 
+                             if(L[p]((Z[r]+Z[r+1])*.5)>0){"plus;"}else{"moins;"}};
+ 
+                li:=li+lp+ if(simplify(L[p](Z[nz-1]))==0){"valBarre(btex 0 etex);"}else{"barre;"}+ 
+                          if(L[p](Z[nz-1]+1.0)>0){"plus;"}else{"moins;
+    "}+if(maxi!=+infinity and L[p](maxi)==0){"
+                                valBarre(btex 0 etex);"}else{"
+                              "}
+    };  
+
+
+pour t de 0 jusque nz-2 faire 
+                           lr:=lr+if(product(L[s]((Z[t]+Z[t+1])*.5),s,0,n-1)>0){"plus;"}else{"moins;"}+"valBarre(btex 0 etex);"                    
+                         fpour
+
+MetaLfc:="  beginTableau("+nmr+")
+newLigneVariables(btex $ {x}$ etex);
+   "+l0+
+                     li
+                     + lsic+nomf+"(x)}$ etex);"+
+               if(mini!=-infinity and product(L[s](mini),s,0,n-1)==0){"
+                                valBarre(btex 0 etex);"}else{"
+                              "}+  
+                         if(product(L[s](Z[0]-0.01),s,0,n-1)>0){"plus;"}else{"moins;"}+"valBarre(btex 0 etex);"+
+                         lr+
+                         if(product(L[s](Z[nz-1]+0.01),s,0,n-1)>0){"plus;"}else{"moins;"}+
+                               if(maxi!=+infinity and product(L[s](maxi),s,0,n-1)==0){"
+                                valBarre(btex 0 etex);"}else{"
+                              "}+"
+endTableau;
+
+ ";
+}
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,MetaLfc);
+fclose(sortie);
+
+ }:;
+
+\end{VerbatimOut}
+
+
+
+
+%%
+%% Code giac/Xcas pour les Tableaux de signes de quotients
+%%
+
+
+
+\begin{VerbatimOut}{XcasTabSignQ.cxx}
+TSq(nomf,L,Fo,D,trigo,nmr):={
+L:=apply(f->unapply(f,x),L);
+Fo:=apply(f->unapply(f,x),Fo);
+L:=concat(L,Fo);
+n:=size(L);
+Z:=NULL;
+m:=size(Fo);
+F:=NULL;FF:=NULL;
+mini:=D[0]; maxi:=D[1];
+S:=[];
+SF:=[];
+
+pour k de 0 jusque n-1 faire 
+
+
+
+if(trigo==t){
+all_trig_solutions:=1;
+reset_solve_counter(-1,-1);
+SS:=solve(factor(simplify(L[k](x))),x);
+ns:=size(SS);
+for(j:=0;j<ns;j++){
+mm:=0;
+while(evalf(simplify(subst(SS[j],n_1=mm)))<=evalf(maxi)){
+S:=concat(S,simplify(subst(SS[j],n_1=mm)));mm:=mm+1;
+};mm:=-1;
+while(evalf(subst(SS[j],n_1=mm))>=evalf(mini)){
+S:=concat(S,simplify(subst(SS[j],n_1=mm)));mm:=mm-1;
+}
+}
+
+}else{
+S:=concat(S,solve(L[k](x),x));
+}
+
+
+
+
+
+  si size(S)>0 alors   pour j de 0 jusque size(S)-1 faire 
+                          if(S[j]>mini and S[j]<maxi){Z:=Z,simplify(S[j]);}
+                      fpour;
+  fsi;
+fpour;
+
+
+pour k de 0 jusque m-1 faire 
+
+
+
+if(trigo==t){
+all_trig_solutions:=1;
+reset_solve_counter(-1,-1);
+SSF:=solve(factor(simplify(Fo[k](x))),x);
+nsf:=size(SSF);
+for(j:=0;j<nsf;j++){
+mm:=0;
+while(evalf(simplify(subst(SSF[j],n_1=mm)))<=evalf(maxi)){
+SF:=concat(SF,simplify(subst(SSF[j],n_1=mm)));mm:=mm+1;
+};mm:=-1;
+while(evalf(subst(SSF[j],n_1=mm))>=evalf(mini)){
+SF:=concat(SF,simplify(subst(SSF[j],n_1=mm)));mm:=mm-1;
+}
+}
+
+}else{
+SF:=concat(SF,solve(Fo[k](x),x));
+}
+
+  si size(SF)>0 alors pour j de 0 jusque size(SF)-1 faire 
+                          FF:=FF,simplify(SF[j]);
+                          if(SF[j]>mini and SF[j]<maxi){F:=F,simplify(SF[j]);}
+                      fpour;
+  fsi;
+fpour;
+
+
+
+Z:=[Z,F];
+
+
+Z:=sort([op(set[op(Z)])]);
+
+nz:=size(Z);
+
+if(nz==0){li:="";l0:="val(btex $"+latex(D[0])+"$ etex);val(btex $"+latex(D[1])+"$ etex);";
+          for(p:=0;p<=n-1;p++){li:=li+lsic+latex(L[p](x))+"}$ etex);"+
+if(mini!=-infinity and L[p](mini)==0){"
+                                valBarre(btex 0 etex);"}else{"
+                              "}+ 
+if(L[p]((mini+maxi)*0.5>0)){"plus;"}else{"moins;"}+if(maxi!=+infinity and L[p](maxi)==0){"
+                                valBarre(btex 0 etex);"}else{"
+                              "}
+
+}
+           lf:=if(product(L[s]((mini+maxi)*.5),s,0,n-1)>0){"plus;"}else{"moins;"};
+
+
+
+
+MetaLfc:=" 
+beginTableau("+nmr+")
+newLigneVariables(btex $ {x}$ etex);
+   "+l0+li+
+   lsic+nomf+"(x)}$ etex);"+
+              if(member(mini,FF)==0){if((mini!=-infinity) and (product(L[s](mini),s,0,n-1)==0)){" valBarre(btex 0 etex);"}else{" "}}else{"nonDefBarre;"}+  lf+
+              if(member(maxi,FF)==0){if((maxi!=+infinity) and (product(L[s](maxi),s,0,n-1)==0)){" valBarre(btex 0 etex);"}else{" "}}else{"nonDefBarre;"}+"
+endTableau;
+
+"
+;
+
+
+
+
+}else{
+
+
+l0:="val(btex $"+latex(D[0])+"$ etex);";li:=" ";lr:=" "; 
+pour m de 0 jusque nz-1 faire l0:=l0+"val(btex $"+latex(Z[m])+"$ etex);
+";fpour; 
+l0:=l0+"val(btex $"+latex(D[1])+"$ etex);";
+
+
+for(p:=0;p<=n-1;p++){lp:="";                                     
+     li:=li+lsic+latex(L[p](x))+"}$ etex);"+
+           if(mini!=-infinity and L[p](mini)==0){" valBarre(btex 0 etex);"}else{" "}+ 
+           if(L[p](Z[0]-0.01)>0){"plus;"}else{"moins;"};
+                               
+     for(r:=0; r<=nz-2;r++){lp:=lp+if(simplify(L[p](Z[r]))==0){" valBarre(btex 0 etex);"}else{"barre;"}+ 
+                             if(L[p]((Z[r]+Z[r+1])*.5)>0){"plus;"}else{"moins;"}};
+ 
+                li:=li+lp+ if(simplify(L[p](Z[nz-1]))==0){"valBarre(btex 0 etex);"}else{"barre;"}+ 
+                          if(L[p](Z[nz-1]+1.0)>0){"plus;"}else{"moins;
+    "}+if(maxi!=+infinity and L[p](maxi)==0){"valBarre(btex 0 etex);"}else{" "}
+                              
+    };  
+
+
+pour t de 0 jusque nz-2 faire 
+                           lr:=lr+if(product(L[s]((Z[t]+Z[t+1])*.5),s,0,n-1)>0){"plus;"}else{"moins;"}+
+                                      if(member(Z[t+1],FF)==0){"valBarre(btex 0 etex);"}else{ "nonDefBarre;"}                   
+                         fpour
+
+
+
+
+MetaLfc:="
+beginTableau("+nmr+")
+newLigneVariables(btex $ {x}$ etex);
+   "+l0+
+                     li
+                     +
+   lsic+nomf+"(x)}$ etex);"+
+               if(member(mini,FF)==0){if((mini!=-infinity) and (product(L[s](mini),s,0,n-1)==0)){" valBarre(btex 0 etex);"}else{" "}}else{"nonDefBarre;"}+  
+                         if(product(L[s](Z[0]-0.01),s,0,n-1)>0){"plus;"}else{"moins;"}+
+                         if(member(Z[0],FF)==0){"valBarre(btex 0 etex);"}else{ "nonDefBarre;"}+
+                         lr+
+                         if(product(L[s](Z[nz-1]+0.01),s,0,n-1)>0){"plus;"}else{"moins;"}+
+                         if(member(maxi,FF)==0){if((maxi!=+infinity) and (product(L[s](maxi),s,0,n-1)==0)){"valBarre(btex 0 etex);"}else{" "}}else{"nonDefBarre;"}+"
+endTableau;
+
+"
+
+
+}
+
+
+
+
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,MetaLfc);
+fclose(sortie);
+
+
+
+
+
+ }:;
+
+\end{VerbatimOut}
+
+
+
+
+%% Code giac/Xcas pour les Tableaux de signes du produit
+%% de 2 facteurs affines
+%%
+
+
+
+
+\begin{VerbatimOut}{XcasTabSigna.cxx}
+TSa(a,b,c,d,nmr):={
+zA:=solve(a*x+b=0,x)[0];
+zB:=solve(c*x+d=0,x)[0];
+zmin:=min(zA,zB);
+zmax:=max(zA,zB);
+  Meta:= " 
+          beginTableau("+nmr+")
+   newLigneVariables(btex $ {x}$ etex);
+   val(btex $-\\infty$ etex);val(btex $"+latex(zmin)+"$ etex);
+val(btex $"+latex(zmax)+"$etex);
+val(btex $+\\infty$ etex); 
+  "+lsic+if(a==1){"x+"}else{if(a==-1){"-x+"}else{a+"x+"}}+b+"}$ etex);"
+        +   if(a>0){"moins;"}else{"plus;"}+
+                                 if(zmin==zA){"valBarre(btex 0 etex);"}else{"barre;"}+
+                                 if(zmin==zA){si a>0 alors "plus;"; sinon "moins;";fsi}
+                                             else{si a>0 alors "moins;"; sinon "plus;"; fsi}+
+                                 if(zmin==zA){"barre;"}else{"valBarre(btex 0 etex);"}+
+                                 if(a>0){"plus;"}else{"moins;"}
+     +lsic+if(c==1){"x+"}else{if(c==-1){"-x+"}else{c+"x+"}}+d+"}$ etex);"
+        +     if(c>0){"moins"}else{"plus"}+";"+
+                                 if(zmin==zB){"valBarre(btex 0 etex);"}else{"barre;"}+
+                                 if(zmin==zB){si c>0 alors "plus;"; sinon "moins;";fsi}
+                                             else{si c>0 alors "moins;"; sinon "plus;"; fsi}+
+                                 if(zmin==zB){"barre;"}else{"valBarre(btex 0 etex);"}+
+                                 if(c>0){"plus;"}else{"moins;"}  
+     
+   +lsic+"{("+if(a==1){"x+"}else{if(a==-1){"-x+"}else{a+"x+"}}+b+")("+if(c==1){"x+"}else{if(c==-1){"-x+"}else{c+"x+"}}+d+")}}$ etex);"
+        +   si a*c>0 alors plus; sinon moins;fsi+";"+
+                                 "valBarre(btex 0 etex);"+
+                                 si a*c>0 alors moins; sinon plus;fsi+";"+
+                                 "valBarre(btex 0 etex);"+
+                                 si a*c>0 alors plus; sinon moins;fsi+";"+"
+endTableau;
+"
+;
+
+
+
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,Meta);
+fclose(sortie);
+
+
+ }:;
+\end{VerbatimOut}
+
+
+
+
+
+
+%%$
+%% Code giac/Xcas pour les Tableaux de Signes d'expression ne contenant 
+%% qu'un seul terme
+
+
+
+
+\begin{VerbatimOut}{XcasTSc.cxx}
+TSc(g,D,F,trigo,nmr):={
+f:=unapply(g,x);
+mini:=D[0]; maxi:=D[1];lm:=" ";
+Z:=mini,maxi;
+S:=[];
+
+
+
+if(trigo==t){
+all_trig_solutions:=1;
+reset_solve_counter(-1,-1);
+SS:=solve(factor(simplify(f(x))),x);
+ns:=size(SS);
+for(j:=0;j<ns;j++){
+m:=0;
+while(evalf(simplify(subst(SS[j],n_1=m)))<=evalf(maxi)){
+S:=concat(S,simplify(subst(SS[j],n_1=m)));m:=m+1;
+};m:=-1;
+while(evalf(subst(SS[j],n_1=m))>=evalf(mini)){
+S:=concat(S,simplify(subst(SS[j],n_1=m)));m:=m-1;
+}
+}
+
+}else{
+S:=solve(f(x),x);
+}
+
+
+
+
+
+if(size(S)==0 and size(F)==0){
+l0:="val(btex $"+latex(D[0])+"$ etex);val(btex $"+latex(D[1])+"$ etex);";
+li:=if(member(mini,F)!=0){"nonDefBarre;"}else{if(mini!=-infinity and f(mini)==0){"
+                                valBarre(btex 0 etex);"}else{"
+                              "}}+ 
+if(mini!=-infinity or maxi!=+infinity){if(f((mini+maxi)*0.5>0)){"plus;"}else{"moins;"}}else{if(f(0.3145274774464545777744)>0){"plus;"}else{"moins;"}};
+lf:=if(member(maxi,F)!=0){"nonDefBarre;"}else{if(maxi!=+infinity and f(maxi)==0){"
+                                valBarre(btex 0 etex);"}else{"
+                              "}};
+}else{
+if(size(S!=0)){pour j de 0 jusque size(S)-1 faire 
+                           if(S[j]>mini and S[j]<maxi){Z:=Z,simplify(S[j])};
+                      fpour}
+
+Z:=concat([Z],F);
+
+ Z:=sort([op(set[op(Z)])]);
+
+
+nz:=size(Z);
+l0:=" ";li:=" ";lr:=" "; 
+if(nz==2){l0:="val(btex $"+latex(D[0])+"$ etex);val(btex $"+latex(D[1])+"$ etex);";
+li:=if(mini!=-infinity and f(mini)==0){"
+                                valBarre(btex 0 etex);"}else{if(member(mini,F)==0){"
+                              "}else{"nonDefBarre;"}}+ 
+if(f((mini+maxi)*0.5)>0){"plus;"}else{"moins;"};
+lf:=if(maxi!=+infinity and f(maxi)==0){"
+                                valBarre(btex 0 etex);"}else{if(member(maxi,F)==0){"
+                              "}else{"nonDefBarre;"}
+                              };
+
+}else{
+l0:="val(btex $"+latex(Z[0])+"$ etex);";li:=" ";
+pour m de 1 jusque nz-1 faire l0:=l0+"val(btex $"+latex(Z[m])+"$ etex);
+";
+fpour; 
+
+                                     
+li:= if(mini!=-infinity and f(mini)==0){"
+                                valBarre(btex 0 etex);"}else{if(member(mini,F)==0){"
+                              "}else{"nonDefBarre;"}
+                              }                         
+
+lm:=if(nz>2){for(r:=0; r<nz-2;r++){lm:=lm+if(Z[r]==-infinity){
+if(f((Z[r+1]-1))>0){"plus;"}else{"moins;"}
+}else{if(f((Z[r]+Z[r+1])*.5)>0){"plus;"}else{"moins;"}}
++
+            if(member(Z[r+1],F)==0){"valBarre(btex 0 etex);"}else{"nonDefBarre;"} 
+                           }}else{" "}; 
+
+lf:=if(f(Z[nz-2]+0.1)>0){"plus;"}else{"moins;"}+if(maxi!=+infinity and f(maxi)==0){"valBarre(btex 0 etex);"}else{if(member(maxi,F)==0){"
+                              "}else{"nonDefBarre;"}
+                              };
+}
+};  
+
+
+
+
+MetaLfc:="
+
+beginTableau("+nmr+")
+newLigneVariables(btex $\\displaystyle  {x}$ etex);
+   "+l0+lsic+latex(f(x))+"}$ etex);"+
+                     li+lm+lf
+                     +"
+endTableau;
+
+"
+;
+
+
+
+
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,MetaLfc);
+fclose(sortie);
+ }:;
+
+
+\end{VerbatimOut}
+
+
+
+
+
+
+
+
+
+%%$
+
+
+
+
+
+
+
+
+%%%%
+%%%
+%%% Pour des tableaux de variations simples sans fonctions
+%%%
+%%%
+
+
+
+\begin{VerbatimOut}{XcasTVS.cxx}
+TVS(La,Lo,F,nomf,nomv,nmr):={
+
+na:=size(La);
+f:=F;
+if(member(La[0],F)){f:=f[1..size(f)-1]};
+if(member(La[na-1],F)){f:=f[0..size(f)-2]};
+Z:=sort(concat(La,f));
+Zo:=sort([op(set[op(Z)])]);
+nz:=size(Z);
+nzo:=size(Zo);
+
+
+k0:= evalf(Lo[0])> evalf(Lo[1]);
+kz:=evalf(Lo[nz-1])> evalf(Lo[nz-2]);
+
+
+l0:=" newLigneVariables(btex $"+nomv+"$ etex);";lp:=" "; lf:=" ";
+  for(m:=0;m<=nzo-1;m++){l0:=l0+"val(btex $"+latex(Zo[m])+"$ etex);"}
+
+li:=lvic+nomf+"}$ etex);"+
+    if(member(Z[0],F)==0){"valPos(btex $"+latex(Lo[0])+"$ etex,"}
+    else{"nonDefBarre;limDroite(btex $"+latex(Lo[0])+"$ etex,"}+                               
+           if(k0==1){"1"}else{"0"}+
+                         ");";
+            
+    if(nz>2){ for(r:=1; r<=nz-2;r++){ 
+         krm:=evalf(Lo[r-1])< evalf(Lo[r]);
+         krp:=evalf(Lo[r])> evalf(Lo[r+1]) ;  
+         
+      lp:=lp+if(Z[r]==Z[r+1]){
+         "limGauche(btex$"+latex(Lo[r])+"$etex,"+
+              if(krm==1){"1);"}
+              else{"0);"}
+             }// fin if zr=zr+1
+             else{
+              if(Z[r]==Z[r-1]){
+         "nonDefBarre;limDroite(btex$"+latex(Lo[r])+"$etex,"+
+              if(krp==1){"1);"}
+              else{"0);"}
+             }//fin if zr=zr-1
+              else{
+              "valPos(btex $"+latex(Lo[r])+"$etex,"+
+              if(krp==1){"1);"}else{"0);"}
+}//fin else zr=zr-1
+}//fin else zr=zr+1
+}//fin for 
+}//fin de if nz>2
+                                                                      
+
+
+lf:=if(member(Z[nz-1],F)==0){"valPos(btex $"+latex(Lo[nz-1])+"$ etex,"+
+             if(kz==1){"1);"}else{"0);"}}
+    else{"limGauche(btex $"+latex(Lo[nz-1])+"$ etex,"+ 
+             if(kz==1){"1);nonDefBarre;"}else{"0);nonDefBarre;"}};    
+    
+
+MetaLfc:=
+
+ if(nz>2){"beginTableau("+nmr+")"+
+        l0+
+li+
+lp+
+lf
++"
+endTableau;
+
+";}else{"beginTableau("+nmr+")"+
+        l0+
+li+
+lf
++"
+endTableau;
+
+";}
+
+//return(MetaLfc);
+
+sortie:=fopen("XCasmpfc.mp");
+fprint(sortie,Unquoted,MetaLfc);
+fclose(sortie);
+
+
+}:;
+
+\end{VerbatimOut}
+
+%%$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%%
+%% traitement des fichiers produits par giac/xcas
+%%
+%%
+
+% pour l'échelle des tableaux taper \ech{facteur de réduction}
+
+\newcommand\echelle{1}
+\newcommand\ech[1]{\renewcommand\echelle{#1}}
+
+
+
+\newcommand\couleurtab{black}
+\newcommand\coultab[1]{\renewcommand\couleurtab{#1}}
+
+\newcommand{\dresse}[2]{%
+
+
+
+\ifxetex
+
+
+
+\ifthenelse{\boolean{xcas}}{%        Avec l'option "XCas present"
+         \executGiacmp{XCas#2.giac}% reconstituer le tableau
+                                   % exporter le source mp
+                                   % puis lancer metapost pour creer
+                                   % l'image du tableau
+         \immediate\write18{\cat XCasmpfc.mp >> \nomtravail_Tab.mp}
+         \immediate\write18{\cat enteteMP.cfg >> \nomtravail_Tab#2.mp}
+\immediate\write18{\echod def beginTableau(expr c) =\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod begingroup\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod charcode:=c;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod clearxy; clearit; clearpen;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod pickup defaultpen;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod drawoptions(withcolor(#1));\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod initTableau;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod enddef;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\cat XCasmpfc.mp >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\cat queue.mp >> \nomtravail_Tab#2.mp}
+         \immediate\write18{./convert-mp-pdf.sh \nomtravail_Tab#2 \theTVn}
+          \immediate\write18{\cp \nomtravail_Tab#2.pdf \nomtravail_Tab\theTVn.pdf}
+         \immediate\write18{\rem \nomtravail_Tab#2.mp}  
+           }%
+         {% sinon, si le tableau est absent, alerte.
+         \IfFileExists{\nomtravail_Tab.\theTVn}{}{% 
+         \PackageError{tablor}{Tableau absent non
+         reconstituable.}{Pour compiler il faut, soit les fichiers de
+         tableaux, soit le fichier \nomtravail_Tab.mp, soit disposer de
+         XCas.}}}
+                
+\begin{center}
+  \includegraphics[scale=\echelle]{\nomtravail_Tab\theTVn.pdf}
+\end{center}
+\stepcounter{TVn}
+
+
+
+\else
+\ifthenelse{\boolean{xcas}}{%        Avec l'option "XCas present"
+         \executGiacmp{XCas#2.giac}% reconstituer le tableau
+                                   % exporter le source mp
+                                   % puis lancer metapost pour creer
+                                   % l'image du tableau
+         \immediate\write18{\cat XCasmpfc.mp >> \nomtravail_Tab.mp}
+         \immediate\write18{\cat enteteMP.cfg >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod def beginTableau(expr c) =\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod begingroup\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod charcode:=c;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod clearxy; clearit; clearpen;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod pickup defaultpen;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod drawoptions(withcolor(#1));\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod initTableau;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod enddef;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\cat XCasmpfc.mp >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\cat queue.mp >> \nomtravail_Tab#2.mp}
+         \immediate\write18{mpost   -jobname=\nomtravail_Tab \nomtravail_Tab#2.mp}
+         \immediate\write18{\rem \nomtravail_Tab#2.mp}  
+           }%
+         {% sinon, si le tableau est absent, alerte.
+         \IfFileExists{\nomtravail_Tab.\theTVn}{}{% 
+         \PackageError{tablor}{Tableau absent non
+         reconstituable.}{Pour compiler il faut, soit les fichiers de
+         tableaux, soit le fichier \nomtravail_Tab.mp, soit disposer de
+         XCas.}}}
+                
+\begin{center}
+  \includegraphics[scale=\echelle]{\nomtravail_Tab.\theTVn}
+\end{center}
+\stepcounter{TVn}
+
+\fi
+
+}
+
+
+%%
+%% traitement des fichiers produits par giac/xcas avec possibilite
+%% de modifier le fichier metapost (environnement etoile))
+%%
+
+
+
+\newcommand{\dressetoile}[2]{%
+
+
+
+\ifxetex
+
+\IfFileExists{\nomtravail_Tab.\theTVn}{% Test sur l'existence du tableau
+% Si oui, inclusion du fichier source de sauvegarde mp dans Tableaux
+\immediate\write18{\cat TSav-\theTVn.mp >> \nomtravail_Tab.mp}}
+% Si  non,  lancement des operations de fabrication 
+{\executGiacmp{XCas#2.giac}%
+\immediate\write18{\editeur  XCasmpfc.mp }
+
+  % Modification avec l'editeur choisi
+\immediate\write18{\cat  XCasmpfc.mp >> \nomtravail_Tab.mp} 
+\immediate\write18{\cp  XCasmpfc.mp  TSav-\theTVn.mp}   % Sauvegarde du 
+                                 % source mp sur le disque pour une
+                                 % inclusion ulterieure dans Tableaux.mp. 
+\immediate\write18{\cat enteteMP.cfg >> \nomtravail_Tab#2.mp}
+\immediate\write18{\echod def beginTableau(expr c) =\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod begingroup\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod charcode:=c;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod clearxy; clearit; clearpen;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod pickup defaultpen;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod drawoptions(withcolor(#1));\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod initTableau;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod enddef;\echof >> \nomtravail_Tab#2.mp}
+\immediate\write18{\cat XCasmpfc.mp >> \nomtravail_Tab#2.mp}} % Inclusion du
+                                                     % source dans le
+                                                     % fichier
+                                                     % Tableaux 
+\immediate\write18{\cat queue.mp >> \nomtravail_Tab#2.mp}
+ \immediate\write18{./convert-mp-pdf.sh \nomtravail_Tab#1 \theTVn}
+ \immediate\write18{\cp \nomtravail_Tab#2.pdf \nomtravail_Tab\theTVn.pdf}% Reconstitution des tableaux
+                                % et creation du dernier. L'option
+                                % pallie l'absence de end en fin de
+                                % fichier 
+\immediate\write18{\rem \nomtravail_Tab#2.mp}  
+
+\begin{center}
+  \includegraphics[scale=\echelle]{\nomtravail_Tab\theTVn.pdf}
+\end{center}
+\ech{1}
+\setcounter{TVn}{\theTVnbis}    % Restauration du compteur TVn
+
+
+\else
+
+\IfFileExists{\nomtravail_Tab.\theTVn}{% Test sur l'existence du tableau
+% Si oui, inclusion du fichier source de sauvegarde mp dans Tableaux
+\immediate\write18{\cat TSav-\theTVn.mp >> \nomtravail_Tab.mp}}
+% Si  non,  lancement des operations de fabrication 
+{\executGiacmp{XCas#2.giac}%
+\immediate\write18{\editeur  XCasmpfc.mp }
+
+  % Modification avec l'editeur choisi
+\immediate\write18{\cat  XCasmpfc.mp >> \nomtravail_Tab.mp} 
+\immediate\write18{\cp  XCasmpfc.mp  TSav-\theTVn.mp}   % Sauvegarde du 
+                                 % source mp sur le disque pour une
+                                 % inclusion ulterieure dans Tableaux.mp. 
+\immediate\write18{\cat enteteMP.cfg >> \nomtravail_Tab#2.mp}
+ \immediate\write18{\echod def beginTableau(expr c) =\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod begingroup\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod charcode:=c;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod clearxy; clearit; clearpen;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod pickup defaultpen;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod drawoptions(withcolor(#1));\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod initTableau;\echof >> \nomtravail_Tab#2.mp}
+         \immediate\write18{\echod enddef;\echof >> \nomtravail_Tab#2.mp}
+\immediate\write18{\cat XCasmpfc.mp >> \nomtravail_Tab#2.mp}} % Inclusion du
+                                                     % source dans le
+                                                     % fichier
+                                                     % Tableaux 
+\immediate\write18{\cat queue.mp >> \nomtravail_Tab#2.mp}
+\immediate\write18{mpost  -jobname=\nomtravail_Tab \nomtravail_Tab#2.mp}% Reconstitution des tableaux
+                                % et creation du dernier. L'option
+                                % pallie l'absence de end en fin de
+                                % fichier 
+\immediate\write18{\rem \nomtravail_Tab#2.mp}  
+
+\begin{center}
+  \includegraphics[scale=\echelle]{\nomtravail_Tab.\theTVn}
+\end{center}
+\ech{1}
+\setcounter{TVn}{\theTVnbis}    % Restauration du compteur TVn
+
+
+\fi
+
+}
+
+
+
+
+
+
+
+%%
+%%
+%%%
+%%%
+%%% les "giac" qui permettent d'executer la commande rentree dans le fichier tex
+%%% suivis des environnements qui permettront la saisie du code giac/xcas
+%%% Les versions etoilees permettent de modifier le code metapost produit initialement
+%%%
+
+
+
+
+\begin{VerbatimOut}{XCasa.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTabSigna.cxx");
+read("XCasa.user");
+\end{VerbatimOut}
+
+\newenvironment{TSa}
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasa.user}}
+{\end{VerbatimOut}
+          \dresse{\couleurtab}{a}
+}
+
+
+
+
+
+
+
+
+
+\begin{VerbatimOut}{XCasQ.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTabSignQ.cxx");
+read("XCasQ.user");
+\end{VerbatimOut}
+
+\newenvironment{TSq}%
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasQ.user}}
+{\end{VerbatimOut}\dresse{\couleurtab}{Q}}
+
+
+
+\newenvironment{TSq*}[1]%
+{\setcounter{TVnbis}{\theTVn}
+\setcounter{TVn}{#1}
+\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasQ.user}}
+{\end{VerbatimOut}\dressetoile{\couleurtab}{Q}}
+
+
+\begin{VerbatimOut}{XCasL.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTabSignL.cxx");
+read("XCasL.user");
+\end{VerbatimOut}
+
+\newenvironment{TS}%
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasL.user}}
+{\end{VerbatimOut}\dresse{\couleurtab}{L}}
+
+
+\newenvironment{TS*}[1]
+{\setcounter{TVnbis}{\theTVn}
+\setcounter{TVn}{#1}
+\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasL.user}}
+{\end{VerbatimOut}\dressetoile{\couleurtab}{L}}
+
+
+\begin{VerbatimOut}{XCasTSc.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTSc.cxx");
+read("XCasTSc.user");
+\end{VerbatimOut}
+
+
+
+
+\newenvironment{TSc*}[1]%
+{\setcounter{TVnbis}{\theTVn}
+\setcounter{TVn}{#1}
+\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTSc.user}}
+{\end{VerbatimOut}\dressetoile{\couleurtab}{TSc}}
+
+
+\newenvironment{TSc}%
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTSc.user}}
+{\end{VerbatimOut}\dresse{\couleurtab}{TSc}}
+
+
+\begin{VerbatimOut}{XCasTV.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTV.cxx");
+read("XCasTV.user");
+\end{VerbatimOut}
+
+\newenvironment{TV}%
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTV.user}}%
+{\end{VerbatimOut}
+\dresse{\couleurtab}{TV}}
+
+\newenvironment{TV*}[1]{%
+\setcounter{TVnbis}{\theTVn}
+\setcounter{TVn}{#1}
+\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTV.user}}%
+{\end{VerbatimOut}\dressetoile{\couleurtab}{TV}}
+
+
+
+
+
+
+
+\begin{VerbatimOut}{XCasTVP.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTVP.cxx");
+read("XCasTVP.user");
+\end{VerbatimOut}
+
+\newenvironment{TVP}%
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVP.user}}%
+{\end{VerbatimOut}
+\dresse{\couleurtab}{TVP}}
+
+\newenvironment{TVP*}[1]{%
+\setcounter{TVnbis}{\theTVn}
+\setcounter{TVn}{#1}
+\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVP.user}}%
+{\end{VerbatimOut}\dressetoile{\couleurtab}{TVP}}
+
+
+
+
+
+
+
+
+
+
+\begin{VerbatimOut}{XCasTVZ.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTVZ.cxx");
+read("XCasTVZ.user");
+\end{VerbatimOut}
+
+\newenvironment{TVZ}%
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVZ.user}}%
+{\end{VerbatimOut}
+\dresse{\couleurtab}{TVZ}}
+
+\newenvironment{TVZ*}[1]{%
+\setcounter{TVnbis}{\theTVn}
+\setcounter{TVn}{#1}
+\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVZ.user}}%
+{\end{VerbatimOut}\dressetoile{\couleurtab}{TVZ}}
+
+
+
+
+
+
+
+
+
+
+\begin{VerbatimOut}{XCasTVapp.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTVapp.cxx");
+read("XCasTVapp.user");
+\end{VerbatimOut}
+
+\newenvironment{TVapp}%
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVapp.user}}%
+{\end{VerbatimOut}
+\dresse{\couleurtab}{TVapp}}
+
+\newenvironment{TVapp*}[1]{%
+\setcounter{TVnbis}{\theTVn}
+\setcounter{TVn}{#1}
+\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVapp.user}}%
+{\end{VerbatimOut}\dressetoile{\couleurtab}{TVapp}}
+
+
+
+
+
+
+
+
+
+
+
+\begin{VerbatimOut}{XCasTVI.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTVI.cxx");
+read("XCasTVI.user");
+\end{VerbatimOut}
+
+\newenvironment{TVI}%
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVI.user}}%
+{\end{VerbatimOut}\dresse{\couleurtab}{TVI}}
+
+
+\newenvironment{TVI*}[1]%
+{\setcounter{TVnbis}{\theTVn}
+\setcounter{TVn}{#1}
+\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVI.user}}%
+{\end{VerbatimOut}\dressetoile{\couleurtab}{TVI}}
+
+
+
+
+
+\begin{VerbatimOut}{XCasTVIex.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTVIex.cxx");
+read("XCasTVIex.user");
+\end{VerbatimOut}
+
+\newenvironment{TVIex}%
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVIex.user}}%
+{\end{VerbatimOut}\dresse{\couleurtab}{TVIex}}
+
+
+\newenvironment{TVIex*}[1]%
+{\setcounter{TVnbis}{\theTVn}
+\setcounter{TVn}{#1}
+\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVIex.user}}%
+{\end{VerbatimOut}\dressetoile{\couleurtab}{TVIex}}
+
+
+
+
+
+\begin{VerbatimOut}{XCasTVIapp.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTVIapp.cxx");
+read("XCasTVIapp.user");
+\end{VerbatimOut}
+
+\newenvironment{TVIapp}%
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVIapp.user}}%
+{\end{VerbatimOut}\dresse{\couleurtab}{TVIapp}}
+
+
+\newenvironment{TVIapp*}[1]%
+{\setcounter{TVnbis}{\theTVn}
+\setcounter{TVn}{#1}
+\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVIapp.user}}%
+{\end{VerbatimOut}\dressetoile{\couleurtab}{TVIapp}}
+
+
+
+\begin{VerbatimOut}{XCasTVPC.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTVPC.cxx");
+read("XCasTVPC.user");
+\end{VerbatimOut}
+
+\newenvironment{TVPC}%
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVPC.user}}%
+{\end{VerbatimOut}
+\dresse{\couleurtab}{TVPC}}
+
+\newenvironment{TVPC*}[1]{%
+\setcounter{TVnbis}{\theTVn}
+\setcounter{TVn}{#1}
+\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVPC.user}}%
+{\end{VerbatimOut}\dressetoile{\couleurtab}{TVPC}}
+
+
+
+\begin{VerbatimOut}{XCasTVS.giac}
+maple_mode(0);
+approx_mode:=0;
+read("config.cxx");
+read("XcasTVS.cxx");
+read("XCasTVS.user");
+\end{VerbatimOut}
+
+\newenvironment{TVS}%
+{\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVS.user}}%
+{\end{VerbatimOut}
+\dresse{\couleurtab}{TVS}}
+
+\newenvironment{TVS*}[1]{%
+\setcounter{TVnbis}{\theTVn}
+\setcounter{TVn}{#1}
+\VerbatimEnvironment\begin{VerbatimOut}[commandchars=\\??]{XCasTVS.user}}%
+{\end{VerbatimOut}\dressetoile{\couleurtab}{TVS}}
+
+
+
+
+
+%% pour nettoyer les fichiers auxiliaires
+
+\AtEndDocument{\immediate\write18{\cat  queue.mp >> \nomtravail_Tab.mp}
+                         }
+
+
+
+
+%%
+%% Zi end -> enjoy :)

@@ -1,0 +1,2080 @@
+% $StyleId: cwebbase.doc,v 1.4 1995/11/07 17:55:19 schrod Exp $
+%----------------------------------------------------------------------
+% Written by Joachim Schrod <schrod@iti.informatik.th-darmstadt.de>.
+% Copyright conditions see below (GPL).
+
+%
+% LaTeX macros cwebbase
+% support for incorporation of CWEAVE markup in LaTeX documents
+%
+% [LaTeX in MAKEPROG]
+% (history at end)
+
+
+
+
+%%%%
+%%%%
+%%%% These TeX macros were documented with the documentation system
+%%%% MAKEPROG and automatically converted to the current form.
+%%%% If you have MAKEPROG available you may transform it back to
+%%%% the original input: Remove every occurence of three percents
+%%%% and one optional blank from the beginning of a line and remove
+%%%% every line which starts with four percents.  The following lex
+%%%% program will do this:
+%%%%
+%%%%	%%
+%%%%
+%%%%	^%%%\ ?   ;
+%%%%	^%%%%.*\n ;
+%%%%
+%%%%	If you just want to print the documentation you may fetch
+%%%% the archive print-makeprog.tar.Z from ftp.th-darmstadt.de (directory
+%%%% pub/tex/latex). It contains *all* used styles -- but beware, they
+%%%% may not be in a documented form...
+%%%%
+%%%%
+%%% \documentclass{progltx}
+
+%%% \usepackage{cweb-doc}		% document-specific markup
+%%% \usepackage{fullpage}
+
+
+%%% \RCS $StyleRevision: 1.4 $
+%%% \RCS $StyleDate: 1995/11/07 17:55:19 $
+
+
+%%% \begin{document}
+
+
+%%% \title{Typesetting \cweave{} Output}
+%%% \author{%			% LaTeX does not discard unnecessary glue...
+%%%     Joachim Schrod%
+%%%     \thanks{%
+%%% 	\protect\raggedright
+%%% 	TU~Darmstadt, Computer Science Department, WG Systems Programming,
+%%% 	Alexanderstr.~10, D-64283~Darmstadt, Germany.
+%%% 	Email: \texttt{schrod@iti.informatik.th-darmstadt.de}.%
+%%% 	}%
+%%%     }
+%%% \date{%
+%%%     Revision \RCSStyleRevision\\
+%%%     (as of \RCSStyleDate)%
+%%%     }
+
+%%% \maketitle
+
+
+%%% % doesn't work with progltx yet
+%%% %\tableofcontents
+
+
+
+
+%%% \chap Introduction.
+
+%%% This code shall interpret and render the tag set output by \cweave{}.
+%%% That's realized in this module as it's needed in multiple places --
+%%% when we want to use \LaTeX{} markup in \cweb{}, when we want to
+%%% incorporate \cweb{} pieces in \LaTeX{} documents (as examples, or in
+%%% textbooks), and when we want to incorporate whole \cweb{} documents in
+%%% a \LaTeX{} document. (That's by far the most difficult task.)
+
+%%% As \cweb{} operates in modes, for obvious reasons our implementation
+%%% is based on a finite state automaton (FSA). The whole tag set is
+%%% separated into subsets that are valid in certain states.
+
+%%% The complete set of tags does not obey any name conventions, some tags
+%%% are even in conflict with standard \LaTeX{} tags (e.g.\ |\\|). Most
+%%% tags are used to render code pieces. With the introduction of states
+%%% we can restrict the visibilities of these tags to those states where
+%%% we typeset program parts. The needed functionality will be available
+%%% in cseqs of our namespace, we'll map that to \cweave{}'s names in a
+%%% group.
+
+%%% Then we have to implement the rendering of chunks and sections, that's
+%%% (more or less) a straight-forward task. Actually, we only set up the
+%%% basic code pieces, the integration of section divisions in the actual
+%%% \LaTeX{} document is a task of higher-level code; that integration
+%%% depends heavily on the type of document. That also implies that we
+%%% won't implement front or back matter material (document markup, table
+%%% of contents, index, list of refinements, etc.)\ in this module.
+
+
+%%% \sect Let's identify this module.
+
+%%% \noindent The code below is explained in the implementation
+%%% documentation of the \pkg{rcs} package.
+
+%%% \beginprog
+\begingroup
+    \def\RCSFile#1#2 $#3: #4 #5\endRCS $#6: #7 #8\endRCS{%
+	\def\date{#4}\def\id{v#7}%
+	\ProvidesFile{#1}[\date\space\id\space #2]%
+	}
+
+  \RCSFile{cwebbase.tex}{CWEAVE tags for LaTeX markup}
+  $StyleDate: 1995/11/07 17:55:19 $: 9999/00/00 \endRCS
+  $StyleRevision: 1.4 $: 0.0 \endRCS
+\endgroup
+%%% \endprog
+
+
+%%% \sect This module is part of the supported \textsl{cweb-sty} bundle.
+%%% Send bug reports, comments and repairs.
+
+%%% It assumes that the canonical setup of my modules has happened and can
+%%% be used herein. (In particular, the underscore is a letter.)
+
+
+%%% \sect This module reserves the namespace |cwbb|. It assumes that
+%%% |\cweb_warning| is bound either to |\PackageWarningNoLine| or
+%%% |\ClassWarningNoLine|, depending on the environment.
+
+%%% \beginprog
+\ifx \cwbb@loaded\undefined
+    \def\cwbb@loaded{$StyleRevision: 1.4 $}
+\else
+    \cweb_warning{cwebbase}%
+        {Some other package already uses namespace `cwbb'}
+\fi
+%%% \endprog
+
+
+%%% \sect This is freely distributable software; you can redistribute it
+%%% and/or modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version~2 of the
+%%% License, or (at your option) any later version.
+
+%%% This software is distributed in the hope that it will be useful, but
+%%% \textbf{without any warranty}; without even the implied warranty of
+%%% \textbf{merchantability} or \textbf{fitness for a particular purpose}.
+%%% See the GNU General Public License for more details.
+
+%%% You should have received a copy of the GNU General Public License in
+%%% the file |License| along with this package; if not, write to the Free
+%%% Software Foundation, Inc., 675~Mass Ave, Cambridge, MA~02139,~USA.
+
+
+
+
+%%% % ------------------------------------------------------------
+%%% %
+%%% % subdocument: The interface between CWEAVE and TeX
+%%% %
+
+%%% \input{cweave-spec}
+
+%%% %
+%%% % ------------------------------------------------------------
+
+
+
+
+%%% \chap Interface of \pkg{cwebbase} module.
+
+%%% \pkg{cwebbase} implements most of \cweave{} tags. It sets up tons of
+%%% redefinable cseqs, all of them start with |Cweb|.
+%%% %
+%%% \begin{fixme}
+%%%   How do I document them? We need a configuration document anyhow. Do
+%%%   I present here just a list of those cseqs realized in this module
+%%%   and refer to the config docs? Need to wait until I have it, then
+%%%   we'll see how the stuff here will be added.
+%%% \end{fixme}
+
+
+%%% \sect This module supports both hierarchic and flat section
+%%% structuring. You have to bind |\cweb@structure| to 0 (hierarchic) or 1
+%%% (flat) before importing it, to show which structure is wanted.
+
+
+%%% \sect This module supports suppression of different document parts.
+%%% You have to define flags |@cweb@suppress@|\<foo>|@| with
+%%% $\mbox{\<foo>} \in \{ |changehints|, |unchanged|, |format| \}$ to
+%%% denote if suppression shall happen.
+
+
+%%% \sect The counter |secnumdepth| must be~11 if chunks shall be
+%%% numbered. That counter doesn't need to be set when this module is
+%%% imported, it can be set locally during typesetting \cweb{} code.
+
+%%% The definitions for flat structure assume that |secnumdepth| is~11
+%%% during typesetting.
+
+
+%%% \sect |\part|, |\chapter| (if available), and |\section| are used for
+%%% \cweb{} section divisions (those with the lowest ranks). These
+%%% commands will change the respective counters globally and will
+%%% add toc lines and marks. You might want to prevent that by redefining
+%%% |\addcontentsline| and |\mark|.
+
+%%% Table of contents macros are not defined for the section divisions
+%%% introduced by this module. You must either prevent that they are
+%%% written to the |AUX| file at all; or you must define them.
+%%% %
+%%% \begin{fixme}
+%%%   Add explanation of introduced section divisions.
+%%% \end{fixme}
+
+%%% For flat structure, all section divisions are of type `|chunk|', like
+%%% chunks. The section names start with `|\cwbbRank{|\<rank>|}|'. By
+%%% default, |\cwbbRank| takes one argument and expands to the empty list
+%%% -- this can be redefined for the table of contents.
+
+
+%%% \sect The document end, as explained in the \cweave{} interface specs
+%%% (chunk~\ref{spec:sec:docend}), is not implemented. That must be done
+%%% by the user of this module -- if the back matter is to be processed at
+%%% all.
+
+
+
+
+%%% \chap Processing states.
+
+%%% We have to typeset five different categories of material:
+%%% Documentation, program pieces---embedded within the documentation and
+%%% as large chunks, \TeX{} material within program pieces (i.e., comments
+%%% and refinement names), and cross reference information. Since we need
+%%% a complete other environment for the program pieces than for the rest
+%%% we design ``states'' where we switch to appropriately.
+%%% %
+%%% \begin{enumerate}
+
+%%% \item A chunk starts in the \textsl{documentation state}.
+
+%%% \item |\B| switches to \textsl{program state}. This can happen in
+%%% documentation and program state.
+
+%%% \item While we process the argument of |\PB| we're in \textsl{restricted
+%%% program state}; |\PB| may appear in documentation and in \TeX{}
+%%% state. Since \TeX{} state can be switched on within restricted
+%%% program state, |\PB| can appear within the argument of itself.
+
+%%% \item In the arguments of |\C|, |\SHC|, and |\X| we switch to
+%%% \textsl{\TeX{} state}. All these cseqs appear only in (restricted)
+%%% program state, their official names are actually different. I.e., only
+%%% in (restricted) program state these cseq are bound to the meaning
+%%% described here.
+
+%%% \item Cross reference information are attached to most chunks with
+%%% refinements. This information is processed in \textsl{CR state}.
+%%% After CR state material
+%%% comes always the next chunk or the document end, i.e., material in
+%%% documentation state.
+
+%%% \end{enumerate}
+%%% %
+%%% This FSA is illustrated by the diagram in figure~\ref{fig:fsa}.
+
+%%% \begin{figure}
+
+%%% \begin{center}
+%%% \chardef\\=`\\
+%%% \input{cweb-fsa.latex}
+%%% \end{center}
+
+%%% \caption{The processing state's FSA. The automaton starts and ends in
+%%% the ``documentation'' state.}
+%%% \label{fig:fsa}
+
+%%% \end{figure}
+
+%%% |\cwbb@documentation| will switch to documentation state,
+%%% |\cwbb@program| to program state, |\cwbb@Rprogram| to restricted
+%%% program state, |\cwbb@tex| to \TeX{} state, and |\cwbb@CR| to CR state.
+%%% If we're already in a state, the switch to this state shall be a
+%%% permissible null operation.
+
+
+%%% \sect The basic difference between these states can be named with
+%%% two parameters: (1)~The cseq bindings in effect and (2)~the layout
+%%% parameters used for paragraph makeup.
+
+%%% In (restricted) program state and in CR state the text is output
+%%% under the control of \cweave{}, and tagged by \cweave{}. The used
+%%% tags are from a global namespace and should only be in effect during
+%%% these states. We call this tag set the \textsl{\cweave{} bindings}. In the
+%%% other two states the tags are largely defined by the user, the tag
+%%% set is called the \textsl{user bindings}. The switch to another binding
+%%% is always done locally, i.e., if we switch from documentation to
+%%% restricted program state within a group we don't have to bother about
+%%% the restauration of the user binding; it will be done automatically
+%%% by \TeX{} at the end of the group. Nevertheless we must be able to
+%%% switch from the \cweave{} bindings back to the user bindings which
+%%% were in effect when we activated the \cweave{} bindings. This is
+%%% needed for the \TeX{} state which is always activated within
+%%% (restricted) program state.
+
+%%% The parameters for \textsl{program layout} are really special ones
+%%% since they need to support the indentation which shows the program
+%%% structure. These parameters are used in program and in \TeX{} state.
+%%% The \textsl{document layout} parameters established by the user are
+%%% used in the other three states.
+
+%%% The following table shall summarize this. $C$~denotes \cweave{}
+%%% bindings, $U$~user bindings, $P$~program layout, and $D$~document
+%%% layout. If an entry is empty, its value is not changed on entry in
+%%% this state.
+%%% %
+%%% \begin{center}
+%%%   \DeleteShortVerb\|
+%%% \begin{tabular}{r|c|c}
+%%% \multicolumn1{c|}{\textsc{State}} & \textsc{Binding} & \textsc{Layout} \\[1pt]
+%%% \hline
+%%% documentation & $U$ & $D$ \\
+%%% program & $C$ & $P$ \\
+%%% restricted program & $C$ & \\
+%%% \TeX{} & $U$ & \\
+%%% CR & $C$ & $D$ \\
+%%% \end{tabular}
+%%%   \MakeShortVerb\|
+%%% \end{center}
+
+
+%%% \sect Since the user bindings and the document layout is defined
+%%% initially, we don't have to do anything if it's requested. Only if we
+%%% change it, i.e., within |\cwbb@cweave_bindings| and
+%%% |\cwbb@program_layout|, we redefine |\cwbb@user_bindings| and
+%%% |\cwbb@doc_layout|. If they are eventually executed, they shall
+%%% rebind themselves back to |\relax|. This way we can switch to
+%%% documentation state as often as we want.
+
+%%% \beginprog
+\let\cwbb@user_bindings=\relax
+\let\cwbb@doc_layout=\relax
+
+\def\cwbb@documentation{%
+    \cwbb@user_bindings
+    \cwbb@doc_layout
+    }
+\def\cwbb@Rprogram{\cwbb@cweave_bindings}
+
+\def\cwbb@program{%
+    \cwbb@cweave_bindings
+    \cwbb@program_layout
+    }
+\def\cwbb@tex{\cwbb@user_bindings}
+
+\def\cwbb@CR{%
+    \cwbb@cweave_bindings
+    \cwbb@doc_layout
+    }
+%%% \endprog
+
+
+
+
+%%% \chap Saving and restoring control sequences.
+
+%%% We have a lot of cseqs which are defined within the namespace of this
+%%% module and which will be used with other names. This usage is in a
+%%% controlled environment, namely neither in documentation nor in \TeX{}
+%%% state. (I.e., the text processed is tagged by \cweave{}, not by humans;
+%%% therefore we have a precise specification of the cseqs we have to
+%%% accept.) We cannot work with groups where a cseq is just redefined
+%%% and \TeX{} takes care for establishing the old binding again; when we
+%%% switch from program state to \TeX{} state all the bindings which were
+%%% in effect before the program state get active, i.e., in the
+%%% documentation state, must be in effect again. We cannot simply
+%%% consider the \TeX{} state as something parallel to program state, it
+%%% must be a hierarchical relationship: In the program state values are
+%%% set up which must be available after switching back from \TeX{} to
+%%% program state.
+
+%%% We save the current binding of a cseq in another cseq, but only if
+%%% there exists a binding currently. This is done to save valuable
+%%% \TeX{} main memory. (Why don't all those people who talk about
+%%% extending \TeX{} not just implement dynamic memory management for the
+%%% existing \TeX{}? It would still be \TeX{} and would \emph{really} be
+%%% a worthy activity. But not enough fun, I assume\,\dots) Actually, one
+%%% can assume that nearly no cseq bindings must be saved at all---the
+%%% used names are strange enough. The bindings of |\foo|, i.e., of the
+%%% cseq with the name \fbox{\ttfamily foo}, is saved as the cseq with the
+%%% name \fbox{\ttfamily cweb\char `\\ foo}, i.e., as
+%%% |\csname cweb\string\foo \endcsname|.
+
+
+%%% \sect The save process is not done statically, but by the macro
+%%% |\cwbb@rebind| which interprets a list of tuples $({\it old\_name},
+%%% {\it new\_name})$, terminated by the tuple $(|\stop|, |\stop|)$.
+%%% Eventually it constructs two new lists, |\cwbb@to_restore| with the
+%%% cseqs which had a binding, and |\cwbb@undefined| with the names which
+%%% didn't have one.
+
+%%% The saving is actually done by |\cwbb@save_binding|, |\cwbb@rebind|
+%%% is responsible for the initialization, |\cwbb@do_rebind| for the
+%%% effective rebinding and the tail recursion on the list.
+
+%%% \begin{fixme}
+%%%   We could pull the |\next| assignment in the |\else| branch out of
+%%%   the loop to get a better performance. Should measure if this is of
+%%%   interest.
+%%% \end{fixme}
+
+%%% \beginprog
+\newtoks\cwbb@undefined
+\newtoks\cwbb@to_restore
+
+\def\cwbb@rebind{%
+    \cwbb@undefined{}%
+    \cwbb@to_restore{}%
+    \cwbb@do_rebind
+    }
+\def\cwbb@do_rebind#1#2{%
+    \ifx #1\stop
+	\let\next\relax
+    \else
+	\cwbb@save_binding #2%
+	\let #2=#1%
+	\let\next\cwbb@do_rebind
+    \fi
+    \next
+    }
+%%% \endprog
+
+
+%%% \sect If the cseq to be saved is undefined, it may just be added to
+%%% the ``undefined list.'' Otherwise its binding is saved and it's added
+%%% to the ``to-be-restored list.''
+
+%%% \TeX{}nical note: The cseq-name for the saved binding must be created
+%%% before the |\let| is executed.
+
+%%% \beginprog
+\def\cwbb@save_binding#1{%
+    \ifx #1\undefined
+	\cwbb@undefined \expandafter{\the\cwbb@undefined #1}%
+    \else
+	\expandafter\let \csname cweb\string#1\endcsname =#1%
+	\cwbb@to_restore \expandafter{\the\cwbb@to_restore #1}%
+    \fi
+    }
+%%% \endprog
+
+
+%%% \sect The restoration of rebound cseqs is a two-tied activity: All
+%%% previously undefined cseqs must be made undefined again, and all saved
+%%% cseqs must be restored. Actually, we don't need to reset the two token
+%%% lists, but we do it to save space.
+
+%%% Both |\cwbb@undefine| and |\cwbb@restore_binding| iterate over a list
+%%% of cseqs terminated by |\stop|.
+
+%%% \begin{fixme}
+%%%   And here the |\next| assignment could be prepended to the loop as
+%%%   well.
+%%% \end{fixme}
+
+%%% \beginprog
+\def\cwbb@restore_bindings{%
+    \expandafter\cwbb@undefine \the\cwbb@undefined \stop
+    \cwbb@undefined{}%
+    \expandafter\cwbb@restore_binding \the\cwbb@to_restore \stop
+    \cwbb@to_restore{}%
+    }
+
+\def\cwbb@undefine#1{%
+    \ifx #1\stop
+	\let\next\relax
+    \else
+	\let#1\undefined
+	\let\next\cwbb@undefine
+    \fi
+    \next
+    }
+%%% \endprog
+
+
+%%% \sect \TeX{}nical note: As in |\cwbb@save_binding|, the cseq-name for
+%%% the saved binding must be created before the |\let|s are executed.
+
+%%% \begin{fixme}
+%%%   Another |\next| assignment.
+%%% \end{fixme}
+
+%%% \beginprog
+\def\cwbb@restore_binding#1{%
+    \ifx #1\stop
+	\let\next\relax
+    \else
+	\expandafter\let \expandafter#1\csname cweb\string#1\endcsname
+	\expandafter\let \csname cweb\string#1\endcsname \undefined
+	\let\next\cwbb@restore_binding
+    \fi
+    \next
+    }
+%%% \endprog
+
+
+
+
+%%% \chap Chunks.
+
+%%% All chunks are numbered subsequently. The chunk number is supplied as
+%%% part of the markup. In addition, the `changed' tag |\*| may be
+%%% appended to the chunk number.
+
+%%% By default, chunks have approximately two picas vertical space in
+%%% front.
+
+%%% If we use an hierarchic structure, we output the chunk number at the
+%%% refinement. (It's only needed to identify the refinement for cross
+%%% references.) But chunks are important structural units and thus should
+%%% be marked by typographic means that's more visible than the space
+%%% mentioned above, we add a `chunk start marker'.
+
+%%% For a flat structure, we output the chunk number as the chunk start
+%%% marker, that is the traditional \WEB{} layout.
+
+%%% In any case, the documentation part shall be run in after the chunk
+%%% start marker.
+
+%%% \beginprog
+\newskip\CwebChunkPreSkip
+	\CwebChunkPreSkip=2pc plus 1pc minus 6pt
+%%% \endprog
+
+
+%%% \sect In \LaTeX{}, structural divisions are best realized by
+%%% |\@startsection|, we'll use it also for chunk starts. The chunk start
+%%% marker is the section heading. For hierarchic structure, we use a
+%%% traditional paragraph sign, used since medieval times to tag new text
+%%% units. Our first test showed that the paragraph sign has typically an
+%%% underlength, that doesn't look good at the start of a chunk. We raise
+%%% the sign by its depth.
+
+%%% For flat structure, we don't have text as the section heading,
+%%% but we have to cope for a deficiency of \LaTeX{}: It always leaves a
+%%% quad after the section number (by the way, this is not mentioned in
+%%% the documentation---you have to look in the macros to figure this
+%%% out). So we use a backskip of $\rm -1\,em$ as the chunk start marker
+%%% then.
+
+%%% Changed chunks are marked by a changeflag, by default a star lapping
+%%% to the right. We need the information if that chunk is changed to
+%%% decide if we shall output the changeflag. We demand from the chunk
+%%% macros that they record that info in the flag |@cwbb_changed_chunk@|.
+
+%%% Each structural division must be categorized, it belongs to a
+%%% \textsl{type}. This type determines also the name of the counter, the
+%%% mark handling for this category, and how this section tag is
+%%% represented in the table of contents. The type of chunks is `|chunk|'
+%%% (trivial, isn't it?).
+
+%%% Furthermore, a structural division in \LaTeX{} has an associated
+%%% \textsl{level}. That level is used to determine if that division get
+%%% numbered in text or table of contents. For sections, we'll compute the
+%%% level from the rank, it will not be larger than the rank.%
+%%%     \footnote{Check the next section for a more precise definition of
+%%% 	`rank' and `level'.}
+%%% Since the highest section rank is~10, we may use 11 as chunk level.
+
+%%% For flat structure, we output the number for all section headings,
+%%% including chunks. For hierarchic structure we use the default maximum
+%%% level as supplied by our document class (e.g., 3~for \cls{article},
+%%% and 2~for \cls{report} or \cls{book}).
+
+%%% As a last point, we have to care already for sections in flat
+%%% structure. They will use the |chunk| category as well, we have to
+%%% distinguish them in the table of contents. For that, we'll record the
+%%% level in the text, it will get written to the table of contents.
+
+%%% \beginprog
+\newif\if@cwbb_changed_chunk@
+\let\CwebChangeFlag=*
+\if@cweb@suppress@changehints@
+    \let\cwbb@change_flag=\relax
+\else
+    \let\cwbb@change_flag=\CwebChangeFlag
+\fi
+\def\cwbb@lap_change_flag{\rlap{\cwbb@change_flag}}
+
+\ifcase \cweb@structure
+    %% hierarchic
+    \let\CwebChunkHeadingStyle\relax
+    \newbox\cweb@chunk_marker
+    \setbox\cweb@chunk_marker=\hbox{\P}	% tradition from medivial times
+    \setbox\cweb@chunk_marker=\hbox{%
+	\raise\dp\cweb@chunk_marker \box\cweb@chunk_marker
+	}
+    \def\CwebChunkHeadingMarker{\copy\cweb@chunk_marker}
+    \def\CwebChunkHeading#1{%
+	\CwebChunkHeadingMarker
+	\if@cwbb_changed_chunk@ \cwbb@lap_change_flag \fi
+	}
+  \or
+    %% flat
+    \def\cwbbRank#1{}
+    \def\CwebChunkHeadingStyle{\bfseries}
+    \def\CwebChunkHeading#1{%
+	\protect\cwbbRank{#1}%
+	\kern -1em
+	\if@cwbb_changed_chunk@ \cwbb@lap_change_flag \fi
+	}
+\fi
+%%% \endprog
+
+
+%%% \sect Chunks are tagged with |\M| and get passed the chunk number as
+%%% argument. Before we evaluate |\@startsection|, we'll start the chunk.
+%%% That's common code to be used by sections as well, as they also
+%%% implicitely start a chunk.
+
+%%% \beginprog
+\def\M#1{%
+    \cwbb@start_chunk{#1}%
+    \@startsection
+	{chunk}%		% category, == counter etc.
+	{11}%			% level
+	{\z@}%			% no indentation for heading
+	{\CwebChunkPreSkip}%	% skip above heading
+	{\m@ne em}%		% run-in heading, 1em distance to text
+	{\normalfont\CwebChunkHeadingStyle}%	% layout
+	{\CwebChunkHeading{11}}% % text, level might go to toc file
+    }
+%%% \endprog
+
+
+%%% \sect But let's first declare how a chunk number is represented. The
+%%% principle rendering is controlled by |\thechunk|, namely, we get
+%%% arabic numbers.  This rendering is used both for creation of the
+%%% section header (if in flat mode) and for cross references. I.e.,
+%%% |\ref| expands into it.
+
+%%% But for flat structure we need different expansions: In the section
+%%% header a period shall be appended, a cross reference shall appear
+%%% without such a period. We use two different macros: |\thechunk|
+%%% creates the number with the period, |\cwbb@refchunk| only the number.
+%%% The latter is used for a redefinition of |\@currentlabel|. Of course,
+%%% for hierarchic structure, both are the same.
+
+%%% \beginprog
+\newcounter{chunk}
+
+\def\cwbb@refchunk{\arabic{chunk}}
+
+\ifcase \cweb@structure
+    %% hierarchic
+    \let\thechunk=\cwbb@refchunk
+  \or
+    %% flat
+    \def\thechunk{\arabic{chunk}.}
+\fi
+%%% \endprog
+
+
+%%% \sect Each chunk is started by |\cwbb@start_chunk|, which does the
+%%% common actions. First of all, we switch to documentation state.
+
+%%% Then we store the chunk number in the |chunk| counter. That implies
+%%% that the chunk start must not step this counter! We'll take care for
+%%% that later by redefining |\refstepcounter|. The actual number is
+%%% passed as the argument, including an optional |\*| used to denote
+%%% changed chunks. We'll redefine that cseq to update the flag
+%%% |@cwbb_changed_chunk@|.
+
+%%% Each chunk must be typeset with an open |\if| since it is finished by
+%%% |\fi|. If we shall suppress the output of unchanged chunks, we have
+%%% to use |\iffalse| if not |@cwbb_changed_chunk@|, otherwise |\iftrue|.
+%%% The flag |@cwbb_print_chunk@| is set up to provide an appropriate
+%%% test.
+
+%%% When we typeset a chunk, we evaluate |\cwbb@init_print_chunk|. For
+%%% hierarchic structure, that cseq will be used to initialize the
+%%% typesetting of the chunk number at program parts.
+
+%%% \beginprog
+\if@cweb@suppress@unchanged@
+    \def\if@cwbb_print_chunk@{\if@cwbb_changed_chunk@}
+    \@gobble\fi				% close \if in case it's skipped
+\else
+    \let\if@cwbb_print_chunk@=\iftrue
+    \@gobble\fi				% same here
+\fi
+
+\def\cwbb@start_chunk#1{%
+    \cwbb@documentation
+    \begingroup
+        \def\*{\global\@cwbb_changed_chunk@true}%
+        \global\@cwbb_changed_chunk@false
+        \global \c@chunk #1\relax	% might expand \*
+    \endgroup
+    \if@cwbb_print_chunk@
+        \cwbb@init_print_chunk
+    }
+%%% \endprog
+
+
+%%% \sect |\@startsection| will step the section counter (i.e., |chunk|).
+%%% Since we just assigned it in |\cwbb@start_chunk|, that would leave us
+%%% with a counter that's one too high. And our output in cross references
+%%% may be wrong, as a period is appended in flat structure.
+
+%%% That damage all comes from one macro, |\refstepcounter|; let's
+%%% advice it to do the Right Thing for |chunk| counters.
+
+%%% \beginprog
+\let\cwbb@refstepcounter=\refstepcounter
+
+\def\cwbb@string@chunk{chunk}
+\def\refstepcounter#1{%
+    \def\@tempa{#1}%
+    \ifx \@tempa\cwbb@string@chunk
+        \protected@edef\@currentlabel{\cwbb@refchunk}%
+    \else
+    	\cwbb@refstepcounter{#1}%
+    \fi
+    }
+%%% \endprog
+
+
+
+
+%%% \chap Sections.
+
+%%% Important sections are started on a new page, normal sections have the
+%%% same space as chunks in front. The very first section does not
+%%% automatically start on a new page since a title may be in front of it.
+
+%%% Each section division has a \textsl{rank}, that denotes the section
+%%% depth as seen by \cweave{}.
+
+%%% For this depth we compute a \textsl{level}, used to denote the section
+%%% depth for \LaTeX{}. This section depth is used to decide where
+%%% numbering shall stop, or if that entry shall be presented in the table
+%%% of contents, etc.
+
+%%% These two numbers are not the same, due to the support of document
+%%% classes with chapters.
+
+%%% We consider a section as important if it's rank is smaller than~3,
+%%% i.e., then we'll start a new page. This limit is controlled by the
+%%% number |\CwebRankNoEject|. The rank is used as the section level
+%%% and is therefore available to configure depth of typeset numbering and
+%%% appearance in table of contents.
+
+%%% \beginprog
+\def\CwebRankNoEject{3}
+%%% \endprog
+
+
+%%% \sect Sections are started with the macro |\N|. It's first parameter
+%%% is the section's rank. The second parameter is the chunk number, the
+%%% third the title of the section. This last parameter must be terminated
+%%% by a dot.
+
+%%% Each section implicitly starts a chunk. As explained above, major
+%%% sections may eject the page, and we add our actual section heading
+%%% with |\CwebSection|.
+
+%%% We also tell the user that we have reached the next section by telling
+%%% him about the current chunk number. The message is output after the
+%%% section header is set, it shall be on the correct page. Since the
+%%% token list to be output is expanded at shipout time, we must take care
+%%% for the immediate expansion ourselves.
+
+%%% \beginprog
+\def\N#1#2#3.{%
+    \cwbb@start_chunk{#2}%
+    \CwebEjectSection{#1}%
+    \CwebSection{#1}{#3}%
+    \begingroup
+        \def\*{}%
+        \edef\tmp{*#2}%
+        \message \expandafter{\tmp}%
+    \endgroup
+    }
+%%% \endprog
+
+
+%%% \sect At the start of a section we usually eject the page if our rank
+%%% is not too low. But if the user had a title above the first section,
+%%% he won't want this page break. So we try to guess it. If we guess
+%%% wrong, the user may either add |\newpage| himself or he may redefine
+%%% |\CwebEjectSection| in a package.
+
+%%% \beginprog
+\def\CwebEjectSection#1{%		% #1 == rank
+    \gdef\CwebEjectSection##1{%
+	\relax
+        \ifnum ##1<\CwebRankNoEject\relax
+            \newpage
+        \fi
+	}%
+    }
+
+\if@titlepage
+    \CwebEjectSection{}
+\fi
+%%% \endprog
+
+
+%%% \sect Now comes a heary piece. We have 11~section ranks, and need 11
+%%% different section categories, section counters, etc. For flat
+%%% structure, they shall all do the same; for hierarchic structure, they
+%%% shall be really different.
+
+%%% \noindent Let's have a look at the hierarchic structure first, it's
+%%% more complex.
+%%% %
+%%% \begin{itemize}
+
+%%% \item We associate section rank~0 (that's `|@**|') with document
+%%%   parts, i.e., map it to |\part|. Many smaller programs won't use it.
+
+%%% \item If we are used in a class that has a bound cseq |\chapter|, we
+%%%   associate rank~1 (`|@*0|') with it and rank~2 (`|@*1|') with
+%%%   |\section|. Otherwise we associate rank~1 with |\section|. These
+%%%   tags (|\chapter| and/or |\section|) must be defined because many
+%%%   macros that want to create section divisions will use them.
+
+%%% \item All other section ranks are placed below |\section|.
+%%%   |\subsection| and other \LaTeX{} style markup is not supported.
+
+%%%   For hierarchic structure, we identify these sections with category
+%%%   names `|section|$l$', where $l$ is the respective level, computed
+%%%   from the rank. Those section names do not exist yet, we have to
+%%%   create them.
+
+%%% \end{itemize}
+
+%%% Now we come to the point why we can't use the rank as the section
+%%% level passed to \LaTeX{}: When we assume the level usage of \LaTeX{}'s
+%%% standard classes, |\section| is \emph{always} on level~1, independent
+%%% of the existence of |\chapter|. The latter is placed on level~0, its
+%%% existence only influences the section level of |\part|, which is
+%%% either $-1$ or~0.
+
+%%% This implies that |\subsection| in a standard class is always on
+%%% level~2, but our equivalent section division is either `|@*0|'
+%%% (rank~1) or `|@*1|' (rank~2). I.e., when we have chapters, we use a
+%%% level that's one lower than the rank, otherwise we use the rank.
+
+%%% For flat structure, we use type |chunk|. This way we'll use the chunk
+%%% numbers, they are already set up.
+
+%%% For flat structure, we will map all ranks to the same section markup.
+%%% This markup will also be accessible by |\section| or |\chapter|. They
+%%% will be declared to be on a level that is the same as the rank.
+
+
+%%% \sect The printed representation of a section divison number is simply
+%%% the presentation from the next upper level, a full stop, and an arabic
+%%% section number. When we compute the name of the previous level we must
+%%% pay attention to our first section division created this way. This
+%%% division must be placed below |section|, without any following number.
+
+%%% Since registers are a valuable resource in \TeX{}, we have to take
+%%% care not to allocate a superfluous one.
+
+%%% \beginprog
+\ifcase \cweb@structure
+    %% hierarchic
+    \newcounter{section2}[section]
+    \@namedef{thesection2}{\@nameuse{thesection}.\arabic{section2}}
+    \newcounter{section3}[section2]
+    \@namedef{thesection3}{\@nameuse{thesection2}.\arabic{section3}}
+    \newcounter{section4}[section3]
+    \@namedef{thesection4}{\@nameuse{thesection3}.\arabic{section4}}
+    \newcounter{section5}[section4]
+    \@namedef{thesection5}{\@nameuse{thesection4}.\arabic{section5}}
+    \newcounter{section6}[section5]
+    \@namedef{thesection6}{\@nameuse{thesection5}.\arabic{section6}}
+    \newcounter{section7}[section6]
+    \@namedef{thesection7}{\@nameuse{thesection6}.\arabic{section7}}
+    \newcounter{section8}[section7]
+    \@namedef{thesection8}{\@nameuse{thesection7}.\arabic{section8}}
+    \newcounter{section9}[section8]
+    \@namedef{thesection9}{\@nameuse{thesection8}.\arabic{section9}}
+    \ifx \chapter\undefined
+        \newcounter{section10}[section9]
+	\@namedef{thesection10}{\@nameuse{thesection9}.\arabic{section10}}
+    \fi
+\fi
+%%% \endprog
+
+
+%%% \sect Sections are typeset by |\CwebSection|; rank and title are the
+%%% arguments.
+
+%%% For hierarchic structure, we select the proper cseq according to rank:
+%%% |\part|, |\chapter| if this is a structure with chapters, |\section|,
+%%% and |\cwbb@section{|\<rank>|}| for other ranks. For the last cseq we
+%%% also have to supply the section category, it's `|section|$l$' where
+%%% $l$ is the rank~$r$ if we don't have chapters, $r-1$ otherwise.
+
+%%% That category cannot be computed by |\cwbb@section| itself since we
+%%% want to use that macro also for flat structure. But there all sections
+%%% are basically chunks, we have to use the |chunk| category there. Since
+%%% we want to differentiate them in the table of contents nevertheless,
+%%% we record the current rank in the title.
+
+%%% \beginprog
+\ifcase \cweb@structure
+    %% hierarchic
+    \ifx \chapter\undefined
+        \def\CwebSection#1#2{%
+	    \ifcase #1
+	        %% 0
+	        \let\next\part
+	      \or  %% 1
+		\let\next\section
+	    \else  %% level = rank
+		\def\cwbb@sect_name{section#1}%
+		\def\next{\cwbb@section{#1}}%
+	    \fi
+	    \next{#2}%
+	    }
+    \else
+        \def\CwebSection#1#2{%
+	    \ifcase #1
+	        %% 0
+	        \let\next\part
+	      \or  %% 1
+		\let\next\chapter
+	      \or  %% 2
+		\let\next\section
+	    \else  %% level = rank - 1
+		\count@=#1  \advance \count@\m@ne
+		\edef\cwbb@sect_name{section\number\count@}%
+		\edef\next{\noexpand\cwbb@section{\number\count@}}%
+	    \fi
+	    \next{#2}%
+	    }
+    \fi
+  \or
+    %% flat
+    \def\CwebSection#1#2{%
+	\def\cwbb@sect_name{chunk}%
+	\cwbb@section{#1}{\protect\cwbbRank{#1}#2}%
+	}
+    \def\section{%
+	\def\cwbb@sect_name{chunk}%
+	\cwbb@section{1}%
+	}
+\fi
+%%% \endprog
+
+
+%%% \sect We use the same layout for all minor sections. That layout can
+%%% be changed by ammended by defining |\CwebSect|$r$|Hook| to redefine
+%%% |\CwebSectPreSkip| and/or |\CwebSectLayout| locally. (Of couse, it may
+%%% be redefined once globally, too.) These are the values to be used for
+%%% arguments 4 and~5 of |\@startsection|, pay attention to the skip sign,
+%%% telling about indentation of the first paragraph. And don't forget
+%%% that the skip is only used for sections on ranks below
+%%% |\CwebRankNoEject|, the others start on a new page anyhow.
+
+%%% The default definition sets the section title in bold and leaves the
+%%% same space as before chunks. The first paragraph of the following
+%%% documentation has no indentation.
+
+%%% Other layout changes (indentation for heading, etc.)\ must be made by
+%%% redefining |\cwbb@section|. Or---email me, if you want to do it. Then
+%%% I might be enclined to introduce further possibilities.
+
+%%% \beginprog
+\newskip\CwebSectPreSkip
+	\CwebSectPreSkip = -\CwebChunkPreSkip
+\def\CwebSectLayout{\normalfont\bfseries}
+
+\def\cwbb@section#1{%			% #2 (next token) is title
+    \csname CwebSect#1Hook\endcsname	% \relax if undefined
+    \expandafter\@startsection
+	\expandafter{\cwbb@sect_name}%	% category; for counter, etc.
+	{#1}%				% level is rank
+	\z@				% no indentation for heading
+	\CwebSectPreSkip		% skip above, maybe no next par indent
+	\medskipamount			% skip below heading
+        \CwebSectLayout
+    }
+%%% \endprog
+
+
+
+
+%%% \chap Marks.
+
+%%% \begin{fixme}
+%%%   Since I don't know yet how to handle marks I ignore most of them for
+%%%   the time being.
+
+%%%   Have to change this later.
+%%% \end{fixme}
+
+%%% \beginprog
+\let\chunkmark\@gobble
+
+\count@=2
+\@whilenum \count@<11 \do {
+    \expandafter\let \csname section\number\count@ mark\endcsname \@gobble
+    \advance \count@ by 1
+    }
+%%% \endprog
+
+
+
+
+%%% \chap Typesetting programs.
+
+%%% Program pieces come in two flavours: as argument of |\PB|, or as
+%%% material after |\B|. In the former case we can use a group for the
+%%% switch to the restricted program state, the group end will restore the
+%%% previous state again. In the latter case we use |\B| for the switch to
+%%% program state, the cross reference list or the next chunk will go to
+%%% another state. Since we have to do more for the material after |\B|,
+%%% we define this cseq later.
+
+%%% \beginprog
+\def\PB#1{%
+    \begingroup
+	\cwbb@Rprogram
+	\leavevmode
+	#1%
+    \endgroup
+    }
+%%% \endprog
+
+
+%%% \sect Note, that |\Y| cannot just be |\smallskip|, as in Plain
+%%% \cweb{}. We must assert that the current paragraph is ended before the
+%%% vertical glue is inserted, and that's not done by the \LaTeX{}
+%%% definition of |\smallskip|. In addition we add some negative penalty,
+%%% here is a good place for a page break. As the penalty value we use
+%%% half the chunk break penalty---of course a chunk start is an even
+%%% better place for a page break\,\dots
+
+%%% It might be that |\Y| is the very first token in a chunk. Then the
+%%% chunk start marker isn't set already since it is regarded as a run-in
+%%% section heading. In that case we don't set the vertical skip but
+%%% simply start the chunk with the program part.
+
+%%% \TeX{}nical note: The flag |@noskipsec| may be used to test if we're
+%%% immediately after a run-in section heading.
+
+%%% \beginprog
+\newcount\CwebProgPenalty
+	\CwebProgPenalty=\@secpenalty
+	\divide\CwebProgPenalty by 2
+\def\Y{%
+    \if@noskipsec
+    \else
+	\par
+	\penalty\CwebProgPenalty
+	\smallskip
+    \fi
+    }
+%%% \endprog
+
+
+%%% \sect Yep, let's unfold the ``official'' names of the cseqs used in
+%%% program state.
+
+%%% If we turn on the \cweave{} bindings, they might be in effect already,
+%%% we don't need to establish them again. We can test
+%%% |\cwbb@user_bindings| for this case, it will be redefined then.
+
+%%% \beginprog
+\def\cwbb@cweave_bindings{%
+    \ifx \cwbb@user_bindings\relax
+	\cwbb@rebind
+	    % indentation and paragraph layout
+	    \cwbb@incr_indent	\1%
+	    \cwbb@decr_indent	\2%
+	    \cwbb@expr_break	\3%
+	    \cwbb@backup	\4%
+	    \cwbb@opt_break	\5%
+	    \cwbb@break		\6%
+	    \cwbb@big_break	\7%
+	    \cwbb@noindent	\8%
+	    % C/C++ tokens
+	    \CwebRel		\?%
+	    \CwebAddress	\AND
+	    \CwebComplement	\CM
+	    \CwebScope		\DC
+	    \CwebEquiv		\E
+	    \CwebGe		\G
+	    \CwebRightShift	\GG
+	    \CwebNe		\I
+	    \CwebAssign		\K
+	    \CwebLeftShift	\LL
+	    \CwebMod		\MOD
+	    \CwebNull		\NULL
+	    \CwebNot		\R
+	    \CwebBinOr		\OR
+	    \CwebMemberRef	\PA
+	    \CwebThis		\this
+	    \CwebOr		\V
+	    \CwebAnd		\W
+	    \CwebXor		\XOR
+	    \CwebLe		\Z
+	    \CwebPointer	\MG
+	    \CwebPointerMemberRef \MGA
+	    \CwebDecr		\MM
+	    \CwebIncr		\PP
+	    % more tokens
+	    \CwebId		\\%
+	    \CwebIdLetter	\|%
+	    \CwebRes		\&%
+	    \CwebString		\.%		%% ( ...Emacs...
+	    \CwebStringBreak	\)%
+	    \CwebNumber		\T
+	    \CwebCombinedOp	\MRL
+	    % goes to TeX state
+	    \CwebComment	\C
+	    \CwebCxxComment	\SHC
+	    \CwebRefName	\X
+	    % CWEB tokens
+	    \CwebMacrosHere	\ATH
+	    \CwebDefine		\D
+	    \cwbb@format	\F
+	    \CwebIdCat		\J
+	    \CwebVerbString	\vb
+	    % cross reference tags
+	    \cwbb@change_flag	\*%
+	    \CwebCRAlso		\A
+	    \CwebCRsAlso	\As
+	    \CwebCRCite		\Q
+	    \CwebCRsCite	\Qs
+	    \CwebCRUse		\U
+	    \CwebCRsUse		\Us
+	    \CwebCREt		\ET
+	    \CwebCRsEt		\ETs
+	    % finish the list
+	    \stop\stop
+	\def\cwbb@user_bindings{%
+	    \cwbb@restore_bindings
+	    \let\cwbb@user_bindings\relax
+	    }%
+    \fi
+    }
+%%% \endprog
+
+
+%%% \sect Since most of the \cweave{} bindings are simple and tedious
+%%% coding, we'll have a look at the program layout next. Between two
+%%% paragraphs there must not be any skip, the skip used in document
+%%% layout is saved in |\cwbb@save@parskip|. A few other layout
+%%% parameters from the document layout must be saved as well.
+
+%%% \beginprog
+\newskip\cwbb@save@parskip
+\newskip\cwbb@save@rightskip
+\newcount\cwbb@save@sem_sfcode
+\newcount\cwbb@save@pretolerance
+\newcount\cwbb@save@hyphenpenalty
+\newcount\cwbb@save@exhyphenpenalty
+
+\def\cwbb@save_doc_layout{%
+    \cwbb@save@parskip\parskip
+    \cwbb@save@rightskip\rightskip
+    \cwbb@save@sem_sfcode\sfcode`\;
+    \cwbb@save@pretolerance\pretolerance
+    \cwbb@save@hyphenpenalty\hyphenpenalty
+    \cwbb@save@exhyphenpenalty\exhyphenpenalty
+    }
+\def\cwbb@restore_doc_layout{%
+    \parskip\cwbb@save@parskip
+    \rightskip\cwbb@save@rightskip
+    \sfcode`\;=\cwbb@save@sem_sfcode
+    \pretolerance\cwbb@save@pretolerance
+    \hyphenpenalty\cwbb@save@hyphenpenalty
+    \exhyphenpenalty\cwbb@save@exhyphenpenalty
+    }
+%%% \endprog
+
+
+%%% \sect When |\cwbb@program_layout| is called for the very first time
+%%% we have to set up some variables. This cannot be done in advance
+%%% since they depend on values which might be changed by the user in the
+%%% preamble. This setup is done in |\cwbb@layout_init|.
+
+%%% If the program layout is already active, we must not switch it on
+%%% another time. This can be tested by the current binding of
+%%% |\cwbb@doc_layout|.
+
+%%% \beginprog
+\def\cwbb@program_layout{%
+    \ifx \cwbb@doc_layout\relax
+	\cwbb@layout_init
+	\cwbb@save_doc_layout
+	\def\cwbb@doc_layout{%
+	    \cwbb@restore_doc_layout
+	    \let\cwbb@doc_layout\relax
+	    }%
+	% set new values
+	\parskip\z@skip
+	\rightskip\z@ plus 100\p@ minus 10\p@
+	\sfcode`\;=3000
+	\pretolerance\@M
+	\hyphenpenalty 1000	% strings can be broken this way
+	\exhyphenpenalty\@M
+    \fi
+    }
+%%% \endprog
+
+
+%%% \sect The unit of the basic indentation is stored in
+%%% |\CwebIndentUnit|. Continuation lines are indented two units further,
+%%% i.e., the initial hanging indentation is 3~units. The current hanging
+%%% indentation is kept in |\cwbb@indent|.
+
+%%% We need undiscardable items which can be used as backspaces, of one
+%%% and two units, respectively. This is done best by boxes. The
+%%% initialization of the boxes must be postponed until the user had the
+%%% chance to change |\CwebIndentUnit|, it's done in the program state
+%%% initialization.
+
+%%% \beginprog
+\newdimen\CwebIndentUnit
+	\CwebIndentUnit=1em
+\newdimen\cwbb@indent
+
+\newbox\cwbb@bak	% backspace one unit
+\newbox\cwbb@bakk	% backspace two units
+
+\def\cwbb@layout_init{%
+    \global\setbox\cwbb@bak \hbox to -1\CwebIndentUnit{}%
+    \global\setbox\cwbb@bakk \hbox to -2\CwebIndentUnit{}%
+    \global\let\cwbb@layout_init\relax
+    }
+%%% \endprog
+
+
+%%% \sect Now we can formulate how to start typesetting program pieces: We
+%%% switch to program state, set the initial indentation, and add the
+%%% basic indentation of the first code line. Then we might add a marker
+%%% to this program part; for hierarchic structure we want to typeset the
+%%% chunk number in the margin of the chunk's program part. That's not
+%%% really possible, 'though: definitions and format requests are also
+%%% introduced with |\B|, so the chunk number will happen to be at the
+%%% start of the definition part if one exists.
+
+%%% If the code line is the very first text to be typeset in this chunk,
+%%% we don't add the basic indentation---we're already indented from the
+%%% run-in chunk start marker. But we must not start our chunk with
+%%% |\noindent|, the marker would be typeset in the left margin then. (I
+%%% consider this as a \LaTeX{} error.) So we just emulate an empty
+%%% documentation part, the marker is now set correctly. |\B| can test for
+%%% this case: |@noskipsec| is still true then.
+
+%%% \beginprog
+\def\B{%
+    \cwbb@program
+    \cwbb@indent 3\CwebIndentUnit  \hangindent\cwbb@indent
+    \ifvmode
+	\if@noskipsec
+	    \indent		% add an empty documentation part
+	\else
+	    \noindent \kern\CwebIndentUnit
+	\fi
+    \fi
+    \CwebNumberProgramPart
+    }
+%%% \endprog
+
+
+%%% \sect The chunk number shall be added at the first program part. We
+%%% have a hook in the chunk start where we can set up
+%%% |\CwebNumberProgramPart|. It will redefine itself at first call, to
+%%% disable further output on more |\B| occurences in a chunk.
+
+%%% The chunk number should always be in the left margin. If it's in the
+%%% right margin, there would be too much horizontal space between the
+%%% code start and the actual number. (The first code line is typically
+%%% not very long.) \LaTeX{} does not allow to select the margin for
+%%% marginpars, therefore we have to typeset the marginal note `by hand'.
+%%% As we know that we're in horizontal mode when we're called, |\vadjust|
+%%% is used to create the note. The standard \LaTeX{} dimen register for
+%%% the distance between marginal notes and text matter is used, of
+%%% course.
+
+%%% Note that marginal notes may overwrite the chunk number. As it's very
+%%% unlikely that somebody issues marginal notes in program mode (that's
+%%% quite difficult and involves ingenious usage of the implementation of
+%%% this macros), I won't care for that case.
+
+%%% \begin{fixme}
+%%%   The baseline of the marginal note shall be aligned to the baseline
+%%%   of the preceding line. That does not happen by default. Currently, I
+%%%   assume that the preceding line has a depth of appropriately the
+%%%   depth of a~`g'. Experiments showed that this gives good results for
+%%%   most \cweb{} documents. But nevertheless one should determine the
+%%%   exact depth of the preceding line, to know how much |box0| should be
+%%%   raised. If anybody knows how this can be done, please tell me. (I
+%%%   know about the route over the output routine, implementing an own
+%%%   marginal note category, but this seems too much effort.)
+%%% \end{fixme}
+
+%%% For flat structure, we don't add any program part marker and we
+%%% don't need to initialize it.
+
+%%% \beginprog
+\ifcase \cweb@structure
+    %% hierarchic
+    \def\cwbb@marginal_chunkno{%
+	\vadjust{%
+	    \setbox\z@ \hbox to \z@{%
+		\hss \vphantom{g}%
+		\small \thechunk
+		\hskip \marginparsep
+		}%
+	    \vbox to \z@{%
+		\hsize\z@
+		\vss
+		\noindent \raise \dp\z@ \box\z@
+		}%
+	    }%
+	}
+    \def\cwbb@init_print_chunk{%
+       \def\CwebNumberProgramPart{%
+	   \cwbb@marginal_chunkno
+	   \let\CwebNumberProgramPart\relax
+	   }%
+       }
+  \or
+    %% flat
+    \let\cwbb@init_print_chunk\relax
+    \let\CwebNumberProgramPart\relax
+\fi
+%%% \endprog
+
+
+%%% \sect If a statement is finished, a new paragraph with the basic
+%%% indentation has to be started.
+
+%%% An optional statement break is implemented by a low penalty which
+%%% will be selected if the line has to be broken. We assume that the
+%%% hanging indentation of the new line is already set correctly, and
+%%% have to backup two units to get the basic indentation. It might be
+%%% that the line break is not chosen by \TeX{}, we compensate the
+%%% backspace for this case. This compensation is discarded at the start
+%%% of a new line.
+
+%%% \beginprog
+\def\cwbb@break{%	% forced break, between statements
+    \ifmmode\else
+	\endgraf	% in LaTeX it isn't sure what \par is really...
+	\noindent
+	\hangindent\cwbb@indent  \kern\cwbb@indent
+	\copy\cwbb@bakk	% go back to basic indentation
+	\ignorespaces
+    \fi
+    }
+\def\cwbb@opt_break{%	% optional break between statements
+    \hfil \penalty\m@ne
+    \hfilneg  \kern .5em  \kern 2\CwebIndentUnit   % discarded on line break
+    \copy\cwbb@bakk
+    \ignorespaces
+    }
+\def\cwbb@big_break{%	% forced break and a little extra space
+    \Y
+    \cwbb@break
+    }
+\def\cwbb@expr_break#1{%	% break with penalty #1 * 10
+    \hfil \penalty#10
+    \hfilneg		% discarded on line break
+    }
+%%% \endprog
+
+
+%%% \sect When we increment the indentation, we must not forget to set
+%%% the hanging indentation immediately since |\cwbb@opt_break| relies on
+%%% the new value. If a continuation line is needed it will also be
+%%% indented one unit more, which is ok since it should be distinguishable
+%%% from the next line.
+%%% %
+%%% \begin{fixme}
+%%%   Shouldn't the hanging indentation be set anew at the end of
+%%%   |\cwbb@decr_indent| as well?
+%%% \end{fixme}
+
+%%% \beginprog
+\def\cwbb@incr_indent{%
+    \global\advance\cwbb@indent\CwebIndentUnit
+    \hangindent\cwbb@indent
+    }
+\def\cwbb@decr_indent{\global\advance\cwbb@indent -\CwebIndentUnit}
+\def\cwbb@backup{\copy\cwbb@bak}
+\def\cwbb@noindent{%				% no indentation
+    \hskip -\cwbb@indent \hskip 2\CwebIndentUnit
+    }
+%%% \endprog
+
+
+
+
+%%% \chap Program (C or \C++) tokens.
+
+%%% Since the user might want to change the (somewhat unusual) way some
+%%% of the operators are typeset, we supply names for them.
+
+%%% \beginprog
+\let\CwebAnd=\land		% logical and, &&
+\let\CwebEquiv=\equiv		% equiv sign, for ==
+\let\CwebGe=\ge			% greater or equal
+\let\CwebLe=\le			% less or equal
+\let\CwebNe=\ne			% unequal, !=
+\let\CwebNull=\Lambda		% NULL pointer
+\let\CwebNot=\lnot		% logical not, !
+\let\CwebOr=\lor		% logical or, ||
+\let\CwebXor=\oplus		% bitwise exclusive or, ^
+%%% \endprog
+
+
+%%% \sect Some symbols have to be shifted around, to save computation time
+%%% we put them in boxes.
+
+%%% \begin{fixme}
+%%%   It's not sure if the following symbols still look good in other font
+%%%   families than Computer Modern. The movements might need to get
+%%%   adapted when more experience is available. They were chosen from
+%%%   Plain \cweb{}, where these were explicit movements measured in
+%%%   points. I changed the dimension to quads, to achieve at least the
+%%%   support for different sizes in the Computer Modern family.
+%%% \end{fixme}
+
+%%% \TeX{}nical note: The pointer symbol must not be declared as a math
+%%% symbol (e.g., with |\DeclareMathSymbol|). Then \TeX{} would insert an
+%%% italic correction behind it, according to rule~17 from appendix~G.
+%%% (Please send email if you know of an easy way to prevent that
+%%% addition.) So I use the symbol as an accent, but then I have to supply
+%%% a nucleus for this math list. That nucleus also determines the total
+%%% width of this construct. As the vector accent has a width of
+%%% approximately 5\,pt in |cmmi10|, I'm going to use 0.5\,em. (That
+%%% heuristic is as good as any other I can think of.)
+
+%%% \beginprog
+%% pointer to struct component (`->'), use symbol of \vec accent
+\newbox\cwbb@pointer
+\setbox\cwbb@pointer=\hbox{%
+	    \kern -.2em
+	    \lower .3em \hbox{$\vec{\kern .5em}$}%
+	    \kern .1em
+	    }
+
+\newbox\cwbb@decr		% decrement, --
+\setbox\cwbb@decr=\hbox{%
+	    \kern .05em
+	    \raise .1em \hbox{$\scriptstyle {-}\kern -.1em{-}$}%
+	    \kern .05em
+	    }
+\newbox\cwbb@incr		% increment, ++
+\setbox\cwbb@incr=\hbox{%
+	    \kern .05em
+	    \raise .1em \hbox{$\scriptstyle {+}\kern -.1em{+}$}%
+	    \kern .05em
+	    }
+%%% \endprog
+
+
+%%% \sect Although the following symbols are typeset like an ``ordinary
+%%% \C++ programmer'' would expect them, we provide own module names
+%%% nevertheless. They can now be changed as well, i.e., orthogonality is
+%%% enhanced. (And we can use |\cwbb@rebind| for assigning them to their
+%%% names while we switch to program state\,\dots).
+
+%%% Note: The comment at |\CwebMod| says ``modulo/remainder'', as this is
+%%% not defined by the C standard, i.e., implementation-dependent.
+
+%%% \beginprog
+\mathchardef\CwebAddress="2026	% `&', as binary op
+\let\CwebAssign==		% assignment
+\let\CwebBinOr=\mid		% binary or
+\def\CwebComplement{{\sim}}	% `~', as ordinary symbol
+\def\CwebDecr{\copy\cwbb@decr}	% decrement
+\def\CwebIncr{\copy\cwbb@incr}	% increment
+\let\CwebLeftShift=\ll		% left shift, <<
+\def\CwebMod{\mathbin{\hbox{\footnotesize\rm\%}}}	% modulo/remainder, %
+\def\CwebMemberRef{\mathbin{.*}}	% ptr to member (on object)
+\def\CwebPointer{\copy\cwbb@pointer}
+\def\CwebPointerMemberRef{\mathbin{\CwebPointer*}} % ptr to member (on ptr)
+\def\CwebRel{\mathrel?}		% relation operator
+\let\CwebRightShift=\gg		% right shift, >>
+\def\CwebScope{\kern.1em{::}\kern.1em}	% scope resolution
+
+\def\CwebThis{\CwebRes{this}}	% reserved identifier `this'
+%%% \endprog
+
+
+%%% \sect The special identifier |\TeX| remains. In math mode it shall be
+%%% the identifier, in other modes the usual logo. We use the definition
+%%% supplied by DEK (or \textsc{Silvio Levy}?)\ from Plain \cweb{}.
+
+%%% \beginprog
+\def\TeX{%
+    {%
+	\ifmmode\it\fi
+	\mbox{T\kern-.1667em\lower.424ex\hbox{E}\hskip-.125emX}%
+    }}
+%%% \endprog
+
+
+%%% \sect Some tokens don't have constant names, the name is supplied as
+%%% the argument.
+
+%%% Identifiers are typeset in italics, reserved words and type names in
+%%% boldface, and strings in typewriter. For an underscore in the bold
+%%% words we use a line that's 50\,\% thicker as the usual line thickness.
+%%% -- But what is the usual line thickness. As Knuth uses 0.4\,pt for a
+%%% 10\,pt Computer Modern font, we'll use 0.06\,em for a CM font in an
+%%% arbitrary size. If that line thickness is still OK for other fonts is
+%%% doubtful, as it should fit to the stem width. (CM is a rather light
+%%% font, after all.) But since there is no font dimension that gives a
+%%% hint to an appropriate line thickness, it's our best try.
+
+%%% \beginprog
+\def\CwebCombinedOp#1{\mathrel{\let\K==#1}}  % e.g., += operator
+\def\CwebId#1{\hbox{\it#1\/\kern.05em}} % identifier, more than one char
+\def\CwebIdLetter#1{\hbox{$#1$}}	% identifier, one letter
+\def\CwebRes#1{%			% reserverd words and type names
+    \hbox{\bf
+	\def\_{\kern.04em\vbox{\hrule width.3em height.06em}\kern.08em}%
+	#1\/\kern .05em
+	}%
+    }
+%%% \endprog
+
+
+%%% \sect In Plain \cweb{} strings are typeset in the font |cmtex10|,
+%%% which is a typewriter font with extended ASCII characters. This font
+%%% does not have the usual accents and can therefore not used for
+%%% typesetting national characters. (Very often they are input in some
+%%% 8-bit encoding, the respective character code is made active and is
+%%% substituted by a cseq which expands to the correct glyph. Of course,
+%%% there are better ways, but that's the reality we have to cope with.)
+%%% Instead of this special font we use the standard typewriter font.
+%%% This has the further advantage that |cmtex10| may not be introduced
+%%% to NFSS\@.
+
+%%% \beginprog
+\def\CwebString{%
+    \hbox \bgroup
+        \tt
+	\cwbb@string_setup
+	\cwbb@string
+    }
+\def\cwbb@string#1{%
+	#1\kern .05em
+	\egroup
+    }
+%%% \endprog
+
+
+%%% \sect Within strings certain cseqs have a special meaning; this is
+%%% introduced by |\cwbb@string_setup|. The cseqs within strings are
+%%% mostly special \TeX{} characters that are to be typeset by cseqs with
+%%% the same name.
+
+%%% But a problem remains: active characters. They will still expand, and
+%%% will mess up the string visualization. This is a particular problem
+%%% with |german.sty| where the double quote is active. (Of course, that's
+%%% a problem -- I'm German. :--) When one typesets strings, a double
+%%% quote shall be typeset as double quotes, and must not expand to the
+%%% special meaning. Remember that double quotes happen to appear quite
+%%% often in strings. As the string argument is already tokenized, one has
+%%% to redefine the binding of $(\textit{\textup{symbol}}\ \textbf{.}\
+%%% |#\"|)$.
+
+%%% \begin{fixme}
+%%%   Perhaps one might use a loop over all characters except the braces,
+%%%   and set their catcode to other. That would give us enough security.
+
+%%%   For now, we handle only the double quote.
+%%% \end{fixme}
+
+%%% Every once in a while we have discretionary breaks in a string,
+%%% denoted by |\CwebStringBreak|. This break is shown with the C
+%%% convention of escaped newlines.
+
+%%% \beginprog
+\def\cwbb@string_setup{%
+    \chardef\ =`\  %		% <-- two spaces !
+    \chardef\&=`\&
+    \chardef\\=`\\
+    \chardef\^=`\^
+    \chardef\_=`\_
+    \chardef\{=`\{
+    \chardef\}=`\}
+    \chardef\~=`\~
+    \catcode`\"=\CatOther
+    }
+
+\def\CwebStringBreak{\discretionary{\hbox{\tt\char`\\}}{}{}}
+%%% \endprog
+
+
+%%% \sect Numbers are typeset in different ways. We use the definition of
+%%% Plain \cweb{}.
+%%% %
+%%% \begin{fixme}
+%%%   Should add a specification of the possible input and an explanation
+%%%   of the macros below. In particular, that the closing brace after
+%%%   |\aftergroup| is used much later is probably not grokked by most
+%%%   \TeX{} programmers.
+%%% \end{fixme}
+
+%%% \beginprog
+\def\cwbb@oct{\hbox{$^\circ$\kern-.1em\it\aftergroup\?\aftergroup}}
+\def\cwbb@hex{\hbox{$^{\scriptscriptstyle\#}$\tt\aftergroup}}
+
+\def\CwebNumber#1{%		% octal, hex, or decimal constant
+    \hbox{%
+	$%
+	    \def\?{\kern.2em}%
+	    \def\$##1{\egroup\sb{\,\rm##1}\bgroup}% suffix to constant
+	    \def\_{\cdot 10^{\aftergroup}}% power of ten (via dirty trick)
+	    \let\~\cwbb@oct \let\^\cwbb@hex
+	    {#1}%
+	$}%
+    }
+%%% \endprog
+
+
+%%% \sect Comments are typeset in \TeX{} state. We add a hook, the user
+%%% shall be able to change the layout (e.g., he might want another font).
+%%% %
+%%% \begin{fixme}
+%%%   Currently \C++ comments are typeset like C comments. This is
+%%%   horrible in usual circumstances, i.e., when complete blocks of text
+%%%   are prefixed with |//|. We should simply catenate all these text and
+%%%   typeset it as one paragraph, each line prefixed by |//|. But then we
+%%%   have to implement an |\everyline| first, and since that's not so
+%%%   easy we postpone it\,\dots
+%%% \end{fixme}
+%%% %
+%%% In front of a C comment there is an optional stmt break, with 2\,quad
+%%% in front if the line is not broken and 1.5\,quad if the line is broken.
+
+%%% \beginprog
+\def\CwebComment#1{%
+    \5%				% 0.5em will be discarded on line break
+    \hskip 1.5em
+    $/\ast\,$%
+    {\cwbb@tex
+	\CwebCommentHook
+	#1%
+    }%
+    $\,\ast/$%
+    }
+\let\CwebCommentHook\relax
+\let\CwebCxxComment\CwebComment
+%%% \endprog
+
+
+
+
+
+%%% \chap \cweb{} tokens.
+
+%%% We distinguish three categories of \cweb{} tokens: (1) Those which
+%%% output constant text, (2) those which have attributes to be displayed
+%%% in a special way, and (3) those which start a new structure element,
+%%% namely |@d| and~|@f|. Let's consider them in this order.
+
+
+%%% \sect \cweb{} tokens which expand in a constant string are the
+%%% identifier catenation operator~(`|@&|') and the macro placement
+%%% directive~(`|@h|').
+
+%%% \beginprog
+\def\CwebIdCat{\CwebString{@\&}}
+\def\CwebMacrosHere{%
+    \begingroup
+	\def\CwebRefNumber##1{}%
+	\CwebRefName :Preprocessor definitions\X
+    \endgroup
+    }
+%%% \endprog
+
+
+%%% \sect Verbatim program strings, i.e., strings passed verbatim by
+%%% \ctangle{}~(`|@=|') are typeset like normal strings, but within a box.
+%%% We use 2\,pt as the separating distance, this is set locally.
+
+%%% \beginprog
+\def\CwebVerbString#1{{\fboxsep\tw@\p@ \fbox{\CwebString{#1}}}}
+%%% \endprog
+
+
+%%% \sect The refinement names are typeset in angles, this has a long
+%%% tradition. We burry the typesetting of the chunk number (which is
+%%% the first parameter) in a macro call; the user may change this to
+%%% achieve special effects.
+%%% %
+%%% \begin{fixme}
+%%%   One could think about handling special values of the chunk numbers
+%%%   differently. E.g., an empty argument is not typeset at all, a~0
+%%%   triggers a marginal note about a missing definition, etc.
+%%% \end{fixme}
+
+%%% A refinement name may be typeset both in math and horizontal mode.
+%%% The name itself is typeset in horizontal mode, of course; for the
+%%% angles we need math mode. Therefore we assert at the start of the
+%%% macro that we're not in math mode any more. At the end we switch back
+%%% to math mode if we've started in it. This conditional switch from and
+%%% back to math mode is done by |\cwbb@toggle_text|.
+
+%%% \TeX{}nical note: If we're in math mode |\cwbb@toggle_text| must be
+%%% defined globally, as it will turn off math mode and the definition
+%%% would be un-made then. The second invocation of |\cwbb@toggle_text|
+%%% would be undefined then.
+
+%%% A refinement may also consist of the file name the expansion of this
+%%% refinement shall be written to.
+%%% %
+%%% \label{sec:refname-dot}
+%%% %
+%%% This file name is tagged with |\.|, it shall be typeset like a string.
+%%% But the user shall be able to use the dot accent in the refinement
+%%% name as well. We check if the text consists solely of the tag and its
+%%% argument; in this case we substitute |\.| with |\CwebString|.
+%%% Otherwise we leave it as it is.  Then a refinement name may not
+%%% consist of a single dot-accented expression---well, that's highly
+%%% unlikely. (Nevertheless I'll document it in the user's manual\,\dots)
+
+%%% \begin{fixme}
+%%%   One should be able to use |\EnsureMath| here. But the refinement
+%%%   name must not be set in math mode and must not be set in an hbox;
+%%%   the latter would prevent line breaks.
+%%% \end{fixme}
+
+%%% \beginprog
+\def\CwebRefName#1:#2\X{%
+    \ifmmode  \gdef\cwbb@toggle_text{\null$\null}%
+    \else  \let\cwbb@toggle_text\relax
+    \fi
+    \cwbb@toggle_text
+    $\langle\,${\cwbb@tex \cwbb@check_dot{#2}\CwebRefNumber{#1}}$\,\rangle$%
+    \cwbb@toggle_text
+    }
+\def\CwebRefNumber#1{%
+    {\reset@font \footnotesize \kern .5em#1}%
+    }
+%%% \endprog
+
+
+%%% \sect The next macro, |\cwbb@check_dot| is a hassle to implement. We
+%%% must check if it's argument consists solely of a `|\.|'~tag, together
+%%% with the argument to this tag. Then the `|\.|'-argument shall be
+%%% typeset like a string, |\.| itself must be ignored.
+
+%%% The check for |\.| must not evaluate the parameter. Especially |\PB|
+%%% must not be evaluated within, it would lead to havoc with the
+%%% redefinition of all bindings, etc. (At least that's the empirical
+%%% result---it happened; although I don't know where the problems are.
+%%% Anyhow, it wasn't in the specs of the rebinding process.) All other
+%%% cseqs which shouldn't be used in moving arguments may cause problems
+%%% here, too. Note that |\protect| is no solution here, the user often is
+%%% not aware of the presence of \cweave{}-generated tags. As an example,
+%%% consider the refinement \verb"@< local variables of |foo| @>|" which
+%%% will lead to a call with the argument `|local variables of \PB{\\{foo}}|'.
+%%% |\\| must not be evaluated here.
+
+%%% I use an approach where I hope that it will work---but to be honest,
+%%% I'm not sure. I want to define a macro |\next| which shall have an
+%%% empty expansion iff |#1| was a `|\.|'~tag with its argument. Empty
+%%% refinement names are not allowed so we can assume that |#1| consists
+%%% of at least one token. I evaluate the first token of |#1| before the
+%%% |\def| is done. With an appropriate binding a |\.| will disappear,
+%%% perhaps leaving an empty token list. I also take care that |\PB| is
+%%% not evaluated then, by temporary rebinding it to |\relax|. Thereby I
+%%% have taken care for all cseqs \cweave{} might have introduced at the
+%%% very front of |#1|. Other cseqs are user-tags. If they cause
+%%% problems, the user might circumstance them by adding |\protect|.
+
+%%% \beginprog
+\def\cwbb@check_dot#1{%
+    \begingroup
+	\let\.\@gobble
+	\let\PB\relax
+	\expandafter\def \expandafter\next \expandafter{#1}%
+	\ifx \next\empty
+	    \gdef\next##1{\CwebString}%
+	\else
+	    \global\let\next\relax
+	\fi
+    \endgroup
+    \next #1%
+    }
+%%% \endprog
+
+
+%%% \sect \cweb{} macro definitions (done by~|@d|) and format directives are
+%%% basically program text. When they are started we are already in
+%%% program state, i.e., |\B| has appeared in front of it. But since we have
+%%% an introductionary identifier (either |#define| or |format|) to set at
+%%% the very front we increase the indentation by three units.
+
+%%% The output of format directives may be suppressed.  Then we have to
+%%% gather both identifiers that will appear after |\F|.  Both of them
+%%% consist of one group-token (a cseq and the identifier name), after
+%%% each identifier one other token separates them. I.e., we have to
+%%% gobble six group-tokens. As the very last token is |\par| if a format
+%%% directive follows directly on another one, the definition must be
+%%% long.
+
+%%% \TeX{}nical note: |\cwbb@format| must expand to |\CwebFormat|, not to
+%%% its expansion. Otherwise a redefinition of |\CwebFormat| in a package
+%%% would not be used.
+
+%%% \beginprog
+\def\CwebDefine{\cwbb@macro{\#define}}
+\def\CwebFormat{\cwbb@macro{format}}
+\if@cweb@suppress@format@
+    \long\def\cwbb@format#1#2#3#4#5#6{}
+\else
+    \def\cwbb@format{\CwebFormat}
+\fi
+
+\def\cwbb@macro#1{%
+    \global\advance\cwbb@indent \tw@\CwebIndentUnit
+    \cwbb@incr_indent
+    \CwebRes{#1 }%		% <-- blank!
+    }
+%%% \endprog
+
+
+
+
+%%% \chap Refinement cross references and changes.
+
+%%% At the end of chunks with refinements, \cweave{} may output cross
+%%% reference information: In which chunks additional definitions for
+%%% this refinement are found, where this refinement is used, and where it
+%%% is cited. This cross reference information is always introduced by a
+%%% tag followed by a non-empty list of chunk numbers. Different tags
+%%% are used for lists with only one element and for lists with more than
+%%% one element, this way the introductionary text may be adapted.
+
+%%% Within a list of $n$~chunk numbers the first $n-1$~numbers are
+%%% separated by commas with one following blank. The last two numbers
+%%% are separated by |\ET| if~$n=2$, and by |\ETs| if~$n>2$. If a chunk
+%%% is changed by the changefile, a changeflag~(`|\*|') is appended to
+%%% its number. The list is eventually terminated by a full stop.
+
+
+%%% \sect We separate the cross reference information by a smallskip from
+%%% the refinement or from a previous cross reference information. The
+%%% information itself is typeset in a smaller font, as it is auxilliary,
+%%% inserted stuff. The number list has a hanging indentation of
+%%% |\CwebNumberListHangindent|. But beware: This isn't a dimension
+%%% register, it's a macro. This way one can use ems as dimensions.
+
+%%% The actual size change is represented by a macro. We will redefine it
+%%% when we need an other size, e.g., in the lists at the end of the
+%%% document.
+
+%%% We must assert that we're in CR state while we set a cross reference.
+
+%%% The first parameter of a cross reference information unit is the
+%%% introductionary text, the second is the number list. The parameters
+%%% must be evaluated in a group---local parameter changes therein must
+%%% not influence the environment.
+
+%%% \beginprog
+\def\CwebNumberListHangindent{2em}
+\let\CwebCRSize\footnotesize
+\def\CwebCrossRef#1#2.{%
+    \par\smallskip
+    \cwbb@CR
+    \begingroup
+	\reset@font \CwebCRSize
+	\noindent \hangindent\CwebNumberListHangindent\relax
+	#1~#2.\par
+    \endgroup
+    }
+%%% \endprog
+
+
+%%% \sect Well, let's define all introducing tags, which in fact start the
+%%% cross reference information unit. The number list is gathered by
+%%% |\CwebCrossRef|.
+
+%%% \beginprog
+\def\CwebCRAlso{\CwebCrossRef{See also chunk}}
+\def\CwebCRsAlso{\CwebCrossRef{See also chunks}}
+
+\def\CwebCRCite{\CwebCrossRef{This code is cited in chunk}}
+\def\CwebCRsCite{\CwebCrossRef{This code is cited in chunks}}
+
+\def\CwebCRUse{\CwebCrossRef{This code is used in chunk}}
+\def\CwebCRsUse{\CwebCrossRef{This code is used in chunks}}
+
+\def\CwebCREt{ and~}
+\def\CwebCRsEt{, and~}
+%%% \endprog
+
+
+
+
+%%% \chap Bells and whistles.
+
+%%% \begin{fixme}
+%%%   Just copied from Plain \cweb{}. It doesn't work
+%%%   anyhow---|\char"|\<xy> usually doesn't typeset the correct
+%%%   character. That's because this character is most probably an active
+%%%   character; at least that's typical for the way \TeX{} systems are
+%%%   used in Europe. I have to think about the implementation.
+%%% \end{fixme}
+
+%%% \beginprog
+\def\ATL{\par\noindent\bgroup\catcode`\_=12 \postATL} % print @l in limbo
+\def\postATL#1 #2 {\bf letter \\{\uppercase{\char"#1}}
+   tangles as \tentex "#2"\egroup\par}
+\def\noATL#1 #2 {}
+\def\noatl{\let\ATL=\noATL} % suppress output from @l
+%%% \endprog
+
+
+
+%%% \chap The end.
+
+%%% Well, after all we're finished with this module
+
+%%% \beginprog
+\endinput
+%%% \endprog
+
+
+%%% 
+%%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% \vskip \PltxPreSectSkip
+
+%%% \rcsLogIntro{After the actual revision log of this module, we give an
+%%%     extract of log messages of the \cls{cweb} class. This module was
+%%%     extracted from revision~2.8 of that class, we present to you the
+%%%     log entries that concern the code of the new module.}
+
+%%% \begin{rcslog}
+%%% $StyleLog: cwebbase.doc,v $
+%%% \Revision 1.4 1995/11/07 17:55:19 schrod
+%%%     \LaTeX{} \cweb{} should work at least with the last two \LaTeX{}
+%%% versions; make it work with the previous-to-last one, version
+%%% \mbox{$\langle$1994/12/01$\rangle$}. For that, one has to install the
+%%% \mbox{$\langle$1995/06/01$\rangle$} (non-outer) definition of
+%%% |\newif|, and |\hb@xt@| must not be used.\\
+%%% Problem reported by Laurent Desnogues
+%%% \path|<laurent.desnogues@aiguemarine.unice.fr>| and somebody else (XXX
+%%% -- add name).
+
+%%% \Revision 1.3 1995/11/07 14:13:12 schrod
+%%% Reset section numbers when higher-level section begins.\\
+%%% Error reported by Bronne Louis \path|<bronne@montefiore.ulg.ac.be>|.
+
+%%% \Revision 1.2 1995/11/06 10:58:47 schrod
+%%%     Support active double quotes in strings. That happens when
+%%% |german.sty| is used. Problems with other active characters may still
+%%% appear.
+
+%%% \Revision 1.1 1995/09/12 23:02:22 schrod
+%%% Moved all code that does the actual typesetting of \cweave{} tags and
+%%% is therefore also needed for a |cweb| environment. It's now an own
+%%% module named \pkg{cwebbase}.
+
+%%% Chunk markers and chunk marginal numbers don't hang below the
+%%% baseline any more.
+
+
+%%% \item[] \noindent\hrulefill\break
+%%%   \textbf{Extract of the revision log for |cweb.doc|:}
+
+%%%   \vskip 2ex
+
+%%% \Revision 2.5 1995/08/29 02:07:26 schrod
+%%% Discard dependencies on 10\,pt fonts.
+
+%%% Support suppression of format directives.
+
+%%% \Revision 2.4 1995/08/27 19:31:43 schrod
+%%% Make configuration of change flag easier.
+
+%%% Put section title of changed chunks list in marks, and tell the user
+%%% that it got typeset.
+
+%%% \Revision 2.3 1995/08/27 17:24:46 schrod
+%%% Make usage of baseclass with chapters work.
+
+%%% \Revision 2.2 1995/08/27 13:26:22 schrod
+%%% Add possibility to suppress change hints.
+
+%%% \Revision 2.1 1995/08/25 19:11:18 schrod
+%%% Hierarchic structures are supported now, in addition to the flat
+%%% structure of the beta-test version. One can choose with an option. For
+%%% that step, the terminology was cleaned up, too: Chunks are not named
+%%% sections any more. (That change involved reimplementation of almost
+%%% all the structure and toc stuff.)
+
+%%% The chunk number supplied by \cweave{} is used now, not some computed
+%%% number. Change flags are printed, too.
+
+%%% One can suppress output of unchanged sections.
+
+%%% \Revision 1.12  1993/08/10  14:15:43  schrod
+%%% New page on main section only if group level $<$ |\cwebSecNoEject|.
+%%% Default for the latter is 3.
+
+%%% \Revision 1.11  1993/08/10  11:21:07  schrod
+%%% Reference to section number does not render a period after the
+%%% number any more.
+
+%%% \Revision 1.10  1993/08/09  20:08:20  schrod
+%%% |\cweb@cweave_bindings| is now a no-op if \cweave{} bindings are in
+%%% effect already.\\
+%%% (Problem reported by Michael M\"uller \path|<mimu@mpi-sb.mpg.de>|.)
+
+%%% \Revision 1.9  1993/08/09  18:05:28  schrod
+%%% Left shift operator wasn't defined correctly.\\
+%%% (Problem reported by Michael M\"uller \path|<mimu@mpi-sb.mpg.de>|.)
+
+%%% \Revision 1.6  1993/06/15  08:49:23  schrod
+%%% |\cweb@check_dot| must not evaluate its argument in an |\edef|, this
+%%% causes problems if a |\PB| is within. Now I try hard not to evaluate any
+%%% tokens outside of my control.
+
+%%% Can use |\@defpar| for an empty line in |\cweb@has_entries|, don't
+%%% need an own macro.
+
+%%% \Revision 1.4  1993/06/14  15:54:18  schrod
+%%% Add FSA diagram about processing states. CR state is also switched
+%%% to from \TeX{} state (that happens with |\ch| at the document end).
+
+%%% \Revision 1.3  1993/05/13  17:51:21  schrod
+%%% Refinements may also be filenames (`|@(|'). Then the complete name
+%%% consists of a |\.| macro call, which is handled now.\\
+%%% (Problem reported by Michael M\"uller \path|<mimu@mpi-sb.mpg.de>|.)
+
+%%% Made the detection of `|@.|' index entries more robust.
+
+%%% \Revision 1.2  1993/05/12  18:28:59  schrod
+%%% Adapted to recent changes of \cweave{} (of April 93):
+
+%%% Main sections have a group level, represented in the table of
+%%% contents. This changed the complete implementation of section tags.
+
+%%% New C token cseqs: |\Z| and |\MRL|, implemented as |\CwebLe| and
+%%% |\CwebCombinedOp|.
+
+%%% \Revision 1.1  1993/04/09  15:00:37  schrod
+%%% Initial revision
+
+%%% \end{rcslog}
+
+
+
+%%% \end{document}
+
+
+%%% 
+%%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Local Variables:
+%%% mode: LaTeX
+%%% TeX-brace-indent-level: 4
+%%% indent-tabs-mode: t
+%%% TeX-auto-untabify: nil
+%%% TeX-auto-regexp-list: LaTeX-auto-regexp-list
+%%% compile-command: "make cwebbase.tex"
+%%% End:

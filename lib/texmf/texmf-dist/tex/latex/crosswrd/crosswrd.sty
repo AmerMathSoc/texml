@@ -1,0 +1,321 @@
+%%
+%% This is file `crosswrd.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% crosswrd.dtx  (with options: `package')
+%% Copyright C 1989 Brian Hamilton Kelly
+%% 
+%% crossword macros for LaTeX
+%% updated for LaTeX2e by Frank Mittelbach 96/12/06
+%% substantially extended by Dirk Laurie 08/01/18
+%% 
+%% for documentation run latex crosswrd.dtx
+%% 
+%% distribution consist of
+%% 
+%%   crosswrd.dtx       source
+%%   crosswrd.ins       installation script
+%%   00readme
+%% 
+%% don't distribute this file without distributing the above
+%% files as well
+%% 
+%% crosswrd.dtx
+%% Copyright 1989 Brian Hamilton Kelly
+%% updated for LaTeX2e by Frank Mittelbach 96/12/06
+%% Updated for LPPL 1.3c or later by Clea F. Rees (for Frank Mittelbach), 2008/10/06.
+%%
+%% Upgraded with many new features by Dirk Laurie 2010/02/01
+\NeedsTeXFormat{LaTeX2e}[1995/12/01]
+\RequirePackage{ifthen}
+\ProvidesPackage{crosswrd}
+          [2010/02/01 v3.0 Generating crosswords (BHK,DPL)]
+
+
+
+\def\ninept{\@setsize\ninept{11pt}\ixpt\@ixpt
+  \abovedisplayskip 8.5pt plus 3pt minus 4pt
+  \belowdisplayskip \abovedisplayskip
+  \abovedisplayshortskip \z@ plus2pt
+  \belowdisplayshortskip 4pt plus2pt minus 2pt
+  \def\@listi{\itemsep 0pt
+    \parsep \z@ plus 1pt
+    \topsep 4pt plus 2pt minus 2pt
+}}
+\newif\ifnumberit
+\newcount{\gridr@ws}\newcount{\gridc@ls}
+\newcount{\p@rsize}\newcount{\p@csize}
+\newcount{\Down}
+\newcount{\Across}
+\newwrite\tf@acr
+\newwrite\tf@dwn
+\def\OpenClueFiles{%
+  \immediate\openout \tf@acr \jobname.acr\relax
+  \immediate\openout \tf@dwn \jobname.dwn\relax
+  \@writefile{acr}{\begin{minipage}[t]{\cluewidth}}%
+  \@writefile{acr}{ \centerline{\textbf{\ACROSStext}}}%
+  \@writefile{acr}{ \sloppy}%
+  \@writefile{acr}{ \cluesize}%
+  \@writefile{acr}{ \begin{ClueList}}%
+  \@writefile{dwn}{\begin{minipage}[t]{\cluewidth}}%
+  \@writefile{dwn}{ \centerline{\textbf{\DOWNtext}}}%
+  \@writefile{dwn}{ \sloppy}%
+  \@writefile{dwn}{ \cluesize}%
+  \@writefile{dwn}{ \begin{ClueList}}}
+\newcommand\ACROSStext{ACROSS}
+\newcommand\DOWNtext{DOWN}
+\def\CloseClueFiles{%
+  \@writefile{acr}{ \end{ClueList}}%
+  \@writefile{acr}{\end{minipage}}%
+  \@writefile{dwn}{ \end{ClueList}}%
+  \@writefile{dwn}{\end{minipage}}%
+  \immediate\closeout\tf@acr \let\tf@acr\relax
+  \immediate\closeout\tf@dwn \let\tf@dwn\relax
+  \endgraf
+}
+\def\ClueListlabel#1{\hspace\labelsep {\bf #1}\hss}
+\def\ClueList{\list{}{\labelwidth\leftmargin
+  \advance \labelwidth by -\labelsep
+  \let\makelabel\ClueListlabel}}
+\let\endClueList\endlist
+\def\PrintClues{%
+  \centerline{%
+    \begin{tabular}{ c | c }
+      \@input{\jobname.acr}
+      &
+      \@input{\jobname.dwn}
+    \end{tabular}
+  }\endgraf
+}
+\newenvironment{crossword}[3][\c@ls]{%
+    \def\c@ls{#2}
+  \endgraf\leavevmode
+  \vtop\bgroup
+    \unitlength 6mm\numberittrue
+    \def\Header{}%
+    \def\Preamble{}%
+    \def\cluewidth{70mm}
+    \let\numbersize\tiny
+    \let\cluesize\ninept
+    \def\barwidth{0.1}
+    \OpenClueFiles
+    \TestAnswers{#3}%
+    \SetUpGrid{#1}{\c@ls}}
+{\endgraf
+    \centerline{\Header}%
+    \hbox{\FinishGrid}%
+    \ifthenelse {\equal{\Preamble}{}} {}
+       {\centerline{\parbox{\textwidth}{\Preamble}}\medskip}
+    \CloseClueFiles
+    \hbox{\PrintClues}%
+  \egroup
+}
+\newenvironment{crossword*}[3][\c@ls]{%
+  \def\c@ls{#2}
+  \unitlength 4mm\numberitfalse
+  \def\barwidth{0.1}
+  \endgraf\leavevmode
+  \vtop\bgroup
+    \def\Header{{\bf\strut #3}}%
+    \def\answer{Y}%
+    \let\tf@dwn=\relax \let\tf@acr=\relax
+    \SetUpGrid{#1}{#2}}
+{\endgraf
+    \centerline{\Header}%
+    \hbox{\FinishGrid}%
+  \egroup
+}
+\def\ind@x#1#2{R\romannumeral #1C\romannumeral#2}
+\def\arr@yref#1#2#3{\csname #1\ind@x{#2}{#3}\endcsname}
+\def\value#1[#2,#3]{\arr@yref{#1}{#2}{#3}}
+\def\assign#1[#2,#3]=#4;%
+{\expandafter\edef\csname #1\ind@x{#2}{#3}\endcsname{#4}}
+\newcount\accumulat@r
+\def\addto#1[#2,#3]+=#4;%
+{\accumulat@r=\value #1[#2,#3]  \advance\accumulat@r by #4
+  \assign #1[#2,#3]=\the\accumulat@r;}
+
+
+
+\newcount\lettercount
+\newcount\Barcode
+
+\def\nextletter#1#2{%
+  \ifx#2\@nil \let\nextlet=\@gobble
+  \else \immediate\edef\Before{\value Letter[\Down,\Across]}
+      \assign Letter[\Down,\Across]=#2;
+      \immediate\edef\After{\value Letter[\Down,\Across]}
+      \if \Before ! \else \if \Before \After
+      \else \errhelp{You mistyped an answer, or miscounted the coordinates.}
+      \errmessage{Letter "\After" conflicts with earlier "\Before"
+         in row \the\Down, column \the\Across}
+      \fi \fi
+     \ifnum \lettercount>0 \addto Bar[\Down,\Across]+=-\Barcode; \fi
+      \@gobble{#2} \advance#1 by \@ne \global\advance \lettercount by \@ne
+    \let\nextlet=\nextletter
+  \fi
+  \nextlet{#1}}
+
+\def\clue#1#2#3#4#5#6#7{%
+  \Across=#3 \Down=#4
+  \findnumber{#1}
+  \immediate\edef\Before{\value Number[\Down,\Across]}
+  \assign Number[\Down,\Across]=\cluenumber;
+  \immediate\edef\After{\value Number[\Down,\Across]}
+  \ifnum \Before>0 \ifnum \After=\Before
+  \else \errhelp
+     {You probably made a mistake when typing in one of the clues.}
+     \errmessage{Number {\After} conflicts with earlier {\Before}
+      in row \the\Down, column \the\Across}
+     \fi \fi
+  \ifx#2A
+    \global\Barcode=2
+    \ifthenelse{\equal{\@empty}{#7}}{}{
+      \ifx\tf@acr\relax\else
+        \@writefile{acr}{  \item[#1] #6 (#7)}%
+      \fi}
+    \let\Direction=\Across
+  \else
+    \ifx#2D
+      \global\Barcode=1
+    \ifthenelse{\equal{\@empty}{#7}}{}{
+      \ifx\tf@dwn\relax\else
+        \@writefile{dwn}{  \item[#1] #6 (#7)}%
+      \fi}
+      \let\Direction=\Down
+    \else
+      \errhelp{The second parameter of the \string\clue\space
+               command must be `A' or `D'}
+      \errmessage{Illegal direction (#1) specification
+                  for \string\clue.}
+    \fi
+  \fi
+  \global\lettercount=0
+  \nextletter{\Direction}#5\@nil
+  \ignorespaces
+}
+\newcount\clueNumber
+\def\special@gobble #1\@nil{}
+\def\findnumber#1{%
+  \afterassignment \special@gobble \clueNumber=0#1 \@nil
+  \ifnum\clueNumber=0
+    \errhelp{The first parameter of the \string\clue\space command
+             must commence with a digit}
+    \errmessage{Illegal clue number (#1) specified
+                for \string\clue.}
+  \fi
+}
+\def\cluenumber{\the\clueNumber}
+\def\blackenrow{\let\savediterate\iterate
+  \loop\relax\ifnum\Across>\z@
+    \assign Bar[\Down,\Across]=3;
+    \assign Letter[\Down,\Across]=!;
+    \assign Number[\Down,\Across]=0;
+    \advance\Across by \m@ne
+  \repeat
+  \let\iterate\savediterate
+}
+\def\SetUpGrid#1#2{%
+  \gridr@ws=#1\gridc@ls=#2
+  \p@rsize=#1 \advance\p@rsize by \@ne
+  \p@csize=#2 \advance\p@csize by \@ne
+  \typeout{Grid has #1 rows and #2 columns.}
+  \Down=\gridr@ws
+  \loop
+    \Across=\gridc@ls
+    \ifnum\Down>\z@
+        \blackenrow
+        \advance\Down by \m@ne
+  \repeat
+}
+\def\f@rst#1#2.{#1}
+\def\TestAnswers#1{\edef\next{\def\noexpand\answer{#1}}%
+  \lowercase\expandafter{\next}%
+  \edef\answer{\expandafter \f@rst \answer n.}%
+  \if\answer y \else \if\answer n \else
+    \typein[\answer]{Make answers visible? [Y/N]: }\fi
+  \fi
+  \edef\next{\def\noexpand\answer{\answer}}%
+  \uppercase\expandafter{\next}%
+  \edef\answer{\expandafter \f@rst \answer n.}%
+}
+\def\putletter{{\put(\Across,-\Down){\makebox(1,1)
+   {\sffamily \value Letter[\Down,\Across]}}}}
+\newcount\oldnumber \oldnumber=0
+\newif\ifseqtest \seqtestfalse
+\def\putnumber{\immediate\def\Number{\value Number[\Down,\Across]}
+   \ifnumberit \ifnum\Number>0
+   \put(\Across,-\Down){%
+    \begin{picture}(1,1)(0,0)
+       \put(0.05,0.05){\makebox(0.9,0.9)[tl]{\numbersize\Number}}
+    \end{picture}}
+  \ifnum \oldnumber>0 \advance\oldnumber by\m@ne
+    \ifnum \oldnumber=\Number {\seqtesttrue} \else
+      \ifseqtest
+      \errhelp{Clues should be numbered consecutively from top left
+               to bottom right.}
+      \errmessage{Found clue number \Number, but expected \the\oldnumber}
+      \seqtestfalse
+      \else\seqtesttrue\fi
+    \fi
+  \fi
+  \global \oldnumber=\Number
+\fi \fi
+}
+\newcount \pr@vious
+\newcount \c@de
+\def\putbars{ \linethickness{\barwidth\unitlength}
+  \c@de=\value Bar[\Down,\Across]
+  \ifnum \c@de>1 \advance\c@de by -2
+     \ifnum \Across>1
+       \pr@vious=\Across \advance \pr@vious by -1
+       \immediate\def\pr@vlet{\value Letter[\Down,\pr@vious]}
+       \if \pr@vlet ! \else \put(\Across,-\Down){\line(0,1){1}}
+   \fi \fi \fi
+  \ifnum \c@de>0
+     \ifnum \Down>1
+       \pr@vious=\Down \advance \pr@vious by -1
+       \immediate\def\pr@vlet{\value Letter[\pr@vious,\Across]}
+       \if \pr@vlet ! \else \put(\Across,-\pr@vious){\line(1,0){1}}
+   \fi \fi \fi
+}
+\def\FinishGrid{%
+  \if\answer Y \else \let\putletter\relax \fi
+  \Down=\gridr@ws
+  \centerline{%
+    \begin{picture}(\p@csize,\p@rsize)(1,-\p@rsize)
+    \loop\ifnum\Down>\z@
+      \put(1,-\Down){\line(1,0){\the\gridc@ls}}
+      \Across=\gridc@ls
+      {\loop \ifnum\Across>\z@
+        \immediate\def\lett@r{\value Letter[\Down,\Across]}
+        \if \lett@r ! \put(\Across,-\Down){\rule{\unitlength}{\unitlength}}
+        \else \putletter \putnumber \putbars
+        \fi
+         \advance\Across by \m@ne
+       \repeat
+      }%
+      \advance\Down by \m@ne
+    \repeat
+    \ifthenelse{\equal{\the\oldnumber}1}{}
+     {\ifnumberit\errhelp{Clues should be numbered consecutively
+        from top left to bottom right.}
+      \errmessage{First clue number is \the\oldnumber, not 1} \fi}
+    \put(1,0){\line(1,0){\the\gridc@ls}}
+    \Across=\p@csize
+    \loop\ifnum\Across>\z@
+      \put(\Across,0){\line(0,-1){\the\gridr@ws}}
+      \advance\Across by \m@ne
+    \repeat
+    \end{picture}%
+  }%
+}
+
+
+
+
+\endinput
+%%
+%% End of file `crosswrd.sty'.

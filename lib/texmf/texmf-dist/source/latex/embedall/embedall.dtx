@@ -1,0 +1,189 @@
+% \iffalse meta-comment
+%
+% Copyright (C) 20013 by Alberto Sartori
+% -------------------------------------------------------
+% 
+% This file may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.2
+% of this license or (at your option) any later version.
+% The latest version of this license is in:
+%
+%    http://www.latex-project.org/lppl.txt
+%
+% and version 1.2 or later is part of all distributions of LaTeX 
+% version 1999/12/01 or later.
+%
+% \fi
+%
+% \iffalse
+%<*driver>
+\ProvidesFile{embedall.dtx}
+%</driver>
+%<package>\NeedsTeXFormat{LaTeX2e}[1994/06/01]
+%<package>\ProvidesPackage{embedall}
+%<*package>
+    [2013/10/10 v1.0 embed files in pdf]
+%</package>
+%
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{embedall}[2013/10/10]
+\usepackage[T1]{fontenc}
+\usepackage[osf,sc]{mathpazo}
+\usepackage{hyperref}
+\renewcommand\sfdefault{lmsf}
+\renewcommand\ttdefault{lmtt}
+\usepackage{microtype}
+\linespread{1.1}
+\usepackage{enumitem}
+\setdescription{font=\itshape,leftmargin=2cm,style=sameline}
+\EnableCrossrefs         
+\CodelineIndex
+\RecordChanges
+\begin{document}
+  \DocInput{embedall.dtx}
+  %\PrintChanges
+  %\PrintIndex
+\end{document}
+%</driver>
+% \fi
+%
+% \CheckSum{74}
+%
+% \CharacterTable
+%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
+%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
+%   Digits        \0\1\2\3\4\5\6\7\8\9
+%   Exclamation   \!     Double quote  \"     Hash (number) \#
+%   Dollar        \$     Percent       \%     Ampersand     \&
+%   Acute accent  \'     Left paren    \(     Right paren   \)
+%   Asterisk      \*     Plus          \+     Comma         \,
+%   Minus         \-     Point         \.     Solidus       \/
+%   Colon         \:     Semicolon     \;     Less than     \<
+%   Equals        \=     Greater than  \>     Question mark \?
+%   Commercial at \@     Left bracket  \[     Backslash     \\
+%   Right bracket \]     Circumflex    \^     Underscore    \_
+%   Grave accent  \`     Left brace    \{     Vertical bar  \|
+%   Right brace   \}     Tilde         \~}
+%
+% \changes{v1.0}{2013/10/10}{Initial version}
+%
+% \GetFileInfo{embedall.dtx}
+%
+% \DoNotIndex{\newcommand,\def,\let,\DeclareRobustCommand}
+%
+% \title{The \textbf{embedall} package\thanks{This document
+%   corresponds to \textsf{embedall}~\fileversion, dated \filedate.}}
+% \author{Alberto Sartori \\ \texttt{\href{mailto:alberto.sartori.as@gmail.com}{alberto.sartori.as@gmail.com}}}
+%
+% \maketitle
+%
+% \section{Introduction}
+%
+% This package is designed to help you storing your projects without losing anything. It uses the |embedfile| package in order to attach to the generated |pdf| file all files used in creating your project. In particular it can embed images, external |tex| files, external codes and most important the source file itself.
+%
+% \section{Options}
+%
+% If you use this package without specifying any option, |embedall| attaches by default all files it can. If you don't want to do so you have to use one (or more than one) of the following options. Every option attaches the files it refers to:
+% \begin{description}
+% \item[graphicx] images included with the |\includegraphics| command of the |graphicx| package
+% \item[listings] external codes included with |\listinputlisting| command of the |listings| package
+% \item[source] the main source |tex| file
+% \end{description}
+% Note that the |embedall| package imports the |graphicx| and |listings| packages without any options so if you want to specify some options you have to do it before |\usepackage{embedall}| either with |\usepackage|\oarg{options}|{graphicx}| or with |\PassOptionsToPackage|\marg{options}|{graphicx}|  (the same for |listings|).
+%
+% \section{Commands}
+% \DescribeMacro{\embedinput} \noindent This is the only new command defined by this package. It is the substitute of the |\input| one and it adds the feature of attaching the file to the |pdf| after inserting it in the |tex| source. It was not possible to directly redefine the |\input| command because it is often used by other packages to import their own source code so its redefinition would have the disadvantage of attaching also these files to the final document.
+% 
+% \StopEventually{}
+%
+% \section{Implementation}
+%
+% Initial operations: declaration of packages, commands and options.
+%    \begin{macrocode}
+
+\RequirePackage{embedfile}
+\RequirePackage{graphicx}
+\RequirePackage{listings}
+\RequirePackage{letltxmacro}
+
+\newcommand\embedall@all{1}
+\newcommand\embedall@graphicx{0}
+\newcommand\embedall@list{0}
+\newcommand\embedall@source{0}
+
+\DeclareOption{graphicx}{\def\embedall@graphicx{1}\def\embedall@all{0}}
+\DeclareOption{listings}{\def\embedall@list{1}\def\embedall@all{0}}
+\DeclareOption{source}{\def\embedall@source{1}\def\embedall@all{0}}
+
+\ProcessOptions
+
+%    \end{macrocode}
+% \begin{macro}{\embedall@includegraphics}
+% This macro is the modified version of |\includegraphics| command from the |graphicx| package with included the |\embedfile| command. First the original |\includegraphics| command is stored inside the not-user-accessible |\embedall@latex@includegraphics|.
+%    \begin{macrocode}
+\LetLtxMacro\embedall@latex@includegraphics\includegraphics
+%    \end{macrocode}
+% |\LetLtxMacro| is used (instead of simply |\let|) because some packages modify the |\includegraphics| command. For this reason you can not use the * variant of this command but you have to declare the |clip| option instead.
+%
+% Then the |\embedall@includegraphics| is defined
+%    \begin{macrocode}
+\newcommand\embedall@includegraphics[2][]{%
+    \embedfile[desc=image]{#2}
+    \embedall@latex@includegraphics[#1]{#2}%
+}
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\embedall@listinputlisting}
+% This macro is the modified version of |\listinputlisting| command from the |listings| package with included the |\embedfile| command. First the original |\listinputlisting| command is stored inside the not-user-accessible |\embedall@latex@listinputlisting|.
+%    \begin{macrocode}
+\LetLtxMacro\embedall@latex@lstinputlisting\lstinputlisting
+%    \end{macrocode}
+% Then the |\embedall@listinputlisting| is defined
+%    \begin{macrocode}
+\newcommand\embedall@lstinputlisting[2][]{%
+    \embedfile[desc=listing file]{#2}
+    \embedall@latex@lstinputlisting[#1]{#2}%
+}
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\embedinput}
+% This command substitute the |\input| one, the added optional option gives the input file
+% description in the generated pdf.
+%    \begin{macrocode}
+\DeclareRobustCommand\embedinput[2][input file]{%
+    \input{#2}%
+    \embedfile[desc={#1}]{#2}%
+}
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \noindent Finally options are processed
+%    \begin{macrocode}
+\ifnum\embedall@all=1%
+    \def\embedall@graphicx{1}
+    \def\embedall@list{1}
+    \def\embedall@source{1}
+\fi
+\ifnum\embedall@graphicx=1%
+    \LetLtxMacro\includegraphics\embedall@includegraphics
+\fi
+\ifnum\embedall@list=1%
+    \LetLtxMacro\lstinputlisting\embedall@lstinputlisting
+\fi
+
+%    \end{macrocode}
+% and the complete tex source file is also included if the |source| option is present.
+%    \begin{macrocode}
+\IfFileExists{./\jobname.tex}{%
+    \ifnum\embedall@source=1%
+        \embedfile[desc=main source file]{\jobname.tex}\fi}{}
+%    \end{macrocode}
+% \Finale
+
+\endinput

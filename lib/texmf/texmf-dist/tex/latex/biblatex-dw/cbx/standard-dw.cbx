@@ -1,0 +1,436 @@
+% standard-dw.cbx, Dominik Waßenhoven 2013
+
+\ProvidesFile{standard-dw.cbx}[2013/09/22 v1.6a biblatex citation style]
+
+\@ifpackagelater{biblatex}{2011/11/13}
+  {}
+  {\PackageError{biblatex-dw}
+    {Outdated 'biblatex' package\MessageBreak
+     Upgrade to biblatex v1.7 (2011/11/13) or later.\MessageBreak
+     I found: '\csuse{ver@biblatex.sty}'.\MessageBreak
+     This is a fatal error. I'm aborting now}%
+     \endinput}
+
+\newbool{cbx:authauthxref}
+\newbool{cbx:authedxref}
+\newbool{cbx:citeauthor}
+\newbool{cbx:citeauthorfoot}
+\newbool{cbx:citeauthornormalfont}
+\newbool{cbx:citedas}
+\newbool{cbx:edstringincitations}
+\newbool{cbx:firstfullname}
+\newbool{cbx:fullcite}% Test, ob fullcite ausgeführt wurde (wichtig für @review)
+\newbool{cbx:idemfull}
+\newbool{cbx:noidem}
+\newbool{cbx:omiteditor}
+\newbool{cbx:rpcited}% wurde der parent des @review schon zitiert?
+\newbool{cbx:xrefparent:firstcite}
+\newbool{cbx:shorthandibid}
+\newbool{cbx:loccit}
+
+\newbibmacro*{cite:citepages}{}
+\newbibmacro*{cite:full:citepages}{}
+\newbibmacro*{cite:postnote}{}
+ 
+\DeclareBibliographyOption{citedas}[true]{%
+  \csuse{bool#1}{cbx:citedas}}
+\DeclareBibliographyOption{edstringincitations}[true]{%
+  \csuse{bool#1}{cbx:edstringincitations}}
+\DeclareBibliographyOption{firstfullname}[true]{%
+  \csuse{bool#1}{cbx:firstfullname}}
+\DeclareBibliographyOption{omiteditor}[true]{%
+  \csuse{bool#1}{cbx:omiteditor}}
+\DeclareBibliographyOption{shorthandibid}[true]{%
+  \csuse{bool#1}{cbx:shorthandibid}}
+
+\DeclareEntryOption{citedas}[true]{%
+  \csuse{bool#1}{cbx:citedas}}
+\DeclareEntryOption{shorthandibid}[true]{%
+  \csuse{bool#1}{cbx:shorthandibid}}
+
+\DeclareBibliographyOption{citeauthor}[namefont]{%
+  \ifcsdef{cbx@opt@citeauthor@#1}
+    {\csuse{cbx@opt@citeauthor@#1}}
+    {\blxdw@error{%
+       Invalid option 'citeauthor=#1'\MessageBreak
+       Valid values are 'namefont', 'namefontfoot', 'normalfont'}}}
+\def\cbx@opt@citeauthor@namefont{%
+  \boolfalse{cbx:citeauthornormalfont}%
+  \boolfalse{cbx:citeauthorfoot}}
+\def\cbx@opt@citeauthor@namefontfoot{%
+  \boolfalse{cbx:citeauthornormalfont}%
+  \booltrue{cbx:citeauthorfoot}}
+\def\cbx@opt@citeauthor@normalfont{%
+  \booltrue{cbx:citeauthornormalfont}%
+  \boolfalse{cbx:citeauthorfoot}}
+
+\DeclareBibliographyOption{ibidpage}[true]{%
+  \ifstrequal{#1}{true}
+    {\ExecuteBibliographyOptions{loccittracker=context}}% Standard: constrict
+    {\ExecuteBibliographyOptions{loccittracker=false}}}
+
+\DeclareBibliographyOption{pageref}[true]{%
+  \setbool{cbx:pageref}{#1}}
+
+\DeclareBibliographyOption{citepages}[permit]{%
+  \ifcsdef{cbx@opt@citepages@#1}
+    {\csuse{cbx@opt@citepages@#1}}
+    {\blxdw@error
+       {Invalid option 'citepages=#1'\MessageBreak
+        Valid values are 'permit', 'suppress', 'omit', 'separate'}}}
+
+\def\cbx@opt@citepages@permit{%
+  \renewbibmacro*{cite:citepages}{}%
+  \renewbibmacro*{cite:full:citepages}{}%
+  \renewbibmacro*{cite:postnote}{%
+    \usebibmacro{cite:postnote:ibidpage}}}
+
+\def\cbx@opt@citepages@suppress{%
+  \renewbibmacro*{cite:citepages}{}%
+  \renewbibmacro*{cite:full:citepages}{%
+    \clearfield{pages}%
+    \clearfield{pagetotal}}%
+  \renewbibmacro*{cite:postnote}{%
+    \usebibmacro{cite:postnote:ibidpage}}}
+
+\def\cbx@opt@citepages@omit{%
+  \renewbibmacro*{cite:citepages}{}%
+  \renewbibmacro*{cite:full:citepages}{%
+    \ifboolexpr{
+      test {\ifnumequal{\value{citecount}}{\value{citetotal}}}
+      and
+      test {\iffieldpages{postnote}}
+    }
+      {\clearfield{pages}%
+       \clearfield{pagetotal}}
+      {}}%
+  \renewbibmacro*{cite:postnote}{%
+    \usebibmacro{cite:postnote:ibidpage}}}
+
+\def\cbx@opt@citepages@separate{%
+  \providetoggle{cbx:fullcite}%
+  \renewbibmacro*{cite:citepages}{%
+    \global\togglefalse{cbx:fullcite}}%
+  \renewbibmacro*{cite:full:citepages}{%
+    \global\toggletrue{cbx:fullcite}}%
+  \renewbibmacro*{cite:postnote}{%
+    \ifboolexpr{
+    togl {cbx:fullcite}
+    and
+    test {\iffieldpages{postnote}}
+    and
+    test {\ifnumequal{\value{citecount}}{\value{citetotal}}}
+    and
+    ( not test {\iffieldundef{pages}}
+      or
+      ( not test {\iffieldundef{pagetotal}}
+        and
+        bool {bbx:pagetotal}
+      ) 
+    )
+    }
+      {\usebibmacro{cite:postnote:pages}}
+      {\usebibmacro{cite:postnote:ibidpage}}}
+  \providebibmacro*{cite:postnote:pages}{%
+    \setunit{\postnotedelim}%
+    \bibstring{thiscite}%
+    \setunit{\addspace}%
+    \printfield{postnote}}}
+
+\ExecuteBibliographyOptions{
+  autocite=footnote,
+  citedas=true,
+  citepages=separate,
+  citetracker=true,
+  edstringincitations=true,
+  ibidtracker=constrict,
+  idemtracker=constrict,
+  opcittracker=false,
+  pagetracker=true,
+  shorthandibid=true
+}
+
+\InitializeCitationStyle{%
+  \usebibmacro{cite:reset}}
+
+\OnManualCitation{%
+  \usebibmacro{cite:reset}}
+
+\newbibmacro*{cite:reset}{%
+  \global\undef\cbx@lasthash%
+  \global\booltrue{cbx:noidem}}
+
+\newbibmacro*{cite:save}{%
+  \savefield{namehash}{\cbx@lasthash}%
+  \csxdef{cbx:lastcite@\thefield{entrykey}}{\the\value{instcount}}%
+  \global\boolfalse{cbx:noidem}}
+
+% Ausschalten von annotation und library für Zitate im Text
+\AtEveryCite{%
+  \boolfalse{bbx:annotation}%
+  \boolfalse{bbx:library}%
+}
+
+%% Doppelpunkt nach Autoren/Editoren
+%% aus Kompatibilitätsgründen zu früheren Versionen wird
+%% \citenamepunct verwendet
+\newcommand*{\citenamepunct}{\addcolon\space}
+\renewcommand*{\nametitledelim}{\citenamepunct}
+\AtEveryCite{% bei jedem Zitat nametitledelim statt labelnamepunct verwenden
+  \let\labelnamepunct\nametitledelim
+}
+
+%% Slashes zwischen Autoren/Editoren
+\newcommand*{\citerevsdnamedelim}{}
+\newcommand*{\citemultinamedelim}{\slash}
+\newcommand*{\citefinalnamedelim}{\slash}
+\AtBeginDocument{%
+ \let\revsdnamedelim\citerevsdnamedelim
+ \let\multinamedelim\citemultinamedelim
+ \let\finalnamedelim\citefinalnamedelim
+}
+\AtBeginBibliography{% am Anfang des Literaturverzeichnisses umschalten wegen xref
+ \let\citerevsdnamedelim\bibrevsdnamedelim
+ \let\citemultinamedelim\bibmultinamedelim
+ \let\citefinalnamedelim\bibfinalnamedelim
+}
+
+%% Textcite delimiter
+\newcommand*{\textcitesdelim}{\addspace\bibstring{and}\space}
+
+%% Titelformate in Zitaten
+\DeclareFieldFormat*{citetitle}{#1}
+
+\newbibmacro*{cite:name}{%
+  \printnames{labelname}%
+  \usebibmacro{cite:edstringincitations}}
+  
+\newbibmacro*{cite:idem}{%
+  \bibstring[\mkidem]{idem\thefield{gender}}%
+  \usebibmacro{cite:edstringincitations}}
+
+\newbibmacro*{cite:xref:idem}{%
+  \bibstring[\mkidem]{idem\thefield{gender}}%
+  \usebibmacro{cite:edstringincitations}%
+  \ifuseeditor
+    {\ifnameundef{editor}
+      {\ifboolexpr{
+        test \ifusetranslator
+        and
+        not test {\ifnameundef{translator}}
+      }
+        {\clearname{translator}}
+        {}}
+      {\clearname{editor}}}
+    {\ifboolexpr{
+      test \ifusetranslator
+      and
+      not test {\ifnameundef{translator}}
+    }
+      {\clearname{translator}}
+      {}}}
+
+\newbibmacro*{cite:edstringincitations}{%
+  \ifbool{cbx:edstringincitations}
+    {\usebibmacro{cite:editorstrg/translatorstrg}}
+    {}%
+  \setunit{\nametitledelim}}
+  
+\newbibmacro*{cite:editorstrg/translatorstrg}{%
+  \ifthenelse{\ifuseeditor\AND\ifnameundef{author}%
+                          \AND\NOT\ifnameundef{editor}}
+    {\usebibmacro{editorstringpunct}%
+     \usebibmacro{editorstrg}%
+     \clearname{editor}}
+    {}%
+  \ifthenelse{\ifusetranslator\AND\ifnameundef{author}%
+                              \AND\ifnameundef{editor}%
+                              \AND\NOT\ifnameundef{translator}}
+    {\usebibmacro{editorstringpunct}%
+     \usebibmacro{translatorstrg}%
+     \clearname{translator}}
+    {}}
+
+% Option 'nameseen'
+\newcommand*{\cbx@seennames}{}
+\newrobustcmd*{\cbx@nameseen}[1]{%
+  \listxadd{\cbx@seennames}{\detokenize{#1}}}
+\newrobustcmd*{\cbx@ifnameseen}[1]{%
+  \xifinlist{\detokenize{#1}}{\cbx@seennames}}
+
+\AtBeginDocument{%
+  \ifbool{cbx:firstfullname}
+    {\DeclareNameFormat{citeauthor}{%
+       \cbx@ifnameseen{#1#3#5#7}
+         {\ifcase\value{uniquename}%
+            \usebibmacro{name:last}{#1}{#3}{#5}{#7}%
+          \or
+            \ifuseprefix
+              {\usebibmacro{name:first-last}{#1}{#4}{#5}{#8}}
+              {\usebibmacro{name:first-last}{#1}{#4}{#6}{#8}}%
+          \fi}%
+         {\usebibmacro{name:first-last}{#1}{#3}{#5}{#7}%
+          \cbx@nameseen{#1#3#5#7}}%
+       \usebibmacro{name:andothers}}
+     \DeclareCiteCommand{\citeauthor}
+       {\booltrue{cbx:citeauthor}%
+        \boolfalse{citetracker}%
+        \boolfalse{pagetracker}%
+        \usebibmacro{prenote}}
+       {\indexnames{labelname}%
+        \printnames[citeauthor]{labelname}}
+       {\multicitedelim}
+       {\usebibmacro{postnote}}}
+    {\DeclareCiteCommand{\citeauthor}
+       {\booltrue{cbx:citeauthor}%
+        \boolfalse{citetracker}%
+        \boolfalse{pagetracker}%
+        \usebibmacro{prenote}}
+       {\indexnames{labelname}%
+        \printnames{labelname}}
+       {\multicitedelim}
+       {\usebibmacro{postnote}}}}
+
+%% Formatierung von 'ibidem' entsprechend der Option 'ibidemfont'
+\providecommand*{\mkibid}[1]{%
+  \bbx@ibidemfont{#1}}
+
+%% pages (wichtig für xref)
+\newbibmacro*{pages}{%
+  \setunit{\bibpagespunct}%
+  \printfield{pages}}
+
+%% in manchen Literaturverweisen (wenn nicht fullcite)
+%% müssen statt der vollen Namen (Format [byeditor])
+%% nur die Nachnamen ausgegeben werden (Format [labelname]) 
+\newbibmacro*{cite:byeditor}{%
+  \ifnameundef{editor}
+    {\ifnameundef{translator}
+      {}
+      {\usebibmacro{bytypestrg}{translator}{translator}%
+       \setunit{\addspace}%
+       \printnames[labelname]{translator}}}
+    {\usebibmacro{bytypestrg}{editor}{editor}%
+     \setunit{\addspace}%
+     \printnames[labelname]{editor}}}
+
+\newbibmacro*{cite:author}{%
+  \ifboolexpr{
+    test \ifuseauthor
+    and
+    not test {\ifnameundef{author}}
+  }
+    {\ifbool{xrefidem}
+      {\ifthenelse{\iffieldequals{namehash}{\bbx@lasthash}\AND
+                   \NOT\iffirstonpage}
+        {\usebibmacro{cite:idem}}
+        {\printnames[labelname]{author}}}
+      {\printnames[labelname]{author}%
+       \global\undef\bbx@lasthash}%
+     \clearname{author}}
+    {}}
+
+\newbibmacro*{cite:editor}{%
+  \ifboolexpr{
+    test \ifuseeditor
+    and
+    not test {\ifnameundef{editor}}
+  }
+    {\ifbool{bbx:edbyidem}
+      {\ifthenelse{\iffieldequals{namehash}{\bbx@lasthash}\AND
+                   \NOT\iffirstonpage}
+        {\usebibmacro{cite:idem}}
+        {\printnames[labelname]{editor}%
+         \usebibmacro{cite:edstringincitations}}}
+      {\printnames[labelname]{editor}%
+       \usebibmacro{cite:edstringincitations}%
+       \global\undef\bbx@lasthash}%
+     \clearname{editor}}
+    {}%
+  \ifboolexpr{
+    test \ifusetranslator
+    and
+    not test {\ifnameundef{translator}}
+    and 
+      ( not test \ifuseeditor
+      or
+        ( test \ifuseeditor
+          and 
+          test {\ifnameundef{editor}} ) )
+  }
+    {\ifbool{bbx:edbyidem}
+      {\ifthenelse{\iffieldequals{namehash}{\bbx@lasthash}\AND
+                   \NOT\iffirstonpage}
+         {\usebibmacro{cite:idem}}
+         {\printnames[labelname]{translator}%
+          \usebibmacro{cite:edstringincitations}}}
+      {\printnames[labelname]{translator}%
+       \usebibmacro{cite:edstringincitations}%
+       \global\undef\bbx@lasthash}%
+     \clearname{translator}}
+    {}}
+  
+\newbibmacro*{cite:postnote:ibidpage}{%
+  \ifbool{cbx:loccit}
+    {}
+    {\usebibmacro{postnote}}}
+
+%% Test, ob author und editor bei xref identisch sind 
+%% (für xref=true, useeditor=false oder usetranslator=false,
+%% edbyidem=true)
+\newbibmacro*{authedxrefcheck}{%
+  \iffieldundef{xref}
+    {}
+    {\savefield{xref}{\bbx@tempa}%
+     \savefield{xref}{\bbx@tempb}%
+     \entrydata{\bbx@tempa}{%
+       \savename{editor}{\bbx@tempa}}%
+     \entrydata{\bbx@tempb}{%
+       \savename{translator}{\bbx@tempb}}%
+     \ifboolexpr{
+       test {\ifnameequals{author}{\bbx@tempa}}
+       or
+       test {\ifnameequals{author}{\bbx@tempb}}
+     }
+       {\booltrue{cbx:authedxref}}
+       {\boolfalse{cbx:authedxref}}}}
+
+%% Test, ob author des @inbook und author des @book bei xref 
+%% identisch sind (für xref=true, edbyidem=true); nötig, 
+%% damit der Herausgeber nicht durch idem ersetzt wird
+%\newbool{cbx:autheddiff}% auther of @inbook and editor of @book differ
+\newbibmacro*{authauthxrefcheck}{%
+  \iffieldundef{xref}
+    {}
+    {\savefield{xref}{\bbx@tempa}%
+     \entrydata{\bbx@tempa}{%
+       \savename{author}{\bbx@tempa}}%
+     \ifboolexpr{
+       test {\ifnameequals{author}{\bbx@tempa}}
+     }
+       {\booltrue{cbx:authauthxref}}
+       {\boolfalse{cbx:authauthxref}}}}
+
+%% für @review
+\DeclareCiteCommand{\bbx@review}
+	{}
+	{\usebibmacro{citeindex}%
+   \ifentryseen{\bbx@reviewparent}
+    {\global\booltrue{cbx:rpcited}}
+    {\global\boolfalse{cbx:rpcited}}%
+   \ifbool{cbx:fullcite}
+    {\usedriver
+      {\DeclareNameAlias{sortname}{default}}
+      {\thefield{entrytype}}}
+    {\usebibmacro{cite}}}
+	{}
+	{}
+
+%% xref
+\DeclareCiteCommand{\bbx@xref}
+	{}
+	{\usebibmacro{cite:xref}}
+	{}
+	{}
+
+\endinput

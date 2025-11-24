@@ -1,0 +1,168 @@
+%
+% bxutf8.def
+%
+%%%% package declarations
+\ProvidesFile{bxutf8.def}[2010/05/05 v0.5 BX UTF-8 input encoding]
+%
+% Note: All definitions in this file should be local.
+%
+%%%% preparation
+% Here spaces are set back to valid. So great care must be taken
+% so spaces should not be spilt out (in horizontal mode).
+\catcode32=10\relax
+\expandafter\edef\csname bx@b@resetcatcodes\endcsname{%  " . : @
+  \catcode34=\the\catcode34\catcode46=\the\catcode46%
+  \catcode58=\the\catcode39\catcode64=\the\catcode64\relax}%
+\catcode34=12 \catcode46=12 \catcode58=12 \catcode64=11 %
+% abort when this is first loaded after \begin{document}
+\def\bxus@i@error{\PackageError{inputenc}}%
+\ifx\@nodocument\relax
+  \ifx\bxus@bxutf@loaded\@undefined
+    \bxus@i@error{cannot load `bxutf8' after \string\begin{document}}%
+     \@eha \bx@b@resetcatcodes\endinput\fi\fi
+%
+%%%% load 'utf8' encoding
+\InputIfFileExists{utf8.def}{}%
+  {\bxus@i@error{input encoding `utf8' unavailable}%
+    \@eha \bx@b@resetcatcodes\endinput}%
+\makeatletter
+%\@inpenc@test  % This is done in utf8.def
+%
+%%%% attach the hook
+\def\UTFviii@two@octets#1#2{\expandafter\bxus@choice
+  \csname u8:#1\string#2\endcsname#1#2.@}%
+\def\UTFviii@three@octets#1#2#3{\expandafter\bxus@choice
+  \csname u8:#1\string#2\string#3\endcsname#1#2#3@}%
+\def\UTFviii@four@octets#1#2#3#4{\expandafter\bxus@choice@four
+  \csname u8:#1\string#2\string#3\string#4\endcsname#1#2#3#4@}%
+%
+%%%% attach the hook (old version)
+% * This hook was found to fail in pTeX.
+% Here #1 is a control word of form \u8:<UTF-8_bytes>. If it is
+% defined in standard way of utf8.def, then it is dispatched;
+% otherwise it is passed to \bxus@preproc.
+%\def\UTFviii@defined#1{%
+%  \ifx#1\relax \bxus@preproc#1%
+%  \else\expandafter#1\fi}%
+%%%% \bxus@preproc\CS
+%\def\bxus@preproc#1{%
+%  \expandafter\bxus@preproc@a\string#1..\@nil}%
+%\def\bxus@preproc@a#1:#2#3#4#5#6\@nil{%
+%  \if.#5\bxus@proc#2#3#4\else\bxus@err@uknbc\fi}%
+%
+% When this file is reloaded, the 'static' part will be skipped.
+\ifx\bxus@bxutf@loaded\@undefined\else
+  \bx@b@resetcatcodes\endinput \fi
+\let\bxus@bxutf@loaded=t%
+%
+%%---------- Beginning of static part
+%
+%%%% error messages
+\def\bxus@err@uknbc{\bxus@i@error{Unknown non-BMP character found}%
+  {bxutf8 cannot handle non-BMP characters.}}%
+\def\bxus@err@nodrv{\bxus@i@error{Unicode driver not found}\@ehb}%
+%
+%%%% make tables
+\def\bxus@fornbl{%
+  \bxus@fornbl@a00001102203310411512613720821922A23B30C31D32E33FXXX}%
+\def\bxus@fornbl@a#1#2#3{%
+  \if X#1\else
+  \@namedef{bxus@*#1#2}{#3}%
+  \bxus@defchr{F#3}{0#1#2}\bxus@defchr{E#3}{#1#2}%
+  \bxus@defchr{C#3}{000#1#2}\bxus@defchr{D#3}{001#1#2}%
+  \bxus@defchr{8#3}{0#1#2}\bxus@defchr{9#3}{1#1#2}%
+  \bxus@defchr{A#3}{2#1#2}\bxus@defchr{B#3}{3#1#2}%
+  \expandafter\bxus@fornbl@a\fi}%
+\def\bxus@defchr#1#2{%
+  {\lccode`\!="#1%
+   \lowercase{\expandafter\gdef\csname bxus@@!\endcsname{#2}}}}%
+\bxus@fornbl \@namedef{bxus@@.}{}%
+%
+%%%% \bxcs@choice
+%% Called in the form
+%%   \bxus@choice[\u8:??]??.@  (2-byte) or
+%%   \bxus@choice[\u8:???]???@ (3-byte)
+%% where ?? is a (TF-8 byte string and [\u8:...] denotes a single
+%% control word. This macro expands to the control word if it is
+%% defined; otherwise expands to \bxus@proc.
+\def\bxus@choice#1#2@{%
+  \ifx#1\relax \bxus@proc#2%
+  \else\expandafter#1\fi}%
+%
+%%%% \bxus@choice@four
+\def\bxus@choice@four#1#2@{%
+  \ifx#1\relax \bxus@prociv#2%
+  \else\expandafter#1\fi}%
+%
+%%%% \bxus@proc
+%% When ??? is the UTF-8 string of U+XXXX (padded to length 3 with
+%% a dot), then \bxus@proc@a??? fully expands to \bxUHex{XXXX}.
+%% (\bxUHex should be robust.)
+\def\bxus@proc#1#2#3{%
+  \expandafter\bxus@proc@b\csname bxus@@\string#1\expandafter\endcsname
+  \csname bxus@@\string#2\expandafter\endcsname
+  \csname bxus@@\string#3\endcsname}%
+\def\bxus@proc@b#1#2#3{%
+  \expandafter\expandafter\expandafter\expandafter
+  \expandafter\expandafter\expandafter\bxus@proc@c
+  \expandafter\expandafter\expandafter#1%
+  \expandafter#2#3}%
+\def\bxus@proc@c#1#2#3#4#5#6#7#8{%
+  \expandafter\bxus@proc@d\csname bxus@*#1#2\expandafter\endcsname
+  \csname bxus@*#3#4\expandafter\endcsname
+  \csname bxus@*#5#6\expandafter\endcsname
+  \csname bxus@*#7#8\endcsname}%
+\def\bxus@proc@d#1#2{%
+  \expandafter\expandafter\expandafter\bxus@proc@e
+  \expandafter#1#2\@nil}%
+\def\bxus@proc@e#1\@nil#2#3{%
+  \bxus@proc@f#2#3#1\@nil}%
+\def\bxus@proc@f#1#2{%
+  \expandafter\expandafter\expandafter\bxus@proc@g
+  \expandafter#1#2\@nil}%
+\def\bxus@proc@g#1\@nil#2\@nil{%
+  \bxUHex{#2#1}}%
+%
+\def\bxus@prociv#1#2#3#4{%
+  \expandafter\bxus@prociv@a\csname bxus@@\string#1\expandafter\endcsname
+  \csname bxus@@\string#2\expandafter\endcsname
+  \csname bxus@@\string#3\expandafter\endcsname
+  \csname bxus@@\string#4\endcsname}%
+\def\bxus@prociv@a#1#2#3#4{%
+  \expandafter\expandafter\expandafter\bxus@prociv@b
+  \expandafter#3#4@#1#2}
+\def\bxus@prociv@b#1@#2#3{%
+  \expandafter\expandafter\expandafter\bxus@prociv@c
+  \expandafter#2#3#1@@}
+\def\bxus@prociv@c#1#2#3#4{%
+  \expandafter\bxus@prociv@d\csname bxus@*#1#2\expandafter\endcsname
+  \csname bxus@*#3#4\endcsname}
+\def\bxus@prociv@d#1#2{%
+  \expandafter\expandafter\expandafter\bxus@prociv@e
+  \expandafter#1#2}
+\def\bxus@prociv@e#1#2#3@#4@{\bxus@prociv@f#3@#4#1#2@}
+\def\bxus@prociv@f#1#2#3#4{%
+  \expandafter\bxus@prociv@g\csname bxus@*#1#2\expandafter\endcsname
+  \csname bxus@*#3#4\endcsname}
+\def\bxus@prociv@g#1#2{%
+  \expandafter\expandafter\expandafter\bxus@prociv@h
+  \expandafter#1#2}
+\def\bxus@prociv@h#1#2#3@#4@{\bxus@prociv@i#3@#4#1#2@}
+\def\bxus@prociv@i#1#2#3#4{%
+  \expandafter\bxus@prociv@j\csname bxus@*#1#2\expandafter\endcsname
+  \csname bxus@*#3#4\endcsname}
+\def\bxus@prociv@j#1#2{%
+  \expandafter\expandafter\expandafter\bxus@prociv@k
+  \expandafter#1#2}
+\def\bxus@prociv@k#1#2@#3@{\bxUHex{#3#1#2}}
+
+  
+
+
+%%%% default (useless) Unicode driver
+\providecommand*\bxUHex[1]{?\protect\bxus@err@nodrv}%
+%
+%%%% all done
+\bx@b@resetcatcodes
+\endinput
+%% EOF

@@ -1,0 +1,1073 @@
+% --------------------------------------------------------------------------
+% the ENOTEZ package
+% 
+%   Endnotes for LaTeX2e
+% 
+% --------------------------------------------------------------------------
+% Clemens Niederberger
+% Web:    https://bitbucket.org/cgnieder/enotez/
+% E-Mail: contact@mychemistry.eu
+% --------------------------------------------------------------------------
+% Copyright 2012-2016 Clemens Niederberger
+% 
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+% 
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Clemens Niederberger.
+% --------------------------------------------------------------------------
+% The enotez package consists of the files
+%  - enotez.sty, enotez_en.tex, enotez_en.pdf, README
+% --------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% --------------------------------------------------------------------------
+\RequirePackage{ expl3 , xparse , l3keys2e , xtemplate , etoolbox , xpatch , scrlfile }
+\ProvidesExplPackage
+  {enotez}
+  {2016/01/07}
+  {0.8b}
+  {Endnotes for LaTeX2e}
+
+% --------------------------------------------------------------------------
+% check expl3 version:
+\@ifpackagelater { expl3 } { 2012/11/21 }
+  { }
+  {
+    \PackageError {enotez} { Support~package~expl3~too~old }
+      {
+        You~need~to~update~your~installation~of~the~bundles~'l3kernel'~and~
+        'l3packages'.\MessageBreak
+        Loading~enotez~will~abort!
+      }
+    \tex_endinput:D
+  }
+
+% --------------------------------------------------------------------------
+% messages
+\msg_new:nnnn {enotez} { captions }
+  { Endnotes~might~not~work~in~captions. }
+  {
+    Endnotes~might~not~work~inside~captions.~You~might~try~to~use~the~caption~
+    package~if~you~encounter~problems~but~that's~not~a~promise~that~things~
+    will~work~then.
+  }
+
+
+\msg_new:nnnn {enotez} { deprecated }
+  { The~#1~`#2'~is~deprecated.~Use~`#3'~instead~\msg_line_context:. }
+  {
+    The~#1~`#2'~you~used~\msg_line_context: \c_space_tl is~deprecated~and~has~
+    been~replaced~by~`#3'.~Since~I~will~not~guarantee~that~#1~will~be~kept~
+    forever~I~encourage~you~to~switch.
+  }
+
+\cs_new:Npn \enotez_option_deprecated:nn #1#2
+  { \msg_warning:nnnnn {enotez} { deprecated } { option } {#1} {#2} }
+
+\cs_new:Npn \enotez_command_deprecated:NN #1#2
+  {
+    \msg_warning:nnnnn {enotez} { deprecated } { command }
+      { \token_to_str:N #1 } { \token_to_str:N #2 }
+  }
+
+
+% --------------------------------------------------------------------------
+% variants of kernel functions
+\cs_generate_variant:Nn \tl_if_eq:nnTF { Vn , nx }
+\cs_generate_variant:Nn \tl_if_eq:nnT  { xx }
+
+% --------------------------------------------------------------------------
+% variables:
+\bool_new:N \l__enotez_print_note_bool
+\bool_new:N \l__enotez_reset_bool
+\bool_new:N \l__enotez_totoc_bool
+\bool_new:N \l__enotez_hyperref_bool
+\bool_new:N \l__enotez_hyperfootnotes_bool
+\bool_new:N \l__enotez_hyperbackref_bool
+\bool_new:N \l__enotez_split_bool
+\bool_new:N \l__enotez_caption_patched_bool
+\bool_new:N \l__enotez_koma_patched_bool
+\bool_new:N \l__enotez_memoir_patched_bool
+
+\tl_new:N   \l__enotez_tmpa_tl
+\tl_new:N   \l__enotez_tmpb_tl
+\tl_new:N   \l__enotez_tmpc_tl
+\tl_new:N   \l__enotez_totoc_tl
+\tl_new:N   \l__enotez_list_name_tl
+\tl_set:Nn  \l__enotez_list_name_tl { Notes }
+\tl_new:N   \l__enotez_endnote_text_tl
+\tl_new:N   \l__enotez_endnote_mark_tl
+\tl_new:N   \l__enotez_list_instance_tl
+\tl_set:Nn  \l__enotez_list_instance_tl { plain }
+\tl_new:N   \l__enotez_split_tl
+\tl_new:N   \l__enotez_splitted_list_sectioning_tl
+\tl_new:N   \l__enotez_splitted_title_tl
+\tl_set:Nn  \l__enotez_splitted_title_tl { Notes~for~<name>~<ref> }
+\tl_new:N   \l__enotez_section_tl
+\tl_set:Nn  \l__enotez_section_tl { section }
+\tl_new:N   \l__enotez_chapter_tl
+\tl_set:Nn  \l__enotez_chapter_tl { chapter }
+\tl_new:N   \g__enotez_actual_sectioning_tl
+\tl_new:N   \l__enotez_list_splitted_title_tl
+\tl_new:N   \g__enotez_list_next_preamble_tl
+\tl_new:N   \g__enotez_list_every_preamble_tl
+\tl_new:N   \g__enotez_list_next_postamble_tl
+\tl_new:N   \g__enotez_list_every_postamble_tl
+\tl_new:N   \g__enotez_split_list_preamble_tl
+\tl_new:N   \g__enotez_split_list_postamble_tl
+\tl_new:N   \l__enotez_footnotes_tl
+
+\skip_new:N \l__enotez_list_preamble_skip
+\skip_new:N \l__enotez_list_postamble_skip
+\skip_set_eq:NN \l__enotez_list_preamble_skip \medskipamount
+\skip_set_eq:NN \l__enotez_list_postamble_skip \medskipamount
+
+\int_new:N  \g__enotez_endnote_id_int
+\int_zero:N \g__enotez_endnote_id_int
+\int_new:N  \g__enotez_endnote_mark_int
+\int_zero:N \g__enotez_endnote_mark_int
+\int_new:N  \g__enotez_list_printed_int
+\int_zero:N \g__enotez_list_printed_int
+\int_new:N  \l__enotez_tmpa_int
+
+\prop_new:N \g__enotez_endnote_text_prop
+\prop_new:N \g__enotez_endnote_mark_prop
+\prop_new:N \g__enotez_endnote_split_prop
+\prop_new:N \g__enotez_endnote_sect_prop
+\prop_new:N \g__enotez_endnote_sect_id_prop
+\prop_new:N \g__enotez_endnote_man_prop
+
+% --------------------------------------------------------------------------
+% options:
+\cs_new_eq:NN \enotez_counter_format:n \int_to_arabic:n
+\cs_generate_variant:Nn \enotez_counter_format:n { V }
+
+\cs_new_eq:NN \__enotez_int_to_arabic:n \int_to_arabic:n
+\cs_new_eq:NN \__enotez_int_to_roman:n  \int_to_roman:n
+\cs_new_eq:NN \__enotez_int_to_Roman:n  \int_to_Roman:n
+\cs_new_eq:NN \__enotez_int_to_alph:n   \int_to_alph:n
+\cs_new_eq:NN \__enotez_int_to_Alph:n   \int_to_Alph:n
+\cs_new:Npn \__enotez_int_to_symbols:n #1
+  {
+    \int_to_symbols:nnn {#1} { 9 }
+      {
+        { 1 } { \mode_if_math:TF { *                } { \textasteriskcentered } }
+        { 2 } { \mode_if_math:TF { \dagger          } { \textdagger } }
+        { 3 } { \mode_if_math:TF { \ddagger         } { \textdaggerdbl } }
+        { 4 } { \mode_if_math:TF { \mathsection     } { \textsection } }
+        { 5 } { \mode_if_math:TF { \mathparagraph   } { \textparagraph } }
+        { 6 } { \mode_if_math:TF { \|               } { \textbardbl } }
+        { 7 } { \mode_if_math:TF { **               } { \textasteriskcentered\textasteriskcentered } }
+        { 8 } { \mode_if_math:TF { \dagger\dagger   } { \textdagger\textdagger } }
+        { 9 } { \mode_if_math:TF { \ddagger\ddagger } { \textdaggerdbl\textdaggerdbl } }
+      }
+  }
+
+\keys_define:nn {enotez}
+  {
+    backref          .bool_set:N         = \l__enotez_hyperbackref_bool ,
+    footnotes        .bool_set:N         = \l__enotez_footnotes_tl ,
+    list-name        .tl_set:N           = \l__enotez_list_name_tl ,
+    reset            .bool_set:N         = \l__enotez_reset_bool ,
+    % TODO: add symbols and other possible formats, use cntformats?
+    counter-format   .choices:nn         =
+      { arabic , alph , Alph , roman , Roman , symbols }
+      {
+        \cs_set_eq:Nc \enotez_counter_format:n
+          { __enotez_int_to_ \l_keys_choice_tl :n }
+      } ,
+    mark-format      .code:n             = \cs_set:Npn \enmarkstyle {#1} ,
+    mark-cs          .code:n             = \cs_set:Npn \enotezwritemark {#1} ,
+    totoc            .choices:nn         =
+      { section , chapter , false }
+      {
+        \tl_if_eq:VnTF \l_keys_choice_tl { false }
+          { \bool_set_false:N \l__enotez_totoc_bool }
+          {
+            \bool_set_true:N \l__enotez_totoc_bool
+            \tl_set_eq:NN \l__enotez_totoc_tl \l_keys_choice_tl
+          }
+      } ,
+    list-heading     .code:n             =
+      \cs_set:Npn \enotezlistheading ##1 {#1} ,
+    split            .choices:nn          =
+      { section , chapter , false }
+      {
+        \tl_if_eq:VnTF \l_keys_choice_tl { false }
+          { \bool_set_false:N \l__enotez_split_bool }
+          { \bool_set_true:N \l__enotez_split_bool }
+        \tl_set_eq:NN \l__enotez_split_tl \l_keys_choice_tl
+      } ,
+    split-sectioning .code:n             =
+      \enotez_option_deprecated:nn { split-sectioning } { split-heading }
+      \cs_set:Npn \enotezsplitlistheading ##1 {#1}
+      \bool_set_true:N \l__enotez_splitted_list_heading_bool ,
+    split-heading    .code:n             =
+      \cs_set:Npn \enotezsplitlistheading ##1 {#1}
+      \bool_set_true:N \l__enotez_splitted_list_heading_bool ,
+    split-title      .tl_set:N           = \l__enotez_splitted_title_tl ,
+    list-style       .tl_set:N           = \l__enotez_list_instance_tl ,
+    list-preamble-skip .skip_set:N       = \l__enotez_list_preamble_skip ,
+    list-postamble-skip .skip_set:N      = \l__enotez_list_postamble_skip
+  }
+
+% --------------------------------------------------------------------------
+% typeset the actual mark:
+% #1: id
+% #2: mark
+\cs_new:Npn \enotez_write_mark:nn #1#2
+  {
+    \bool_if:NTF \l__enotez_hyperfootnotes_bool
+      {
+        \enotezwritemark { \hyperlink { enz.#1 } { \enmarkstyle #2 } }
+        \bool_if:NT \l__enotez_hyperbackref_bool
+          {
+            \box_move_up:nn { 1em }
+              { \hbox:n { \hypertarget { enz.#1.backref } { } } }
+          }
+      }
+      { \enotezwritemark { \enmarkstyle #2 } }
+  }
+
+% the internal endnote:
+\cs_new_protected:Npn \enotez_endnote:nn #1#2
+  {
+    \enotez_endnote_mark:n  {#1}
+    \enotez_endnote_text:nn {#1} {#2}
+  }
+
+\cs_new_protected:Npn \enotez_endnote_mark:n #1
+  {
+    \int_gincr:N \g__enotez_endnote_id_int
+    \quark_if_no_value:nTF {#1}
+      {
+        \int_gincr:N \g__enotez_endnote_mark_int
+        \cs_gset:cpx { @currentlabel }
+          { \enotez_counter_format:V \g__enotez_endnote_mark_int }
+        \cs_gset_eq:NN \theendnote \@currentlabel
+        \enotez_write_mark:nn
+          { \int_use:N \g__enotez_endnote_id_int }
+          { \enotez_counter_format:V \g__enotez_endnote_mark_int }
+      }
+      {
+        \cs_gset:cpx { @currentlabel } {#1}
+        \cs_gset_eq:NN \theendnote \@currentlabel
+        \enotez_write_mark:nn { \int_use:N \g__enotez_endnote_id_int } {#1}
+      }
+  }
+
+\cs_new_protected:Npn \enotez_endnote_text:nn #1#2
+  {
+    \tl_set:Nn \l__enotez_tmpa_tl { chapter }
+    \quark_if_no_value:nTF {#1}
+      {
+        \bool_if:nTF
+          {
+            \l__enotez_split_bool
+            &&
+            \tl_if_eq_p:NN \l__enotez_split_tl \l__enotez_tmpa_tl
+          }
+          {
+            \enotez_save_note:xxxxxnn
+              { \int_use:N \g__enotez_endnote_id_int }
+              { \int_use:N \g__enotez_endnote_mark_int }
+              { \int_use:N \g__enotez_list_printed_int }
+              { \thechapter }
+              { \int_eval:n { \value{chapter} } }
+              { a }
+              {#2}
+          }
+          {
+            \enotez_save_note:xxxxxnn
+              { \int_use:N \g__enotez_endnote_id_int }
+              { \int_use:N \g__enotez_endnote_mark_int }
+              { \int_use:N \g__enotez_list_printed_int }
+              { \thesection }
+              { \int_eval:n { \value{section} } }
+              {a }
+              {#2}
+          }
+      }
+      {
+        \bool_if:nTF
+          {
+            \l__enotez_split_bool
+            &&
+            \tl_if_eq_p:NN \l__enotez_split_tl \l__enotez_tmpa_tl
+          }
+          {
+            \enotez_save_note:xnxxxnn
+              { \int_use:N \g__enotez_endnote_id_int }
+              {#1}
+              { \int_use:N \g__enotez_list_printed_int }
+              { \thechapter }
+              { \int_eval:n { \value{chapter} } }
+              { m }
+              {#2}
+          }
+          {
+            \enotez_save_note:xnxxxnn
+              { \int_use:N \g__enotez_endnote_id_int }
+              {#1}
+              { \int_use:N \g__enotez_list_printed_int }
+              { \thesection }
+              { \int_eval:n { \value{section} } }
+              { m }
+              {#2}
+          }
+      }
+  }
+
+% --------------------------------------------------------------------------
+% in some cases caption making commands need to be patched. preparations:
+\cs_new:Npn \__enotez_tmp_endnote:nn {}
+
+\cs_new_protected:Npn \enotez_caption_endnote:nn #1#2
+  {
+    \quark_if_no_value:nTF {#1}
+      {
+        \enotez_write_mark:nn
+          { \int_use:N \g__enotez_endnote_id_int }
+          { \enotez_counter_format:V \g__enotez_endnote_mark_int }
+      }
+      { \enotez_write_mark:nn { \int_use:N \g__enotez_endnote_id_int } {#1} }
+  }
+
+\cs_new_protected:Npn \enotez@koma@disable
+  { \cs_set_eq:NN \enotez_endnote:nn \enotez_caption_endnote:nn }
+
+\cs_new_protected:Npn \enotez@memoir@disable
+  {
+    \cs_set_eq:NN \__enotez_tmp_endnote:nn \enotez_endnote:nn
+    \cs_set_eq:NN \enotez_endnote:nn \enotez_caption_endnote:nn
+  }
+
+\cs_new_protected:Npn \enotez@memoir@enable
+  { \cs_set_eq:NN \enotez_endnote:nn \__enotez_tmp_endnote:nn }
+
+\cs_new_protected:Npn \enotez@caption@disable
+  {
+    \xpatchcmd \caption@@make
+      { \caption@@@make }
+      { \enotez@koma@disable\caption@@@make }
+      { \bool_set_true:N  \l__enotez_caption_patched_bool }
+      { \bool_set_false:N \l__enotez_caption_patched_bool }
+  }
+
+% if we're in a KOMA class, \@@makecaption needs to be patched:
+\cs_if_free:NF \KOMAClassName
+  {
+    \xpatchcmd \@@makecaption
+      { \setlength{\@tempdima}{\cap@width} }
+      { \enotez@koma@disable\setlength{\@tempdima}{\cap@width} }
+      { \bool_set_true:N  \l__enotez_koma_patched_bool }
+      { \bool_set_false:N \l__enotez_koma_patched_bool }
+    \AfterPackage+ { caption } { \enotez@caption@disable }
+  }
+
+% if we're in memoir, \@makecaption needs to be patched:
+% TODO: fails when caption has been loaded, needs to be reworked
+\AfterClass+ { memoir }
+  {
+    \AtEndPreamble
+      {
+        \cs_if_exist:cF { ver@caption.sty }
+          {
+            \xpatchcmd \@makecaption
+              { \let\@contfnote\footnote }
+              { \enotez@memoir@disable\let\@contfnote\footnote }
+              { \bool_set_true:N  \l__enotez_memoir_patched_bool }
+              { \bool_set_false:N \l__enotez_memoir_patched_bool }
+            \xpatchcmd \@makecaption
+              { \let\footnote\@contfnote }
+              { \enotez@memoir@enable\let\footnote\@contfnote }
+              { \bool_set_true:N  \l__enotez_memoir_patched_bool }
+              { \bool_set_false:N \l__enotez_memoir_patched_bool }
+          }
+      }
+  }
+
+\AtBeginDocument
+  {
+    \bool_if:nT
+      { \cs_if_exist_p:c { ver@caption.sty } && !\l__enotez_caption_patched_bool }
+      { \AfterPackage+ { caption } { \enotez@caption@disable } }
+    \bool_if:nT
+      {
+        ( \cs_if_exist_p:c { ver@memoir.cls } && !\l__enotez_memoir_patched_bool )
+          ||
+        (
+          !\cs_if_exist_p:c { ver@memoir.cls } &&
+          \cs_if_exist_p:c { ver@caption.sty } &&
+          !\l__enotez_caption_patched_bool
+        )
+          ||
+        ( \cs_if_exist_p:N \KOMAClassName && !\l__enotez_koma_patched_bool )
+      }
+      { \msg_warning:nn {enotez} { captions } }
+  }
+
+% --------------------------------------------------------------------------
+% save the notes to the aux file:
+% #1: global id
+% #2: mark
+% #3: split id
+% #4: \thesection / \thechapter
+% #5: \value{section} / \value{chapter}
+% #6: a/m (automatic/manually)
+% #7: text
+\cs_new_protected:Npn \enotez_save_note:nnnnnnn #1#2#3#4#5#6#7
+  { \iow_now:Nn \@auxout { \enotez@note {#1} {#2} {#3} {#4} {#5} {#6} {#7} } }
+\cs_generate_variant:Nn \enotez_save_note:nnnnnnn { xxxxx , xnxxx }
+
+\cs_new_protected:Npn \enotez@note #1#2#3#4#5#6#7
+  {
+    \tl_gset:cn {enotez@#1@note} {#2}
+    \prop_gput:Nnn \g__enotez_endnote_mark_prop    {#1} {#2}
+    \prop_gput:Nnn \g__enotez_endnote_split_prop   {#1} {#3}
+    \prop_gput:Nnn \g__enotez_endnote_sect_prop    {#1} {#4}
+    \prop_gput:Nnn \g__enotez_endnote_sect_id_prop {#1} {#5}
+    \prop_gput:Nnn \g__enotez_endnote_man_prop     {#1} {#6}
+    \prop_gput:Nnn \g__enotez_endnote_text_prop    {#1} {#7}
+  }
+
+% a try to check if a rerun is necessary:
+\tl_new:N \l__enotez_change_tl
+
+\AtEndDocument
+  {
+    \cs_set_protected:Npn \enotez@note #1#2#3#4#5#6#7
+      {
+        \tl_set:Nn \l__enotez_change_tl {#2}
+        \tl_if_eq:cNF {enotez@#1@note} \l__enotez_change_tl
+          {
+            \@latex@warning@no@line
+              { Endnotes~may~have~changed.~Rerun~to~get~them~right. }
+          }
+      }
+  }
+
+% --------------------------------------------------------------------------
+% the actual user command; I would use \NewDocumentCommand but that would
+% disable compatibility with `fnpct'
+\cs_new_protected:Npn \endnote
+  {
+    \peek_meaning_ignore_spaces:NTF [
+      { \enotez_endnote_aux:w }
+      { \enotez_endnote:nn { \q_no_value } }
+  }
+
+\cs_new:Npn \enotez_endnote_aux:w [#1]#2
+  { \enotez_endnote:nn {#1} {#2} }
+
+% \cs_new_protected:Npn \endnotemark
+%   {
+%     \peek_meaning_ignore_spaces:NTF [
+%       { \enotez_endnote_mark_aux:w }
+%       { \enotez_endnote_mark:n { \q_no_value } }
+%   }
+
+% \cs_new:Npn \enotez_endnote_mark_aux:w [#1]
+%   { \enotez_endnote_mark:n {#1} }
+
+% \cs_new_protected:Npn \endnotetext
+%   {
+%     \peek_meaning_ignore_spaces:NTF [
+%       { \enotez_endnote_text_aux:w }
+%       { \enotez_endnote_text:nn { \q_no_value } }
+%   }
+
+% \cs_new:Npn \enotez_endnote_text_aux:w [#1]#2
+%   { \enotez_endnote_text:nn {#1} {#2} }
+
+% --------------------------------------------------------------------------
+% the list of notes
+\cs_if_exist:cTF { chapter }
+  { \cs_new:Npn \enotezlistheading { \chapter* } }
+  { \cs_new:Npn \enotezlistheading { \section* } }
+
+\tl_new:N \enotezsplitlistheading
+\bool_new:N \l__enotez_splitted_list_heading_bool
+% \cs_new:Npn \enotezsplitlistheading
+%   { \use:c { \l__enotez_splitted_list_sectioning_tl } }
+
+\DeclareObjectType { enotez-list } { 1 }
+
+\DeclareTemplateInterface { enotez-list } { paragraph } { 1 }
+  {
+    heading       : function 1 = \enotezlistheading{#1}   ,
+    format        : tokenlist  = \footnotesize   ,
+    number        : function 1 = \enmark{#1}     ,
+    number-format : tokenlist  = \normalfont     ,
+    notes-sep     : length     = .5\baselineskip ,
+  }
+
+\DeclareTemplateCode { enotez-list } { paragraph } { 1 }
+  {
+    heading       = \enotez_list_heading:n          ,
+    format        = \l__enotez_list_format_tl        ,
+    number        = \enotez_list_number:n           ,
+    number-format = \l__enotez_list_number_format_tl ,
+    notes-sep     = \l__enotez_list_notes_sep_dim    ,
+  }
+  {
+    \AssignTemplateKeys
+    \bool_if:NT \l__enotez_totoc_bool
+      {
+        \bool_if:NT \l__enotez_hyperref_bool { \phantomsection }
+        \addcontentsline { toc } { \l__enotez_totoc_tl } { \l__enotez_list_name_tl }
+      }
+    \enotez_list_heading:n { \l__enotez_list_name_tl }
+    \enotez_list_preamble:
+      \int_zero:N \l__enotez_tmpa_int
+      \int_do_while:nn { \l__enotez_tmpa_int <= \g__enotez_list_printed_int }
+        {
+          \prop_map_inline:Nn \g__enotez_endnote_mark_prop
+            {
+              \tl_if_eq:xxT
+                { \int_use:N \l__enotez_tmpa_int }
+                { \prop_item:Nn \g__enotez_endnote_split_prop { ##1 } }
+                {
+                  \enotez_get_split_title:n { ##1 }
+                  \enotez_get_note:nn {#1} { ##1 }
+                  \bool_if:NT \l__enotez_print_note_bool
+                    {
+                      \par\noindent
+                      \group_begin:
+                      \tl_use:N \l__enotez_list_format_tl
+                      \llap
+                        {
+                          \enotez_list_number:n
+                            { \enotez_write_list_number:n { ##1 } }
+                          \tl_use:N \c_space_tl
+                        }
+                      \tl_use:N \l__enotez_endnote_text_tl
+                      \par
+                      \group_end:
+                    }
+                }
+              \par
+              \dim_compare:nT { \l__enotez_list_notes_sep_dim != 0pt }
+                { \addvspace { \l__enotez_list_notes_sep_dim } }
+            }
+          \int_incr:N \l__enotez_tmpa_int
+        }
+    \enotez_list_postamble:
+  }
+
+\DeclareTemplateInterface { enotez-list } { list } { 1 }
+  {
+    heading       : function 1 = \enotezlistheading{#1} ,
+    format        : tokenlist  = \footnotesize ,
+    number        : function 1 = \enmark{#1}   ,
+    number-format : tokenlist  = \normalfont   ,
+    list-type     : tokenlist  = description   ,
+  }
+
+\DeclareTemplateCode { enotez-list } { list } { 1 }
+  {
+    heading       = \enotez_list_heading:n          ,
+    format        = \l__enotez_list_format_tl        ,
+    number        = \enotez_list_number:n           ,
+    number-format = \l__enotez_list_number_format_tl ,
+    list-type     = \l__enotez_list_type_tl
+  }
+  {
+    \AssignTemplateKeys
+    \bool_if:NT \l__enotez_totoc_bool
+      {
+        \bool_if:NT \l__enotez_hyperref_bool { \phantomsection }
+        \addcontentsline { toc } { \l__enotez_totoc_tl } { \l__enotez_list_name_tl }
+      }
+    \enotez_list_heading:n { \l__enotez_list_name_tl }
+    \enotez_list_preamble:
+      \int_zero:N \l__enotez_tmpa_int
+      \int_do_while:nn { \l__enotez_tmpa_int <= \g__enotez_list_printed_int }
+        {
+          \prop_map_inline:Nn \g__enotez_endnote_mark_prop
+            {
+              \tl_clear:N \l__enotez_tmpc_tl
+              \tl_if_eq:xxT
+                { \int_use:N \l__enotez_tmpa_int }
+                { \prop_item:Nn \g__enotez_endnote_split_prop { ##1 } }
+                { \tl_put_right:Nn \l__enotez_tmpc_tl { ##1 } }
+              \tl_if_blank:VF \l__enotez_tmpc_tl
+                {
+                  \enotez_get_split_title:n { ##1 }
+                  \group_begin:
+                    \tl_use:N \l__enotez_list_format_tl
+                    \begin{\l__enotez_list_type_tl}
+                }
+              \tl_if_eq:xxT
+                { \int_use:N \l__enotez_tmpa_int }
+                { \prop_item:Nn \g__enotez_endnote_split_prop { ##1 } }
+                {
+                  \enotez_get_note:nn {#1} { ##1 }
+                  \bool_if:NT \l__enotez_print_note_bool
+                    {
+                      \item
+                        [
+                          \enotez_list_number:n
+                            { \enotez_write_list_number:n { ##1 } }
+                        ]
+                      \tl_use:N \l__enotez_endnote_text_tl
+                    }
+                }
+              \tl_if_blank:VF \l__enotez_tmpc_tl
+                { \end{\l__enotez_list_type_tl} \group_end: }
+            }
+          \int_incr:N \l__enotez_tmpa_int
+        }
+    \enotez_list_postamble:
+  }
+
+% some default styles:
+\DeclareInstance { enotez-list } { plain } { paragraph } {  }
+\DeclareInstance { enotez-list } { description } { list } {  }
+\DeclareInstance { enotez-list } { itemize } { list } { list-type = itemize }
+
+% --------------------------------------------------------------------------
+% write the mark in the lists:
+\cs_new_protected:Npn \enotez_write_list_number:n #1
+  {
+    \bool_if:NT \l__enotez_hyperfootnotes_bool
+      { \box_move_up:nn { 1em } { \hbox:n { \hypertarget { enz.#1 } { } } } }
+    \tl_use:N \l__enotez_list_number_format_tl
+    \tl_if_eq:nxTF { a }
+      { \prop_item:Nn \g__enotez_endnote_man_prop {#1} }
+      {
+        \bool_if:nTF
+          { \l__enotez_hyperfootnotes_bool && \l__enotez_hyperbackref_bool }
+          {
+            \exp_args:Nnx
+            \hyperlink { enz.#1.backref }
+              { \enotez_counter_format:V \l__enotez_endnote_mark_tl }
+          }
+          { \enotez_counter_format:V \l__enotez_endnote_mark_tl }
+      }
+      {
+        \bool_if:nTF
+          { \l__enotez_hyperfootnotes_bool && \l__enotez_hyperbackref_bool }
+          {
+            \exp_args:Nnx
+            \hyperlink { enz.#1.backref }
+              { \tl_use:N \l__enotez_endnote_mark_tl }
+          }
+          { \tl_use:N \l__enotez_endnote_mark_tl }
+      }
+  }
+
+% --------------------------------------------------------------------------
+% determine which note's next:
+\cs_new_protected:Npn \enotez_get_note:nn #1#2
+  {
+    \bool_if:nTF {#1}
+      {
+        \prop_get:NnN \g__enotez_endnote_mark_prop {#2} \l__enotez_endnote_mark_tl
+        \prop_get:NnN \g__enotez_endnote_text_prop {#2} \l__enotez_endnote_text_tl
+        \bool_set_true:N \l__enotez_print_note_bool
+      }
+      {
+        \prop_get:NnN \g__enotez_endnote_split_prop {#2} \l__enotez_tmpa_tl
+        \bool_if:NTF \l__enotez_split_bool
+          {
+            \bool_set_true:N \l__enotez_print_note_bool
+            \prop_gpop:NnN \g__enotez_endnote_mark_prop
+              {#2}
+              \l__enotez_endnote_mark_tl
+            \prop_gpop:NnN \g__enotez_endnote_text_prop
+              {#2}
+              \l__enotez_endnote_text_tl
+          }
+          {
+            \int_compare:nTF { \l__enotez_tmpa_tl = \g__enotez_list_printed_int }
+              {
+                \bool_set_true:N \l__enotez_print_note_bool
+                \prop_gpop:NnN \g__enotez_endnote_mark_prop
+                  {#2}
+                  \l__enotez_endnote_mark_tl
+                \prop_gpop:NnN \g__enotez_endnote_text_prop
+                  {#2}
+                  \l__enotez_endnote_text_tl
+                \prop_gremove:Nn  \g__enotez_endnote_split_prop {#2}
+              }
+              { \bool_set_false:N \l__enotez_print_note_bool }
+          }
+      }
+  }
+
+% --------------------------------------------------------------------------
+% the titles in between the splits:
+\prop_new:N \l__enotez_split_title_replacements_prop
+
+\cs_new:Npn \enotez_new_split_title_replacements:nn #1#2
+  { \prop_put:Nnn \l__enotez_split_title_replacements_prop {<#1>} {#2} }
+
+\NewDocumentCommand \NewSplitTitleTag {mm}
+  { \enotez_new_split_title_replacements:nn {#1} {#2} }
+
+\tl_new:N \l__enotez_replace_split_title_tag_tl
+% #1: tl var
+% #2: tag
+% #3: replacement
+\cs_new_protected:Npn \__enotez_replace_split_title_tag:Nnn #1#2#3
+  {
+    \tl_set:Nx \l__enotez_replace_split_title_tag_tl { \tl_to_str:n {<#2>} }
+    \tl_replace_all:NVn #1 \l__enotez_replace_split_title_tag_tl {#3}
+    \tl_set:Nx #1 { \tl_to_str:N #1 }
+  }
+\cs_generate_variant:Nn \tl_replace_all:Nnn { NV }
+\cs_generate_variant:Nn \__enotez_replace_split_title_tag:Nnn { NnV , Nnx }
+
+% #1: tl for current title
+% #2: title with tags
+% #3: id
+\cs_new_protected:Npn \enotez_read_splitted_title:Nnn #1#2#3
+  {
+    \group_begin:
+      % needs to be expanded, since it is \GetTranslation {...} :
+      \tl_set:Nf \l__enotez_tmpa_tl {#2}
+      % stringify:
+      \tl_set:Nx \l__enotez_tmpa_tl { \tl_to_str:N \l__enotez_tmpa_tl }
+      \prop_map_inline:Nn \l__enotez_split_title_replacements_prop
+        {
+          \tl_set:Nn \l__enotez_tmpb_tl {##1}
+          \tl_replace_all:NVn \l__enotez_tmpa_tl \l__enotez_tmpb_tl {##2}
+        }
+      \__enotez_replace_split_title_tag:NnV \l__enotez_tmpa_tl {name}
+        \g__enotez_actual_sectioning_tl
+      \__enotez_replace_split_title_tag:Nnx \l__enotez_tmpa_tl {ref}
+        { \prop_item:Nn \g__enotez_endnote_sect_prop {#3} }
+      \__enotez_replace_split_title_tag:Nnx \l__enotez_tmpa_tl {split-level-id}
+        { \prop_item:Nn \g__enotez_endnote_sect_id_prop {#3} }
+      % retokenize:
+      \tl_set_rescan:NnV \l__enotez_tmpa_tl { } \l__enotez_tmpa_tl
+      \tl_gset_eq:NN #1 \l__enotez_tmpa_tl
+    \group_end:
+  }
+\cs_generate_variant:Nn \enotez_read_splitted_title:Nnn { NV }
+\cs_generate_variant:Nn \tl_replace_all:Nnn { NVx }
+\cs_generate_variant:Nn \tl_set_rescan:Nnn { NnV }
+
+\cs_new_protected:Npn \enotez_first_upper:n #1
+  { \tl_upper_case:n { \tl_head:n {#1} } \tl_tail:n {#1} }
+\cs_generate_variant:Nn \enotez_first_upper:n { V }
+
+\tl_new:N \l__enotez_last_split_id_tl
+
+\cs_new_protected:Npn \enotez_get_split_title:n #1
+ { 
+    \prop_get:NnN \g__enotez_endnote_split_prop {#1} \l__enotez_tmpa_tl
+    \bool_if:NT \l__enotez_split_bool
+      {
+        \tl_if_eq:NNF \l__enotez_tmpa_tl \l__enotez_last_split_id_tl
+          {
+            \tl_if_eq:VnTF \l__enotez_split_tl { section }
+              { \tl_gset:Nf \g__enotez_actual_sectioning_tl { \l__enotez_section_tl } }
+              { \tl_gset:Nf \g__enotez_actual_sectioning_tl { \l__enotez_chapter_tl } }
+            \enotez_read_splitted_title:NVn
+              \EnotezCurrentSplitTitle
+              \l__enotez_splitted_title_tl
+              {#1}
+            \enotez_split_list_preamble:
+            \bool_if:NTF \l__enotez_splitted_list_heading_bool
+              { \exp_args:No \enotezsplitlistheading }
+              {
+                \tl_if_eq:VnTF \l__enotez_split_tl { section }
+                  { \exp_args:NNo \subsection* }
+                  { \exp_args:NNo \section* }
+              }
+            { \EnotezCurrentSplitTitle }% this is the argument to the sectioning command
+            \enotez_split_list_postamble:
+          }
+      }
+    \prop_get:NnN \g__enotez_endnote_split_prop {#1} \l__enotez_last_split_id_tl
+  }
+
+% --------------------------------------------------------------------------
+% the marks in the list:
+\cs_new:Npn   \enmark #1 { #1 . }
+
+% the marks in the text:
+\cs_new:Npn   \enmarkstyle { }
+\cs_new_eq:NN \enotezwritemark \textsuperscript
+
+% --------------------------------------------------------------------------
+% internal printendnotes:
+\cs_new_protected:Npn \enotez_print_endnotes:nn #1#2
+  {
+    \tl_if_blank:nTF {#2}
+      { \UseInstance { enotez-list } { \l__enotez_list_instance_tl } }
+      { \UseInstance { enotez-list } {#2} }
+    {#1}
+    \bool_if:NF \l__enotez_split_bool
+      {
+        \bool_if:NT \l__enotez_reset_bool
+          { \int_gzero:N \g__enotez_endnote_mark_int }
+        \int_gincr:N \g__enotez_list_printed_int
+      }
+  }
+
+% the user command:
+\NewDocumentCommand \printendnotes { so }
+  {
+    \IfNoValueTF {#2}
+      {
+        \bool_if:NTF \l__enotez_split_bool
+          { \enotez_print_endnotes:nn { \BooleanFalse } {  } }
+          { \enotez_print_endnotes:nn {#1} {  } }
+      }
+      {
+        \bool_if:NTF \l__enotez_split_bool
+          { \enotez_print_endnotes:nn { \BooleanFalse } {#2} }
+          { \enotez_print_endnotes:nn {#1} {#2} }
+      }
+  }
+
+% --------------------------------------------------------------------------
+% preamble and postamble to the list:
+\cs_new_protected:Npn \enotez_list_preamble:
+  {
+    \tl_if_empty:NTF \g__enotez_list_next_preamble_tl
+      {
+        \tl_if_empty:NF \g__enotez_list_every_preamble_tl
+          {
+            \tl_use:N \g__enotez_list_every_preamble_tl
+            \par
+            \skip_vertical:N \l__enotez_list_preamble_skip
+          }
+      }
+      {
+        \tl_use:N \g__enotez_list_next_preamble_tl
+        \par
+        \skip_vertical:N \l__enotez_list_preamble_skip
+      }
+    \tl_gclear:N \g__enotez_list_next_preamble_tl
+  }
+
+\cs_new_protected:Npn \enotez_list_postamble:
+  {
+    \tl_if_empty:NTF \g__enotez_list_next_postamble_tl
+      {
+        \tl_if_empty:NF \g__enotez_list_every_postamble_tl
+          {
+            \par
+            \skip_vertical:N \l__enotez_list_postamble_skip
+            \tl_use:N \g__enotez_list_every_postamble_tl
+          }
+      }
+      {
+        \par
+        \skip_vertical:N \l__enotez_list_postamble_skip
+        \tl_use:N \g__enotez_list_next_postamble_tl
+      }
+    \tl_gclear:N \g__enotez_list_next_postamble_tl
+  }
+
+\cs_new_protected:Npn \enotez_set_next_preamble:n #1
+  { \tl_gset:Nn \g__enotez_list_next_preamble_tl {#1} }
+
+\cs_new_protected:Npn \enotez_set_every_preamble:n #1
+  { \tl_gset:Nn \g__enotez_list_every_preamble_tl {#1} }
+
+\cs_new_protected:Npn \enotez_set_next_postamble:n #1
+  { \tl_gset:Nn \g__enotez_list_next_postamble_tl {#1} }
+
+\cs_new_protected:Npn \enotez_set_every_postamble:n #1
+  { \tl_gset:Nn \g__enotez_list_every_postamble_tl {#1} }
+
+\NewDocumentCommand \AtNextEndnotesList { +m }
+  { \enotez_set_next_preamble:n {#1} }
+
+\NewDocumentCommand \AtEveryEndnotesList { +m }
+  { \enotez_set_every_preamble:n {#1} }
+
+\NewDocumentCommand \AfterNextEndnotesList { +m }
+  { \enotez_set_next_postamble:n {#1} }
+
+\NewDocumentCommand \AfterEveryEndnotesList { +m }
+  { \enotez_set_every_postamble:n {#1} }
+
+% --------------------------------------------------------------------------
+% preamble and postamble to the sub-headings in a splitted list:
+\cs_new_protected:Npn \enotez_split_list_preamble:
+  {
+    \tl_if_empty:NF \g__enotez_split_list_preamble_tl
+      {
+        \par
+        \tl_use:N \g__enotez_split_list_preamble_tl
+      }
+  }
+
+\cs_new_protected:Npn \enotez_split_list_postamble:
+  {
+    \tl_if_empty:NF \g__enotez_split_list_postamble_tl
+      {
+        \tl_use:N \g__enotez_split_list_postamble_tl
+        \par
+      }
+  }
+
+\cs_new_protected:Npn \enotez_set_every_split_preamble:n #1
+  { \tl_gset:Nn \g__enotez_split_list_preamble_tl {#1} }
+
+\cs_new_protected:Npn \enotez_set_every_split_postamble:n #1
+  { \tl_gset:Nn \g__enotez_split_list_postamble_tl {#1} }
+
+\NewDocumentCommand \AtEveryListSplit { +m }
+  { \enotez_set_every_split_preamble:n {#1} }
+
+\NewDocumentCommand \AfterEveryListSplit { +m }
+  { \enotez_set_every_split_postamble:n {#1} }
+
+\cs_new:Npn \EnotezCurrentSplitTitle {}
+
+% --------------------------------------------------------------------------
+% process the options:
+\ProcessKeysOptions {enotez}
+
+\AtBeginDocument
+  {
+    \bool_if:NT \l__enotez_split_bool
+      {
+        \tl_if_eq:VnTF \l__enotez_split_tl { section }
+          {
+            \tl_put_left:Nn \section
+              {
+                \int_gincr:N \g__enotez_list_printed_int
+                \bool_if:NT \l__enotez_reset_bool
+                  { \int_gzero:N \g__enotez_endnote_mark_int }
+              }
+          }
+          {
+            \tl_put_left:Nn \chapter
+              {
+                \int_gincr:N \g__enotez_list_printed_int
+                \bool_if:NT \l__enotez_reset_bool
+                  { \int_gzero:N \g__enotez_endnote_mark_int }
+              }
+          }
+      }
+    \@ifpackageloaded { hyperref }
+      {
+        \bool_set_true:N \l__enotez_hyperref_bool
+        \ifHy@hyperfootnotes
+          \bool_set_true:N \l__enotez_hyperfootnotes_bool
+        \else
+          \bool_set_false:N \l__enotez_hyperfootnotes_bool
+        \fi
+      }
+      {
+        \bool_set_false:N \l__enotez_hyperref_bool
+        \bool_set_false:N \l__enotez_hyperfootnotes_bool
+      }
+  }
+
+% --------------------------------------------------------------------------
+% the setup command:
+\NewDocumentCommand \setenotez { +m }
+  { \keys_set:nn {enotez} {#1} \ignorespaces }
+
+% --------------------------------------------------------------------------
+% language support
+\RequirePackage { translations }
+\DeclareTranslationFallback       { enotez-title } { Notes }
+\DeclareTranslation { Catalan   } { enotez-title } { Notes }
+\DeclareTranslation { Croatian  } { enotez-title } { Bilje\v{s}ke }
+\DeclareTranslation { English   } { enotez-title } { Notes }
+\DeclareTranslation { French    } { enotez-title } { Remarques }
+\DeclareTranslation { German    } { enotez-title } { Anmerkungen }
+\DeclareTranslation { Hungarian } { enotez-title } { Megjegyz\'{e}sek }
+\DeclareTranslation { Italian   } { enotez-title } { Note }
+\DeclareTranslation { Spanish   } { enotez-title } { Notas }
+\DeclareTranslation { Turkish   } { enotez-title } { Notlar }
+
+\DeclareTranslationFallback       { enotez-splitted-title } { Notes~for~<name>~<ref> }
+\DeclareTranslation { Catalan   } { enotez-splitted-title } { Notes~del~<name>~<ref> }
+\DeclareTranslation { Croatian  } { enotez-splitted-title } { Bilje\v{s}ke~uz~<name>~<ref> }
+\DeclareTranslation { English   } { enotez-splitted-title } { Notes~for~<name>~<ref> }
+\DeclareTranslation { French    } { enotez-splitted-title } { Remarques~aux~<name>~<ref> }
+\DeclareTranslation { German    } { enotez-splitted-title } { Anmerkungen~zu~<name>~<ref> }
+\DeclareTranslation { Hungarian } { enotez-splitted-title } { Megjegyz\'{e}sek~a~<ref>.~<name> }
+\DeclareTranslation { Italian   } { enotez-splitted-title } { Note~per~il~<name>~<ref> }
+\DeclareTranslation { Spanish   } { enotez-splitted-title } { Notas~del~<name>~<ref> }
+\DeclareTranslation { Turkish   } { enotez-splitted-title } { <name>~<ref>~notlar }
+
+\DeclareTranslationFallback       { enotez-section } { section }
+\DeclareTranslation { Catalan   } { enotez-section } { secci\'{o} }
+\DeclareTranslation { Croatian  } { enotez-section } { odjeljak }
+\DeclareTranslation { English   } { enotez-section } { section }
+\DeclareTranslation { French    } { enotez-section } { section }
+\DeclareTranslation { German    } { enotez-section } { Abschnitt }
+\DeclareTranslation { Hungarian } { enotez-section } { szakasz }
+\DeclareTranslation { Italian   } { enotez-section } { sezione }
+\DeclareTranslation { Spanish   } { enotez-section } { secci\'{o}n }
+\DeclareTranslation { Turkish   } { enotez-section } { B\"{o}l\"{u}m }
+
+\DeclareTranslationFallback       { enotez-chapter } { chapter }
+\DeclareTranslation { Catalan   } { enotez-chapter } { cap\'{\i}tol }
+\DeclareTranslation { Croatian  } { enotez-chapter } { poglavlje }
+\DeclareTranslation { English   } { enotez-chapter } { chapter }
+\DeclareTranslation { French    } { enotez-chapter } { chapitre }
+\DeclareTranslation { German    } { enotez-chapter } { Kapitel }
+\DeclareTranslation { Hungarian } { enotez-chapter } { fejezet }
+\DeclareTranslation { Italian   } { enotez-chapter } { capitolo }
+\DeclareTranslation { Spanish   } { enotez-chapter } { cap\'{\i}tulo }
+\DeclareTranslation { Turkish   } { enotez-chapter } { B\"{o}l\"{u}m }
+
+\tl_set:Nn \l__enotez_splitted_title_tl { \GetTranslation { enotez-splitted-title } }
+\tl_set:Nn \l__enotez_list_name_tl      { \GetTranslation { enotez-title } }
+\tl_set:Nn \l__enotez_section_tl        { \GetTranslation { enotez-section } }
+\tl_set:Nn \l__enotez_chapter_tl        { \GetTranslation { enotez-chapter } }
+
+\tex_endinput:D
+% --------------------------------------------------------------------------
+% HISTORY:
+2012/07/03 v0.1  - first public version on bitbucket
+2012/07/05 v0.2  - added preliminary `split' option
+                 - enable endnotes in captions with KOMA classes, `memoir' and
+                   the `caption' package
+2012/07/06 v0.2a - made the splitted list titles customizable
+2012/07/07 v0.3  - list-building rewritten due to a design flaw
+2012/07/24 v0.3a - adapted to deprecated functions in l3kernel and l3packages,
+                   removed debugging leftover
+2012/12/14 v0.3b - bug fix: works again when used with a KOMA class and an
+                   endnote is used inside a caption
+2012/12/30 v0.4  - new options `mark-cs' and `mark-format', redefinable
+                   commands \enmarkstyle and \enotezwritemark
+2012/01/18 v0.4a - added beginnings of internationalization -- this will need
+                   help from users speaking the actual languages
+2013/03/12 v0.5  - \AtNextEndnotesList, \AtEveryEndnotesList
+                 - use protected internal commands where appropriate
+                 - fix wrong endnote marks when used with the `caption'
+                   package
+2013/03/18 v0.5a - adapt to deprecated expl3 commands
+2013/04/06 v0.6  - \endnote sets \@currentlabel so endnotes can be referenced
+                   with \label{} and \ref{}
+2013/05/01 v0.7  - new option `backref' adds links from the notes in the list
+                   back to the notes in the text (needs `hyperref' loaded)
+                 - new: \AtEveryListSplit, \AfterEveryListSplit,
+                   \EnotezCurrentSplitTitle
+                 - new option: `list-heading'
+2013/08/03 v0.7a - corrected bug: `reset=true' now works as it should
+                 - added counter-format `symbols'
+2013/10/31 v0.7b - corrected bug: \acro_command_deprecated:NN should of course
+                   be \enotez_command_deprecated:NN
+2014/02/04 v0.7c - added a missing \par to the `paragraph' template for the
+                   list
+2015/06/24 v0.8  - bug fix in typesetting the split-headings
+                 - new command \NewSplitTitleTag
+2015/07/29 v0.8a - adapt to deprecated choice selection in keys
+2016/01/07 v0.8b - \prop_get:Nn => \prop_item:Nn
+
+% --------------------------------------------------------------------------
+% TODO:
+- add \endnotemark and \endnotetext
+- make the headings obey the `totoc' option?

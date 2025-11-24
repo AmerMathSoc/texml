@@ -1,0 +1,481 @@
+%%
+%% This is file `indextools.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% indextools.dtx  (with options: `package')
+%%   ___________________________________________________________
+%%   The indextools package for LaTeX
+%%   Copyright (C) 2010-2013 Enrico Gregorio
+%%   Copyright (C) 2014-* Maïeul Roquette
+%%   All rights reserved
+%% 
+%%   License information appended
+%% 
+\NeedsTeXFormat{LaTeX2e}[2005/12/01]
+\ProvidesPackage{indextools}%
+   [2015/11/22 v1.5.1 Package for typesetting indices in a synchronous mode]
+
+
+
+
+\RequirePackage{xkeyval}
+\DeclareOption{xindy}{\def\indtl@progdefault{texindy}}
+\DeclareOption{texindy}{\def\indtl@progdefault{texindy}}
+\DeclareOption{truexindy}{\def\indtl@progdefault{truexindy}}
+\DeclareOption{makeindex}{\def\indtl@progdefault{makeindex}}
+\newif\ifindtl@disableautomatic
+\DeclareOption{noautomatic}{\indtl@disableautomatictrue}
+\newif\ifindtl@nonewpage
+\DeclareOption{nonewpage}{%
+  \indtl@nonewpagetrue\indtl@disableautomatictrue
+}
+\newif\ifindtl@splitindex
+\DeclareOption{splitindex}{\indtl@splitindextrue}
+\newif\ifindtl@original
+\DeclareOption{original}{\indtl@originaltrue}
+\DeclareOption{quiet}{\AtEndOfPackage{%
+  \let\indtl@finalmessage\@gobble
+  \let\indtl@splitindexmessage\relax}}
+\newif\ifindtl@afterindex
+\DeclareOption{afterindex}{\indtl@afterindextrue}
+
+\newif\ifindtl@innote
+\DeclareOption{innote}{\indtl@innotetrue}
+
+\newif\ifindtl@notenumber
+\DeclareOption{notenumber}{\indtl@notenumbertrue}
+
+\ExecuteOptions{makeindex}
+\ProcessOptions\relax
+
+\if@twocolumn\indtl@originaltrue\fi
+\def\indtl@exec{\immediate\write18}
+\def\indtl@engine{(pdf)latex}
+\RequirePackage{ifxetex,ifluatex}
+\ifxetex\def\indtl@engine{xelatex}\fi
+\ifluatex % luatex doesn't have \(pdf)shellescape
+ \def\indtl@engine{lualatex}
+  \ifnum\luatexversion<68
+    \chardef\indtl@shellescape\@ne % no way to know the value
+  \else
+    \RequirePackage{pdftexcmds} % provides \pdf@shellescape
+    \chardef\indtl@shellescape\pdf@shellescape
+  \fi
+  \let\indtl@exec\pdf@system
+\fi
+\RequirePackage{xpatch}
+\edef\indtl@splitindexoptions{-m \string"\string"}
+\def\splitindexoptions#1{\g@addto@macro\indtl@splitindexoptions{ #1}}
+\@onlypreamble\splitindexoptions
+\@namedef{ver@makeidx.sty}{3000/12/31}
+\@ifpackageloaded{multind}
+  {\PackageError{indextools}{Incompatible package `multind' loaded}
+    {This package is incompatible with multind, don't load both.%
+     \MessageBreak\@ehc}}
+  {\@namedef{ver@multind.sty}{3000/12/31}}
+
+\@ifpackageloaded{imakeidx}
+  {\PackageError{indextools}{Incompatible package `imakeidx' loaded}
+    {This package is incompatible with imakeidx, don't load both.%
+     \MessageBreak\@ehc}}
+  {\@namedef{ver@imakeidx.sty}{3000/12/31}}
+\providecommand*\see[2]{\emph{\seename} #1}
+\providecommand*\seealso[2]{\emph{\alsoname} #1}
+\providecommand*\seename{see}
+\providecommand*\alsoname{see also}
+\providecommand*\makeindex{} % to use \renewcommand safely
+\renewcommand{\makeindex}[1][]{\indtl@makeindex{#1}}
+\def\indtl@makeindex#1{%
+  \edef\indtl@name{\jobname}%
+  \edef\indtl@jobname{\jobname}%
+  \def\indtl@title{\indexname}%
+  \edef\indtl@program{\indtl@progdefault}%
+  \let\indtl@options\space
+  \KV@indtl@noautomaticfalse\KV@indtl@intocfalse
+  \setkeys{indtl}{#1}%
+  \ifindtl@splitindex\KV@indtl@noautomaticfalse\fi
+  \indtl@build\indtl@name
+  \indtl@startidx\indtl@name
+  \indtl@resetdefaults
+}
+\define@key{indtl}{name}{\def\indtl@name{#1}}
+\define@key{indtl}{title}{\def\indtl@title{#1}}
+\define@choicekey{indtl}{program}[\indtl@val\indtl@nr]
+  {makeindex,xindy,texindy,truexindy}{%
+    \ifcase\indtl@nr\relax
+      \def\indtl@program{makeindex}%
+    \or
+      \def\indtl@program{texindy}%
+    \or
+      \def\indtl@program{texindy}%
+    \or
+      \def\indtl@program{xindy}%
+    \fi}
+\define@key{indtl}{options}{\def\indtl@options{ #1 }}
+\define@boolkey{indtl}{noautomatic}[true]{}
+\define@boolkey{indtl}{intoc}[true]{}
+\define@key{indtl}{columns}{\def\indtl@columns{#1}}
+\define@key{indtl}{columnsep}{\def\indtl@columnsep{#1}}
+\define@boolkey{indtl}{columnseprule}[true]{}
+\def\indtl@resetdefaults{%
+  \def\indtl@options{ }%
+  \def\indtl@columns{2}\def\indtl@columnsep{35\p@}%
+  \KV@indtl@columnseprulefalse
+  \KV@indtl@intocfalse\KV@indtl@noautomaticfalse}
+\indtl@resetdefaults
+\def\indtl@build#1{%
+  \toks@{}%
+  \indtl@dokey\indtl@title
+  \indtl@dokey\indtl@program
+  \indtl@dokey\indtl@options
+  \indtl@dokey\indtl@columns
+  \indtl@dokey\indtl@columnsep
+  \ifKV@indtl@noautomatic
+    \addto@hook\toks@{\KV@indtl@noautomatictrue}%
+  \else
+    \addto@hook\toks@{\KV@indtl@noautomaticfalse}%
+  \fi
+  \ifKV@indtl@intoc
+    \addto@hook\toks@{\KV@indtl@intoctrue}%
+  \else
+    \addto@hook\toks@{\KV@indtl@intocfalse}%
+  \fi
+  \ifKV@indtl@columnseprule
+    \addto@hook\toks@{\KV@indtl@columnsepruletrue}%
+  \else
+    \addto@hook\toks@{\KV@indtl@columnseprulefalse}%
+  \fi
+  \expandafter\edef\csname indtl@set@#1\endcsname{\the\toks@}%
+}
+\def\indtl@dokey#1{%
+  \expandafter\addto@hook\expandafter\toks@\expandafter{%
+    \expandafter\def\expandafter#1\expandafter{#1}}}
+\def\indtl@startidxsplit#1{%
+  \if@filesw
+    \def\index{\@bsphack
+      \@ifnextchar [{\@index}{\@index[\indtl@jobname]}}
+    \expandafter\newwrite\csname #1@idxfile\endcsname
+    \immediate\openout \csname #1@idxfile\endcsname #1.idx\relax
+    \typeout{Writing index file #1.idx}%
+  \fi}
+\newif\ifindtl@startedidx
+\def\indtl@startidxunique#1{%
+  \if@filesw
+    \ifindtl@startedidx\else
+      \newwrite\@indexfile
+      \immediate\openout\@indexfile\indtl@jobname.idx%
+      \global\indtl@startedidxtrue
+    \fi
+    \def\index{\@bsphack
+      \@ifnextchar [{\@index}{\@index[\indtl@jobname]}}
+    \expandafter\let\csname #1@idxfile\endcsname\@empty
+    \typeout{Started index file #1}%
+ \fi}
+\renewcommand{\index}[2][]{\@bsphack\@esphack}
+\def\@index[#1]{%
+  \@ifundefined{#1@idxfile}%
+  {\PackageWarning{indextools}{Undefined index file `#1'}%
+   \begingroup
+   \@sanitize
+   \indtl@nowrindex}%
+  {\edef\@idxfile{#1}%
+   \begingroup
+   \@sanitize
+   \@wrindex\@idxfile}}
+\def\indtl@nowrindex#1{\endgroup\@esphack}
+\@ifundefined{showindexmarks}{\newif\ifshowindexmark}{}
+\@ifpackageloaded{showidx}{\showindexmarktrue}{\showindexmarkfalse}
+\newcommand\indtl@showidxentry[2]{%
+  \ifshowindexmark
+    \@showidx{\ifdefequal{\indtl@jobname}{#1}{}{[#1]\space}#2}%
+  \fi}
+\newcommand\indtl@wrindexentrysplit[3]{%
+  \expandafter\protected@write\csname#1@idxfile\endcsname{}%
+    {\string\indexentry{#2}{#3}}%
+}
+\newcommand\indtl@wrindexentryunique[3]{%
+  \protected@write\@indexfile{}%
+    {\string\indexentry[#1]{#2}{#3}}%
+}
+\def\indtl@wrindexsplit#1#2{%
+\indtl@wrindexentrysplit{#1}{#2}{\thepage}%
+\endgroup\indtl@showidxentry{#1}{#2}%
+  \@esphack%
+}
+\def\indtl@wrindexunique#1#2{%
+\indtl@wrindexentryunique{#1}{#2}{\thepage}%
+\endgroup\indtl@showidxentry{#1}{#2}%
+  \@esphack%
+  }
+\def\indtl@shellwarn{}
+\ifdefined\indtl@shellescape % luatex
+\else
+  \@ifundefined{shellescape}
+    {\let\indtl@shellescape\pdfshellescape} % pdftex
+    {\let\indtl@shellescape\shellescape} % xetex
+\fi
+\ifnum\indtl@shellescape=\z@
+  \let\KV@indtl@noautomaticfalse\KV@indtl@noautomatictrue
+  \KV@indtl@noautomatictrue
+  \def\indtl@shellwarn{\MessageBreak or call \indtl@engine\space with
+    -shell-escape}
+\fi
+\ifindtl@disableautomatic
+  \let\KV@indtl@noautomaticfalse\KV@indtl@noautomatictrue
+  \KV@indtl@noautomatictrue
+\fi
+\newif\ifindtl@fancyhdr
+\AtBeginDocument{%
+  \@ifpackageloaded{fancyhdr}{\indtl@fancyhdrtrue}{\indtl@fancyhdrfalse}%
+    \ifindtl@original
+     \expandafter\def\expandafter\theindex\expandafter{\expandafter
+        \indtl@maybeaddtotoc\theindex}
+    \else
+      \renewenvironment{theindex}
+        {\indtl@maybeaddtotoc
+         \indtl@indexlevel{\indexname}%
+         \ifindtl@fancyhdr\else%
+           \indtl@indexheaders%
+           \thispagestyle{\indtl@firstpagestyle}%
+         \fi%
+         \ifnum\indtl@columns>\@ne
+           \columnsep \indtl@columnsep
+           \ifx\indtl@idxprologue\relax
+             \begin{multicols}{\indtl@columns}
+           \else
+             \begin{multicols}{\indtl@columns}[\indtl@idxprologue]
+           \fi
+         \else
+           \indtl@idxprologue
+         \fi
+         \global\let\indtl@idxprologue\relax
+         \parindent\z@
+         \parskip\z@ \@plus .3\p@\relax
+         \columnseprule \ifKV@indtl@columnseprule.4\p@\else\z@\fi
+         \raggedright
+         \let\item\@idxitem
+         \indtl@othercode}
+        {\ifnum\indtl@columns>\@ne\end{multicols}\fi
+    }
+\fi
+}
+\ifindtl@original
+\else
+  \global\let\indtl@idxprologue\relax
+  \RequirePackage{multicol}
+\fi
+\def\indtl@indexlevel{%
+  \@ifundefined{chapter}{\section}{\chapter}*}
+\define@key{indtlindex}{level}{\def\indtl@indexlevel{#1}}
+\def\indtl@toclevel{%
+  \@ifundefined{chapter}{section}{chapter}}
+\define@key{indtlindex}{toclevel}{\def\indtl@toclevel{#1}}
+\define@boolkey{indtlindex}{noclearpage}[true]{\let\indtl@clearpage\relax}
+\def\indtl@indexheaders{%
+  \@mkboth{\MakeUppercase\indexname}{\MakeUppercase\indexname}}
+\define@key{indtlindex}{headers}{\def\indtl@indexheaders{\markboth#1}}
+\def\indtl@firstpagestyle{plain}
+\define@key{indtlindex}{firstpagestyle}{\def\indtl@firstpagestyle{#1}}
+\let\indtl@othercode\relax
+\define@key{indtlindex}{othercode}{\def\indtl@othercode{#1}}
+\newcommand{\indexsetup}[1]{%
+  \ifindtl@original\else\setkeys{indtlindex}{#1}\fi}
+\@onlypreamble\indexsetup
+\newcommand{\indexprologue}[2][\bigskip]{%
+  \long\gdef\indtl@idxprologue{{#2\par}#1}}
+\providecommand*{\printindex}{}
+\renewcommand*{\printindex}[1][\indtl@jobname]{%
+  \@ifundefined{#1@idxfile}{\indtl@error{#1}}{\indtl@putindex{#1}}}
+
+\def\indtl@error#1{%
+  \def\@tempa{#1}\def\@tempb{\indtl@jobname}%
+  \ifx\@tempa\@tempb
+    \let\indtl@optarg\@empty
+  \else
+    \def\indtl@optarg{[#1]}%
+  \fi
+  \PackageError{indextools}
+    {Misplaced \protect\printindex\indtl@optarg}
+    {You are not making this index, as no appropriate
+     \protect\makeindex\MessageBreak
+     command has been issued in the preamble.}}
+\def\indtl@clearpage{%
+  \@ifundefined{chapter}
+    {\clearpage} % article and similar classes
+    {\@ifundefined{if@openright}
+       {\cleardoublepage}
+       {\if@openright
+          \cleardoublepage
+        \else
+          \clearpage
+       \fi}
+    }}
+\def\indtl@check@indexname{\indexname}
+\providecommand*\indtl@maybeaddtotoc{}
+\def\indtl@finalmessage#1{%
+  \expandafter\edef\csname indtl@message#1\endcsname
+    {\indtl@program\indtl@options#1.idx}
+  \AtEndDocument{\PackageWarning{indextools}{%
+    Remember to run \indtl@engine\space again after calling\MessageBreak
+    `\@nameuse{indtl@message#1}'\indtl@shellwarn\@gobble}}}
+\def\indtl@splitindexmessage{%
+  \AtEndDocument{\PackageWarningNoLine{indextools}{%
+    Remember to run \indtl@engine\space again after calling\MessageBreak
+    `splitindex' and processing the indices\indtl@shellwarn}}}
+    \def\indtl@makeindexname{makeindex}
+    \def\indtl@decide{%
+      \@tempswafalse
+      \ifindtl@splitindex % splitindex is not "safe"
+      \ifnum\indtl@shellescape=\@ne\@tempswatrue\fi
+      \else
+      \ifx\indtl@program\indtl@makeindexname % nor is texindy
+      \ifnum\indtl@shellescape=\tw@\@tempswatrue\fi
+      \fi
+      \ifnum\indtl@shellescape=\@ne\@tempswatrue\fi
+      \fi
+      \ifKV@indtl@noautomatic
+      \@tempswafalse
+    \fi}
+\newcommand{\indtl@closeandrundidxsplit}[1]{%
+  \immediate\closeout\csname #1@idxfile\endcsname
+  \let\indtl@indexname\indexname % keep \indexname
+  \@nameuse{indtl@set@#1}\indtl@decide
+  \if@tempswa % we can call the external program
+    \indtl@exec{\indtl@program\indtl@options#1.idx}%
+  \else
+    \indtl@finalmessage{#1}%
+  \fi
+}
+\newcommand{\indtl@closeandrundidxunique}{%
+  \immediate\closeout\@indexfile
+  \indtl@exec{splitindex \indtl@splitindexoptions\space\indtl@jobname.idx}%
+  \global\indtl@splitdonetrue
+}
+\def\indtl@putindexsplit#1{%
+  \ifindtl@nonewpage\else
+    \indtl@clearpage
+  \fi
+  \ifindtl@afterindex%
+    \AtEndDocument{%
+      \indtl@clearpage%
+      \indtl@closeandrundidxsplit{#1}%
+      \indltl@afterindexMessage%
+    }%
+  \else%
+    \indtl@closeandrundidxsplit{#1}%
+  \fi
+  \ifKV@indtl@intoc
+    \def\indtl@maybeaddtotoc{\@nameuse{phantomsection}%
+      \addcontentsline{toc}{\indtl@toclevel}{\indtl@title}}%
+  \else
+    \def\indtl@maybeaddtotoc{}%
+  \fi
+  \ifx\indtl@title\indtl@check@indexname\else
+    \def\indexname{\indtl@title}%
+  \fi
+  \@input@{#1.ind}
+  \let\indexname\indtl@indexname % restore \indexname
+}
+
+\newif\ifindtl@splitdone
+\def\indtl@putindexunique#1{%
+  \ifindtl@nonewpage\else
+    \indtl@clearpage
+  \fi
+  \let\indtl@indexname\indexname % keep \indexname
+  \@nameuse{indtl@set@#1}\indtl@decide
+  \if@tempswa % we can call the external program
+    \ifindtl@splitdone\else
+      \ifindtl@afterindex
+        \AtEndDocument{%
+          \indtl@clearpage%
+          \indtl@closeandrundidxunique%
+          \indltl@afterindexMessage%
+        }
+      \else
+        \indtl@closeandrundidxunique
+      \fi
+    \fi
+  \else
+    \ifindtl@splitdone\else
+      \indtl@splitindexmessage\global\indtl@splitdonetrue
+    \fi
+  \fi
+  \if@tempswa % we can call the external program
+    \indtl@exec{\indtl@program\indtl@options\indtl@jobname-#1.idx}%
+  \fi
+  \ifKV@indtl@intoc
+    \def\indtl@maybeaddtotoc{\@nameuse{phantomsection}%
+      \addcontentsline{toc}{\indtl@toclevel}{\indtl@title}}%
+  \else
+    \def\indtl@maybeaddtotoc{}%
+  \fi
+  \ifx\indtl@title\indtl@check@indexname\else
+    \def\indexname{\indtl@title}%
+  \fi
+  \@input@{\indtl@jobname-#1.ind}
+  \let\indexname\indtl@indexname % restore \indexname
+}
+\newcommand{\indltl@afterindexMessage}{%
+ \PackageWarning{indextools}{You use the `afterindex' option.
+ \MessageBreak That means you use \string\index\space commands after \string\printindex\space command.
+ \MessageBreak Consequently, the index may be not ok at the first run.
+ }%
+}
+
+\AtBeginDocument{%
+    \ifindtl@innote%
+      \RequirePackage{letltxmacro}
+      \LetLtxMacro\orig@@index\index
+      \pretocmd{\@footnotetext}{\let\index\nindex}{}{}
+      \apptocmd{\@footnotetext}{\let\index\orig@@index}{}{}
+
+    \fi%
+  \ifindtl@notenumber%
+      \RequirePackage{letltxmacro}
+      \LetLtxMacro\orig@@index\index
+      \pretocmd{\@footnotetext}{\let\index\nnumberindex}{}{}
+      \apptocmd{\@footnotetext}{\let\index\orig@@index}{}{}
+  \fi%
+  \newcommand\nnumberindex[2][\indtl@jobname]{\orig@@index[#1]{#2|innotenumber{\thefootnote}}}
+  \newcommand\nindex[2][\indtl@jobname]{\orig@@index[#1]{#2|innote}}
+  \providecommand{\innotenumber}[2]{#2n.~#1}
+  \providecommand{\innote}[1]{#1\textit{n}}
+}
+\ifindtl@splitindex
+  \let\indtl@startidx\indtl@startidxunique
+  \let\@wrindex\indtl@wrindexunique
+  \let\indtl@putindex\indtl@putindexunique
+  \let\indtl@wrindexentry\indtl@wrindexentryunique
+  \let\indtl@startidxsplit\@undefined
+  \let\indtl@wrindexsplit\@undefined
+  \let\indtl@putindexsplit\@undefined
+\else
+  \let\indtl@startidx\indtl@startidxsplit
+  \let\@wrindex\indtl@wrindexsplit
+  \let\indtl@putindex\indtl@putindexsplit
+  \let\indtl@wrindexentry\indtl@wrindexentrysplit
+  \let\indtl@startidxunique\@undefined
+  \let\indtl@wrindexunique\@undefined
+  \let\indtl@putindexunique\@undefined
+\fi
+\@ifclassloaded{memoir}{\let\@wrindexm@m\@wrindex
+   \AtBeginDocument{\hideindexmarks}}{}
+%% 
+%% Copyright 2010--2013 Enrico Gregorio <Enrico dot Gregorio at univr dot it>
+%% 
+%% Copyright 2014 Maïeul Rouquette <maieul at maieul dot net>
+%% 
+%% Distributable under the LaTeX Project Public License,
+%% version 1.3c or higher (your choice). The latest version of
+%% this license is at: http://www.latex-project.org/lppl.txt
+%% 
+%% This work is "author-maintained"
+%% 
+%% This work consists of this file indextools.dtx, a README file
+%% and the derived files indextools.sty and indextools.pdf.
+%% 
+%%
+%% End of file `indextools.sty'.

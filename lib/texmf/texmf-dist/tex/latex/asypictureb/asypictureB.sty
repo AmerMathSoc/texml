@@ -1,0 +1,338 @@
+%%
+%% This is file `asypictureB.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% asypictureB.dtx  (with options: `package')
+%% ----------------------------------------------------------------
+%% asypictureB --- user-friendly integration of Asymptote into LaTeX
+%% E-mail: cstaats at math.uchicago.edu
+%% Released under the LaTeX Project Public License v1.3c or later
+%% See http://www.latex-project.org/lppl.txt
+%% ----------------------------------------------------------------
+%% 
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{asypictureB}
+  [2014/04/15 v0.3 user-friendly integration of Asymptote into LaTeX]
+\RequirePackage{fancyvrb}
+\RequirePackage{graphicx}
+\RequirePackage{pgfkeys}
+
+\makeatletter
+
+\def\asy@OutFile{\FV@OutFile}
+
+\RequirePackage{ifplatform}
+
+\ifshellescape
+    \def\ASYPIC@shell{18}
+    \newcommand{\shell@execute}{\immediate\write\ASYPIC@shell}
+\else
+\newwrite\ASYPIC@shell
+\ifwindows
+    \openout\ASYPIC@shell=\jobname-compile_asy.bat\relax
+\else
+    \openout\ASYPIC@shell=\jobname-compile_asy.sh\relax
+\fi
+\newcommand{\shell@execute}[1]{{%
+\edef\temp{#1}%
+        \write\expandafter\ASYPIC@shell\expandafter{\temp}%
+}}
+\fi
+
+\ifshellescape
+    \newcommand{\copyfile}[2]{%
+    \ifwindows%
+        \immediate\write18{copy #1 #2 /y}%
+    \else%
+        \immediate\write18{cp #1 #2}%
+    \fi%
+    }
+\else
+    \RequirePackage{verbatimcopy}
+    \newcommand{\copyfile}[2]{%
+        \OldVerbatimCopy{#1}{#2}%
+    }
+\fi
+
+\newcommand{\deletefile}[1]{%
+    \ifwindows%
+        \shell@execute{del #1}%
+    \else%
+        \shell@execute{rm #1}%
+    \fi%
+}
+
+\newcommand{\asyset}[1]{\pgfqkeys{/asy}{#1}}
+\newcommand{\@asyerrorfilename}{\@asypicturename_errors.txt}
+\newcounter{@asy@linenumber}
+
+\asyset{name/.initial=noname, name/.value required}%
+
+\asyset{graphic options/.code={}}
+\asyset{set graphic option/.style={graphic options/.append code=#1}}
+\asyset{.unknown/.code = %
+    {%
+        \edef\unknownkey{\pgfkeyscurrentname}%
+        \asyset{set graphic option/.expand once =  {%
+            \expandafter\setkeys\expandafter{%
+                \expandafter G\expandafter i\expandafter n\expandafter%
+                }\expandafter{\unknownkey=#1}%
+        }}%
+    }%
+}
+\def\asy@scale{1}
+\asyset{scale/.style={set graphic option = {\def\asy@scale{#1}}},
+    scale/.value required}
+\newcommand{\asy@angle}{0}
+\asyset{angle/.style = {set graphic option = {\def\asy@angle{#1}}},
+    angle/.value required}
+
+\newcommand{\getfontsize}{\f@size}
+
+\newif\ifasyfilechanged
+\newif\ifASYPIC@flush
+\newif\if@asyrepeat
+\newread\@asyreadold
+\newread\@asyreadnew
+\edef\@tempasyfile{\jobname-temp}
+
+\newcommand{\RequireAsyRecompile}{\ASYPIC@flushtrue}
+\newcommand{\AsyCompileIfNecessary}{\ASYPIC@flushfalse}
+\AsyCompileIfNecessary
+
+\newcommand\clearasyheader{\def\ASYPIC@header{}}
+
+\def\ASYPIC@header{}
+
+\def\asyheader{\FV@Environment{}{asyheader}}
+
+\def\FVB@asyheader{%
+     \@bsphack
+         \begingroup
+         \FV@UseKeyValues
+         \FV@DefineWhiteSpace
+         \def\FV@Space{\space}%
+         \FV@DefineTabOut
+         \def\FV@ProcessLine##1{\g@addto@macro\ASYPIC@header{##1^^J}}%
+         \let\FV@FontScanPrep\relax
+         %% DG/SR modification begin - May. 18, 1998
+         %% (to avoid problems with ligatures)
+         \let\@noligs\relax
+         %% DG/SR modification end
+         \FV@Scan}%
+
+\def\FVE@asyheader{\endgroup\@esphack}
+
+\DefineVerbatimEnvironment{asyheader}{asyheader}%
+    {codes={\catcode`@=0},tabsize=4}
+\begin{asyheader}
+defaultpen(fontsize(@getfontsize pt));
+settings.prc = false;
+\end{asyheader}
+\def\asypicture{\FV@Environment{}{asypicture}}
+
+\newcommand{\ASYPIC@recordname}[1]{%
+    \edef\tempmacroname{ASYPIC@name@#1}%
+    \ifcsname\tempmacroname\endcsname%% if \ASYPIC@name@... is defined
+        \edef\oldnum{\csname\tempmacroname\endcsname}%
+        \edef\@asypicturename%
+            {\scantokens\expandafter{\jobname\noexpand}-#1__\oldnum}%
+        \expandafter\xdef\csname\tempmacroname\endcsname%
+            {\the\numexpr\oldnum+1\relax}%
+        \edef\ASYPIC@current@num{\csname\tempmacroname\endcsname}%
+    \else%% This is the first time this name is being used.
+        \edef\@asypicturename%
+            {\scantokens\expandafter{\jobname\noexpand}-#1}%
+        \expandafter\gdef\csname\tempmacroname\endcsname{1}%
+    \fi%
+    \xdef\asylistingfile{\@asypicturename.asy}
+}
+
+
+\def\FVB@asypicture#1{%
+     \@bsphack
+     \asyset{graphic options/.code={}}%
+     \asyset{#1, name/.get = \currentname}%
+     \ASYPIC@recordname{\currentname}%
+     \begingroup
+         \FV@UseKeyValues
+         \FV@DefineWhiteSpace
+         \def\FV@Space{\space}%
+         \FV@DefineTabOut
+         \def\FV@ProcessLine{\immediate\write\asy@OutFile}%
+         \immediate\openout\asy@OutFile\@tempasyfile.asy\relax
+         \immediate\write\asy@OutFile{\ASYPIC@header^^J}
+         \let\FV@FontScanPrep\relax
+         %% DG/SR modification begin - May. 18, 1998
+         %% (to avoid problems with ligatures)
+         \let\@noligs\relax
+         %% DG/SR modification end
+         \FV@Scan}
+
+\newcommand{\ASYPICcomparefiles}[2]{
+    \IfFileExists{\@asypicturename.asy}%
+        {\openin\@asyreadold=#1.asy\relax%
+          \openin\@asyreadnew=#2.asy\relax%
+          \asyfilechangedfalse%
+          \@asyrepeattrue%
+          \loop%
+              \ifeof\@asyreadold%
+                  \@asyrepeatfalse%
+                  \ifeof\@asyreadnew%
+                  \else%
+                      \asyfilechangedtrue%
+                  \fi%
+              \else%
+                  \ifeof\@asyreadnew%
+                      \@asyrepeatfalse%
+                      \asyfilechangedtrue%
+                  \else% Not at the end of either file in this case
+                      \read\@asyreadold to \oldfileline%
+                      \read\@asyreadnew to \newfileline%
+                      \ifx\oldfileline\newfileline%
+                          \@asyrepeattrue%
+                      \else
+                          \asyfilechangedtrue%
+                          \@asyrepeatfalse%
+                      \fi%
+                  \fi%
+              \fi%
+              \if@asyrepeat
+          \repeat%
+          \closein\@asyreadold%
+          \closein\@asyreadnew%
+        }%
+        {\asyfilechangedtrue}%
+    \IfFileExists{#1.pdf}{}{%
+        \IfFileExists{#1.png}{}{%
+            \IfFileExists{#1.eps}{}{%
+                \asyfilechangedtrue%
+            }%
+        }%
+    }%
+}
+
+\def\ASYPIC@runasy{%
+    \message{Attempting to run asy on \@asypicturename.asy^^J}%
+    \shell@execute{asy -noV \@asypicturename.asy 2> \@asyerrorfilename}%
+    \openin\@asyreadold=\@asyerrorfilename\relax%
+    \ifeof\@asyreadold%
+        \closein\@asyreadold%
+    \else%
+        \def\@asyerrormessage{^^JPossible Asymptote error:^^J}%
+        \read\@asyreadold to \@asyerrorfirstline%
+        \g@addto@macro\@asyerrormessage{\@asyerrorfirstline^^J}%
+        \ifeof\@asyreadold%
+            \closein\@asyreadold%
+        \else%
+            {\endlinechar=`^^J%
+            \loop%
+                \readline\@asyreadold to \@asytempmessage%
+                \expandafter\g@addto@macro\expandafter%
+                  \@asyerrormessage\expandafter{\@asytempmessage^^J}%
+            \unless\ifeof\@asyreadold\repeat%
+            }%
+            \closein\@asyreadold%
+            \g@addto@macro\@asyerrormessage{^^J}%
+            %Next: Need to process \@asyerrorfirstline to figure
+            %out the Asymptote file line number
+            \expandafter\def\expandafter\@asy@processerrorline%
+              \expandafter##\expandafter1\@asypicturename.asy:%
+               ##2.##3\relax{\xdef\@asy@errorline{\numexpr##2\relax}}%
+            {\expandafter\expandafter\expandafter%
+                \@asy@processerrorline\expandafter%
+                \@asyerrorfirstline\@asypicturename.asy: -5.\relax%
+            }%  The surrounding braces should prevent too much from
+             %  being gobbled in case the pattern doesn't match.
+            \openin\@asyreadold\@asypicturename.asy\relax%
+            \edef\numlinesout{5}
+            \setcounter{@asy@linenumber}{\numlinesout}
+            \loop\ifnum\value{@asy@linenumber}<\@asy@errorline%
+                \readline\@asyreadold to \temp%
+                \stepcounter{@asy@linenumber}%
+            \repeat%
+            %
+            \addtocounter{@asy@linenumber}{-\numlinesout}
+            %
+            {%
+                \endlinechar=`^^J%
+                \loop\ifnum\value{@asy@linenumber}<\@asy@errorline%
+                    \stepcounter{@asy@linenumber}%
+                    \edef\temp/{\arabic{@asy@linenumber}}%
+                    \expandafter\g@addto@macro\expandafter%
+                      \@asyerrormessage\expandafter{\temp/ }%
+                    \readline\@asyreadold to \@asytempmessage%
+                    \expandafter\g@addto@macro\expandafter%
+                      \@asyerrormessage\expandafter{\@asytempmessage}%
+                \repeat%
+            }%
+            \closein\@asyreadold%
+            \PackageError{asypictureB}{\@asyerrormessage}{%
+                The Asymptote run described above
+                gave a non-empty error log. I have^^J
+                reproduced the error log and attempted
+                to print the five lines leading^^J
+                up to the error. Press enter or return
+                to continue, and then fix your^^J
+                Asymptote code when this run is done.
+            }%
+        \fi%
+    \fi%
+}
+
+\def\FVE@asypicture{\immediate\closeout\asy@OutFile\endgroup%
+    \@esphack%
+    \ifASYPIC@flush%
+        \asyfilechangedtrue%
+    \else%
+        \ASYPICcomparefiles{\@asypicturename}{\@tempasyfile}%
+    \fi%
+    \ifasyfilechanged%
+        \IfFileExists{\@asypicturename.png}%
+            {\deletefile{\@asypicturename.png}}{}%
+        \IfFileExists{\@asypicturename.pdf}%
+            {\deletefile{\@asypicturename.pdf}}{}%
+        \IfFileExists{\@asypicturename.eps}%
+            {\deletefile{\@asypicturename.eps}}{}%
+        \copyfile{\@tempasyfile.asy}{\@asypicturename.asy}
+        \ASYPIC@runasy%
+    \fi%
+    \asyset{graphic options}%
+    % Avoid giving "file does not exist" errors.
+    \chardef\previousinteractionmode=\interactionmode%
+    \batchmode%
+    \includegraphics[scale=\asy@scale,angle=\asy@angle]%
+        {\@asypicturename}%
+    \interactionmode=\previousinteractionmode%
+}
+
+\DefineVerbatimEnvironment{asypicture}{asypicture}%
+    {codes={\catcode`@=0},tabsize=4}
+
+\ifshellescape\else
+    \AtEndDocument{\closeout\ASYPIC@shell}
+\fi
+
+\makeatother
+%% 
+%% Copyright (C) 2014 by Charles Staats III
+%% 
+%% This file may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License (LPPL), either
+%% version 1.3c of this license or (at your option) any later
+%% version. The latest version of this license is in the following file:
+%% 
+%%      http://www.latex-project.org/lppl.txt
+%% 
+%% This work is "maintained" (as per LPPL maintenance status) by
+%% Charles Staats III.
+%% 
+%% This work consists of the file  asypictureB.dtx
+%% and the derived files           asypictureB.ins,
+%%                                 asypictureB.pdf, and
+%%                                 asypictureB.sty.
+%% 
+%%
+%% End of file `asypictureB.sty'.

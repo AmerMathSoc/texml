@@ -1,0 +1,1395 @@
+% \iffalse meta-comment
+%
+% Copyright (C) 2013-2016 by Richard Gay <gay@mais.informatik.tu-darmstadt.de>
+% -------------------------------------------------------
+% 
+% This file may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.2
+% of this license or (at your option) any later version.
+% The latest version of this license is in:
+%
+%    http://www.latex-project.org/lppl.txt
+%
+% and version 1.2 or later is part of all distributions of LaTeX 
+% version 1999/12/01 or later.
+%
+% \fi
+%
+% \iffalse
+%<*driver>
+\ProvidesFile{typed-checklist.dtx}
+%</driver>
+%<package>\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+%<package>\ProvidesPackage{typed-checklist}
+%<*package>
+    [2016/03/30 v1.4 A package for layouting checklists]
+%</package>
+%
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage[columns=2]{idxlayout}
+\usepackage{etoolbox}
+\usepackage{xcolor}
+\usepackage{soul}
+\usepackage{csquotes}
+\usepackage{enumitem}
+\makeatletter
+\newlist{Dict}{itemize}{1}
+\setlist[Dict]{nosep,label={--},leftmargin=*,before*={\@minipagetrue}}
+\makeatother
+\usepackage{longtable,tabu,booktabs}
+\setlength{\tabulinesep}{0.75ex}
+\newcolumntype{C}{>{\normalfont\ttfamily}l<{}}% codelike
+\setlist[description]{style=nextline}
+\usepackage{showexpl}
+\lstset{gobble=2,frame=trbl,backgroundcolor=\color{black!5!white}}
+\lstset{explpreset={numbers=none,columns=flexible,basicstyle=\footnotesize\ttfamily}}
+\lstset{preset={\small\sffamily},overhang=2cm,pos=r}
+\usepackage{pbox}
+\newcommand\NiceDescribeStuff[2]{% #1=margin text, #2=body text
+  \medskip\par\noindent\leavevmode%
+  \marginpar{\hfill\pbox[t]{\marginparwidth}{\ttfamily #1}%
+    \hspace*{-\marginparsep}}%
+  \ifstrempty{#2}{}{#2\smallskip\\}}
+\newcommand\NiceDescribeEnv[2]{% #1=envname, #2=parameters
+  \NiceDescribeStuff{%
+    \textcolor{gray}{\cs{begin}}\string{#1\string}\\
+    \textcolor{gray}{\cs{end}}\string{#1\string}}{#2}}
+\newcommand\NiceDescribeMacro[2]{% #1=macro, #2=parameters
+  \NiceDescribeStuff{\hbox to 0pt{\hss\string#1}}{#2}}
+\usepackage{skull}
+\newcommand\Good{\dotfill\enspace\Checkmark\smallskip\break}
+\newcommand\Evil{\dotfill\enspace$\skull$\smallskip\break}
+\usepackage[withAsciilist=true]{typed-checklist}
+\usepackage{hypdoc}
+% The following macro simulates labels and references, assuming
+% labels are only referenced after they have been defined. This
+% is used in LTXexample environments, in which the normal label
+% and ref mechanism is otherwise disabled.
+\newcommand\FakeRefs{%
+  \def\ref##1{\csuse{fakelabel@##1}}%
+  \def\label##1{\global\csletcs{fakelabel@##1}{@currentlabel}}%
+  \let\marginpar=\origmarginpar
+}
+\let\origmarginpar=\marginpar
+\EnableCrossrefs
+\CodelineIndex
+\RecordChanges
+\begin{document}
+  \DocInput{typed-checklist.dtx}
+  \PrintChanges
+  \PrintIndex
+\end{document}
+%</driver>
+% \fi
+%
+% \CheckSum{0}
+%
+% \CharacterTable
+%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
+%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
+%   Digits        \0\1\2\3\4\5\6\7\8\9
+%   Exclamation   \!     Double quote  \"     Hash (number) \#
+%   Dollar        \$     Percent       \%     Ampersand     \&
+%   Acute accent  \'     Left paren    \(     Right paren   \)
+%   Asterisk      \*     Plus          \+     Comma         \,
+%   Minus         \-     Point         \.     Solidus       \/
+%   Colon         \:     Semicolon     \;     Less than     \<
+%   Equals        \=     Greater than  \>     Question mark \?
+%   Commercial at \@     Left bracket  \[     Backslash     \\
+%   Right bracket \]     Circumflex    \^     Underscore    \_
+%   Grave accent  \`     Left brace    \{     Vertical bar  \|
+%   Right brace   \}     Tilde         \~}
+%
+%
+% \changes{v0.1}{2013/10/26}{Initial version}
+% \changes{v0.2}{2013/11/05}{Better handling of empty ``who''}
+% \changes{v0.3}{2013/11/05}{Added deadline and label support}
+% \changes{v0.4}{2013/12/09}{Added ``dropped'' tasks}
+% \changes{v0.4b}{2013/12/10}{Fix package dependencies (xcolor)}
+% \changes{v0.5}{2013/12/14}{Added ``dropped'' artifacts}
+% \changes{v0.6}{2014/05/19}{Indication of closed checklist entries}
+% \changes{v1.0}{2014/08/22}{First documented version}
+% \changes{v1.1}{2014/08/23}{Added definable layouts}
+% \changes{v1.3}{2015/04/01}{Support for combining checklists with \textsf{asciilist}}
+%
+% \GetFileInfo{typed-checklist.dtx}
+%
+% \DoNotIndex{\newcommand,\newenvironment,\def,\gdef,\edef}
+%
+%
+% \title{The \textsf{typed-checklist} package\thanks{This document
+%   corresponds to \textsf{typed-checklist}~\fileversion, dated \filedate.
+%   The package is available online at
+%   \url{http://www.ctan.org/pkg/typed-checklist} and
+%   \url{https://github.com/Ri-Ga/typed-checklist}.}}
+% \author{Richard Gay \\ \texttt{gay@mais.informatik.tu-darmstadt.de}}
+%
+% \maketitle
+%
+% \begin{abstract}
+% The main goal of the \textsf{typed-checklist} package is to provide
+% means for typesetting checklists in a way that stipulates users to
+% explicitly distinguish checklists for goals, for tasks, for
+% artifacts, and for milestones -- i.e., the \emph{type} of checklist
+% entries.
+% The intention behind this is that a user of the package is coerced to
+% think about what kind of entries he/she adds to the checklist. This
+% shall yield a clearer result and, in the long run, help with training
+% to distinguish entries of different types.
+% \end{abstract}
+%
+% \section{Motivation and Disambiguation}
+%
+% The development of this package was driven with two goals in mind:
+% \begin{enumerate}
+% \item having a package with which one can easily typeset checklists and
+%   in a way that separates content from layout;
+% \item having a thinking tool that helps distinguishing between goals
+%   and tasks.
+% \end{enumerate}
+% The first goal felt natural to me since from time to time I manage
+% checklists in \LaTeX{} documents, mostly because I like it when the
+% result looks typeset nicely.
+% The second goal arose from an observation about some of my own
+% checklists as well as checklists created by others: Quite frequently,
+% the checklists mixed goals and tasks or had goals formulated as tasks
+% and vice versa. As a consequence, the checklists were formulated
+% unnecessarily unclear and were more difficult to understand by others.
+%
+% This package approaches particularly the second goal by providing
+% checklists with a \emph{type}. A checklist of a particular type shall
+% then only contain entries of this type.
+%
+% While the package allows one to define custom checklist types (see
+% Section~\ref{sec:customizing}), it comes with four basic types:
+% |Artifact|, |Goal|, |Milestone|, and |Task|. In this documentation,
+% the terms \enquote{artifact}, \enquote{goal}, \enquote{milestone}, and
+% \enquote{task} will be used along the lines of the following
+% definitions (highlights added):
+% \begin{description}[leftmargin=!,labelwidth=\widthof{\bfseries milestone:}]
+% \item[artifact:]
+%   \begin{Dict}
+%   \item\textquote[\href{https://en.wiktionary.org/wiki/artifact}{Wiktionary}]{An \hl{object} made or shaped by human hand.}
+%   \end{Dict}
+% \item[goal:]
+%   \begin{Dict}
+%   \item\textquote[\href{http://www.businessdictionary.com/definition/goal.html}{BusinessDictionary.com}]{An observable and measurable \hl{end result} having one or more objectives to be achieved within a more or less fixed timeframe.}
+%   \item\textquote[\href{http://www.merriam-webster.com/dictionary/goal}{Merriam-Webster}]{the \hl{end} toward which effort is directed}
+%   \item\textquote[\href{http://www.oxforddictionaries.com/de/definition/englisch_usa/goal?q=Goal}{Oxford Dictionaries}]{The object of a person’s ambition or effort; an aim or desired \hl{result}}
+%   \item\textquote[\href{https://en.wiktionary.org/wiki/goal}{Wiktionary}]{A \hl{result} that one is attempting to achieve.}
+%   \end{Dict}
+% \item[milestone:]
+%   \begin{Dict}
+%   \item\textquote[\href{https://en.wiktionary.org/wiki/milestone}{Wiktionary}]{An important event \textelp{} in the life of some project}
+%   \end{Dict}
+% \item[task:]
+%   \begin{Dict}
+%   \item\textquote[\href{http://www.merriam-webster.com/dictionary/task}{Merriam-Webster}]{a usually assigned \hl{piece of work} often to be finished within a certain time}
+%   \item\textquote[\href{https://en.wiktionary.org/wiki/task}{Wiktionary}]{A \hl{piece of work} done as part of one’s duties.}
+%   \end{Dict}
+% \end{description}
+% We could connect the four terms as follows.
+% Typically, the \textquote{piece of work} that constitutes a task is
+% performed for achieving some goal. One can also say that a goal
+% serves as a reference point for why and how one should perform certain
+% tasks. A goal can be that a particular artifact or set of artifacts is
+% available at some point in time. A milestone is a group of goals whose
+% achievement is of importance for something bigger.
+% These connections suggest that nesting different types of checklists
+% is reasonable -- and it is supported by the \textsf{typed-checklist}
+% package.
+%
+% \section{Recommendations for Structuring Checklists}
+%
+% The \textsf{typed-checklist} package allows checklists of different
+% types as well as of identical types to be nested. That is, within a
+% checklist, another checklist can be placed. The following list
+% discusses some combinations of nested checklist types and provides
+% some recommendations of what types could be nested for
+% particular purposes and what types should better not be nested.
+% \begin{enumerate}
+% \item tasks in goals\Good
+%   This nesting combination could be used for listing tasks whose
+%   accomplishment would lead to the satisfaction of the
+%   superordinated goal.
+% \item goals in goals\Good
+%   This nesting combination could be used for explicitly listing
+%   sub-goals (and sub-sub-goals and \ldots) to a goal. That is,
+%   using this nesting combination you can express the result of
+%   breaking down goals into sub-goals. Used reasonably, this nesting
+%   should be used in a way that the sub-goals, when achieved, yield
+%   the superordinated goal to be achieved (at least with high
+%   probability and/or to a significant extent).
+% \item tasks in tasks\Good
+%   This nesting combination could be used for listing all sub-tasks
+%   to a task. That is, using this nesting combination you can express
+%   the result of breaking down tasks into sub-tasks.
+% \item goals in milestones\Good
+%   This nesting combination could be used for listing all goals that
+%   must be achieved, at a particular date, for calling a
+%   milestone achieved.
+% \item artifacts in milestones\Good
+%   This nesting combination could be used for listing all artifacts
+%   that must exist, at a particular date, for calling a milestone
+%   achieved.
+% \item goals in tasks\Evil
+%   This nesting lacks a clearly recognizable meaning. The use of this
+%   kind of nesting might be an indicator for a misunderstanding of
+%   goals or tasks, or it might be the result of too vague
+%   formulations of goals or tasks that do not reveal that something
+%   is wrong in the planning.
+% \item milestones in milestones\Evil
+%   A milestone, as cited, is an important event. Having
+%   sub-milestones would blur the notion of important events by
+%   introducing multiple levels of important events. Instead of
+%   nesting milestones, one could nest goals or artifacts in
+%   milestones to express intermediate stages of a milestone.
+% \end{enumerate}
+%
+% \section{Basic Usage}
+%
+% The following example demonstrates a basic use of the package.
+%
+% \begin{LTXexample}
+% \documentclass{article}
+% \usepackage{typed-checklist}
+% \begin{document}
+% \begin{CheckList}{Goal}
+%   \Goal{open}{I have a trendy haircut}
+%     \begin{CheckList}{Task}
+%       \Task{done}{find a hairdresser}
+%       \Task{started}{make an appointment}
+%       \Task{open}{go to the hairdresser}
+%     \end{CheckList}
+%   \Goal{achieved}{I have a typed checklist}
+% \end{CheckList}
+% \end{document}
+% \end{LTXexample}
+% The example contains a checklist for goals and the first goal contains
+% a checklist for tasks. Checklist entries have a status and a
+% description. In the typeset result, the checklist type is reflected by
+% a basic symbol (an empty circle for a goal and an empty box for a
+% task) that is decorated depending on the status (e.g., with a
+% check mark). The entry's description is shown next to the symbol.
+%
+% \NiceDescribeEnv{CheckList}{\oarg{options}\marg{type}}
+% Checklists are created via the |CheckList| environment.
+% The \meta{type} parameter determines the type of all checklist entries
+% in the environment. The \textsf{typed-checklist} package comes with
+% four predefined types: |Goal|, |Task|, |Artifact|, and |Milestone|.
+% Each of the types comes with a macro of the same name as the type.
+% With this macro, the entries of the checklist can be created.
+%
+% The \meta{options} can be a comma-separated list of
+% \meta{key}|=|\meta{value} pairs. The following keys can be set:
+% \begin{itemize}
+% \item With the |layout| key, the layout of the checklist can be
+%   chosen. Supported layouts are |list| (a list-based layout with
+%   each entry being a list item), |table| (a table-based layout with
+%   each entry being a table row), and |hidden| (a layout that does
+%   not display the entries).
+% \end{itemize}
+% A checklist can be viewed as a list of entries (even if the layout is
+% actually tabular). The macros for creating the entries are described
+% next.
+%
+% \NiceDescribeMacro{\Goal}{\oarg{options}\marg{status}\marg{description}}
+% Inside a checklist of type |Goal|, the |\Goal| macro specifies a goal.
+% Every goal comes at least with a \meta{description} and a
+% \meta{status}. The \meta{description} can, technically, be anything
+% that is displayable in the given checklist |layout|. However, for the
+% purpose of a meaningful checklist, the \meta{description} should be a
+% clear description of a goal in a full sentence\footnote{Incomplete
+% sentences typically tend to be less clear.}. The \meta{status}
+% parameter selects the most recent known status of the goal. This
+% parameter can assume any of the following values\footnote{See
+% Section~\ref{sec:AddingStates} to find out how custom states can be
+% defined}:
+% \begin{longtabu}{@{}CX@{}}
+% achieved &
+%   This value specifies that the goal has been achieved. Depending on
+%   how the \meta{description} was formulated, this might mean that in
+%   the respective situation the \meta{description} is a true
+%   statement.\\
+% dropped &
+%   This value specifies that the goal was a goal once but is no longer
+%   a goal that shall be pursued. This value allows one to preserve
+%   historical information about a checklist.\\
+% unclear &
+%   This value specifies that the goal somehow exists but is not yet
+%   clear enough to those who pursue the goal (or: who typeset the
+%   checklist) for actually pursuing the goal.\\
+% open &
+%   This value specifies the negation of all aforementioned values. That
+%   is, the goal is clear but neither achieved yet nor dropped.\\
+% \end{longtabu}
+% The \meta{options}\label{EntryOptions} allow one to specify further
+% details about the goal. The \meta{options} must be a possibly empty,
+% comma-separated list of \meta{key}|=|\meta{value} pairs. The
+% \meta{key} must be one of the following values\footnote{See
+% Section~\ref{sec:AddingEntryKeys} to find out how custom \meta{key}s
+% can be defined.}:
+% \begin{longtabu}{@{}CX@{}}
+% who &
+%   This option declares who is responsible for making sure the
+%   checklist entry is addressed. Remember to put the value in curly
+%   braces if it contains commas.\\
+% deadline &
+%   This option declares a deadline for the checklist entry, i.e., a date
+%   until which the entry must be addressed at latest. The deadline must
+%   be of the format ``\meta{day}.\meta{month}.\meta{year}''.\\
+% label &
+%   This option declares a label name for the checklist entry. This is
+%   analogous to the \cs{label} macro of \LaTeX. The entry's label is
+%   displayed next to the entry. A reference to a labeled checklist
+%   entry can be made using the \cs{ref} macro of \LaTeX{}.\\
+% \end{longtabu}
+%
+% \NiceDescribeMacro{\Task}{\oarg{options}\marg{status}\marg{description}}
+% Inside a checklist of type |Task|, the |\Task| macro specifies a task.
+% Every task comes at least with a \meta{description} and a
+% \meta{status}. The \meta{description} can, technically, be anything
+% that is displayable in the given checklist |layout|. However, for the
+% purpose of a meaningful checklist, the \meta{description} should be a
+% clear description of a task in a full sentence, possibly in imperative
+% form\footnote{For a \meta{description} in imperative form, the
+% \texttt{who} option can be used to specify who is addressed by the
+% \meta{description}.}. The \meta{status} parameter selects the most
+% recent known status of the task. This parameter can assume any of the
+% following values:
+% \begin{longtabu}{@{}CX@{}}
+% open &
+%   This value specifies that the task is still planned but has not
+%   yet been started.\\
+% dropped &
+%   This value specifies that the task was originally planned but is
+%   no longer part of the plan.\\
+% unclear &
+%   This value specifies that the task itself or its current status is
+%   unclear.\\
+% started &
+%   This value specifies that someone has started to perform the task,
+%   but has not finished yet.\\
+% done &
+%   This value specifies that someone has accomplished the task.
+%   Depending on the clarity and level of detail of the
+%   \meta{description}, whether accomplishing the task yielded a
+%   meaningful outcome might be more or less subjective to the person
+%   who accomplished the task.\\
+% \end{longtabu}
+% The \meta{options} parameter can be set as documented for the
+% |\Goal| macro on page~\pageref{EntryOptions}.
+%
+% \NiceDescribeMacro{\Artifact}{\oarg{options}\marg{status}\marg{description}}
+% Inside a checklist of type |Artifact|, the |\Artifact| macro specifies
+% an artifact.
+% Every artifact comes at least with a \meta{description} and a
+% \meta{status}. The \meta{description} can, technically, be anything
+% that is displayable in the given checklist |layout|. However, for the
+% purpose of a meaningful checklist, the \meta{description} should be a
+% clear identification of the artifact and its required attributes.
+% The \meta{status} parameter selects the most recent known status of
+% the artifact. This parameter can assume any of the following values:
+% \begin{longtabu}{@{}CX@{}}
+% missing &
+%   This value specifies that the artifact is missing yet.\\
+% dropped &
+%   This value specifies that the artifact was originally planned but
+%   is no longer part of the plan.\\
+% unclear &
+%   This value specifies that the artifact itself or its current
+%   status is unclear.\\
+% incomplete &
+%   This value specifies that some non-negligible parts of the
+%   artifact exist but the artifact does not yet exist in its final
+%   form\\
+% available &
+%   This value specifies that the artifact exists and available.\\
+% \end{longtabu}
+%
+% \NiceDescribeMacro{\Milestone}{\oarg{options}\marg{status}\marg{description}}
+% Inside a checklist of type |Milestone|, the |\Milestone| macro
+% specifies a milestone.
+% Every milestone comes at least with a \meta{description} and a
+% \meta{status}. The \meta{description} can, technically, be anything
+% that is displayable in the given checklist |layout|. However, for the
+% purpose of a meaningful checklist, the \meta{description} should be a
+% clear identification of what has to exist or must have been
+% fulfilled.
+% The \meta{status} parameter selects the most recent known status of
+% the milestone. This parameter can assume any of the following values:
+% \begin{longtabu}{@{}CX@{}}
+% open &
+%   This value specifies that the milestone has not yet been achieved.\\
+% achieved &
+%   This value specifies that the milestone has been achieved.\\
+% \end{longtabu}
+%
+% \subsection{Example}\label{sec:NestOptExample}
+% The following example shows the use of nested checklists and the use
+% of the options |layout|, |deadline|, |label|, and |who|. Note that
+% deadlines normally are displayed in the margin of the document, which
+% is not the case in this documentation.
+% \begin{LTXexample}[pos=t,preset=\FakeRefs]
+% \begin{CheckList}{Goal}
+%   \Goal[deadline=31.12.999]{achieved}{No Y1K problems}
+%   \Goal[who=John,deadline=31.12.1999]{open}{No Y2K problems}
+%     \begin{CheckList}[layout=table]{Task}
+%       \Task[who=John,label=Fix1]{started}{Repair all programs}
+%       \Task[who=Mankind,deadline=31.12.1999]
+%           {open}{Just turn off all computers, if \ref{Fix1} fails}
+%     \end{CheckList}
+%   \Goal[deadline=31.12.9999]{unclear}{No Y10K problems}
+% \end{CheckList}
+% \end{LTXexample}
+%
+%
+% \section{Customized Checklists}\label{sec:customizing}
+%
+% The \textsf{typed-checklist} package comes with a set of layouts,
+% checklist types, checklist entry states, and checklist entry
+% options. These together shall provide everything needed for
+% typesetting even checklists with complex structures. When the
+% default is not enough, you can use the macros described in this
+% section for creating your own layouts, types, states, and options.
+%
+% \subsection{Defining Checklist Types}\label{sec:AddingTypes}
+%
+% \NiceDescribeMacro{\CheckListAddType}{\marg{type}\marg{symbol}}
+% Using this macro, you can add a new checklist type. The name of the
+% type, i.e., the name that can be used as argument to the |CheckList|
+% environment, is specified by \meta{type}.
+% The basic symbol of entries belonging to this checklist type will be
+% \meta{symbol} (e.g., an empty box or circle). All status-symbols (see
+% Section~\ref{sec:AddingStates}) are drawn on top of \meta{symbol}.
+%
+% Note that the \textsf{typed-checklist} package uses this macro also
+% for creating each of the four default checklist types.
+%
+% \subsection{Defining Checklist Entry States}\label{sec:AddingStates}
+%
+% \NiceDescribeMacro{\CheckListAddStatus}{\marg{types}\marg{status}\marg{isclosed}\marg{symbol}}
+% Using this macro, you can add a new checklist entry status for
+% selected checklist types. The name of the status to define is
+% specified by the \meta{status} argument. The checklist types to which
+% the status is added, are provided by the \meta{types} argument, a
+% comma-separated list.
+% The \meta{symbol} is \LaTeX{} code of a symbol
+% that is put on top of the checklist type's symbol. The \meta{isclosed}
+% parameter must be one of |true| or |false|. A value of |true|
+% indicates that the status of the entry corresponds to the entry being
+% closed. This particularly means that no warning will be shown if the
+% deadline of an entry with this status is passed. A value of |false|
+% for \meta{isclosed} indicates that the \meta{status} corresponds to
+% the entry not yet being closed.
+%
+% Note that the \textsf{typed-checklist} package uses this macro also
+% for creating the provided states of the four default checklist types.
+%
+% \subsection{Defining Checklist Layouts}\label{sec:AddingEntryKeys}
+% \NiceDescribeMacro{\CheckListDeclareLayout}{\marg{name}\marg{fields}\marg{begin}\marg{end}}
+% Using this macro, you can add a new checklist layout.
+% The \meta{begin} and \meta{end} part is similar to a
+% |\newenvironment|. The \meta{fields} must be a comma-separated list
+% of field names that can be the names of the checklist entry options
+% (plus ``description'' and ``status'') but can assume other values.
+%
+% \NiceDescribeMacro{\CheckListDefineFieldFormat}{\marg{layout}\marg{field}\marg{code}}
+% After the new type has been added, for each field in the
+% comma-separated \meta{fields}, this
+% macro must be used to define how a field is formatted. The
+% \meta{code} can take one argument, through which it is passed the
+% entry's option with name \meta{field}.
+%
+% \NiceDescribeMacro{\CheckListExtendLayout}{\marg{name}\marg{base}\marg{fields}}
+% Using this macro, you can extend an existing checklist layout.
+% Afterwards, the layout \meta{name} is available. This layout takes
+% the \meta{begin} and \meta{end} code from the \meta{base} layout.
+% Moreover, all fields defined by the \meta{base} layout can be used
+% in the \meta{fields} parameter of the new layout. However,
+% additional fields can be defined and the format of the fields for
+% the new layout can be overwritten via |\CheckListDefineFieldFormat|.
+% 
+% \section{Checklists and Other Packages}
+%
+% \subsection{asciilist}
+%
+% The \textsf{typed-checklist} package can be combined with the
+% \textsf{asciilist} package in the sense that a checklist can be
+% defined within an |AsciiList| environment. The
+% \textsf{typed-checklist} package provides a syntax for this when the
+% package is loaded with the |withAsciilist=true| option. The syntax
+% is illustrated with the following snippet, a transformed version of
+% the example in Section~\ref{sec:NestOptExample}:
+% \begin{LTXexample}[pos=t,preset=\FakeRefs]
+% \usepackage[withAsciilist=true]{typed-checklist}
+% \begin{AsciiList}[GoalList,TaskList]{-,*}
+%   - achieved[deadline=31.12.999]: No Y1K problems
+%   - open[who=John,deadline=31.12.1999]: No Y2K problems
+%     * started[who=John,label=Fix2]: Repair programs
+%     * open[who=Mankind,deadline=31.12.1999]:%
+%         Just turn off all computers, if \ref{Fix2} fails
+%   - unclear[deadline=31.12.9999]: No Y10K problems
+% \end{AsciiList}
+% \end{LTXexample}
+% For each checklist type \meta{type} (added by
+% |\CheckListAddType|), an |AsciiList| environment
+% \meta{type}|List| is automatically created.
+%
+% Note that currently, a checklist entry in an |AsciiList| environment
+% must fit into a single line \emph{or} each except for the last line
+% is ended with a percent char (as in the above example).
+% Note also that the |table| layout does not work within an |AsciiList|
+% environment.
+%
+% \section{Related Packages}
+%
+% The following \LaTeX{} packages provide related functionalities to
+% the \textsf{typed-checklist} package.
+%
+% \begin{description}
+% \item[\textsf{todo}:]
+%   The package allows for typesetting ``to-dos'', i.e., tasks in some
+%   sense, in a simple way with customizable display. The three main
+%   conceptual differences between \textsf{todo} and
+%   \textsf{typed-checklist} are:
+%   \begin{enumerate}
+%   \item \textsf{todo} does not distinguish between different types
+%     (such as goals and tasks);
+%   \item \textsf{todo} does not allow one to provide a status for a
+%     to-do and rather assumes that done to-dos are simply removed from
+%     the document;
+%   \item \textsf{todo} aims at specifying tasks for document into which
+%     the to-dos are placed, while \textsf{typed-checklist} aims at
+%     typesetting checklists whose entries are for more general kinds of
+%     projects.
+%   \end{enumerate}
+% \item[\textsf{easy-todo}:]
+%   The package is similar in spirit to the \textsf{tood} package and
+%   shares the main differences to the \textsf{typed-checklist} package.
+% \item[\textsf{todonotes}:]
+%   The package is similar in spirit to \textsf{todo} and
+%   \textsf{easy-tood}, but provide more formatting options for the
+%   to-dos.
+% \item[\textsf{pgfgantt}:]
+%   The package allows one to create Gantt charts, i.e., graphical
+%   displays of activities and milestones with a focus on time frames.
+%   The package allows one to structure the activities into groups. In
+%   that sense, there are certain similarities between the packages. The
+%   main conceptual difference to \textsf{typed-checklist} is the form
+%   of presentation (time-centric Gantt chart vs. text-centric lists).
+% \end{description}
+%
+% \section{Limitations and Future Work}
+%
+% \begin{itemize}
+% \item In |twoside| documents, deadlines are currently displayed in the
+%   left margin on even pages. The default layout (|list|) does not look
+%   good then. This should be repaired. The same problem is with
+%   checklist entry labels, which are displayed on the other side.
+% \item The package automatically adds the pre-defined checklist types
+%   and states, which might have two draws for some users: firstly, this
+%   adds a dependency on symbol packages, which might not work well
+%   together with some fonts; secondly, some users might prefer other
+%   definitions of the standard checklist types.
+%   To improve the situation, the package could offer an option for
+%   disabling the definition of the standard checklist types. Concerning
+%   the symbols packages, \textsf{typed-checklist} could also reduce the
+%   set of used packages or even draw all symbols itself.
+% \item The date format for deadlines currently is ``DD.MM.YYYY''. We
+%   could make the package more flexible in this regard by offering
+%   other formats as well, for instance by using the \textsf{datetime2}
+%   package.
+% \item The package displays checklist entries in the ordering in which
+%   they are listed in the \LaTeX{} sources. Automatic sorting of
+%   checklist entries, for instance by deadline or future fields like
+%   priority/importance, might make the package even more useful for
+%   bigger checklists.
+%   The implementation of the feature could be inspired by the following
+%   \textsf{stackexchange} thread:
+%   \url{http://tex.stackexchange.com/questions/6988/how-to-sort-an-alphanumeric-list}
+% \end{itemize}
+%
+% \clearpage
+% \section{Pre-defined Checklist Types and States}
+% \begin{LTXexample}
+% \paragraph{Goals}
+% \begin{CheckList}{Goal}
+%   \Goal{open}{open goal}
+%   \Goal{dropped}{dropped goal}
+%   \Goal{unclear}{unclear goal}
+%   \Goal{achieved}{achieved goal}
+% \end{CheckList}
+% \paragraph{Tasks}
+% \begin{CheckList}{Task}
+%   \Task{open}{open task}
+%   \Task{dropped}{dropped task}
+%   \Task{unclear}{unclear task}
+%   \Task{started}{started task}
+%   \Task{done}{done task}
+% \end{CheckList}
+% \paragraph{Artifacts}
+% \begin{CheckList}{Artifact}
+%   \Artifact{missing}{missing artifact}
+%   \Artifact{dropped}{dropped artifact}
+%   \Artifact{unclear}{unclear artifact}
+%   \Artifact{incomplete}{incomplete artifact}
+%   \Artifact{available}{available artifact}
+% \end{CheckList}
+% \paragraph{Milestones}
+% \begin{CheckList}{Milestone}
+%   \Milestone{open}{open milestone}
+%   \Milestone{achieved}{achieved milestone}
+% \end{CheckList}
+% \end{LTXexample}
+%
+%
+% \clearpage
+%
+% \StopEventually{}
+%\iffalse
+%<*package>
+%\fi
+%
+% \section{Implementation}
+%
+% \subsection{Package Options}
+%
+% We use the \textsf{xkeyval} package for declaring package options as
+% well as for option lists of entry types.
+%    \begin{macrocode}
+\RequirePackage{xkeyval}
+%    \end{macrocode}
+% The |withAsciilist| option enables support for the
+% \textsf{asciilist} package.
+%    \begin{macrocode}
+\define@boolkey{typed-checklist.sty}[tchklst@]{withAsciilist}{}
+\ProcessOptionsX
+%    \end{macrocode}
+%
+% \subsection{Basic Package Dependencies}
+%
+% We use the \textsf{etoolbox} package for simpler handling of lists.
+%    \begin{macrocode}
+\RequirePackage{etoolbox}
+%    \end{macrocode}
+% We use colors for deadlines, for instance.
+%    \begin{macrocode}
+\RequirePackage{xcolor}
+%    \end{macrocode}
+% If the package is loaded with \textsf{asciilist} support, we load
+% the package here.
+%    \begin{macrocode}
+\iftchklst@withAsciilist
+\RequirePackage{asciilist}
+\fi
+%    \end{macrocode}
+%
+% \subsection{Checklist and Entry Options}
+% \label{sec:Impl-ChecklistOptions}
+% In the following, we define the possible options for a checklist.
+%    \begin{macrocode}
+\define@cmdkey[tchklst]{ListOption}{layout}[\tchklst@defaultlayout]{}
+\presetkeys[tchklst]{ListOption}{layout}{}
+%    \end{macrocode}
+%
+% \begin{macro}{\CheckListDefaultLayout}
+% The |\CheckListDefaultLayout|\marg{layout} macro sets the default
+% layout for all |CheckList| environments that do not set the |layout|
+% option explicitly.
+% \changes{v1.2b}{2015/04/01}{Enabled setting default checklist layouts}
+%    \begin{macrocode}
+\newcommand*\CheckListDefaultLayout[1]{%
+  \ifinlist{#1}{\tchklst@ChecklistLayouts}{}{%
+    \PackageError{typed-checklist}{%
+      Checklist layout `#1' cannot be made default:
+      it does not exist}{}}%
+  \def\tchklst@defaultlayout{#1}}
+\def\tchklst@defaultlayout{list}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\CheckListAddEntryOption}
+% The |\CheckListAddEntryOption|\marg{option}\marg{default} macro
+% declares a new \meta{option} that can be used when defining checklist
+% entries. An option always comes with a \meta{default} value.
+% \changes{v1.2}{2015/03/20}{Added \cs{CheckListAddEntryOption} macro}
+%    \begin{macrocode}
+\newcommand*\CheckListAddEntryOption[2]{%
+  \define@cmdkey[tchklst]{EntryOption}{#1}[#2]{}%
+  \presetkeys[tchklst]{EntryOption}{#1}{}}
+%    \end{macrocode}
+% \end{macro}
+%
+% In the following, we define a basic default set of possible options
+% for a checklist entry.
+%    \begin{macrocode}
+\CheckListAddEntryOption{who}{}
+\CheckListAddEntryOption{deadline}{}
+\CheckListAddEntryOption{label}{}
+%    \end{macrocode}
+%
+% \subsection{Checklist Types}
+% In the following, we implement the existing types of checklists as
+% well as the macros for declaring new types.
+%
+% \begin{macro}{\tchklst@ChecklistTypes}
+% The |\tchklst@ChecklistTypes| collects the list of known checklist types.
+% Initially, the list is empty.
+%    \begin{macrocode}
+\newcommand*\tchklst@ChecklistTypes{}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\CheckListAddType}
+% The |\CheckListAddType|\marg{type}\marg{symbol} adds a new
+% checklist type with name \meta{type} to the list of known
+% checklist types. The basic symbol of entries belonging to this
+% checklist type will be \meta{symbol} (e.g., an empty box or circle).
+%    \begin{macrocode}
+\newcommand*\CheckListAddType[2]{%
+%    \end{macrocode}
+% Add new type to existing list, if the type is not already known.
+%    \begin{macrocode}
+  \ifinlist{#1}{\tchklst@ChecklistTypes}{%
+    \PackageError{typed-checklist}{%
+      Checklist type `#1' already defined}{}}{}
+  \listadd\tchklst@ChecklistTypes{#1}%
+%    \end{macrocode}
+% Save the symbol of the new type.
+%    \begin{macrocode}
+  \expandafter\def\csname tchklst@ChecklistTypeSym@#1\endcsname{#2}%
+%    \end{macrocode}
+% Create an initially empty list of possible states that entries of the
+% type can have.
+%    \begin{macrocode}
+  \expandafter\def\csname tchklst@ChecklistStates@#1\endcsname{}%
+%    \end{macrocode}
+% If \textsf{asciilist} support is enabled, register an environment
+% for the checklist type.
+% \changes{v1.3c}{2015/08/24}{Enabled use of optional arguments for
+%                             \textsf{asciilist} environments}
+%    \begin{macrocode}
+  \iftchklst@withAsciilist
+    \AsciiListRegisterEnv{#1List}%
+      {\tchklst@aux@OargAfter{\CheckList{#1}}}%
+      {\endCheckList}%
+      {\AsciiListEndArg{\tchklst@ChkListEntry{\csname #1\endcsname}}}%
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tchklst@aux@OargAfter}
+% The |\tchklst@aux@OargAfter|\marg{macro-use}\oarg{opt-arg} macro takes a
+% \meta{macro-use} without optional arguments and subsequently an
+% optional argument. If the optional argument is given, then this is
+% added to the \meta{macro-use} in a way that the macro uses the
+% optional argument. If no optional argument is given, then the
+% \meta{macro-use} is taken as is.
+%
+% Example use: |\tchklst@aux@OargAfter{\cite{foo}}[page 9]| would expand
+% to |\tchklst@aux@OargAfter@ii{\cite}{page 9}{foo}| and, finally, to
+% |\cite[page 9]{foo}|.
+%    \begin{macrocode}
+\newcommand\tchklst@aux@OargAfter[1]{%
+  \@ifnextchar[{\tchklst@aux@OargAfter@i{#1}}{#1}}
+\long\def\tchklst@aux@OargAfter@i#1[#2]{%
+  \tchklst@aux@OargAfter@ii{#2}#1}
+\newcommand\tchklst@aux@OargAfter@ii[2]{%
+  #2[#1]}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tchklst@CheckType}
+% The |\tchklst@CheckType|\marg{type} is a convenience macro for checking
+% whether the checklist type \meta{type} is defined. This macro yields
+% an error with a simple message if \meta{type} is not defined.
+%    \begin{macrocode}
+\newcommand*\tchklst@CheckType[1]{%
+  \ifinlist{#1}{\tchklst@ChecklistTypes}{}{%
+    \PackageError{typed-checklist}%
+      {Unknown checklist type `#1'}
+      {Known types are:\forlistloop{ }{\tchklst@ChecklistTypes}}}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Checklist Entry States}
+% In the following, we implement the existing status possibilities of
+% the individual checklist types as well as macros for declaring a new
+% status.
+%
+% \begin{macro}{\CheckListAddStatus}
+% The |\CheckListAddStatus|\marg{types}\marg{status}\marg{isclosed}\marg{symbol}
+% macro declares a new \meta{status} for a given comma-separated list of
+% checklist \meta{types}. The \meta{symbol} is \LaTeX{} code of a symbol
+% that is put on top of the checklist type's symbol. The \meta{isclosed}
+% parameter must be one of |true| or |false|. A value of |true|
+% indicates that the status of the entry corresponds to the entry being
+% closed. This particularly means that no warning will be shown if the
+% deadline of an entry with this status is passed. A value of |false|
+% for \meta{isclosed} indicates that the \meta{status} corresponds to
+% the entry not yet being closed.
+%    \begin{macrocode}
+\newcommand*\CheckListAddStatus[4]{%
+%    \end{macrocode}
+% We loop over all the checklist \meta{types} given.
+%    \begin{macrocode}
+    \forcsvlist%
+%    \end{macrocode}
+% In the following line, the actual type parameter is added last by the
+% |\forcsvlist| macro.
+%    \begin{macrocode}
+      {\tchklst@AddStatus{#2}{#3}{#4}}%
+      {#1}}%
+%    \end{macrocode}
+% \begin{macro}{\tchklst@AddStatus}
+% The
+% |\tchklst@AddStatus|\marg{status}\marg{isclosed}\marg{symbol}\marg{type}
+% has the same parameters (in different ordering) and intention as
+% the |\CheckListAddStatus| macro, except that it assumes a single
+% \meta{type} instead of a type list. This macro is used internally by
+% |\CheckListAddStatus|.
+%    \begin{macrocode}
+\newcommand*\tchklst@AddStatus[4]{%
+%    \end{macrocode}
+% Some argument checking up front.
+%    \begin{macrocode}
+  \tchklst@CheckType{#4}%
+  \ifinlistcs{#1}{tchklst@ChecklistStates@#4}{%
+    \PackageError{typed-checklist}{%
+      #4-checklist state `#1' already defined}{}}{}
+%    \end{macrocode}
+% Register the status for the checklist type.
+%    \begin{macrocode}
+  \listcsadd{tchklst@ChecklistStates@#4}{#1}%
+%    \end{macrocode}
+% Register the status symbol and ``isclosed''.
+%    \begin{macrocode}
+	\expandafter\def\csname tchklst@isclosed@#4@#1\endcsname{#2}%
+	\expandafter\def\csname tchklst@sym@#4@#1\endcsname{#3}}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\tchklst@CheckTypeStatus}
+% The |\tchklst@CheckTypeStatus|\marg{type}\marg{status} is a convenience
+% macro for checking whether the checklist entry status \meta{status} is
+% defined for checklist type \meta{type}.  This macro yields an error
+% with a simple message if \meta{status} is not defined.
+%    \begin{macrocode}
+\newcommand*\tchklst@CheckTypeStatus[2]{%
+  \ifinlistcs{#2}{tchklst@ChecklistStates@#1}{}{%
+    \PackageError{typed-checklist}%
+      {Unknown #1-checklist entry status `#2'}%
+      {Known states are:\forlistcsloop{ }{tchklst@ChecklistStates@#1}}}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tchklst@getsymbol}
+% The |\tchklst@getsymbol|\marg{status} is a convenience
+% macro for obtaining the symbol for a particular \meta{status} of the
+% current checklist's type.
+%    \begin{macrocode}
+\newcommand*\tchklst@getsymbol[1]{%
+  \tchklst@symbolcombine{\csuse{tchklst@sym@\tchklst@cur@type @#1}}%
+    {\csuse{tchklst@ChecklistTypeSym@\tchklst@cur@type}}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tchklst@symbolcombine}
+% The |\tchklst@symbolcombine|\marg{symbol1}\marg{symbol2}
+% macro combines two symbols, \meta{symbol1} and \meta{symbol2}.
+%    \begin{macrocode}
+\newcommand*\tchklst@symbolcombine[2]{{%
+  \setbox0\hbox{#2}%
+  \rlap{\hbox to \wd0{\hss #1\hss}}\box0 }}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tchklst@ifsymdone}
+% The
+% |\tchklst@ifsymdone|\marg{type}\marg{status}\marg{iftrue}\marg{iffalse}
+% macro expands to \meta{iftrue}, if the \meta{status} of an entry in a
+% checklist of type \meta{type} is a ``closed'' one (see the
+% documentation for |\CheckListAddStatus| for details). Otherwise, the
+% macro expands to \meta{iffalse}.
+%    \begin{macrocode}
+\newcommand*\tchklst@ifsymdone[2]{%
+  \csname if\csname tchklst@isclosed@#1@#2\endcsname\endcsname
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Checklist Layouts}
+%
+% \begin{macro}{\tchklst@ChecklistLayouts}
+% The |\tchklst@ChecklistLayouts| collects the list of known checklist
+% layouts. Initially, the list is empty.
+%    \begin{macrocode}
+\newcommand*\tchklst@ChecklistLayouts{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\CheckListDeclareLayout}
+% The |\CheckListDeclareLayout|\marg{name}\marg{fields}\marg{begin}\marg{end}
+% macro declares a new checklist layout with the given \meta{name}. At
+% the begin and end of the checklist, the \meta{begin} and,
+% respectively, \meta{end} code is executed.
+% The \meta{fields} parameter must be a comma-separated list of field
+% names. The fields will be displayed for each checklist entry in the
+% order given by \meta{fields}, where the format for the display must be
+% declared using |\CheckListDefineFieldFormat|.
+%    \begin{macrocode}
+\newcommand*\CheckListDeclareLayout[4]{%
+%    \end{macrocode}
+% Add new layout to existing list, if the layout is not already known.
+%    \begin{macrocode}
+  \ifinlist{#1}{\tchklst@ChecklistLayouts}{%
+    \PackageError{typed-checklist}{%
+      Checklist layout `#1' already declared}{}}{}
+  \listadd\tchklst@ChecklistLayouts{#1}%
+%    \end{macrocode}
+% Save the \meta{fields} list of the new layout.
+%    \begin{macrocode}
+  \csdef{tchklst@ChecklistLayoutFields@#1}{}%
+  \forcsvlist{\listcsadd{tchklst@ChecklistLayoutFields@#1}}{#2}%
+%    \end{macrocode}
+% Save the \meta{begin} and \meta{end} code of the new layout.
+%    \begin{macrocode}
+  \csdef{tchklst@ChecklistLayoutBegin@#1}{#3}%
+  \csdef{tchklst@ChecklistLayoutEnd@#1}{#4}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\CheckListExtendLayout}
+% The |\CheckListExtendLayout|\marg{name}\marg{base}\marg{fields} macro
+% declares a new checklist layout, \meta{name}, which inherits existing
+% \meta{fields} as well as the \meta{begin} and \meta{end} code from a
+% given \meta{base} layout.
+% \changes{v1.2}{2015/03/21}{Enabled extensible layouts}
+%    \begin{macrocode}
+\newcommand*\CheckListExtendLayout[3]{%
+  \CheckListDeclareLayout{#1}{#3}%
+    {\csuse{tchklst@ChecklistLayoutBegin@#2}}%
+    {\csuse{tchklst@ChecklistLayoutEnd@#2}}%
+%    \end{macrocode}
+% Inherit all fields defined by the \meta{base} layout.
+%    \begin{macrocode}
+  \def\do##1{%
+    \ifcsdef{tchklst@ChecklistFormat@#2@##1}{%
+      \csletcs{tchklst@ChecklistFormat@#1@##1}%
+              {tchklst@ChecklistFormat@#2@##1}}{}}%
+  \dolistcsloop{tchklst@ChecklistLayoutFields@#2}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\CheckListDefineFieldFormat}
+% The |\CheckListDefineFieldFormat|\marg{layout}\marg{field}\marg{code}
+% macro defines the \meta{code} to be used for displaying the given
+% \meta{field} in a checklist of the given \meta{layout}. The code may
+% take one argument (i.e., use \verb!#1!).
+%    \begin{macrocode}
+\newcommand\CheckListDefineFieldFormat[3]{%
+  \long\csdef{tchklst@ChecklistFormat@#1@#2}##1{#3}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tchklst@FormattedField}
+% The |\tchklst@FormattedField|\marg{field} macro returns the macro for
+% formatting the given \meta{field} in a layout given by
+% |\tchklst@cur@layout|.
+%    \begin{macrocode}
+\newcommand*\tchklst@FormattedField[1]{%
+  \csname tchklst@ChecklistFormat@\tchklst@cur@layout @#1\endcsname}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tchklst@CheckLayout}
+% The |\tchklst@CheckLayout|\marg{layout} is a convenience macro for checking
+% whether the checklist layout \meta{layout} is defined. This macro yields
+% an error with a simple message if \meta{layout} is not defined.
+% If a command is provided for the \meta{layout}, it is expanded.
+%    \begin{macrocode}
+\newcommand*\tchklst@CheckLayout[1]{%
+  \xifinlist{#1}{\tchklst@ChecklistLayouts}{}{%
+    \PackageError{typed-checklist}%
+      {Unknown checklist layout `#1'}
+      {Known layouts are:\forlistloop{ }{\tchklst@ChecklistLayouts}}}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Checklist and Entry Definition}
+%
+% \begin{environment}{CheckList}
+% The |CheckList|\oarg{options}\marg{type} environment declares a new
+% checklist.
+%    \begin{macrocode}
+\newenvironment{CheckList}[2][]{%
+%    \end{macrocode}
+% We check whether the provided \meta{type} is known.
+%    \begin{macrocode}
+  \tchklst@CheckType{#2}%
+%    \end{macrocode}
+% Parse and check the options.
+%    \begin{macrocode}
+  \setkeys[tchklst]{ListOption}{#1}%
+  \tchklst@CheckLayout{\cmdtchklst@ListOption@layout}%
+%    \end{macrocode}
+% We store the type, layout, and fields of the checklist for use inside
+% the list.
+%    \begin{macrocode}
+  \edef\tchklst@cur@type{#2}%
+  \let\tchklst@cur@layout=\cmdtchklst@ListOption@layout%
+  \letcs\tchklst@cur@fields
+    {tchklst@ChecklistLayoutFields@\tchklst@cur@layout}%
+%    \end{macrocode}
+% The following line declares the macro for the checklist entries, for
+% example the |\Goal| macro for the \meta{type} |Goal|.
+%    \begin{macrocode}
+  \cslet{#2}{\tchklst@entry}%
+%    \end{macrocode}
+% Start and end the actual checklist environment as defined by the
+% layout.
+%    \begin{macrocode}
+  \csname tchklst@ChecklistLayoutBegin@\tchklst@cur@layout\endcsname
+}{%
+  \csname tchklst@ChecklistLayoutEnd@\tchklst@cur@layout\endcsname
+}
+%    \end{macrocode}
+% \end{environment}
+%
+% \begin{macro}{\tchklst@entry@toks}
+% The |\tchklst@entry@toks| token register is used by |\tchklst@entry| to first
+% collect all the fields before showing the result. This is useful in
+% cases when the layout changes the \LaTeX{} grouping between the field
+% display (as it is the case for a table layout).
+%    \begin{macrocode}
+\newtoks\tchklst@entry@toks
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tchklst@entry}
+% The |\tchklst@entry|\oarg{options}\marg{status}\marg{description} macro
+% defines a checklist entry with a given \meta{status}, a given
+% \meta{description}, and possibly particular \meta{options} (a
+% comma-separated list of key-value pairs). See
+% Section~\ref{sec:Impl-ChecklistOptions} for the list of available
+% options.
+%    \begin{macrocode}
+\newcommand\tchklst@entry[3][]{%
+%    \end{macrocode}
+% First check for a valid status. There is no need to check for a valid
+% type, because the surrounding |CheckList| environment already does this.
+%    \begin{macrocode}
+  \tchklst@CheckTypeStatus{\tchklst@cur@type}{#2}%
+%    \end{macrocode}
+% Parse the options.
+%    \begin{macrocode}
+  \setkeys[tchklst]{EntryOption}{#1}%
+%    \end{macrocode}
+% Define the label of the entry, if the |label| option is given in
+% \meta{options}.
+%    \begin{macrocode}
+  \ifx\cmdtchklst@EntryOption@label\empty\else
+    \refstepcounter{tchklst@entryID}%
+    \expandafter\label\expandafter{\cmdtchklst@EntryOption@label}%
+  \fi
+%    \end{macrocode}
+% Save status and description such that they can be accessed just like
+% the options.
+%    \begin{macrocode}
+  \def\cmdtchklst@EntryOption@status{#2}%
+  \def\cmdtchklst@EntryOption@description{#3}%
+%    \end{macrocode}
+% Show the fields of the entry in the order they were given.
+%    \begin{macrocode}
+  \tchklst@entry@toks={}%
+  \def\do##1{%
+    \begingroup
+    \edef\tchklst@doformat{\endgroup
+      \noexpand\tchklst@entry@toks={%
+        \expandonce{\the\tchklst@entry@toks}%
+        \noexpand\tchklst@FormattedField{##1}%
+        {\csexpandonce{cmdtchklst@EntryOption@##1}}}}%
+    \tchklst@doformat}%
+  \dolistloop\tchklst@cur@fields
+  \the\tchklst@entry@toks}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tchklst@ifafterdots}
+% The
+% |\tchklst@ifafterdots| \meta{day}.\meta{month}.\meta{year} macro is a
+% parsing macro for dates in dotted notation. The macro is a wrapper for
+% |\tchklst@ifafter|.
+%    \begin{macrocode}
+\def\tchklst@ifafterdots #1.#2.#3\relax{\tchklst@ifafter{#1}{#2}{#3}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tchklst@ifafter}
+% The
+% |\tchklst@ifafter|\marg{day}\marg{month}\marg{year}\marg{iftrue}\marg{iffalse}
+% macro performs the check whether the current date is after the date
+% specified by \meta{day}, \meta{month}, and \meta{year}. If this is the
+% case, the macro expands to \meta{iftrue}, otherwise to \meta{iffalse}.
+% Credits for this code go to
+% \url{http://tex.stackexchange.com/questions/41404/how-to-make-time-dependent-code!}.
+%    \begin{macrocode}
+\newcommand*\tchklst@ifafter[3]{%
+  \ifnum\the\year\two@digits\month\two@digits\day%
+       >\numexpr#3\two@digits{#2}\two@digits{#1}\relax
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tchklst@signed}
+% The |\tchklst@signed|\marg{text} macro is taken from Knuth's \TeX book
+% with minor spacing modifications. See also
+% \url{http://tex.stackexchange.com/a/13761}.
+%    \begin{macrocode}
+\def\tchklst@signed #1{{%
+  \leavevmode\unskip\nobreak\hfil\penalty50\hskip0.25em
+  \hbox{}\nobreak\dotfill\hbox{#1}}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{tchklst@entryID}
+% We define a counter for the labels of checklist entries. We also
+% determine how counter values are displayed.
+%    \begin{macrocode}
+\newcounter{tchklst@entryID}
+\setcounter{tchklst@entryID}{0}
+\renewcommand*\thetchklst@entryID{%
+  \tchklst@cur@type~\protect\textsc{\roman{tchklst@entryID}}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Default Checklist Types and States}
+%
+% We use some packages for the default symbols in the checklist.
+% \changes{v1.4}{2016/03/29}{Eliminated \textsf{MnSymbol} dependency}
+% \changes{v1.4}{2016/03/29}{Robustified use of \textsf{bbding} package}
+%    \begin{macrocode}
+\RequirePackage{bbding}
+%    \end{macrocode}
+% The following line makes sure that the \textsf{bbding} font is
+% actually loaded, by simply putting a particular symbol into a box and
+% then forgetting the box again (via the grouping). This addresses the
+% case that the \textsf{bbding} symbols are used inside an |\import*| or
+% |\subimport*| of the \textsf{import} package: In this case, the font
+% would be attempted to be loaded only inside the `import' and could
+% then no longer be found (producing ``No file Uding.fd'').
+%    \begin{macrocode}
+\AtBeginDocument{{\setbox0\hbox{\Checkmark}}}
+%    \end{macrocode}
+% The following provides the default set of checklist types.
+% \changes{v1.1c}{2015/03/20}{Added milestone checklists}
+%    \begin{macrocode}
+\CheckListAddType{Goal}{$\bigcirc$}
+\CheckListAddType{Task}{{\small\Square}}
+\CheckListAddType{Artifact}{{\large$\bigtriangleup$}}
+\CheckListAddType{Milestone}{\FiveStarOpen}
+%    \end{macrocode}
+% The following provides the default set of status possiblities.
+% \changes{v1.3d}{2015/08/31}{Fixed symbol for dropped tasks}
+%    \begin{macrocode}
+\CheckListAddStatus{Goal,Task,Milestone}{open}{false}{}
+\CheckListAddStatus{Goal}{dropped}{true}{\tiny\XSolid}
+\CheckListAddStatus{Task}{dropped}{true}{\small\XSolid}
+\CheckListAddStatus{Goal}{unclear}{false}{\footnotesize ?}
+\CheckListAddStatus{Task}{unclear}{false}%
+                   {\raisebox{0.4ex}{\hbox{\footnotesize ?}}}
+\CheckListAddStatus{Artifact}{unclear}{false}%
+                   {\raisebox{0.3ex}{\hbox{\tiny\bfseries ?}}}
+
+\CheckListAddStatus{Goal}{achieved}{true}{\kern 4pt\Checkmark}
+\CheckListAddStatus{Milestone}{achieved}{true}{\FiveStar}
+
+\CheckListAddStatus{Task}{started}{false}%
+                   {\kern 1pt\small\ArrowBoldRightStrobe}
+\CheckListAddStatus{Task}{done}{true}{\kern 2pt\Checkmark}
+
+\CheckListAddStatus{Artifact}{missing}{false}{}
+\CheckListAddStatus{Artifact}{incomplete}{false}%
+                   {\kern 1pt{\tiny\ArrowBoldRightStrobe}}
+\CheckListAddStatus{Artifact}{available}{true}{\kern 4pt\Checkmark}
+\CheckListAddStatus{Artifact}{dropped}{true}{{\small$\dagger$}}
+%    \end{macrocode}
+%
+% \subsection{Default Checklist Layouts}
+%
+% The following provides the default set of checklist layouts.
+%
+% \subsubsection{list}
+%
+% We use the \textsf{marginnote} package to display deadlines in the |list|
+% layout.
+%    \begin{macrocode}
+\RequirePackage{marginnote}
+%    \end{macrocode}
+%
+% The |list| layout is based on a |description| environment with a
+% slightly modified vertical and horizontal spacing.
+% \changes{v1.1b}{2015/03/05}{Fix for more comprehensible error messages
+%   when end of environment is forgotten}
+% \changes{v1.3b}{2015/07/26}{Removed dependency on \textsf{paralist}
+%   package}
+%    \begin{macrocode}
+\CheckListDeclareLayout{list}{status,label,description,who,deadline,END}%
+  {\bgroup\topsep=\medskipamount\itemsep=0pt\description
+    \advance\itemindent by 0.5em}%
+  {\enddescription\egroup}
+%    \end{macrocode}
+% The checklist entry starts with the status symbol, which opens up a
+% new list item.
+%    \begin{macrocode}
+\CheckListDefineFieldFormat{list}{status}%
+  {\item[{\normalfont\tchklst@getsymbol{#1}}]}
+%    \end{macrocode}
+% Show the label in the reverse margin, with some nice layout.
+% \changes{v1.4}{2016/03/30}{Robustified label display in inner mode}
+%    \begin{macrocode}
+\CheckListDefineFieldFormat{list}{label}{%
+  \ifstrempty{#1}{}{\ifbool{inner}%
+      {{\small(\ref{#1}) }}%
+      {\leavevmode\reversemarginpar\marginpar{%
+       \textcolor{gray}{\underbar{\hbox to \hsize{%
+       \normalfont\textcolor{black}{\ref{#1}}\hfil}}}}}}}
+%    \end{macrocode}
+% Show the description, with leading spaces removed.
+%    \begin{macrocode}
+\CheckListDefineFieldFormat{list}{description}{%
+    \ignorespaces #1\relax}
+%    \end{macrocode}
+% Show the responsible person(s), if the |who| option is given in
+% \meta{options}.
+%    \begin{macrocode}
+\CheckListDefineFieldFormat{list}{who}{%
+  \ifstrempty{#1}{\hfill\null}{%
+    \tchklst@signed{\textit{(#1)}}}}
+%    \end{macrocode}
+% Show the deadline of the entry in the margin, if the |deadline| option
+% is given in \meta{options}.
+% \textbf{FIXME:} here, the interface of the code is not very elegant,
+% because the field format code uses the internal macro
+% |\cmdtchklst@EntryOption@status| for obtaining the current entry's
+% status.
+%    \begin{macrocode}
+\CheckListDefineFieldFormat{list}{deadline}{%
+  \ifstrempty{#1}{}{{\normalmarginpar\marginnote{%
+     \tchklst@DisplayDeadline{\cmdtchklst@EntryOption@status}{#1}}}}}
+%    \end{macrocode}
+% End the display of one checklist entry.
+% \meta{options}.
+%    \begin{macrocode}
+\CheckListDefineFieldFormat{list}{END}{{%
+  \parfillskip=0pt \finalhyphendemerits=0 \endgraf}}
+%    \end{macrocode}
+%
+% \begin{macro}{\tchklst@DisplayDeadline}
+% The |\tchklst@DisplayDeadline|\marg{status}\marg{deadline} formats a
+% \meta{deadline} dependent on the \meta{status} and the current date.
+%    \begin{macrocode}
+\newcommand\tchklst@DisplayDeadline[2]{%
+%    \end{macrocode}
+% Check which text color to use for this item if its deadline has
+% already passed.
+%    \begin{macrocode}
+  \tchklst@ifsymdone{\tchklst@cur@type}{#1}%
+    {\def\tchklst@deadcolor{green!66!black}}%
+    {\def\tchklst@deadcolor{red}}%
+%    \end{macrocode}
+% Check whether the deadline of the entry has already passed and, if so,
+% set the text color to the color determined above.
+%    \begin{macrocode}
+  \tchklst@ifafterdots#2\relax%
+    {\textcolor{\tchklst@deadcolor}}%
+    {}%
+%    \end{macrocode}
+% Show the actual deadline. Note that this may constitute the second
+% parameter of the above |\textcolor|.
+%    \begin{macrocode}
+    {#2}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsubsection{hidden}
+%
+% The |hidden| layout completely hides the checklist and all its
+% entries. We add the |status| field only to ignore spaces after each
+% entry.
+%    \begin{macrocode}
+\CheckListDeclareLayout{hidden}{dummy}{\ignorespaces}{\ignorespaces}
+\CheckListDefineFieldFormat{hidden}{dummy}{\ignorespaces}
+%    \end{macrocode}
+%
+% \subsubsection{table}
+%
+% The |table| layout formats the checklist as a table, one row per
+% checklist entry. The |NC| field just inserts the column separator.
+% \changes{v1.4}{2016/03/30}{Added display of labels to table layout}
+%    \begin{macrocode}
+\RequirePackage{longtable,tabu}
+\CheckListDeclareLayout{table}%
+  {status,NC,label,description,NC,who,NC,deadline,endline}%
+  {%
+    \tabulinesep=0.5ex
+    \longtabu to \linewidth {|c|X|r|r|}
+    \hline
+    \bf Status & \bf Description & \bf Who & \bf Deadline\endhead\hline}
+  {\endlongtabu}
+\CheckListDefineFieldFormat{table}{status}{\tchklst@getsymbol{#1}}
+\CheckListDefineFieldFormat{table}{label}%
+  {\ifstrempty{#1}{}{{\small(\ref{#1}) }}}
+\CheckListDefineFieldFormat{table}{description}{\ignorespaces #1}
+\CheckListDefineFieldFormat{table}{deadline}{#1}
+\CheckListDefineFieldFormat{table}{who}{#1}
+\CheckListDefineFieldFormat{table}{NC}{&}
+\CheckListDefineFieldFormat{table}{endline}{\\\hline}
+%    \end{macrocode}
+%
+% \subsection{Compatibility with Other Packages}
+%
+% \subsubsection{asciilist}
+%
+% \begin{macro}{\tchklst@ChkListEntry}
+% The |\tchklst@ChkListEntry|\marg{item-macro}\marg{content} macro can be
+% used as a parameter to |\AsciiListEndArg| of the
+% \textsf{asciilist} package in order to allow for checklist
+% entries in an |AsciiList|.
+%    \begin{macrocode}
+\iftchklst@withAsciilist
+\newcommand*\tchklst@ChkListEntry[2]{%
+	\tchklst@ChkListEntry@i{#1}#2\@undefined}
+%    \end{macrocode}
+% The used auxiliary macros serve the purpose of parsing the input and
+% have the following signatures:
+% \begin{itemize}
+% \item
+%   |\tchklst@CheckListEntry@i|\marg{item-macro}\marg{status+opts}\marg{entry}
+%   where \meta{entry} is the goal/task/... of the checklist entry.
+% \item
+%   |\tchklst@CheckListEntry@ii|\marg{item-macro}\marg{entry}\marg{status}\marg{options}.
+% \end{itemize}
+%    \begin{macrocode}
+\def\tchklst@ChkListEntry@ii#1#2#3[#4]#5\@undefined{#1[#4]{#3}{#2}}
+\def\tchklst@ChkListEntry@i#1#2:#3\@undefined{%
+	\tchklst@ChkListEntry@ii{#1}{#3}#2[]\@undefined}
+\fi
+%    \end{macrocode}
+% \end{macro}
+%
+%\iffalse
+%</package>
+%\fi
+% \Finale
+\endinput

@@ -1,0 +1,208 @@
+%% tameflts.sty -- experimental fix of bug(s) 
+%%                latex/3208, 3370, 3541, and 3719, 
+%%                using \holdinginserts. 
+%% (C) 2005 Uwe Lueck http://contact-ednotes.sty.de.vu 
+%% Adapted from lineno.sty, due to Stephan I. Boettcher, with an 
+%% improvement by David Kastrup. 
+\def\filedate{2005/04/27} \def\fileversion{v0.42}
+%% RIGHTS: LaTeX Project Public License (LPPL) v1.3a 
+%%         -- author-maintained. 
+%% 
+%% PURPOSE, USAGE, WARNINGs etc.: see below \endinput. 
+
+\ProvidesPackage{tameflts}[\filedate\space\fileversion\space 
+                          do without \string\@reinserts]
+% \let\@reinserts\relax     % TODO!? another package might use it. 
+\mathchardef\@UAR@Mv=10005                   % v0.3, for floatflt. 
+                                % "Universally Avoid \@reinserts". 
+\newif\if@UAR@goodoutput        % lineno.sty has used \if@tempswa. 
+\chardef\@UAR@vl=45 
+% <- Latin `vl' is written `ul' in critical editions. 
+\global\holdinginserts\@UAR@vl                            % TODO!? 
+\let\@tempa\output     % giving up reference to previous \output .
+\newtoks\output 
+\output\expandafter{\the\@tempa}
+\let\@UAR@output\output 
+\@tempa{% 
+  \@UAR@goodoutputtrue 
+  \ifnum\holdinginserts=\@UAR@vl
+    \ifnum\outputpenalty>-\@Mii 
+      \@UAR@goodoutputfalse 
+    \else 
+      \ifnum\outputpenalty<-\@UAR@Mv  % was \@Miv % \@Miii breaks. 
+        \@UAR@goodoutputfalse 
+      \fi 
+    \fi 
+  \fi 
+  \if@UAR@goodoutput 
+    \the\@UAR@output 
+    \ifnum\holdinginserts=-\@UAR@vl
+      \global\holdinginserts\@UAR@vl 
+    \fi 
+  \else 
+    \unvbox\@cclv
+    \global\holdinginserts-\@UAR@vl 
+    \ifnum\outputpenalty=\@M \else
+      \penalty\outputpenalty
+    \fi
+  \fi 
+}
+% v0.3, user switch: 
+\newcommand\releasefloats{% 
+  \ifnum\holdinginserts=\@UAR@vl 
+    \global\holdinginserts\z@ \fi}
+\newcommand\tamefloats{\global\holdinginserts\@UAR@vl}
+\endinput 
+
+* INTRODUCTION: *
+ 
+PURPOSE/WARNING: 
+Experts know well that \@reinserts in LaTeX's \@specialoutput -- 
+which handles floats (figures, tables) and \marginpar's -- may 
+cause wrong order of footnote splits or output of footnotes on 
+unnecessarily late pages. Disabling \@reinserts or dropping it, 
+as David Kastrup recommends in latex/3541, would require 
+additional efforts. TeX3 was equipped with \holdinginserts to 
+deal with problems of this kind. Yet LaTeX has still not made use 
+of it, since it seems that this would still require redesigning 
+LaTeX's output routine entirely. Here is an experimental, simple 
+fix (!?). It replaces the problem by another one, yet the new 
+one might show up more rarely or might easier be dealt with by 
+non-expert users -- I would like to know. (I have made a file 
+newbug.tex to demonstrate a possible effect of the problem, yet 
+it is not very unrealistic). 
+
+The new problem will not occur with single-line \marginpar's 
+(in different lines -- paragraph numbers, e.g.) -- for such 
+purposes the package may be valuable indeed. 
+
+Note that this package doesn't help you if you neither use 
+\marginpar nor figures nor tables. The bug shows up in very 
+special situations only -- e.g., many footnotes, or large ones. 
+It may often be avoidable by moving the \marginpar or figure 
+or table in the code a little across the suffering \footnote. 
+The present package may rather be considered a contribution to 
+discussion on the problem. 
+(I have accidentally learnt about the problem with critical 
+editions, where there are many footnotes per page, and with an 
+implementation that used a modified \marginpar mechanism two 
+times for each note.)
+
+The package may be incompatible with other packages doing the 
+same thing -- if you need the other one, I suppose you don't 
+need the present one. I am just working at making lineno.sty 
+compatible with the present package. 
+
+Note for non-wizards: `latex/3208', `latex/3370', `latex/3541', 
+and `latex/3719' refer to relevant bug reports on the LaTeX Bugs 
+Data Base, 
+
+    http://www.latex-project.org/cgi-bin/ltxbugs2html .
+
+USAGE: 
+Just load the package. You can use \releasefloats anywhere in your 
+files for (kind of) reinstalling the situation without 
+tameflts.sty (for a passage where it works badly); after this you 
+can reinstall the tamefltos.sty function by \tamefloats. Both 
+commands act globally. 
+
+MORE INFORMATIONS: 
+In the recent days, there was an intense discussion of the 
+matter on the LaTeX-L e-mail list. 
+
+WELCOME: 
+Suggestions on almost everything, especially implementation, 
+different algorithms, different names; demo files; where, how, 
+whether to present these experiments. 
+
+
+* ACKNOWLEDGEMENTs / PRESENT IMPLEMENTATION: *
+
+The basic idea is, like in latex/3719, to have \holdinginserts>0 
+unless we are sure that footnotes actually are output, i.e., the 
+output routine will empty the \footins box (and \@kludgeins, for 
+\enlargethispage). The problem stems from LaTeX's \@reinserts 
+which in effect moves \footins and \@kludgeins inserts down the 
+main vertical list. 
+
+The implementation is a variant of how lineno.sty, say v3.02ff., 
+using \holdinginserts, due to Stephan I. Boettcher. 
+Particular purposes are here: As compared with the proposal 
+in latex/3719, the implementation is intended to work relatively 
+independently of other changes of the output routine, maybe due 
+to different LaTeX versions or due to packages like longtable. 
+It is even intended that it doesn't conflict with uses of 
+\holdinginserts by other packages or a future LaTeX version, but 
+it is not clear to me how probably this works.           %% TODO 
+With version v0.3 I'm neither sure about \releasefloats and 
+\tamefloats.                                             %% TODO 
+
+The problem that the implementation introduces is the following. 
+The float mechanism measures the \footins box to decide about 
+placement of floats. Now, with \holdinginserts>0 the \footins box 
+is "spuriously" empty. Floats may thus come too early in the sense 
+that one would have preferred that footnotes had been printed. 
+I have made a file newbug.tex to demonstrate an effect of this. 
+
+One further difference to the proposal in latex/3719 is that 
+\holdinginserts is decreased for \clearpage here. 
+
+A problem discussed on LaTeX-L is whether/how 
+\penalty\outputpenalty should be used. The present proposal is 
+just what lineno.sty has done when I found it. 
+
+\@reinserts is neither defined away nor circumvented, it will 
+just find that there is nothing to reinsert. 
+
+You see from the code that the package doesn't hold back 
+insertions with output penalties -10002 and -10003 only, where 
+\@reinserts is met. It would not work this way (the page builder 
+stops working), and David Kastrup seems to address the reason in 
+latex/3541, which I don't exactly know. So insertions are held 
+back with any fake \output call, so also with 
+\outputpenalty=-10004 and -- v0.3, for Mats Dahlgren's floatftl 
+-- \outputpenalty=-10005, where \@reinserts does not occur. The 
+floatftl documentation mentions that floatftl also had problems 
+with footnotes. The demo file fltfltdk.tex indicates that the 
+package solves the problem, although I don't exactly know why. 
+
+v0.2 improves interaction with other packages that change the 
+output routine, due to David Kastrup (LaTeX-L list). Unlike in 
+lineno.sty, the number of the token register allocated by 
+\newtoks\output is stored by a control sequence. The output 
+(sub-)routine defined here uses the latter instead of \output. 
+Otherwise, a package loaded later may try the same trick, to the 
+effect that it puts a (would-be) output routine into a token 
+register that will never be read, while \the\output still 
+contains what the present package found in \output, although 
+\output will refer to another register than at the end of the 
+present package. 
+(The routine may be a subroutine, the package may be loaded 
+after another one using the same trick, then the present one 
+does not change the content of the token parameter which "naked" 
+TeX calls `\output'.) 
+The previous \output is now (v0.2) referred to by just \@tempa. 
+Maintaining the possibility of referring to TeX's built-in token 
+parameter (when another package uses the trick) would need an 
+agreement and additional effort. To do so, I would suggest: 
+    \@ifundefined{@@output}{\let\@@output\output}{} .
+
+
+* HISTORY of VERSIONS: *
+v0.1   2005/04/01  Sent to LaTeX-L. 
+v0.2   2005/04/04  Mentions of existing demo files; several 
+                   changes of wordings; one \vl -> \@vl; 
+                   one = to \ifnum; \@tempa and \@UAR@output for 
+                   \output trick; extended explanations of 
+                   implementation. Mentioning Frank Mittelbach 
+                   was erroneous, corrected. Sent to LaTeX-L and 
+                   CTAN. 
+v0.3   2005/04/08  \@UAR@Mv, \@vl -> \@UAR@vl, \doreinserts. 
+                   Sent to CTAN and Mats Dahlgren. 
+v0.4   2005/04/17  Renamed noreins -> tameflts, \doreinserts 
+                   -> \releasefloats, \noreinserts -> 
+                   \tamefloats, changed explanations on 
+                   implementation. 
+v0.41  2005/04/21  Additional remarks on compatibility and the 
+                   bug introduced. 
+v0.42  2005/04/26  Adjustment of documentation to lineno.sty. 

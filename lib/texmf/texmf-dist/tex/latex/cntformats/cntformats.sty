@@ -1,0 +1,273 @@
+% --------------------------------------------------------------------------
+% the CNTFORMATS package
+% 
+%   A different way to read counters
+%
+% --------------------------------------------------------------------------
+% Clemens Niederberger
+% Web:    https://github.com/cgnieder/cntformats/
+% E-Mail: contact@mychemistry.eu
+% --------------------------------------------------------------------------
+% Copyright 2012-2014 Clemens Niederberger
+% 
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+% 
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Clemens Niederberger.
+% --------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% --------------------------------------------------------------------------
+\def\@cntfmts@date{2014/07/20}
+\def\@cntfmts@version{v0.7}
+
+\ProvidesPackage{cntformats}[%
+  \@cntfmts@date\space
+  \@cntfmts@version\space
+  A different way to read counters. (CN)]
+\RequirePackage{etoolbox,cnltx-base}
+% --------------------------------------------------------------------------
+% message handling
+\newcommand*\@cntfmts@error@message{%
+  For details have a look at the `cntformats' manual.%
+}
+
+\cnltx@create@generic@message{@cntfmts}{cntformats}{Error}{\@cntfmts@error@message}
+\cnltx@create@generic@message{@cntfmts}{cntformats}{Warning}{}
+\cnltx@create@generic@message{@cntfmts}{cntformats}{WarningNoLine}{}
+\cnltx@create@generic@message{@cntfmts}{cntformats}{Info}{}
+
+\newrobustcmd*\@cntfmts@err@already@defined[1]{%
+  \@cntfmts@error{The counter `#1' already exists!}%
+}
+\newrobustcmd*\@cntfmts@err@unknown@counter[1]{%
+  \@cntfmts@error{The counter `#1' is undefined!}%
+}
+\newrobustcmd*\@cntfmts@err@pattern@defined[2]{%
+  \@cntfmts@error{The pattern `#2' for module `#1' is already defined!}%
+}
+\newrobustcmd*\@cntfmts@err@pattern@undefined[2]{%
+  \@cntfmts@error{The pattern `#2' for module `#1' is undefined!}%
+}
+
+% ----------------------------------------------------------------------------
+% #1: module
+% #2: counter
+\newrobustcmd*\@cntfmts@def@counter@read[3]{%
+  \cnltx@expandargs(no)\csdef
+    {@#1@read@#3@counter}%
+    {\csname @#1@read@#2@counter\endcsname}%
+}
+
+% create pattern for an existing counter:
+% #1: module
+% #2: counter
+% #3: id
+\newrobustcmd*\@cntfmts@add@counter@pattern[3][cntfmts]{%
+  \ifcsdef{c@#2}
+    {}{\@cntfmts@err@unknown@counter{#2}}%
+  \ifcsdef{@#1@#2@counter}
+    {\@cntfmts@err@pattern@defined{#1}{#2}}
+    {\csdef{@#1@#2@counter}{}}%
+  \listcsadd{@#1@counter@ids}{#3}%
+  \@cntfmts@def@counter@read{#1}{#2}{#3}%
+}
+
+\newrobustcmd*\@cntfmts@add@counter@pattern@nostar[3][cntfmts]{%
+  \@cntfmts@add@counter@pattern[#1]{#2}{#3}%
+  \cnltx@expandargs(nno)\@cntfmts@create@read@counter{#1}{#2}{\csname c@#2\endcsname}%
+}
+
+\newrobustcmd*\AddCounterPattern{%
+  \@ifstar
+    {\@cntfmts@add@counter@pattern}
+    {\@cntfmts@add@counter@pattern@nostar}%
+}
+\@onlypreamble\AddCounterPattern
+
+% create pattern for a new counter
+% #1: counter
+% #2: id
+\newrobustcmd*\@cntfmts@new@counter@pattern[3][cntfmts]{%
+  \ifcsdef{the#2}
+    {\@cntfmts@err@counter@defined{#2}}{}%
+  \newcounter{#2}%
+  \listcsadd{@#1@counter@ids}{#3}%
+  \@cntfmts@def@counter@read{#1}{#2}{#3}%
+  \csdef{@#1@#2@counter}{}
+}
+
+\newrobustcmd*\@cntfmts@new@counter@pattern@nostar[3][cntfmts]{%
+  \@cntfmts@new@counter@pattern[#1]{#2}{#3}%
+  \cnltx@expandargs(nno)\@cntfmts@create@read@counter{#1}{#2}{\csname c@#2\endcsname}%
+}
+
+\newrobustcmd*\NewCounterPattern{%
+  \@ifstar
+    {\@cntfmts@new@counter@pattern}
+    {\@cntfmts@new@counter@pattern@nostar}%
+}
+\@onlypreamble\NewCounterPattern
+
+% renew pattern:
+\newrobustcmd*\@cntfmts@renew@counter@pattern[3][cntfmts]{%
+  \ifcsdef{the#2}
+    {}{\@cntfmts@err@unknown@counter{#2}}%
+  \ifcsdef{@#1@#2@counter}{}
+    {\@cntfmts@err@pattern@undefined{#1}{#2}}%
+  \ifinlistcs{@#1@counter@ids}{#3}
+    {}{\listcsadd{@#1@counter@ids}{#3}}%
+  \@cntfmts@def@counter@read{#1}{#2}{#3}%
+}
+
+\newrobustcmd*\@cntfmts@renew@counter@pattern@nostar[3][cntfmts]{%
+  \@cntfmts@renew@counter@pattern[#1]{#2}{#3}%
+  \cnltx@expandargs(nno)\@cntfmts@create@read@counter{#1}{#2}{\csname c@#2\endcsname}%
+}
+
+\newrobustcmd\RenewCounterPattern{%
+  \@ifstar
+    {\@cntfmts@renew@counter@pattern}
+    {\@cntfmts@renew@counter@pattern@nostar}%
+}
+\@onlypreamble\RenewCounterPattern
+
+% ----------------------------------------------------------------------------
+% assign a different internal command to <counter> than \c@<counter>
+% can/must be used after a call from \AddCounterPattern* or
+% \NewCounterPattern*
+% #1: module
+% #2: counter
+% #3: internal command
+\newrobustcmd*\@cntfmts@create@read@counter[3]{%
+  \expandafter\newexpandablecmd
+  \expandafter*\csname @#1@read@#2@counter\endcsname[1][]{%
+    \ifblank{##1}
+      {\@arabic{#3}}
+      {\csuse{@cntfmts@counter@type@##1}{#3}}%
+  }%
+}
+
+\newrobustcmd*\ReadCounterFrom[3][cntfmts]{%
+  \@cntfmts@create@read@counter{#1}{#2}{#3}%
+}
+
+% ----------------------------------------------------------------------------
+% pattern formats
+% #1: key
+% #2: number presentation command like \@alph
+\newrobustcmd*\@cntfmts@new@pattern@format[2]{%
+  \csdef{@cntfmts@counter@type@#1}{#2}%
+}
+
+\newrobustcmd*\NewPatternFormat[2]{%
+  \@cntfmts@new@pattern@format{#1}{#2}%
+}
+\@onlypreamble\NewPatternFormat
+
+% ----------------------------------------------------------------------------
+% interpret and print pattern:
+% #1: module
+% #2: list
+% #3: pattern
+\newrobustcmd*\@cntfmts@read@counter@pattern[3]{%
+  \def\@cntfmts@parsed@pattern{#3\@empty}%
+  \forlistcsloop{\@cntfmts@replace@pattern{#1}}{#2}%
+}
+% #1: module
+% #2: pattern-key
+\newrobustcmd*\@cntfmts@replace@pattern[2]{%
+  \cnltx@replace@all\@cntfmts@parsed@pattern
+    {#2}{\csuse{@#1@read@#2@counter}}%
+}
+
+\newrobustcmd*\ReadCounterPattern[2][cntfmts]{%
+  \@cntfmts@read@counter@pattern{#1}{@#1@counter@ids}{#2}\@cntfmts@parsed@pattern
+}
+
+\newrobustcmd*\ReadCounterPatternFrom[2][cntfmts]{%
+  \cnltx@expandargs(nno)\@cntfmts@read@counter@pattern{#1}{@#1@counter@ids}{#2}%
+  \@cntfmts@parsed@pattern
+}
+
+% #1: save pattern in
+% #2: save interpretation in
+% #3: pattern
+% #4: module
+\newrobustcmd*\@cntfmts@save@counter@pattern[4]{%
+  \@cntfmts@read@counter@pattern{#4}{@#4@counter@ids}{#3}%
+  \let#2\@cntfmts@parsed@pattern
+  \def#1{#3}%
+}
+
+\newrobustcmd*\@cntfmts@esave@counter@pattern[4]{%
+  \@cntfmts@read@counter@pattern{#4}{@#4@counter@ids}{#3}%
+  \edef#2{\@cntfmts@parsed@pattern}%
+  \def#1{#3}%
+}
+
+\newrobustcmd*\SaveCounterPattern[4][cntfmts]{%
+  \@cntfmts@save@counter@pattern{#2}{#3}{#4}{#1}%
+}
+
+\newrobustcmd*\SaveCounterPatternFrom[4][cntfmts]{%
+  \cnltx@expandargs(nno)\@cntfmts@save@counter@pattern{#2}{#3}{#4}{#1}%
+}
+
+\newrobustcmd*\eSaveCounterPattern[4][cntfmts]{%
+  \@cntfmts@esave@counter@pattern{#2}{#3}{#4}{#1}%
+}
+
+\newrobustcmd*\eSaveCounterPatternFrom[4][cntfmts]{%
+  \cnltx@expandargs(nno)\@cntfmts@esave@counter@pattern{#2}{#3}{#4}{#1}%
+}
+
+% ----------------------------------------------------------------------------
+% predefined formats and pattern
+\NewPatternFormat{a}{\@alph}
+\NewPatternFormat{A}{\@Alph}
+\NewPatternFormat{1}{\@arabic}
+\NewPatternFormat{r}{\@roman}
+\NewPatternFormat{R}{\@Roman}
+
+\ifdef\c@paragraph
+  {\AddCounterPattern{paragraph}{pg}}{}
+\ifdef\c@subsubsection
+  {\AddCounterPattern{subsubsection}{ssse}}{}
+\ifdef\c@subsection
+  {\AddCounterPattern{subsection}{sse}}{}
+\ifdef\c@section
+  {\AddCounterPattern{section}{se}}{}
+\ifdef\c@chapter
+  {\AddCounterPattern{chapter}{ch}}{}
+
+\endinput
+
+% HISTORY:
+2012/09/30 v0.2beta - first version (as part of the `exsheets' bundle)
+2012/11/08 v0.4     - stepped number with `exsheets' until now; next stepping
+                      won't synchronize but will step to whatever deems
+                      appropriate
+2012/04/23 v0.5     - changed tests for heading commands to test explicitly for
+                      the associated counters
+                    - change test for counter in \@cntfmts@add@counter@pattern
+                      from \the<ounter> to \c@<ounter>
+                    - rename tokenlist test macros to use cntformats'
+                      namespace
+2013/10/11 v0.6     - use my `cnltx-base' package for the programming tools it
+                      provides; this allows to get rid of the artefacts in the
+                      expanded patterns
+2014/07/20 v0.7     - remove package from the `exsheets' bundle and distribute
+                      it as package of its own
+                    - robustify non-expandably commands that weren't defined
+                      robust, yet
+                    - replace \def with \newcommand or \newrobustcmd where
+                      possible
+

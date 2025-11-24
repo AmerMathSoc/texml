@@ -1,0 +1,505 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{cntperchap}[2015/06/01 v0.3 -- store counter values per chapter]%
+%%
+%% License: LaTeX Project Public License version 1.3 
+%% Copyright (2015) Dr. Christian Hupfer 
+%% Author: Christian Hupfer christian.hupfer@yahoo.de
+%%
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%   http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%%
+%% This work consists of all files listed in README
+%%
+%%%%
+
+
+\RequirePackage{ifthen}
+\RequirePackage{assoccnt}
+\RequirePackage{morewrites}
+\RequirePackage{xpatch}
+\RequirePackage{xparse}
+
+%%%% Data macros
+
+
+\def\cps@@data@@tracklevel{chapter}
+\edef\cps@@data@@packagename{\@currname} % Store the actual packagename
+
+\newcommand{\cpspackagename}{%
+  \cps@@data@@packagename%
+}
+
+\newcommand{\@cps@@writefilehandleprefix}{tf@cps}
+
+%%%%%
+
+%%%% Preconfiguration depending on the class in the background
+
+
+\edef\cps@@config@@tracklevel{\cps@@data@@tracklevel}%
+
+\@ifclassloaded{article}{%
+  \edef\cps@@config@@tracklevel{section}
+}{%
+  \@ifclassloaded{scrartcl}{%
+    \edef\cps@@config@@tracklevel{section}%
+  }{%
+  }%	
+}
+
+
+\newif\ifcpsstorage
+
+\newcommand{\EnableCPSStorage}{%
+  \cpsstoragetrue%
+}
+
+\newcommand{\DisableCPSStorage}{%
+  \cpsstoragefalse%
+}
+
+\EnableCPSStorage
+
+
+%%%% Command options
+
+\define@boolkey{cpskeys}{autodefine}[false]{}
+
+\define@key{cpskeys}{tracklevel}[\cps@@config@@tracklevel]{%
+  \gdef\@cps@@keymacro@@tracklevel{#1}%
+}
+
+\presetkeys{cpskeys}{autodefine=false,tracklevel=\cps@@config@@tracklevel}{}%
+
+\NewDocumentCommand{\DeclareCPSCounter}{s+O{cps}m}{%
+  \ifltxcounter{#3}{%
+  }{%
+    \newcounter{#2@@cps@@#3}%
+  }
+  % Not really useful so far
+  % \expandafter\newcommand\csname #3countername\endcsname{#2@@cps@@#3}%
+}
+  
+\@onlypreamble{\DeclareCPSCounter}
+
+
+%%%% Package options
+
+\newif\ifcpsnoendclose
+\cpsnoendclosefalse
+
+\newif\ifcpsverbose
+\cpsverbosefalse
+
+\newif\ifcpsautodefine
+\cpsautodefinefalse
+
+\newif\ifcpsdraftmode
+\cpsdraftmodetrue
+
+
+\DeclareOptionX{autodefine}{\cpsautodefinetrue\presetkeys{cpskeys}{autodefine=true}{}}
+\DeclareOptionX{draft}{\cpsdraftmodetrue}
+\DeclareOptionX{final}{\cpsdraftmodefalse}
+\DeclareOptionX{noendclose}{\cpsnoendclosetrue}
+\DeclareOptionX{tracklevel}{\presetkeys{cpskeys}{tracklevel=#1}{}}
+\DeclareOptionX{verbose}{\cpsverbosetrue}
+
+
+\ProcessOptionsX*
+
+
+\newcommand{\@cps@@counterlistname}{cps@@counterstostore}
+\listcsadd{\@cps@@counterlistname}{}
+
+
+
+
+
+%%%% Internal commands
+
+% Instead of using totcount package
+\newcounter{cps@@totaltracklevelcount}
+
+% Intermediate package counters 
+\newcounter{cps@@currentlevelcount}
+\newcounter{cps@@togglecounter}
+\newcounter{cps@@tempcounter}
+\newcounter{cps@@tempcounterstorage}
+\newcounter{cps@@cpscounters}
+
+
+\newcommand{\@cps@@cpscountersname}{%
+  cps@@cpscounters%
+}
+
+
+\newcommand{\@cps@@typeout}[1]{%
+  \ifcpsverbose%
+  \typeout{\cps@@data@@packagename: #1}%
+  \fi%
+}
+
+
+\NewDocumentCommand{\@cps@@tracklevelstarthook}{}{%
+  \stepcounter{cps@@currentlevelcount}%
+  \ifnumgreater{\value{cps@@currentlevelcount}}{0}{%
+    \StoreCounters%
+  }{}%
+  \ResetStoredCounters%
+}
+
+
+% This disables the usage of the automatic counter storage for ToC - like macros, since those use `\chapter*` and confuse the tracking counter  
+\NewDocumentCommand{\PrepareTocCommand}{m}{%
+  \xpretocmd{#1}{\DisableCPSStorage}{}{}%  Lazy so far
+  \xapptocmd{#1}{\EnableCPSStorage}{}{}% Lazy so far
+}
+
+
+
+\AtBeginDocument{%
+  % Do a check first whether the given tracklevel does exist at all
+  \expandafter\ifx\csname \@cps@@keymacro@@tracklevel\endcsname\relax
+  \GenericError{Error}{Error in \jobname.tex: At line \the\inputlineno: The section level \@cps@@keymacro@@tracklevel\ is unknown}{%
+    Please check your document class and the tracklevel option}{%
+  }%
+  \else
+  % Generate a read file handle
+  \@cps@@generatereadfilehandle%
+  % Prepending the \csname \@cps@keymacro@tracklevel\endcsname command with some starter hook
+  \expandafter\xpretocmd\expandafter{\csname \@cps@@keymacro@@tracklevel\endcsname}{\@cps@@tracklevelstarthook}{\typeout{\@cps@@keymacro@@tracklevel{} command redefined}}{}%
+  \PrepareTocCommand{\tableofcontents}%
+  \PrepareTocCommand{\listoffigures}%
+  \PrepareTocCommand{\listoftables}%
+  \PrepareTocCommand{\printindex}%
+  \fi%
+}
+
+\AtEndDocument{%
+  % Store the total value of the considered sectioning level to the `.aux` file
+  \immediate\write\@auxout{%
+    \string\setcounter{cps@@totaltracklevelcount}{\number\value{cps@@currentlevelcount}}^^J
+  }% End of \immediate\write
+}
+
+\newcommand{\@cps@@readfilehandlename}{%
+  tfr@cpsreadfile%
+}
+
+\newcommand{\@cps@@readfilehandle}{%
+  \csname\@cps@@readfilehandlename\endcsname%
+}
+
+
+\newcommand{\@cps@@generatereadfilehandle}{%
+  \@cps@@typeout{Generating read filehandle}%
+  \expandafter\newread\csname \@cps@@readfilehandlename\endcsname%
+}
+
+\newcommand{\@cps@@generatewritefilehandle}[1]{%
+  \@cps@@typeout{Generating write filehandle #1}%
+  \expandafter\newwrite\csname\@cps@@writefilehandlename{#1}\endcsname%  Generate the file handles
+}
+
+\newcommand{\@cps@@writefilehandle}[1]{%
+  \csname\@cps@@writefilehandlename{#1}\endcsname%  Generate the file handles
+}
+
+
+\newcommand{\@cps@@writefilehandlename}[1]{%
+  \@cps@@writefilehandleprefix#1%
+}
+
+\newcommand{\@cps@@closeinfile}[1]{%
+  \immediate\closein#1%
+}
+
+\newcommand{\@cps@@openincpsfile}[2][\@cps@@readfilehandle]{%
+  \expandafter\immediate\openin#1=\jobname.cps#2\relax%
+}
+
+\newcommand{\@cps@@openoutcpsfile}[1]{%
+  \expandafter\immediate\openout\@cps@@writefilehandle{#1}=\jobname.cps#1\relax%
+}
+
+\newcommand{\@cps@@closeoutfile}[1]{%
+  \immediate\closeout#1%
+}
+
+\newcommand{\@cps@@closeoutcpsfile}[1]{%
+  \@cps@@typeout{Closing cps#1 file}%
+  \@cps@@closeoutfile{\csname\@cps@@writefilehandlename{#1}\endcsname}%
+}
+
+
+
+\newcommand{\@startcountertoc}[1]{%
+  \begingroup%
+  % The file handles are generated either by `\@registercounterspertracklevel` or in \AtBeginDocument
+  \makeatletter
+  % Read first before deleting it
+  \IfFileExists{\jobname.cps#1}{%
+    \@cps@@openincpsfile{#1}%
+    \@cps@@readcounternumbers{\@cps@@readfilehandle}{#1}%
+    \@cps@@closeinfile{\@cps@@readfilehandle}%
+  }{%
+    \typeout{No #1{} counter values so far}%
+  }	
+  \if@filesw
+  % Write only if not `\nofiles` is specified
+  \@cps@@openoutcpsfile{#1}%
+  \fi%
+  \@nobreakfalse%
+  \endgroup%
+}
+
+
+
+\newcommand{\@cps@@readcounternumbers}[2]{%
+  \setcounter{cps@@togglecounter}{0}%  
+  \whiledo {\value{cps@@togglecounter} < 1}{%
+    \read#1 to \@cps@@numberfromfile%
+    \ifeof #1%
+    \stepcounter{cps@@togglecounter}%
+    \else%
+    \listcsxadd{#2countlist}{\@cps@@numberfromfile}%
+    \fi%
+  }%
+}
+
+\newcommand{\@cps@@storecounter}[1]{%
+  \addtocontents{cps#1}{%
+    \number\value{cps@@cps@@total#1}%
+  }%
+}
+
+
+\newcommand{\@cps@@csloop}[1]{%
+  \ifnumgreater{\value{\@cps@@cpscountersname}}{0}{%
+    \expandafter\forlistcsloop{\csname #1\endcsname}{\@cps@@counterlistname}
+  }{%
+  }%
+}
+
+\newcommand{\@cps@@loopstorecounters}{%
+  \ifnumgreater{\value{\@cps@@cpscountersname}}{0}{%
+    \forlistcsloop{\@cps@@storecounter}{\@cps@@counterlistname}%
+  }{%
+  }%
+}
+
+
+\newcommand{\@cps@@registercounter}[1]{%
+  \listcsxadd{\@cps@@counterlistname}{#1}%
+  \stepcounter{cps@@cpscounters}%
+  \listcsxadd{#1countlist}{}%
+  \DeclareCPSCounter{total#1}%
+  \DeclareCPSCounter{grandtotaltemp#1}%
+  \DeclareCPSCounter{grandtotal#1}%
+  \@cps@@generatewritefilehandle{#1}%
+  % This needs some work to do
+  \DeclareAssociatedCounters{#1}{cps@@cps@@total#1,cps@@cps@@grandtotaltemp#1}%
+}
+
+%% Searches the list of counter values for the  tracklevel (#2)
+\newcommand{\@cps@@searchcountervalue}[3]{%
+  \setcounter{cps@@tempcounterstorage}{-1}%
+  \ifnumequal{#1}{\value{#2}}{%
+    % Value found, store it temporarily
+    \setcounter{cps@@tempcounterstorage}{#3}%
+    \listbreak%
+  }{%
+    \stepcounter{#2}%
+  }%
+}
+
+
+\newcommand{\@cps@@auxsetcounter}[2]{%
+  \immediate\write\@auxout{%
+    \string\setcounter{#1}{\number\value{#2}}
+  }
+}%
+
+\newcommand{\@cps@@storegrandtotal}[1]{%
+  \@cps@@auxsetcounter{cps@@cps@@grandtotal#1}{cps@@cps@@grandtotaltemp#1}%
+}
+
+
+
+
+%%%%%%%%%%%%%% User commands  %%%%%%%%%%%%%%%%%%%%
+
+
+\newcommand{\RegisterCounter}[2][]{%
+  \begingroup
+  \setkeys{cpskeys}{#1}%
+  \ifltxcounter{#2}{%
+    \@cps@@registercounter{#2}%
+  }{%
+    \ifKV@cpskeys@autodefine
+    \newcounter{#2}%
+    \@cps@@registercounter{#2}%
+    \else%
+    % Ignore non existing counters
+    \GenericWarning{Counter #1 is not defined}{}%
+    \fi
+  }%
+  \endgroup
+}
+
+\newcommand{\RegisterCounters}[1]{%
+  \forcsvlist{\RegisterCounter}{#1}%
+}
+
+% Prevent usage later in document body
+
+\@onlypreamble{\@registercounters}
+\@onlypreamble{\RegisterCounter}
+\@onlypreamble{\RegisterCounters}
+\@onlypreamble{\PrepareToCCommands}
+
+
+\newcommand{\ResetStoredCounter}[1]{%
+  \setcounter{cps@@cps@@total#1}{0}%
+}
+
+
+% Reset all total counters
+\newcommand{\ResetStoredCounters}{%
+  \ifnumgreater{\value{\@cps@@cpscountersname}}{0}{%
+    \forlistcsloop{\ResetStoredCounter}{\@cps@@counterlistname}%
+  }{}%	
+}
+
+%% Only for statistical purposes. Do not use it in a production run
+\newcommand{\IndividualCounterStatistics}[2][\number\value{cps@@currentlevelcount}]{%
+  \ifcpsdraftmode
+  \GetStoredCounterValue[#1]{#2}%
+  \ifnumgreater{\value{cps@@tempcounterstorage}}{-1}{%
+    \noindent \@cps@@keymacro@@tracklevel\ #1~has \number\value{cps@@tempcounterstorage} #2(s)\par 
+  }{}
+  \fi  
+}%
+
+%% Only for statistical purposes. Do not use it in a production run
+\newcommand{\ShowStatistics}[1][\number\value{cps@@currentlevelcount}]{%
+  \ifcpsdraftmode%
+  \ifnumgreater{\value{\@cps@@cpscountersname}}{0}{%
+    \forlistcsloop{\IndividualCounterStatistics[\number#1]}{\@cps@@counterlistname}%
+  }{%
+    \typeout{No counters registered}%
+  }%
+  \fi%
+}
+
+\newcommand{\fullstatistics}[1]{%
+\hspace{1cm}  \number\value{cps@@cps@@grandtotal#1}{} #1(s)% 
+
+}
+
+
+\newcommand{\Fullstatistics}{%
+  This document has 
+
+  \ifnumgreater{\value{\@cps@@cpscountersname}}{0}{%
+    \forlistcsloop{\fullstatistics}{\@cps@@counterlistname}%
+  }{%
+    \typeout{No counters registered}%
+  }%
+}
+
+
+\newcommand{\GetStoredCounterValue}[2][\number\value{cps@@currentlevelcount}]{%
+  \setcounter{cps@@tempcounter}{0}%
+  \ifnumgreater{#1}{\value{cps@@totaltracklevelcount}}{%
+    \def\cps@@trackleveltoshow{\value{cps@@totaltracklevelcount}}%
+  }{%
+    \def\cps@@trackleveltoshow{#1}%
+  }%
+  \ifcsdef{#2countlist}{%
+    \forlistcsloop{\@cps@@searchcountervalue{\cps@@trackleveltoshow}{cps@@tempcounter}}{#2countlist}%
+  }{%
+    \typeout{Warning: List for counter #2 not defined}%
+  }% Failure branch should be improved 
+}
+
+\newcommand{\FetchStoredCounterValue}[2][\number\value{cps@@currentlevelcount}]{%
+  \GetStoredCounterValue[#1]{#2}%
+  \number\value{cps@@tempcounterstorage}%
+}
+
+
+\newcommand{\StartCounterToc}{%
+  \ifnumgreater{\value{\@cps@@cpscountersname}}{0}{%
+    \forlistcsloop{\@startcountertoc}{\@cps@@counterlistname}%
+  }{%
+  }%
+}
+
+
+
+\newcommand{\CloseCPSFiles}{%
+  \ifnumgreater{\value{\@cps@@cpscountersname}}{0}{%
+    \forlistcsloop{\@cps@@closeoutcpsfile}{\@cps@@counterlistname}%
+  }{%
+  }%
+}
+
+\newcommand{\StoreCounters}{%
+  \ifcpsstorage% Only store counters if \cpsstoragetrue
+  \@cps@@loopstorecounters%
+  \fi%
+}
+
+\newcommand{\StoreGrandTotalCounters}{%
+  \forlistcsloop{\@cps@@storegrandtotal}{\@cps@@counterlistname}%
+}
+
+
+\newcommand{\StopCounting}{%
+  \StoreCounters%
+}
+
+
+
+%% Informational macros  -- very hackish so far
+
+\newcommand{\CPSGetCounterList}{%
+  \csname\@cps@@counterlistname\endcsname%
+}
+
+\newcommand{\numberofstoredcounters}{%
+  \number\value{\@cps@@cpscountersname}%
+}
+
+\AtBeginDocument{%
+  \StartCounterToc%
+}
+
+
+\AtEndDocument{%
+  % Write the last counter values to the file
+  \StopCounting%
+  % Full counter values
+  \StoreGrandTotalCounters%
+}
+
+%% etoolbox - addition
+\AfterEndDocument{%
+  \ifcpsnoendclose
+  % Prevent the explicit closing 
+  \else
+  \CloseCPSFiles%
+  \fi
+}
+
+
+\endinput

@@ -1,0 +1,224 @@
+%%% ====================================================================
+%%% @LaTeX-doc-source-file{
+%%%   filename  = "patchcmd.dtx",
+%%%   version   = "1.05",
+%%%   date      = "2016/06/03",
+%%%   author    = "Michael J Downes",
+%%%   abstract  = "Provides a way to add material at beginning or end of
+%%%                a macro's existing definition.",
+%%%  }
+%%% ====================================================================
+% \iffalse
+%%% Copyright 2000 Michael John Downes
+%%%
+%%% Following Michael's death, his family have requested that his TeX
+%%% related files are made publicly available under the LPPL license.
+%%%
+%%% This file is available under the LaTeX Project Public License version 1
+%%% or (at your option) any later version.
+%%% https://latex-project.org/lppl/
+%%% (LPPL maintenance status: unmaintained)
+%%%
+%<*driver>
+\NeedsTeXFormat{LaTeX2e}
+\documentclass{amsdtx}
+\begin{document}
+\title{The \pkg{patchcmd} package}
+\author{Michael~J. Downes\thanks{Michael died in 2003}}
+\date{Version \fileversion, \filedate}
+\hDocInput{patchcmd.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \maketitle
+% \section{Introduction}
+%
+%    The \pkg{patchcmd} package provides a command \cn{patchcommand} that
+%    can be used to add material at the beginning and/or end of the
+%    replacement text of an existing macro. It works for macros with any
+%    number of normal arguments (0--9), including macros that were
+%    defined with \cn{DeclareRobustCommand}. However, it does not work
+%    for macros that use \cs{futurelet}, for example ones defined to
+%    have starred forms or optional arguments. In addition, it does not
+%    work for macros that have delimited arguments.
+%
+%    This package is the result of some discussion initiated by Peter
+%    Wilson in the newsgroup \fn{comp.text.tex} in June 2000 and
+%    continued with Peter and Heiko Oberdiek.
+%\begin{verbatim}
+%Subject: Re: Adding stuff at end of a macro
+%References:
+%        <3ojiks8in1f5s575eta5rg7ncoc98mpi8f@4ax.com>
+%        <39492C50.A962193B@boeing.com>
+%        <pcitvabqk2.fsf@thor.ams.org>
+%\end{verbatim}
+%
+% \StopEventually{}
+%
+% \section{Implementation}
+%    Standard declaration of package name and date.
+%    \begin{macrocode}
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{patchcmd}[2016/06/03 v1.05]
+%    \end{macrocode}
+%
+%    For debugging.
+%    \begin{macrocode}
+
+%%\def\wrs{\immediate\write\sixt@@n}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\newcommand{\patchcommand}[1]{%
+  \expandafter\patchcmd@a\meaning#1??->@\@nil#1%
+}
+%    \end{macrocode}
+%
+%    We begin by looking at the meaning string of the given token. We
+%    will issue an error message if the token is not a control sequence,
+%    if it is an undefined control sequence, or if it is a known control
+%    sequence but not a macro.
+%    \begin{macrocode}
+\long\def\patchcmd@a#1#2#3->#4#5\@nil#6{%
+%%  \wrs{\string#6: [#1] [#2] [#3]->[#4]}%
+  \ifx @#4\relax \patchcmdError#6#1%
+    \expandafter\@gobbletwo % discard the other two arguments
+  \else
+    \if l#2\toks@{\patchcmd@e{}#6}% l in this position means \long
+    \else \toks@{\patchcmd@e*#6}%   not \long
+    \fi
+%    \end{macrocode}
+%    Now \cs{patchcmd@b} will do further analysis to determine what
+%    kinds of arguments the macro takes. If it takes $n$ normal
+%    arguments, the digit $n$ (0--9) will be added to \cs{toks@}.
+%    \begin{macrocode}
+    \patchcmd@b #3@#4#5 ? ? ? \@nil#6%
+    \expandafter\the\expandafter\toks@
+  \fi
+}
+%    \end{macrocode}
+%
+%    We handle robust commands by scanning the first two control words
+%    in the macro's definition to see if the second one is followed by
+%    two spaces. If it is, then arg 7 will be empty. In that case we
+%    compare the csname preceding the two spaces to the original
+%    argument of \cn{patchcommand}. If they are equal it is nearly certain
+%    that this is a robust command in normal \LaTeX{} form. In that case
+%    we call \cn{patchcommand} quasi-recursively on the protected control
+%    sequence with the extra space at the end of its name.
+%    \begin{macrocode}
+\def\patchcmd@b#1:#2@#3#4 #5#6 #7 #8\@nil#9{%
+%%  \wrs{[#1] [#2] [#3] [#4] [#5] [#6] ARG7=[#7] [#8]}%
+  \if \ifx @#7@\expandafter
+      \ifx\csname #6\endcsname#9T\else F\fi\else F\fi T%
+    \toks@\expandafter{\expandafter\patchcommand\csname #6 \endcsname}%
+  \else
+    \ifx @#2@% No arguments
+      \toks@\expandafter{\the\toks@ 0}%
+    \else
+      \patchcmd@c 0#2{\string##}0%
+    \fi
+  \fi
+}
+%    \end{macrocode}
+%
+%    The task of \cs{patchcmd@c} is to iterate over \texttt{\#D} pairs,
+%    where D is a digit in the range 1--9, until reaching the last one.
+%    Whenever we find such a pair, we carry the digit forward for the
+%    next recursive call; but we use digit 0 as a marker to terminate
+%    the recursion. If any other character interrupts the \texttt{\#D}
+%    pattern, it means that this macro has some kind of delimited
+%    argument.
+%    \begin{macrocode}
+\def\patchcmd@c#1#2#3{%
+  \if\string###2%      % yes it's a # token
+    \ifodd 0#31 % and it's followed by a number
+      \if 0#3\patchcmd@d#1\fi % number=0? then we're done
+    \else \patchcmd@d D% # not a number: must be a delimited arg
+    \fi
+  \else \patchcmd@d D% not a # token: must be a delmited arg
+  \fi
+  \patchcmd@c#3%
+}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\def\patchcmd@d#1{%
+  \if D#1%
+    \PackageError{patchcmd}{Cannot change a macro that has
+      delimited arguments}\@ehd
+  \else
+    \toks@\expandafter{\the\toks@ #1}%
+  \fi
+  \begingroup
+  \aftergroup\@gobble
+  \let\patchcmd@c\endgroup
+}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\def\patchcmd@e#1#2#3#4#5{%
+  \begingroup
+  \edef\@##1{%
+    \@temptokena\noexpand\expandafter{%
+      \noexpand#2%
+        \ifnum#3>0 {####1}\ifnum#3>1 {####2}\ifnum#3>2 {####3}%
+        \ifnum#3>3 {####4}\ifnum#3>4 {####5}\ifnum#3>5 {####6}%
+        \ifnum#3>6 {####7}\ifnum#3>7 {####8}\ifnum#3>8 {####9}%
+        \fi\fi\fi\fi\fi\fi\fi\fi\fi
+      ##1%
+    }%
+  }
+  \@{#5}%
+  \edef\@##1{\endgroup
+    \noexpand\renewcommand#1\noexpand#2\ifcase#3 \else [#3]\fi
+    {##1\the\@temptokena}}%
+  \@{#4}%
+%%  \show#2%
+}
+%    \end{macrocode}
+%
+%    Two possible error messages. Optimized. Second arg is the first
+%    letter from the meaning string; it will be ``u'' if and only if the
+%    control sequence is undefined.
+%    \begin{macrocode}
+\long\def\patchcmdError#1#2{%
+  \begingroup
+  \toks@{Not redefinable}%
+  \ifcat\relax\noexpand#1% Is it a control sequence?
+    \begingroup
+    \let#1=?\ifx ?\relax % Is it "\relax"?
+      \endgroup % accept current value of \toks@
+    \else \endgroup
+%    \end{macrocode}
+%
+%    This is equivalent to the \cs{@ifundefined} test (true if arg 2 is
+%    either undefined or its meaning is \cs{relax}).
+%
+%    \begin{macrocode}
+      \if\ifx\relax#1u\else #2\fi u%
+        \toks@{Not defined}%
+      \fi
+    \fi
+  \fi
+%    \end{macrocode}
+%    Apply \cs{string} preemptively to arg 1 to prevent catastrophic
+%    failure if it happens to be \cs{par} (\cs{PackageError} isn't
+%    defined as \cs{long} in older versions of \LaTeX{}).
+%    \begin{macrocode}
+  \edef\@{\endgroup
+    \noexpand\PackageError{patchcmd}{%
+      \the\toks@: \string#1}\noexpand\@ehd}%
+  \@
+}
+%    \end{macrocode}
+%
+%    The usual \cs{endinput} to ensure that random garbage at the end of
+%    the file doesn't get copied by \fn{docstrip}.
+%    \begin{macrocode}
+\endinput
+%    \end{macrocode}
+%
+% \CheckSum{183}
+% \Finale

@@ -1,0 +1,793 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% \iffalse %%%%
+%                                                                              %
+%  Copyright (c) 2012 - Michiel Helvensteijn   (www.mhelvens.net)              %
+%                                                                              %
+%  http://latex-concepts.googlecode.com                                        %
+%                                                                              %
+%  This work may be distributed and/or modified under the conditions           %
+%  of the LaTeX Project Public License, either version 1.3 of this             %
+%  license or (at your option) any later version. The latest version           %
+%  of this license is in     http://www.latex-project.org/lppl.txt             %
+%  and version 1.3 or later is part of all distributions of LaTeX              %
+%  version 2005/12/01 or later.                                                %
+%                                                                              %
+%  This work has the LPPL maintenance status `author-maintained'.              %
+%                                                                              %
+%  The Current Maintainer of this work is Michiel Helvensteijn.                %
+%                                                                              %
+%  This work consists of the files concepts.tex and concepts.sty.              %
+%                                                                              %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% \fi %%%%
+
+% \CheckSum{266}
+%
+% \CharacterTable
+%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
+%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
+%   Digits        \0\1\2\3\4\5\6\7\8\9
+%   Exclamation   \!     Double quote  \"     Hash (number) \#
+%   Dollar        \$     Percent       \%     Ampersand     \&
+%   Acute accent  \'     Left paren    \(     Right paren   \)
+%   Asterisk      \*     Plus          \+     Comma         \,
+%   Minus         \-     Point         \.     Solidus       \/
+%   Colon         \:     Semicolon     \;     Less than     \<
+%   Equals        \=     Greater than  \>     Question mark \?
+%   Commercial at \@     Left bracket  \[     Backslash     \\
+%   Right bracket \]     Circumflex    \^     Underscore    \_
+%   Grave accent  \`     Left brace    \{     Vertical bar  \|
+%   Right brace   \}     Tilde         \~}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Package Info}                                                    %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%    \begin{macrocode}
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{concepts}[2012/12/29 0.0.6
+  managing names and symbols of document specific formal concepts]
+%    \end{macrocode}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Packages}                                                        %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  These are the packages we'll need.
+%
+%    \begin{macrocode}
+\RequirePackage{etextools}
+\RequirePackage{nth}
+\RequirePackage{xspace}
+\RequirePackage{xparse}              % 1
+\RequirePackage{ltxkeys}[2012/11/17] % 2
+\RequirePackage{xstring}
+%    \end{macrocode}
+% 
+%  We need a very recent version of |ltxkeys| in order to
+%  properly handle list-values. Note that |xparse| needs
+%  to be loaded before |ltxkeys| or things go wrong somehow.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Facilitating Easy Data Access}                                   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\cnc@d} \marg{identifier}
+%%% \begin{macro}{\cnc@g} \marg{identifier}\\\nopagebreak\noindentnext
+%
+%  This package needs to store and retrieve a lot of data. To make
+%  the rest of the code more readable, we define the following commands.
+%  They allow a more freeform description of the data.
+%  
+%  |\cnc@d| returns a control sequence name that resolves
+%  to a specific piece of data in |\csname| context.
+%  We can get access to the data itself by using |\cnc@g|.
+%
+%    \begin{macrocode}
+\newcommand*{\cnc@d}[1]{cnc@data@#1}
+\newcommand*{\cnc@g}[1]{\csuse{\cnc@d{#1}}}
+%    \end{macrocode}
+%
+%  Both take an identifier of one the following shapes:
+%  \begin{itemize}
+%    \item |concepts|
+%    \item |concept|\parg{name}|.option|\parg{name}
+%    \item |concept|\parg{name}|.option|\parg{name}|.given|
+%    \item |concept|\parg{name}|.option|\parg{name}|.count|
+%    \item |concept|\parg{name}|.option|\parg{name}|.index|\parg{number}
+%    \item |symbol|\parg{name}|.concept|
+%  \end{itemize}
+% 
+%\end{macro}\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Private General Purpose Macros and Toggles}                      %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% \begin{macro}{\cnc@upper} \marg{string}\\\nopagebreak\noindentnext
+%
+%  We're going to need a command that capitalizes the first
+%  letter of a string which fully expands its argument. So
+%  here it is.
+%
+%    \begin{macrocode}
+\newcommand*{\cnc@upper}[1]{\ExpandAftercmds\MakeUppercase{#1}}
+%    \end{macrocode}
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\cnc@grabnumber} \marg{token sequence containing \#1}
+%%%                                \momarg{number}\\\nopagebreak\noindentnext
+%
+%  This is a command we're going to use for the automatically
+%  defined short symbol macros later. It has one 'real'
+%  mandatory argument and then it captures all numerals
+%  (0\ldots 9) that follow it. These numerals are then
+%  substituted for all occurrences of \#1 in the mandatory
+%  argument which is then `returned'.
+%
+%    \begin{macrocode}
+\newcommand{\cnc@grabnumber}[1]{%
+  \def\cnc@dowithnum##1{#1}%
+  \futuredef[0123456789]{\cnc@@n}%
+    {\expandafter\cnc@dowithnum\expandafter{\cnc@@n}}%
+}
+%    \end{macrocode}
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\cnc@csvlistsize} \marg{csvlist}
+%%%                                 \marg{command sequence}\\\nopagebreak\noindentnext
+%
+%  This macro takes a comma-separated list of\ldots anything,
+%  and stores its size in the given macro as a simple decimal
+%  string.
+%
+%    \begin{macrocode}
+\newcounter{cnc@listsize}
+\newrobustcmd{\cnc@csvlistsize}[2]{%
+  \setcounter{cnc@listsize}{0}%
+  \def\do##1{\stepcounter{cnc@listsize}}\docsvlist{#1}%
+  \edef#2{\arabic{cnc@listsize}}%
+}
+%    \end{macrocode}
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Private Specific-purpose Macros}                                 %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\cnc@conceptname} \marg{plural} \marg{capitalized}
+%%%                                 \marg{plural} \marg{concept key}\\\nopagebreak\noindentnext
+%
+%  This typesets the name of a specific concept in one of four forms. It
+%  can be capitalized or not; and it can be singular or plural. We define
+%  this private macro because there will be two public macros with this
+%  functionality and we want to define the behavior in only one place.
+% 
+%  The first three arguments are |xparse| style booleans. The first and
+%  third are the same because the public macros allow both orders between
+%  the |*| and |^| modifiers and we want to have a simple one-to-one 
+%  mapping between their arguments and the arguments of this private macro.
+% 
+%    \begin{macrocode}
+\newcommand{\cnc@conceptname}[4]{%
+%    \end{macrocode}
+%
+%  We test if \emph{both} the first and third arguments are true, meaning
+%  that the public command has two |*| modifiers. If it does, we give a
+%  package error.
+%
+%    \begin{macrocode}
+  \ifboolexpr{ test{\IfBooleanTF{#1}} and test{\IfBooleanTF{#3}} }{%
+    \PackageError{concepts}%
+      {You used the * modifier twice; once is enough}%
+      {I will pretend you just used one *.}%
+  }{}%
+%    \end{macrocode}
+%
+%  And then we simply typeset the correct value from our datastore.
+%
+%    \begin{macrocode}
+  \ifboolexpr{ test{\IfBooleanTF{#1}} or test{\IfBooleanTF{#3}} }{%
+    \IfBooleanTF{#2}%
+      {\cnc@g{concept(#4).option(Plural)}}%
+      {\cnc@g{concept(#4).option(plural)}}%
+  }{%
+    \IfBooleanTF{#2}%
+      {\cnc@g{concept(#4).option(Name)}}%
+      {\cnc@g{concept(#4).option(name)}}%
+  }%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+}
+%    \end{macrocode}
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\cnc@conceptsymbol} \marg{concept key}
+%%%                                   \marg{index}\\\nopagebreak\noindentnext
+% 
+%  This is the private macro which takes a concept key and an index and returns
+%  the corresponding symbol from our data-store. We use it in the public macros
+%  that offer this functionality.
+%
+%  The first thing we do is grab the prefix of the second argument that
+%  consists of numerals. The rest of the argument is simply left in
+%  the input stream afterwards.
+% 
+%    \begin{macrocode}
+\newcommand*{\cnc@conceptsymbol}[2]{%
+  \cnc@grabnumber{%
+%    \end{macrocode}
+% 
+%  We check if an actual numerical value was passed.
+% 
+%    \begin{macrocode}
+    \ifstrempty{##1}{%
+%    \end{macrocode}
+% 
+%  No, we didn't get a numerical index. If there is only one symbol
+%  allocated to this concept, we don't care and return that symbol.
+% 
+%    \begin{macrocode}
+      \edef\cnc@symbolcount{\cnc@g{concept(#1).option(symbols).count}}%
+      \ifnumcomp{\cnc@symbolcount}{=}{1}{%
+        \ensuremath{\cnc@g{concept(#1).option(symbols).index(1)}}%
+      }%
+%    \end{macrocode}
+% 
+%  If there are multiple symbols, the lack of an index is ambiguous and
+%  we report a package error.
+% 
+%    \begin{macrocode}
+      {%
+        \PackageError{concepts}%
+          {You didn't specify a number, but the '#1'
+           \MessageBreak concept has more than one symbol
+           allocated; please\MessageBreak specify a number
+           to typeset a specific symbol}%
+          {I will pretend you didn't ask for a symbol here.}%
+      }%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+    }%
+%    \end{macrocode}
+% 
+%  Now follows the `else' branch: we did get a numerical index!
+% 
+%    \begin{macrocode}
+    {%
+%    \end{macrocode}
+% 
+%  We check whether it is larger than the number of symbols
+%  allocated to the concept.
+% 
+%    \begin{macrocode}
+      \edef\cnc@symbolcount{\cnc@g{concept(#1).option(symbols).count}}%
+      \ifnumcomp{##1}{>}{\cnc@symbolcount}{%
+%    \end{macrocode}
+% 
+%  If it is, we report an `index out of bounds' error. We first prepare an
+%  appropriate sentence fragment so the error message becomes more readable. 
+% 
+%    \begin{macrocode}
+        \edef\cnc@nth{##1\nthSuff0##1\delimiter}%
+        \ExpandNext\IfStrEq{\cnc@symbolcount}{0}{%
+          \edef\cnc@somany{no symbols}%
+        }{\ExpandNext\IfStrEq{\cnc@symbolcount}{1}{%
+          \edef\cnc@somany{only 1 symbol}%
+        }{%
+          \edef\cnc@somany{only \cnc@symbolcount\space symbols}%
+        }}%
+        \PackageError{concepts}%
+          {You asked for the \cnc@nth\space '#1' symbol,
+           but\MessageBreak the '#1' concept has
+           \cnc@somany\space allocated}%
+          {I will pretend you didn't ask for a symbol here.}%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+      }%
+%    \end{macrocode}
+% 
+%  But if the number is within bounds, great! We just return the stored symbol.
+% 
+%    \begin{macrocode}
+      {%
+        \ensuremath{\cnc@g{concept(#1).option(symbols).index(##1)}}%
+      }%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+    }%
+%    \end{macrocode}
+%
+%  Now ends our |\cnc@grabnumber| command, and we supply the second argument
+%  that may contain the numbers. Just in case it's empty, we make sure we
+%  don't grab anything that comes after the second argument by adding a
+%  |\relax|.
+%
+%    \begin{macrocode}
+  }#2\relax%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+}
+%    \end{macrocode}
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\cnc@conceptsymbols} \marg{concept key}
+  %                                    \marg{separator}
+  %                                    \marg{last separator}
+%%%                                    \oarg{indices}\\\nopagebreak\noindentnext
+% 
+%  This is the private macro which takes a concept key and a
+%  comma-separated list of symbol-indices and returns a
+%  string-separated list of corresponding concept symbols from
+%  our data-store, possibly with a different token as the last
+%  separator. We use it in the public macros that offer this
+%  functionality. The last argument is optional to make it
+%  easier to define our `short' symbol-list command later.
+%
+%    \begin{macrocode}
+\newcounter{cnc@separatorcount}%
+\NewDocumentCommand{\cnc@conceptsymbols}{m m m O{1}}{%
+  \def\cnc@result{}%
+%    \end{macrocode}
+%
+%  \changes{0.0.6}{2012/12/29}
+%    {removed unnecessary \{\} from the definition which would break
+%     correct placement of subscript and superscript}
+%  
+%  We loop through the list of indices and produce the
+%  symbols one-by-one. We use a rather ugly trick to
+%  possibly have a different \meta{last separator}.
+%  Each separator is stored in a separate macro, and we
+%  simply redefine the last one after the loop. This causes
+%  one macro to be defined for every single separator in
+%  the document, but we don't care, since most of this
+%  will be rewritten when we switch to \LaTeX3.
+%
+%    \begin{macrocode}
+  \ifblank{#4}{}{%
+    \def\do##1{%
+      \stepcounter{cnc@separatorcount}%
+      \edef\cnc@sepcsname{cnc@separator\arabic{cnc@separatorcount}}%
+      \csdef{\cnc@sepcsname}{#2}%
+      \expandafter\expandafter\expandafter\def\expandafter%
+        \expandafter\expandafter\cnc@result\expandafter%
+        \expandafter\expandafter{\expandafter\cnc@result%
+        \csname\cnc@sepcsname\endcsname%
+        \cnc@conceptsymbol{#1}{##1}}%
+    }\docsvlist{#4}%
+    \edef\cnc@sepcsname{cnc@separator\arabic{cnc@separatorcount}}%
+    \csdef{\cnc@sepcsname}{#3}%
+    \ensuremath{\expandafter\@gobble\cnc@result}%
+  }%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+}
+%    \end{macrocode}
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\cnc@nameandsymbols} \marg{concept key}
+  %                                    \marg{star}
+  %                                    \marg{capitalized}
+  %                                    \marg{star}\\\nopagebreak
+  %                                    \marg{separator}
+  %                                    \marg{last separator}
+%%%                                    \marg{indices}\\\nopagebreak\noindentnext
+% 
+%  This is the private macro which takes a concept key, a few
+%  modifiers, a comma-separated list of symbol-indices and
+%  custom separators and returns a separated list of the corresponding
+%  concept symbols from our data-store. We use it in the public
+%  macros that offer this functionality.
+%
+%    \begin{macrocode}
+\newrobustcmd{\cnc@nameandsymbols}[7]{%
+%    \end{macrocode}
+%
+%  We first check if any |*| modifiers were given and, if so,
+%  generate an error. 
+%
+%    \begin{macrocode}
+  \ifboolexpr{ test{\IfBooleanTF{#2}} or test{\IfBooleanTF{#4}} }{%
+    \PackageError{concepts}%
+    {You used the * modifier, but pluralization\MessageBreak
+     will be decided by the size of the index list}%
+    {I will pretend you didn't use the * modifier.}%
+  }{}%
+%    \end{macrocode}
+%
+%  We then typeset the name of the concept. We check pluralization
+%  and pass along the capitalization.
+%
+%    \begin{macrocode}
+  \cnc@csvlistsize{#7}{\cnc@symbollistsize}%
+  \ifnumcomp{\cnc@symbollistsize}{=}{1}{%
+    \cnc@conceptname{\BooleanFalse}{#3}{\BooleanFalse}{#1}%
+  }{%
+    \cnc@conceptname{\BooleanTrue}{#3}{\BooleanFalse}{#1}%
+  }%
+%    \end{macrocode}
+%
+%  Finally, we print the symbol list. We take away any whitespace
+%  at the end of the name (possible if the name is itself defined
+%  in terms of a public concept-name command that introduced an
+%  |\xspace|) and introduce a single space of our own. 
+%
+%    \begin{macrocode}
+  \unskip{} \cnc@conceptsymbols{#1}{#5}{#6}[#7]%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+}
+%    \end{macrocode}
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Public Macros}                                                   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  We now implement the macros that will be used directly by package users.
+%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% \begin{macro}{\NewConcept} \marg{concept key} \marg{options}\\\nopagebreak\noindentnext
+%  
+%  \changes{0.0.6}{2012/12/29}
+%    {made the options mandatory}
+%  
+%  We now define the |\NewConcept| command. It should (obviously) be robust.
+% 
+%    \begin{macrocode}
+\newrobustcmd*{\NewConcept}[2]{%
+%    \end{macrocode}
+% 
+%  Is this concept key already defined? If so, we report a package error.
+% 
+%    \begin{macrocode}
+  \xifinlist{#1}{\cnc@g{concepts}}{%
+    \PackageError{concepts}%
+      {The concept key '#1' is already taken}%
+      {I will pretend that this '\protect\newconcept'%
+       didn't happen.}%
+  }%
+%    \end{macrocode}
+%
+%  Otherwise, we start the actual processing of this new concept.
+%
+%    \begin{macrocode}
+  {%
+%    \end{macrocode}
+% 
+%  We add the concept to the concepts list in our datastore.
+% 
+%    \begin{macrocode}
+    \listcsxadd{\cnc@d{concepts}}{#1}%
+%    \end{macrocode}
+% 
+%  We then check which options were explicitly specified by the user.
+%  This results in a set of toggles in our datastore, which may
+%  be used by other code.
+% 
+%    \begin{macrocode}
+    \DeclareRobustCommand*{\cnc@registertoggle}[1]{%
+      \newtoggle{\cnc@d{concept(#1).option(##1).given}}%
+      \togglefalse{\cnc@d{concept(#1).option(##1).given}}%
+      \ltxkeys@newordkey[cnc@toggle]{#1}{##1}[]%
+        {\toggletrue{\cnc@d{concept(#1).option(##1).given}}}%
+    }%
+    \cnc@registertoggle{name}%
+    \cnc@registertoggle{Name}%
+    \cnc@registertoggle{plural}%
+    \cnc@registertoggle{Plural}%
+    \cnc@registertoggle{namecmd}%
+    \cnc@registertoggle{symbols}%
+    \cnc@registertoggle{symbolcmd}%
+    \ltxkeys@setkeys*[cnc@toggle]{#1}{#2}%
+%    \end{macrocode}
+% 
+%  We now register the concept name options |name|, |Name|,
+%  |plural| and |Plural|. This is also where we set their default values.
+% 
+%    \begin{macrocode}
+    \ltxkeys@newordkey[cnc]{#1}{name}%
+      [#1]%
+      {\csdef{\cnc@d{concept(#1).option(name)}}{##1}}%
+    \ltxkeys@newordkey[cnc]{#1}{Name}%
+      [\cnc@upper{\cnc@g{concept(#1).option(name)}}]%
+      {\csdef{\cnc@d{concept(#1).option(Name)}}{##1}}%
+    \ltxkeys@newordkey[cnc]{#1}{plural}%
+      [\cnc@g{concept(#1).option(name)}\unskip s]%
+      {\csdef{\cnc@d{concept(#1).option(plural)}}{##1}}%
+    \ltxkeys@newordkey[cnc]{#1}{Plural}%
+      [\cnc@upper{\cnc@g{concept(#1).option(plural)}}]%
+      {\csdef{\cnc@d{concept(#1).option(Plural)}}{##1}}%
+%    \end{macrocode}
+% 
+%  We next register the |namecmd| option. Its default value is the
+%  concept key with a |\| in front of it. Unlike most other options,
+%  though, we require the option name to be explicitly given by the
+%  user to actually define the macro. The following code also
+%  contains the test.
+% 
+%    \begin{macrocode}
+    \expandaftercmds{\ltxkeys@newordkey[cnc]{#1}{namecmd}%
+      [}{\csname#1\endcsname}]{%
+      \iftoggle{\cnc@d{concept(#1).option(namecmd).given}}{%
+%    \end{macrocode}
+% 
+%  We register the option value as given.
+% 
+%    \begin{macrocode}
+      	\csdef{\cnc@d{concept(#1).option(namecmd)}}{\noexpand##1}%
+%    \end{macrocode}
+% 
+%%% \vphantom{x}\marginnote{\meta{namecmd}} \movarg{*} \movarg{\textasciicircum}
+%                                           \movarg{*}
+%                                           \oarg{indices}\\\nopagebreak\noindentnext
+%
+%  \noindent If the option is processed, we define the concept-specific
+%  name command. We distinguish between two cases: whether an index-list
+%  was provided or not.
+% 
+%    \begin{macrocode}
+        \NewDocumentCommand{##1}{t* t^ t* +o}{%
+          \IfValueTF{####4}{%
+            \cnc@nameandsymbols{#1}{####1}{####2}{####3}%
+              {,}{$ and $}{####4}%
+          }{%
+            \cnc@conceptname{####1}{####2}{####3}{#1}\unskip\xspace%
+          }%
+        }%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+      }{}%
+    }%
+%    \end{macrocode}
+% 
+%  We now register the |symbols| option. This option expects a list.
+%  The callback of the following code processes it one symbol at a time.
+%  And we first initialize the symbol counter to 0 in case the list is
+%  empty
+% 
+%    \begin{macrocode}
+    \csdef{\cnc@d{concept(#1).option(symbols).count}}{0}%
+    \ltxkeys@newlistkey[cnc]{#1}{symbols}[]{%
+%    \end{macrocode}
+% 
+%  We check if this particular symbol is already defined. We don't want
+%  a symbol allocated to different concepts. Or allocated twice to the
+%  same concept, for that matter. If all is fine, we update the symbol
+%  counter for this concept, we add the symbol itself and we update
+%  the reverse map we use for checking duplicates.
+% 
+%    \begin{macrocode}
+      \ifcsundef{\cnc@d{symbol(\detokenize{##1}).concept}}{%
+        \csedef{\cnc@d{concept(#1)%
+                       .option(symbols)%
+                       .count}}{\ltxkeys@listcount}%
+        \csdef{\cnc@d{concept(#1)%
+                      .option(symbols)%
+                      .index(\ltxkeys@listcount)}}{##1}%
+        \csedef{\cnc@d{symbol(\detokenize{##1}).concept}}{#1}%
+      }%
+%    \end{macrocode}
+% 
+%  If the symbol is already in use we report a package error.
+% 
+%    \begin{macrocode}
+      {%
+        \PackageError{concepts}%
+          {The symbol '\detokenize{##1}' is already allocated
+           to the '\cnc@g{symbol(\detokenize{##1}).concept}'
+           concept}%
+          {I will pretend that you did not
+           try to add this symbol.}%
+      }%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+    }%
+%    \end{macrocode}
+% 
+%  We register the |symbolcmd| option. It does not really have a default,
+%  but we give an empty default so we can test for the empty string inside.
+% 
+%    \begin{macrocode}
+    \ltxkeys@newordkey[cnc]{#1}{symbolcmd}[]{%
+      \ifblank{##1}{}{%
+%    \end{macrocode}
+% 
+%  We register the option value as given.
+% 
+%    \begin{macrocode}
+      	\csdef{\cnc@d{concept(#1).option(symbolcmd)}}{\noexpand##1}
+%    \end{macrocode}
+% 
+%%% \vphantom{x}\marginnote{\meta{symbolcmd}} \momarg{index}\\\nopagebreak\noindentnext
+% 
+%  \noindent If the option is processed, we now define the concept-specific
+%  `short' command used to typeset one or more of the allocated symbols. It
+%  doesn't have a conventional argument, but it grabs all numerals following
+%  it and uses that as an index to the symbol. If a number was not detected,
+%  we pass control to the |\cnc@conceptsymbols| command, which is still able
+%  to grab a square bracket delimited list of indices.
+% 
+%    \begin{macrocode}
+        \newrobustcmd*{##1}{%
+          \cnc@grabnumber{%
+            \IfInteger{########1}{%
+              \cnc@conceptsymbol{#1}{########1}%
+            }{% TODO: check for square bracket (we still may want to report an error)
+              \cnc@conceptsymbols{#1}{,}{,}%
+            }%
+          }%
+        }%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+      }%
+    }%
+%    \end{macrocode}
+% 
+%  Finally, we issue the command to parse and process all options.
+% 
+%    \begin{macrocode}
+    \ltxkeys@launchkeys[cnc]{#1}{#2}%
+%    \end{macrocode}
+%    \uninteresting\begin{macrocode}
+  }%
+}
+%    \end{macrocode}
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\ConceptOption} \marg{concept key}
+%%%                               \marg{option key}\\\nopagebreak\noindentnext
+%
+%  The point of this command is that it can retrieve any option value
+%  in an expandable way. That means we can't use |xparse|, but we don't
+%  need it.
+% 
+%    \begin{macrocode}
+\newcommand*{\ConceptOption}[2]{%
+  \cnc@g{concept(#1).option(#2)}%
+}
+%    \end{macrocode}
+%
+%  Unfortunately, as of writing this, not all options are stored in a
+%  fully expandable way yet. But they will be in a later version. 
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\ConceptName} \movarg{*} \movarg{\textasciicircum}
+  %                             \movarg{*}
+%%%                             \marg{concept key}\\\nopagebreak\noindentnext
+% 
+%  This implementation simply calls our private macro for retrieving
+%  the name in one of four forms.
+%
+%    \begin{macrocode}
+\NewDocumentCommand{\ConceptName}{t* t^ t* m}{%
+  \cnc@conceptname{#1}{#2}{#3}{#4}\unskip\xspace%
+}
+%    \end{macrocode}
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\ConceptSymbol} \marg{concept key}
+%%%                               \oarg{index}\\\nopagebreak\noindentnext
+%
+%  This implementation simply calls our private macro for retrieving
+%  the symbol with the given index. The index is optional and
+%  defaults to 1.
+%
+%    \begin{macrocode}
+\NewDocumentCommand{\ConceptSymbol}{m O{1}}{%
+  \cnc@conceptsymbol{#1}{#2}%
+}
+%    \end{macrocode}
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\ConceptSymbols} \marg{concept key}
+  %                                \oarg{separator}
+  %                                \oarg{last separator}
+%%%                                \marg{indices}\\\nopagebreak\noindentnext
+%
+%  This implementation simply calls our private macro for retrieving
+%  the symbol list with the given indices. The index-list is mandatory
+%  but can be empty.
+%
+%    \begin{macrocode}
+\NewDocumentCommand{\ConceptSymbols}{m +O{,} +o m}{%
+    \IfValueTF{#3}{%
+      \cnc@conceptsymbols{#1}{#2}{#3}[#4]%
+    }{%
+      \cnc@conceptsymbols{#1}{#2}{#2}[#4]%
+    }%
+}
+%    \end{macrocode}
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % \begin{macro}{\ConceptNameAndSymbols} \marg{concept key}
+%%%                                       \marg{indices}\\\nopagebreak\noindentnext
+%
+%  This implementation simply calls our private macro for typesetting
+%  the concept name and the symbol list with the given indices. The
+%  index-list is mandatory and cannot be empty.
+%
+%    \begin{macrocode}
+\NewDocumentCommand{\ConceptNameAndSymbols}{t^ m +O{,} +O{$ and $} m}{%
+  \cnc@nameandsymbols{#2}{\BooleanFalse}{#1}{\BooleanFalse}%
+    {#3}{#4}{#5}%
+}
+%    \end{macrocode}
+%
+%\end{macro}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+

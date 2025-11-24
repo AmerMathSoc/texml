@@ -1,0 +1,718 @@
+\ProvidesFile{makedoc.tex}[2012/11/30 documenting makedoc.sty]
+\RequirePackage{makedoc}
+\documentclass[fleqn]{article}              %% fleqn 2011/10/12
+\input{makedoc.cfg} 
+%% 2011/08/22:
+\MDkeywords{literate programming, .txt to .tex enhancement, 
+            preprocessing documentation, macro programming}
+\hypersetup{%
+    pdftitle=makedoc.sty preprocesses .sty for documentation,
+    pdfsubject=documenting makedoc.sty
+}%% /2011/08/22
+\sfcode`/=1001 %% TODO makedoc.cfg!? 2010/03/21 niceverb!? 2011/01/25 
+\makeatletter %% TEST for hyperref compatibility 2010/03/11
+%   \def\@testdef #1#2#3{%
+%     \def\reserved@a{#3}%
+%     \expandafter \ifx \csname #1@#2\endcsname
+%    \reserved@a  \else \@tempswatrue \fi
+%     \if@tempswa
+%       \typeout{^^J*** Type `r' <input> to get around 
+%                       \string\label\space issues! ***^^J}
+%       \errorcontextlines=0
+%       \show\reserved@a
+%       \expandafter \show \csname #1@#2\endcsname
+%     \fi
+%    }
+% \makeatother
+\begin{document}
+\title{'makedoc'---Preprocessing documentation by \TeX\thanks{%
+    This document describes                         %% 2011/01/25
+    version~\textcolor{blue}{\UseVersionOf{makedoc.sty}}
+    of 'makedoc.sty' as of \UseDateOf{makedoc.sty}.}}
+\maketitle
+\begin{MDabstract}
+'makedoc' provides commands for generating \LaTeX\ input from a 
+package file in order to typeset the latter's documentation 
+(somewhat similar and opposite to 'docstrip')---with 
+v0.3 \emph{a single one usually suffices}. 
+Certain comment marks are removed, listing commands are inserted, 
+and some (configurable) typographical `txt'$\to$\TeX\ corrections 
+are applied.---This 
+continues the policy of 'niceverb' to minimize documentation markup in 
+package files. 'makedoc' extends and exemplifies the parsing package 
+'fifinddo'. After an edit (and test) of your package, you get the new 
+documentation in one run (or the usual number of runs) of the 
+documentation driver file.---The present approach is meant to be an 
+\emph{alternative} to the standard 'doc' package and its `\DocInput'. 
+It provides \emph{less} than 'doc' does, rather deliberately. It may 
+be helpful at least for the development of small packages, or at least 
+at early stages.
+\end{MDabstract}
+\tableofcontents
+\section{Introduction}
+\emph{The abstract will not be repeated in this section.} Let me add 
+instead that I was in dire need of such a package, I got stuck with my 
+packages because I lost orientation in them, and I was unhappy with 
+the forms of documentations of my other packages, and documenting them 
+with the standard \LaTeX\ 'doc' system was not attractive for me 
+(neither considered helpful). %% clarified 2010/03/13
+I also worked on \emph{Windows} until September 2008, and I 
+find a system like the present one still more attractive then using 
+(learning!\@) other filtering utilities (see below on 'awk'). And I 
+may work on \emph{Windows} once again and don't want to depend on 
+installing some $\dots$ there---\emph{I really would like to have 
+powerful tools for everything depending on nothing but \TeX\slash 
+\LaTeX!}
+
+\section{Prior work and what is new}
+It is, of course, not a new idea to get around comment marks `%' to 
+typeset the documentation. 'doc''s `\DocInput' does this by making `%' 
+an ``ignored" character. This way you cannot use `%' for commenting 
+comments (so 'doc' offers a ``new comment mark" 
+`^'`^'`A'). %% TODO `^^A' suddenly failed 2010/03/15 -- "ligature"!?
+You also cannot use `%' for commenting out code (that you are 
+pondering---or using for debugging---only). %% clarified 2010/03/13
+
+Moreover, 'doc' requires enclosing package code explicitly by 
+environment commands (behind comment marks). Stephan I. B\"ottcher 
+with his '\href{http://ctan.org/pkg/lineno}{lineno.sty}' 
+and Grzegorz Murzynowski in \ctanpkgref{gmdoc}
+aimed at doing away with this requirement. 
+'lineno.sty' contains 'awk' scripts 
+to remove starting comment marks and to insert listing commands. 
+A file 'lineno.tex' is generated that typesets the documentation. 
+By the way, 'lineno.sty' is full of discussions, but it is not 
+'docstrip'ped---the maintainers never have received a complaint 
+that inputting 'lineno.sty' were too slow. 
+
+'gmdoc' seems to get around comment marks and insert listing commands 
+\emph{while typesetting} by a refined version of `\DocInput', 
+through some careful detecting and analysing comment marks, 
+the approach resembles detection of lists in 'wiki.sty'.\footnote{See 
+  'gmdoc.pdf' on &\DocInput. You can learn a lot from this 220 pages 
+  document! I also find 
+  \ctanpkgref{pauldoc} and \ctanpkgref{xdoc} inspiring.}
+And this is a matter of principles---comparing the approaches of 
+\emph{preprocessing} ('lineno.sty') and \emph{``smart typesetting"} 
+('gmdoc', 'wiki'). Sometimes preprocessing seems to be simpler, 
+sometimes detecting while typesetting. 
+(Another example is the preprocessor 
+\ctanpkgref{easylatex}
+of which 'wiki.sty' is a much reduced ``while typesetting" variant.) 
+``While typesetting" may be easier when single characters or 
+sequences of two or three encode markup
+information---but such detection can badly interfere with other 
+packages etc. ``Preprocessing" may be easier when entire ``strings" 
+of characters decide, which may be anywhere in a file line. 
+
+'makedoc' chooses \emph{preprocessing}, as 'lineno.sty', but by 
+\emph{\TeX}. There is a general discussion of this choice in the 
+documentation of 'fifinddo'. Preprocessing here can be done in the 
+same \LaTeX\ run as typesetting, though you can avoid 
+incompatabilities with packages needed for typesetting 
+(by inputting them only \emph{after} preprocessing). 
+
+'lineno.sty' exemplifies why preprocessing with \emph{\TeX} may be 
+preferable to preprocessing with other utilities: 
+When I took over maintenance of 'lineno.sty', 
+I needed hard work to get the 'awk' script running. 
+The \emph{Munich} 'awk' seemed \emph{not} to behave as the \emph{Kiel} 
+'awk' (I chose a Munich 'nawk' and reworked the script a little). 
+\TeX\ seems to have better fixed functionality than other utilities! 
+
+A different alternative to \LaTeX's 'doc' system is 
+Paul Isambert's '\href{http://ctan.org/pkg/codedoc}{CodeDoc}' 
+where the code environments extract package code in typesetting the 
+documentation. %% added 2010/03/10
+
+\section{Styles supported (parsers provided)}\label{sec:styles}
+% \section{Styles of commenting '.sty's}
+We find different styles of documenting \LaTeX\ packages. 
+As the main aspects I consider 
+(i)~\emph{telling code from comments} 
+and (ii)~\emph{markup in comments}. 
+(You may find more details on the next matters in the 
+ ``implementation" section.)
+
+\subsection{Telling code from comments}
+\emph{Comment marks} (usually \lq`%'\rq\ in the case of \TeX) 
+probably were named so to mark \emph{``comments"} as opposed 
+to code $\dots$ great, but actually, in ``daily practice," 
+they are so handy---and used---for ``commenting out" \emph{code}, 
+i.e., \emph{managing code versions} in a simple way: 
+one does not actually want to \emph{delete} code, 
+one might want to use it another time, maybe for debugging
+$\dots$ or to remind of earlier attempts that should not be tried 
+again $\dots$
+
+This is a problem for \emph{high-quality typesetting} of 
+documentation. \emph{Code} should be typeset about as you see it on 
+the \emph{screen}---\emph{monospaced}, this allows structuring by 
+indenting, it is common practice to use a typewriter typeface for 
+this. Real \emph{comments} should be typeset in \emph{high quality} as 
+usual with \LaTeX. Little dilemmas therefore occur with \emph{``hidden 
+code"} (``commented-out"). A comment mark starts the line, but 
+obviously it is not really a comment and rather should be typeset 
+like code (and otherwise they may break).           %% 2010/03/22
+Another problem are comments at the \emph{end} of a 
+\emph{code} line. Sometimes they are ``real comments" ('gmdoc' 
+supports this style). But sometimes 
+this is only another version of ``version management," code 
+``commented-out."
+
+I like the style of writing packages described before and use it all 
+the time. I mark ``real comments" with \emph{two} adjacent comment 
+marks and an ensuing space to distinguish them clearly from code 
+commented out.
+%% Adapted to v0.4 2010/03/29:
+\emph{This style is presently the one supported by \textup{'makedoc'} 
+      as default.}
+This way only a line starting with 
+|%% | is considered a ``real" comment line. The first three 
+characters are removed, and the rest is typeset in high quality. 
+Any other lines are typeset verbatim. The 'makedoc' \emph{parser} 
+doing this has an ``identifier" |PPScomment| (``percent, percent, 
+space"). Another identifier |comment| is a placeholder for 
+the comment parser to be used, by default it is an alias for 
+`PPScomment'. Lines just containing |%%| (without the space) may be 
+used to suppress empty code lines preceding section titles and for 
+keeping some visual, relieving space between code and comment lines.
+
+The style I described previously may be considered ``unprofessional." 
+The many \LaTeX\ packages documented using the 'doc'\slash'.dtx' 
+system don't use comment marks for \emph{``commenting-out"}. 
+Or one may mark code commented out by putting no space between the 
+percent mark and the code. 
+With v0.4 of 'makedoc', this style is supported as |PScomment|. 
+You can directly call this as <main-parser> as described below, 
+or you can switch to it by 
+\[`\CopyFDconditionFromTo{PScomment}{comment}'\]
+
+\subsection{Markup in comments}
+\label{sec:mdoccorr-tex}                                %% 2012/03/18
+Packages using the 'doc'\slash '.dtx' system as well as alternative 
+highly developed systems mentioned above use (enhanced) usual 
+\emph{\LaTeX} syntax for markup of comments. Other packages just use 
+an \emph{ASCII} style \emph{without} any markup. My idea was to 
+support the latter style by some `txt'$\to$\LaTeX\ functionality. 
+'makedoc' does this using a file 'mdoccorr.cfg' which is very small 
+right now.
+
+I also thought of introducing another sort of ``decent" markup not 
+needing much more space than the ``ASCII kernel" of the comments. 
+This is to some extent implemented in 'niceverb.sty'. I thought of the 
+syntax of editing \textit{Wikipedia} pages; this is partially 
+implemented in 'wiki.sty' which unfortunately is not yet compatible 
+with 'niceverb'.
+
+But 'makedoc' implements one \textit{Wikipedia} feature in a different 
+way than 'wiki.sty' (cf.~'wikicheat.pdf') that looks about as follows:
+\begin{eqnarray*}
+  \endcell\endcell`%% == Section =='\\
+  \endcell\endcell`%% === Subsection ==='\\
+  \endcell\endcell`%% ==== Subsubsection ===='
+\end{eqnarray*}
+i.e., you type `== <title> ==' in place of `\section{<title>}' etc.
+The parser must replace `====<title3>===' before `===<title2>===' and 
+the latter before `==<title1>=='. In fact, 'makedoc' provides three 
+parsers for these situations:
+\begin{description}
+\cmdboxitem|\SectionLevelThreeParseInput| is the most general parser 
+    offered. If it does not find two strings \lq`===='\rq\ enclosing 
+    \emph{something}, it passes to
+\cmdboxitem|\SectionLevelTwoParseInput| which unless finding 
+    two strings `===' enclosing something passes to
+\cmdboxitem|\SectionLevelOneParseInput| $\dots$ passes to the comment 
+    detector |comment|. 
+\end{description}
+
+
+\section{Requirements}
+'makedoc' requires \LaTeXe\ (supporting star forms of `\newcommand' 
+etc.)\ as \TeX-format, the package 'fifinddo.sty' from the same 
+directory (on CTAN etc.)\ as where 'makedoc.sty' is, and the 
+\LaTeX-package 'moreverb' by Robin Fairbairns (after others)---it 
+should be installed anyway, or you can get its latest version 
+(v2.3, 2008/06/03?) from CTAN. 
+
+'makedoc''s `.txt'$\to$\TeX\ functionality moreover needs a file 
+'mdoccorr.cfg' that should have come along with 'makedoc.sty' and 
+'fifinddo.sty'. You may need to have a modified copy of it in the 
+directory of your main `.tex' file `<jobname>.tex' fitting special 
+needs of your project. 
+
+\section{Using 'makedoc' the simplest way}
+In the most simple case, you are preparing documentation for a package 
+file `<jobname>.sty' only, and you prepare a file `<jobname>.tex' 
+containing 
+\[`\title{\textsf{<jobname>}---a \LaTeX\ Package for <whatever>}'\]
+and `\maketitle' etc.\ about your package.\footnote{With 'niceverb' 
+    and &\title\ after &\begin{document}, you may replace 
+    \lq&\textsf{<jobname>}\rq\ by \lq&'<jobname>&'\rq.}
+The documentation will be produced by running `<jobname>.tex' with 
+\LaTeX\ (e.g., \texttt{latex <jobname>.tex}).
+
+First, `<jobname>.tex' must have 
+\[|\usepackage{makedoc}|\quad\mbox{or}\quad 
+  |\RequirePackage{makedoc}|\]                          %% 2011/11/05
+in its preamble. There are no package options. 
+
+Second, to typeset the commented implementation from `<jobname>.sty', 
+include in <jobname>.tex's `document' environment a line 
+\[|\MakeInputJobDoc{<header-lines>}{\SectionLevelThreeParseInput}|\]
+<header-lines> refers to a non-negative integer as follows: 
+We think the most simple and useful way of typesetting the first lines 
+of a package file including license and copyrights is ``depicting them 
+as image," i.e., \textit{verbatim}. We could try to determine the 
+number of these lines by parsing, but we won't do so soon. Please just 
+count them and enter the number as <header-lines>---and change it 
+until you can accept the outcome.
+
+\section{Steps of advanced usage}
+\subsection{Different main parsers (second mandatory argument)}
+
+`\MakeInputJobDoc''s mandatory syntax actually is 
+\[|\MakeInputJobDoc{<header-lines>}{<main-parser>}|\]
+<main-parser> refers to the parsing macro that is applied to each 
+input line whose number is greater than <header-lines>. 
+Examples for <main-parser> are named in section~\ref{sec:styles} above. 
+  %% TODO above/below macro 2010/03/15
+`\SectionLevelThreeParseInput' is just the most general one. 
+For \emph{efficiency} (!? or also to avoid problems?) you may 
+replace `Three' by `Two' or by `One', if the `====' or the `===' 
+feature is not used in `<jobname>.sty'. If the ``\textit{Wikipedia} 
+sectioning" feature is not used at all, use 
+\[|\MakeInputJobDoc{<header-lines>}{\ProcessInputWith{comment}}|\]
+---provided you want to adopt the \lq`%% '\rq\ style of marking 
+comments, cf.~section~\ref{sec:styles}. For the \lq`% '\rq style 
+instead, use 
+\[|\MakeInputJobDoc{<header-lines>}{\ProcessInputWith{PScomment}}|\]
+
+\subsection{Different extensions (optional arguments)}
+If your package to be documented is a \emph{class} `<jobname>.cls', 
+a local configuration file `<jobname>.cfg' or something 
+else---<jobname>.<ext-in>, e.g., <ext-in>=`cls' or <ext-in>=`cfg', 
+use 
+\[|\MakeInputJobDoc[<ext-in>]{<header>}{<parser>}|\]
+Moreover, `\MakeInputJobDoc' writes an intermediate file 
+`<jobname>.doc' and then `\input's it. If you do not like `doc' 
+as extension for the written file name (maybe you use 
+`<jobname>.doc' for something different already), preferring extension 
+<ext-out>, use
+\[|\MakeInputJobDoc[<ext-in>][<ext-out>]{<header>}{<parser>}|\]
+Yes, you must state <ext-in> then as well, I can't help $\dots$
+
+If even <jobname> is wrong in your view, see next step $\dots$
+
+\subsection{Commands modifying &\MakeInputJobDoc's behaviour}
+\label{sec:modimake}
+Already <jobname> may not be what you want. E.g., you may want 
+to collect documentations of some other files <job-1>, <job-2>, 
+$\dots$ in a single <jobname>. Then precede `\MakeInputJobDoc'
+with 
+\[`\renewcommand*{\mdJobName}{<job-1>}'\]
+etc.\ (please reason yourself about additional requirements \dots)
+As a matter of fact, `\MakeInputJobDoc' reads 
+\[`\mdJobName.<ext-in>' \mbox{\quad and writes\quad} 
+  `\mdJobName.<ext-out>'\]
+Stated another way, <jobname> above referred to |\mdJobName|.
+
+`\MakeInputJobInput' moreover (by default) produces one dot 
+per input line processed on screen to show progress. 
+The reason is that `makedoc' issues the command 
+|\ProcessLineMessage{\message{.}}|.
+Already this trivial thing seems to slow down processing considerably 
+(nowadays). `\MakeInputJobInput' will run faster if preceded by 
+\[|\ProcessLineMessage{}|\]
+which will suppress any message about processing.
+However, the message may be helpful in trouble-shooting.
+
+\subsection{Separating preprocessing from typesetting}
+\label{sec:sep-pre-type}                                %% 2011/10/07
+  %% extended 2010/03/16
+To some surprise, I observe that `\MakeInputJobDoc' \emph{works.} 
+This is quite a new discovery of mine (2010/03/13); 
+before I thought that, for safety, preprocessing should happen 
+inside a local group \emph{preceding} `\documentclass'.
+|\MakeJobDoc| works like `\MakeInputJobDoc' described above, 
+yet it just \emph{preprocesses} the package to be documented, 
+waiting for an 
+\[`\input{<jobname>.<ext-out>}'\] 
+in the `document' environment to \emph{typeset} the documentation. 
+So 'makedoc.tex' once had in its preamble
+% \[`{\RequirePackage{makedoc} \MakeJobDoc{<header>}{<parser>}}'\]
+% at the top of `<jobname>.tex' and `\input{<jobname>.<out-ext>}' later. 
+\begin{eqnarray*}\endcell\endcell
+  `{\RequirePackage{makedoc}'\cr    \endcell\endcell
+  ` \ProcessLineMessage{}'\cr       \endcell\endcell
+  ` \MakeJobDoc{22}{\ProcessInputWith{comment}}}'\cr
+                                    \endcell\endcell
+  `\documentclass{article}'
+\end{eqnarray*} 
+I did experience some truth in my earlier safety policy: 
+With 'niceverb' ``running," `\MakeJobDoc' cannot (easily) be used 
+in the `document' environment. `\MakeInputJobDoc' in fact does some 
+'niceverb' switching (provided 'niceverb' has been loaded) 
+when making use of `\MakeJobDoc'.
+  %% <- verbose to improve line breaks 2010/03/16
+
+Thinking of this ``safety" approach, especially grouping 
+(`{<code>}'),   %%% (`{\code}'),                        %% 2011/10/07
+I had not much cared for compatibility with other packages 
+in choosing 'makedoc' macro names. 
+
+\subsection{Other 'makedoc' (and 'fifindo') script commands}
+The next script commands may be considered of a lower level than 
+`\MakeJobDoc' and `\MakeInputJobDoc', they underlie the latter 
+commands. We also list commands from 'fifinddo.sty' that may be useful 
+or, indeed, are needed for preparing package documentations. 
+This may result in ideas on how do use the script commands for 
+different purposes than for preparing package documentations---e.g., 
+apply `txt'$\to$\TeX\ preprocessing to arbitrary text files. 
+
+\subsubsection{Choosing parameter values for next preprocessing run}
+
+This actually continues section~\ref{sec:modimake}.
+
+\begin{description}
+\cmdboxitem|\ResultFile{<output>}| (from 'fifinddo') 
+    determines (and opens through the \TeX\ primitive `\openout') 
+    the file <output> which will contain the result of 
+    preprocessing the package file.
+\cmdboxitem|\LaTeXresultFile{<output>}|---see next section.
+\cmdboxitem|\Headerlines{<number>}| determines the <number> of lines 
+    starting the input file to be copied \emph{verbatim} 
+    (the first mandatory argument of `\MakeJobDoc'). 
+\cmdboxitem|\MainDocParser{<parser>}| determines the <parser> 
+    as in the \emph{second} mandatory argument of `\MakeJobDoc'.
+\end{description}
+
+We are now describing some parameters which rather must be switched 
+``manually" instead of being modifiable by comfortable 'makedoc' 
+script commands.
+
+With the \emph{``Wikipedia sectioning"} feature, you may change the outcome 
+regarding levels. Assume, e.g., the package file has titles along the 
+scheme \[`== <title> =='\] only, but these should become %% \[...\] 2012/11/12
+\emph{subsections} of the ``implementation" section of the 
+corresponding `.tex' file. Then 
+\[`\renewcommand*{\mdSectionLevelOne}{\string\subsection}'\]
+-- see the implementation of the sectioning feature for details. 
+
+There is a command 
+\[|\NoEmptyInputLines| \mbox{\quad and a parameter macro\quad}
+  |\OnEmptyInputLine|\] 
+which is modified by the former. However, I cannot say much about them 
+right now, I think they just were a difficult matter that I soon 
+decided no longer to think about for a while (cf.\ the 
+implementation). About the same holds for the hook |\EveryComment|.
+
+The `txt'$\to$\TeX\ functionality is implemented through a hook 
+\[|\MakeDocCorrectHook{<characters>}|\] 
+'makedoc' initializes it as an alias of \LaTeX's `\@firstofone', i.e., 
+it won't change <characters>. 'mdoccorr.cfg' should redefine it so it 
+really ``corrects" <characters>. You might try other definitions of 
+`\MakeDocCorrectHook' for different ``correcting" functions.
+It should be \emph{noted} that (currently) 
+`\MakeDocCorrectHook' must be \emph{expandable}, 'fifinddo.sty' 
+provides setup for (expandable) chains of expandable replacements. 
+The ``Wikipedia" sectioning feature moreover uses expandable 
+trimming (single) surrounding spaces, this might be provided in a more 
+general way.\footnote{%% TODO 2010/03/16
+    The \ctanpkgref{trimspaces} package 
+    has been a \emph{model} for this feature here. It cannot be used 
+    directly here because it reads blank spaces as \TeX\ characters with 
+    category code 10 while 'makedoc' reads blank spaces as ``other" 
+    characters (category code 12) in order to \emph{keep} all blank spaces.}
+
+\subsubsection{``Manual" insertions to the output file}
+\begin{description}
+\cmdboxitem|\WriteResult{<balanced>}| (from 'fifinddo') writes 
+    <balanced> to <output> according to the earlier command 
+    `\ResultFile{<output>}'.
+\cmdboxitem|\WriteProvides| (from 'fifindo') writes a 
+    `\ProvidesFile' line into <output> that declares the file 
+    to be generated by 'fifindo'.
+\cmdboxitem|\LaTeXresultFile{<output>}| issues 
+    `\ResultFile{<output>}' and then writes a 
+    `\ProvidesFile' line into <output> that declares the file 
+    to be generated by 'makedoc'.
+\end{description}
+
+\subsubsection{Processing input and closing output}
+\begin{description}
+\cmdboxitem|\MakeDoc{<input>}|\hskip 0pt plus 4em
+    reads 'mdoccorr.cfg' 
+    (for `\MakeDocCorrectHook', see above),
+    %% removed \LaTeXresult... 2010/03/17
+    copies <number> according to `\HeaderLines' (see above) 
+    from <input> into <output> (according to `\ResultFile'), 
+    then processes the remaining lines of <input> according 
+    to `\MainDocParser' (writing several things to <output>). 
+    `\MakeDoc' invokes{\sloppy\par}
+\cmdboxitem|\ProcessFileWith{<input>}{<loop-body>}| 
+    (from 'fifindo') reads <input> line by line---each one stored as 
+    macro |\fdInputLine| and applies <loop-body> to it. 
+    \TeX's ``special" character codes (of characters listed in 
+    macro `\dospecials') are replaced by 12 (``other") by 
+    default---see the 'fifinddo' documentation.
+\cmdboxitem|\CloseResultFile| (from 'fifinddo') 
+    \hskip 0pt plus 1em
+    \emph{closes} 
+    <output> (using \TeX's primitive `\closeout'). 
+\cmdboxitem|\MakeCloseDoc{<input>}| issues 
+    `\MakeDoc{<input>}\CloseResultFile'.
+\end{description}
+%
+Using `\MakeDoc' \emph{instead} of `\MakeCloseDoc' allows processing 
+additional <input> files writing into the same <output>. Or maybe you 
+want to add some additional lines manually to <output> using 
+`\WriteResult'.---By contrast, you may want to make a single output 
+file from a single input file! Therefore:
+%% <- 2011/11/05 ->
+%
+\begin{description}
+\cmdboxitem|\MakeSingleDoc[<out-ext>]{<in-output>.<in-ext>}| \
+    issues\\`\LaTeXresultFile{<in-output>.<out-ext>}'\quad 
+    and\\`\MakeDocCloseDoc{<in-output>.<in-ext>}'.\\
+    The default for <out-ext> is `doc'.
+\end{description}
+
+%% removed 2010/03/09:
+% At least in the long run, using 'makedoc' should not imply commitment 
+% to a certain design or to certain \LaTeX\ packages for typesetting 
+% listings and documentations. Therefore, 'makedoc.cfg' (currently) 
+% contains \emph{local} or \emph{personal choices}, but also 
+% \emph{experiments} with future features of 'niceverb'. 
+% Especially, (at present) the `packagecode' 
+% environment that 'makedoc' `\write's must be chosen. 
+% Currently this is the `listing' environment from 'moreverb' 
+% with some modifications or extra settings. 
+% It may be vital to `\MakeOther' the active characters from 'niceverb' 
+% in the setup of `packagecode'. See the \emph{example} in 
+% section~\ref{sec:fifinddo}.
+% 
+% Finally, 
+% Each package file to be typeset needs its own little
+% \emph{script} of 'makedoc' commands. 
+% With v0.3, one or two of these should suffice. 
+
+% It should fit into the preamble 
+% of the main file for documenting the package (currently %% 2009/04/09
+%   just 5 commands seem to suffice, see the \emph{example} in 
+%   section~\ref{sec:fifinddo}). 
+% The script commands are described 
+% in the \dqtd{File handling} section of 'fifinddo.pdf' and in the 
+% present section~\ref{sec:script} (and \ref{sec:emptylines}).
+% As an alternative, you may prefer to have ``content only" (as much as 
+% possible) in the main typesetting file and in its preamble only 
+% `\input' a separate script file.
+%% removed 2010/03/10:
+% Yes, the idea of documenting a package \emph{here} is to have a 
+% separate ``driver" file for typsetting the documentation. 
+% It may contain an introduction and a guide for users. 
+% The documentation of the package code that has been prepared by the 
+% 'makedoc' script will be `\input'. Alternatively, the ``driver file" 
+% could have title etc.\ only, or preamble and a minimal `document' 
+% environment only. 
+% 
+% So there may be many files, which may look confusing, especially as 
+% compared with the 'doc' procedure. However, 
+% \begin{enumerate}
+% \item ``One file distribution" still is possible thanks to the 
+%       `filecontents' environment. 
+% \item The 'makedoc' script can create a batch file (fitting the 
+%       system, maybe using Will Robertson's 'ifplatform', or 
+%       'texsys.cfg', or \dots) 
+%       that removes certain auxiliary files or moves them to a 
+%       certain directory. 
+% \item I find it helpful to have rather little ``contentual" text 
+%       in the package file. 
+% \item The procedure now runs very smoothly, once the stumbling blocks 
+%       have been overcome.\footnote{\hspace{1sp}%% TODO help in 'niceverb'!
+%         'niceverb' v0.1 was too sloppy with 
+%         some things, and self-documentation of 'makedoc.sty' was 
+%         difficult---its parsing and that from 'verbatim' cannot 
+%         distinguish between markup code and typeset code.}
+% \end{enumerate}
+\subsection{Star avoids &\input{mdoccorrhook}}
+All the preprocessing commands described above---apart from the 
+'fifinddo' command `\ProcessFileWith'---input the file 
+'mdoccorr.cfg' with (typographical) replacement rules 
+(Sec.~\ref{sec:mdoccorr-tex}, Sec.~\ref{sec:mdoccorr})
+automatically. They have star variants that don't: 
+|\MakeInputJobDoc*|, |\MakeJobDoc*|, |\MakeDoc*|, 
+|\MakeCloseDoc*|, and |\MakeSingleDoc*|.
+This is useful when rules very specific to a certain package 
+must be applied instead of the usual ones.
+The examples named in Sec.~\ref{sec:otherauth} use this feature 
+for formatting other author's plain text documentation 
+without modifying their files.
+
+\section{Examples}%%% (documentation of 'mdoccorr.cfg')}
+%% moved here 2010/03/23
+\subsection{Documenting 'nicetext''s `mdoccorr.cfg'}
+The documentations of 'fifinddo', 'makedoc', and 'niceverb' 
+themselves are typeset using 'makedoc'.
+'fifinddo.pdf' documents 'fifinddo.sty', typeset 
+from 'fifinddo.tex', likewise 'makedoc.pdf' and 'niceverb.pdf'. 
+% Section~\ref{sec:fifinddo} contains a listing of 
+% 'makedoc.cfg' and 
+% the 'makedoc' script file 'mkfddoc.tex' 
+% especially made for 'fifinddo.pdf'. 
+% 'fifinddo.doc', 'makedoc.doc', and 'niceverb.doc' are the \TeX\ input 
+% files that were made with 'makedoc.sty'---I have only looked at them 
+% when something was wrong (often syntax mistakes in typing). 
+The Wikipedia syntax feature 
+\begin{quote}
+  `%% === subsection ===' 
+\end{quote}
+is used in 'fifinddo.sty' and 'niceverb.sty' only.
+
+Along with 'makedoc' should come files `makedoc.tpl'---a template 
+'makedoc' script, and a file `fdtxttex.tex' that should start a dialogue 
+on trying `\MakeDocCorrectHook' if you can manage to run it ('WinShell'?). 
+With other definitions of `\MakeDocCorrectHook'---see below---you can 
+use this dialogue for arbitrary replacement jobs (as an application of 
+'fifinddo' rather than 'makedoc').{\sloppy\par}
+
+'fifinddo.pdf', 'makedoc.pdf', and 'niceverb.pdf' were typeset with the following 
+typographical corrections in 'mdoccorr.cfg' that defines 
+`\MakeDocCorrectHook':
+% \strut\hrule              %% rm. those struts 2012/11/12
+%   \listinginput[5]{1}{mdoccorr.cfg}
+  %% <- 2012/11/12 >
+\MDsamplecodeinput{mdoccorr.cfg}
+\noindent
+This code also exemplifies the syntax 'niceverb' provides for writing 
+about \LaTeX\ macros. It is typeset here with 'makedoc.sty' 
+and then looks thus:
+\bigskip 
+\hrule
+\renewcommand*{\mdJobName}{mdoccorr}
+\MakeInputJobDoc[cfg]{0}{\ProcessInputWith{comment}}
+\hrule 
+\bigskip
+\noindent
+And this is the content of the intermediate generated file:
+%   \listinginput[5]{1}{mdoccorr.doc}
+\MDsamplecodeinput[75pt]{mdoccorr.doc}
+% \enlargethispage{8pt} %% 2011/09/14 keep rule on same page %% rm. 2011/10/25
+% \hrule 
+%  \fussy %% 2010/03/29
+
+  \iffalse      %% 2012/11/30
+%% 2012/11/12:
+\pagebreak
+\subsection{Documenting 'nicetext''s `makedoc.cfg'}
+`makedoc.cfg' once was meant to be just ``configuration," 
+but then I introduced some definitions there that may be 
+more interesting and once become a package. 
+Its typeset documentation first:
+\pagebreak[3]
+\strut\bigskip 
+\hrule
+\smallskip
+\renewcommand*{\mdJobName}{makedoc}
+\MakeInputJobDoc[cfg]{0}{\ProcessInputWith{comment}}
+\hrule 
+\bigskip
+\noindent\strut
+The bare code of `makedoc.cfg' is:
+\MDsamplecodeinput{makedoc.cfg}
+
+  \fi
+\subsection{Packages from other authors}
+\label{sec:otherauth}
+`substr.tex' should typeset a nicely formatted documentation 
+of Harald Har\-ders' 'substr.sty', see my own result `substr.pdf'. 
+'substr.sty' is a rare case of the \lq`%% '\rq\ commenting style 
+that 'nicetext' has used itself.
+
+`arseneau.tex' should typeset nicely formatted documentations 
+of a few packages by Donald Arseneau, see my own result `arseneau.pdf'. 
+This demonstrates the usual \lq`% '\rq\ commenting style 
+that 'makedoc' supports with v0.4.
+
+% \pagebreak              %% 2010/03/29; rm. 2011/09/14
+\ResetCodeLineNumbers   %% 2010/03/29
+\section{Implementation}
+\subsection{Preliminaries} 
+Head of file (Legalese):
+\sloppy
+\renewcommand*{\mdJobName}{makedoc}
+\ProcessLineMessage{}
+\MakeInputJobDoc{22}{\ProcessInputWith{comment}}
+\enlargethispage{2\baselineskip}                    %% 2011/11/05
+The previous empty code line is the one \TeX\ insists to add at every 
+end of a file it writes. %% todo TeXbook where? 2009/04/08
+
+%% 2012/11/30:
+\section{`makedoc.cfg' Documented}
+`makedoc.cfg' once was meant to be just ``configuration," 
+but then I introduced some definitions there that may be 
+more interesting and once become a package. 
+\renewcommand*{\mdJobName}{makedoc}
+\MakeInputJobDoc[cfg]{0}{\ProcessInputWith{comment}}
+
+%% removed (TODO) 2010/03/15:
+% \section{Examples: documentation of 'fifinddo'}
+% \label{sec:fifinddo} 
+%% removed 2010/03/10:
+% \subsection{'makedoc.cfg'} 
+% 'fifinddo.pdf' and 'makedoc.pdf' were typeset with the following 
+% configuration file 'makedoc.cfg':
+% \begingroup \MakeOther\|\MakeOther\`\MakeOther\'\MakeOther\<
+%   %% <- TODO should be 'niceverb' command 2009/04/08
+%   \listinginput[5]{1}{makedoc.cfg}
+% \endgroup
+%
+%% TODO 'niceverb' example---to 'niceverb.tex'!? 2010/03/15
+% \subsection{'mkfddoc.tex'}
+% 'fifinddo.pdf' was typeset with the following 'makedoc' script file 
+% 'mkfddoc.tex':
+% \begingroup 
+%   \MakeOther\|\MakeOther\`\MakeOther\'\MakeOther\<
+%   \listinginput[5]{1}{mkfddoc.tex}
+% \endgroup
+% 
+%
+\end{document}
+
+2009/04/12  more on examples
+2009/04/15  exemplification of niceverb.sty by mdcorr.cfg
+2009/04/21  === subsubsection -> === subsection
+2010/03/08  moved `only' for better line break
+2010/03/09  removed something from "Basics"
+2010/03/10  more changes in "Basics", pdf stuff to makedoc.cfg, 
+            makedoc.cfg no longer example; CodeDoc
+2010/03/11  use \MakeCloseDoc; \hfuzz with \listinginput;
+            tracing spurious `Label(s) may have changed'
+2010/03/12  tests for hyperref compatibility completed
+2010/03/13  use \MakeInputJobDoc; clarified ...; ctan.org/pkg
+2010/03/14  updated ``Examples" and abstract; \href...easylatex
+2010/03/15  ``styles supported"; abstract: txt->TeX; usage
+2010/03/16  more on usage; mdcorr -> mdoccorr
+2010/03/17  corr. mistake with \MakeDoc
+2010/03/19  '' -> " 
+2010/03/20  for niceverb v0.31
+2010/03/21  for niceverb v0.32
+2010/03/22  "may break"
+2010/03/23  \noindent in example, moved, added mdoccorr.doc, 
+            makedoc.tpl
+2010/03/29  \ResetCodeLineNumbers, 
+            examples and explanations for v0.4
+2010/03/30  \listfiles test
+2010/11/27  \ProvidesFile for myfilist
+2011/01/25  \thanks with readprov.sty 
+2011/08/22  using new makedoc.cfg features
+2011/09/14  rm. \pagebreak
+2011/10/07  "grouping" fix(?) + \label in "Separating"
+2011/10/12  fleqn
+2011/10/25  without \enlargethispage
+2011/11/05  or \RequirePackage{makedoc}; \MakeSingleDoc
+2011/11/19  debugging for fifinddo v0.5
+2012/03/18  * forms; Harald H. corrected
+2012/11/12  reworked `mdoccorr' example (\MDsampleinput), 
+            added `makedoc.cfg' documentation as sample
+2012/11/13  using \MDsamplecodeinput from `makedoc.cfg' same day

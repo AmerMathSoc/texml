@@ -1,0 +1,1557 @@
+% --------------------------------------------------------------------------
+% the MYCHEMISTRY package
+%
+%   create reaction schemes with LaTeX and chemfig
+%
+% --------------------------------------------------------------------------
+% Clemens Niederberger
+% Web:    https://www.bitbucket.org/cgnieder/mychemistry
+% E-Mail: contact@mychemistry.eu
+% --------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% --------------------------------------------------------------------------
+% Copyright 2011--2012 Clemens Niederberger
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+%
+% The Current Maintainer of this work is Clemens Niederberger.
+%
+% This work consists of the files mychemistrysty, mychemistry_en.tex,
+% README and the derived file mychemistry_en.pdf.
+% --------------------------------------------------------------------------
+\ProvidesPackage{mychemistry}[2012/12/19 v1.99b create reaction schemes with LaTeX and chemfig]
+\RequirePackage{etoolbox,float,xkeyval,chemfig,chemmacros}
+\usetikzlibrary{
+  arrows,
+  positioning,
+  decorations.pathmorphing,
+  shapes,
+  calc,
+  matrix,
+  chains,
+  scopes,
+  intersections}
+
+% --------------------------------------------------------------------------
+% Tools
+\newif\ifmCh@strict
+\newif\ifmCh@draft
+\def\mCh@if@strict{%
+  \ifmCh@strict\expandafter\@firstoftwo\else\expandafter\@secondoftwo\fi}
+
+\def\mCh@error#1#2{%
+  \mCh@if@strict
+    {\PackageError{mychemistry}{#1}{#2}}
+    {\PackageWarning{mychemistry}{#1}{#2}}}
+
+\def\mCh@strict@error#1#2{%
+  \begingroup
+    \mCh@stricttrue
+    \mCh@error{#1}{#2}%
+  \endgroup}
+
+\def\mCh@def#1{%
+  \ifdef{#1}{%
+    \mCh@strict@error{already defined}{mychemistry tries to define \string#1 but
+      it seems it is already defined. Please contact the author.}%
+      \@gobble
+  }{\def#1}}
+
+% "variablen" definieren
+\mCh@def\mCh@strip@bs{\expandafter\@gobble\string}
+\mCh@def\mCh@ifis@variable#1#2#3{%
+  \ifcsdef{mCh@variable@\mCh@strip@bs#1}
+    {#2}
+    {\mCh@error{variable \string#1 undefined}{}#3}}
+\mCh@def\mCh@new@variable#1{%
+  \ifcsdef{mCh@variable@\mCh@strip@bs#1}
+    {\mCh@error{variable \string#1 already defined. I'm doing nothing!}{}}
+    {\csdef{mCh@variable@\mCh@strip@bs#1}{}\csdef{mCh@\mCh@strip@bs#1}{}}}
+\mCh@def\mCh@set@variable#1#2{%
+  \mCh@ifis@variable{#1}{\csdef{mCh@\mCh@strip@bs#1}{#2}}{\@gobble}}
+\mCh@def\mCh@xset@variable#1#2{%
+  \mCh@ifis@variable{#1}{\csedef{mCh@\mCh@strip@bs#1}{#2}}{\@gobble}}
+\mCh@def\mCh@clear@variable#1{%
+  \mCh@ifis@variable{#1}{\csdef{mCh@\mCh@strip@bs#1}{}}{}}
+\mCh@def\mCh@let@variable#1#2{%
+  \mCh@ifis@variable{#1}{\mCh@ifis@variable{#2}
+    {\csletcs{mCh@\mCh@strip@bs#1}{mCh@\mCh@strip@bs#2}}{}}{}}
+\mCh@def\mCh@empty@variable#1{%
+  \mCh@ifis@variable{#1}{\cslet{mCh@\mCh@strip@bs#1}\@empty}{}}
+\mCh@def\mCh@ifeq@variable#1#2#3#4{%
+  \mCh@ifis@variable{#1}{\mCh@ifis@variable{#2}
+    {\ifcsequal{mCh@\mCh@strip@bs#1}{mCh@\mCh@strip@bs#2}{#3}{#4}}{}}{}}
+\mCh@def\mCh@ifempty@variable#1#2#3{%
+  \ifcsequal{mCh@\mCh@strip@bs#1}{@empty}{#2}{#3}}
+
+\mCh@new@variable\true
+\mCh@new@variable\false
+
+\mCh@set@variable\true{true}
+\mCh@set@variable\false{false}
+
+% Optional Argument Analysis
+% is #2 part of #1? (inspired by \CF@if@instr by Christian Tellechea)
+\mCh@def\mCh@if@instr#1#2{%
+  \def\mCh@if@instr@i##1#2##2\@nil{%
+    \ifstrempty{##2}{\@secondoftwo}{\@firstoftwo}}%
+  \mCh@if@instr@i#1\@@nil#2\@nil
+}
+
+\mCh@new@variable\firstarg
+\mCh@new@variable\secondarg
+\mCh@new@variable\thirdarg
+
+% Am ersten , splitten, #1 in #3 speichern, #2 in \mCh@remainargs
+% (das Makro ist eine Kopie von \CF@analyze@movearg in chemfig.tex von Christian Tellechea)
+\mCh@def\mCh@splitfirst#1,#2\@nil#3{%
+  \def#3{#1}\def\mCh@remainargs{#2}%
+}
+
+% ein durch , in 3 Teile getrenntes Argument splitten
+% (das Makro ist eine Abwandlung von \CF@analyze@movearg in chemfig.tex von Christian Tellechea)
+\mCh@def\mCh@splitarg#1{%
+  \mCh@if@instr{#1}{,}
+    {\expandafter\mCh@splitfirst#1\@nil\mCh@firstarg}
+    {\mCh@set@variable\firstarg{#1}}%
+  \expandafter\mCh@if@instr\expandafter{\mCh@remainargs}{,}
+    {\expandafter\mCh@splitfirst\mCh@remainargs\@nil\mCh@secondarg}{\expandafter\mCh@set@variable\expandafter\secondarg\expandafter{\mCh@remainargs}}%
+  \ifx\mCh@remainargs\mCh@secondarg
+    \mCh@empty@variable\thirdarg
+  \else
+    \expandafter\mCh@set@variable\expandafter\thirdarg\expandafter{\mCh@remainargs}%
+  \fi
+}
+
+% --------------------------------------------------------------------------
+% options
+\define@key[MC]{mychemistry.sty}{strict}{\mCh@stricttrue}
+\DeclareOptionX[MC]{strict}{\mCh@stricttrue}
+
+\define@key[MC]{mychemistry.sty}{draft}{\mCh@stricttrue\mCh@drafttrue}
+\DeclareOptionX[MC]{draft}{\mCh@stricttrue\mCh@drafttrue}
+
+\define@key[MC]{mychemistry.sty}{final}{\mCh@strictfalse\mCh@draftfalse}
+\DeclareOptionX[MC]{final}{\mCh@strictfalse\mCh@draftfalse}
+
+\mCh@new@variable\rs@placement
+\mCh@new@variable\rs@currentplacement
+
+\mCh@set@variable\rs@placement{hpt}
+\mCh@let@variable\rs@currentplacement\rs@placement
+
+\define@key[MC]{mychemistry.sty}{placement}{%
+  \mCh@set@variable\rs@placement{#1}}
+
+\ProcessOptionsX[MC]
+
+% --------------------------------------------------------------------------
+% language settings
+\mCh@new@variable\rs@name
+\mCh@set@variable\rs@name{Reaction scheme}
+
+\RequirePackage{translations}
+\NewTranslation{English} {reaction-scheme-(caption-title)} {Reaction scheme}
+\NewTranslation{French}  {reaction-scheme-(caption-title)} {Sch\'{e}ma r\'{e}actionnel}
+\NewTranslation{German}  {reaction-scheme-(caption-title)} {Reaktionsschema}
+\NewTranslation{Italian} {reaction-scheme-(caption-title)} {Reazione Scheme}
+\NewTranslation{Spanish} {reaction-scheme-(caption-title)} {Esquema de Reacci\'{o}n}
+\mCh@set@variable\rs@name{\GetTranslation{reaction-scheme-(caption-title)}}
+
+
+% --------------------------------------------------------------------------
+% Direction Analysis
+% Richtungen:
+\mCh@new@variable\r
+\mCh@new@variable\ar
+\mCh@new@variable\a
+\mCh@new@variable\al
+\mCh@new@variable\l
+\mCh@new@variable\br
+\mCh@new@variable\b
+\mCh@new@variable\bl
+
+\mCh@set@variable\r{right}
+\mCh@set@variable\ar{above right}
+\mCh@set@variable\a{above}
+\mCh@set@variable\al{above left}
+\mCh@set@variable\l{left}
+\mCh@set@variable\br{below right}
+\mCh@set@variable\b{below}
+\mCh@set@variable\bl{below left}
+
+\mCh@new@variable\vert@i
+\mCh@new@variable\vert@ii
+\mCh@new@variable\vert@iii
+
+\mCh@set@variable\vert@i{90}
+\mCh@set@variable\vert@ii{-90}
+\mCh@set@variable\vert@iii{270}
+
+% Richtung in Bezug auf node oder nicht?
+\mCh@new@variable\direction
+
+\mCh@def\mCh@split@angle#1.#2\@nil#3{%
+  \def#3{#1}\mCh@set@variable\direction{#2}}
+\mCh@def\mCh@wowo@node#1{%
+  \mCh@if@instr{#1}{.}
+    {\expandafter\mCh@split@angle#1\@nil\mCh@referred@node}
+    {\mCh@set@variable\direction{#1}}}
+
+% Winkel bestimmen:
+\mCh@new@variable\angle
+\mCh@new@variable\referred@node
+
+\mCh@def\mCh@analyze@angle#1{%
+  \mCh@empty@variable\angle
+  \mCh@empty@variable\referred@node
+  \mCh@wowo@node{#1}%
+  \mCh@ifeq@variable\direction\r  {\mCh@set@variable\angle{0}}{}%
+  \mCh@ifeq@variable\direction\ar {\mCh@set@variable\angle{45}}{}%
+  \mCh@ifeq@variable\direction\a  {\mCh@set@variable\angle{90}}{}%
+  \mCh@ifeq@variable\direction\al {\mCh@set@variable\angle{135}}{}%
+  \mCh@ifeq@variable\direction\l  {\mCh@set@variable\angle{180}}{}%
+  \mCh@ifeq@variable\direction\bl {\mCh@set@variable\angle{225}}{}%
+  \mCh@ifeq@variable\direction\b  {\mCh@set@variable\angle{270}}{}%
+  \mCh@ifeq@variable\direction\br {\mCh@set@variable\angle{315}}{}%
+  \mCh@ifempty@variable\angle{%
+    \pgfmathparse{\mCh@direction <0 ? int(\mCh@direction+360) : int(\mCh@direction) }%
+    \mCh@xset@variable\angle{\pgfmathresult}%
+  }{}%
+}
+% --------------------------------------------------------------------------
+% PFEILE
+% \arrow[<pos>,<type>,<length factor>,<name>,both,<tikz>]{<above>}{<below>}
+% Pfeiltypen:
+\mCh@new@variable\arrow@type@def
+\mCh@new@variable\arrow@type@eqv
+\mCh@new@variable\arrow@type@back
+\mCh@new@variable\arrow@type@eq
+\mCh@new@variable\arrow@type@eqq
+\mCh@new@variable\arrow@type@eeq
+\mCh@new@variable\arrow@type@not
+\mCh@new@variable\arrow@type@pm
+
+\mCh@set@variable\arrow@type@def{->}
+\mCh@set@variable\arrow@type@eqv{<->}
+\mCh@set@variable\arrow@type@back{<-}
+\mCh@set@variable\arrow@type@eq{<=>}
+\mCh@set@variable\arrow@type@eqq{<=>>}
+\mCh@set@variable\arrow@type@eeq{<<=>}
+\mCh@set@variable\arrow@type@not{-|>}
+\mCh@set@variable\arrow@type@pm{-+>}
+
+% Voreinstellungen
+% Pfeillänge
+\mCh@new@variable\arrow@length@def
+\mCh@new@variable\arrow@length
+\mCh@new@variable\arrow@factor
+
+\mCh@set@variable\arrow@length@def{4em}
+\let\mCh@arrow@length\mCh@arrow@length@def
+\mCh@set@variable\arrow@factor{1}
+
+\newrobustcmd\setarrowlength[1]{%
+  \ifblank{#1}
+    {\mCh@let@variable\arrow@length\arrow@length@def}
+    {\mCh@set@variable\arrow@length{#1}}}
+
+% Label-Abstand
+\mCh@new@variable\arrow@label@dist@def
+\mCh@new@variable\arrow@label@dist
+
+\mCh@set@variable\arrow@label@dist@def{.2em}
+\mCh@let@variable\arrow@label@dist\arrow@label@dist@def
+
+\newrobustcmd\setarrowlabel[1]{%
+  \ifblank{#1}
+    {\mCh@let@variable\arrow@label@dist\arrow@label@dist@def}
+    {\mCh@set@variable\arrow@label@dist{#1}}}
+
+% Pfeildicke
+\mCh@new@variable\arrow@linethickness@default
+\mCh@new@variable\arrow@linethickness
+
+\mCh@set@variable\arrow@linethickness@default{semithick}
+\mCh@let@variable\arrow@linethickness\arrow@linethickness@default
+
+\newrobustcmd\setarrowline[1]{%
+  \ifblank{#1}
+    {\mCh@let@variable\arrow@linethickness\arrow@linethickness@default}
+    {\mCh@set@variable\arrow@linethickness{#1}}}
+
+% Winkel untersuchen, um Label richtig anzubringen
+\mCh@new@variable\beta
+\mCh@new@variable\arrow@label@anchor@up
+\mCh@new@variable\arrow@label@anchor@down
+\mCh@new@variable\arrow@label@anchor@add
+\mCh@new@variable\arrow@label@anchor@sub
+\newcount\mCh@alpha
+
+\mCh@def\mCh@evaluate@angle#1{
+  \mCh@alpha=#1
+  \pgfmathparse{cos(\mCh@alpha) > 0}
+  \ifnum\pgfmathresult=1
+    \mCh@set@variable\beta{#1}%
+    \mCh@set@variable\arrow@label@anchor@up{south}%
+    \mCh@set@variable\arrow@label@anchor@down{north}%
+    \ifnum\mCh@alpha<180
+      \mCh@set@variable\arrow@label@anchor@add{east}%
+      \mCh@set@variable\arrow@label@anchor@sub{south}%
+    \else
+      \mCh@set@variable\arrow@label@anchor@add{south}%
+      \mCh@set@variable\arrow@label@anchor@sub{west}%
+    \fi
+  \else
+    \pgfmathparse{cos(\mCh@alpha) == 0}%
+    \ifnum\pgfmathresult=1
+      \mCh@set@variable\beta{0}%
+      \ifnum\mCh@alpha=90
+        \mCh@set@variable\arrow@label@anchor@up{east}%
+        \mCh@set@variable\arrow@label@anchor@down{west}%
+        \mCh@set@variable\arrow@label@anchor@add{east}%
+        \mCh@set@variable\arrow@label@anchor@sub{east}%
+      \else
+        \mCh@set@variable\arrow@label@anchor@up{west}%
+        \mCh@set@variable\arrow@label@anchor@down{east}%
+        \mCh@set@variable\arrow@label@anchor@add{west}%
+        \mCh@set@variable\arrow@label@anchor@sub{west}%
+      \fi
+    \else
+      \mCh@set@variable\arrow@label@anchor@up{north}%
+      \mCh@set@variable\arrow@label@anchor@down{south}%
+      \ifnum\mCh@alpha=180
+        \mCh@set@variable\beta{180-#1}%
+        \mCh@set@variable\arrow@label@anchor@add{north}%
+        \mCh@set@variable\arrow@label@anchor@sub{north}%
+      \fi
+      \ifnum\mCh@alpha>180
+        \mCh@set@variable\beta{180+#1}%
+        \mCh@set@variable\arrow@label@anchor@add{west}%
+        \mCh@set@variable\arrow@label@anchor@sub{north}%
+      \fi
+      \ifnum\mCh@alpha<180
+        \mCh@set@variable\beta{180+#1}%
+        \mCh@set@variable\arrow@label@anchor@add{north}%
+        \mCh@set@variable\arrow@label@anchor@sub{east}%
+      \fi
+    \fi
+  \fi
+}
+
+% Maße der Nodes der Pfeilargumente bestimmen, größere später an Pfeil weitergeben
+\mCh@new@variable\arrow@both
+\mCh@set@variable\arrow@both{both}
+
+\newlength{\mCh@height@A}
+\newlength{\mCh@height@B}
+\newlength{\mCh@arrow@label@height}
+\newlength{\mCh@width@A}
+\newlength{\mCh@width@B}
+\newlength{\mCh@arrow@label@width}
+
+\mCh@def\mCh@savenode{%
+  \global\let\mCh@minx=\pgfpositionnodelaterminx
+  \global\let\mCh@maxx=\pgfpositionnodelatermaxx
+  \global\let\mCh@miny=\pgfpositionnodelaterminy
+  \global\let\mCh@maxy=\pgfpositionnodelatermaxy
+}
+
+% der nächste Befehl benötigt pgf v2.10!
+\mCh@def\mCh@largernode#1#2{%
+  \ifdef\pgfpositionnodelater{%
+    \pgfpositionnodelater{\mCh@savenode}%
+    \node{#1};
+    \deflength{\mCh@width@A}{\mCh@maxx-\mCh@minx}%
+    \deflength{\mCh@height@A}{\mCh@maxy-\mCh@miny}%
+    \node{#2};
+    \deflength{\mCh@width@B}{\mCh@maxx-\mCh@minx}%
+    \deflength{\mCh@height@B}{\mCh@maxy-\mCh@miny}%
+    \pgfmathsetlength{\mCh@arrow@label@width}{max(\mCh@width@A,\mCh@width@B)}%
+    \pgfmathsetlength{\mCh@arrow@label@height}{max(\mCh@height@A,\mCh@height@B)}%
+    \global\mCh@arrow@label@width=\mCh@arrow@label@width
+    \global\mCh@arrow@label@height=\mCh@arrow@label@height
+  }{%
+    \mCh@error{%
+      The command \string\pgfpositionnodelater\space is undefined. Make sure,
+      you have installed the latest version of pgf}{}%
+  }%
+}
+
+% Pfeil zeichnen:
+\newrobustcmd\mCh@arrow[3][]{%
+  \ifstrempty{#1}
+    {\mCh@arrow@i}{\mCh@arrow@ii[#1]}
+  {#2}{#3}}
+
+\mCh@def\mCh@arrow@i#1#2{%
+  \node[on chain=going {at=(\tikzchainprevious.0)},
+    minimum size=0,
+    inner sep=3pt,
+    outer sep=0,
+    anchor=180,
+    shift=(0:.5*\mCh@rxn@node@distance)] (@mCh@arrow@start){};
+  \node[on chain=going {at=(\tikzchainprevious.0),
+    shift=($(0:.5*\mCh@arrow@factor*\mCh@arrow@length)$)},
+    minimum size=0,
+    inner sep=3pt,
+    outer sep=0] (@mCh@arrow@end){};
+  \draw[-mCtip,\mCh@arrow@linethickness]
+    let \n1={0}, \n2={180}
+    in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](mCh@arrow@center){}
+      ++($(0:\mCh@arrow@factor*\mCh@arrow@length)$);
+  \expandafter\node\expandafter[\mCh@arrow@uplabel@visible,
+    rotate=0,
+    anchor=south,
+    inner sep=0]
+    at ($(mCh@arrow@center)!\mCh@arrow@label@dist!90:(@mCh@arrow@end)$){#1};
+  \expandafter\node\expandafter[\mCh@arrow@downlabel@visible,
+    rotate=0,
+    anchor=north,
+    inner sep=0]
+    at ($(mCh@arrow@center)!\mCh@arrow@label@dist!-90:(@mCh@arrow@end)$){#2};
+}
+
+\mCh@new@variable\arrow@plusminus
+\mCh@new@variable\anchor
+\mCh@new@variable\arrow@tikz
+\mCh@new@variable\arrow@type@valid
+\mCh@new@variable\arrow@type
+\mCh@new@variable\arrow@type@actual
+\mCh@new@variable\arrow@name
+
+\mCh@def\mCh@arrow@ii[#1]#2#3{%
+  \mCh@empty@variable\arrow@plusminus
+  \mCh@empty@variable\arrow@type
+  \let\mCh@remainargs\@empty
+  \mCh@splitarg{#1}%
+  \mCh@ifempty@variable\firstarg{% erste Option: Richtung
+    \mCh@set@variable\angle{0}%
+    \mCh@set@variable\beta{0}%
+    \mCh@set@variable\arrow@label@anchor@up{south}%
+    \mCh@set@variable\arrow@label@anchor@down{north}%
+    \mCh@set@variable\arrow@label@anchor@add{south}%
+    \mCh@set@variable\arrow@label@anchor@sub{south}%
+    \mCh@set@variable\anchor{180}%
+    \mCh@empty@variable\referred@node
+  }{%
+    \expandafter\mCh@analyze@angle\expandafter{\mCh@firstarg}%
+    \mCh@set@variable\anchor{180+\mCh@angle}%
+    \mCh@evaluate@angle{\mCh@angle}%
+  }
+  \mCh@ifempty@variable\referred@node{%
+    \mCh@set@variable\referred@node{\tikzchainprevious}%
+  }{}%
+  \mCh@ifempty@variable\secondarg{}{% zweite Option: Typ
+    \mCh@set@variable\arrow@type{true}
+    \mCh@let@variable\arrow@type@actual\secondarg
+  }%
+  \let\mCh@remainargs\@empty%
+  \expandafter\mCh@splitarg\expandafter{\mCh@thirdarg}%
+  \mCh@ifempty@variable\firstarg{% dritte Option: Längenfaktor
+    \mCh@set@variable\arrow@factor{1}%
+  }{%
+    \mCh@xset@variable\arrow@factor{\mCh@firstarg}%
+  }%
+  \mCh@ifempty@variable\secondarg{% vierte Option: Name
+    \mCh@set@variable\arrow@name{mCh@arrow@center}%
+  }{%
+    \mCh@xset@variable\arrow@name{\mCh@secondarg}%
+  }%
+  \let\mCh@remainargs\@empty%
+  \expandafter\mCh@splitarg\expandafter{\mCh@thirdarg}%
+  \mCh@ifeq@variable\arrow@both\firstarg% fünfte Option: both
+    {{\mCh@largernode{#2}{#3}}}%
+    {%
+      \deflength{\mCh@arrow@label@width}{0pt}%
+      \deflength{\mCh@arrow@label@height}{0pt}%
+    }%
+  \mCh@ifempty@variable\secondarg{% sechste Option: tikz
+    \mCh@empty@variable\arrow@tikz
+  }{%
+    \mCh@xset@variable\arrow@tikz{\mCh@secondarg,\mCh@thirdarg}%
+  }%
+  \node[on chain=going {at=(\mCh@referred@node.\mCh@angle)},
+    minimum size=0,
+    inner sep=3pt,
+    outer sep=0,
+    anchor=\mCh@anchor,
+    shift=(\mCh@angle:.5*\mCh@rxn@node@distance)] (@mCh@arrow@start){};
+  \node[on chain=going {at=(\tikzchainprevious.\mCh@angle),
+    shift=($(\mCh@angle:.5*\mCh@arrow@factor*\mCh@arrow@length)$)},
+    minimum size=0,
+    inner sep=3pt,
+    outer sep=0] (@mCh@arrow@end){};
+  \mCh@ifeq@variable\arrow@type\true{%
+    \mCh@let@variable\arrow@type@valid\false
+    \mCh@ifeq@variable\arrow@type@actual\arrow@type@eq{% <=>
+      \mCh@let@variable\arrow@type@valid\true
+      \expandafter\draw\expandafter[\mCh@arrow@tikz,
+        -mChtip,
+        \mCh@arrow@linethickness]
+        let \n1={20+\mCh@angle}, \n2={160+\mCh@angle}
+        in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](mCh@arrow@center@up){}
+          ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+      \expandafter\draw\expandafter[\mCh@arrow@tikz,
+        mChtip-,
+        \mCh@arrow@linethickness]
+        let \n1={-20+\mCh@angle}, \n2={200+\mCh@angle}
+        in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](mCh@arrow@center@down){}
+          ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+      \draw[draw=none]
+        let \n1={\mCh@angle}, \n2={180+\mCh@angle}
+        in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](\mCh@arrow@name){}
+          ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+      \expandafter\node\expandafter[\mCh@arrow@uplabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@up,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height,
+        inner sep=0]
+        at ($(mCh@arrow@center@up)!\mCh@arrow@label@dist!90:(@mCh@arrow@end)$){#2};
+      \expandafter\node[\expandafter\mCh@arrow@downlabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@down,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height,
+        inner sep=0]
+        at ($(mCh@arrow@center@down)!\mCh@arrow@label@dist!-90:(@mCh@arrow@end)$){#3};
+    }{}%
+    \mCh@ifeq@variable\arrow@type@actual\arrow@type@eqq{% <=>>
+      \mCh@let@variable\arrow@type@valid\true
+      \expandafter\draw\expandafter[\mCh@arrow@tikz,
+        -mChtip,
+        \mCh@arrow@linethickness]
+        let \n1={20+\mCh@angle}, \n2={160+\mCh@angle}
+        in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](mCh@arrow@center@up){}
+        ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+      \expandafter\draw\expandafter[\mCh@arrow@tikz,
+        mChtip-,
+        \mCh@arrow@linethickness]
+        let \n1={-20+\mCh@angle}
+        in ($(@mCh@arrow@start.\n1)+(\mCh@angle:.25*\mCh@arrow@factor*\mCh@arrow@length)$)
+          --node[pos=.5,inner sep=0](mCh@arrow@center@down){}
+          ++($(\mCh@angle:.5*\mCh@arrow@factor*\mCh@arrow@length)$);
+      \draw[draw=none] let \n1={\mCh@angle}, \n2={180+\mCh@angle}
+        in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](\mCh@arrow@name){}
+        ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+      \expandafter\node\expandafter[\mCh@arrow@uplabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@up,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height,
+        inner sep=0]
+        at ($(mCh@arrow@center@up)!\mCh@arrow@label@dist!90:(@mCh@arrow@end)$){#2};
+      \expandafter\node\expandafter[\mCh@arrow@downlabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@down,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height,
+        inner sep=0]
+        at ($(mCh@arrow@center@down)!\mCh@arrow@label@dist!-90:(@mCh@arrow@end)$){#3};
+    }{}%
+    \mCh@ifeq@variable\arrow@type@actual\arrow@type@eeq{% <<=>
+      \mCh@let@variable\arrow@type@valid\true
+      \expandafter\draw\expandafter[\mCh@arrow@tikz,
+        -mChtip,
+        \mCh@arrow@linethickness]
+        let \n1={20+\mCh@angle}, \n2={160+\mCh@angle}
+        in ($(@mCh@arrow@start.\n1)+(\mCh@angle:.25*\mCh@arrow@factor*\mCh@arrow@length)$)
+        --node[pos=.5,inner sep=0](mCh@arrow@center@up){}
+        ++($(\mCh@angle:.5*\mCh@arrow@factor*\mCh@arrow@length)$);
+      \expandafter\draw\expandafter[\mCh@arrow@tikz,
+        mChtip-,
+        \mCh@arrow@linethickness]
+        let \n1={-20+\mCh@angle}, \n2={200+\mCh@angle}
+        in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](mCh@arrow@center@down){}
+        ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+      \draw[draw=none]
+        let \n1={\mCh@angle}, \n2={180+\mCh@angle}
+        in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](\mCh@arrow@name){}
+        ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+      \expandafter\node\expandafter[\mCh@arrow@uplabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@up,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height,
+        inner sep=0]
+        at ($(mCh@arrow@center@up)!\mCh@arrow@label@dist!90:(@mCh@arrow@end)$){#2};
+      \expandafter\node\expandafter[\mCh@arrow@downlabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@down,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height,
+        inner sep=0]
+        at ($(mCh@arrow@center@down)!\mCh@arrow@label@dist!-90:(@mCh@arrow@end)$){#3};
+    }{}%
+    \mCh@ifeq@variable\arrow@type@actual\arrow@type@def{% ->
+      \mCh@let@variable\arrow@type@valid\true
+      \expandafter\draw\expandafter[\mCh@arrow@tikz,
+        -mCtip,
+        \mCh@arrow@linethickness,
+        \mCh@arrow@tikz]
+        let \n1={\mCh@angle}, \n2={180+\mCh@angle}
+        in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](\mCh@arrow@name){}
+        ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+      \expandafter\node\expandafter[\mCh@arrow@uplabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@up,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height]
+        at ($(\mCh@arrow@name)!\mCh@arrow@label@dist!90:(@mCh@arrow@end)$){#2};
+      \expandafter\node\expandafter[\mCh@arrow@downlabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@down,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height]
+        at ($(\mCh@arrow@name)!\mCh@arrow@label@dist!-90:(@mCh@arrow@end)$){#3};
+    }{}%
+    \mCh@ifeq@variable\arrow@type@actual\arrow@type@eqv{% <->
+      \mCh@let@variable\arrow@type@valid\true
+      \expandafter\draw\expandafter[\mCh@arrow@tikz,
+        mCtip-mCtip,
+        \mCh@arrow@linethickness]
+        let \n1={\mCh@angle}, \n2={180+\mCh@angle}
+        in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](\mCh@arrow@name){}
+        ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+      \expandafter\node\expandafter[\mCh@arrow@uplabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@up,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height,inner sep=0]
+        at ($(\mCh@arrow@name)!\mCh@arrow@label@dist!90:(@mCh@arrow@end)$){#2};
+      \expandafter\node\expandafter[\mCh@arrow@downlabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@down,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height,inner sep=0]
+        at ($(\mCh@arrow@name)!\mCh@arrow@label@dist!-90:(@mCh@arrow@end)$){#3};
+    }{}%
+    \mCh@ifeq@variable\arrow@type@actual\arrow@type@back{% <-
+      \mCh@let@variable\arrow@type@valid\true
+      \expandafter\draw\expandafter[\mCh@arrow@tikz,
+        mCtip-,
+        \mCh@arrow@linethickness]
+        let \n1={\mCh@angle}, \n2={180+\mCh@angle}
+        in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](\mCh@arrow@name){}
+        ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+      \expandafter\node\expandafter[\mCh@arrow@uplabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@up,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height,
+        inner sep=0] at ($(\mCh@arrow@name)!\mCh@arrow@label@dist!90:(@mCh@arrow@end)$){#2};
+      \expandafter\node\expandafter[\mCh@arrow@downlabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@down,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height,
+        inner sep=0]
+        at ($(\mCh@arrow@name)!\mCh@arrow@label@dist!-90:(@mCh@arrow@end)$){#3};
+    }{}%
+    \mCh@ifeq@variable\arrow@type@actual\arrow@type@not{% -|>
+      \mCh@let@variable\arrow@type@valid\true
+      \expandafter\draw\expandafter[\mCh@arrow@tikz,
+        -mCtip,
+        \mCh@arrow@linethickness]
+        let \n1={\mCh@angle}, \n2={180+\mCh@angle}
+        in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](\mCh@arrow@name){}
+        ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+      \expandafter\node\expandafter[\mCh@arrow@uplabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@up,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height,
+        inner sep=0] at ($(\mCh@arrow@name)!.8em!90:(@mCh@arrow@end)$){#2};
+      \expandafter\node\expandafter[\mCh@arrow@downlabel@visible,
+        rotate=\mCh@beta,
+        anchor=\mCh@arrow@label@anchor@down,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height,inner sep=0]
+        at ($(\mCh@arrow@name)!.8em!-90:(@mCh@arrow@end)$){#3};
+      \draw ($(mCh@arrow@center)!.6em!-110:(@mCh@arrow@end)+(\mCh@angle:.1em)$)
+        --($(mCh@arrow@center)!.6em!70:(@mCh@arrow@end)+(\mCh@angle:.1em)$);
+      \draw ($(mCh@arrow@center)!.6em!-110:(@mCh@arrow@end)+(180+\mCh@angle:.1em)$)
+        --($(mCh@arrow@center)!.6em!70:(@mCh@arrow@end)+(180+\mCh@angle:.1em)$);
+    }{}%
+    \mCh@ifeq@variable\arrow@type@actual\arrow@type@pm{% -+>
+      \mCh@let@variable\arrow@type@valid\true
+      \mCh@let@variable\arrow@plusminus\true
+      \draw[-mCtip,\mCh@arrow@linethickness]
+        let \n1={\mCh@angle}, \n2={180+\mCh@angle}
+        in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](\mCh@arrow@name){}
+        ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+    }{}%
+    \mCh@ifeq@variable\arrow@type@valid\false
+      {\mCh@error{Unknown arrow type `\mCh@arrow@type@actual'}{}}{}%
+  }{% default: ->
+    \expandafter\draw\expandafter[\mCh@arrow@tikz,
+      -mCtip,
+      \mCh@arrow@linethickness]
+      let \n1={\mCh@angle}, \n2={180+\mCh@angle}
+      in (@mCh@arrow@start.\n1) --node[pos=.5,inner sep=0](\mCh@arrow@name){}
+      ++($(\mCh@angle:\mCh@arrow@factor*\mCh@arrow@length)$);
+    \expandafter\node\expandafter[\mCh@arrow@uplabel@visible,
+      rotate=\mCh@beta,
+      anchor=\mCh@arrow@label@anchor@up,
+      minimum width=\mCh@arrow@label@width,
+      minimum height=\mCh@arrow@label@height,inner sep=0]
+      at ($(\mCh@arrow@name)!\mCh@arrow@label@dist!90:(@mCh@arrow@end)$){#2};
+    \expandafter\node\expandafter[\mCh@arrow@downlabel@visible,
+      rotate=\mCh@beta,
+      anchor=\mCh@arrow@label@anchor@down,
+      minimum width=\mCh@arrow@label@width,
+      minimum height=\mCh@arrow@label@height,inner sep=0]
+      at ($(\mCh@arrow@name)!\mCh@arrow@label@dist!-90:(@mCh@arrow@end)$){#3};
+  }%
+  \mCh@ifempty@variable\arrow@plusminus{}{%
+    \ifstrempty{#2}{}{%
+      \draw (\mCh@arrow@name.base) edge[bend left]
+        ++(${0.6667}*(146.3+\mCh@angle:.5*\mCh@arrow@factor*\mCh@arrow@length)$);
+      \node[anchor=\mCh@arrow@label@anchor@add,
+        inner sep=\mCh@arrow@label@dist,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height]
+        at ($(\mCh@arrow@name.base)+{0.6667}*(146.3+\mCh@angle:.5*\mCh@arrow@factor*\mCh@arrow@length)$) {#2};
+    }%
+    \ifstrempty{#3}{}{%
+      \draw (\mCh@arrow@name.base) edge[bend right,-mCtip]
+        ++(${0.6667}*(33.7+\mCh@angle:.5*\mCh@arrow@factor*\mCh@arrow@length)$);
+      \node[anchor=\mCh@arrow@label@anchor@sub,
+        inner sep=\mCh@arrow@label@dist,
+        minimum width=\mCh@arrow@label@width,
+        minimum height=\mCh@arrow@label@height]
+        at ($(\mCh@arrow@name.base)+{0.6667}*(33.7+\mCh@angle:.5*\mCh@arrow@factor*\mCh@arrow@length)$) {#3};
+    }%
+  }%
+  \mCh@set@variable\arrow@factor{1}%
+}
+
+% eigene Pfeilspitze ------------------------------------------------------------------ %
+\pgfarrowsdeclare{mCtip}{mCtip}
+  {%
+    \arrowsize=0.2pt
+    \advance\arrowsize by .5\pgflinewidth
+    \pgfarrowsleftextend{-4\arrowsize-.5\pgflinewidth}%
+    \pgfarrowsrightextend{.5\pgflinewidth}%
+  }
+  {%
+    \pgfsetdash{}{0pt}% do not dash
+    \pgfsetroundjoin% fix join
+    \pgfsetroundcap% fix cap
+    \pgfpathmoveto{\pgfpointorigin}%
+    \pgfpathlineto{\pgfpoint{-3pt}{1pt}}%
+    \pgfpathlineto{\pgfpoint{-1.5pt}{0pt}}%
+    \pgfpathlineto{\pgfpoint{-3pt}{-1pt}}%
+    \pgfpathlineto{\pgfpoint{0pt}{0pt}}%
+    \pgfusepathqfillstroke
+  }
+
+\pgfarrowsdeclare{mChtip}{mChtip}
+  {%
+    \arrowsize=0.2pt
+    \advance\arrowsize by .5\pgflinewidth
+    \pgfarrowsleftextend{-4\arrowsize-.5\pgflinewidth}%
+    \pgfarrowsrightextend{.5\pgflinewidth}%
+  }
+  {%
+    \pgfsetdash{}{0pt}% do not dash
+    \pgfsetroundjoin% fix join
+    \pgfsetroundcap% fix cap
+    \pgfpathmoveto{\pgfpoint{0pt}{0pt}}%
+    \pgfpathlineto{\pgfpoint{-3pt}{1pt}}%
+    \pgfpathlineto{\pgfpoint{-1.5pt}{0pt}}%
+    \pgfpathlineto{\pgfpoint{0pt}{0pt}}%
+    \pgfusepathqfillstroke
+  }
+
+% --------------------------------------------------------------------------
+% MERGE
+% \merge[<label>,<pos>,<length>]{<target>}{<start a>}{<start b>}
+\mCh@new@variable\merge@length
+\mCh@new@variable\merge@length@default
+\mCh@new@variable\merge@length@value
+\mCh@new@variable\merge@arg
+\mCh@new@variable\merge@to
+\mCh@new@variable\merge@from@one
+\mCh@new@variable\merge@from@two
+
+\mCh@set@variable\merge@length@default{3em}
+\mCh@let@variable\merge@length@value\merge@length@default
+
+% Basisbefehle
+\mCh@def\mCh@merge@right{%
+  \draw[mCtip-,\mCh@arrow@linethickness]
+    ($(\mCh@merge@to.west)+(-\mCh@rxn@node@distance,0)$)
+    --node[midway,above,yshift=.1em]{\mCh@merge@arg}
+    ++(-\mCh@merge@length,0) node(crossing) {};
+  \draw[\mCh@arrow@linethickness]
+    ($(\mCh@merge@from@one.east)+(\mCh@rxn@node@distance,0)$) -| (crossing.base);
+  \draw[\mCh@arrow@linethickness]
+    ($(\mCh@merge@from@two.east)+(\mCh@rxn@node@distance,0)$) -| (crossing.base);
+}
+
+\mCh@def\mCh@merge@above{%
+  \draw[mCtip-,\mCh@arrow@linethickness]
+    ($(\mCh@merge@to.south)+(0,-\mCh@rxn@node@distance)$)
+    --node[midway,right,xshift=.1em]{\mCh@merge@arg}
+    ++(0,-\mCh@merge@length) node(crossing) {};
+  \draw[\mCh@arrow@linethickness]
+    (crossing.base) -| ($(\mCh@merge@from@one.north)+(0,\mCh@rxn@node@distance)$);
+  \draw[\mCh@arrow@linethickness]
+    (crossing.base) -| ($(\mCh@merge@from@two.north)+(0,\mCh@rxn@node@distance)$);
+}
+
+\mCh@def\mCh@merge@left{%
+  \draw[mCtip-,\mCh@arrow@linethickness]
+    ($(\mCh@merge@to.east)+(\mCh@rxn@node@distance,0)$)
+    --node[midway,above,yshift=.1em]{\mCh@merge@arg}
+    ++(\mCh@merge@length,0) node(crossing) {};
+  \draw[\mCh@arrow@linethickness]
+    ($(\mCh@merge@from@one.west)+(-\mCh@rxn@node@distance,0)$) -| (crossing.base);
+  \draw[\mCh@arrow@linethickness]
+    ($(\mCh@merge@from@two.west)+(-\mCh@rxn@node@distance,0)$) -| (crossing.base);
+}
+
+\mCh@def\mCh@merge@below{%
+  \draw[mCtip-,\mCh@arrow@linethickness]
+    ($(\mCh@merge@to.north)+(0,\mCh@rxn@node@distance)$)
+    --node[midway,right,xshift=.1em]{\mCh@merge@arg}
+    ++(0,\mCh@merge@length) node(crossing) {};
+  \draw[\mCh@arrow@linethickness]
+    (crossing.base) -| ($(\mCh@merge@from@one.south)+(0,-\mCh@rxn@node@distance)$);
+  \draw[\mCh@arrow@linethickness]
+    (crossing.base) -| ($(\mCh@merge@from@two.south)+(0,-\mCh@rxn@node@distance)$);
+}
+
+% eigentlicher Befehl ----------------------------------------------------------------- %
+\newrobustcmd\mCh@merge[4][]{%
+  \ifblank{#1}
+    {\mCh@merge@i}{\mCh@merge@ii[#1]}
+  {#2}{#3}{#4}}
+
+\mCh@def\mCh@merge@i#1#2#3{%
+  \mCh@let@variable\merge@length\merge@length@value
+  \mCh@empty@variable\merge@arg
+  \mCh@set@variable\merge@to{#1}%
+  \mCh@set@variable\merge@from@one{#2}%
+  \mCh@set@variable\merge@from@two{#3}%
+  \mCh@merge@below
+}
+
+\mCh@def\mCh@merge@ii[#1]#2#3#4{%
+  \let\mCh@remainargs\@empty
+  \mCh@splitarg{#1}%
+  \mCh@ifempty@variable\firstarg
+    {\mCh@empty@variable\merge@arg}
+    {\mCh@let@variable\merge@arg\firstarg}%
+  \mCh@ifempty@variable\thirdarg
+    {\mCh@let@variable\merge@length\merge@length@value}
+    {\mCh@set@variable\merge@length{\mCh@thirdarg}}%
+  \mCh@set@variable\merge@to{#2}%
+  \mCh@set@variable\merge@from@one{#3}%
+  \mCh@set@variable\merge@from@two{#4}%
+  \mCh@ifempty@variable\secondarg
+    {\mCh@merge@below}
+    {\csuse{mCh@merge@\mCh@secondarg}}%
+}
+
+\newrobustcmd\setmergelength[1]{%
+  \ifblank{#1}
+    {\mCh@let@variable\merge@length@value\merge@length@default}
+    {\mCh@set@variable\merge@length@value{#1}}}
+
+% --------------------------------------------------------------------------
+% REAKTIONSSCHEMA
+\newlength\mCh@rxn@node@distance@default
+\newlength\mCh@rxn@node@distance
+
+\deflength\mCh@rxn@node@distance@default{1em}
+\deflength\mCh@rxn@node@distance{\mCh@rxn@node@distance@default}
+
+\newrobustcmd\setrcndist[1]{%
+  \ifblank{#1}
+    {\deflength\mCh@rxn@node@distance{\mCh@rxn@node@distance@default}}
+    {\deflength\mCh@rxn@node@distance{#1}}}
+
+% Schema
+% \begin{rxnscheme}[<label>,<placement>,<align>,<scale factor>,<name>]{<caption>}
+\mCh@new@variable\rs@scale
+\mCh@new@variable\rs@currentscale
+
+\mCh@set@variable\rs@scale{1.0}
+\mCh@set@variable\rs@currentscale{\mCh@rs@scale}
+
+\newrobustcmd\setschemename[1]{%
+  \mCh@set@variable\rs@name{#1}}
+
+\mCh@new@variable\rs@caption
+\mCh@new@variable\rs@label
+\mCh@new@variable\rs@currentlabel
+\mCh@new@variable\rs@align
+\mCh@new@variable\rs@right
+\mCh@new@variable\rs@center
+\mCh@new@variable\rs@left
+
+\mCh@let@variable\rs@currentlabel\rs@label
+\mCh@set@variable\rs@align{center}
+\mCh@set@variable\rs@right{right}
+\mCh@set@variable\rs@center{center}
+\mCh@set@variable\rs@left{left}
+
+\newrobustcmd\setschemealign[1]{%
+  \ifblank{#1}
+    {\mCh@set@variable\rs@align{center}}
+    {\mCh@set@variable\rs@align{#1}}}
+
+% Gleitumgebung
+\floatstyle{ruled}
+\newfloat{rxnfloat}{\mCh@rs@currentplacement}{rxnscheme}
+\floatname{rxnfloat}{\mCh@rs@name}% Name ändern
+
+% eigentliche Umgebung:
+\newrobustcmd\mCh@rxnscheme[2][]{%
+  \ifblank{#1}
+    {\mCh@rxnscheme@i}
+    {\mCh@empty@variable\rs@currentlabel\mCh@rxnscheme@ii[#1]}%
+  {#2}}
+
+\mCh@def\mCh@rxnscheme@ii[#1]#2{% [<label>,<placement>,<align>,<scale>,<name>]
+  \let\mCh@remainargs\@empty
+  \mCh@splitarg{#1}%
+  \mCh@ifempty@variable\firstarg% erste Option
+    {\mCh@empty@variable\rs@currentlabel}
+    {\mCh@let@variable\rs@currentlabel\firstarg}%
+  \mCh@ifempty@variable\secondarg% zweite Option
+    {\mCh@let@variable\rs@currentplacement\rs@placement}
+    {\mCh@let@variable\rs@currentplacement\secondarg}%
+  \let\mCh@remainargs\@empty
+  \expandafter\mCh@splitarg\expandafter{\mCh@thirdarg}%
+  \mCh@ifempty@variable\firstarg% dritte Option
+    {\mCh@set@variable\rs@align{center}}
+    {\mCh@let@variable\rs@align\firstarg}%
+  \mCh@ifempty@variable\secondarg% vierte Option
+    {\mCh@set@variable\rs@currentscale{1}}
+    {\mCh@let@variable\rs@currentscale\secondarg}%
+  \mCh@ifempty@variable\thirdarg{}% fünfte Option
+    {\mCh@let@variable\rs@name\thirdarg}%
+  \mCh@rxnscheme@i{#2}%
+}
+
+\mCh@def\mCh@scheme@enable{%
+  \let\arrow\mCh@arrow
+  \let\reactant\mCh@reactant
+  \let\mesomeric\mCh@mesomeric
+  \let\transition\mCh@transition
+  \let\anywhere\mCh@anywhere
+  \let\dummy\mCh@dummy
+  \let\branch\mCh@branch
+  \let\chemand\mCh@chemand
+  \let\merge\mCh@merge
+%   \let\elmove\mCh@elmove
+}
+
+\mCh@def\mCh@scheme@disable{%
+  \let\arrow\relax
+  \let\reactant\relax
+  \let\mesomeric\relax
+  \let\transition\relax
+  \let\anywhere\relax
+  \let\dummy\relax
+  \let\branch\relax
+  \let\chemand\relax
+  \let\merge\relax
+%   \let\elmove\relax
+}
+
+\mCh@def\mCh@rxnscheme@i#1{%
+  \mCh@scheme@enable
+  \mCh@set@variable\rs@caption{#1}%
+  \rxnfloat
+  \mCh@ifeq@variable\rs@align\rs@center{\centering}{}%
+  \mCh@ifeq@variable\rs@align\rs@left{\raggedright}{}%
+  \mCh@ifeq@variable\rs@align\rs@right{\raggedleft}{}%
+  \mCh@atomsize\mCh@bondlength\mCh@bondshape
+  \tikzpicture[
+    every picture/.style={scale=\mCh@rs@currentscale},
+    start chain,
+    node distance=\mCh@rxn@node@distance,
+    inner sep=0pt,
+    outer sep=0pt]
+  \mCh@dummy
+}
+
+\newenvironment{rxnscheme}{\mCh@rxnscheme}{%
+  \endtikzpicture
+  \caption{\mCh@rs@caption}%
+  \mCh@ifempty@variable\rs@currentlabel{}
+     {\label{\mCh@rs@currentlabel}}%
+  \endrxnfloat
+  \mCh@scheme@disable
+}
+
+% ----------------------------------------------------------------------------
+% einfache Reaktion
+% \begin{rxn}[<align>,<scalefactor>]
+\mCh@new@variable\reaction@scale
+\mCh@new@variable\reaction@align
+
+\mCh@set@variable\reaction@scale{1.0}
+\mCh@set@variable\reaction@align{center}
+
+\newrobustcmd\setrxnalign[1]{%
+  \ifblank{#1}
+    {\mCh@set@variable\reaction@align{center}}
+    {\mCh@set@variable\reaction@align{#1}}}
+
+\mCh@new@variable\reaction@right
+\mCh@new@variable\reaction@center
+\mCh@new@variable\reaction@left
+
+\mCh@set@variable\reaction@right{right}
+\mCh@set@variable\reaction@center{center}
+\mCh@set@variable\reaction@left{left}
+
+\newrobustcmd\mCh@rxn[1][]{%
+  \ifblank{#1}
+    {\mCh@rxn@i}{\mCh@rxn@ii[#1]}}
+
+\mCh@def\mCh@rxn@ii[#1]{%
+  \let\mCh@remainargs\@empty
+  \mCh@splitarg{#1}%
+  \mCh@ifempty@variable\firstarg
+    {\mCh@let@variable\reaction@align\reaction@center}
+    {\mCh@let@variable\reaction@align\firstarg}%
+  \mCh@ifempty@variable\secondarg
+    {\mCh@set@variable\reaction@scale{1}}
+    {\mCh@let@variable\reaction@scale\secondarg}%
+  \mCh@rxn@i
+}
+
+\mCh@def\mCh@rxn@i{%
+  \mCh@scheme@enable
+  \hspace*{0pt}%
+  \mCh@ifeq@variable\reaction@align\reaction@center{\center}{}%
+  \mCh@ifeq@variable\reaction@align\reaction@left{\flushleft}{}%
+  \mCh@ifeq@variable\reaction@align\reaction@right{\flushright}{}%
+  \mCh@bondlength\mCh@bondshape\mCh@atomsize
+  \begin{tikzpicture}[
+    every picture/.style={scale=\mCh@reaction@scale},
+    start chain,
+    node distance=\mCh@rxn@node@distance,
+    inner sep=0pt,
+    outer sep=0pt]
+  \mCh@dummy
+}
+
+\newenvironment{rxn}{\mCh@rxn}{%
+  \end{tikzpicture}%
+  \mCh@ifeq@variable\reaction@align\reaction@center{\endcenter}{}%
+  \mCh@ifeq@variable\reaction@align\reaction@left{\endflushleft}{}%
+  \mCh@ifeq@variable\reaction@align\reaction@right{\endflushright}{}%
+  \mCh@scheme@disable
+}
+
+% --------------------------------------------------------------------------
+% REAKTANDEN
+% Standardreaktand
+% \reactant[<pos>,<name>,<tikz>]{<something>}
+\def\mCh@argument@safe{\@makeother\#}
+
+\newrobustcmd\mCh@reactant[1][]{%
+  \begingroup
+    \mCh@argument@safe
+    \ifblank{#1}
+      {\mCh@reactant@i}
+      {\mCh@reactant@ii[#1]}%
+}
+
+\mCh@def\mCh@reactant@i#1{%
+    \expandafter\node\expandafter[%
+      \mCh@reactant@visible,
+      on chain=going {at=(\tikzchainprevious.0)},
+      anchor=180,
+      shift=(0:\mCh@rxn@node@distance)]{#1};
+  \endgroup
+}
+
+\mCh@def\mCh@reactant@ii[#1]#2{%
+    \let\mCh@remainargs\@empty\mCh@splitarg{#1}%
+    \mCh@ifempty@variable\firstarg{% erste Option: <pos>, zweite Option: <name>, dritte Option: <tikz>
+      \mCh@set@variable\angle{0}%
+      \mCh@set@variable\anchor{180}%
+      \mCh@empty@variable\referred@node
+    }{%
+      \expandafter\mCh@analyze@angle\expandafter{\mCh@firstarg}%
+      \mCh@set@variable\anchor{180+\mCh@angle}%
+    }%
+    \mCh@ifempty@variable\referred@node
+      {\mCh@set@variable\referred@node{\tikzchainprevious}}{}%
+    \expandafter\expandafter\expandafter\node\expandafter\expandafter\expandafter[%
+      \expandafter\mCh@thirdarg\expandafter,%
+      \mCh@reactant@visible,
+      on chain=going {at=(\mCh@referred@node.\mCh@angle)},
+      anchor=\mCh@anchor,shift=(\mCh@angle:\mCh@rxn@node@distance)]
+      (\mCh@secondarg){#2};
+  \endgroup
+}
+
+% Mesomerie
+% \mesomeric[<pos>,<name>,<tikz>]{<something>}
+\newrobustcmd\mCh@mesomeric[1][]{%
+  \begingroup
+    \mCh@argument@safe
+    \ifblank{#1}
+      {\mCh@mesomeric@i}
+      {\mCh@mesomeric@ii[#1]}%
+}
+
+\mCh@def\mCh@mesomeric@i#1{%
+    \node[on chain=going {at=(\tikzchainprevious.0),
+      shift=($(0:\mCh@rxn@node@distance)$)},
+      anchor=180,shift=(0:\mCh@rxn@node@distance),
+      inner sep=1pt,
+      left delimiter={[},
+      right delimiter={]}]
+      {\tikzpicture[start branch]#1\endtikzpicture};
+  \endgroup
+}
+
+\mCh@def\mCh@mesomeric@ii[#1]#2{%
+    \let\mCh@remainargs\@empty
+    \mCh@splitarg{#1}%
+    \mCh@ifempty@variable\firstarg{% erste Option: <pos>, zweite Option: <name>, dritte Option: <tikz>
+      \mCh@set@variable\angle{0}%
+      \mCh@set@variable\anchor{180}%
+      \mCh@empty@variable\referred@node
+    }{%
+      \expandafter\mCh@analyze@angle\expandafter{\mCh@firstarg}%
+      \mCh@set@variable\anchor{180+\mCh@angle}%
+    }%
+    \mCh@ifempty@variable\referred@node
+      {\mCh@set@variable\referred@node{\tikzchainprevious}}{}%
+    \expandafter\node\expandafter[\mCh@thirdarg,
+      on chain=going {at=(\mCh@referred@node.\mCh@angle)},
+      anchor=\mCh@anchor,
+      shift=(\mCh@angle:\mCh@rxn@node@distance),
+      inner sep=1pt,
+      left delimiter={[},
+      right delimiter={]}]
+      (\mCh@secondarg){\tikzpicture[start branch]#2\endtikzpicture};
+  \endgroup
+}
+
+% Mesomerie-Pfeil
+% \marrow[<pos>]
+\newrobustcmd\marrow[1][]{\arrow[#1,<->,.5]{}{}}
+
+% Anywhere
+% \anywhere{<pos>,<name>,<tikz>}{<something>}
+\mCh@new@variable\anywhere@positioning
+
+\newrobustcmd\mCh@anywhere[1]{%
+  \begingroup
+    \mCh@argument@safe
+    \let\mCh@remainargs\@empty
+    \mCh@splitarg{#1}% erste Option: <pos>, zweite Option: <name>, dritte Option: <tikz>
+    \mCh@ifempty@variable\firstarg{%
+      \mCh@error{\string\anywhere: positioning missing}{}%
+    }{%
+      \expandafter\mCh@if@instr\expandafter{\mCh@firstarg}{=}{%
+        \mCh@xset@variable\anywhere@positioning{\mCh@firstarg}%
+      }{%
+        \expandafter\mCh@analyze@angle\expandafter{\mCh@firstarg}%
+        \mCh@set@variable\anchor{180+\mCh@angle}%
+        \mCh@ifempty@variable\referred@node{%
+          \mCh@error{You can't use `angle' to position \string\anywhere.
+          You need to use `name.angle'}%
+        }{%
+          \mCh@set@variable\anywhere@positioning{%
+            at=(\mCh@referred@node.\mCh@angle),anchor=\mCh@anchor}%
+        }%
+      }%
+    }%
+    \mCh@anywhere@i
+}
+
+\mCh@def\mCh@anywhere@i#1{%
+    \expandafter\expandafter\expandafter\node\expandafter\expandafter\expandafter[%
+      \expandafter\mCh@thirdarg\expandafter,%
+      \mCh@anywhere@positioning](\mCh@secondarg){#1};
+  \endgroup
+}
+
+% Dummy
+% \dummy[<name>]
+\newrobustcmd\mCh@dummy[1][]{%
+  \ifblank{#1}
+    {\draw node[on chain,xshift=-\mCh@rxn@node@distance]{};}
+    {\draw node[on chain,xshift=-\mCh@rxn@node@distance](#1){};}}
+
+% Uebergangszustand
+% \transition[<pos>,<name>,<tikz>]{<something>}
+\mCh@new@variable\transition@name
+
+\newrobustcmd\mCh@transition[1][]{%
+  \begingroup
+    \mCh@argument@safe
+    \ifblank{#1}
+      {\mCh@transition@i}
+      {\mCh@transition@ii[#1]}%
+}
+
+\mCh@def\mCh@transition@i#1{%
+    \expandafter\node\expandafter[\mCh@reactant@visible,
+      on chain=going {at=(\tikzchainprevious.0)},
+      anchor=180,
+      shift=(0:\mCh@rxn@node@distance),
+      anchor=180,
+      inner sep=3pt,
+      left delimiter={[},
+      right delimiter={]}]
+      (mCh@transition@name){#1};
+    \node at ($(mCh@transition@name.north east)+(.7em,0)$)
+      {$\transitionstatesymbol$};
+  \endgroup
+}
+
+\mCh@def\mCh@transition@ii[#1]#2{%
+    \let\mCh@remainargs\@empty
+    \mCh@splitarg{#1}%
+    \mCh@ifempty@variable\firstarg{% erste Option: <pos>
+      \mCh@set@variable\angle{0}%
+      \mCh@set@variable\anchor{180}%
+      \mCh@empty@variable\referred@node
+    }{%
+      \expandafter\mCh@analyze@angle\expandafter{\mCh@firstarg}%
+      \mCh@set@variable\anchor{180+\mCh@angle}%
+    }%
+    \mCh@ifempty@variable\secondarg% zweite Option: <name>, dritte Option: <tikz>
+      {\mCh@set@variable\transition@name{mCh@transition@name}}
+      {\mCh@let@variable\transition@name\secondarg}%
+    \mCh@ifempty@variable\referred@node
+      {\mCh@set@variable\referred@node{\tikzchainprevious}}{}%
+    \expandafter\expandafter\expandafter\node\expandafter\expandafter\expandafter[%
+      \mCh@reactant@visible\expandafter,%
+      \mCh@thirdarg,
+      on chain=going {at=(\mCh@referred@node.\mCh@angle)},
+      anchor=\mCh@anchor,
+      shift=(\mCh@angle:\mCh@rxn@node@distance),
+      inner sep=3pt,
+      left delimiter={[},
+      right delimiter={]}]
+      (\mCh@transition@name){#2};
+    \node at ($(\mCh@transition@name.north east)+(.7em,0)$)
+      {$\transitionstatesymbol$};
+  \endgroup
+}
+
+% Abzweigung
+% \branch[<pos>,<name>,<tikz>]{<formulae>}
+% <pos>: default: on chain=going "right" (0°)
+%        on chain=going <somewhere>
+%        <somewhere>=of <name>
+%        <angle> (sitzt auf der Kette)
+%        <name>.<angle> (sitzt nicht auf der Kette)
+\mCh@new@variable\branch@positioning
+
+\newrobustcmd\mCh@branch[1][]{%
+  \begingroup
+    \mCh@argument@safe
+    \ifblank{#1}
+      {\mCh@branch@i}
+      {\mCh@branch@ii[#1]}%
+}
+
+\mCh@def\mCh@branch@i{%
+  \expandafter\mCh@set@variable\expandafter\branch@positioning\expandafter{\mCh@branch@visible,
+    on chain=going {at=(\tikzchainprevious.0)},
+    anchor=180,
+    shift=(0:\mCh@rxn@node@distance)}%
+  \mCh@empty@variable\secondarg
+  \mCh@empty@variable\thirdarg
+  \mCh@branch@iii}
+
+\mCh@def\mCh@branch@ii[#1]{%
+  \let\mCh@remainargs\@empty
+  \mCh@splitarg{#1}% erste Option: <pos>, zweite Option: <name>, dritte Option: <tikz>
+  \mCh@ifempty@variable\firstarg{%
+    \expandafter\mCh@set@variable\expandafter\branch@positioning\expandafter{\mCh@branch@visible,
+      on chain=going {at=(\tikzchainprevious.0)},
+      anchor=180,
+      shift=(0:\mCh@rxn@node@distance)}%
+  }{%
+    \expandafter\mCh@if@instr\expandafter{\mCh@firstarg}{=}{%
+      \mCh@xset@variable\branch@positioning{\mCh@branch@visible,\mCh@firstarg}%
+    }{%
+      \expandafter\mCh@analyze@angle\expandafter{\mCh@firstarg}%
+      \mCh@set@variable\anchor{180+\mCh@angle}%
+      \mCh@ifempty@variable\referred@node{%
+        \expandafter\mCh@set@variable\expandafter\branch@positioning\expandafter{\mCh@branch@visible,
+          on chain=going {at=(\tikzchainprevious.\mCh@angle)},
+          anchor=\mCh@anchor,
+          shift=(\mCh@angle:\mCh@rxn@node@distance)}%
+      }{%
+        \expandafter\mCh@set@variable\expandafter\branch@positioning\expandafter{\mCh@branch@visible,
+          at=(\mCh@referred@node.\mCh@angle),
+          anchor=\mCh@anchor,
+          shift=(\mCh@angle:\mCh@rxn@node@distance)}%
+      }%
+    }%
+  }%
+  \mCh@branch@iii}
+
+\mCh@def\mCh@branch@iii#1{%
+    \expandafter\expandafter\expandafter\node\expandafter\expandafter\expandafter[%
+      \expandafter\mCh@branch@positioning\expandafter,%
+      \mCh@thirdarg]
+      (\mCh@secondarg){\tikzpicture[start branch]#1\endtikzpicture};
+  \endgroup
+}%
+
+
+% --------------------------------------------------------------------------
+% Sonstiges
+% Elektronenverschiebungspfeile
+\mCh@new@variable\elmove@default@tikz
+\mCh@new@variable\elmove@tikz
+
+\tikzset{mCh@elmove/.style={->,red,shorten <=3pt,shorten >=1pt}}
+\mCh@set@variable\elmove@default@tikz{mCh@elmove}
+\mCh@let@variable\elmove@tikz\elmove@default@tikz
+
+\newrobustcmd\elmove[5][]{%
+  \chemmove{
+    \expandafter\draw\expandafter[\mCh@elmove@tikz,#1]
+    (#2).. controls +(#3) and +(#5)..(#4);
+  }}
+
+\newrobustcmd\setelmove[1]{%
+  \ifblank{#1}
+    {\mCh@let@variable\elmove@tikz\elmove@default@tikz}
+    {\mCh@set@variable\elmove@tikz{#1}}}
+
+% Plus
+\newrobustcmd\mCh@chemand[1][]{%
+  \ifblank{#1}
+    {\reactant{\chemsign[0pt]{+}}}
+    {\reactant[#1]{\chemsign[0pt]{+}}}}
+
+% --------------------------------------------------------------------------
+% Setup myChemistry
+% Bindungslänge
+\mCh@new@variable\bondlength@default
+\mCh@new@variable\bondlength
+
+\mCh@set@variable\bondlength@default{1.8em}
+\mCh@set@variable\bondlength{\setatomsep{\mCh@bondlength@default}}
+
+\newrobustcmd\setbondlength[1]{%
+ \ifblank{#1}
+   {\mCh@set@variable\bondlength{\setatomsep{\mCh@bondlength@default}}}
+   {\mCh@set@variable\bondlength{\setatomsep{#1}}}}
+
+% Keilbindungen
+\mCh@new@variable\bondshape@one
+\mCh@new@variable\bondshape@two
+\mCh@new@variable\bondshape@three
+
+\mCh@set@variable\bondshape@one{3pt}
+\mCh@set@variable\bondshape@two{.5pt}
+\mCh@set@variable\bondshape@three{1pt}
+
+\newrobustcmd\setbondshape[3]{%
+ \ifblank{#1}
+   {\mCh@set@variable\bondshape@one{3pt}}
+   {\mCh@set@variable\bondshape@one{#1}}%
+ \ifblank{#2}
+   {\mCh@set@variable\bondshape@two{.5pt}}
+   {\mCh@set@variable\bondshape@two{#2}}%
+ \ifblank{#3}
+   {\mCh@set@variable\bondshape@three{1pt}}
+   {\mCh@set@variable\bondshape@three{#3}}%
+}
+
+\mCh@new@variable\bondshape
+\mCh@set@variable\bondshape{%
+  \setcrambond{\mCh@bondshape@one}{\mCh@bondshape@two}{\mCh@bondshape@three}}
+
+% Atomgröße
+\mCh@new@variable\atomsize@default
+\mCh@new@variable\atomsize
+
+\mCh@set@variable\atomsize@default{\small}
+\mCh@let@variable\atomsize\atomsize@default
+
+\newrobustcmd\setatomsize[1]{%
+ \ifblank{#1}
+   {\mCh@let@variable\atomsize\atomsize@default}
+   {\mCh@set@variable\atomsize{#1}}}
+
+% allg. Setup
+\newrobustcmd\mCsetup[1]{\setkeys{mCh@setup}{#1}}
+
+\define@key{mCh@setup}{arrowlabel}[\mCh@arrow@label@dist@def]{%
+  \setarrowlabel{#1}}
+\define@key{mCh@setup}{arrowlength}[\mCh@arrow@length@def]{%
+  \setarrowlength{#1}}
+\define@key{mCh@setup}{arrowline}[\mCh@arrow@linethickness@default]{%
+  \setarrowline{#1}}
+\define@key{mCh@setup}{atomsize}[\mCh@atomsize@default]{%
+  \setatomsize{#1}}
+\define@key{mCh@setup}{bondlength}[\mCh@bondlength@default]{%
+  \setbondlength{#1}}
+\define@key{mCh@setup}{rcndist}[\mCh@rxn@node@distance@default]{%
+  \setrcndist{#1}}
+\define@key{mCh@setup}{rxnalign}[center]{%
+  \setrxnalign{#1}}
+\define@key{mCh@setup}{schemealign}[center]{%
+  \setschemealign{#1}}
+\define@key{mCh@setup}{align}[center]{%
+  \setrxnalign{#1}
+  \setschemealign{#1}}
+\define@key{mCh@setup}{mergelength}[\mCh@merge@length@default]{%
+  \setmergelength{#1}}
+\define@key{mCh@setup}{elmove}[\mCh@elmove@default@tikz]{%
+  \setelmove{#1}}
+\define@key{mCh@setup}{reset}[]{%
+  \setarrowlabel{}%
+  \setarrowlength{}%
+  \setarrowline{}%
+  \setmergelength{}%
+  \setatomsize{}%
+  \setbondlength{}%
+  \setbondshape{}{}{}%
+  \setrcndist{}%
+  \setrxnalign{}%
+  \setschemealign{}%
+  \setelmove{}%
+}
+
+% --------------------------------------------------------------------------
+% NODES SICHTBAR/UNSICHTBAR MACHEN
+\mCh@new@variable\reactant@visible
+\mCh@new@variable\arrow@uplabel@visible
+\mCh@new@variable\arrow@downlabel@visible
+\mCh@new@variable\branch@visible
+
+\mCh@empty@variable\reactant@visible
+\mCh@empty@variable\arrow@uplabel@visible
+\mCh@empty@variable\arrow@downlabel@visible
+\mCh@empty@variable\branch@visible
+
+\newrobustcmd\makevisible{%
+  \ifmCh@draft
+    \mCh@set@variable\reactant@visible{draw=red!60,solid}%
+    \mCh@set@variable\arrow@uplabel@visible{draw=green!60,solid}%
+    \mCh@set@variable\arrow@downlabel@visible{draw=blue!60,solid}%
+    \mCh@set@variable\branch@visible{draw=cyan,solid}%
+  \fi
+}
+
+\newrobustcmd\makeinvisible{%
+  \mCh@empty@variable\reactant@visible
+  \mCh@empty@variable\arrow@uplabel@visible
+  \mCh@empty@variable\arrow@downlabel@visible
+  \mCh@empty@variable\branch@visible
+}
+
+\endinput
+
+% ----------------------------------------------------------------------------
+HISTORY:
+2011/02/24 version 1.0   - first release to CTAN
+2011/03/01 version 1.1   - package option `english' added
+                         - package key `placement' added
+                         - rxnscheme key `placement' added
+                         - package key `shade=boolean' changed into package
+                           option `shade'
+                         - package option `nochemexec' added, will prevent mC
+                           from loading chemexec
+2011/03/20 version 1.2   - license changed into LPPL 1.3 or later
+                         - package option `nocompounds' added, will prevent mC
+                           from loading chemcompounds
+                         - package option `chemstyle' added, will load chemstyle
+                         - package option `nomhchem' added, will prevent mC from
+                           loading mhchem if chemexec isn't loaded either
+                         - package option `nopackages' added, will prevent mC
+                           from loading any chemistry package except chemfig
+                         - some small issues resolved
+                         - bug in arrow type <=> resolved
+                         - arrow argument placement rewritten; two new keys for
+                           arrow: `aboveshift' and `belowshift' (causing new
+                           problems with alignment, though)
+                         - wrong arrow alignment (due to last change) mainly
+                           resolved (NEEDS pgf v2.10!)
+                           => solved wrong branch alignment as well
+                         - `inner sep' set to 0, arrow, transition & mesomeric
+                           adjusted
+                         - bug in arrow type -|> resolved
+                         - commands \makevisible / \makeinvisible added
+                         - arrow key `both' added
+                         - rxn has now keys instead of an option
+                         - commands \setrcndist, \setrxnalign, \setschemealign
+                           added
+                         - rxn-, rxnscheme-key align added
+2011/03/26 version 1.2.1 - rewritten commands, so they accept second argument
+                           without first:
+                           \reactand, \mesomeric, \transition, \branch,
+                           \makevisible, \makeinvisible
+2011/03/28 version 1.2.2 - bugfix with transition
+                         - atomsize, arrowlength, bondlength and bondshape
+                           renamed into set<name> and code slightly rewritten
+                         - \mCsetup added
+2011/04/01 version 1.2.3 - bug in \branch resolved
+                         - \chemand added
+2011/04/02 version 1.2.4 - bugs in \makevisible, \makeinvisible resolved
+                         - input bondwidth.tex if ChemFig v0.4
+2011/04/04 version 1.3   - commands \reactand, \mesomeric, \branch, \transition,
+                           \chemand (\makeinvisible,  \makeinvisible) rewritten:
+                           more flexible with opt. arguments
+2011/04/15 version 1.4   - minor bugfixes
+                         - \merge-command rewritten: it now accepts an arrow
+                           label and the length is adjustable
+                         - \dummy mostly obsolete
+                         - bugfix with aligning rxn & rxnscheme
+                         - synonym to \reactand=\reactant added
+                         - rxn & rxnscheme rewritten
+                         - commands \reactant, \mesomeric, \branch & \transition
+                           modified: argument is set with \mCh@argument@safe{#1},
+                           so the chemfig catcode regime is working properly
+                           before () (else possible problem with triple bond ~)
+                         - syntax of \arrow changed so it fits to the syntax of
+                           all the other commands
+                         - command \anywhere added
+                         - own arrow tips defined
+                         - command \setarrowline added
+                         - new arrow type -+> added
+2011/04/23 version 1.5   - major parts of the code rewritten -- the whole
+                           positioning part now is different and way more flexible:
+                           arbitrary angles can be used for positioning, referencing
+                           an object is easier, arrows can be modified using <tikz>,
+                           command \anywhere now has similar syntax
+                         - arrow types <=>> and <<=> added
+                         - arrow type -+> modified: more flexible
+                         - bugfixes in error-handling
+2011/04/27 version 1.5.1 - removed bondwidth.tex
+                         - \arrow, \reactant, \mesomeric, \transition, \anywhere,
+                           \dummy, \branch, and \chemand only defined inside scheme
+                           environments
+2012/07/27 version 1.99  - conflict with `pdfpages' resolved, LaTeXified various
+                           parts in order to minimize conflicts with other
+                           packages; \merge is also only defined inside the scheme
+                           environments
+2012/09/20 version 1.99a - small adjustments to \elmove
+2012/12/19 version 1.99b - changed catcode regime (# is read with catcode 12)
+                           so that chemfig's bond offset works
+                           
+% ----------------------------------------------------------------------------

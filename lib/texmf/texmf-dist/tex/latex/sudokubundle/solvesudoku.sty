@@ -1,0 +1,1428 @@
+%%
+%% This is file `solvesudoku.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% sudokubundle.dtx  (with options: `solve')
+%% 
+%% -----------------------------------------------------------------
+%%   Author: Peter Wilson (herries dot press at earthlink dot net)
+%%           Herries Press
+%%   Copyright 2006 Peter R. Wilson
+%% 
+%%   This work may be distributed and/or modified under the
+%%   conditions of the LaTeX Project Public License, either
+%%   version 1.3 of this license or (at your option) any
+%%   later version.
+%%   The latest version of the license is in
+%%      http://www.latex-project.org/lppl.txt
+%%   and version 1.3 or later is part of all distributions of
+%%   LaTeX version 2003/06/01 or later.
+%% 
+%%   This work has the LPPL maintenance status "author-maintained".
+%% 
+%%   This work consists of the files listed in the README file.
+%% -----------------------------------------------------------------
+%% 
+%%%% solvethem.tex   Solve Sudoku files
+%%%%                 Peter Wilson
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{solvesudoku}[2006/02/16 v1.0 solve sudoku puzzles]
+\RequirePackage{printsudoku}
+
+\newcommand{\commentary}[1]{\typeout{#1}}
+
+%%% too many counts, maybe they should be reduced
+\newcount\s@lcnta     % a cell number
+\newcount\solcnt      % number of solved cells
+\newcount\settonumcnt
+\newcount\tenscnt
+\newcount\tempcntz
+\newcount\tempcnty
+\newcount\tmpsetctr
+\newcount\tmpsetansctr
+\newcount\boxctr
+\newcount\sumctr
+\newcount\toprangectr
+\newcount\lonecellctr
+\newcount\reducedctr
+\newcount\numlistctr
+\newcount\difficultyctr
+\newcount\s@dtempcnta
+\newcount\s@dtempcntb
+\newcount\s@dtemploopcnta
+\newcount\maxrangectr
+\newcount\asetctr
+\newcount\secondctr
+\newcount\digitictr
+\newcount\digitiictr
+\newcount\numdigitsctr
+\newcount\numcluesctr
+
+%%% \iffirsts@dclue% defined in printsudoku package
+\newif\iffirstchar
+\newif\ifnotgotthechar
+\newif\ifsetchanged
+\newif\ifchanged
+\newif\ifanychange
+\newif\iflonerchanged
+\newif\ifstilldigits
+\newif\ifkeepon
+\newif\ifpairchanged
+
+%% create and use a numbered count
+%% we'll use 81 of these, one for each cell in the grid
+\newcommand*{\newknt}[1]{\expandafter\newcount\csname #1\endcsname}
+\newcommand*{\useknt}[1]{\csname #1\endcsname}
+%% create potential answer sets
+\newcommand*{\createsudsets}{%
+\global\s@lcnta\@ne
+\global\solcnt\z@
+\loop
+  \ifnum\s@lcnta<82\relax
+  \newknt{s@lans\the\s@lcnta}%
+  \advance\s@lcnta\@ne
+\repeat}
+\createsudsets
+
+%% initialise potential answer sets
+\newcommand*{\initialisesuddata}{\bgroup
+\global\s@lcnta\@ne
+\global\solcnt\z@
+\global\difficultyctr\z@
+\global\numcluesctr\z@
+\loop
+  \ifnum\s@lcnta<82\relax
+  \global\useknt{s@lans\the\s@lcnta}=111111111\relax
+  \advance\s@lcnta\@ne
+\repeat
+\egroup}
+
+%%%%%%%%%%%%%%%%%%%%%%%% utility macros for `binary solution sets' %%%%%%%%%%%%%%%%
+
+%%\settonum{110011...}{cnt}
+%% converts a potential solution set to a number ([11....1] -> 12...9)
+%% returns the input if it is negative ([-3] -> -3)
+%% returns a negative number if the set represents a single digit ([10] -> -8)
+\newcommand*{\settonum}[2]{%
+  \settonumcnt=#1\relax
+  \tempcnty=\z@
+  \tenscnt=\@ne
+  \ifnum\settonumcnt<\z@ % just return the number
+    \tempcnty=\settonumcnt
+    #2=\tempcnty
+  \else
+    \ifodd\settonumcnt    % 9 flagged
+      \tempcntz=9\relax
+      \multiply\tempcntz \tenscnt
+      \advance \tempcnty by \tempcntz
+      \multiply\tenscnt 10\relax
+    \fi
+    \divide\settonumcnt by 10\relax
+    \ifodd\settonumcnt   % 8 flagged
+      \tempcntz=8\relax
+      \multiply\tempcntz \tenscnt
+      \advance \tempcnty \tempcntz
+      \multiply\tenscnt 10\relax
+    \fi
+    \divide\settonumcnt by 10\relax
+    \ifodd\settonumcnt   % 7 flagged
+      \tempcntz=7\relax
+      \multiply\tempcntz \tenscnt
+      \advance \tempcnty \tempcntz
+      \multiply\tenscnt 10\relax
+    \fi
+    \divide\settonumcnt by 10\relax
+    \ifodd\settonumcnt   % 6 flagged
+      \tempcntz=6\relax
+      \multiply\tempcntz \tenscnt
+      \advance \tempcnty \tempcntz
+      \multiply\tenscnt 10\relax
+    \fi
+    \divide\settonumcnt by 10\relax
+    \ifodd\settonumcnt   % 5 flagged
+      \tempcntz=5\relax
+      \multiply\tempcntz \tenscnt
+      \advance \tempcnty \tempcntz
+      \multiply\tenscnt 10\relax
+    \fi
+    \divide\settonumcnt by 10\relax
+    \ifodd\settonumcnt   % 4 flagged
+      \tempcntz=4\relax
+      \multiply\tempcntz \tenscnt
+      \advance \tempcnty \tempcntz
+      \multiply\tenscnt 10\relax
+    \fi
+    \divide\settonumcnt by 10\relax
+    \ifodd\settonumcnt   % 3 flagged
+      \tempcntz=3\relax
+      \multiply\tempcntz \tenscnt
+      \advance \tempcnty \tempcntz
+      \multiply\tenscnt 10\relax
+    \fi
+    \divide\settonumcnt by 10\relax
+    \ifodd\settonumcnt   % 2 flagged
+      \tempcntz=2\relax
+      \multiply\tempcntz \tenscnt
+      \advance \tempcnty \tempcntz
+      \multiply\tenscnt 10\relax
+    \fi
+    \divide\settonumcnt by 10\relax
+    \ifodd\settonumcnt   % 1 flagged
+      \tempcntz=1\relax
+      \multiply\tempcntz \tenscnt
+      \advance \tempcnty \tempcntz
+%%      \multiply\tenscnt 10\relax
+    \fi
+    \ifnum \tempcnty<10
+      \ifnum\tempcnty>\z@
+        \tempcnty = -\tempcnty
+      \fi
+    \fi
+    #2=\tempcnty
+\fi}
+
+%%\numofnuminset{digit}{set}{returnctr}
+%%  returns the number of times digit is represented in the set
+%% e.g. if the set is [200000013] then 1 -> 2, 2 -> 0,... 8 -> 1, 9 -> 3
+\newcommand*{\numofnuminset}[3]{%
+  \tmpsetctr=#2\relax
+  \tmpsetansctr=\tmpsetctr
+  \ifnum\tmpsetctr<\z@% solution, not a set
+    \tmpsetansctr=\z@
+  \else
+    \ifcase #1\relax
+    \or               % 1
+      \divide\tmpsetansctr by 100000000\relax
+    \or               % 2
+      \divide\tmpsetansctr by 10000000\relax
+      \tmpsetctr=\tmpsetansctr
+      \divide\tmpsetctr 10\relax \multiply\tmpsetctr 10\relax
+      \advance\tmpsetansctr -\tmpsetctr
+    \or               % 3
+      \divide\tmpsetansctr by 1000000\relax
+      \tmpsetctr=\tmpsetansctr
+      \divide\tmpsetctr 10\relax \multiply\tmpsetctr 10\relax
+      \advance\tmpsetansctr -\tmpsetctr
+    \or               % 4
+      \divide\tmpsetansctr by 100000\relax
+      \tmpsetctr=\tmpsetansctr
+      \divide\tmpsetctr 10\relax \multiply\tmpsetctr 10\relax
+      \advance\tmpsetansctr -\tmpsetctr
+    \or               % 5
+      \divide\tmpsetansctr by 10000\relax
+      \tmpsetctr=\tmpsetansctr
+      \divide\tmpsetctr 10\relax \multiply\tmpsetctr 10\relax
+      \advance\tmpsetansctr -\tmpsetctr
+    \or               % 6
+      \divide\tmpsetansctr by 1000\relax
+      \tmpsetctr=\tmpsetansctr
+      \divide\tmpsetctr 10\relax \multiply\tmpsetctr 10\relax
+      \advance\tmpsetansctr -\tmpsetctr
+    \or               % 7
+      \divide\tmpsetansctr by 100\relax
+      \tmpsetctr=\tmpsetansctr
+      \divide\tmpsetctr 10\relax \multiply\tmpsetctr 10\relax
+      \advance\tmpsetansctr -\tmpsetctr
+    \or               % 8
+      \divide\tmpsetansctr by 10\relax
+      \tmpsetctr=\tmpsetansctr
+      \divide\tmpsetctr 10\relax \multiply\tmpsetctr 10\relax
+      \advance\tmpsetansctr -\tmpsetctr
+    \or               % 9
+      \tmpsetctr=\tmpsetansctr
+      \divide\tmpsetctr 10\relax \multiply\tmpsetctr 10\relax
+      \advance\tmpsetansctr -\tmpsetctr
+    \else             % error
+      \tmpsetansctr=\z@
+    \fi
+  \fi
+  #3=\tmpsetansctr}
+
+%%\deletenumfromset{digit}{set}{returnctr}
+%% deletes num from the [set], returning the modified set or a -ve number if
+%% the digit was the only member.
+%% e.g., 9 from [...11] -> [...10], 8 from [0...010] -> -8
+\newcommand*{\deletenumfromset}[3]{
+  \global\setchangedfalse
+  \tmpsetctr=#2\relax
+  \tmpsetansctr=#2\relax
+\ifnum\tmpsetctr<\z@ % represents a solved number, do nothing
+\else
+  \ifcase #1\relax
+  \or               % 1
+    \divide\tmpsetctr by 100000000\relax
+    \ifodd\tmpsetctr%                it's there
+      \advance\tmpsetansctr -100000000\relax
+      \global\setchangedtrue
+    \fi
+  \or               % 2
+    \divide\tmpsetctr by 10000000\relax
+    \ifodd\tmpsetctr%                it's there
+      \advance\tmpsetansctr -10000000\relax
+      \global\setchangedtrue
+    \fi
+  \or               % 3
+    \divide\tmpsetctr by 1000000\relax
+    \ifodd\tmpsetctr%                it's there
+      \advance\tmpsetansctr -1000000\relax
+      \global\setchangedtrue
+    \fi
+  \or               % 4
+    \divide\tmpsetctr by 100000\relax
+    \ifodd\tmpsetctr%                it's there
+      \advance\tmpsetansctr -100000\relax
+      \global\setchangedtrue
+    \fi
+  \or               % 5
+    \divide\tmpsetctr by 10000\relax
+    \ifodd\tmpsetctr%                it's there
+      \advance\tmpsetansctr -10000\relax
+      \global\setchangedtrue
+    \fi
+  \or               % 6
+    \divide\tmpsetctr by 1000\relax
+    \ifodd\tmpsetctr%                it's there
+      \advance\tmpsetansctr -1000\relax
+      \global\setchangedtrue
+    \fi
+  \or               % 7
+    \divide\tmpsetctr by 100\relax
+    \ifodd\tmpsetctr%                it's there
+      \advance\tmpsetansctr -100\relax
+      \global\setchangedtrue
+    \fi
+  \or               % 8
+    \divide\tmpsetctr by 10\relax
+    \ifodd\tmpsetctr%                it's there
+      \advance\tmpsetansctr -10\relax
+      \global\setchangedtrue
+    \fi
+  \or               % 9
+    \ifodd\tmpsetctr%                it's there
+      \advance\tmpsetansctr -1\relax
+      \global\setchangedtrue
+    \fi
+  \fi
+\fi
+  #3=\tmpsetansctr}
+
+%% typeset current answers plus potential answer digits
+\newcommand*{\displaystatus}{%
+\begin{tabular}{||c|c|c||c|c|c||c|c|c||}\hline\hline
+\settonum{\the\useknt{s@lans1}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans2}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans3}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans4}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans5}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans6}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans7}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans8}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans9}}{\s@dtempcnta}\the\s@dtempcnta \\ \hline
+\settonum{\the\useknt{s@lans10}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans11}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans12}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans13}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans14}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans15}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans16}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans17}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans18}}{\s@dtempcnta}\the\s@dtempcnta \\ \hline
+\settonum{\the\useknt{s@lans19}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans20}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans21}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans22}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans23}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans24}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans25}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans26}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans27}}{\s@dtempcnta}\the\s@dtempcnta \\ \hline\hline
+\settonum{\the\useknt{s@lans28}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans29}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans30}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans31}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans32}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans33}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans34}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans35}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans36}}{\s@dtempcnta}\the\s@dtempcnta \\ \hline
+\settonum{\the\useknt{s@lans37}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans38}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans39}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans40}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans41}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans42}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans43}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans44}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans45}}{\s@dtempcnta}\the\s@dtempcnta \\ \hline
+\settonum{\the\useknt{s@lans46}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans47}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans48}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans49}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans50}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans51}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans52}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans53}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans54}}{\s@dtempcnta}\the\s@dtempcnta \\ \hline\hline
+\settonum{\the\useknt{s@lans55}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans56}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans57}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans58}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans59}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans60}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans61}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans62}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans63}}{\s@dtempcnta}\the\s@dtempcnta \\ \hline
+\settonum{\the\useknt{s@lans64}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans65}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans66}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans67}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans68}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans69}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans70}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans71}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans72}}{\s@dtempcnta}\the\s@dtempcnta \\ \hline
+\settonum{\the\useknt{s@lans73}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans74}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans75}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans76}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans77}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans78}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans79}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans80}}{\s@dtempcnta}\the\s@dtempcnta &
+\settonum{\the\useknt{s@lans81}}{\s@dtempcnta}\the\s@dtempcnta \\ \hline\hline
+\end{tabular}}
+
+%%%%%%%%%%%%%%%%%%%% get the problem and initialise the solution %%%%%%%%%
+
+%% read the problem and initialise the problem (solution)
+\newcommand*{\getproblem}[1]{\bgroup
+  \initialisesuddata
+  \global\solcnt\z@
+  \immediate\closein\s@dread
+  \immediate\openin\s@dread=#1
+  \initialsoln
+  \typeout{Sudoku problem #1, \the\solcnt\space initial clues}
+\egroup}
+
+%% insert the clues from the input game file
+\newcommand*{\initialsoln}{%
+  \firsts@dcluetrue
+  \s@dnrow\@ne
+  \s@lcnta\@ne
+  \loop
+     \ifnum\s@dnrow<10\relax
+     \read\s@dread to \s@dline
+     \firsts@dcluetrue
+     \s@dncol\@ne
+     \dos@dinitialcols
+     \advance\s@dnrow\@ne
+  \repeat
+  \immediate\closein\s@dread}
+
+%% insert the clues from one line of the game file
+\newcommand*{\dos@dinitialcols}{\bgroup
+  \loop
+    \ifnum\s@dncol<10\relax
+    \fixentry
+    \advance\s@dncol\@ne
+  \repeat
+\egroup}
+
+%% insert a clue from the current line of the game file
+\newcommand*{\fixentry}{%
+  \iffirsts@dclue
+    \expandafter\splitoff\expandafter{\s@dline}%
+    \global\firsts@dcluefalse
+  \else
+    \expandafter\splitoff\expandafter{\restchars}%
+  \fi
+  \ifx\s@dfstop\istchar
+  \else
+    \global\useknt{s@lans\the\s@lcnta}=-\istchar
+    \global\advance\solcnt\@ne
+    \global\advance\numcluesctr\@ne
+  \fi
+  \global\advance\s@lcnta\@ne}
+
+%% Eliminate a solution digit from its row, column and box.
+%% This may result in some new solutions.
+\newcommand*{\reduceacell}{\bgroup
+  \ifnum\useknt{s@lans\the\s@lcnta}<\z@   % solved cell
+    \s@dtempcnta=-\useknt{s@lans\the\s@lcnta}
+%% get the col, row and box numbers
+    \tempcnty=\s@lcnta       % M in the formulae
+    \advance\tempcnty\m@ne   \divide\tempcnty 9\relax
+    \tempcntz=\tempcnty      \multiply\tempcntz 9\relax
+    \s@dcolpos=\s@lcnta         \advance\s@dcolpos -\tempcntz % col
+    \s@drowpos\tempcntz         \advance\s@drowpos\@ne          % row
+    \boxctr=\tempcnty        % box
+    \divide\boxctr\thr@@     \multiply\boxctr 27\relax
+    \tempcnty=\s@lcnta       % reuse \tempcnty
+    \advance\tempcnty\m@ne   \advance\tempcnty -\tempcntz
+    \divide\tempcnty\thr@@   \multiply\tempcnty \thr@@
+    \advance\boxctr\tempcnty \advance\boxctr \@ne
+%% reduce the row, column, and the box
+    \reducerow{\the\s@drowpos}{\the\s@dtempcnta}
+    \reducecol{\the\s@dcolpos}{\the\s@dtempcnta}
+    \reducebox{\the\boxctr}{\the\s@dtempcnta}
+  \fi
+\egroup}
+
+%% \reducerow{rowcellnumber}{digit}
+%% simple reduction for digit in a row
+\newcommand*{\reducerow}[2]{\bgroup
+  \s@dncol=#1\relax
+  \toprangectr=\s@dncol
+  \advance\toprangectr 9\relax
+  \bgroup
+  \loop
+    \ifnum\s@dncol<\toprangectr
+    \deletenumfromset{#2}{\the\useknt{s@lans\the\s@dncol}}{\reducedctr}
+    \ifsetchanged
+      \global\changedtrue
+      \settonum{\the\reducedctr}{\numlistctr}
+      \ifnum\numlistctr<10\relax
+        \global\advance\solcnt\@ne
+\commentary{\the\solcnt\space solved
+            (\the\s@dncol\space = \the\numlistctr\space in row starting #1)}%
+        \global\useknt{s@lans\the\s@dncol}=\numlistctr
+      \else
+        \global\useknt{s@lans\the\s@dncol}=\reducedctr
+      \fi
+    \fi
+    \advance\s@dncol\@ne
+  \repeat
+  \egroup
+\egroup}
+
+%% \reducecol{colcellnumber}{digit}
+%% simple reduction of a digit in a column
+\newcommand*{\reducecol}[2]{\bgroup
+  \s@dnrow=#1\relax
+  \toprangectr=\s@dnrow
+  \advance\toprangectr 73\relax
+  \bgroup
+  \loop
+    \ifnum\s@dnrow<\toprangectr
+    \deletenumfromset{#2}{\the\useknt{s@lans\the\s@dnrow}}{\reducedctr}
+    \ifsetchanged
+      \global\changedtrue
+      \settonum{\the\reducedctr}{\numlistctr}
+      \ifnum\numlistctr<10\relax
+          \global\advance\solcnt\@ne
+\commentary{\the\solcnt\space solved
+            (\the\s@dnrow\space = \the\numlistctr\space in column starting #1)}%
+          \global\useknt{s@lans\the\s@dnrow}=\numlistctr
+      \else
+        \global\useknt{s@lans\the\s@dnrow}=\reducedctr
+      \fi
+    \fi
+    \advance\s@dnrow 9\relax
+  \repeat
+  \egroup
+\egroup}
+
+%% \reducebox{boxcellnumber}{digit}
+%% simple reduction of a digit in a box
+\newcommand*{\reducebox}[2]{\bgroup
+  \s@dncol=#1\relax
+  \toprangectr=\s@dncol
+  \advance\toprangectr \thr@@
+  \bgroup
+  \loop
+    \ifnum\s@dncol<\toprangectr
+    \s@dnrow=\s@dncol
+    \deletenumfromset{#2}{\the\useknt{s@lans\the\s@dnrow}}{\reducedctr}
+    \ifsetchanged
+      \global\changedtrue
+      \settonum{\the\reducedctr}{\numlistctr}
+      \ifnum\numlistctr<10\relax
+          \global\advance\solcnt\@ne
+\commentary{\the\solcnt\space solved
+            (\the\s@dnrow\space = \the\numlistctr\space in box starting #1)}%
+          \global\useknt{s@lans\the\s@dnrow}=\numlistctr
+      \else
+        \global\useknt{s@lans\the\s@dnrow}=\reducedctr
+      \fi
+    \fi
+    \advance\s@dnrow 9\relax
+    \deletenumfromset{#2}{\the\useknt{s@lans\the\s@dnrow}}{\reducedctr}
+    \ifsetchanged
+      \global\changedtrue
+      \settonum{\the\reducedctr}{\numlistctr}
+      \ifnum\numlistctr<10\relax
+          \global\advance\solcnt\@ne
+\commentary{\the\solcnt\space solved
+            (\the\s@dnrow\space = \the\numlistctr\space in box starting #1)}%
+          \global\useknt{s@lans\the\s@dnrow}=\numlistctr
+      \else
+        \global\useknt{s@lans\the\s@dnrow}=\reducedctr
+      \fi
+    \fi
+    \advance\s@dnrow 9\relax
+    \deletenumfromset{#2}{\the\useknt{s@lans\the\s@dnrow}}{\reducedctr}
+    \ifsetchanged
+      \global\changedtrue
+      \settonum{\the\reducedctr}{\numlistctr}
+      \ifnum\numlistctr<10\relax
+          \global\advance\solcnt\@ne
+\commentary{\the\solcnt\space solved
+            (\the\s@dnrow\space = \the\numlistctr\space in box starting #1)}%
+          \global\useknt{s@lans\the\s@dnrow}=\numlistctr
+      \else
+        \global\useknt{s@lans\the\s@dnrow}=\reducedctr
+      \fi
+    \fi
+    \advance\s@dncol \@ne
+  \repeat
+  \egroup
+\egroup}
+
+%% loop over every cell, removing solution digits from the potential sets
+%% in the cell's row, column and box.
+\newcommand*{\reduceallcells}{\bgroup
+  \ifnum\difficultyctr<\@ne
+    \global\difficultyctr\@ne
+  \fi
+  \s@lcnta\@ne
+  \global\changedfalse
+  \loop
+    \ifnum\s@lcnta<82\relax
+    \reduceacell
+    \advance\s@lcnta\@ne
+  \repeat
+\egroup}
+
+\newcommand*{\keepreducing}{%
+  \anychangetrue
+  \keepontrue
+  \loop
+    \ifkeepon
+    \keepreducingcells
+    \ifnum\solcnt<81\relax
+%%%      \advance\difficultyctr 4\relax
+      \reduceloners
+    \fi
+    \anychangefalse
+    \iflonerchanged
+      \anychangetrue
+    \fi
+    \ifanychange\else
+      \ifnum\solcnt<81\relax
+%%%        \advance\difficultyctr 8\relax
+        \pairchangedfalse
+        \reducepairs
+        \ifpairchanged
+          \anychangetrue
+        \fi
+      \fi
+    \fi
+    \checkkeepon
+  \repeat
+  \ifnum\solcnt<81\relax
+    \global\multiply \difficultyctr 10\relax
+  \fi
+\typeout{************ Number of solutions = \the\solcnt}
+\typeout{************ Difficulty rating = \the\difficultyctr}
+}
+
+\newcommand*{\checkkeepon}{%
+  \ifnum\solcnt>80\relax
+    \keeponfalse
+  \fi
+  \ifanychange\else
+    \keeponfalse
+  \fi}
+
+%% Keep performing the simple reduction
+\newcommand*{\keepreducingcells}{\bgroup
+\commentary{Simple reductions}%
+  \ifnum\difficultyctr<\tw@
+    \global\difficultyctr\tw@
+  \fi
+  \changedtrue
+  \loop
+    \ifchanged
+    \reduceallcells
+    \checksimplereductions
+  \repeat
+\egroup}
+
+\newcommand*{\checksimplereductions}{%
+  \ifchanged\else
+    \typesimplestatus
+  \fi
+  \ifnum\solcnt>80\relax%   solution found!
+    \changedfalse
+  \fi}
+
+%%%%%%%%%%%%%%%%%%%%% reduce loners %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% reduce the loner digits, per row, column and box
+\newcommand*{\reduceloners}{%
+\commentary{reduceloners}%
+  \global\lonerchangedfalse
+  \ifnum\difficultyctr<4\relax
+    \global\difficultyctr=4\relax
+  \fi
+  \ifnum\solcnt>80\else
+    \bgroup
+    \reducerowloners
+    \iflonerchanged\else
+      \reducecolloners
+      \iflonerchanged\else
+        \reduceboxloners
+      \fi
+    \fi
+    \typelonestatus
+    \egroup
+  \fi}
+
+%% Loop through the rows, reducing loners
+\newcommand*{\reducerowloners}{%
+  \sumctr\z@
+  \s@dnrow\@ne
+  \loop
+    \ifnum\s@dnrow<10\relax
+    \s@lcnta=\s@dnrow \advance\s@lcnta\m@ne
+    \multiply\s@lcnta 9\relax \advance\s@lcnta\@ne
+    \sumrowsets
+    \ifnum\sumctr>\z@
+      \getloner{\the\sumctr}{\s@dtempcntb}
+      \ifnum\s@dtempcntb=\z@
+      \else
+        \reducelonerrowcell{\the\s@lcnta}{\the\s@dtempcntb}
+        \iflonerchanged
+          \advance\s@dnrow 10\relax
+        \fi
+      \fi
+    \fi
+    \advance\s@dnrow\@ne
+  \repeat}
+
+%% add the sets in the current row
+\newcommand*{\sumrowsets}{%
+  \bgroup
+  \s@dncol=\s@lcnta
+  \toprangectr=\s@dncol
+  \advance\toprangectr 9\relax
+  \global\sumctr\z@
+  \loop
+    \ifnum\s@dncol<\toprangectr
+    \ifnum\useknt{s@lans\the\s@dncol}>\z@
+      \global\advance\sumctr\useknt{s@lans\the\s@dncol}
+    \fi
+    \advance\s@dncol\@ne
+  \repeat
+  \egroup}
+
+%% get the loner from a setsum
+%% \getloner{setsum}{returnctr} returnes the (first) loner in a potential set,
+%% or zero
+\newcommand*{\getloner}[2]{\bgroup
+  \ifnum #1>\z@
+    \s@dtemploopcnta\@ne
+    \loop
+      \ifnum\s@dtemploopcnta<10\relax
+      \numofnuminset{\the\s@dtemploopcnta}{#1}{\s@dtempcnta}
+      \ifnum\s@dtempcnta=\@ne%         found a lone digit
+        \s@dtempcnta=\s@dtemploopcnta
+        \s@dtemploopcnta=100\relax
+      \fi
+      \advance\s@dtemploopcnta\@ne
+    \repeat
+    \ifnum\s@dtemploopcnta>99 \else \s@dtempcnta=\z@ \fi
+    \global#2=\s@dtempcnta
+  \else
+    \s@dtempcnta=\z@
+    \global#2=\s@dtempcnta
+  \fi
+\egroup}
+
+%% \reducelonerowcell{startofrowcell}{digit}
+%% given a row and a lone digit, find the cell containing the digit
+%% and make the digit a solution of that cell.
+\newcommand*{\reducelonerrowcell}[2]{\bgroup
+  \s@dncol=#1
+  \toprangectr=\s@dncol
+  \advance\toprangectr 9\relax
+  \ifnum #2<\@ne
+    \advance\s@dncol 100\relax
+  \fi
+  \loop
+    \ifnum\s@dncol<\toprangectr
+    \numofnuminset{#2}{\the\useknt{s@lans\the\s@dncol}}{\lonecellctr}
+    \ifnum\lonecellctr=\@ne%    this cell has the loner
+      \lonecellctr=#2
+      \global\useknt{s@lans\the\s@dncol}=-\lonecellctr
+      \global\lonerchangedtrue
+      \global\advance\solcnt\@ne
+\commentary{\the\solcnt\space solved (#2 loner in row starting #1)}%
+      \s@dncol=\toprangectr
+    \fi
+    \advance\s@dncol\@ne
+  \repeat
+\egroup}
+
+%% Loop through the columns, reducing loners
+\newcommand*{\reducecolloners}{\bgroup
+  \sumctr\z@
+  \s@dncol\@ne
+  \loop
+    \ifnum\s@dncol<10\relax
+    \s@lcnta=\s@dncol
+    \sumcolsets
+    \ifnum\sumctr>\z@
+      \getloner{\the\sumctr}{\s@dtempcntb}
+      \ifnum\s@dtempcntb=\z@
+      \else
+        \reducelonercolcell{\the\s@lcnta}{\the\s@dtempcntb}
+        \iflonerchanged
+          \advance\s@dncol 10\relax
+        \fi
+      \fi
+    \fi
+    \advance\s@dncol\@ne
+  \repeat
+\egroup}
+
+%% add the sets in the current column
+\newcommand*{\sumcolsets}{\bgroup
+  \s@dnrow=\s@lcnta
+  \toprangectr=\s@dnrow
+  \advance\toprangectr 73\relax
+  \global\sumctr\z@
+  \loop
+    \ifnum\s@dnrow<\toprangectr
+    \ifnum\useknt{s@lans\the\s@dnrow}>\z@
+      \global\advance\sumctr\useknt{s@lans\the\s@dnrow}
+    \fi
+    \advance\s@dnrow 9\relax
+  \repeat
+\egroup}
+
+%% \reducelonercolcell{startofcolcell}{digit}
+%% given a col and a lone digit, find the cell containing the digit
+%% and make the digit a solution of that cell.
+\newcommand*{\reducelonercolcell}[2]{\bgroup
+  \s@dnrow=#1
+  \toprangectr=\s@dnrow
+  \advance\toprangectr 73\relax
+  \ifnum #2<\@ne
+    \advance\s@dnrow 7300\relax
+  \fi
+  \loop
+    \ifnum\s@dnrow<\toprangectr
+    \numofnuminset{#2}{\the\useknt{s@lans\the\s@dnrow}}{\lonecellctr}
+    \ifnum\lonecellctr=\@ne%    this cell has the loner
+      \lonecellctr=#2
+      \global\useknt{s@lans\the\s@dnrow}=-\lonecellctr
+      \global\lonerchangedtrue
+      \global\advance\solcnt\@ne
+\commentary{\the\solcnt\space solved (#2 loner in column starting #1)}%
+      \s@dnrow=\toprangectr
+    \fi
+    \advance\s@dnrow 9\relax
+  \repeat
+  \egroup}
+
+%% Loop through the boxes, reducing loners
+\newcommand*{\reduceboxloners}{\bgroup
+  \sumctr\z@
+  \boxctr\@ne
+  \loop
+    \ifnum\boxctr<10\relax
+      \ifcase\boxctr
+      \or \s@lcnta=\@ne
+      \or \s@lcnta=4\relax
+      \or \s@lcnta=7\relax
+      \or \s@lcnta=28\relax
+      \or \s@lcnta=31\relax
+      \or \s@lcnta=34\relax
+      \or \s@lcnta=55\relax
+      \or \s@lcnta=58\relax
+      \or \s@lcnta=61\relax
+      \fi
+      \sumboxsets
+      \ifnum\sumctr>\z@
+        \getloner{\the\sumctr}{\s@dtempcntb}
+        \ifnum\s@dtempcntb=\z@
+        \else
+          \reducelonerboxcell{\the\s@lcnta}{\the\s@dtempcntb}
+            \iflonerchanged
+              \advance\boxctr 10\relax
+            \fi
+        \fi
+      \fi
+    \advance\boxctr\@ne
+  \repeat
+\egroup}
+
+%% add the sets in the current box
+\newcommand*{\sumboxsets}{\bgroup
+  \s@dncol=\s@lcnta
+  \toprangectr=\s@dncol
+  \advance\toprangectr 3\relax
+  \global\sumctr\z@
+  \loop
+    \ifnum\s@dncol<\toprangectr
+    \s@dnrow=\s@dncol
+    \ifnum\useknt{s@lans\the\s@dnrow}>\z@
+      \global\advance\sumctr\useknt{s@lans\the\s@dnrow}
+    \fi
+    \advance\s@dnrow 9\relax
+    \ifnum\useknt{s@lans\the\s@dnrow}>\z@
+      \global\advance\sumctr\useknt{s@lans\the\s@dnrow}
+    \fi
+    \advance\s@dnrow 9\relax
+    \ifnum\useknt{s@lans\the\s@dnrow}>\z@
+      \global\advance\sumctr\useknt{s@lans\the\s@dnrow}
+    \fi
+    \advance\s@dncol\@ne
+  \repeat
+\egroup}
+
+%% \reducelonerboxcell{startofboxcell}{digit}
+%% given a box and a lone digit, find the cell containing the digit
+%% and make the digit a solution of that cell.
+\newcommand*{\reducelonerboxcell}[2]{\bgroup
+  \s@dncol=\s@lcnta
+  \toprangectr=\s@dncol
+  \advance\toprangectr 3\relax
+  \global\sumctr\z@
+  \loop
+    \ifnum\s@dncol<\toprangectr
+    \s@dnrow=\s@dncol
+    \numofnuminset{#2}{\the\useknt{s@lans\the\s@dnrow}}{\lonecellctr}
+    \ifnum\lonecellctr=\@ne%    this cell has the loner
+      \lonecellctr=#2
+      \global\useknt{s@lans\the\s@dnrow}=-\lonecellctr
+      \global\lonerchangedtrue
+      \global\advance\solcnt\@ne
+\commentary{\the\solcnt\space solved (#2 loner in box starting #1)}%
+      \s@dncol=\toprangectr
+    \fi
+    \iflonerchanged\else
+      \advance\s@dnrow 9\relax
+      \numofnuminset{#2}{\the\useknt{s@lans\the\s@dnrow}}{\lonecellctr}
+      \ifnum\lonecellctr=\@ne%    this cell has the loner
+        \lonecellctr=#2
+        \global\useknt{s@lans\the\s@dnrow}=-\lonecellctr
+        \global\lonerchangedtrue
+        \global\advance\solcnt\@ne
+\commentary{\the\solcnt\space solved (#2 loner in box starting #1)}%
+        \s@dncol=\toprangectr
+      \fi
+    \fi
+    \iflonerchanged\else
+      \advance\s@dnrow 9\relax
+      \numofnuminset{#2}{\the\useknt{s@lans\the\s@dnrow}}{\lonecellctr}
+      \ifnum\lonecellctr=\@ne%    this cell has the loner
+        \lonecellctr=#2
+        \global\useknt{s@lans\the\s@dnrow}=-\lonecellctr
+        \global\lonerchangedtrue
+        \global\advance\solcnt\@ne
+\commentary{\the\solcnt\space solved (#2 loner in box starting #1)}%
+        \s@dncol=\toprangectr
+      \fi
+    \fi
+    \advance\s@dncol\@ne
+  \repeat
+\egroup}
+
+%%%%%%%%%%%%%%%%%%%%% reduce pairs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% reduce the pairs, per row, column and box
+\newcommand*{\reducepairs}{\bgroup
+\commentary{reducepairs}% **************************************}%
+  \global\pairchangedfalse
+  \ifnum\difficultyctr<8\relax
+    \global\difficultyctr=8\relax
+  \fi
+  \ifnum\solcnt>80\else
+    \reducerowpairs
+    \ifpairchanged\else
+      \reducecolpairs
+      \ifpairchanged\else
+        \reduceboxpairs
+      \fi
+    \fi
+  \fi
+\egroup}
+
+%% Loop through the rows, reducing pairs
+\newcommand*{\reducerowpairs}{%
+  \sumctr\z@
+  \s@dnrow\@ne
+  \loop
+    \ifnum\s@dnrow<10\relax
+    \s@lcnta=\s@dnrow \advance\s@lcnta\m@ne
+    \multiply\s@lcnta 9\relax \advance\s@lcnta\@ne
+    \sumrowsets
+    \ifnum\sumctr>\z@
+      \reducearowpair{\the\s@lcnta}
+      \ifpairchanged
+        \advance\s@dnrow 10\relax
+      \fi
+    \fi
+    \advance\s@dnrow\@ne
+  \repeat}
+
+%% reducearowpair{row}
+\newcommand*{\reducearowpair}[1]{%
+  \bgroup
+  \s@dncol=#1\relax
+  \toprangectr=\s@dncol
+  \advance\toprangectr 9\relax
+  \maxrangectr=\toprangectr
+  \advance\maxrangectr\m@ne
+  \global\sumctr\z@
+  \loop
+    \ifnum\s@dncol<\maxrangectr
+    \asetctr=\useknt{s@lans\the\s@dncol}%
+    \ifnum\asetctr>\z@
+      \findrowpair
+    \fi
+    \advance\s@dncol\@ne
+  \repeat
+  \egroup}
+
+\newcommand*{\findrowpair}{\bgroup
+  \secondctr=\s@dncol
+  \advance\secondctr\@ne
+  \loop
+    \ifnum\secondctr<\toprangectr
+      \ifnum\asetctr=\useknt{s@lans\the\secondctr}
+        \checksetforpair{\the\asetctr}
+        \ifnum\numdigitsctr=\tw@
+%% first row cell is \s@lcnta
+%% first pair cell is \s@dncol, second pair cell is \secondctr
+%% digits are \digitictr and \digitiictr
+          \deleterowpairdigits
+        \fi
+      \fi
+      \advance\secondctr\@ne
+    \repeat
+  \egroup}
+
+%% \checksetforpair{set} returns with:
+%%      \digitictr = first digit
+%%      \digitiictr = second digit
+%%      \numdigitsctr = number of digits (2 for a pair)
+\newcommand*{\checksetforpair}[1]{\bgroup
+  \s@dtemploopcnta\@ne
+  \global\numdigitsctr\z@
+  \global\digitictr\z@
+  \global\digitiictr\z@
+  \loop
+    \ifnum\s@dtemploopcnta<10\relax
+    \numofnuminset{\the\s@dtemploopcnta}{#1}{\s@dtempcnta}
+    \ifnum\s@dtempcnta=\@ne
+      \global\advance\numdigitsctr\@ne
+      \ifcase\numdigitsctr
+      \or \global\digitictr=\s@dtemploopcnta
+      \or \global\digitiictr=\s@dtemploopcnta
+      \else \advance\s@dtemploopcnta 10\relax
+      \fi
+    \fi
+    \advance\s@dtemploopcnta\@ne
+  \repeat
+\egroup}
+
+%% first row cell is \s@lcnta
+%% first pair cell is \s@dncol, second pair cell is \secondctr
+%% digits are \digitictr and \digitiictr
+\newcommand*{\deleterowpairdigits}{\bgroup
+  \global\pairchangedfalse
+  \s@dtemploopcnta=\s@lcnta
+  \toprangectr=\s@dtemploopcnta \advance\toprangectr 9\relax
+  \loop
+    \ifnum\s@dtemploopcnta<\toprangectr
+    \ifnum\s@dtemploopcnta=\s@dncol
+    \else
+      \ifnum\s@dtemploopcnta=\secondctr
+      \else
+        \deletenumfromset{\the\digitictr}%
+                        {\the\useknt{s@lans\the\s@dtemploopcnta}}{\s@dtempcnta}
+        \ifsetchanged
+          \global\useknt{s@lans\the\s@dtemploopcnta}=\s@dtempcnta
+          \global\pairchangedtrue
+        \fi
+        \deletenumfromset{\the\digitiictr}%
+                         {\the\useknt{s@lans\the\s@dtemploopcnta}}{\s@dtempcnta}
+        \ifsetchanged
+          \global\useknt{s@lans\the\s@dtemploopcnta}=\s@dtempcnta
+          \global\pairchangedtrue
+        \fi
+      \fi
+    \fi
+  \advance\s@dtemploopcnta\@ne
+  \repeat
+\egroup}
+
+%% Loop through the columns, reducing pairs
+\newcommand*{\reducecolpairs}{%
+  \sumctr\z@
+  \s@dncol\@ne
+  \loop
+    \ifnum\s@dncol<10\relax
+    \s@lcnta=\s@dncol
+    \sumcolsets
+    \ifnum\sumctr>\z@
+      \reduceacolpair{\the\s@lcnta}
+      \ifpairchanged
+        \advance\s@dncol 10\relax
+      \fi
+    \fi
+    \advance\s@dncol\@ne
+  \repeat}
+
+%% reduceacolpair{col}
+\newcommand*{\reduceacolpair}[1]{\bgroup
+  \s@dnrow=#1\relax
+  \toprangectr=\s@dnrow
+  \advance\toprangectr 73\relax
+  \maxrangectr=\toprangectr
+  \advance\maxrangectr -9\relax
+  \global\sumctr\z@
+  \loop
+    \ifnum\s@dnrow<\maxrangectr
+    \asetctr=\useknt{s@lans\the\s@dnrow}%
+    \ifnum\asetctr>\z@
+      \findcolpair
+    \fi
+    \advance\s@dnrow 9\relax
+  \repeat
+  \egroup}
+
+\newcommand*{\findcolpair}{\bgroup
+  \secondctr=\s@dnrow
+  \advance\secondctr 9\relax
+  \loop
+    \ifnum\secondctr<\toprangectr
+      \ifnum\asetctr=\useknt{s@lans\the\secondctr}
+        \checksetforpair{\the\asetctr}
+        \ifnum\numdigitsctr=\tw@
+%% first row cell is \s@lcnta
+%% first pair cell is \s@dnrow, second pair cell is \secondctr
+%% digits are \digitictr and \digitiictr
+          \deletecolpairdigits
+        \fi
+      \fi
+      \advance\secondctr 9\relax
+    \repeat
+  \egroup}
+
+%% first col cell is \s@lcnta
+%% first pair cell is \s@dnrow, second pair cell is \secondctr
+%% digits are \digitictr and \digitiictr
+\newcommand*{\deletecolpairdigits}{\bgroup
+  \global\pairchangedfalse
+  \s@dtemploopcnta=\s@lcnta
+  \toprangectr=\s@dtemploopcnta \advance\toprangectr 73\relax
+  \loop
+    \ifnum\s@dtemploopcnta<\toprangectr
+    \ifnum\s@dtemploopcnta=\s@dnrow
+    \else
+      \ifnum\s@dtemploopcnta=\secondctr
+      \else
+        \deletenumfromset{\the\digitictr}%
+                         {\the\useknt{s@lans\the\s@dtemploopcnta}}{\s@dtempcnta}
+        \ifsetchanged
+          \global\useknt{s@lans\the\s@dtemploopcnta}=\s@dtempcnta
+          \global\pairchangedtrue
+        \fi
+        \deletenumfromset{\the\digitiictr}%
+                         {\the\useknt{s@lans\the\s@dtemploopcnta}}{\s@dtempcnta}
+        \ifsetchanged
+          \global\useknt{s@lans\the\s@dtemploopcnta}=\s@dtempcnta
+          \global\pairchangedtrue
+        \fi
+      \fi
+    \fi
+  \advance\s@dtemploopcnta 9\relax
+  \repeat
+\egroup}
+
+%% Loop through the boxes, reducing pairs
+\newcommand*{\reduceboxpairs}{\bgroup
+  \sumctr\z@
+  \boxctr\@ne
+  \loop
+    \ifnum\boxctr<10\relax
+      \ifcase\boxctr
+      \or \s@lcnta=\@ne
+      \or \s@lcnta=4\relax
+      \or \s@lcnta=7\relax
+      \or \s@lcnta=28\relax
+      \or \s@lcnta=31\relax
+      \or \s@lcnta=34\relax
+      \or \s@lcnta=55\relax
+      \or \s@lcnta=58\relax
+      \or \s@lcnta=61\relax
+      \fi
+      \sumboxsets
+      \ifnum\sumctr>\z@
+        \reduceaboxpair{\the\s@lcnta}
+        \ifpairchanged
+           \advance\boxctr 10\relax
+        \fi
+      \fi
+      \advance\boxctr\@ne
+  \repeat
+\egroup}
+
+%% \getnthboxcell{n}{firstcell}{returnctr}
+\newcommand*{\getnthboxcell}[3]{\bgroup
+  \s@dtempcnta=#2
+  \ifcase#1
+  \or
+  \or \advance\s@dtempcnta 9\relax
+  \or \advance\s@dtempcnta 18\relax
+  \or \advance\s@dtempcnta \@ne
+  \or \advance\s@dtempcnta 10\relax
+  \or \advance\s@dtempcnta 19\relax
+  \or \advance\s@dtempcnta \tw@
+  \or \advance\s@dtempcnta 11\relax
+  \or \advance\s@dtempcnta 20\relax
+  \fi
+  \global #3=\s@dtempcnta
+\egroup}
+
+%% \reduceaboxpair{startofboxcell}
+\newcommand*{\reduceaboxpair}[1]{\bgroup
+  \s@dtemploopcnta\@ne
+  \toprangectr=\s@dtemploopcnta
+  \advance\toprangectr 9\relax
+  \maxrangectr=\toprangectr
+  \advance\maxrangectr\m@ne
+  \loop
+    \ifnum\s@dtemploopcnta<\maxrangectr
+    \getnthboxcell{\the\s@dtemploopcnta}{#1}{\s@dtempcnta}
+    \asetctr=\useknt{s@lans\the\s@dtempcnta}
+    \ifnum\asetctr>\z@
+      \s@dnrow=\s@dtemploopcnta
+      \findboxpair{#1}
+    \fi
+    \advance\s@dtemploopcnta\@ne
+  \repeat
+\egroup}
+
+%% \findboxpair{startofboxcell}
+\newcommand*{\findboxpair}[1]{%
+  \bgroup
+    \secondctr=\s@dtemploopcnta
+    \advance\secondctr\@ne
+    \loop
+      \ifnum\secondctr<\toprangectr
+      \getnthboxcell{\the\secondctr}{#1}{\s@dtempcntb}
+      \ifnum\asetctr=\useknt{s@lans\the\s@dtempcntb}
+        \checksetforpair{\the\asetctr}
+        \ifnum\numdigitsctr=\tw@
+%% first box cell is #1 (=\s@lcnta)
+%% first pair cell is \s@dnrow, second pair cell is \secondctr
+%% digits are \digitictr and \digitiictr
+          \deleteboxpairdigits{#1}
+        \fi
+      \fi
+      \advance\secondctr \@ne
+    \repeat
+  \egroup}
+
+%% first box cell is #1
+%% first pair cell is \s@dnrow, second pair cell is \secondctr
+%% digits are \digitictr and \digitiictr
+\newcommand*{\deleteboxpairdigits}[1]{\bgroup
+  \global\pairchangedfalse
+  \s@dtemploopcnta=\@ne
+  \toprangectr=\s@dtemploopcnta \advance\toprangectr 9\relax
+  \loop
+    \ifnum\s@dtemploopcnta<\toprangectr
+    \ifnum\s@dtemploopcnta=\s@dnrow
+    \else
+      \ifnum\s@dtemploopcnta=\secondctr
+      \else
+        \getnthboxcell{\the\s@dtemploopcnta}{#1}{\s@dtempcntb}
+        \deletenumfromset{\the\digitictr}%
+                         {\the\useknt{s@lans\the\s@dtempcntb}}{\s@dtempcnta}
+        \ifsetchanged
+          \global\useknt{s@lans\the\s@dtempcntb}=\s@dtempcnta
+          \global\pairchangedtrue
+        \fi
+        \deletenumfromset{\the\digitiictr}%
+                         {\the\useknt{s@lans\the\s@dtempcntb}}{\s@dtempcnta}
+        \ifsetchanged
+          \global\useknt{s@lans\the\s@dtempcntb}=\s@dtempcnta
+          \global\pairchangedtrue
+        \fi
+      \fi
+    \fi
+  \advance\s@dtemploopcnta \@ne
+  \repeat
+\egroup}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% check solution %%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand*{\checksolution}{%
+  \checkrows
+  \checkcols
+  \checkboxes}
+
+\newcommand*{\checkrows}{%
+  \sumctr\z@
+  \s@dnrow\@ne
+  \loop
+    \ifnum\s@dnrow<10\relax
+    \s@lcnta=\s@dnrow \advance\s@lcnta\m@ne
+    \multiply\s@lcnta 9\relax \advance\s@lcnta\@ne
+    \sumrowsets
+    \ifnum\sumctr=\z@\else
+\typeout{Row \the\s@dnrow\space is incorrect}%
+      Row \the\s@dnrow\space is incorrect. \\
+    \fi
+    \advance\s@dnrow\@ne
+  \repeat}
+
+\newcommand*{\checkcols}{%
+\bgroup
+  \sumctr\z@
+  \s@dncol\@ne
+  \loop
+    \ifnum\s@dncol<10\relax
+    \s@lcnta=\s@dncol
+    \sumcolsets
+    \ifnum\sumctr=\z@\else
+\typeout{Column \the\s@dncol\space is incorrect}%
+      Column \the\s@dncol\space is incorrect. \\
+    \fi
+    \advance\s@dncol\@ne
+  \repeat
+\egroup}
+
+\newcommand*{\checkboxes}{%
+\bgroup
+  \sumctr\z@
+  \boxctr\@ne
+  \loop
+    \ifnum\boxctr<10\relax
+\ifcase\boxctr
+\or \s@lcnta=\@ne
+\or \s@lcnta=4\relax
+\or \s@lcnta=7\relax
+\or \s@lcnta=28\relax
+\or \s@lcnta=31\relax
+\or \s@lcnta=34\relax
+\or \s@lcnta=55\relax
+\or \s@lcnta=58\relax
+\or \s@lcnta=61\relax
+\fi
+    \sumboxsets
+    \ifnum\sumctr=\z@\else
+\typeout{Box \the\boxctr\space is incorrect}%
+      Box \the\boxctr\space is incorrect. \\
+    \fi
+    \advance\boxctr\@ne
+  \repeat
+\egroup}
+
+%% typeset the current status of the partial solution
+\newcommand*{\typesimplestatusX}{%
+\par\noindent\begin{minipage}{\linewidth}
+\begin{center}
+Simple reductions stopped (with \the\solcnt\space solutions)\\
+\displaystatus
+\end{center}
+\end{minipage}}
+
+%% typeset the current status after loner processing
+\newcommand*{\typelonestatusX}{%
+\par\noindent\begin{minipage}{\linewidth}
+\begin{center}
+Loners processed (with \the\solcnt\space solutions)\\
+\displaystatus
+\end{center}
+\end{minipage}}
+
+%% For curiosity as to how a solution is developing call the \showprogess
+%% declaration (\hideprogess turns this off).
+\newcommand*{\hideprogress}{%
+  \let\typesimplestatus\relax
+  \let\typelonestatus\relax}
+\newcommand*{\showprogress}{%
+  \let\typesimplestatus\typesimplestatusX
+  \let\typelonestatus\typelonestatusX}
+\hideprogress
+
+%%%%%%%%%%%%%%%%%% write solution to a game file %%%%%%%%%%%%%%%
+
+%% write out the solution to game file \sudsolnfile.
+\newcommand*{\sudsolnfile}{sud.out}
+\newcommand*{\writegame}{%
+  \immediate\closeout\s@dwrite
+  \immediate\openout\s@dwrite=\sudsolnfile
+  \s@dnrow\@ne
+  \loop
+    \ifnum\s@dnrow<81\relax
+    \gatherline{\the\s@dnrow}
+    \immediate\write\s@dwrite{\sudaline}
+    \advance\s@dnrow 9\relax
+  \repeat
+  \immediate\closeout\s@dwrite}
+
+%% \gatherline{colstart}
+%% collect all the characters for one line in a game file
+\newcommand*{\gatherline}[1]{\bgroup
+  \gdef\sudaline{}
+  \s@dncol=#1\relax
+  \toprangectr=\s@dncol
+  \advance\toprangectr 9\relax
+  \loop
+    \ifnum\s@dncol<\toprangectr
+    \s@dtempcnta=\useknt{s@lans\the\s@dncol}
+    \ifnum\s@dtempcnta>\m@ne
+      \g@addto@macro{\sudaline}{.}
+    \else
+      \s@dtempcnta=-\s@dtempcnta
+      \ifcase\s@dtempcnta
+      \or \g@addto@macro{\sudaline}{1}
+      \or \g@addto@macro{\sudaline}{2}
+      \or \g@addto@macro{\sudaline}{3}
+      \or \g@addto@macro{\sudaline}{4}
+      \or \g@addto@macro{\sudaline}{5}
+      \or \g@addto@macro{\sudaline}{6}
+      \or \g@addto@macro{\sudaline}{7}
+      \or \g@addto@macro{\sudaline}{8}
+      \or \g@addto@macro{\sudaline}{9}
+      \else \g@addto@macro{\sudaline}{.}
+      \fi
+    \fi
+    \advance\s@dncol\@ne
+  \repeat
+\egroup}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% THE END GOAL %%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%% \sudoksolve{<file>} %%%%%%%%%%%%%%%%%%%%%%
+
+%% Read in and typeset the problem, solve it, and typeset the answer
+\newcommand{\sudokusolve}[1]{%
+  \begin{center}
+  \sudoku{#1}%
+  \end{center}
+  \getproblem{#1}%
+  \reduceallcells
+  \keepreducing
+  \writegame
+  \noindent\begin{minipage}{\linewidth}
+  THE ANSWER
+  \begin{center}
+  \cluefont\normalsize
+  \cellsize{1.5\baselineskip}
+  \sudoku{\sudsolnfile}
+  \end{center}
+  \end{minipage}}
+
+\endinput
+%%
+%% End of file `solvesudoku.sty'.

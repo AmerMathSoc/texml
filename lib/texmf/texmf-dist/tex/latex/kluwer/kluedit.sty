@@ -1,0 +1,576 @@
+%
+%<*other>
+%
+\ifcat a\noexpand @\let\next\relax\else \def\next{%
+\documentclass{kluwer}\usepackage{doc}\MakePercentIgnore}\fi\next
+\NeedsTeXFormat{LaTeX2e}
+\def\filedate{1998/03/13}
+\def\filename{kluedit.sty}
+% \changes{1997/07/13}{changed chaptermark for monographs:
+% use @chapapp and c@chapter instead of CHAPTER thechapter,
+% check for mainmatter}{}
+% \changes{1997/07/25}{raised thepage in edited style titlepage 6pt}{}
+% \changes{1997/08/07}{Inserted kaplogo}{}
+% \changes{1998/02/04}{Inserted "parskip 0pt"}{}
+% \changes{1998/02/06}{Inserted final--double hyphen demerits}{}
+% \changes{1998/02/09}{Full rewrite of firstpage-lastpage code}{}
+% \changes{1998/02/19}{Removed silly ifx csname bug in setlastpage}{}
+% \changes{1998/02/24}{Fix in "journalcode": removed extra page}{}
+% \changes{1999/07/08}{SK: removed check journal code}{}
+% \changes{1999/09/09}{SK: reset equation counter between articles}{}
+%\DoNotIndex{\@M,\def,\c@secnumdepth,\baselineskip,\@pnumwidth,\else,\fi}
+%\DoNotIndex{\newcommand,\z@,\relax,\renewcommand,\ifnum,\csname,\endcsname}
+%\DoNotIndex{\baselineskip,\vskip,\hskip,\relax,\secdef,\refstepcounter}
+%\DoNotIndex{\normalsize,\numberline,\protect,\endinput,\hfill}
+%\DoNotIndex{\@compare,\ifx,\global,\gdef,\def,\let,\hbox,\par,\typeout}
+%\CodelineIndex
+%\newcommand{\Bs}{$\backslash$}
+%\parindent=0pt
+%\parskip=3pt
+%\hfuzz=11pt
+%\MakeShortVerb{\|}
+%\setlength{\marginparwidth}{0in}
+%\addtolength{\textwidth}{4pc}
+%\begin{document}
+%\begin{opening}
+%\title{\filename}
+%\date{\filedate}
+%\author{Kluwer Academic Publishers\surname{}}
+%\institute{~}
+%\runningtitle{\filename\ -- \filedate}
+%\runningauthor{Kluwer Academic Publishers}
+%\editor{Test}
+%\journalcode{test}
+%\begin{abstract}
+% This internal stylefile defines most of the special kluwer
+% commands. amongst these: the |article|
+% environment, the different pagestyles, all of the editor and
+% auxiliary document info commands, and the commands to read in
+% |kapjrnls.kap|.  
+%\end{abstract} 
+%\end{opening}      
+%\tableofcontents
+%\newpage\section{Implementation}
+%    \begin{macrocode}
+\ProvidesPackage{kluedit}[\filedate ]
+%</other>
+%<*head>
+\newif\if@copyrighthead  \@copyrightheadfalse
+\newif\if@kapidenthead   \@kapidentheadfalse
+\newif\if@noid           \@noidfalse
+\DeclareOption{copyrighthead}{\@copyrightheadtrue}
+\DeclareOption{kapidenthead}{\@kapidentheadtrue}
+\DeclareOption{noid}{\@noidtrue}
+%\ExecuteOptions{}
+%</head>
+%<*other>
+\ProcessOptions
+%</other>
+%<*main>
+%    \end{macrocode}
+% 
+% \subsection{Database info}
+% There are some serious changes made to |kapjrnls.kap|, the
+% corresponding macros are done here.
+%
+% |\journaldata| is the command used in |kapjrnls.kap|. The format for
+% this file is as follows: 
+%\begin{verbatim}
+%\journaldata{acma}
+%\gdef\@journal{Applied Composite Materials}%
+%\def\@stylefile{mathkap}%
+%\dataend
+%\end{verbatim}
+% Optionally, some other journal-specific commands can be done
+% here. In the current file, these are |\country| and |\CLsize|, but
+% more will probably follow.
+%
+% Define record wrapper. This is a primitive, because \LaTeX\ doesn't
+% allow this sort of thing.
+%    \begin{macrocode}
+\long\def\journaldata#1#2\dataend{%
+  \edef\@tempa{@#1}\ifx \@tempa\@currjournal #2\fi}
+%    \end{macrocode}
+% Read file. |\journalcode| triggers reading,
+% so don't specify |\journalcode| without having the file... 
+% (|\@currjournal| is a temporary to keep track of the journal.)
+%
+% If after reading |\@journal| == `journal not defined': Error\\
+% If after reading |\@stylefile| != current class : Error
+%
+% |\@journal|, |\@testjournal| and |\@defaultjournal| are initialized in
+% |kapjrnls.kap|. The \\    
+% |\ver@kluwer.cls| command is defined by \LaTeX;
+% deduced from |\ProvidesClass|. 
+%    \begin{macrocode}
+\def\CLsize{\footnotesize}
+\def\@journal{}  
+\def\@currjournal{}
+\def\journalcode#1{%
+  \edef\@currjournal{@#1}%
+%  \makeatletter\input kapjrnls.kap \makeatother
+%  \ifx\@journal\@defaultjournal 
+%    \PackageError{kluopen}{Journalcode not defined}{Please correct 
+%    your typo or contact KAP to update your kapjrnls.kap.}\fi 
+%  \ifx\@journal\@testjournal  \else
+%  \expandafter\ifx \csname ver@\@stylefile.cls\endcsname\relax 
+%    \PackageWarning{kluopen}{Incorrect or superfluous journalcode
+%    command}\fi \fi
+  }                           
+%    \end{macrocode}
+% This is a hook for klups.sty (oldstyle numerals)
+%    \begin{macrocode}                           
+\def\i@oldseries{}
+%    \end{macrocode}
+% 
+% 
+% \subsection{copyright commands}
+% This allows changing the copyrightowner and allows for a special
+% type of copyright. 
+%
+% User interface is |\copyrightowner<*>{private}|, where the star form
+% will result in: ``The private right to ..'' together with `(c)
+% Kluwer Academic...' , and the non-star form
+% will result in: `(c) private'.
+%
+% This is implemented as a footnotetext to the title, which is why we
+% need the |\if|-switch. |\AtBeginDocument| is needed to prevent relocation 
+% errors in the stylefile. (|kluopen| has to define |\@speccrightcheck| 
+% as well)
+%    \begin{macrocode}
+\newif\if@speccright \@speccrightfalse              
+\AtBeginDocument{\gdef\@speccrightcheck{%
+   \if@speccright 
+   \footnotetext[4]{\@spectextone{} \@speccright{} \@spectexttwo}%
+   \fi }}
+\def\@spectextone{The}
+\newcommand\spectextone[1]{\gdef\@spectextone{#1}}
+\def\@spectexttwo{right to retain a non-exclusive, royalty free
+                 licence in and to any copyright is acknowledged.}
+\newcommand\spectexttwo[1]{\gdef\@spectexttwo{#1}}
+\newcommand\copyrightowner{\@ifstar{\crightA}{\crightB}}
+\newcommand\crightA[1]{\gdef\@speccright{#1}\global\@speccrighttrue}
+\newcommand\crightB[1]{\gdef\@copyrightowner{#1}\global\@speccrightfalse}
+\def\@speccright{}
+\def\@copyrightowner{Kluwer Academic Publishers}
+%    \end{macrocode}
+% \subsection{Country, volume and year commands}
+%    \begin{macrocode}
+\newcommand\country[1]{\gdef\@country{#1}}
+\def\@country{the Netherlands}
+\newcommand\volume[1]{\gdef\@volume{#1}}
+\def\@volume{00}
+\newcommand\pubyear[1]{\gdef\@pubyear{#1}}
+\def\@pubyear{\number\year}
+%    \end{macrocode}
+% \subsection{paging commands}
+% These macro's have to be a bit smarter than you would expect. This
+% has to work correctly while displaying the information line, not
+% only for the first, but for possibly many of those in one
+% document. Therefore, it will not do to just toggle the page counter.  
+%
+% All of this will only work correctly in one of these conditions: 
+%
+%\begin{itemize}
+%\item Just one opening and no article environment.
+%\item The complete opening environment inside the article.
+%\item Lastpage is also given.
+%\end{itemize}
+%(|\thearticle| is defined below.) 
+%
+%    \begin{macrocode}
+\newif\iflastpagegiven   \lastpagegivenfalse
+%    \end{macrocode}
+% This turned out to be rather easy after all... 
+%
+% Every article will first run |\setlastpage| (on opening), and will write 
+% out a label of the form |{\thearticle lastpage}| (on closing). This will 
+% be the value of |\@lastpage| if no |\lastpage| is given, otherwise it will
+% (of course) be defined by |\lastpage|. 
+%    \begin{macrocode} 
+\newcommand\firstpage[1]{%
+  \gdef\@firstpage{#1}%
+  \ifnum\@firstpage>\c@page  
+    \setcounter{page}{#1}%
+    \PackageWarning{kluopen}{Increasing pagenumber to \@firstpage}%
+  \else \ifnum\@firstpage<\c@page 
+    \PackageWarning{kluopen}{Firstpage lower than pagenumber}\fi\fi
+    \xdef\@firstpage{\the\c@page}%                                 
+    }
+\def\@firstpage{1}
+\def\pagenumbering#1{%
+    \global\c@page \@ne
+    \gdef\thepage{\csname @#1\endcsname \c@page}%
+    \gdef\thefirstpage{% 
+            \csname @#1\endcsname \@firstpage}%
+    \gdef\thelastpage{%
+            \csname @#1\endcsname \@lastpage}%
+    }  
+\pagenumbering{arabic}
+\newcommand\lastpage[1]{\xdef\@lastpage{#1}%
+  \global\lastpagegiventrue}
+\def\@lastpage{0}               
+\def\setlastpage{\iflastpagegiven\else
+    \edef\@tempa{@lastpage@\the\c@article}%
+    \expandafter 
+    \ifx \csname \@tempa \endcsname \relax
+        \gdef\@lastpage{0}%
+    \else
+        \xdef\@lastpage{\@nameuse{@lastpage@\the\c@article}}%
+    \fi
+    \fi }
+\def\writelastpage{%                                    
+    \iflastpagegiven \else
+    \immediate\write\@auxout%
+    {\string\global\string\@namedef{@lastpage@\the\c@article}{\the\c@page}}%
+    \fi                                                       
+    }
+\def\thepagerange{%                                    
+  \ifnum\@lastpage =0 {\ \bf PLEASE RUN AGAIN} \else
+  \ifnum\@lastpage = \@firstpage \ \thefirstpage\else
+  \ \thefirstpage--\thelastpage \fi\fi}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\def\@prin{Printed in}         
+\@ifundefined{textcopyright}{\def\textcopyright{\copyright}}{}
+\def\copyrightline{\textcopyright~\i@oldseries\@pubyear\
+  {\it\@copyrightowner.~~\@prin\ \@country.}\hfill\hbox{}}
+%    \end{macrocode}
+%\subsection{The copyright information} 
+% This is a three-part operation. 
+% |\@kapidenthead| (|foot|) contains the editor inforamtion and a
+% possible barcode, while |\@copyrighthead| (|foot|) contains both the
+% journal title and the copyright line. |\idline| contains the file
+% information status.                    
+%
+%Here is the copyright information first. |\thejournal| will typeset
+%the first line, |\thecopyright| the second.   Some checks are made to
+%prevent typesetting half of a line.
+%    \begin{macrocode}
+\def\volsep{: }
+\def\thejournal{\ifx\@journal\empty\else\leavevmode \i@oldseries
+     {\it\@journal\/}~~{\bf\i@oldseries\@volume\volsep}\thepagerange,
+     \@pubyear.\hfill\hbox{}\\ \fi}          
+\def\no{no}                               
+\def\crline#1{\gdef\@crline{#1}}
+\def\thecopyright{\ifx\@crline\no \else \copyrightline \par \fi }
+%    \end{macrocode}
+% Now switch for either up or down.  In both cases, the lines will
+% move away from the main text, with the corresponding baseline set at
+% the footer or header.
+%    \begin{macrocode}
+\newtoks\logotoks 
+\catcode`\%=12                  
+\catcode`\#=12                  
+\logotoks={\special{"
+4 4 translate
+989 1138 1 [60 0 0 -60 210 930]
+currentfile 
+/ASCII85Decode filter            
+<< /K -1 /Columns 989 >>
+/CCITTFaxDecode filter
+image
+Q>'H49/K0rjdMhW-(A!cb;A.`/DC9EH"NLrmTGB3G`p9Q"2Q+cbR4Nj7'd7dn1Os5
+\string$DPm^#D5dp.Sq0)HOI.%W!@rm_0-3j?%po`_0-3j?%VDq_0-W'Fr+S1(LXi_Ye(:I
+]*kjT\string$a@6KL"blG_X2L_CTtEVL"blG_X2L_CTtEVY/9RL]*l%#ln6muG.V%6g?j&"
+CUMm`Fr+r%g?j'q?%q#"G.V%_f3rj7?*;dp[G("lm<6*IY1IHshmM2*G.V%_f7)=e
+[G("lm<6*Iqd\string$AVIb/AMCUMmbg?j'qp:FV5rN=b\string$f7)=e^MCT"[GSCL[G(*'m<@rA
+m<6,8\string\:3%Yf7)>#f7)>#f7)>#f7)>#f7)>#f7)>#f7)>#f7)>#rN?+r?2Iq)p:L(d
+GOO8ShmM@LhnNsAIb0&IY5S7k]D(dJn)(P1^OFd`rVKmtp:L(fg@*q6CVP>sqd'*n
+n)(lq^OH.Yp[*1nhnOWlIf90<n(R6f^OH.Yp[@"SCVP>sqtKR:^OH.Yp[@"SCVP>s
+qtKQ8s8U1@C);u92\string$r0TIf90<e+`=g^OH.YpZ,==\string\+]gYg\string\ZD'qgWPOrP,i8rnlK-
+IrF`IDsdM<\string\+]gY<rV"2qgWPOol'6r^UNq9hcBa6g\string\ZJ=mIbDbrP,i8qR?1thqRGR
+g\string\ZJ=X+,'TrP#E4^UNq5\string\+]gYgZYS:s0qsA>CC\string\p\string\,F'GI<PY"lYir`pAJk\string$g]\string$*4
+^:SmLos`Okqg[AbD?"OWhlXZ\string\p"T/KrP"TTpAJk\string$g]\string$*4^:Sj&s0pTuf&'cJ>CC\string\n
+D=uZ_hb.nbI4`5\string$oX=e/f5K6t?,'TlG5Z:Ng\string\&&-Dq<fO^KZ,0qHJI(l#\string$H=V75&p
+f&'cIQJ_E4>CYDlD=uZV\string\(>QLhd*s^hlchCoX=e/dbFH(f5ILprP"TT?+uW^XhMDq
+/\string\\iG[ea3VG5>El[ea3VG5>El[ea3VG5>El[efC`[ea3V/\string\\iF/\string\[P.XhMDq/\string\[P.
+95gZ9f5ILpdbF#'oX=U#J(s4)oX=U#I4`1!hb.mjhb.ma\string\'j\string$qD=k:5>CA*;QJW!c
+oX=U#I4`1FI4`1!hb.ma\string\'j\string$qD=EkK95gZ9_HVF?^(T2bD=eV\string$$#T=CqHJ=n\string\'j\string$i
+/\string\[P.95fJ!hb.m@[eNL6V74;LDl'q[>C7R%qHJ=i[eNL6V74;LDl'q[\string$ZC^,qHJ=Y
+>C7a+_@(:8[eN.*n:KEQQJVs"^(T2Z"h2?QHm#lm6#H*aDh8@8Jm3UF[eLuRp`R\string$?
+6#H*WD=C2:KGNGN/\string\XRt27@;0aCL\string$khf"Uu#*%Ks"Le+7OAWdIj>'(dl*n`EL,P%*
+&6jO::U(jdL-R<W?Jcof\string$<nG'j>\string$a;@XEKW5W@E:h]\string\'fZTZ&2IlgdAO<XZ3Ig*T=
+hna6h\string\+!b`J";.F81K*N-5drJr9P82JLC&riK=?dcL_O,/H-%Tm_N_SP<`=[r2g%Q
+1&S&'fJid;r.0IP.XrTBC_ZpLs8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!
+s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!
+s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!s8W-!r-X"n
+rVQ?XhnG_tIf90<n)(m/rVQ?XhnG_tIf90<n)(m/rUg'cp[@!8hnOX=o_n[]n)\string$pu
+^OH.RrVQ?XhbW.EIenNlqs""Pn#,X3^7W/hqL8D?l215DVsiNWT>,jOIenNlo_n[O
+qs""Pe+_>cn#,WPn)\string$pu^7W-3^O8=p5CGbE5CGbE5CGbE5CGcgrUg'\string\rUg'\string\qL89h
+5CG_f^7S3Y:Z"sGn#+Y/e*6boo_nFYI6W-DT22BRVpjo-l1Fh#5CG_f:T*ZZe*6N\string$
+I6O9!Vpjo&qL(Q":T)\string\+o_Nu"T21.:I6O9!K_g*\string\T21.:I6O9!K_g*\string\'C#/a:T)'X
+5+`/RpeRg)I6O80o_;48peQS>HmcdY-e%\string$<'B)+gl0qK%pa<q+-c%t[i1C>FT*b&n
+L=7gF:P*s-i1C/I-c%t[j:;B)"QU(.PuEc.AeiBCZN4SP=c/;D"]f?=L:]C?)O[;?
+Ai"3B!'gY\string~>    
+}}  
+\catcode`\%=14
+\catcode`\#=6
+\def\kaplogo{\advance\textwidth -2pc
+    \leavevmode\lower 8pt
+    \hbox to 24pt{\the\logotoks\hss}}
+\if@copyrighthead
+  \gdef\@copyrighthead{{\parindent 0pt\vbox to\headheight {%
+          \hsize\textwidth \vss \kaplogo
+          \parbox{\textwidth}{\CLsize\thejournal\thecopyright}}}}
+  \gdef\@copyrightfoot{}
+\else
+  \gdef\@copyrightfoot{{\parindent 0pt\rlap{\vbox to 0pt{%
+          \hsize\textwidth \vss \kaplogo
+    \parbox{\textwidth}{\CLsize\thejournal\thecopyright}\vss}}}}
+  \gdef\@copyrighthead{}
+\fi
+%    \end{macrocode}
+% Next part. Since this is defined through editor, definition is a bit
+% easier. However, |\editor| is mandatory to get barcodes typeset,
+% which may be a bit unexpected.
+%    \begin{macrocode}     
+\def\@kapidenthead{}
+\def\@kapidentfoot{}          
+\if@kapidenthead
+  \def\editor#1{\gdef\@kapidentfoot{}%
+    \if@noid \gdef\@kapidenthead{}\else
+    \gdef\@kapidenthead{\footnotesize \tt #1 (\klujnlname:\kluclassname)\ v.%
+        \kluclassversion\hfill}\fi}
+\else
+   \def\editor#1{\gdef\@kapidenthead{}%
+     \if@noid \gdef\@kapidentfoot{}\else 
+     \gdef\@kapidentfoot{\vbox to 0pt{%
+       \rlap{\vbox to \id@boxheight{\hbox{}\vfill
+             \hbox to \textwidth{\footnotesize\tt\hbox{}\hfill #1
+             (\klujnlname:\kluclassname)\ v.\kluclassversion}%
+               \vskip 10pt}}\vss}}\fi}
+\fi
+%    \end{macrocode}
+%
+%    \begin{macrocode}                             
+\newcounter{outputpage}
+\def\idline{\if@noid\else
+    \stepcounter{outputpage}%
+    \rlap{\smash{\vtop to \id@boxheight{%
+     \vfil\hbox to\textwidth{%
+     \hfil\footnotesize\tt 
+     \jobname.tex; \TODAY;~\timenow;~p.\theoutputpage}}}}%
+   \fi}
+%    \end{macrocode}
+%\subsection{Headings and page layout}
+% 
+% Change with older versions: |\idline| has been taken separately to
+% allow easier changes. This is defined above, and does not contain
+% any space, either vertical or horizontal (text extends below to the 
+% right, but it can be ignored here).
+%
+%|\DeclareTextAccent| is not very clean, but 
+% without it |\'|, |\`| and |\=| fail if used in the output routine 
+%(i.e. running headlines). Accents always require the use of |\protect|,
+% otherwise they will never be expanded in |\uppercase| versions. 
+%    \begin{macrocode} 
+\DeclareTextAccent{\@acci}{OT1}{19}
+\DeclareTextAccent{\@accii}{OT1}{18}
+\DeclareTextAccent{\@acciii}{OT1}{22}
+\DeclareTextAccent{\@acci}{T1}{1}
+\DeclareTextAccent{\@accii}{T1}{0}
+\DeclareTextAccent{\@acciii}{T1}{9}
+\gdef\markboth#1#2{{\let\protect=\noexpand
+    \xdef\myleftmark{\Uppercase{#1}}%
+    \xdef\myrightmark{\Uppercase{#2}}}}
+\let\imarkboth\markboth
+\def\myleftmark{}
+\def\myrightmark{}
+\def\@markfont{\rm\scriptsize}
+\def\@pgnumfont{\rm\normalsize}
+\def\ps@headings{%
+  \def\@oddfoot{\idline\hfil }%
+  \let\@evenfoot\@oddfoot
+  \def\@evenhead{\hbox{}\@pgnumfont\rlap{\thepage}\hfil
+    \@markfont\myleftmark\hfil}%
+  \def\@oddhead{\hbox{}\hfil\@markfont\myrightmark\hfil
+    \@pgnumfont\llap{\thepage}}%
+  \let\@mkboth\@gobbletwo
+  \def\chaptermark##1{}%
+  \def\sectionmark##1{}%
+  \def\subsectionmark##1{}}
+\def\ps@myheadings{%
+  \def\@oddfoot{\idline\hfil }%
+  \let\@evenfoot\@oddfoot
+  \def\@evenhead{\hbox{}\@pgnumfont\rlap{\thepage}\hfill
+    \@markfont\myleftmark}%
+  \def\@oddhead{\hbox{}\@markfont\myrightmark\hfill
+    \@pgnumfont\llap{\thepage}}%
+  \let\@mkboth\@gobbletwo
+  \def\chaptermark##1{}%
+  \def\sectionmark##1{}%
+  \def\subsectionmark##1{}}
+\def\ps@empty{%
+  \def\@oddfoot{\idline\hfil }%
+  \let\@evenfoot\@oddfoot
+  \def\@evenhead{}%
+  \def\@oddhead{}%
+  \let\@mkboth\@gobbletwo
+  \def\chaptermark##1{}%
+  \def\sectionmark##1{}%
+  \def\subsectionmark##1{}}
+\let\ps@title\ps@empty
+\let\ps@part\ps@empty
+\let\ps@chapter\ps@empty
+%    \end{macrocode}
+% 
+%
+% In a monography chapters place the marks as follows:\\
+% |2    C H A P T E R   O N E     .     T I T L E  O F  C H    3|
+%
+%    \begin{macrocode}
+\def\ps@monoheadings{%
+    \let\@mkboth\@gobbletwo
+    \def\@oddfoot{\idline\hfil}%
+    \let\@evenfoot\@oddfoot      
+    \def\@evenhead{\hbox{}\rm\normalsize\hbox to 0pt{\thepage\hss}\hfil
+         \footnotesize\myleftmark\hfil}%
+    \def\@oddhead{\hbox{}\rm\footnotesize\hfil
+        \myrightmark\hfil
+        \rm\normalsize\hbox to 0pt{\hss\thepage}}%
+    \def\chaptermark##1{%
+        \if@mainmatter
+        \markboth{\@chapapp\ \NUMTOWORD{\c@chapter}}{\@runningtitle}%
+        \else
+        \markboth{\@chapapp\ \thechapter}{\@runningtitle}%
+        \fi }
+    \let\sectionmark\@gobble
+  }
+  \def\ps@monotitle{\let\@mkboth\@gobbletwo
+    \def\@oddhead{\hbox{}\rm\footnotesize\hfil
+         \myleftmark\hfil}%
+    \def\@oddfoot{\idline \@barcode\@kapidentfoot
+        \parbox{\textwidth}{\hfil\thepage\hfil\\ \@copyrightfoot}}
+    \let\@evenhead\@oddhead
+    \let\@evenfoot\@oddfoot
+    \let\chaptermark\@gobbletwo
+    \let\sectionmark\@gobble
+    \let\subsectionmark\@gobble
+  }
+  \def\ps@monochapter{\let\@mkboth\@gobbletwo
+    \def\@oddhead{\hbox{}\hfil\rm\footnotesize
+        \myleftmark\hfil}%
+    \def\@oddfoot{\idline\hfil\rm\normalsize\thepage\hfil}%
+    \let\@evenhead\@oddhead
+    \let\@evenfoot\@oddfoot
+    \let\chaptermark\@gobbletwo
+    \let\sectionmark\@gobble
+    \let\subsectionmark\@gobble
+  }
+%    \end{macrocode}
+% 
+%
+% If editedvolume and if nothing specified
+%                                         
+%
+% Here we have:\\
+% |2  A U T H O R S       .   T I T L E   O F  E N T R Y   3|
+%
+%    \begin{macrocode}
+  \def\ps@editheadings{\let\@mkboth\@gobbletwo
+    \def\@oddfoot{\idline\hfil}%
+    \def\@evenfoot{\idline\hfil}%                           
+    \def\@evenhead{\hbox{}\rm\normalsize\rlap{\thepage}\hfil
+         \footnotesize\myleftmark\hfil}%
+    \def\@oddhead{\hbox{}\rm\footnotesize\hfil\myrightmark\hfil
+        \rm\normalsize\hbox to 0pt{\hss\thepage}}%
+    \def\chaptermark##1{%
+        \markboth{\@runningauthor}{\@runningtitle}}%
+    \let\sectionmark\@gobble
+  } 
+  \def\ps@edittitle{\let\@mkboth\@gobbletwo
+    \def\@oddhead{\hbox{}\rm\footnotesize\hfil
+         \myleftmark\hfil}%
+    \def\@oddfoot{\idline \@barcode\@kapidentfoot
+        \parbox{\textwidth}{\hfil\raise 6pt\hbox{\thepage}\hfil\\ \@copyrightfoot}}
+    \let\@evenhead\@oddhead
+    \let\@evenfoot\@oddfoot}
+%    \end{macrocode}
+% |\ps@opening| does not bother with |\chaptermark| etc, since it will
+% be used only as |\thispagestyle|.
+%    \begin{macrocode}
+\def\theinheadpage{\thepage}
+\def\ps@opening{%
+  \def\@oddhead{\@copyrighthead \@kapidenthead\hss
+            \if@copyrighthead \llap{\theinheadpage}\fi }%       
+  \let\@evenhead\@oddhead
+  \def\@oddfoot{\@copyrightfoot \@barcode\idline\@kapidentfoot\hss}
+  \let\@evenfoot\@oddfoot}
+%    \end{macrocode}
+%\subsection{The article environment} 
+% stepping the counter takes care of |\label| and |\ref|, but maybe there are 
+% no environments at all in the file. In that case, we do not want 
+% |\thearticle| to disrupt things. 
+%
+% The AtEndDocument is an extra check.
+%    \begin{macrocode}
+\newcounter{article}
+\renewcommand{\thearticle}{}
+\let\ilabel=\label
+\let\iref=\ref
+\let\ipageref=\pageref
+\let\art@intdefinecounter\@definecounter
+\newif\ifinarticle % \inarticlefalse
+\newenvironment{article}{% 
+  \def\@definecounter##1{\art@intdefinecounter{##1}%
+    \@addtoreset{##1}{article}}%       
+  \renewcommand{\thearticle}{\roman{article}}%
+  \refstepcounter{article}%
+  \message{Article \number\c@article}%
+  \gdef\@firstpage{\the\c@page}%                                 
+  \@addtoreset{equation}{article}%
+  \ifx\sectioncmd\section             
+    \@addtoreset{section}{article}%
+  \else
+    \@addtoreset{chapter}{article}%
+  \fi                              
+  \@addtoreset{endnote}{article}%
+  \@addtoreset{table}{article}%
+  \@addtoreset{figure}{article}%
+  \@addtoreset{algorithm}{article}%
+  \def\label##1{\ilabel{\thearticle ##1}}%
+  \def\ref##1{\iref{\thearticle ##1}}%
+  \def\pageref##1{\ipageref{\thearticle ##1}}%
+  \setlastpage 
+  \global\inarticletrue
+  }{\make@ao
+    \writelastpage
+    \clearpage
+    \if@openright
+      \ifodd \c@page \else ~\thispagestyle{empty}\newpage \fi
+    \fi
+    \gdef\@dedication{}\gdef\@translation{}%
+    \gdef\@title{}\gdef\@subtitle{}%
+    \gdef\@arttype{}\gdef\@keywords{}\gdef\@classification{}%
+    \gdef\@nomenclature{}\gdef\@abbreviations{}\gdef\@abstract{}%
+    \gdef\@kapidenthead{}\gdef\@kapidentfoot{}%
+    \gdef\@barcode{}\gdef\@firstpage{\thepage}%
+    \gdef\@crline{}%
+    \global\lastpagegivenfalse
+    \global\inarticlefalse
+    }
+\AtBeginDocument{\setlastpage}
+\AtEndDocument{\ifnum \c@article=0 
+    \writelastpage
+    \clearpage\fi}
+\font\barcodefont=cmr10
+\def\barcode#1{\global\font\barcodefont=barcodes
+  \gdef\@barcode{\rlap{\vbox to 0pt{%
+      \vbox to \id@boxheight{\hbox{}\vfill
+           {\barcodefont \hbox{#1}}}\vss}}}}
+\def\@barcode{}
+\def\PIPSID#1{}
+\parskip 0pt
+\hyphenpenalty 200
+\doublehyphendemerits 640000  % corresponds to badness 800
+\finalhyphendemerits  1000000  % corresponds to badness 1000
+%</main>
+%<*other>
+\endinput              
+%    \end{macrocode}
+%\PrintIndex
+%\end{document}
+% end of kluedit.sty
+%</other>

@@ -1,0 +1,348 @@
+\ProvidesFile{fifinddo.tex}[2011/11/19 documenting fifinddo.sty]
+\title{\textsf{fifinddo}\\---\\Filtering \TeX(t) Files by 
+       \TeX\thanks{This file describes 
+       version \fileversion\ of \textsf{\filename} as of \filedate.}} 
+% \listfiles
+\documentclass[fleqn]{article}
+\usepackage{makedoc}
+% \usepackage{substr} %% for failure examples TODO 2010/03/17
+\input{makedoc.cfg}
+\MDkeywords{text filtering, macro programming, 
+            .txt to .tex enhancement}
+\hypersetup{%
+    pdftitle=fifinddo.sty filters text by TeX,
+    pdfsubject=documenting fifinddo.sty
+}
+\ReadPackageInfos{fifinddo}
+\begin{document}
+\maketitle
+
+\begin{flushright}\small\it FIDO, FIND!\\or:\\FIND FIDO!\\oder:\\FIFI, 
+                            SUCH!\end{flushright} 
+\begin{MDabstract}
+'fifinddo' starts implementing parsing of plain text or \TeX\ files 
+using \TeX, generalizing the philosophy behind 'docstrip', 
+based on how \TeX\ reads macro arguments. 
+Rather than typsetting the edited input stream immediately, 
+results are written to another file, 
+in the first instance as input for \TeX.
+Rather than presenting a ``complete study" of a computer-scientific 
+idea, it aims at practical applications. 
+The main one at present is '\mbox{makedoc}' which removes certain comment 
+marks from package files and inserts listing commands. 
+Parsing macros are not defined anew at every input chunk, 
+but once before a file is processed. 
+This also allows for \emph{expandable} sequences of replacements, 
+e.g., with `txt'\,$\to$\,\TeX\ functionality. 
+The method of testing for substrings is carefully discussed,
+revealing an earlier mistake (then) shared with 'substr.sty' 
+and \LaTeX's internal `\in@'. 
+\end{MDabstract}
+\tableofcontents
+
+\pagebreak                                      %% 2011/11/19
+\section{Introduction: The Gnome of the Aim} 
+\subsection{Parsing by \TeX---are you mad?}
+The package name 'fifinddo' is a &\listfiles-compatible abbreviation 
+of \lq file-find-do\rq\footnote{\lq file\rq\ possibly for ``searching 
+  \TeX(t) files" (I don't remember my thoughts!), 
+  while there were requests for doing replacements on 
+  \LaTeX\ \emph{environments} on 'texhax'. However, the package might 
+  be enhanced in this direction $\dots$ so the name may be wrong 
+  $\dots$ but now I like it so much .\,.\,. Or the reason was that 
+  results are written to a \emph{separate file}, not typeset 
+  immediately.---Let me also mention that \emph{\lq Fifi\rq} (as the 
+  package name starts) is a kind of German equivalent to the 
+  ``English" \emph{\lq Fido\rq}, or may have been.}
+(or think of \lq if found do\rq).
+'fifinddo' implements (or aims at) general parsing 
+(extracting, replacing [converting], expanding, \dots) 
+using \TeX\ where 'texhax' posters strongly urge to use 'sed', 
+'awk', or 'Perl'.
+'fifinddo''s opposed rationales are: 
+\begin{itemize}
+\item It works instantly on any \TeX\ installation. 
+      (\emph{Restrictions:} Some \TeX\ versions &\write certain hex 
+      codes for certain characters, cf.\ \TeX book p.~45, 
+      I have seen this with PC\TeX. However, some applications of 
+      'fifinddo' are nothing but technical steps where you will read 
+      the result files rarely anyway. 
+      %% And I have not yet explored extended encodings.)
+      %% <- done meanwhile 2010/03/22
+\item You can apply and customize it like any \TeX\ macros, knowing 
+      just \TeX\ (or even only the documentation of some user-friendly 
+      extension of 'fifinddo'), without the need of learning any 
+      additional script language. 
+\item The syntax of usual utilities (e.g., ``wildcards") 
+      is sometimes difficult with \emph{\TeX} files 
+      with all their backslashes, square brackets, stars, 
+      question marks \dots
+\end{itemize}
+%
+At least the first item is just the philosophy of the 'docstrip' program, 
+standard for installing \TeX\ packages; 
+and while I am typing this, I find at least 14 other similar packages 
+in J\"urgen Fenn's \emph{Topic Index} of the \emph{\TeX\ Catalogue:}
+\begin{center}                      %% 2011/11/13
+% \begin{quote}\small
+% \[\texttt{%
+%   \hbox\bgroup\url{%                %% \url impossible!? 2010/03/19 
+  \url{%
+    http://mirror.ctan.org/help/Catalogue/bytopic.html\string#parsingfiles}% 
+%       \footnotemark
+%        \egroup\] 
+% \]
+% \footnotetext{%
+%   \href{http://mirror.ctan.org/help/Catalogue/bytopic.html\string#parsingfiles}%
+%        {Click here!}}
+% \end{quote}
+\end{center}
+(Some of them may have been \emph{reactance} to 'texhax' and other 
+postings urging not to try something like this; some seem just to be 
+celebrations of the power of \TeX---yes, celebrate!)
+
+Actually, \TeX's mechanism of collecting macro arguments is hard-wired 
+parsing at quite a high level. \LaTeX\ hides this from 
+``simple-minded" users by a convention \emph{not} to use that full 
+power of \TeX\ for \emph{end-user macros}. 
+\emph{Internally}, \LaTeX\ \emph{does} use it in reading 
+lists of options and file dates as well as to implement certain 
+`FOR'- and `WHILE'-like loop programming structures. 
+\LaTeX's `\in@'/`\ifin@' construction is an implementation of a 
+``<string1> occurs in <string2>" test. More packages seem to use 
+this idea for extracting file informations, like 
+'texshade'.\footnote{\url{http://ctan.org/pkg/texshade}} 
+
+
+However, such packages don't make much ado about parsing, 
+there seems to be no general setup mechanism as are presented by 
+'fifinddo'. Indeed, tayloring parsing macros to specific applications 
+may often be more efficient than a general approach. 
+
+\subsection{Useful for \dots}
+My main application of 'fifinddo' at present is typesetting 
+documentations of packages using 'makedoc' which removes certain 
+percent marks and inserts listing commands, so you edit a package file 
+with as little documentation markup as possible. 
+This may be extended to other kinds of documents as an alternative 
+to 'easylatex' or 'wiki' (the approach of which is dangerous and 
+incompatible with certain other things).
+
+I have used a similar own package 'txtproc' successfully, 
+where more features were implemented for practical purposes 
+than are here so far, yet I don't like its implementation, want to 
+improve it here. This package also \emph{created batch files}, e.g., 
+to remove temporary files.
+This could be used for package handling: 
+typset the documentation at the desired place in the tree, 
+write the packages to another, write a batch file to remove 
+files that are not needed any more after installation
+(cf.\ 'make'). %%% !? cf. Wiki `Make (software) 2009/04/11
+
+I used 'txtproc' also for \emph{large-scale substitutions} 
+(it had been decided to change the orthography in a part of a book).
+Other large-scale substitutions may be: 
+\begin{itemize}
+\item inserting &\index commands;
+\item inserting (soft) hyphenation commands near accents; 
+\item manual umlaut-conversion.\footnote{If you know the ``names" 
+        of the encodings, Heiko Oberdiek's 
+        \ctanpkgref{stringenc}
+        may be preferable.}
+\item typographical (or even orthographical) corrections (same mistake 
+      many times on each of hundreds of pages). 
+      You may turn `...' into `$\dots$' and `etc.' into `etc.\' 
+      etc.\footnote{But what when a new sentence is starting indeed? 
+        Well, `cf.' is an easier example.---`etc.' even showed 
+        a problem in 'niceverb'. 'mdoccorr.cfg' replaces `etc. ' 
+        only, so you can keep the extra space by a code line break.}
+      This could replace packages like 
+      'easylatex',\footnote{\url{http://ctan.org/pkg/easylatex}} 
+      'txt2latex',\footnote{\url{http://ctan.org/pkg/txt2latex}} 
+      'txt2tex'\footnote{\url{http://ctan.org/pkg/txt2tex}} 
+      in a customizable way, using, e.g., the ``correct"
+      hook from 'makedoc.sty' as exemplified in 'mdoccorr.cfg' 
+      (see examples section of 'makedoc.pdf'). 
+      You should find 'fdtxttex.tpl', a 'fifinddo' script 
+      to try or apply `\MakeDocCorrectHook' from 'mdoccorr.cfg', 
+      as well as 'fdtxttex.tex' that runs a dialogue for the 
+      same purpose if you can manage to run it ('WinShell'?).
+      You can then try to create your own `\MakeDocCorrectHook'. 
+      Section~\ref{sec:replchain} provides setup for macros 
+      of this kind. 
+\item as to 'easylatex' again, \emph{lists} could be detected and 
+      transformed into \LaTeX\ list commands. This could re-implement 
+      the lists functionality of 'wiki.sty' that is somewhat 
+      dangerous. %% TODO 2009/04/15
+\item introduce your own \emph{shorthands} to be expanded not as \TeX\ macros, 
+      but by text substitution;
+\end{itemize}
+%% % <- TODO present macros/"jobs" doing this. 
+%%           %% <- TOOD single quote tests could be used for 
+%%                      double quote character as well 
+%%                      to turn it into left quotes if ... 2010/03/19
+%
+In certain cases, insertions deteriorate readability, hyphenation 
+corrections even make text search difficult. 
+It is therefore suggested to 
+\begin{enumerate}
+\item keep editing the file without the insertions, 
+\item run the script (commands based on 'fifinddo') for insertions 
+      in the preamble of the main file 
+      (```\jobname.tex'", maybe &\input the script file) and 
+\item &\input the result file within the `document' environment. 
+\end{enumerate}
+
+In general, differences to ``manual" replacing by the substitution 
+function of your \emph{text editor} is that 
+\begin{itemize}
+\item you first keep the original version, 
+\item you can check the resulting file before you replace the original 
+      file by it, 
+\item you can store the replacement script in order to check for 
+      mistakes at a later stage of your work, 
+\item you can do \emph{all} the replacements in \emph{one run} 
+      (by \emph{one} script to check for mistakes), 
+\item you can store replacement scripts for future applications, 
+      so you needn't type the patterns and replacement strings anew. 
+\end{itemize}
+
+
+\subsubsection{Comparisons} %% was `Missing' 2010/03/18
+% \subsection{To implement or not to implement \dots} %% TODO!? 2009/04/13
+% Actually, 'fifinddo' doesn't implement very much, and this possibly 
+% won't change, even if I am lucky. ``Practical applications" tend to 
+% show (in my view) that there is a very complex space of possibilities 
+% what parsing macros could do. If I try to ``attack" 'Perl' or so, 
+% cf.\ 'CPAN'\@. If I am lucky and become famous, 'fifinddo' will get many 
+% extensions in separate packages, cf.\ 'pstricks'. I also like it when 
+% you can choose among packages for similar purposes, and this may apply 
+% to extensions of 'fifinddo' as well. 
+% 
+% What \emph{really} is missing very badly at present is matching 
+% \emph{sequences} of strings. However, 'makedoc' contains a practical 
+% application of this for the case that both strings appear \emph{in the same 
+% line}. A better algorithm would have to read more lines from the input 
+% file etc. 
+% 
+% As it just comes to my frightened mind, there is even a problem with 
+% ``strings"/``patterns" that are \emph{phrases} of words, containing 
+% spaces \dots
+% 
+% Clearly much comfort concerning \emph{routine} jobs is missing now, 
+% 'txtproc' has more. Please sponsor (or otherwise support) the work for 
+% improving this. 
+% 
+It should be noted (perhaps here) that the present approach to parsing 
+is a quite \emph{simple} one and in this respect much different to the 
+string handling mechanisms of 
+'stringstrings',\footnote{\url{http://ctan.org/pkg/stringstrings}} 
+'ted',\footnote{\url{http://ctan.org/pkg/ted}} 
+'xstrings'\footnote{\url{http://ctan.org/pkg/xstrings}} 
+(as I understand them, perhaps also 
+'coolstr'\footnote{\url{http://ctan.org/pkg/coolstr}}) 
+which are \emph{much more powerful} than what is offered here---but 
+perhaps slow and for practical applications possibly replaceable by 
+the present approach.
+\emph{Expandable replacement} seems not to exist outside 'fifinddo' 
+(2009/04/13).
+
+Much is missing, I know.\footnote{There 
+  is more in my badly implemented 'txtproc.sty'.}
+I am just implementing what I actually need 
+and what could show that this approach is worth being pursued. 
+  %% removed 2010/03/18:
+% It may need being sponsored or otherwise supported. 
+
+\subsection{For insiders}
+
+\emph{Warning:} You may (at least at the present state of the work) 
+have little success with this package, if you don't know about 
+\TeX's category codes and how \TeX\ macros are defined. 
+The package rather provides tools for package writers. 
+You may, however, be able to run other packages which just load 
+'fifinddo' as required background.
+
+That 'fifinddo' acts on ``\TeX(t)" files or so means that 
+(at present) I think of applications on ``plain text" files which 
+will usually be \TeX\ input files. ``At present" they are read 
+without ``special characters," so essentially category codes of input 
+characters are either 11 (``letter") or 12 (``other"). 
+This way some things are easier than with usual \TeX\ applications: 
+\begin{enumerate}
+\item You can ``look into" curly braces and ``behind" comment characters. 
+\item There are exact or safe tests especially of \emph{empty macro arguments} 
+      that are ``expandable," i.e., they are ``robust," 
+      don't need assignments, can be executed in `\write'ing and in 
+      `\edef' definitions. ``Usually," the safe way to test emptiness 
+      is storing a macro argument as a macro, say `\tempo', in order 
+      to test `\ifx\tempo\empty' where `\empty' has been defined 
+      by `\def\empty{}' in the format. But this requires some 
+      `\def\tempo{#<n>}' which breaks in ``mere expanding" 
+      (\TeX\ \emph{evaluates} `\tempo' instead of defining it).
+      An \emph{expandable} test on emptiness is, e.g. `\ifx$#<n>$', 
+      where we hope that it becomes `\iftrue' just if macro argument 
+      `#<n>' is empty indeed. However, ``usually" it may \emph{also} 
+      become `\iftrue' when `#<n>' starts with `$'---if the latter 
+      has category code 3 (``math shift"). But 'fifinddo' does 
+      not assign category code 3 to any character from the input file! 
+      Therefore `\ifx$#<n>$' is `\iftrue' \emph{exactly} if `#<n>' is 
+      empty. 
+\item You can avoid interference with packages that are needed for 
+      typesetting. You can do the ``preprocessing" in one run with 
+      typesetting, but you should do the preprocessing before you 
+      load packages needed for typesetting. One may even try to keep 
+      the macros and settings for preprocessing local to a group. 
+\end{enumerate}
+%% done, moving to .sty 2010/04/06:
+% Once there may be an option to read input with some usual \TeX\ 
+% category codes as well, it may be useful to (some of)
+% \begin{itemize}
+% \item avoid matching substrings of control words, 
+% \item skip blank spaces as \TeX\ does it usually,
+% \item catch \emph{balanced} input pieces,
+% \item ignore comments, 
+% \item ignore certain characters. 
+% \end{itemize}
+
+The essential approach of 'fifinddo' to looking for single strings is 
+described in some detail in section~\ref{sec:theory}.
+
+The implementation of 'fifinddo' is as follows.
+User commands are specially highlighted (boxed\slash coloured), 
+together with their syntax description. 
+
+%   \end{document}
+
+\section{Preliminaries}
+\subsection{Head of file (Legalese)}
+\sloppy 
+\ProcessLineMessage{}
+\MakeInputJobDoc{23}{\SectionLevelTwoParseInput}
+\end{document}
+
+TODO cf. Kastrup 'makematch' and others 2009/04/09, 
+         'parselines' 2010/11/13
+
+2009/04/10  title break, by -> with(!?); `boxed/coloured'
+2009/04/12  useful: own shorthands
+2009/04/13  substr.sty, \emph{expandable}, w/o `implement'!?
+2009/04/15  same with \in@
+2010/03/08  EPS application removed
+2010/03/17  use \MakeInputJobDoc
+2010/03/18  `Missing' -> `Comparisons' etc.; \Require... 
+2010/03/19  Catalogue \url; '' -> "
+2010/03/20   \ctanpkgref
+2010/03/22  debugging; done ...
+2010/03/23  more URLs; abstract "then shared"; 
+            removed dates from 2009, fdtxttex.tex/tpl
+2010/04/06  possible uses of reading TeX category codes moved to .sty 
+2010/11/11  \thanks <- package version
+2010/11/12  package date updated, \author -> makedoc.cfg 
+2010/11/13  package date updated; parselines
+2010/11/24  debugging
+2010/11/25f. using readprov.sty
+2010/11/27  reworked \ProvidesFile
+2011/08/22  PDF metadata; adjusting to makedoc.cfg
+2011/11/13  [fleqn]
+2011/11/19  \pagebreak

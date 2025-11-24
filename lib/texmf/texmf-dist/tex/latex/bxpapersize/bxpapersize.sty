@@ -1,0 +1,313 @@
+% bxpapersize.sty
+
+%% package declaration
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{bxpapersize}[2016/03/26 v0.2]
+
+%% preparation
+\def\bxpr@pkgname{bxpapersize}
+\providecommand\bxDebug[1]{}
+
+%--------------------------------------- options
+
+%% 'disabled'
+\chardef\bxpr@disabled=0
+\DeclareOption{disabled}{%
+  \chardef\bxpr@disabled=1 }
+%% keyval
+\@onlypreamble\bxpr@kvopt
+\let\bxpr@kvopt\@empty
+\DeclareOption*{%
+  \edef\bxpr@kvopt{\bxpr@kvopt,\CurrentOption}}
+\ProcessOptions*
+
+%% If 'disabled' is given, quit now.
+\ifnum\bxpr@disabled>\z@
+  \newcommand*\bxpapersizesetup[1]{}%
+\expandafter\endinput\fi\relax
+
+%--------------------------------------- general
+
+%% load packages
+\RequirePackage{xkeyval}
+\RequirePackage{atbegshi}
+\RequirePackage{ifpdf,ifxetex,ifluatex,ifvtex}
+
+%% variables
+\newdimen\bxpr@dima
+\newif\ifbxpr@active
+\let\bxpr@width\relax
+\let\bxpr@height\relax
+
+%% constants
+\chardef\bxpr@mode@@dvimode=0
+\chardef\bxpr@mode@@pdfmode=1
+
+%% \bxpr@pagewidth / \bxpr@pageheight
+%% \bxpr@horigin / \bxpr@vorigin
+\ifluatex           % LuaTeX
+  \ifx\pagewidth\@undefined % old version
+    \let\bxpr@pagewidth\pdfpagewidth
+    \let\bxpr@pageheight\pdfpageheight
+  \else % new version
+    \let\bxpr@pagewidth\pagewidth
+    \let\bxpr@pageheight\pageheight
+  \fi
+  \ifx\pdfvariable\@undefined % old version
+    \let\bxpr@horigin\pdfhorigin
+    \let\bxpr@vorigin\pdfvorigin
+  \else % new version
+    \edef\bxpr@horigin{\pdfvariable horigin}
+    \edef\bxpr@vorigin{\pdfvariable vorigin}
+  \fi
+\else\ifxetex       % XeTeX
+  % treated as dvi-mode
+\else\ifvtex        % VTeX
+  \let\bxpr@pagewidth\mediawidth
+  \let\bxpr@pageheight\mediaheight
+\else\ifpdf         % pdfTeX in PDF mode
+  \let\bxpr@pagewidth\pdfpagewidth
+  \let\bxpr@pageheight\pdfpageheight
+  \let\bxpr@horigin\pdfhorigin
+  \let\bxpr@vorigin\pdfvorigin
+\fi\fi\fi\fi
+\ifx\bxpr@horigin\@undefined % fallback
+  \def\bxpr@horigin{1truein }
+  \def\bxpr@vorigin{1truein }
+\fi
+
+%% \bxpr@mode
+\ifx\bxpr@pagewidth\@undefined
+  \let\bxpr@mode\bxpr@mode@@dvimode
+\else
+  \let\bxpr@mode\bxpr@mode@@pdfmode
+\fi
+
+%--------------------------------------- parameters
+
+%% constants
+\chardef\bxpr@priority@@low=0
+\chardef\bxpr@priority@@middle=1
+\chardef\bxpr@priority@@high=2
+\chardef\bxpr@size@@real=0 %'real', use \paperwidth/height
+\chardef\bxpr@size@@box=1 %'box', use shipout box size
+\chardef\bxpr@size@@boxS=2 %'box*'
+\chardef\bxpr@size@@custom=3 % size explicitly given
+
+%% variables
+\let\bxpr@priority\bxpr@priority@@middle
+\let\bxpr@size\bxpr@size@@real
+\def\bxpr@cs@width{\z@}%  custom page width
+\def\bxpr@cs@height{\z@}% custom page height
+
+%% error message
+\def\bxpr@err@nlprm#1{%
+  \PackageError\bxpr@pkgname
+   {You can set '#1' only in preamble}%
+   \@ehc}
+\def\bxpr@err@ivval#1#2{%
+  \PackageError\bxpr@pkgname
+   {Invalid value for '#1': #2}%
+   \@ehc}
+
+%% 'active'
+\define@boolkey+{bxpr}{active}%
+ {\@nameuse{bxpr@active#1}}%
+ {\bxpr@ivval{active}{#1}}
+\bxpr@activetrue
+
+%% 'priority'
+\define@choicekey*+{bxpr}{priority}[\bxpr@tmpa\bxpr@tmpb]%
+    {low,middle,high}%
+ {\bxpr@set@priority}%
+ {\bxpr@ivval{priority}{#1}}
+\def\bxpr@set@priority{%
+  \chardef\bxpr@priority\bxpr@tmpb\relax}
+\AtBeginDocument{%
+  \def\bxpr@set@priority{\bxpr@err@nlprm{priority}}}
+
+%% 'size'
+\define@choicekey*+{bxpr}{size}[\bxpr@tmpa\bxpr@tmpb]%
+    {real,box,box*}%
+ {\chardef\bxpr@size\bxpr@tmpb\relax}%
+ {% custom page size ('size={<width>,<height>}')
+  \def\bxpr@tmpa##1,##2,##3\@nil{%
+    \begingroup\setbox\z@\hbox{%
+      \@tempdima##1\relax \@tempdimb##2\relax
+      \xdef\bxpr@g@next{%
+        \def\noexpand\bxpr@cs@width{\the\@tempdima}%
+        \def\noexpand\bxpr@cs@height{\the\@tempdimb}}}%
+    \endgroup\bxpr@g@next}%
+  \bxpr@tmpa#1,,\@nil
+  \let\bxpr@size\bxpr@size@@custom}
+
+%% apply package options
+\edef\bxpr@tmpa{%
+  \noexpand\setkeys{bxpr}{\bxpr@kvopt}%
+}\bxpr@tmpa
+
+%--------------------------------------- user interface
+
+%%<*> \bxpapersizesetup{<key>=<value>,...}
+\newcommand*\bxpapersizesetup[1]{%
+  \setkeys{bxpr}{#1}}
+
+%--------------------------------------- page hook
+
+%% \bxpr@begindoc@first@hook
+% Placed at the head of the begin-docuemnt hook.
+\@onlypreamble\bxpr@begindoc@first@hook
+\let\bxpr@begindoc@first@hook\@empty
+\begingroup
+  \toks@\expandafter{\@begindocumenthook}
+  \xdef\@begindocumenthook{%
+    \noexpand\bxpr@begindoc@first@hook
+    \the\toks@}
+\endgroup
+
+%% \bxpr@begindoc@second@hook
+% Placed after the begin-docuemnt hook.
+\def\bxpr@begindoc@second@hook{%
+  \let\bxpr@begindoc@second@hook\@undefined}
+\g@addto@macro\document{%
+  \bxpr@begindoc@second@hook}
+
+%% add hook for every page
+\g@addto@macro\bxpr@begindoc@first@hook{%
+  \bxDebug{bxpapersize settings:^^J%
+    mode=\the\bxpr@mode^^J%
+    prioity=\the\bxpr@priority^^J%
+    size=\the\bxpr@size}%
+  \bxpr@geometry@hack
+  \ifcase\bxpr@mode % dvi
+    \ifcase\bxpr@priority % low
+      \AtBeginShipoutInit
+      \def\bxpr@every@page@hook{%
+        \bxpr@page@process
+        \bxpr@modify@output@box\bxpr@special@chunk\relax
+        \AtBeginShipoutNext{\bxpr@every@page@hook}}%
+      \AtBeginShipoutNext{%
+        \bxpr@page@process
+        \AtBeginShipoutNext{\bxpr@every@page@hook}}%
+      \AtBeginShipoutFirst{\bxpr@special@chunk}
+    \or % middle
+      \def\bxpr@every@page@hook{%
+        \bxpr@page@process
+        \bxpr@modify@output@box\relax\bxpr@special@chunk}%
+      \AtBeginShipout{\bxpr@every@page@hook}%
+    \or % higih
+      \AtBeginShipoutInit
+      \def\bxpr@every@page@hook{%
+        \bxpr@page@process
+        \bxpr@modify@output@box\relax\bxpr@special@chunk
+        \AtBeginShipoutNext{\bxpr@every@page@hook}}%
+      \AtBeginShipoutNext{\bxpr@every@page@hook}%
+    \fi
+  \else % pdf
+    \def\bxpr@every@page@hook{%
+      \bxpr@page@process
+      \bxpr@modify@output@box\relax\bxpr@special@chunk}%
+    \AtBeginShipout{\bxpr@every@page@hook}%
+  \fi}
+
+%% \bxpr@modify@output@box
+\def\bxpr@modify@output@box#1#2{%
+  \setbox\AtBeginShipoutBox\vbox{%
+    #1\box\AtBeginShipoutBox#2}}
+
+%--------------------------------------- geometry hack
+
+% The geometry package sets \paperwidth/height to incorrect
+% values after its begin-document hook when magnification is
+% in effect. For example, when \mag=2000 and the actual paper
+% width is 100pt (=200truept), geometry will set \paperwidth
+% to 200pt (=400truept), which is clearly incorrect.
+% This behavior seems intentional, but I don't know the reason.
+% At least it is harmful to the function of this package, so
+% that I fixed it by simply revoking the change by geometry.
+
+%% \bxpr@geometry@hack
+\@onlypreamble\bxpr@geometry@hack
+\def\bxpr@geometry@hack{%
+  \@ifpackageloaded{geometry}{%
+    \edef\bxpr@tmpa{%
+      \paperwidth=\the\paperwidth
+      \paperheight=\the\paperheight}%
+    \expandafter\g@addto@macro\expandafter\bxpr@begindoc@second@hook
+        \expandafter{\bxpr@tmpa}%
+  }{}}
+
+%--------------------------------------- per-page process
+
+%% \bxpr@special@chunk
+\let\bxpr@special@chunk\@empty
+
+%% \bxpr@set@page@size{<width>}{<height>}
+\ifcase\bxpr@mode %dvi
+  \def\bxpr@set@page@size#1#2{%
+    \bxpr@dima=#1\relax \edef\bxpr@tmpb{\the\bxpr@dima}%
+    \bxpr@dima=#2\relax \edef\bxpr@tmpb{\bxpr@tmpb,\the\bxpr@dima}%
+    \bxDebug{papersize=\bxpr@tmpb}%
+    \edef\bxpr@special@chunk{\special{papersize=\bxpr@tmpb}}}%
+\else %pdf
+  \def\bxpr@set@page@size#1#2{%
+    \bxpr@pagewidth=#1\relax \bxpr@pageheight=#2\relax
+    \bxDebug{papersize=\the\bxpr@pagewidth,\the\bxpr@pageheight}}%
+\fi
+
+%% \bxpr@page@process
+\def\bxpr@page@process{%
+  \ifbxpr@active
+    \bxpr@page@process@a
+  \fi}
+\def\bxpr@page@process@a{%
+  \ifcase\bxpr@size % real
+    \ifcase\bxpr@mode % dvi
+      \ifnum\mag=\@m
+        \bxpr@set@page@size{\paperwidth}{\paperheight}%
+      \else
+        \bxpr@apply@mag
+        \bxpr@set@page@size{\bxpr@width}{\bxpr@height}%
+      \fi
+    \or % pdf
+      \bxpr@set@page@size{\paperwidth}{\paperheight}%
+    \fi
+  \or % box
+    \bxpr@use@box@size
+    \setbox\AtBeginShipoutBox\vbox{%
+      \kern-\bxpr@vorigin
+      \moveleft\bxpr@horigin\box\AtBeginShipoutBox}%
+    \bxpr@set@page@size{\bxpr@width}{\bxpr@height}%
+  \or % box*
+    \bxpr@use@box@size
+    \bxpr@set@page@size{\bxpr@width}{\bxpr@height}%
+  \else % custom
+    \bxpr@set@page@size{\bxpr@cs@width}{\bxpr@cs@height}%
+  \fi}
+
+%% \bxpr@apply@mag
+\def\bxpr@apply@mag{%
+  \begingroup
+    \ifnum\mag=\@m\else
+      \@tempcnta=\mag \advance\@tempcnta100000
+      \def\bxpr@next1##1##2##3##4##5\relax{%
+        \def\bxpr@tmpa{##1##2.##3##4##5}}%
+      \expandafter\bxpr@next\the\@tempcnta\relax
+      \paperwidth=\bxpr@tmpa\paperwidth
+      \paperheight=\bxpr@tmpa\paperheight
+    \fi
+    \xdef\bxpr@g@next{%
+      \def\noexpand\bxpr@width{\the\paperwidth}%
+      \def\noexpand\bxpr@height{\the\paperheight}}%
+  \endgroup \bxpr@g@next}
+
+%% \bxpr@use@box@size
+\def\bxpr@use@box@size{%
+  \edef\bxpr@width{\the\wd\AtBeginShipoutBox}%
+  \bxpr@dima\ht\AtBeginShipoutBox
+  \advance\bxpr@dima\dp\AtBeginShipoutBox
+  \edef\bxpr@height{\the\bxpr@dima}}
+
+%--------------------------------------- all done
+\endinput
+%% EOF

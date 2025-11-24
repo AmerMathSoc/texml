@@ -1,0 +1,351 @@
+% \iffalse meta comment
+% File: typogrid.dtx Copyright (C) 2003, 2011 Harald Harders, Rolf Niepraschk
+% \fi
+%
+% \iffalse
+%<*driver>
+\listfiles
+\documentclass[a4paper]{ltxdoc}
+\usepackage[T1]{fontenc}
+\IfFileExists{typogrid.sty}{%
+  \usepackage[draft,columns=4,margin=false,headings=true]{typogrid}
+}{%
+  \GenericWarning{typogrid.dtx}{Package file typogrid.sty not found
+    (Documentation will be messed up!^^J^^A 
+    Generate typogrid.sty by (La)TeXing typogrid.ins, process
+    typogrid.dtx again)^^J}\stop
+}
+%%
+\GetFileInfo{typogrid.sty}
+\title{The \texttt{typogrid} package}
+\author{%
+  Harald Harders (\texttt{h.harders@tu-bs.de}),\\
+  Rolf Niepraschk (\texttt{rolf.niepraschk@ptb.de})}
+\date{File Version \fileversion, \filedate, printed \today}
+%%
+\EnableCrossrefs
+\CodelineIndex
+\DoNotIndex{\def,\edef,\let,\newcommand,\newenvironment,\newcounter}
+\DoNotIndex{\setcounter,\space,\if,\else,\fi,\empty,\@empty,\ifx,\fi}
+\DoNotIndex{\ifnum,\fi,\expandafter,\csname,\endcsname,\the}
+\DoNotIndex{\MessageBreak,\message,\newlength,\newif,\xdef,\newcount}
+\DoNotIndex{\begingroup,\endgroup,\,,\@tempcnta,\@tempdima,\advance}
+\DoNotIndex{\ensuremath,\filedate,\fileversion,\docdate}
+\DoNotIndex{\mathit,\mathrm,\mathsf,\nprt@tmp,\nprt@tmpnum,\relax}
+\DoNotIndex{\protect,\renewcommand,\setlength,\settowidth,\stepcounter}
+\DoNotIndex{\string,\put,\multiput}
+\CodelineNumbered
+\RecordChanges
+\CheckSum{219}
+\begin{document}
+ \DocInput{typogrid.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \changes{0.21}{2011/12/31}{Update Makefile}%
+% \changes{0.21}{2011/12/31}{Set date and version explicitly in
+%   \cs{ProvidesPackage}}%
+% \changes{0.20}{2003/11/09}{Reimplementation with respect to
+%   \texttt{showframe.sty} by Rolf Niepraschk}%
+% \changes{0.10}{2003/10/30}{First version}%
+%
+% \maketitle
+% \begin{abstract}
+% \noindent
+% This package produces a typographic grid on every page of the
+% document.
+% That grid consists of vertical lines that devide the text block into
+% columns.
+% This may be useful to get the horizontal measures (distances etc.)
+% into good values.
+% \end{abstract}
+%
+% \tableofcontents
+%
+% \section*{Copyright}
+% Copyright 2003, 2011 Harald Harders, Rolf Niepraschk.
+%
+% This program can be redistributed and/or modified under the terms
+% of the LaTeX Project Public License Distributed from CTAN
+% archives in directory macros/latex/base/lppl.txt; either
+% version 1 of the License, or any later version.
+%
+% \section{Usage}
+%
+% Load the package using the
+% \begin{quote}
+% \cs{usepackage}\oarg{options}|{typogrid}|
+% \end{quote}
+% command.
+% Valid options are |final|, |draft|,
+% |columns=|\meta{value}, |headings=|\meta{true,false}, and
+% |margin=|\meta{true,false}.
+% The options |final| and |draft| may be given explicitely or
+% implicitely from the document-class options.
+%
+% When |draft| is given the typographic grid is switched on; if
+% |final| or none of the above is given it is switched off.
+%
+% The |columns| option determines the number of columns printed.
+% If it is not given, a default of 12 is used.
+%
+% If |headings=true| is given, a grid is printed for the head line and
+% the foot line, too (this is the default, you may also omit it).
+% If |headings=false| is given, no grid is printed for the headings.
+%
+% With |margin=false|, you can switch off printing a frame around the
+% area for margin notes (default is to print the frame).
+%
+% \DescribeMacro{\typogridsetup}
+% There is a second possibility to change the typographic grid.
+% You may use the \cs{typogridsetup} command that takes a keyval list
+% as argument.
+% The same keywords are allowed as in the \cs{usepackage} line, e.g.,
+% \begin{quote}
+% |\typogridsetup{columns=4}|
+% \end{quote}
+% You may use this command within the text in order to change the grid
+% at arbitrary position of the document.
+% The change takes effect on the next page.
+%
+% \DescribeMacro{\typogrid}
+% If you have switched off printing of the grid, you may get a grid
+% for single pages using
+% \begin{quote}
+% |\AddToShipoutPicture*{\typogrid}|
+% \end{quote}
+%
+% The package defines the length \cs{gridwidth} which is as long as
+% the space between too grid lines.
+% You may use it to scale pictures to fit to the grid, for instance.
+%
+%
+% \section{Shortcomings}
+%
+% \begin{itemize}
+% \item Calculation of position and size of the headings and the
+%   margin works for standard cases, only.
+% \item If the text width changes from one page to the next, the grid
+%   width is wrong on the first page after the change.
+% \end{itemize}
+%
+% 
+% \StopEventually{\PrintChanges \PrintIndex}
+%
+%
+% \section{The implementation}
+% \iffalse
+%<*package>
+% \fi
+% Heading of the package:
+%    \begin{macrocode}
+\ProvidesPackage{typogrid}
+  [2011/12/31  v0.21  Typographic grid] 
+\RequirePackage{calc}
+\RequirePackage{keyval}
+%    \end{macrocode}
+% Introduce the used lengths.
+%    \begin{macrocode}
+\newlength{\gridwidth}%
+%    \end{macrocode}
+% Introduce the used counters and set the default number of columns.
+%    \begin{macrocode}
+\newcount\tpg@blocks%
+\newcounter{tpg@blocks@new}%
+\setcounter{tpg@blocks@new}{12}%
+%    \end{macrocode}
+% \begin{macro}{\typogridsetup}
+% Declare a command that can be used to change the appearence of the
+% typographic grid.
+% The argument takes a list of keyval options.
+%    \begin{macrocode}
+\newcommand*\typogridsetup[1]{%
+  \expandafter\setkeys\expandafter{typogrid}{#1}}
+%    \end{macrocode}
+% \end{macro}
+% Define the key |columns| that takes the number of columns.
+%    \begin{macrocode}
+\define@key{typogrid}{columns}{%
+  \setcounter{tpg@blocks@new}{#1}%
+  \ifnum\the\c@tpg@blocks@new<1\relax
+    \PackageError{typogrid}{Less than 1 column given}{You have to
+      declare at least 1 column.}%
+    \setcounter{tpg@blocks@new}{1}%
+  \fi
+}
+%    \end{macrocode}
+% Define the key |headings| to switch on or off a frame around the
+% headings.
+%    \begin{macrocode}
+\newif\iftpg@headings
+\newif\iftpg@headings@new
+\tpg@headings@newtrue
+\define@key{typogrid}{headings}[true]{%
+  \csname tpg@headings@new#1\endcsname
+}
+%    \end{macrocode}
+% Define the key |margin| to switch on or off a frame around the
+% margin.
+%    \begin{macrocode}
+\newif\iftpg@margin
+\newif\iftpg@margin@new
+\tpg@margin@newtrue
+\define@key{typogrid}{margin}[true]{%
+  \csname tpg@margin@new#1\endcsname
+}
+%    \end{macrocode}
+% Package options:
+%    \begin{macrocode}
+\newif\iftpg@draft
+\DeclareOption{draft}{\tpg@drafttrue}
+\DeclareOption{final}{\tpg@draftfalse}
+\DeclareOption{colorgrid}{\PassOptionsToPackage{\CurrentOption}{eso-pic}}
+\DeclareOption{grid}{\PassOptionsToPackage{\CurrentOption}{eso-pic}}
+\DeclareOption*{\expandafter\typogridsetup\expandafter{\CurrentOption}}
+%    \end{macrocode}
+% Default is no grid.
+%    \begin{macrocode}
+\ExecuteOptions{final}
+\ProcessOptions\relax
+%    \end{macrocode}
+% Load this package after processing the options.
+%    \begin{macrocode}
+\RequirePackage{eso-pic}[2002/11/16]
+%    \end{macrocode}
+% \begin{macro}{\typogrid}
+% Define the command that produces the grid.
+%    \begin{macrocode}
+\newcommand*\typogrid{%
+%    \end{macrocode}
+% Switch to black and thin lines.
+%    \begin{macrocode}
+  \begingroup
+    \normalcolor
+    \thinlines
+%    \end{macrocode}
+% Calculate the number of lines to be printed.
+%    \begin{macrocode}
+    \@tempcnta=\tpg@blocks
+    \advance\@tempcnta by -1%
+%    \end{macrocode}
+% Print a frame around the text block.
+%    \begin{macrocode}
+    \AtTextLowerLeft{%
+      \put(0,0){%
+        \framebox(\LenToUnit{\textwidth},\LenToUnit{\textheight}){}}%
+%    \end{macrocode}
+% Print the vertical lines for the grid.
+%    \begin{macrocode}
+      \multiput(\LenToUnit{\gridwidth},0)%
+               (\LenToUnit{\gridwidth},0){\the\@tempcnta}{%
+        \line(0,1){\LenToUnit{\textheight}}}%
+    }%
+%    \end{macrocode}
+% Print a frame around the head line if wanted.
+%    \begin{macrocode}
+    \iftpg@headings
+      \AtTextUpperLeft{%
+        \put(0,\LenToUnit{\headsep}){%
+          \framebox(\LenToUnit{\textwidth},\LenToUnit{\headheight}){}}%
+%    \end{macrocode}
+% Print the grid.
+%    \begin{macrocode}
+        \multiput(\LenToUnit{\gridwidth},\LenToUnit{\headsep})%
+                 (\LenToUnit{\gridwidth},0){\the\@tempcnta}{%
+          \line(0,1){\LenToUnit{\headheight}}}%
+      }%  
+%    \end{macrocode}
+% Print a line below the foot line if wanted (the height of the foot
+% line is not available).
+%    \begin{macrocode}
+      \AtTextLowerLeft{%
+        \put(0,\LenToUnit{-\footskip}){%
+          \line(1,0){\LenToUnit{\textwidth}}}%
+%    \end{macrocode}
+% Print the grid.
+%    \begin{macrocode}
+        \put(0,\LenToUnit{-\footskip}){%
+          \line(0,1){\LenToUnit{\baselineskip}}}%
+        \put(\LenToUnit{\textwidth},\LenToUnit{-\footskip}){%
+          \line(0,1){\LenToUnit{\baselineskip}}}%
+        \multiput(\LenToUnit{\gridwidth},\LenToUnit{-\footskip})%
+        (\LenToUnit{\gridwidth},0){\the\@tempcnta}{%
+          \line(0,1){\LenToUnit{\baselineskip}}}%
+      }%
+    \fi
+%    \end{macrocode}
+% Print a frame around the margin if wanted.
+%    \begin{macrocode}
+    \iftpg@margin
+      \AtTextLowerLeft{%
+        \@tempdima=\textwidth\advance\@tempdima\marginparsep%
+        \if@twoside%
+          \ifodd\c@page
+          \else
+            \@tempdima=-\marginparsep\advance\@tempdima-\marginparwidth% 
+          \fi% 
+        \fi%
+        \put(\LenToUnit{\@tempdima},0){%
+          \framebox(\LenToUnit{\marginparwidth},%
+            \LenToUnit{\textheight}){}}%
+      }% 
+    \fi
+  \endgroup
+%    \end{macrocode}
+% Calculate the width of each grid.
+% Store it globally to be able to use it inside the document.
+%    \begin{macrocode}
+  \setlength\gridwidth{\textwidth/\arabic{tpg@blocks@new}}%
+  \global\gridwidth=\gridwidth
+  \global\tpg@blocks=\arabic{tpg@blocks@new}%
+  \iftpg@headings@new
+    \global\tpg@headingstrue
+  \else
+    \global\tpg@headingsfalse
+  \fi
+  \iftpg@margin@new
+    \global\tpg@margintrue
+  \else
+    \global\tpg@marginfalse
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+% Start the grid at \cs{begin\{document\}}.
+% Do it that late to enable the author to switch between |draft| and
+% |final| before that position.
+%    \begin{macrocode}
+\AtBeginDocument{%
+%    \end{macrocode}
+% Print the grid on any page if wanted.
+%    \begin{macrocode}
+  \iftpg@draft
+    \typeout{Typographic grid switched on}%
+    \AddToShipoutPicture{\typogrid}%
+  \else
+    \typeout{Typographic grid switched off}%
+  \fi
+%    \end{macrocode}
+% Declare width of grid for first page of document.
+%    \begin{macrocode}
+  \setlength\gridwidth{\textwidth/\arabic{tpg@blocks@new}}%
+  \global\tpg@blocks=\arabic{tpg@blocks@new}%
+  \iftpg@headings@new
+    \tpg@headingstrue
+  \else
+    \tpg@headingsfalse
+  \fi
+  \iftpg@margin@new
+    \tpg@margintrue
+  \else
+    \tpg@marginfalse
+  \fi
+}
+%    \end{macrocode}
+%
+% \iffalse
+%</package>
+% \fi
+% \Finale
+

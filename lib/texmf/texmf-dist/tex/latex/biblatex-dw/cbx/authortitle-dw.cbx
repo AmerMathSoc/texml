@@ -1,0 +1,399 @@
+% authortitle-dw.cbx, Dominik Waßenhoven 2013
+  
+\ProvidesFile{authortitle-dw.cbx}[2013/09/22 v1.6a biblatex citation style]
+
+\RequireCitationStyle{standard-dw}
+
+\newbool{cbx:addyear}
+\newbool{cbx:firstfull}
+\newbool{cbx:inref}% Option inreference (true: inreference=full; false: inreference=normal)
+\newbool{cbx:inreffull}% für fullcite bei inreference (nur bei Option inreference=full)
+
+\DeclareBibliographyOption{addyear}[true]{%
+  \csuse{bool#1}{cbx:addyear}}
+
+\DeclareBibliographyOption{firstfull}[true]{%
+  \csuse{bool#1}{cbx:firstfull}}
+
+\DeclareBibliographyOption{inreference}[normal]{%
+  \ifcsdef{cbx@opt@inreference@#1}
+    {\csuse{cbx@opt@inreference@#1}}
+    {\blxdw@error
+       {Invalid option 'inreference=#1'\MessageBreak
+        Valid values are 'normal' and 'full'}}}
+\def\cbx@opt@inreference@normal{%
+	\boolfalse{cbx:inref}}
+\def\cbx@opt@inreference@full{%
+	\booltrue{cbx:inref}%
+	\ExecuteBibliographyOptions[inreference]{skipbib}}
+
+% Test, ob inreference genutzt wird
+\AtEveryCitekey{%
+  \ifentrytype{inreference}
+    {\ifbool{cbx:inref}
+      {\booltrue{cbx:inreffull}}
+      {\boolfalse{cbx:inreffull}}}
+    {}}
+
+%% Zeichen zwischen Titel und Jahr (bei addyear=true)
+\newcommand*{\titleyeardelim}{\addspace}
+  
+\newbibmacro*{cite}{%
+  \usebibmacro{cite:citepages}%
+  \global\boolfalse{cbx:loccit}%
+  \ifbool{cbx:inreffull}
+  	{\usebibmacro{cite:inreffull}}
+    {\ifbool{cbx:firstfull}
+      {\ifciteseen
+        {\usebibmacro{cite:normal}}
+        {\usebibmacro{cite:firstfull}}}
+      {\usebibmacro{cite:normal}}}}
+
+\newbibmacro*{cite:normal}{%
+  \iffieldundef{shorthand}
+    {\ifthenelse{\ifciteibid\AND\NOT\iffirstonpage}
+       {\usebibmacro{cite:ibid}}
+       {\ifthenelse{\ifciteidem\AND\NOT\boolean{cbx:noidem}%
+                               \AND\NOT\iffirstonpage}
+         {\usebibmacro{cite:idem}%
+          \usebibmacro{cite:title}%
+          \usebibmacro{cite:save}}
+         {\ifnameundef{labelname}
+           {}
+           {\usebibmacro{cite:name}}%
+            \usebibmacro{cite:title}}%
+          \ifbool{cbx:omiteditor}
+            {}
+            {\ifnameundef{labelname}
+              {\newunit
+               \usebibmacro{cite:byeditor}}
+              {}}%
+         \usebibmacro{cite:save}}}%
+    {\ifbool{cbx:shorthandibid}%
+       {\ifthenelse{\ifciteibid\AND\NOT\iffirstonpage}%
+         {\usebibmacro{cite:ibid}}
+         {\usebibmacro{cite:shorthand}}}%
+       {\usebibmacro{cite:shorthand}}}}
+
+\newbibmacro*{cite:inreffull}{%
+  \ifthenelse{\ifciteibid\AND\NOT\iffirstonpage}
+       {\usebibmacro{cite:ibid}}
+       {\ifthenelse{\ifciteidem\AND\NOT\boolean{cbx:noidem}%
+                         \AND\NOT\iffirstonpage}
+    {\usebibmacro{cite:idem}%
+     \booltrue{cbx:idemfull}}
+    {}%
+  \printtext[bibhyperref]{\usebibmacro{cite:full}}}%
+  \usebibmacro{cite:save}}
+
+\newbibmacro*{cite:firstfull}{%
+  \ifthenelse{\ifciteidem\AND\NOT\boolean{cbx:noidem}%
+                         \AND\NOT\iffirstonpage}
+    {\usebibmacro{cite:idem}%
+     \booltrue{cbx:idemfull}}
+    {}%
+  \printtext[bibhyperref]{\usebibmacro{cite:full}}%
+  \usebibmacro{cite:save}}
+
+\newbibmacro*{cite:full}{%
+  \usebibmacro{cite:full:citepages}%
+  \usedriver
+    {\DeclareNameAlias{sortname}{default}}
+    {\thefield{entrytype}}%
+  \iffieldundef{shorthand}
+    {}
+    {\ifbool{cbx:citedas}
+      {\addspace\usebibmacro{shorthandintro}}
+      {}}}
+
+\newbibmacro*{cite:shorthand}{%
+  \printtext[bibhyperref]{\printfield{shorthand}}%
+  \global\booltrue{cbx:noidem}}
+
+\newbibmacro*{textcite}{%
+  \global\boolfalse{cbx:loccit}%
+  \ifnameundef{labelname}
+    {\blxdw@warning@noline{No author or editor given for \textcite}%
+     \textbf{\thefield{entrykey}}}
+    {\ifbool{cbx:firstfullname}
+      {\printnames[citeauthor]{labelname}}
+      {\printnames{labelname}}%
+     \setunit{%
+       \global\booltrue{cbx:parens}%
+       \addspace\bibopenparen}%
+     \usebibmacro{cite:save}}%
+  \ifnumequal{\value{citecount}}{1}
+    {\usebibmacro{prenote}}
+    {}%
+  \ifbool{cbx:firstfull}
+    {\ifciteseen
+      {\usebibmacro{textcite:normal}}
+      {\usebibmacro{textcite:firstfull}}}%
+    {\usebibmacro{textcite:normal}}}
+
+\newbibmacro*{textcite:firstfull}{%
+  \ifnameundef{labelname}
+    {}
+    {\ifnamesequal{labelname}{author}
+      {\clearname{author}}
+      {}%
+     \ifnamesequal{labelname}{editor}
+      {\clearname{editor}}
+      {}%
+     \ifnamesequal{labelname}{translator}
+      {\clearname{translator}}
+      {}}%
+  \printtext[bibhyperref]{\usebibmacro{cite:full}}}
+
+\newbibmacro*{textcite:normal}{%
+  \iffieldundef{shorthand}
+    {\ifthenelse{\ifciteibid\AND\NOT\iffirstonpage}
+       {\usebibmacro{cite:ibid}}
+       {\ifsingletitle
+         {\usebibmacro{cite:title:force}}
+         {\usebibmacro{cite:title}}}}%
+    {\usebibmacro{cite:shorthand}}}
+
+%% xref
+\newbibmacro*{cite:xref}{%
+  \ifbool{cbx:firstfull}
+    {\ifciteseen
+      {\iffieldundef{shorthand}
+        {\ifnameundef{labelname}
+          {}%
+          {\ifbool{xrefidem}
+            {\usebibmacro{cite:xref:idem}}%
+            {\usebibmacro{cite:editor}
+             \nametitledelim}}%
+         \usebibmacro{cite:title}%
+         \ifnameundef{labelname}
+           {\ifboolexpr{
+             bool {xrefidem}
+             and
+             bool {bbx:edbyidem}
+           }
+		         {\newunit
+              \bibstring{byeditor}%
+              \setunit{\addspace}%
+              \bibstring[\mkidem]{idemdat\thefield{gender}}}
+             {\newunit
+              \usebibmacro{cite:byeditor}}}
+           {}}
+        {\usebibmacro{cite:shorthand}}}%
+      {\ifbool{xrefidem}
+        {\ifbool{bbx:edbyidem}
+          {\usebibmacro{cite:fullxrefidem}}%
+          {\usebibmacro{cite:fullxref}}}%
+        {\usebibmacro{cite:fullxref}}}}%
+    {\iffieldundef{shorthand}
+      {\ifbool{xrefidem}
+		     {\ifbool{bbx:edbyidem}
+    		   {\usebibmacro{cite:idem}}%
+	    	   {\printnames{labelname}%
+  	  	    \nametitledelim}}%
+		     {\usebibmacro{cite:editor}%
+		      \nametitledelim}%
+       \usebibmacro{cite:title}%
+       \ifuseeditor
+         {}
+         {\ifbool{cbx:omiteditor}
+           {}
+           {\newunit
+            \usebibmacro{cite:byeditor}}}}%
+      {\usebibmacro{cite:shorthand}}}}
+
+\AtBeginBibliography{%
+  \renewbibmacro*{cite:xref}{%
+    \iffieldundef{shorthand}
+      {\ifbool{xref:inbook}
+        {\usebibmacro{cite:author}}
+        {\usebibmacro{cite:editor}}%
+       \iffieldundef{shorttitle}
+         {\printfield{title}}
+         {\printfield{shorttitle}}%
+       \ifuseeditor
+         {}
+         {\ifbool{cbx:omiteditor}
+           {}
+           {\ifnameundef{editor}
+             {}
+             {\ifbool{xrefidem}
+	             {\ifbool{bbx:edbyidem}
+		             {\newunit%
+                  \bibstring{byeditor}%
+                  \setunit{\addspace}%
+                  \bibstring[\mkidem]{idemdat\thefield{gender}}}
+                 {\newunit%
+                  \usebibmacro{byeditor}}}%
+               {\newunit%
+                \usebibmacro{byeditor}}}}}}
+      {\printtext[bibhyperref]{\printfield{shorthand}}}}}
+      
+\newbibmacro*{cite:fullxref}{%
+  \usebibmacro{cite:full:citepages}%
+  \usedriver
+    {\DeclareNameAlias{sortname}{default}}
+    {xref\thefield{entrytype}}%
+  \iffieldundef{shorthand}
+    {}
+    {\ifbool{cbx:citedas}
+      {\addspace\usebibmacro{shorthandintro}}
+      {}}}%
+
+\newbibmacro*{cite:fullxrefidem}{%
+  \usebibmacro{cite:full:citepages}%
+  \usedriver
+    {\DeclareNameAlias{sortname}{default}}
+    {xrefidem\thefield{entrytype}}%
+  \iffieldundef{shorthand}
+    {}
+    {\ifbool{cbx:citedas}
+      {\addspace\usebibmacro{shorthandintro}}
+      {}}}
+
+\DeclareCiteCommand{\fullcite}
+  {\usebibmacro{prenote}%
+   \usebibmacro{cite:full:citepages}%
+   \booltrue{cbx:fullcite}}
+  {\usedriver
+     {\DeclareNameAlias{sortname}{default}}
+     {\thefield{entrytype}}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\DeclareCiteCommand{\footfullcite}[\mkbibfootnote]
+  {\bibsentence
+   \usebibmacro{prenote}%
+   \usebibmacro{cite:full:citepages}%
+   \booltrue{cbx:fullcite}}
+  {\usedriver
+     {\DeclareNameAlias{sortname}{default}}
+     {\thefield{entrytype}}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\newbibmacro*{citetitle}{%
+  \global\boolfalse{cbx:loccit}%
+  \iffieldundef{shorthand}
+    {\ifthenelse{\ifciteibid\AND\NOT\iffirstonpage}
+       {\usebibmacro{cite:ibid}}
+       {\usebibmacro{cite:title:force}}}%
+    {\usebibmacro{cite:shorthand}}}
+
+\newbibmacro*{cite:title}{%
+  \ifsingletitle
+    {\setunit{}}% Löschen des \nametitledelim, falls kein Titel ausgegeben wird
+    {\ifboolexpr{
+      test {\ifentrytype{review}}
+      and
+      not test {\iffieldundef{xref}}
+    }
+      {\printtext[review]{\bbx@review{\thefield{xref}}}}
+      {\printtext[bibhyperref]{%
+         \printfield[citetitle]{labeltitle}}}%
+     \ifbool{cbx:addyear}
+        {\iffieldundef{year}
+           {}
+           {\titleyeardelim%
+            \parentext{\printfield{year}}}}
+        {}}}
+
+\newbibmacro*{cite:title:force}{%
+  \printtext[bibhyperref]{%
+    \printfield[citetitle]{labeltitle}}%
+  \ifbool{cbx:addyear}
+    {\iffieldundef{year}
+      {}
+      {\titleyeardelim%
+       \parentext{\printfield{year}}}}
+    {}}
+
+\newbibmacro*{cite:labelyear+extrayear}{%
+  \iffieldundef{labelyear}
+    {}
+    {\printtext[bibhyperref]{%
+       \printfield{labelyear}%
+       \printfield{extrayear}}}}
+
+\DeclareCiteCommand{\cite}
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \usebibmacro{cite}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\DeclareCiteCommand{\parencite}[\mkbibparens]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \usebibmacro{cite}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\DeclareCiteCommand{\footcite}[\mkbibfootnote]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \usebibmacro{cite}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\DeclareCiteCommand{\footcitetext}[\mkbibfootnotetext]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \usebibmacro{cite}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\DeclareCiteCommand{\textcite}
+  {\boolfalse{cbx:parens}}
+  {\usebibmacro{citeindex}%
+   \usebibmacro{textcite}}
+  {\ifbool{cbx:parens}
+     {\bibcloseparen\boolfalse{cbx:parens}}
+     {}%
+   \multicitedelim}
+  {\usebibmacro{textcite:postnote}}
+  
+%%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%%
+%%%%% Unverändert übernommen aus authortitle-ibid.cbx %%%%%
+%%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%%
+
+\newbool{cbx:parens}
+
+\newbibmacro*{cite:ibid}{%
+  \printtext[bibhyperref]{\bibstring[\mkibid]{ibidem}}%
+  \ifloccit
+    {\global\booltrue{cbx:loccit}}
+    {}}
+
+\newbibmacro*{textcite:postnote}{%
+  \ifthenelse{\iffieldundef{postnote}\OR\boolean{cbx:loccit}}
+    {\ifbool{cbx:parens}
+       {\bibcloseparen}
+       {}}
+    {\ifbool{cbx:parens}
+       {\postnotedelim}
+       {\addspace\bibopenparen}%
+     \printfield{postnote}\bibcloseparen}}
+
+\DeclareCiteCommand*{\cite}
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \usebibmacro{citetitle}}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+
+\DeclareCiteCommand*{\parencite}[\mkbibparens]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \usebibmacro{citetitle}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\DeclareCiteCommand{\smartcite}[\iffootnote\mkbibparens\mkbibfootnote]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \usebibmacro{cite}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\endinput

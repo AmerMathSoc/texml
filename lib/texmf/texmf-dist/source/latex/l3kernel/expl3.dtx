@@ -1,0 +1,1757 @@
+% \iffalse meta-comment
+%
+%% File: expl3.dtx Copyright (C) 1990-2016 The LaTeX3 Project
+%%
+%% It may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License (LPPL), either version 1.3c of this
+%% license or (at your option) any later version.  The latest version
+%% of this license is in the file
+%%
+%%    http://www.latex-project.org/lppl.txt
+%%
+%% This file is part of the "l3kernel bundle" (The Work in LPPL)
+%% and all files in that bundle must be distributed together.
+%%
+%% The released version of this bundle is available from CTAN.
+%%
+%% -----------------------------------------------------------------------
+%%
+%% The development version of the bundle can be found at
+%%
+%%    http://www.latex-project.org/svnroot/experimental/trunk/
+%%
+%% for those people who are interested.
+%%
+%%%%%%%%%%%
+%% NOTE: %%
+%%%%%%%%%%%
+%%
+%%   Snapshots taken from the repository represent work in progress and may
+%%   not work or may contain conflicting material!  We therefore ask
+%%   people _not_ to put them into distributions, archives, etc. without
+%%   prior consultation with the LaTeX3 Project.
+%%
+%% -----------------------------------------------------------------------
+%
+%<*driver|generic|package>
+\def\ExplFileName{expl3}%
+\def\ExplFileDescription{L3 programming layer}%
+\def\ExplFileDate{2016/05/18}%
+\def\ExplFileVersion{6512}%
+%</driver|generic|package>
+%<*driver>
+\documentclass[full]{l3doc}
+\usepackage{graphicx}
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \providecommand\acro[1]{\textsc{\MakeLowercase{#1}}}
+% \newenvironment{arg-description}{%
+%   \begin{itemize}\def\makelabel##1{\hss\llap{\bfseries##1}}}{\end{itemize}}
+%
+% \title{^^A
+%   The \textsf{expl3} package and \LaTeX3 programming^^A
+%   \thanks{This file describes v\ExplFileVersion,
+%     last revised \ExplFileDate.}^^A
+% }
+%
+% \author{^^A
+%  The \LaTeX3 Project\thanks
+%    {^^A
+%      E-mail:
+%        \href{mailto:latex-team@latex-project.org}
+%          {latex-team@latex-project.org}^^A
+%    }^^A
+% }
+%
+% \date{Released \ExplFileDate}
+%
+% \maketitle
+%
+% \begin{documentation}
+%
+% \begin{abstract}
+%
+% This document gives an introduction to a new set of programming
+% conventions that have been designed to meet the requirements of
+% implementing large scale \TeX{} macro programming projects such as
+% \LaTeX{}. These programming conventions are the base layer of \LaTeX3.
+%
+% The main features of the system described are:
+% \begin{itemize}
+%   \item classification of the macros (or, in \LaTeX{} terminology,
+%     commands) into \LaTeX{} functions and \LaTeX{} parameters, and also
+%     into modules containing related commands;
+%   \item  a systematic naming scheme based on these classifications;
+%   \item  a simple mechanism for controlling the expansion of a function's
+%     arguments.
+% \end{itemize}
+% This system is being used as the basis for \TeX{} programming within
+% the \LaTeX3 project. Note that the language is not intended for either
+% document mark-up or style specification. Instead, it is intended that
+% such features will be built on top of the conventions described here.
+%
+% This document is an introduction to the ideas behind the \pkg{expl3}
+% programming interface. For the complete documentation of the programming
+% layer provided by the \LaTeX3 Project, see the accompanying
+% \texttt{interface3} document.
+%
+% \end{abstract}
+%
+% \section{Introduction}
+%
+% The first step to develop a \LaTeX{} kernel beyond \LaTeXe{} is to
+% address how the underlying system is programmed.  Rather than the
+% current mix of \LaTeX{} and \TeX{} macros, the \LaTeX3 system provides
+% its own consistent interface to all of the functions needed to
+% control \TeX{}.  A key part of this work is to ensure that everything
+% is documented, so that \LaTeX{} programmers and users can work
+% efficiently without needing to be familiar with the internal nature
+% of the kernel or with plain \TeX{}.
+%
+% The \pkg{expl3} bundle provides this new programming interface for
+% \LaTeX{}. To make programming systematic, \LaTeX3 uses some very
+% different conventions to \LaTeXe{} or plain \TeX{}. As a result,
+% programmers starting with \LaTeX3 will need to become familiar with
+% the syntax of the new language.
+%
+% The next section shows where this language fits into a complete
+% \TeX{}-based document processing system.  We then describe the major
+% features of the syntactic structure of command names, including the
+% argument specification syntax used in function names.
+%
+% The practical ideas behind this argument syntax will be explained,
+% together with the expansion control mechanism and the interface
+% used to define variant forms of functions.
+%
+% As we shall demonstrate, the use of a structured naming scheme and of
+% variant forms for functions greatly improves the readability of the
+% code and hence also its reliability.  Moreover, experience has shown
+% that the longer command names which result from the new syntax do not
+% make the process of \emph{writing} code significantly harder.
+%
+% \section{Languages and interfaces}
+%
+% It is possible to identify several distinct languages related to the
+% various interfaces that are needed in a \TeX{}-based document processing
+% system.  This section looks at those we consider most important for
+% the \LaTeX3 system.
+%
+% \begin{description}
+%   \item[Document mark-up] This comprises those commands (often called
+%     tags) that are to embedded in the document (the |.tex| file).
+%
+%     It is generally accepted that such mark-up should be essentially
+%     \emph{declarative}. It may be traditional \TeX{}-based mark-up such
+%      as \LaTeXe{}, as described in~\cite{A-W:LLa94} and~\cite{A-W:GMS94},
+%     or a mark-up language defined via \acro{HTML} or \acro{XML}.
+%
+%     One problem with more traditional \TeX{} coding conventions (as
+%     described in~\cite{A-W:K-TB}) is that the names and syntax of \TeX{}'s
+%     primitive formatting commands are ingeniously designed to be
+%     \enquote{natural} when used directly by the author as document mark-up
+%     or in macros.  Ironically, the ubiquity (and widely recognised
+%     superiority) of logical mark-up has meant that such explicit
+%     formatting commands are almost never needed in documents or in
+%     author-defined macros.  Thus they are used almost exclusively by
+%     \TeX{} programmers to define higher-level commands, and their
+%     idiosyncratic syntax is not at all popular with this community.
+%     Moreover, many of them have names that could be very useful as
+%     document mark-up tags were they not pre-empted as primitives
+%     (\emph{e.g.}~\tn{box} or \tn{special}).
+%
+%   \item[Designer interface] This relates a (human) typographic
+%     designer's specification for a document to a program that
+%     \enquote{formats
+%     the document}.  It should ideally use a declarative language that
+%     facilitates expression of the relationship and spacing rules
+%     specified for the layout of the various document elements.
+%
+%     This language is not embedded in document text and it will be very
+%     different in form to the document mark-up language.  For \LaTeX{},
+%     this level was almost completely missing  from \LaTeX{}2.09; \LaTeXe{}
+%     made some improvements in this area but it is still the case that
+%     implementing a design specification in  \LaTeX{} requires far more
+%     \enquote{low-level} coding than is acceptable.
+%
+%   \item[Programmer interface]
+%     This language is the implementation language within which the
+%     basic typesetting functionality is implemented, building upon the
+%     primitives of \TeX{} (or a  successor program).  It may also be used
+%     to implement the previous two languages \enquote{within} \TeX{}, as in
+%     the
+%     current \LaTeX{} system.
+%
+% \end{description}
+%
+% The last layer is covered by the conventions described in this
+% document, which describes a system aimed at providing a suitable
+% basis for coding \LaTeX3. Its main distinguishing features are
+% summarised here:
+% \begin{itemize}
+%   \item A consistent naming scheme for all commands, including \TeX{}
+%     primitives.
+%   \item The classification of commands as \LaTeX{} functions or \LaTeX{}
+%     parameters, and also their division into modules according to their
+%     functionality.
+%   \item A simple mechanism for controlling argument expansion.
+%   \item Provision of a set of core \LaTeX{} functions that is sufficient
+%     for handling programming constructs such as queues, sets, stacks,
+%     property lists.
+%   \item A \TeX{} programming environment in which, for example, all
+%     white space is ignored.
+% \end{itemize}
+%
+% \section{The naming scheme}
+%
+% \LaTeX3 does not use |@| as a \enquote{letter} for defining
+% internal macros.  Instead, the symbols |_| and |:|
+% are used in internal macro names to provide structure. In
+% contrast to the plain \TeX{} format and the \LaTeXe{} kernel, these
+% extra letters are used only between parts of a macro name (no
+% strange vowel replacement).
+%
+% While \TeX{} is actually a macro processor, by
+% convention for the \pkg{expl3} programming language we distinguish between
+% \emph{functions} and \emph{variables}. Functions can have arguments and they
+% are either expanded or executed.  Variables can be assigned values and they
+% are used in arguments to functions; they are not used directly but are
+% manipulated by functions (including getting and setting functions).
+% Functions and variables with a related functionality (for example accessing
+% counters, or manipulating token lists, \emph{etc.})\ are collected together
+% into a
+% \emph{module}.
+%
+% \subsection{Examples}
+%
+% Before giving the details of the naming scheme, here are a few typical
+% examples to indicate the flavour of the scheme; first some variable
+% names.
+% \begin{quote}
+%   \cs{l_tmpa_box} is a local variable (hence the~|l_| prefix)
+%     corresponding to a box register.\\
+%   \cs{g_tmpa_int} is a global variable (hence the~|g_| prefix)
+%     corresponding to an integer register (i.e.~a \TeX{} count
+%     register).\\
+%   \cs{c_empty_tl} is the constant~(|c_|) token list variable
+%     that is always empty.
+% \end{quote}
+%
+% Now here is an example of a typical function name.
+%
+% \cs{seq_push:Nn} is the function which puts the token list specified
+% by its second argument onto the stack specified by its first argument.
+% The different natures of the two arguments are indicated by the~|:Nn|
+% suffix. The first argument must be a single token which \enquote{names}
+% the stack parameter: such single-token arguments are denoted~|N|.
+% The second argument is a normal \TeX{} \enquote{undelimited argument},
+% which
+% may either be a single token or a balanced, brace-delimited token
+% list (which we shall here call a \textit{braced token list}): the~|n|
+% denotes such a \enquote{normal} argument form. The name of the function
+% indicates it belongs to the |seq| module.
+%
+% \subsection{Formal naming syntax}
+%
+% We shall now look in more detail at the syntax of these names. A
+% function name in \LaTeX3 will have a name consisting of three parts:
+% \begin{quote}
+%   |\|\meta{module}|_|\meta{description}|:|\meta{arg-spec}
+% \end{quote}
+% while a variable will have (up to) four distinct parts to its name:
+% \begin{quote}
+%   |\|\meta{scope}|_|\meta{module}|_|\meta{description}|_|\meta{type}
+% \end{quote}
+%
+% The syntax of all names contains
+% \begin{quote}
+%   \meta{module} and \meta{description}
+% \end{quote}
+% these both give information about the command.
+%
+% A \emph{module} is a collection of closely related functions and
+% variables. Typical module names include~|int| for integer parameters
+% and related functions,~|seq| for sequences and~|box| for boxes.
+%
+% Packages providing new programming functionality will add new modules
+% as needed; the programmer can choose any unused name, consisting
+% of letters only, for a module. In general, the module name and module
+% prefix should be related: for example, the kernel module containing
+% \texttt{box} functions is called \texttt{l3box}.
+%
+% The \emph{description} gives more detailed information about the
+% function or parameter, and provides a unique name for it.  It should
+% consist of letters and, possibly,~|_|~characters. In general, the
+% description should use |_| to divide up \enquote{words} or other easy to
+% follow parts of the name.  For example, the \LaTeX3 kernel provides
+% \cs{if_cs_exist:N} which, as might be expected, tests if a command
+% name exists.
+%
+% Where functions for variable manipulation can perform assignments
+% either locally or globally, the latter case is indicated by the inclusion of
+% a |g| in the second part of the function name. Thus \cs{tl_set:Nn} is a local
+% function but \cs{tl_gset:Nn} acts globally. Functions of this type are
+% always documented together, and the scope of action may therefore be
+% inferred from the presence or absence of a |g|. See the next subsection for
+% more detail on variable scope.
+%
+% \subsubsection{Separating private and public material}
+%
+% One of the issues with the \TeX{} language is that it doesn't support
+% name spaces and encapsulation other than by convention. As a result
+% nearly every internal command in the \LaTeXe{} kernel has eventually
+% be used by extension packages as an entry point for modifications or
+% extensions. The consequences of this is that nowadays it is next to
+% impossible to change anything in the \LaTeXe{} kernel (even if it is
+% clearly just an internal command) without breaking something.
+%
+% In \pkg{expl3} we hope to improve this situation drastically by
+% clearly separating public interfaces (that extension packages can use
+% and rely on) and private functions and variables (that should not
+% appear outside of their module).  There is (nearly) no way to enforce
+% this without severe computing overhead, so we implement it only
+% through a naming convention, and some support mechanisms.  However, we
+% think that this naming convention is easy to understand and to follow,
+% so that we are confident that this will adopted and provides the
+% desired results.
+%
+% Functions created by a module may either be \enquote{public} (documented
+% with a defined interface) or \enquote{private} (to be used only within
+% that module, and thus not formally documented). It is important that
+% only documented interfaces are used; at the same time, it is necessary to
+% show within the name of a function or variable whether it is public
+% or private.
+%
+% To allow clear separation of these two cases, the following convention
+% is used. Private functions should be defined with |__| added to the beginning
+% of the module name. Thus
+% \begin{verbatim}
+%   \module_foo:nnn
+% \end{verbatim}
+% is a public function which should be documented while
+% \begin{verbatim}
+%   \__module_foo:nnn
+% \end{verbatim}
+% is private to the module, and should \emph{not} be used outside of that
+% module.
+%
+% In the same way, private variables should use two "__" at the start of the
+% module name, such that
+% \begin{verbatim}
+%   \l_module_foo_tl
+% \end{verbatim}
+% is a public variable and
+% \begin{verbatim}
+%   \l__module_foo_tl
+% \end{verbatim}
+% is private.
+%
+% \subsubsection{Using \texttt{@@} and \pkg{l3docstrip} to mark private code}
+%
+% The formal syntax for internal functions allows clear separation of public
+% and private code, but includes redundant information (every internal function
+% or variable includes \texttt{__\meta{module}}). To aid programmers, the
+% \pkg{l3docstrip} program introduces the syntax
+% \begin{quote}
+%   \ttfamily
+%   |%<@@=|\meta{module}|>|
+% \end{quote}
+% which then allows |@@| (and |_@@| in case of variables) to be used as
+% a place holder for \texttt{__\meta{module}} in code. Thus for example
+% \begin{verbatim}
+%   %<@@=foo>
+%   %    \begin{macrocode}
+%   \cs_new:Npn \@@_function:n #1
+%     ...
+%   \tl_new:N \l_@@_my_tl
+%   %    \end{macrocode}
+% \end{verbatim}
+% will be converted by \pkg{l3docstrip} to
+% \begin{verbatim}
+%   \cs_new:Npn \__foo_function:n #1
+%     ...
+%   \tl_new:N \l__foo_my_tl
+% \end{verbatim}
+% on extraction. As you can see both |_@@| and |@@| are mapped to
+% \texttt{__\meta{module}}, because we think that this helps to
+% distinguish variables from functions in the source when the |@@|
+% convention is used.
+%
+% \subsubsection{Variables: scope and type}
+%
+% The \meta{scope} part of the name describes how the variable can be
+% accessed.  Variables are classified as local, global or constant.
+% This \emph{scope} type appears as a code at the beginning of the name;
+% the codes used are:
+% \begin{arg-description}
+%   \item[c] constants (global variables whose value should not be
+%     changed);
+%   \item[g] variables whose value should only be set globally;
+%   \item[l] variables whose value should only be set locally.
+% \end{arg-description}
+%
+% Separate functions are provided to assign data to local and global
+% variables; for example, \cs{tl_set:Nn} and \cs{tl_gset:Nn} respectively
+% set the value of a local or global \enquote{token list} variable.
+% Note that it is a poor \TeX{} practice to intermix local and global
+% assignments to a variable; otherwise you risk exhausting the save
+% stack.\footnote{See \emph{The \TeX{}book}, p.\,301, for further
+% information.}
+%
+% The \meta{type} will be in the list of available
+% \emph{data-types};\footnote{Of course, if a totally new data type is
+% needed then this will not be the case. However, it is hoped that only
+% the kernel team will need to create new data types.} these include the
+% primitive \TeX{} data-types, such as the various registers, but to
+% these are added data-types built within the \LaTeX{} programming
+% system.
+%
+% The data types in \LaTeX3 are:
+% \begin{description}
+%   \item[bool]   either true or false (the \LaTeX3 implementation does
+%                 not use \tn{iftrue} or \tn{iffalse});
+%   \item[box]    box register;
+%   \item[clist]  comma separated list;
+%   \item[coffin] a \enquote{box with handles} --- a higher-level data
+%                 type for carrying out |box| alignment operations;
+%   \item[dim]    \enquote{rigid} lengths;
+%   \item[fp]     floating-point values;
+%   \item[ior]    an input stream (for reading from a file);
+%   \item[iow]    an output stream (for writing to a file);
+%   \item[int]    integer-valued count register;
+%   \item[muskip] math mode \enquote{rubber} lengths;
+%   \item[prop]   property list;
+%   \item[seq]    sequence: a data-type used to implement lists (with
+%                 access at both ends) and stacks;
+%   \item[skip]   \enquote{rubber} lengths;
+%   \item[str]    \TeX{} strings: a special case of |tl| in which all
+%                 characters have category \enquote{other} (catcode~$12$),
+%                 other than spaces which are category \enquote{space}
+%                 (catcode~$10$);
+%   \item[tl]     \enquote{token list variables}: placeholders for token lists.
+% \end{description}
+% When the \meta{type} and \meta{module} are identical (as often happens in
+% the more basic modules) the \meta{module} part is often omitted for
+% aesthetic reasons.
+%
+% The name \enquote{token list} may cause confusion, and so some
+% background is useful.  \TeX{} works with tokens and lists of tokens,
+% rather than characters. It provides two ways to store these token
+% lists: within macros and as token registers (|toks|). The
+% implementation in \LaTeX3 means that |toks| are not required, and that
+% all operations for storing tokens can use the |tl| variable type.
+%
+% Experienced \TeX{} programmers will notice that some of the variable
+% types listed are native \TeX{} registers whilst others are not. In
+% general, the underlying \TeX{} implementation for a data structure may
+% vary but the \emph{documented interface} will be stable. For example,
+% the |prop| data type was originally implemented as a |toks|, but
+% is currently built on top of the |tl| data structure.
+%
+% \subsubsection{Variables: guidance}
+%
+% Both comma lists and sequences both have similar characteristics.
+% They both use special delimiters to mark out one entry from the
+% next, and are both accessible at both ends. In general, it is
+% easier to create comma lists `by hand' as they can be typed
+% in directly. User input often takes the form of a comma separated
+% list and so there are many cases where this is the obvious
+% data type to use. On the other hand, sequences use special internal
+% tokens to separate entries. This means that they can be used to
+% contain material that comma lists cannot (such as items that may
+% themselves contain commas!). In general, comma lists should be
+% preferred for creating fixed lists inside programs and for
+% handling user input where commas will not occur. On the other
+% hand, sequences should be used to store arbitrary lists of
+% data.
+%
+% \pkg{expl3} implements stacks using the sequence data structure.
+% Thus creating stacks involves first creating a sequence, and
+% then using the sequence functions which work in a stack manner
+% (\cs{seq_push:Nn}, \emph{etc}.).
+%
+% Due to the nature of the underlying \TeX{} implementation, it is
+% possible to assign values to token list variables and comma lists
+% without first declaring them. However, this is \emph{not supported
+%   behaviour}. The \LaTeX3 coding convention is that all variables must
+% be declared before use.
+%
+% The \pkg{expl3} package can be loaded with the |check-declarations|
+% option to verify that all variables are declared before use. This has
+% a performance implication and is therefore intended for testing during
+% development and not for use in production documents.
+%
+% \subsubsection{Functions: argument specifications}
+%
+% Function names end with an \meta{arg-spec} after a colon.  This
+% gives an indication of the types of argument that a function takes,
+% and provides a convenient method of naming similar functions that
+% differ only in their argument forms (see the next section for
+% examples).
+%
+% The \meta{arg-spec} consists of a (possibly empty) list of letters,
+% each denoting one argument of the function. The letter, including
+% its case, conveys information about the type of argument required.
+%
+% All functions have a base form with arguments using one of the
+% following argument specifiers:
+% \begin{arg-description}
+%   \item[n]  Unexpanded token or braced token list.\\
+%     This is a standard \TeX{} undelimited macro argument.
+%   \item[N]  Single token (unlike~|n|, the argument must \emph{not} be
+%     surrounded by braces).\\
+%     A typical example of a command taking an~|N|
+%     argument is~|\cs_set|, in which the command being defined must be
+%     unbraced.
+%   \item[p]  Primitive \TeX{} parameter specification.\\
+%     This can be something simple like~|#1#2#3|, but may use arbitrary
+%     delimited argument syntax such as: |#1,#2\q_stop#3|. This is used
+%     when defining functions.
+%   \item[T,F]
+%     These are special cases of~|n| arguments, used for the
+%     true and false code in conditional commands.
+% \end{arg-description}
+% There are two other specifiers with more general meanings:
+% \begin{arg-description}
+%   \item[D] This means: \textbf{Do not use}. This special case is used
+%     for \TeX{} primitives.  Programmers outside the kernel team should
+%     not use these functions!
+%   \item[w] This means that the argument syntax is \enquote{weird} in that it
+%     does not follow any standard rule.  It is used for functions with
+%     arguments that take non standard forms: examples are \TeX{}-level
+%     delimited arguments and the boolean tests needed after certain
+%     primitive |\if|\ldots{} commands.
+% \end{arg-description}
+%
+% In case of |n| arguments that consist of a single token the
+% surrounding braces can be omitted in nearly all
+% situations---functions that force the use of braces even for single
+% token arguments are explicitly mentioned. However, programmers are
+% encouraged to always use braces around \texttt{n} arguments, as this
+% makes the relationship between function and argument clearer.
+%
+% Further argument specifiers are available as part of the expansion
+% control system.  These are discussed in the next section.
+%
+% \section{Expansion control}
+%
+% Let's take a look at some typical operations one might want to
+% perform. Suppose we maintain a stack of open files and we use the
+% stack |\g_ior_file_name_seq| to keep track of them (\texttt{ior} is
+% the prefix used for the file reading module). The basic operation here
+% is to push a name onto this stack which could be done by the operation
+% \begin{quote}
+%   \cs{seq_gpush:Nn} |\g_ior_file_name_seq {#1}|
+% \end{quote}
+% where |#1| is the filename. In other words, this operation would
+% push the file name as is onto the stack.
+%
+% However, we might face a situation where the filename is stored in
+% a variable of some sort, say |\l_ior_curr_file_tl|. In this case we
+% want to retrieve the value of the variable. If we simply use
+% \begin{quote}
+%   \cs{seq_gpush:Nn} |\g_ior_file_name_seq| |\l_ior_curr_file_tl|
+% \end{quote}
+% we will not get the value of the variable pushed onto the stack,
+% only the variable name itself. Instead a suitable number of
+% \cs{exp_after:wN} would be necessary (together with extra braces) to
+% change the order of expansion,\footnote{\cs{exp_after:wN} is
+% the \LaTeX3 name for the \TeX{} \tn{expandafter} primitive.} \emph{i.e.}
+% \begin{quote}
+%   \cs{exp_after:wN}                              \\
+%   |   |\cs{seq_gpush:Nn}                         \\
+%   \cs{exp_after:wN}                              \\
+%   |   \g_ior_file_name_seq|                      \\
+%   \cs{exp_after:wN}                              \\
+%   |   { \l_ior_curr_file_tl }|
+% \end{quote}
+%
+% The above example is probably the simplest case but already shows
+% how the code changes to something difficult to understand.
+% Furthermore there is an assumption in this: that the storage bin
+% reveals its contents after exactly one expansion. Relying on this
+% means that you cannot do proper checking plus you have to know
+% exactly how a storage bin acts in order to get the correct number
+% of expansions.  Therefore \LaTeX3 provides the programmer with a
+% general scheme that keeps the code compact and easy to understand.
+%
+% To denote that some argument to a function needs special treatment one
+% just uses different letters in the arg-spec part of the function to
+% mark the desired behaviour. In the above example one would write
+% \begin{quote}
+%   \cs{seq_gpush:NV} |\g_ior_file_name_seq \l_ior_curr_file_tl|
+% \end{quote}
+% to achieve the desired effect. Here the |V| (the second argument)
+% is for \enquote{retrieve the value of the variable} before passing it to
+% the base function.
+%
+% The following letters can be used to denote special treatment of
+% arguments before passing it to the base function:
+% \begin{description}
+%   \item[c] Character string used as a command name.\\ The argument (a
+%     token or braced token list) must, when fully expanded, produce a
+%     sequence of characters which is then used to construct a command
+%     name (\emph{via}~\tn{csname} \ldots \tn{endcsname}).
+%     This command name is the
+%     single token that is passed to the function as the argument. Hence
+%     \begin{quote}
+%       \cs{seq_gpush:cV} |{ g_file_name_seq }| \cs{l_tmpa_tl}
+%     \end{quote}
+%     is equivalent to
+%     \begin{quote}
+%       \cs{seq_gpush:NV} |\g_file_name_seq| \cs{l_tmpa_tl}.
+%     \end{quote}
+%     Remember that \texttt{c} arguments are \emph{fully expanded} by
+%     \TeX{} when creating csnames. This means that (a) the entire
+%     argument must be expandable and (b) any variables will be
+%     converted to their content. So the preceding examples are also
+%     equivalent to
+%     \begin{quote}
+%       \cs{tl_new:N} |\g_file_seq_name_tl| \\
+%       \cs{tl_gset:Nn} |\g_file_seq_name_tl { g_file_name_seq }| \\
+%       \cs{seq_gpush:cV} |{| \cs{tl_use:N} |\g_file_seq_name_tl }| \cs{l_tmpa_tl}.
+%     \end{quote}
+%     (Token list variables are expandable and we could omit the
+%     accessor function \cs{tl_use:N}.  Other variable types require the
+%     appropriate \cs{<var>_use:N} functions to be used in this
+%     context.)
+%   \item[V]  Value of a variable.\\
+%     This means that the contents of the register in question is used as the
+%     argument, be it an integer, a length-type register, a token list variable
+%     or similar. The value is passed to the function as a braced token list.
+%     Can be applied to variables which have a \cs{\meta{var}_use:N} function,
+%     and which therefore deliver a single \enquote{value}.
+%   \item[v] Value of a register, constructed from a character string
+%     used as a command name.\\
+%     This is a combination of |c| and |V| which first constructs a
+%     control sequence from the argument and then passes the value of the
+%     resulting register to the function.
+%     Can be applied to variables which have a \cs{\meta{var}_use:N} function,
+%     and which therefore deliver a single \enquote{value}.
+%   \item[x]  Fully-expanded token or braced token list.\\
+%     This means that the argument is expanded as in the replacement
+%     text of an~\tn{edef}, and the expansion is passed to the function as
+%     a braced token list.  Expansion takes place until only unexpandable
+%     tokens are left.  |x|-type arguments cannot be nested.
+%   \item[o]  One-level-expanded token or braced token list.\\
+%     This means that the argument is expanded one level, as by
+%     \tn{expandafter}, and the expansion is passed to the function as a
+%     braced token list.  Note that if the original argument is a braced
+%     token list then only the first token in that list is expanded.
+%     In general, using \texttt{V} should be preferred to using
+%     \texttt{o} for simple variable retrieval.
+%   \item[f] Expanding the first token recursively in a braced token
+%     list.\\ Almost the same as the |x| type except here the token list
+%     is expanded fully until the first unexpandable token is found and
+%     the rest is left unchanged. Note that if this function finds a
+%     space at the beginning of the argument it will gobble it and not
+%     expand the next token.
+% \end{description}
+%
+% \subsection{Simpler means better}
+%
+% Anyone who programs in \TeX{} is frustratingly familiar with the
+% problem of arranging that arguments to functions are suitably expanded
+% before the function is called.  To illustrate how expansion control
+% can bring instant relief to this problem we shall consider two
+% examples copied from \texttt{latex.ltx}.
+%
+% \begin{verbatim}
+%        \global\expandafter\let
+%              \csname\cf@encoding \string#1\expandafter\endcsname
+%              \csname ?\string#1\endcsname
+% \end{verbatim}
+% This first piece of code is in essence simply a global \tn{let} whose
+% two arguments firstly have to be constructed before \tn{let} is
+% executed. The |#1| is a control sequence name such as
+% |\textcurrency|. The token to be defined is obtained by
+% concatenating the characters of the current font encoding stored in
+% |\cf@encoding|, which has to be fully expanded, and the name of the
+% symbol. The second token is the same except it uses the default
+% encoding |?|. The result is a mess of interwoven \tn{expandafter}
+% and \tn{csname} beloved of all \TeX{} programmers, and the code is
+% essentially unreadable.
+%
+% Using the conventions and functionality outlined here, the task would
+% be achieved with code such as this:
+% \begin{verbatim}
+%   \cs_gset_eq:cc
+%     { \cf@encoding \token_to_str:N  #1 } { ? \token_to_str:N #1 }
+% \end{verbatim}
+% The command \cs{cs_gset_eq:cc} is a global~\tn{let} that generates
+% command names out of both of its arguments before making the
+% definition. This produces code that is far more readable and more
+% likely to be correct first time. (\cs{token_to_str:N} is the \LaTeX3
+% name for \tn{string}.)
+%
+% Here is the second example.
+% \begin{verbatim}
+%   \expandafter
+%     \in@
+%   \csname sym#3%
+%     \expandafter
+%       \endcsname
+%     \expandafter
+%       {%
+%     \group@list}%
+% \end{verbatim}
+% This piece of code is part of the definition of another function. It
+% first produces two things: a token list, by expanding |\group@list| once;
+% and a token whose name comes from~`|sym#3|'.  Then the function~\cs{in@}
+% is called and this tests if its first argument occurs in the token list
+% of its second argument.
+%
+% Again we can improve enormously on the code.  First we shall rename
+% the function~\cs{in@}, which tests if its first argument appears
+% within its second argument, according to our conventions.  Such a
+% function takes two normal \enquote{\texttt{n}} arguments and operates
+% on token lists: it might reasonably be named |\tl_test_in:nn|.  Thus
+% the variant function we need will be defined with the appropriate
+% argument types and its name will be |\tl_test_in:cV|.  Now this code
+% fragment will be simply:
+% \begin{verbatim}
+%   \tl_test_in:cV { sym #3 } \group@list
+% \end{verbatim}
+% This code could be improved further by using a sequence |\l_group_seq|
+% rather than the bare token list |\group@list|.  Note that, in addition
+% to the lack of \tn{expandafter}, the space after the~|}| will be
+% silently ignored since all white space is ignored in this programming
+% environment.
+%
+% \subsection{New functions from old}
+%
+% For many common functions the \LaTeX3 kernel will provide variants
+% with a range of argument forms, and similarly it is expected that
+% extension packages providing new functions will make them available in
+% all the commonly needed forms.
+%
+% However, there will be occasions where it is necessary to construct a
+% new such variant form; therefore the expansion module provides a
+% straightforward mechanism for the creation of functions with any
+% required argument type, starting from a function that takes \enquote{normal}
+% \TeX{} undelimited arguments.
+%
+% To illustrate this let us suppose you have a \enquote{base function}
+% |\demo_cmd:Nnn| that takes three normal arguments, and that you need
+% to construct the variant |\demo_cmd:cnx|, for which the first argument
+% is used to construct the \emph{name} of a command, whilst the third
+% argument must be fully expanded before being passed to
+% |\demo_cmd:Nnn|.
+% To produce the variant form from the base form, simply use this:
+% \begin{verbatim}
+%   \cs_generate_variant:Nn \demo_cmd:Nnn { cnx }
+% \end{verbatim}
+% This defines the variant form so that you can then write, for example:
+% \begin{verbatim}
+%   \demo_cmd:cnx { abc } { pq } { \rst \xyz }
+% \end{verbatim}
+% rather than \ldots\ well, something like this!
+% \begin{verbatim}
+%   \def \tempa {{pq}}%
+%   \edef \tempb {\rst \xyz}%
+%   \expandafter
+%     \demo@cmd:nnn
+%   \csname abc%
+%     \expandafter
+%       \expandafter
+%     \expandafter
+%         \endcsname
+%     \expandafter
+%       \tempa
+%     \expandafter
+%       {%
+%     \tempb
+%       }%
+% \end{verbatim}
+%
+% Another example: you may wish to declare a function
+% |\demo_cmd_b:xcxcx|, a variant of an existing function
+% |\demo_cmd_b:nnnnn|, that fully
+% expands arguments 1,~3 and~5, and produces commands to pass as
+% arguments 2 and~4 using~\tn{csname}.
+% The definition you need is simply
+% \begin{verbatim}
+%   \cs_generate_variant:Nn \demo_cmd_b:nnnnn { xcxcx }
+% \end{verbatim}
+%
+% This extension mechanism is written so that if the same new form of
+% some existing command is implemented by two extension packages then the
+% two definitions will be identical and thus no conflict will occur.
+%
+% \section{The distribution}
+%
+% At present, the \pkg{expl3} modules are designed to be loaded on top
+% of \LaTeXe{}. In time, a \LaTeX3 format will be produced based on this
+% code. This allows the code to be used in \LaTeXe{} packages \emph{now}
+% while a stand-alone \LaTeX3 is developed.
+%
+% \begin{bfseries}
+%   While \pkg{expl3} is still experimental, the bundle is now regarded
+%   as broadly stable. The syntax conventions and functions provided
+%   are now ready for wider use. There may still be changes to some
+%   functions, but these will be minor when compared to the scope of
+%   \pkg{expl3}.
+% \end{bfseries}
+%
+% New modules will be added to the distributed version of \pkg{expl3}
+% as they reach maturity. At present, the \pkg{expl3} bundle consists
+% of a number of modules, most of which are loaded by including the
+% line:
+% \begin{verbatim}
+%   \RequirePackage{expl3}
+% \end{verbatim}
+% in a \LaTeXe{} package, class or other file. The \pkg{expl3} modules
+% regarded as stable, and therefore suitable for basing real code on,
+% are as follows:
+%
+% \begin{description}
+%   \providecommand\explpkg[2]{\item[#1]#2}
+%   \explpkg{l3basics}{
+%     This contains the basic definition modules used
+%     by the other packages.
+%   }
+%   \explpkg{l3box}{
+%     Primitives for dealing with boxes.
+%   }
+%   \explpkg{l3clist}{
+%     Methods for manipulating comma-separated token lists.
+%   }
+%   \explpkg{l3coffins}{
+%     Augmented box constructs for alignment operations.
+%   }
+%   \explpkg{l3expan}{
+%     This is the argument expansion module discussed earlier in this
+%     document.
+%   }
+%   \explpkg{l3int}{
+%     This implements the integer data-type \texttt{int}.
+%   }
+%   \explpkg{l3keys}{
+%     For processing lists of the form
+%     \texttt{\{ key1=val1 , key2=val2 \}}, intended to work
+%     as a \LaTeX3 version of \pkg{xkeyval}/\pkg{kvoptions}, although
+%     with input syntax more like that of \pkg{pgfkeys}.
+%   }
+%   \explpkg{l3msg}{
+%     Communicating with the user: includes low-level hooks to allow
+%     messages to be filtered (higher-level interface for filtering
+%     to be written!).
+%   }
+%   \explpkg{l3names}{
+%     This sets up the basic naming scheme and renames all
+%     the \TeX{} primitives.
+%   }
+%   \explpkg{l3prg}{
+%     Program control structures such as boolean data type |bool|, generic
+%     do-while loops, and conditional flow.
+%   }
+%   \explpkg{l3prop}{
+%     This implements the data-type for \enquote{property lists} that are used, in
+%     particular, for storing key/value pairs.
+%   }
+%   \explpkg{l3quark}{
+%     A \enquote{quark} is a command that is defined to expand to
+%     itself!  Therefore they must never be expanded as this will generate
+%     infinite recursion; they do however have many uses, \emph{e.g.}~as
+%     special markers and delimiters within code.
+%   }
+%   \explpkg{l3seq}{
+%     This implements data-types such as queues and stacks.
+%   }
+%   \explpkg{l3skip}{
+%     Implements the \enquote{rubber length} datatype \texttt{skip}, the
+%     \enquote{rigid length} datatype |dim|, and the math mode
+%     \enquote{rubber length} datatype \texttt{muskip}.
+%   }
+%   \explpkg{l3tl}{
+%     This implements a basic data-type, called a \textit{token-list
+%     variable} (|tl var.|), used for storing named token lists: these are
+%     \TeX{} macros with no arguments.
+%   }
+%   \explpkg{l3token}{
+%     Analysing token lists and token streams, including peeking ahead to
+%     see what's coming next and inspecting tokens to detect which kind
+%     they are.
+%   }
+% \end{description}
+%
+% \section{Moving from \LaTeXe{} to \LaTeX3}
+%
+% To help programmers to use \LaTeX3 code in existing \LaTeXe{} package,
+% some short notes on making the change are probably desirable.
+% Suggestions for inclusion here are welcome! Some of the following
+% is concerned with code, and some with coding style.
+%
+% \begin{itemize}
+%   \item \pkg{expl3} is mainly focused on programming. This means that
+%     some areas still require the use of \LaTeXe{} internal macros.
+%     For example, you may well need \tn{@ifpackageloaded}, as there
+%     is currently no native \LaTeX3 package loading module.
+%   \item User level macros should be generated using the mechanism
+%     available in the \pkg{xparse} package, which is part of the
+%     \texttt{l3package} bundle, available from CTAN or the \LaTeX3 SVN
+%     repository.
+%   \item At an internal level, most functions should be generated
+%     \tn{long} (using \cs{cs_new:Npn}) rather than \enquote{short} (using
+%     \cs{cs_new_nopar:Npn}). However, functions which take no arguments
+%     should be set \enquote{short}.
+%   \item Where possible, declare all variables and functions (using
+%     \cs{cs_new:Npn}, \cs{tl_new:N}, etc.) before use.
+%   \item Prefer \enquote{higher-level} functions over \enquote{lower-level},
+%     where possible. So for example use \cs{cs_if_exist:N(TF)} and not
+%     \cs{if_cs_exist:N}.
+%   \item Use space to make code readable. In general, we recommend
+%     a layout such as:
+%     \begin{verbatim}
+%       \cs_new:Npn \foo_bar:Nn #1#2
+%         {
+%           \cs_if_exist:NTF #1
+%             { \__foo_bar:n {#2} }
+%             { \__foo_bar:nn {#2} { literal } }
+%         }
+%     \end{verbatim}
+%     where spaces are used around |{| and |}| except for isolated
+%     |#1|, |#2|, \emph{etc.}
+%   \item Put different code items on separate lines: readability is
+%     much more useful than compactness.
+%   \item Use long, descriptive names for functions and variables,
+%     and for auxiliary functions use the parent function name plus
+%     |aux|, |auxi|, |auxii| and so on.
+%   \item If in doubt, ask the team via the LaTeX-L list: someone will
+%     soon get back to you!
+% \end{itemize}
+%
+% \section{Load-time options for \pkg{expl3}}
+%
+% To support code authors, the \pkg{expl3} package for \LaTeXe{} includes
+% a small number of load-time options. These all work in a key--value
+% sense, recognising the \texttt{true} and \texttt{false} values. Giving
+% the option name alone is equivalent to using the option with the
+% \texttt{true} value.
+%
+% \DescribeOption{check-declarations}
+% All variables used in \LaTeX3 code should be declared. This is enforced
+% by \TeX{} for variable types based on \TeX{} registers, but not for those
+% which are constructed using macros as the underlying storage system. The
+% \texttt{check-declarations} option enables checking for all variable
+% assignments, issuing an error if any variables are assigned without being
+% initialised.
+%
+% \DescribeOption{log-functions}
+% The \texttt{log-functions} option is used to enable recording of every new
+% function name in the \texttt{.log} file. This is useful for debugging
+% purposes, as it means that there is a complete list of all functions
+% created by each module loaded (with the exceptions of a very small number
+% required by the bootstrap code for \LaTeX3).
+%
+% \DescribeOption{driver}
+% Selects the driver to be used for color, graphics and related operations that
+% are driver-dependent. Options available are
+% \begin{itemize}[font = \texttt]
+%   \item[auto] Let \LaTeX3 determine the correct driver. With DVI output, this
+%     will select the \texttt{dvips} back-end for \pdfTeX{} and \LuaTeX{}, and
+%     \texttt{dvipdfmx} for \pTeX{} and \upTeX{}.  This is the standard setting.
+%   \item[latex2e] Use the \pkg{graphics} package to select the driver, rather
+%     than \LaTeX3 code.
+%   \item[dvips] Use the \texttt{dvips} driver.
+%   \item[dvipdfmx] Use the \texttt{dvipdfmx} driver.
+%   \item[pdfmode] Use the \texttt{pdfmode} driver (direct PDF output from
+%     \pdfTeX{} or \LuaTeX{}).
+%   \item[xdvipdfmx] Use the \texttt{xdvipdfmx} driver (\XeTeX{} only).
+% \end{itemize}
+%
+% \section{Using \pkg{expl3} with formats other than \LaTeXe{}}
+%
+% As well as the \LaTeXe{} package \pkg{expl3}, there is also a
+% \enquote{generic} loader for the code, \texttt{expl3.tex}. This may be
+% loaded using the plain \TeX{} syntax
+% \begin{verbatim}
+%   \input expl3-generic %
+% \end{verbatim}
+% This will enable the programming layer to work with the other formats.
+% As no options are available loading in this way, the \enquote{native}
+% drivers are automatically used. If this \enquote{generic} loader is
+% used with \LaTeXe{} the code will automatically switch to the appropriate
+% package route.
+%
+% After loading the programming layer using the generic interface, the
+% commands \cs{ExplSyntaxOn} and \cs{ExplSyntaxOff} and the code-level
+% functions and variables detailed in \pkg{interface3} will be available.
+% Note that other \LaTeXe{} packages \emph{using} \pkg{expl3} will not
+% be loadable: package loading is dependent on the \LaTeXe{} package-management
+% mechanism.
+%
+% \section{Engine/primitive requirements}
+%
+% To use \pkg{expl3} and the higher level packages provided by the
+% team, the minimal set of primitive requirements is currently
+% \begin{itemize}
+%    \item All of those from \TeX90.
+%    \item All of those from \eTeX{} \emph{excluding} |\TeXXeTstate|,
+%      |\beginL|, |\beginR|, |\endL| and |\endR| (\emph{i.e.}~excluding
+%      \TeX{}-\kern0pt-\reflectbox{\TeX{}}).
+%    \item Functionality equivalent to the \pdfTeX{} primitive
+%      |\pdfstrcmp|.
+% \end{itemize}
+% Any engine which defines |\pdfoutput| (\emph{i.e.}~allows direct production
+% of a PDF file without a DVI intermediate) must also provide |\pdfcolorstack|,
+% |\pdfliteral|, |\pdfmatrix|, |\pdfrestore| and |\pdfsave|.
+%
+% Practically, these requirements are met by the engines
+% \begin{itemize}
+%    \item \pdfTeX{} v1.40 or later.
+%    \item \XeTeX{} v0.9994 or later.
+%    \item \LuaTeX{} v0.40 or later.
+%    \item e-(u)p\TeX{} mid-2012 or later.
+% \end{itemize}
+%
+% Additional modules beyond the core of \pkg{expl3} may require additional
+% primitives. In particular, third-party authors may significantly
+% extend the primitive coverage requirements.
+%
+% \section{The \LaTeX3 Project}
+%
+% Development of \LaTeX3 is carried out by The \LaTeX3 Project. Over time,
+% the membership of this team has naturally varied. Currently, the members
+% are
+% \begin{itemize}
+%   \item Johannes Braams
+%   \item David Carlisle
+%   \item Robin Fairbairns
+%   \item Morten H{\o}gholm
+%   \item Bruno Le Floch
+%   \item Thomas Lotze
+%   \item Frank Mittelbach
+%   \item Will Robertson
+%   \item Chris Rowley
+%   \item Rainer Sch{\"o}pf
+%   \item Joseph Wright
+% \end{itemize}
+% while former members are
+% \begin{itemize}
+%   \item Michael Downes
+%   \item Denys Duchier
+%   \item Alan Jeffrey
+%   \item Martin Schr{\"o}der
+% \end{itemize}
+%
+% \begin{thebibliography}{1}
+%
+%   \bibitem{A-W:K-TB}
+%     Donald E Knuth
+%     \newblock \emph{The \TeX{}book}.
+%     \newblock Addison-Wesley, Reading, Massachusetts, 1984.
+%
+%   \bibitem{A-W:GMS94}
+%     Goossens, Mittelbach and Samarin.
+%     \newblock \emph{ The \LaTeX{} Companion}.
+%     \newblock Addison-Wesley, Reading, Massachusetts, 1994.
+%
+%   \bibitem{A-W:LLa94}
+%     Leslie Lamport.
+%     \newblock \emph{\LaTeX{}: A Document Preparation System}.
+%     \newblock Addison-Wesley, Reading, Massachusetts, second edition, 1994.
+%
+%   \bibitem{tub:MR97-1}
+%     Frank Mittelbach and Chris Rowley.
+%     \newblock \enquote{The \LaTeX3 Project}.
+%     \newblock \emph{TUGboat},
+%     Vol.\,18, No.\,3, pp.\,195--198, 1997.
+%
+% \end{thebibliography}
+%
+% \end{documentation}
+%
+% \begin{implementation}
+%
+% \section{\pkg{expl3} implementation}
+%
+% The implementation here covers several things. There are two
+% \enquote{loaders} to define: the parts of the code that are specific to
+% \LaTeXe{} or to non-\LaTeXe{} formats. These have to cover the same
+% concepts as each other but in rather different ways: as a result, much
+% of the code is given in separate blocks. There is also a short piece of
+% code for the start of the \enquote{payload}: this is to ensure that
+% loading is always done in the right way.
+%
+% \subsection{Loader interlock}
+%
+% A short piece of set up to check that the loader and \enquote{payload}
+% versions match.
+%
+% \begin{macro}{\ExplLoaderFileVersion}
+%   As DocStrip is used to generate \cs{ExplFileVersion}
+%   for all files from the same source, it has to match. Thus the loaders
+%   simply save this information with a new name.
+%    \begin{macrocode}
+%<*loader>
+\let\ExplLoaderFileVersion\ExplFileVersion
+%</loader>
+%    \end{macrocode}
+% \end{macro}
+%
+% The interlock test itself is simple: \cs{ExplLoaderFileVersion} must be
+% defined and identical to \cs{ExplFileVersion}. As this has to work for
+% both \LaTeXe{} and other formats, there is some auto-detection involved.
+% (Done this way avoids having two very similar blocks for \LaTeXe{} and
+% other formats.)
+%    \begin{macrocode}
+%<*!loader>
+\begingroup
+  \def\next{\endgroup}%
+  \expandafter\ifx\csname PackageError\endcsname\relax
+    \begingroup
+      \def\next{\endgroup\endgroup}%
+      \def\PackageError#1#2#3%
+        {%
+          \endgroup
+          \errhelp{#3}%
+          \errmessage{#1 Error: #2!}%
+        }%
+  \fi
+  \expandafter\ifx\csname ExplLoaderFileVersion\endcsname\relax
+    \def\next
+      {%
+        \PackageError{expl3}{No expl3 loader detected}
+          {%
+            You have attempted to use the expl3 code directly rather than using
+            the correct loader. Loading of expl3 will abort.
+          }%
+        \endgroup
+        \endinput
+      }
+  \else
+    \ifx\ExplLoaderFileVersion\ExplFileVersion
+    \else
+      \def\next
+        {%
+          \PackageError{expl3}{Mismatched expl3 files detected}
+            {%
+              You have attempted to load expl3 with mismatched files:
+              probably you have one or more files 'locally installed' which
+              are in conflict. Loading of expl3 will abort.
+            }%
+          \endgroup
+          \endinput
+        }%
+    \fi
+\fi
+\next
+%</!loader>
+%    \end{macrocode}
+%
+% A reload test for the payload, just in case.
+%    \begin{macrocode}
+%<*!loader>
+\begingroup\expandafter\expandafter\expandafter\endgroup
+\expandafter\ifx\csname ver@\ExplFileName -code.tex\endcsname\relax
+  \expandafter\edef\csname ver@\ExplFileName -code.tex\endcsname
+    {%
+      \ExplFileDate\space v\ExplFileVersion\space
+      \ExplFileDescription\space
+    }%
+\else
+  \expandafter\endinput
+\fi
+%</!loader>
+%    \end{macrocode}
+%
+% All good: log the version of the code used (for log completeness). As this
+% is more-or-less \cs{ProvidesPackage} without a separate file and as this also
+% needs to work without \LaTeXe{}, just write the information directly to the
+% log.
+%    \begin{macrocode}
+%<*!loader>
+\immediate\write-1 %
+  {%
+    Package:
+      \ExplFileName\space
+      \ExplFileDate\space v\ExplFileVersion\space \ExplFileDescription\space
+      (code)%
+  }%
+%</!loader>
+%    \end{macrocode}
+%
+% \subsection{\LaTeXe{} loader}
+%
+%    \begin{macrocode}
+%<*package&loader>
+%    \end{macrocode}
+%
+% Identify the package.
+%    \begin{macrocode}
+\ProvidesPackage{\ExplFileName}
+  [%
+    \ExplFileDate\space v\ExplFileVersion\space
+    \ExplFileDescription\space (loader)
+  ]%
+%    \end{macrocode}
+%
+% \begin{macro}[aux]{\expl@create@bool@option}
+% \begin{variable}[int]
+%   {
+%     \l@expl@check@declarations@bool ,
+%     \l@expl@log@functions@bool
+%   }
+% \begin{variable}[int]{\l@expl@options@clist}
+%   Options to be set up.
+%   These have to be done by hand as there is no \pkg{expl3} yet: the logging
+%   option is needed before loading \pkg{l3basics}! Only a minimal set of
+%   options are handled here: others are left for a proper key--value approach
+%   once the kernel is loaded.
+%    \begin{macrocode}
+\newcommand\expl@create@bool@option[2]%
+  {%
+    \DeclareOption{#1}{\chardef #2=1 }%
+    \DeclareOption{#1=true}{\chardef #2=1 }%
+    \DeclareOption{#1=false}{\chardef #2=0 }%
+    \newcommand*#2{}%
+    \chardef #2=0 %
+  }
+\expl@create@bool@option{check-declarations}\l@expl@check@declarations@bool
+\expl@create@bool@option{log-functions}\l@expl@log@functions@bool
+\let\expl@create@bool@option\@undefined
+\newcommand*\l@expl@options@clist{}
+\DeclareOption*
+  {%
+    \ifx\l@expl@options@clist\@empty
+      \let\l@expl@options@clist\CurrentOption
+    \else
+     \expandafter\expandafter\expandafter\def
+       \expandafter\expandafter\expandafter\l@expl@options@clist
+       \expandafter\expandafter\expandafter
+         {\expandafter\l@expl@options@clist\expandafter,\CurrentOption}
+    \fi
+  }
+\ProcessOptions\relax
+%    \end{macrocode}
+% \end{variable}
+% \end{variable}
+% \end{macro}
+%
+% \begin{macro}{\GetIdInfo}
+%   This is implemented right at the start of \texttt{l3bootstrap.dtx}.
+% \end{macro}
+%
+% \begin{macro}{\ProvidesExplPackage, \ProvidesExplClass, \ProvidesExplFile}
+%   For other packages and classes building on this one it is convenient
+%   not to need \cs{ExplSyntaxOn} each time.
+%    \begin{macrocode}
+\protected\def\ProvidesExplPackage#1#2#3#4%
+  {%
+    \ProvidesPackage{#1}[#2 v#3 #4]%
+    \ExplSyntaxOn
+  }
+\protected\def\ProvidesExplClass#1#2#3#4%
+  {%
+    \ProvidesClass{#1}[#2 v#3 #4]%
+    \ExplSyntaxOn
+  }
+\protected\def\ProvidesExplFile#1#2#3#4%
+  {%
+    \ProvidesFile{#1}[#2 v#3 #4]%
+    \ExplSyntaxOn
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+%  Load the business end: this will leave \cs{expl3} syntax on.
+%    \begin{macrocode}
+\input{expl3-code.tex}
+%    \end{macrocode}
+%
+% A check that the bootstrap code did not abort loading: if it did,
+% bail out silently here.
+%    \begin{macrocode}
+\begingroup\expandafter\expandafter\expandafter\endgroup
+\expandafter\ifx\csname tex\string _let:D\endcsname\relax
+  \expandafter\endinput
+\fi
+%    \end{macrocode}
+%
+% Deactivate writing module information to the log.
+%    \begin{macrocode}
+\protected\def\GetIdInfoLog{}
+%    \end{macrocode}
+%
+% \begin{macro}{\color}
+%   The \cs{color} macro must be defined for showing coffin poles, so
+%   a no-op version is provided here.
+%    \begin{macrocode}
+\AtBeginDocument
+  {
+    \cs_if_exist:NF \color
+      { \DeclareRobustCommand \color [2] [ ] { } }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{variable}[int]{\l__expl_driver_tl}
+% \begin{variable}[int]{\l__expl_native_drivers_bool}
+%   With the code now loaded, options can be handled using a real key--value
+%   interpreter. The \enquote{faked} options are also included so that any
+%   erroneous input will be mopped up (\emph{e.g.}~\texttt{log-function =
+%   foo}). The checks on driver choice are set up here, so when actually
+%   the driver it's a straight forward operation.
+%    \begin{macrocode}
+\__msg_kernel_new:nnnn { expl } { wrong-driver }
+  { Driver~request~inconsistent~with~engine:~using~'#2'~driver. }
+  {
+    You~have~requested~driver~'#1',~but~this~is~not~suitable~for~use~with~the~
+    active~engine.~LaTeX3~will~use~the~'#2'~driver~instead.
+  }
+\tl_new:N \l__expl_driver_tl
+\keys_define:nn { expl }
+  {
+    driver .choice:,
+    driver / auto .code:n =
+      {
+        \tl_set:Nx \l__expl_driver_tl
+          {
+            \sys_if_engine_xetex:TF
+              { xdvipdfmx }
+              {
+                \sys_if_output_pdf:TF
+                  { pdfmode }
+                  {
+                    \bool_if:nTF
+                      {
+                        \sys_if_engine_pdftex_p: ||
+                        \sys_if_engine_luatex_p:
+                      }
+                      { dvips }
+                      { dvipdfmx }
+                  }
+              }
+          }
+      },
+    driver / dvipdfmx .code:n =
+      {
+        \tl_set:Nn \l__expl_driver_tl { dvipdfmx }
+        \sys_if_engine_xetex:TF
+          {
+            \__msg_kernel_error:nnnn { expl } { wrong-driver }
+              { dvipdfmx } { xdvipdfmx }
+            \tl_set:Nn \l__expl_driver_tl { xdvipdfmx }
+          }
+          {
+            \sys_if_output_pdf:T
+              {
+                \__msg_kernel_error:nnnn { expl } { wrong-driver }
+                  { dvipdfmx } { pdfmode }
+                \tl_set:Nn \l__expl_driver_tl { pdfmode }
+              }
+          }
+      },
+    driver / dvips .code:n =
+      {
+        \tl_set:Nn \l__expl_driver_tl { dvips }
+        \sys_if_engine_xetex:TF
+          {
+            \__msg_kernel_error:nnnn { expl } { wrong-driver }
+              { dvips } { xdvipdfmx }
+            \tl_set:Nn \l__expl_driver_tl { xdvipdfmx }
+          }
+          {
+            \sys_if_output_pdf:T
+              {
+                \__msg_kernel_error:nnnn { expl } { wrong-driver }
+                  { dvips } { pdfmode }
+                \tl_set:Nn \l__expl_driver_tl { pdfmode }
+              }
+          }
+      },
+    driver / dvisvgm .code:n =
+      {
+        \tl_set:Nn \l__expl_driver_tl { dvisvgm }
+        \sys_if_engine_xetex:TF
+          {
+            \__msg_kernel_error:nnnn { expl } { wrong-driver }
+              { dvips } { xdvipdfmx }
+            \tl_set:Nn \l__expl_driver_tl { xdvipdfmx }
+          }
+          {
+            \sys_if_output_pdf:T
+              {
+                \__msg_kernel_error:nnnn { expl } { wrong-driver }
+                  { dvips } { pdfmode }
+                \tl_set:Nn \l__expl_driver_tl { pdfmode }
+              }
+          }
+      },
+    driver / latex2e .code:n =
+      { \tl_set:Nn \l__expl_driver_tl { latex2e } },
+    driver / pdfmode .code:n =
+      {
+        \tl_set:Nn \l__expl_driver_tl { pdfmode }
+        \sys_if_engine_xetex:TF
+          {
+            \__msg_kernel_error:nnnn { expl } { wrong-driver }
+              { pdfmode } { xdvipdfmx }
+            \tl_set:Nn \l__expl_driver_tl { xdvipdfmx }
+          }
+          {
+            \sys_if_output_pdf:F
+              {
+                \__msg_kernel_error:nnnn { expl } { wrong-driver }
+                  { pdfmode } { dvips }
+                \tl_set:Nn \l__expl_driver_tl { dvips }
+              }
+          }
+      },
+    driver / xdvipdfmx .code:n =
+      {
+        \tl_set:Nn \l__expl_driver_tl { xdvipdfmx }
+        \sys_if_engine_xetex:F
+          {
+            \sys_if_output_pdf:TF
+              {
+                \__msg_kernel_error:nnnn { expl } { wrong-driver }
+                  { xdvipdfmx } { pdfmode }
+                \tl_set:Nn \l__expl_driver_tl { pdfmode }
+              }
+              {
+                \__msg_kernel_error:nnnn { expl } { wrong-driver }
+                  { xdvipdfmx } { dvips }
+                \tl_set:Nn \l__expl_driver_tl { dvips }
+              }
+          }
+      },
+    driver         .initial:n      = { auto } ,
+    native-drivers .choice:,
+    native-drivers .default:n      = { true },
+    native-drivers / false .meta:n = { driver = latex2e },
+    native-drivers / true  .meta:n = { driver = auto }
+  }
+%    \end{macrocode}
+%   Mop up any incorrect settings for the other options.
+%    \begin{macrocode}
+\keys_define:nn { expl }
+  {
+    check-declarations .bool_set:N = \l@expl@check@declarations@bool,
+    log-functions      .bool_set:N = \l@expl@log@functions@bool
+  }
+\keys_set:nV { expl } \l@expl@options@clist
+%    \end{macrocode}
+% \end{variable}
+% \end{variable}
+%
+% \begin{macro}
+%   {
+%     \box_rotate:Nn,
+%     \box_resize:Nnn,
+%     \box_resize_to_ht_plus_dp:Nn,
+%     \box_resize_to_wd:Nn,
+%     \box_scale:Nnn
+%   }
+%   For the \LaTeXe{} drivers,
+%   alter various definitions to use the \pkg{graphics} package
+%   instead. The package is loaded right at the start of the hook
+%   as there is otherwise a potential issue with \pkg{(x)color}: see
+%   \url{http://groups.google.com/group/comp.text.tex/msg/c9de8913c756ef4c}.
+%    \begin{macrocode}
+\str_if_eq:VnTF \l__expl_driver_tl { latex2e }
+  {
+    \tl_gput_left:Nn \@begindocumenthook { \RequirePackage { graphics } }
+    \__msg_kernel_new:nnnn { box } { clipping-not-available }
+      { Box~clipping~not~available. }
+      {
+        The~\box_clip:N~function~is~only~available~when~loading~expl3~
+        with~the~"native-drivers"~option.
+      }
+    \cs_set_protected:Npn \box_clip:N #1
+      {
+        \hbox_set:Nn #1 { \box_use:N #1 }
+        \__msg_kernel_error:nn { box } { clipping-not-available }
+      }
+    \cs_set_protected:Npn \box_rotate:Nn #1#2
+      { \hbox_set:Nn #1 { \rotatebox {#2} { \box_use:N #1 } } }
+    \cs_set_protected:Npn \box_resize:Nnn #1#2#3
+      {
+        \hbox_set:Nn #1
+          {
+            \resizebox *
+              { \__dim_eval:w #2 \__dim_eval_end: }
+              { \__dim_eval:w #3 \__dim_eval_end: }
+              { \box_use:N #1 }
+          }
+      }
+    \cs_set_protected:Npn \box_resize_to_ht_plus_dp:Nn #1#2
+      {
+        \hbox_set:Nn #1
+          {
+            \resizebox * { ! } { \__dim_eval:w #2 \__dim_eval_end: }
+              { \box_use:N #1 }
+          }
+      }
+    \cs_set_protected:Npn \box_resize_to_wd:Nn #1#2
+      {
+        \hbox_set:Nn #1
+          {
+            \resizebox * { \__dim_eval:w #2 \__dim_eval_end: } { ! }
+              { \box_use:N #1 }
+          }
+      }
+    \cs_set_protected:Npn \box_scale:Nnn #1#2#3
+      {
+        \hbox_set:Nn #1
+          {
+            \exp_last_unbraced:Nx \scalebox
+              { { \fp_eval:n {#2} } [ \fp_eval:n {#3} ] }
+              { \box_use:N #1 }
+          }
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+%   For native drivers, just load the appropriate file. As \cs{expl3} syntax
+%   is already on and the full mechanism is only engaged at the end of the
+%   loader, \cs{ProvidesExplFile} is temporarily redefined here.
+%    \begin{macrocode}
+  {
+    \group_begin:
+    \cs_set_protected:Npn \ProvidesExplFile
+      {
+        \char_set_catcode_space:n { `\  }
+        \ProvidesExplFileAux
+      }
+    \cs_set_protected:Npn \ProvidesExplFileAux #1#2#3#4
+      {
+        \group_end:
+        \ProvidesFile {#1} [ #2~v#3~#4 ]
+      }
+    \tl_const:Nn \c__expl_def_ext_tl { def }
+    \@onefilewithoptions { l3 \l__expl_driver_tl } [ ] [ ] \c__expl_def_ext_tl
+  }
+%    \end{macrocode}
+%
+% \begin{macro}{\@pushfilename, \@popfilename}
+% \begin{macro}[aux]{\__expl_status_pop:w}
+%   The idea here is to use \LaTeXe{}'s \tn{@pushfilename} and
+%   \tn{@popfilename} to track the current syntax status. This can be
+%   achieved by saving the current status flag at each push to a stack,
+%   then recovering it at the pop stage and checking if the code
+%   environment should still be active.
+%    \begin{macrocode}
+\tl_put_left:Nn \@pushfilename
+  {
+    \tl_put_left:Nx \l__expl_status_stack_tl
+      {
+        \bool_if:NTF \l__kernel_expl_bool
+          { 1 }
+          { 0 }
+      }
+    \ExplSyntaxOff
+  }
+\tl_put_right:Nn \@popfilename
+  {
+    \tl_if_empty:NTF \l__expl_status_stack_tl
+      { \ExplSyntaxOff }
+      { \exp_after:wN \__expl_status_pop:w \l__expl_status_stack_tl \q_stop }
+  }
+%    \end{macrocode}
+%   The pop auxiliary function removes the first item from the stack,
+%   saves the rest of the stack and then does the test. The flag here
+%   is not a proper \texttt{bool}, so a low-level test is used.
+%    \begin{macrocode}
+\cs_new_protected:Npn \__expl_status_pop:w #1#2 \q_stop
+  {
+    \tl_set:Nn \l__expl_status_stack_tl {#2}
+    \int_if_odd:nTF {#1}
+      { \ExplSyntaxOn }
+      { \ExplSyntaxOff }
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{variable}{\l__expl_status_stack_tl}
+%   As \pkg{expl3} itself cannot be loaded with the code environment
+%   already active, at the end of the package \cs{ExplSyntaxOff} can
+%   safely be called.
+%    \begin{macrocode}
+\tl_new:N \l__expl_status_stack_tl
+\tl_set:Nn \l__expl_status_stack_tl { 0 }
+%    \end{macrocode}
+% \end{variable}
+%
+%    \begin{macrocode}
+%</package&loader>
+%    \end{macrocode}
+%
+% \subsection{Generic loader}
+%
+%    \begin{macrocode}
+%<*generic>
+%    \end{macrocode}
+%
+% The generic loader starts with a test to ensure that the current format is
+% not \LaTeXe{}!
+%    \begin{macrocode}
+\begingroup
+  \def\tempa{LaTeX2e}%
+  \def\next{}%
+  \ifx\fmtname\tempa
+    \def\next
+      {%
+        \PackageInfo{expl3}{Switching from generic to LaTeX2e loader}%
+%    \end{macrocode}
+% The \cs{relax} stops \cs{RequirePackage} from scanning for a date
+% argument.  Putting \tn{endinput} \emph{after} loading the package is
+% crucial, as otherwise \tn{endinput} will close the file
+% \file{expl3.sty} at the end of its first line: indeed, as long as
+% \file{expl3.sty} is open it is impossible to close the file
+% \file{expl3-generic.tex}.
+%    \begin{macrocode}
+        \RequirePackage{expl3}\relax \endinput
+      }%
+  \fi
+\expandafter\endgroup
+\next
+%    \end{macrocode}
+%
+% Reload check and identify the package:
+% no \LaTeXe{} mechanism so this is all pretty basic.
+%    \begin{macrocode}
+\begingroup\expandafter\expandafter\expandafter\endgroup
+\expandafter\ifx\csname ver@\ExplFileName -generic.tex\endcsname\relax
+\else
+  \immediate\write-1
+    {%
+      Package \ExplFileName\space Info: The package is already loaded.%
+    }%
+  \expandafter\endinput
+\fi
+\immediate\write-1
+  {%
+    Package: \ExplFileName\space
+    \ExplFileDate\space v\ExplFileVersion\space
+    \ExplFileDescription\space (loader)%
+  }%
+\expandafter\edef\csname ver@\ExplFileName -generic.tex\endcsname
+  {\ExplFileDate\space v\ExplFileVersion\space \ExplFileDescription}%
+%    \end{macrocode}
+%
+% \begin{variable}[aux]{\l@expl@tidy@tl}
+%   Save the category code of |@| and then set it to \enquote{letter}.
+%    \begin{macrocode}
+\expandafter\edef\csname l@expl@tidy@tl\endcsname
+  {%
+    \catcode64=\the\catcode64\relax
+    \let\expandafter\noexpand\csname l@expl@tidy@tl\endcsname
+      \noexpand\undefined
+  }%
+\catcode64=11 %
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}[int]
+%   {
+%     \l@expl@check@declarations@bool ,
+%     \l@expl@log@functions@bool
+%   }
+%  In generic mode, there is no convenient option handling and so instead
+%  the two variables are defined to do nothing.
+%  appropriate value before input of the loader.
+%    \begin{macrocode}
+\chardef \l@expl@check@declarations@bool = 0 %
+\chardef \l@expl@log@functions@bool = 0 %
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}[aux]{\AtBeginDocument}
+% \begin{macro}[aux]{\expl@AtBeginDocument}
+%   There are a few uses of \cs{AtBeginDocument} in the package code: the
+%   easiest way around that is to simply do nothing for these. As
+%   bundles such as \pkg{miniltx} may have defined \cs{AtBeginDocument}
+%   any existing definition is saved for restoration after the  payload.
+%    \begin{macrocode}
+\let\expl@AtBeginDocument\AtBeginDocument
+\def\AtBeginDocument#1{}%
+\expandafter\def\expandafter\l@expl@tidy@tl\expandafter
+  {%
+    \l@expl@tidy@tl
+    \let\AtBeginDocument\expl@AtBeginDocument
+    \let\expl@AtBeginDocument\undefined
+  }%
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+%  Load the business end: this will leave \cs{expl3} syntax on.
+%    \begin{macrocode}
+\input expl3-code.tex %
+%    \end{macrocode}
+%
+% A check that the bootstrap code did not abort loading: if it did,
+% bail out silently here.
+%    \begin{macrocode}
+\begingroup\expandafter\expandafter\expandafter\endgroup
+\expandafter\ifx\csname tex\string _let:D\endcsname\relax
+  \expandafter\endinput
+\fi
+%    \end{macrocode}
+%
+% \begin{macro}{\__iow_wrap_set:Nx}
+%   Without \LaTeXe{} there is no \cs{protected@edef} so the more risky
+%   direct use of \cs{tl_set:Nx} is required.
+%    \begin{macrocode}
+\cs_set_eq:NN \__iow_wrap_set:Nx \tl_set:Nx
+%    \end{macrocode}
+% \end{macro}
+%
+% Deactivate writing module information to the log.
+%    \begin{macrocode}
+\protected\def\GetIdInfoLog{}
+%    \end{macrocode}
+%
+% For driver loading in generic mode, there are no options: pick the most
+% appropriate case! To allow this loading to take place a temporary
+% definition of \cs{ProvidesExplFile} is provided
+%    \begin{macrocode}
+\cs_set_protected:Npn \ProvidesExplFile
+  {
+    \group_begin:
+      \char_set_catcode_space:n { `\  }
+      \ProvidesExplFileAux
+  }
+\cs_set_protected:Npn \ProvidesExplFileAux #1#2#3#4
+  {
+    \group_end:
+    \iow_log:x { File:~#1~#2~v#3~#4 }
+  }
+\tex_input:D
+  l3
+  \sys_if_engine_xetex:TF
+    { xdvipdfmx }
+    {
+      \bool_if:nTF
+        {
+             \cs_if_exist_p:N  \pdftex_pdfoutput:D
+          && \int_compare_p:nNn \pdftex_pdfoutput:D > \c_zero
+        }
+        { pdfmode }
+        { dvips }
+    }
+  .def \scan_stop:
+\cs_undefine:N \ProvidesExplFile
+\cs_undefine:N \ProvidesExplFileAux
+%    \end{macrocode}
+%
+%  For the generic loader, a few final steps to take. Turn of \cs{expl3}
+%  syntax and tidy up the small number of temporary changes.
+%    \begin{macrocode}
+\ExplSyntaxOff
+\l@expl@tidy@tl
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%</generic>
+%    \end{macrocode}
+%
+% \end{implementation}
+%
+% \PrintIndex

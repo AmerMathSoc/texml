@@ -1,0 +1,100 @@
+\NeedsTeXFormat{LaTeX2e}%
+\ProvidesPackage{chronology}[2015/03/27 v1.1.1 Horizontal timeline]%
+\RequirePackage{calc}%
+\RequirePackage{tikz}%
+\RequirePackage{xparse}%
+% Defining counters and lengths
+\newcounter{step}\newcounter{stepstart}\newcounter{stepstop}%
+\newcounter{yearstart}\newcounter{yearstop}\newcounter{deltayears}%
+\newlength{\xstart}\newlength{\xstop}%
+\newlength{\unit}\newlength{\timelinewidth}%
+\newsavebox{\timelinebox}%
+% Defining TikZ styles for labels and events
+\tikzset{%
+	,chronevent/.style={fill=black,draw=none,opacity=0.5}
+	,chronlabel/.style={opacity=1}
+	,chrontickslabel/.style={chronlabel}
+	,chroneventlabel/.style={chronlabel}
+	,eventlabel/.style={chroneventlabel,anchor=south west,yshift=.2\unit,rotate=45}
+	,flippedeventlabel/.style={chroneventlabel,anchor=north west,yshift=-.2\unit,rotate=-45}
+	}
+% For compatibity with babel. Handling of active characters in TikZ.
+\tikzset{
+	handle active characters in code,
+	handle active characters in nodes
+}
+\makeatletter%
+\newif\ifchronology@star%
+\newenvironment{chronology}{%
+	\@ifstar{\chronology@startrue\chronology@i*}{\chronology@starfalse\chronology@i*}%
+}{%
+	\end{tikzpicture}%
+	\end{lrbox}%
+	\raisebox{2ex}{\resizebox{\timelinewidth}{!}{\usebox{\timelinebox}}}%
+}%
+\def\chronology@i*{%
+	\@ifnextchar[{\chronology@ii*}{\chronology@ii*[{5}]}%
+}%
+\def\chronology@ii*[#1]#2#3#4{%
+	\@ifnextchar[{\chronology@iii*[{#1}]{#2}{#3}{#4}}{\chronology@iii*[{#1}]{#2}{#3}{#4}[{#4}]}%
+}%
+\def\chronology@iii*[#1]#2#3#4[#5]{%
+	\newif\ifflipped%
+	\ifchronology@star%
+		\flippedtrue%
+	\else%
+		\flippedfalse%
+	\fi%
+	\setcounter{step}{#1}%
+	\setcounter{yearstart}{#2}\setcounter{yearstop}{#3}%
+	\setcounter{deltayears}{\theyearstop-\theyearstart}%
+	\setlength{\unit}{#5/\thedeltayears}%
+	\setlength{\timelinewidth}{#4}%
+	\pgfmathsetcounter{stepstart}{\theyearstart+\thestep-mod(\theyearstart,\thestep)}%
+	\pgfmathsetcounter{stepstop}{\theyearstop-mod(\theyearstop,\thestep)}%
+	\addtocounter{step}{\thestepstart}%
+	\begin{lrbox}{\timelinebox}%
+		\begin{tikzpicture}[baseline={(current bounding box.north)}]%
+			\draw [|->] (0,0) -- (\thedeltayears*\unit+\unit, 0);%
+			\foreach \x in {1,...,\thedeltayears}%
+				\draw[xshift=\x*\unit] (0,-.1\unit) -- (0,.1\unit);%
+			\addtocounter{deltayears}{1}%
+			\foreach \x in {\thestepstart,\thestep,...,\thestepstop}{%
+				\pgfmathsetlength\xstop{(\x-\theyearstart)*\unit}%
+				\draw[xshift=\xstop] (0,-.3\unit) -- (0,.3\unit);%
+				\ifflipped%
+					\node[chrontickslabel] at (\xstop,0) [above=.2\unit] {\x};%
+				\else%
+					\node[chrontickslabel] at (\xstop,0) [below=.2\unit] {\x};%
+				\fi%
+			}%
+}%
+\makeatother%
+\DeclareDocumentCommand \event {o m m}{%
+	\pgfmathsetlength\xstop{(#2-\theyearstart)*\unit}%
+	\IfNoValueTF {#1} {%
+		\ifflipped%
+			\draw[chronevent]%
+			(\xstop, 0) circle (.2\unit)%
+			node[flippedeventlabel] {#3};%
+		\else%
+			\draw[chronevent]%
+			(\xstop, 0) circle (.2\unit)%
+			node[eventlabel] {#3};%
+		\fi%
+	}{%
+		\pgfmathsetlength\xstart{(#1-\theyearstart)*\unit}%
+		\ifflipped%
+			\draw[chronevent,rounded corners=.2\unit]%
+			(\xstart,-.2\unit) rectangle%
+			node[flippedeventlabel] {#3} (\xstop,.2\unit);%
+		\else%
+			\draw[chronevent,rounded corners=.2\unit]%
+			(\xstart,-.2\unit) rectangle%
+			node[eventlabel] {#3} (\xstop,.2\unit);%
+		\fi%
+	}%
+}
+\newcommand{\decimaldate}[3]{(#1-1)/31/12+(#2-1)/12+#3}%
+\endinput%
+

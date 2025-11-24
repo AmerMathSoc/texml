@@ -1,0 +1,309 @@
+% --------------------------------------------------------------------------
+%
+% the CHEMMACROS package -- module: `scheme'
+%
+% --------------------------------------------------------------------------
+% Clemens Niederberger
+% --------------------------------------------------------------------------
+% https://github.org/cgnieder/chemmacros/
+% contact@mychemistry.eu
+% --------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% --------------------------------------------------------------------------
+% Copyright 2011-2016 Clemens Niederberger
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+%
+% The Current Maintainer of this work is Clemens Niederberger.
+% --------------------------------------------------------------------------
+\ChemModule{scheme}{2016/04/25 a scheme floating environment}
+
+\RequirePackage {chemnum}
+
+\bool_new:N \l__chemmacros_float_def_bool
+\tl_new:N   \l__chemmacros_float_method_tl
+\seq_new:N  \l__chemmacros_float_methods_seq
+\prop_new:N \l__chemmacros_float_methods_prop
+\prop_new:N \l__chemmacros_float_definitions_prop
+
+\msg_new:nnn {chemmacros} {float-method}
+  { Detected~ float~ defining~ method~ `#1'. }
+
+% --------------------------------------------------------------------------
+% #1: name
+% #2: check
+\cs_new_protected:Npn \chemmacros_define_float_method:nnn #1#2#3
+  {
+    \seq_put_right:Nn \l__chemmacros_float_methods_seq {#1}
+    \prop_put:Nnn \l__chemmacros_float_methods_prop {#1} {#2}
+    \prop_put:Nnn \l__chemmacros_float_definitions_prop {#1}
+      { \cs_set_protected:Npn \__chemmacros_define_float:nn ##1##2 {#3} }
+  }
+
+% the order in which the methods are defined determines in which order the
+% methods will be checked at begin document:
+\chemmacros_define_float_method:nnn {KOMA}
+  { \cs_if_exist_p:N \KOMAClassName }
+  {
+    \DeclareNewTOC[
+      type  = #1 ,
+      types = #1s ,
+      float ,
+      name = \chemmacros_translate:n {#1-name} ,
+      listname = {\exp_not:N \chemmacros_translate:n {#1-list}}
+    ]{#2}
+  }
+
+\chemmacros_define_float_method:nnn {memoir}
+  { \chemmacros_if_class_loaded_p:n {memoir} }
+  {
+    \newfloat [chapter] {#1} {#2} {\chemmacros_translate:n {#1-name}}
+    \cs_set:cpn {the#1} {\thechapter.\arabic {#1}}
+    \newlistof {listof#1s} {#2} {\chemmacros_translate:n {#1-list}}
+    \newlistentry [chapter] {#1} {#2} {0}
+    \cftsetindents {#1} {0em} {2.3em}
+    \tl_put_right:Nn \@memfront@floats
+      { \counterwithout {#1} {chapter} }
+    \tl_put_right:Nn \@memmain@floats
+      { \counterwithin {#1} {chapter} }
+    \tl_put_right:Nn \@memback@floats
+      {
+        \counterwithin {#1} {chapter}
+        \setcounter {#1} {0}
+      }
+    \chemmacros_tex_if:nT {artopt}
+      { \counterwithout {#1} {chapter} }
+  }
+
+\chemmacros_define_float_method:nnn {tocbasic}
+  { \chemmacros_if_package_loaded_p:n {tocbasic} }
+  {
+    \DeclareNewTOC[
+      type  = #1 ,
+      types = #1s ,
+      float ,
+      name = \chemmacros_translate:n {#1-name} ,
+      listname = {\exp_not:N \chemmacros_translate:n {#1-list}}
+    ]{#2}
+  }
+
+\chemmacros_define_float_method:nnn {newfloat}
+  { \chemmacros_if_package_loaded_p:n {newfloat} }
+  {
+    \DeclareFloatingEnvironment[{
+      fileext = #2 ,
+      listname = {\exp_not:N \chemmacros_translate:n {#1-list}} ,
+      name = #2
+    }]{#1}
+  }
+
+\ChemCompatibilityFrom{5.1}
+\chemmacros_define_float_method:nnn {floatrow}
+  { \chemmacros_if_package_loaded_p:n {floatrow} }
+  {
+    \DeclareNewFloatType{#1}{%
+      fileext   = #2,
+      placement = htp,
+      name      = \chemmacros_translate:n {#1-name}
+    }
+    \cs_new_protected:cpn {listof#1s}
+      { \listof {#1} {\chemmacros_translate:n {#1-list}} }
+  }
+\EndChemCompatibility
+
+\chemmacros_define_float_method:nnn {float}
+  { \chemmacros_if_package_loaded_p:n {float} }
+  {
+    \newfloat {#1} {htp} {#2}
+    \floatname {#1} {\chemmacros_translate:n {#1-name}}
+    \cs_new_protected:cpn {listof#1s}
+      { \listof {#1} {\chemmacros_translate:n {#1-list}} }
+  }
+
+% --------------------------------------------------------------------------
+% checks if one of the above defined methods is active.  The first one found
+% will be used.
+\cs_new_protected:Npn \chemmacros_check_float_method:n #1
+  {
+    \prop_get:NnNT \l__chemmacros_float_methods_prop {#1}
+      \l__chemmacros_tmpa_tl
+    \bool_if:nT
+      { !\l__chemmacros_float_def_bool && \l__chemmacros_tmpa_tl }
+      {
+        \bool_set_true:N \l__chemmacros_float_def_bool
+        \tl_set:Nn \l__chemmacros_float_method_tl {#1}
+        \msg_info:nnn {chemmacros} {float-method} {#1}
+      }
+  }
+
+\cs_new_protected:Npn \chemmacros_check_float_methods:
+  {
+    \seq_map_function:NN
+      \l__chemmacros_float_methods_seq
+      \chemmacros_check_float_method:n
+  }
+
+\AtEndPreamble
+  {
+    % the check is there since v5.3a -- let's wait and see if we actually need
+    % a compatibility check here:
+    \chemmacros_if_package_loaded:nF {chemscheme}
+      {
+        \chemmacros_check_float_methods:
+        \chemmacros_define_float:nn {scheme} {los}
+      }
+  }
+
+% --------------------------------------------------------------------------
+\ChemCompatibilityFrom{5.6}
+\ChemCleverefSupport {scheme}
+  { \chemmacros_translate:n {scheme} }
+  [ \chemmacros_translate:n {Scheme} ]
+  { \chemmacros_translate:n {schemes} }
+  [ \chemmacros_translate:n {Schemes} ]
+
+\ChemFancyrefSupport {sch}
+  { \chemmacros_translate:n {scheme} }
+  [ \chemmacros_translate:n {Scheme} ]
+\EndChemCompatibility
+
+% --------------------------------------------------------------------------
+% #1: env name
+\cs_new_protected:Npn \chemmacros_define_float:nn #1#2
+  {
+    \bool_if:nT
+      { !\cs_if_exist_p:c {#1} && !\cs_if_exist_p:c {end#1} }
+      {
+        \bool_if:NTF \l__chemmacros_float_def_bool
+          {
+            \prop_get:NVN \l__chemmacros_float_definitions_prop
+              \l__chemmacros_float_method_tl
+              \l__chemmacros_tmpa_tl
+            \tl_use:N \l__chemmacros_tmpa_tl
+            \__chemmacros_define_float:nn {#1} {#2}
+          }
+          {
+            \newcounter {#1}
+            \cs_set:cpn {the#1}      {\arabic{#1}}
+            \cs_new:cpn {fps@#1}     {tbp}
+            \cs_new:cpn {ftype@#1}   {8}
+            \cs_new:cpn {ext@#1}     {#2}
+            \cs_new:cpx {fnum@#1}    {
+              \exp_not:c {#1name}
+              \exp_not:N \nobreakspace
+              \exp_not:c {the#1}}
+            \cs_new:cpn {#1name}     {\chemmacros_translate:n {#1-name}}
+            \cs_new:cpn {list#1name} {\chemmacros_translate:n {#1-list}}
+            \newenvironment {#1}
+              {\@float{#1}}
+              {\end@float}
+            \newenvironment {#1*}
+              {\@dblfloat{#1}}
+              {\end@dblfloat}
+            \bool_if:nTF
+              {
+                \chemmacros_if_class_loaded_p:n {book} ||
+                \chemmacros_if_class_loaded_p:n {report}
+              }
+              {
+                \cs_new_protected:cpn {listof#1s}
+                  {
+                    \chemmacros_tex_if:nTF {@twocolumn}
+                      { \@restonecoltrue\onecolumn }
+                      { \@restonecolfalse }
+                    \exp_args:NNx \chapter* {\exp_not:c {list#1name}}
+                    \@mkboth
+                      { \MakeUppercase \use:c {list#1name} }
+                      { \MakeUppercase \use:c {list#1name} }
+                    \@starttoc {#2}
+                    \chemmacros_tex_if:nT {@restonecol}
+                      { \twocolumn }
+                  }
+              }
+              {
+                \cs_new_protected:cpn {listof#1s}
+                  {
+                     \exp_args:NNx \section* {\exp_not:c {list#1name}}
+                     \@mkboth
+                      { \MakeUppercase \use:c {list#1name} }
+                      { \MakeUppercase \use:c {list#1name} }
+                    \@starttoc {#2}
+                  }
+              }
+            \cs_new_eq:cN {l@#1} \l@figure
+          }
+      }
+    \cs_set:cpn {#1name}     {\chemmacros_translate:n {#1-name}}
+    \cs_set:cpn {list#1name} {\chemmacros_translate:n {#1-list}}
+  }
+
+% --------------------------------------------------------------------------
+\ChemCompatibilityTo{5.5}
+\DeclareTranslationFallback   {scheme-name} {Scheme}
+\DeclareTranslation {English} {scheme-name} {Scheme}
+\DeclareTranslation {German}  {scheme-name} {Schema}
+
+\DeclareTranslationFallback   {scheme-list} {List~ of~ Schemes}
+\DeclareTranslation {English} {scheme-list} {List~ of~ Schemes}
+\DeclareTranslation {German}  {scheme-list} {Verzeichnis~ der~ Schemata}
+\EndChemCompatibility
+
+\ChemCompatibilityFrom{5.6}
+\chemmacros_declare_translations:nn {scheme-name}
+  {
+    fallback = Scheme ,
+    English  = Scheme ,
+    German   = Schema
+  }
+
+\chemmacros_declare_translations:nn {scheme-list}
+  {
+    fallback = List~ of~ Schemes ,
+    English  = List~ of~ Schemes ,
+    German   = Verzeichnis~ der~ Schemata
+  }
+
+\chemmacros_declare_translations:nn {scheme}
+  {
+    fallback = scheme ,
+    English  = scheme ,
+    German   = Schema
+  }
+
+\chemmacros_declare_translations:nn {Scheme}
+  {
+    fallback = Scheme ,
+    English  = Scheme ,
+    German   = Schema
+  }
+
+\chemmacros_declare_translations:nn {schemes}
+  {
+    fallback = schemes ,
+    English  = schemes ,
+    German   = Schemata
+  }
+
+\chemmacros_declare_translations:nn {Schemes}
+  {
+    fallback = Schemes ,
+    English  = Schemes ,
+    German   = Schemata
+  }
+\EndChemCompatibility
+
+\tex_endinput:D
+% --------------------------------------------------------------------------
+2015/09/19 - make the module compatible with floatrow
+2015/10/23 - add info message to float method detection
+2016/01/23 - make the module compatible with chemscheme
+2016/04/25 - cleveref and fancyref support

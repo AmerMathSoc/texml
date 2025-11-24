@@ -1,0 +1,166 @@
+%% Copyright (C) 2013, 2014 Eduardo C. Lourenço de Lima
+%% 
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either
+%% version 1.3 of this license or (at your option) any later
+%% version.  The latest version of this license is in
+%% 
+%%   http://www.latex-project.org/lppl.txt
+%% 
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%% 
+\NeedsTeXFormat{LaTeX2e}[1996/06/01]
+\ProvidesPackage{sepfootnotes}[2014/07/22 v0.3b Footnotes in separate file]
+
+\newcommand\sep@packagename{sepfootnotes}
+
+\DeclareOption {quiet}             {\sep@opt@quiettrue}
+\DeclareOption {warn}              {\sep@opt@warntrue}
+\DeclareOption {error}             {\sep@opt@errortrue}
+
+\newif \ifsep@opt@quiet
+\newif \ifsep@opt@warn
+\newif \ifsep@opt@error
+
+\sep@opt@warntrue
+
+\ProcessOptions
+
+\ifsep@opt@quiet
+ \sep@opt@warnfalse
+ \sep@opt@errorfalse
+\fi
+
+\ifsep@opt@error
+ \sep@opt@warnfalse
+\fi
+
+
+% ********************************* Public ************************************
+
+% ==================== shared by footnotes and endnotes =======================
+
+\newcommand\sep@new [1]
+{\newcounter{#1note}%
+ \expandafter\newcommand\csname      #1note\endcsname        [1] {\csname #1notemark\endcsname{##1}\csname #1notetext\endcsname{##1}}%
+ \expandafter\newcommand\csname      #1notecontent\endcsname [2] {\sep@namedef {#1} {##1} {##2}}%
+ \expandafter\newcommand\csname print#1note\endcsname        [1] {\sep@nameuse {#1} {##1}}%
+ \expandafter\newcommand\csname   the#1mark\endcsname            {\csname the#1note\endcsname}\relax
+ \expandafter\newcommand\csname      #1quicknote\endcsname   [1] {\sep@namereplace {#1} {sepfootnotes@tmp@quick} {##1}\csname #1note\endcsname{sepfootnotes@tmp@quick}}\relax
+}
+
+% -------------------------------- footnotes ----------------------------------
+
+\newcommand\newfootnotes{\@ifstar\sep@newfootnotesfree\sep@newfootnotes}
+
+\newcommand\sep@newfootnotes [1]
+{\sep@new{#1}%
+ \expandafter\renewcommand\csname    #1note\endcsname        [1] {\footnote      {\csname print#1note\endcsname{##1}}}%
+ \expandafter\newcommand\csname      #1notetext\endcsname    [1] {\footnotetext  {\csname print#1note\endcsname{##1}}}%
+ \expandafter\newcommand\csname      #1notemark\endcsname    [1] {\footnotemark}%
+ \expandafter\renewcommand\csname the#1mark\endcsname            {\thefootnote}}
+
+\newcommand\sep@newfootnotesfree [1]
+{\sep@new{#1}%
+ \expandafter\newcommand\csname      #1notemark\endcsname    [1] {\sep@mark    {#1} {##1}}%
+ \expandafter\newcommand\csname      #1notetext\endcsname    [1] {\sep@markset {#1}\@footnotetext{\csname print#1note\endcsname {##1}}}}
+
+\newcommand\newsymbolfootnotes [2] [page]
+{\newfootnotes*                                                  {#2}%
+ \@addtoreset                                                    {#2note} {#1}%
+ \expandafter\renewcommand\csname the#2mark\endcsname            {\fnsymbol {#2note}}}
+
+% -------------------------------- endnotes -----------------------------------
+
+\newcommand\newendnotes [1]
+{\sep@new                                                        {#1}%
+ \sep@openout                                                    {#1}%
+ \expandafter\newcommand\csname      #1notemark\endcsname        [1] {\sep@mark    {#1} {##1}}%
+ \expandafter\newcommand\csname      #1notetext\endcsname        [1] {\sep@markset {#1}\sep@write {#1} {\expandafter\noexpand\csname do#1note\endcsname{\arabic{#1note}}{\unexpanded{##1}}}}%
+ \expandafter\newcommand\csname addto#1notes\endcsname       [1] {\sep@write {#1} {\unexpanded{##1}}}%
+ \expandafter\newcommand\csname   the#1notes\endcsname           {\sep@close {#1}\setcounter {#1note} {0}\begin{#1notes}\input\sep@filename{#1}\end{#1notes}}%
+ \expandafter\newcommand\csname  make#1mark\endcsname            {\hbox{\normalfont\csname the#1mark\endcsname.\ }}%
+ \expandafter\newcommand\csname      #1noteformat\endcsname      {\noindent\rightskip\z@ \leftskip\z@ \leavevmode\llap{\csname make#1mark\endcsname}}%
+ \expandafter\newcommand\csname    do#1note\endcsname        [2] {\sep@refsetcounter{#1note}{##1}\par\csname #1noteformat\endcsname\csname print#1note\endcsname{##2}\par}%
+ \expandafter\newcommand\csname      #1notesize\endcsname        {\footnotesize}%
+ \newenvironment                    {#1notes}                    {\csname #1notesize\endcsname\setlength\parskip\footnotesep} {}}
+
+
+% ------------------------------ commentnotes --------------------------------
+
+\newcommand\newcommentnotes [1]
+{\newfootnotes*{#1}\relax
+ \expandafter\renewcommand\csname    #1note\endcsname        [1] {\csname #1notemark\endcsname{##1}\csname #1notetext\endcsname{##1}}\relax
+ \expandafter\renewcommand\csname the#1mark\endcsname            {\begingroup\csname #1notesize\endcsname\roman{#1note}\endgroup}\relax
+ \expandafter\newcommand\csname      #1notesize\endcsname        {\tiny}\relax
+ \expandafter\renewcommand\csname    #1notetext\endcsname    [1] {\-\marginpar[{\csname #1margintext\endcsname{##1}{left}}]{\setstretch{\csname #1stretch\endcsname}\csname #1margintext\endcsname {##1} {right}\relax}}\relax
+ \expandafter\newcommand\csname      #1margintext\endcsname  [2] {\csname #1notesize\endcsname\expandafter\raggedright\csname the#1marginmark\endcsname{#1}\csname print#1note\endcsname{##1}}\relax
+ \expandafter\newcommand\csname   the#1marginmark\endcsname  [1] {\textsuperscript{\csname the#1mark\endcsname}}\relax
+ \expandafter\newcommand\csname      #1stretch\endcsname         {0.5}\relax
+}
+
+\newcommand\newsymbolcommentnotes [2] [page]
+{\newcommentnotes                                                {#2}\relax
+ \@addtoreset                                                    {#2note} {#1}\relax
+ \expandafter\renewcommand\csname the#2mark\endcsname            {\fnsymbol {#2note}}}
+
+% ********************************* Private ***********************************
+
+% ---------------------------------- files ------------------------------------
+
+\newcommand\sep@filename [1] {\jobname.ent-#1}
+\newcommand\sep@openout  [1] {\expandafter          \newwrite\csname sep@fileout#1\endcsname\immediate\expandafter\openout\csname sep@fileout#1\endcsname=\sep@filename#1\relax}
+\newcommand\sep@write    [2] {\immediate               \write\csname sep@fileout#1\endcsname {#2}}
+\newcommand\sep@close    [1] {\immediate\expandafter\closeout\csname sep@fileout#1\endcsname\relax}
+
+% ---------------------------------- table ------------------------------------
+
+\newcommand\sep@nameuse [2]
+{\@ifundefined{sepfootnotes@text@#1@#2}
+ {\ifsep@opt@error
+   \PackageError   {\sep@packagename} {`#2' has not been assigned a content}
+                                      {`#2' has not been assigned a content.\MessageBreak
+                                       Solution: Define `#2'\MessageBreak
+                                       Try: \@backslashchar #1notecontent{#2}{<content>}}\relax
+  \fi
+  \ifsep@opt@warn
+   \PackageWarning {\sep@packagename} {`#2' has not been assigned a content}\relax
+  \fi}
+ {\@nameuse{sepfootnotes@text@#1@#2}}}
+
+\newcommand\sep@namedef [3]
+{\@ifundefined{sepfootnotes@text@#1@#2}
+ {\@namedef{sepfootnotes@text@#1@#2}{#3}}
+ {\ifsep@opt@error
+   \PackageError   {\sep@packagename} {`#2' is already in use}
+                                      {`#2' is already in use.\MessageBreak
+                                       Solution: Use another key.\MessageBreak
+                                       Try: \@backslashchar #1notecontent{<key>}{<content>}}\relax
+  \fi
+  \ifsep@opt@warn
+   \PackageWarning {\sep@packagename} {`#2' is already in use}
+  \fi}}
+
+\newcommand\sep@namereplace  [3] {\@namedef{sepfootnotes@text@#1@#2}{#3}}
+
+% ---------------------------------- marks ------------------------------------
+
+\newcommand\sep@markset  [1] {\protected@xdef\@thefnmark{\csname the#1mark\endcsname}}
+\newcommand\sep@mark     [2] {\stepcounter {#1note}\sep@markset {#1}\@footnotemark}
+
+% ---------------------- cross-references and counters ------------------------
+
+\newcommand\sep@refsetcounter  [2] {\setcounter{#1}{#2}\protected@edef\@currentlabel{\csname p@#1\endcsname\csname the#1\endcsname}}
+\newcommand\sep@refstepcounter [1] {\stepcounter   {#1}\protected@edef\@currentlabel{\csname p@#1\endcsname\csname the#1\endcsname}}
+
+% ********************************* Default ***********************************
+
+% ------------------------- footnotes: \sepfootnote ---------------------------
+
+%% Default: The default \sepfootnote family relies on \footnote
+\newfootnotes{sepfoot}
+
+\endinput
+%%
+%% End of file `sepfootnotes.sty'.

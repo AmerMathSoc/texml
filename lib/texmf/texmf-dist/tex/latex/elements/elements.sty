@@ -1,0 +1,710 @@
+% --------------------------------------------------------------------------
+% the ELEMENTS package
+% 
+%   retrieve different properties of chemical elements
+% 
+% --------------------------------------------------------------------------
+% Clemens Niederberger
+% Web:    https://github.com/cgnieder/elements/
+% E-Mail: contact@mychemistry.eu
+% --------------------------------------------------------------------------
+% Copyright 2015-2016 Clemens Niederberger
+% 
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+% 
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Clemens Niederberger.
+% --------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% --------------------------------------------------------------------------
+\newcommand*\@elements@date{2016/05/16}
+\newcommand*\@elements@version{v0.2}
+\newcommand*\@elements@description{properties of chemical elements}
+
+\ProvidesPackage{elements}[%
+  \@elements@date\space
+  \@elements@version\space
+  \@elements@description
+]
+
+\usepackage{etoolbox}
+
+% an idea by Herbert Voß (http://tex.stackexchange.com/a/7183/5049):
+%   make the test character an (hopefully extremely) unlikely % with
+%   catcode!=14;  let's make & a temporary comment char
+%   save both catcodes just in case someone changed the defaults:
+\edef\@elements@tmpa{
+  \catcode`\noexpand\%=\the\catcode`\%
+  \catcode`\noexpand\&=\the\catcode`\&
+}
+\catcode`\%=3
+\catcode`\&=14
+& the test:
+\newcommand*\@elements@ifisnum[1]{&
+  \if%\ifnum9<1#1%\else_\fi&
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+\@elements@tmpa
+
+% chack for following !:
+\newrobustcmd*\@elements@ifbang[1]{\@ifnextchar!{\@firstoftwo{#1}}}
+
+% --------------------------------------------------------------------------
+% atomic numbers and element symbols and names
+\newrobustcmd*\@elements@define@atom@symbol[2]{%
+  \csdef{@elements@atom@symbol@num@\romannumeral#1}{#2}%
+  \lowercase{\csdef{@elements@atom@number@#2}}{#1}%
+}
+\newrobustcmd*\@elements@define@atom@name[3]{%
+  \csdef{@elements@atom@name@\romannumeral#1}{#2}%
+  \lowercase{\csdef{@elements@atom@name@num@#3}}{#1}%
+}
+\newrobustcmd*\@elements@define@atom@isotopes[2]{%
+  \csdef{@elements@atom@isotopes@\romannumeral#1}{#2}%
+}
+
+% #1: optional name (umlauts...)
+% #2: atomic number
+% #3: element name
+\newrobustcmd*\DeclareAtomName[3][]{%
+  \ifblank{#1}
+    {\@elements@define@atom@name{#2}{#3}{#3}}
+    {\@elements@define@atom@name{#2}{#3}{#1}}%
+}
+% \@onlypreamble\DeclareAtomName
+\newrobustcmd*\setatomname[3][]{%
+  \ifblank{#1}
+    {\@elements@define@atom@name{#2}{#3}{#3}}
+    {\@elements@define@atom@name{#2}{#3}{#1}}%
+}
+
+% #1: atomic number
+% #2: element symbol
+\newrobustcmd*\DeclareAtomSymbol[2]{%
+  \@elements@define@atom@symbol{#1}{#2}%
+}
+\@onlypreamble\DeclareAtomSymbol
+\newrobustcmd*\setatomsymbol[2]{%
+  \@elements@define@atom@symbol{#1}{#2}%
+}
+
+% #1: atomic number
+% #2: clist of isotopes, the most common one preceded with !
+\newrobustcmd*\DeclareAtomIsotopes[2]{%
+  \@elements@define@atom@isotopes{#1}{#2}%
+}
+\@onlypreamble\DeclareAtomIsotopes
+\newrobustcmd*\setatomisotopes[2]{%
+  \@elements@define@atom@isotopes{#1}{#2}%
+}
+
+\newrobustcmd*\@elements@get@atom@symbol[1]{%
+  \csuse{@elements@atom@symbol@num@\romannumeral#1}%
+}
+\newrobustcmd*\@elements@get@atom@number[1]{%
+  \lowercase{\csuse{@elements@atom@number@#1}}%
+}
+\newcommand*\@elements@get@atom@name[1]{%
+  \csuse{@elements@atom@name@\romannumeral#1}%
+}
+
+\newrobustcmd*\@elements@element@symbol[1]{%
+  \lowercase{\ifcsdef{@elements@atom@name@num@#1}}
+    {\lowercase{\@elements@get@atom@symbol{\csuse{@elements@atom@name@num@#1}}}}
+    {\@elements@get@atom@symbol{#1}}%
+}
+
+\newrobustcmd*\@elements@atomic@number[1]{%
+  \lowercase{\ifcsdef{@elements@atom@number@#1}}
+    {\@elements@get@atom@number{#1}}
+    {\lowercase{\csuse{@elements@atom@name@num@#1}}}%
+}
+
+\newrobustcmd*\@elements@element@name[1]{%
+  \@elements@ifisnum{#1}
+    {\@elements@get@atom@name{#1}}
+    {\lowercase{\@elements@get@atom@name{\csuse{@elements@atom@number@#1}}}}%
+}
+
+\newrobustcmd*\elementsymbol[1]{\@elements@element@symbol{#1}}
+\newrobustcmd*\atomicnumber[1]{\@elements@atomic@number{#1}}
+\newrobustcmd*\elementname[1]{\@elements@element@name{#1}}
+\AtBeginDocument{\ifdef\Z{}{\let\Z\atomicnumber}}
+
+% #1: macro
+% #2: atomic number|element symbol|element name
+\newrobustcmd*\saveatomicnumber[2]{%
+  \@elements@ifisnum{#2}
+    {\edef#1{#2}}
+    {%
+      \lowercase{%
+        \ifcsdef{@elements@atom@name@num@#2}
+          {\edef#1{\csuse{@elements@atom@name@num@#2}}}
+          {\edef#1{\csuse{@elements@atom@number@#2}}}%
+      }%
+    }%
+}
+% #1: macro
+% #2: atomic number|element symbol|element name
+\newrobustcmd*\saveelementsymbol[2]{%
+  \saveatomicnumber#1{#2}%
+  \edef#1{\csuse{@elements@atom@symbol@num@\romannumeral#1}}%
+}
+% #1: macro
+% #2: atomic number|element symbol|element name
+\newrobustcmd*\saveelementname[2]{%
+  \saveatomicnumber#1{#2}%
+  \edef#1{\csuse{@elements@atom@name@\romannumeral#1}}%
+}
+% #1: macro
+% #2: atomic number|element symbol|element name
+\newrobustcmd*\saveelementisotopes[2]{%
+  \saveatomicnumber#1{#2}%
+  \edef#1{\csuse{@elements@atom@isotopes@\romannumeral#1}}%
+}
+
+\newbool{@elements@found@isotope}
+% #1: macro
+% #2: atomic number|element symbol|element name
+\newrobustcmd*\savemainelementisotope[2]{%
+  \boolfalse{@elements@found@isotope}%
+  \saveelementisotopes#1{#2}%
+  \expandafter\forcsvlist
+  \expandafter{\expandafter\@elements@extractmainisotope
+  \expandafter#1\expandafter}%
+  \expandafter{#1}%
+}
+
+\newrobustcmd*\@elements@extractmainisotope[2]{%
+  \@elements@extractmainisotope@aux{#1}#2\q@stop
+}
+\newrobustcmd*\@elements@extractmainisotope@aux[2]{%
+  \@elements@ifbang
+    {\@elements@saveisotope{#1}}
+    {\@elements@donothing{#1}}%
+  #2%
+}
+\protected\def\@elements@saveisotope#1#2\q@stop{%
+  \def#1{#2}\booltrue{@elements@found@isotope}%
+}
+\protected\def\@elements@donothing#1#2\q@stop{%
+  \ifbool{@elements@found@isotope}{}{\let#1\@empty}%
+}
+
+\newrobustcmd*\mainelementisotope[1]{%
+  \begingroup
+    \savemainelementisotope\@elements@tmpa{#1}%
+    \@elements@tmpa
+  \endgroup
+}
+
+% --------------------------------------------------------------------------
+% electron distribution
+\newrobustcmd*\DeclareElectronDistribution[2]{%
+  \@elements@define@electron@distribution{#1}{#2}%
+}
+\@onlypreamble\DeclareElectronDistribution
+
+\newrobustcmd*\setelectrondistribution[2]{%
+  \@elements@define@electron@distribution{#1}{#2}%
+}
+
+\newrobustcmd*\@elements@define@electron@distribution[2]{%
+  \csdef{@elements@electron@distribution@\romannumeral#1}{#2}%
+}
+
+% #1: element
+% #2: macro that gets the electron distribution as argument
+\newrobustcmd*\@elements@act@on@elconf[2]{%
+  \saveatomicnumber\@elements@tmpa{#1}%
+  \edef\@elements@tmpa{%
+    \csuse{@elements@electron@distribution@\romannumeral\@elements@tmpa}%
+  }%
+  \expandafter\def\expandafter\@elements@tmpa
+  \expandafter{\romannumeral-`0\@elements@tmpa}%
+  \expandafter#2\expandafter{\@elements@tmpa}%
+}
+
+\newcounter{@elements@orbital@type}
+\newcounter{@elements@shell@number}
+
+\newrobustcmd*\elconf[1]{\@elements@elconf{#1}}
+\newrobustcmd*\writeelconf[1]{\@elements@print@elconf{#1}}
+
+% prints electron configuration of element #1:
+\newrobustcmd*\@elements@elconf[1]{%
+  \@elements@act@on@elconf{#1}{\@elements@print@elconf}%
+}
+
+\newrobustcmd*\@elements@print@elconf[1]{%
+  \def\@elements@current@elconf{}%
+  \setcounter{@elements@shell@number}{0}%
+  \@elements@getelconf{#1}%
+  \expandafter\@elements@write@elconf\expandafter{\@elements@current@elconf}%
+}
+
+\newrobustcmd*\@elements@getelconf[1]{%
+  \forcsvlist{\@elements@getelconf@aux}{#1}%
+}
+
+\newrobustcmd*\@elements@getelconf@aux[1]{%
+  \stepcounter{@elements@shell@number}%
+  \setcounter{@elements@orbital@type}{0}%
+  \@elements@parse@elconf#1+\q@stop
+}
+
+\protected\def\@elements@parse@elconf#1+#2\q@stop{%
+  \eappto\@elements@current@elconf{\arabic{@elements@shell@number}}%
+  \eappto\@elements@current@elconf
+    {\expandonce{\csname @elements@angmom@\arabic{@elements@orbital@type}\endcsname}}%
+  \appto\@elements@current@elconf{^{#1}}%
+  \stepcounter{@elements@orbital@type}%
+  \ifblank{#2}
+    {}
+    {\@elements@parse@elconf#2\q@stop}%
+}
+
+\newrobustcmd*\@elements@write@elconf[1]{\ensuremath{#1}}
+
+% #1: type
+% #2: output (in math mode)
+\newrobustcmd*\setangularmomentum[2]{%
+  \csdef{@elements@angmom@#1}{\printangularmomentum{#2}}%
+}
+
+\setangularmomentum{0}{s}
+\setangularmomentum{1}{p}
+\setangularmomentum{2}{d}
+\setangularmomentum{3}{f}
+\setangularmomentum{4}{g}
+\setangularmomentum{5}{h}
+
+\newcommand*\printangularmomentum[1]{\mathrm{#1}}
+
+% --------------------------------------------------------------------------
+% extendable language settings
+\RequirePackage{translations}
+\AfterEndPreamble{
+  % this will load a file `elements_elements_<lang>.def', <lang> is a
+  % `translations' base language
+  % currently German, English, and French are available, English being the
+  % fallback; other languages are added by providing the corresponding file
+  \ifdef\@elements@language
+    {\edef\@elements@language{\@trnslt@language{\@elements@language}}}
+    {\def\@elements@language{\@trnslt@language{\@trnslt@current@language}}}
+  \InputIfFileExists
+    {elements_names_\@elements@language.def}
+    {}
+    {\input{elements_names_english.def}}
+}
+
+% ==========================================================================
+% define the elements properties for elements 1 -- 112
+% 
+% declare atom symbols:
+\DeclareAtomSymbol{1}{H}
+\DeclareAtomSymbol{2}{He}
+
+\DeclareAtomSymbol{3}{Li}
+\DeclareAtomSymbol{4}{Be}
+\DeclareAtomSymbol{5}{B}
+\DeclareAtomSymbol{6}{C}
+\DeclareAtomSymbol{7}{N}
+\DeclareAtomSymbol{8}{O}
+\DeclareAtomSymbol{9}{F}
+\DeclareAtomSymbol{10}{Ne}
+
+\DeclareAtomSymbol{11}{Na}
+\DeclareAtomSymbol{12}{Mg}
+\DeclareAtomSymbol{13}{Al}
+\DeclareAtomSymbol{14}{Si}
+\DeclareAtomSymbol{15}{P}
+\DeclareAtomSymbol{16}{S}
+\DeclareAtomSymbol{17}{Cl}
+\DeclareAtomSymbol{18}{Ar}
+
+\DeclareAtomSymbol{19}{K}
+\DeclareAtomSymbol{20}{Ca}
+\DeclareAtomSymbol{21}{Sc}
+\DeclareAtomSymbol{22}{Ti}
+\DeclareAtomSymbol{23}{V}
+\DeclareAtomSymbol{24}{Cr}
+\DeclareAtomSymbol{25}{Mn}
+\DeclareAtomSymbol{26}{Fe}
+\DeclareAtomSymbol{27}{Co}
+\DeclareAtomSymbol{28}{Ni}
+\DeclareAtomSymbol{29}{Cu}
+\DeclareAtomSymbol{30}{Zn}
+\DeclareAtomSymbol{31}{Ga}
+\DeclareAtomSymbol{32}{Ge}
+\DeclareAtomSymbol{33}{As}
+\DeclareAtomSymbol{34}{Se}
+\DeclareAtomSymbol{35}{Br}
+\DeclareAtomSymbol{36}{Kr}
+
+\DeclareAtomSymbol{37}{Rb}
+\DeclareAtomSymbol{38}{Sr}
+\DeclareAtomSymbol{39}{Y}
+\DeclareAtomSymbol{40}{Zr}
+\DeclareAtomSymbol{41}{Nb}
+\DeclareAtomSymbol{42}{Mo}
+\DeclareAtomSymbol{43}{Tc}
+\DeclareAtomSymbol{44}{Ru}
+\DeclareAtomSymbol{45}{Rh}
+\DeclareAtomSymbol{46}{Pd}
+\DeclareAtomSymbol{47}{Ag}
+\DeclareAtomSymbol{48}{Cd}
+\DeclareAtomSymbol{49}{In}
+\DeclareAtomSymbol{50}{Sn}
+\DeclareAtomSymbol{51}{Sb}
+\DeclareAtomSymbol{52}{Te}
+\DeclareAtomSymbol{53}{I}
+\DeclareAtomSymbol{54}{Xe}
+
+\DeclareAtomSymbol{55}{Cs}
+\DeclareAtomSymbol{56}{Ba}
+\DeclareAtomSymbol{57}{La}
+\DeclareAtomSymbol{58}{Ce}
+\DeclareAtomSymbol{59}{Pr}
+\DeclareAtomSymbol{60}{Nd}
+\DeclareAtomSymbol{61}{Pm}
+\DeclareAtomSymbol{62}{Sm}
+\DeclareAtomSymbol{63}{Eu}
+\DeclareAtomSymbol{64}{Gd}
+\DeclareAtomSymbol{65}{Tb}
+\DeclareAtomSymbol{66}{Dy}
+\DeclareAtomSymbol{67}{Ho}
+\DeclareAtomSymbol{68}{Er}
+\DeclareAtomSymbol{69}{Tm}
+\DeclareAtomSymbol{70}{Yb}
+\DeclareAtomSymbol{71}{Lu}
+\DeclareAtomSymbol{72}{Hf}
+\DeclareAtomSymbol{73}{Ta}
+\DeclareAtomSymbol{74}{W}
+\DeclareAtomSymbol{75}{Re}
+\DeclareAtomSymbol{76}{Os}
+\DeclareAtomSymbol{77}{Ir}
+\DeclareAtomSymbol{78}{Pt}
+\DeclareAtomSymbol{79}{Au}
+\DeclareAtomSymbol{80}{Hg}
+\DeclareAtomSymbol{81}{Tl}
+\DeclareAtomSymbol{82}{Pb}
+\DeclareAtomSymbol{83}{Bi}
+\DeclareAtomSymbol{84}{Po}
+\DeclareAtomSymbol{85}{At}
+\DeclareAtomSymbol{86}{Rn}
+
+\DeclareAtomSymbol{87}{Fr}
+\DeclareAtomSymbol{88}{Ra}
+\DeclareAtomSymbol{89}{Ac}
+\DeclareAtomSymbol{90}{Th}
+\DeclareAtomSymbol{91}{Pa}
+\DeclareAtomSymbol{92}{U}
+\DeclareAtomSymbol{93}{Np}
+\DeclareAtomSymbol{94}{Pu}
+\DeclareAtomSymbol{95}{Am}
+\DeclareAtomSymbol{96}{Cm}
+\DeclareAtomSymbol{97}{Bk}
+\DeclareAtomSymbol{98}{Cf}
+\DeclareAtomSymbol{99}{Es}
+\DeclareAtomSymbol{100}{Fm}
+\DeclareAtomSymbol{101}{Md}
+\DeclareAtomSymbol{102}{No}
+\DeclareAtomSymbol{103}{Lr}
+\DeclareAtomSymbol{104}{Rf}
+\DeclareAtomSymbol{105}{Db}
+\DeclareAtomSymbol{106}{Sg}
+\DeclareAtomSymbol{107}{Bh}
+\DeclareAtomSymbol{108}{Hs}
+\DeclareAtomSymbol{109}{Mt}
+\DeclareAtomSymbol{110}{Ds}
+\DeclareAtomSymbol{111}{Rg}
+\DeclareAtomSymbol{112}{Cn}
+
+% --------------------------------------------------------------------------
+% declare electron distributions:
+% period 1
+\DeclareElectronDistribution{1}{1}
+\DeclareElectronDistribution{2}{2}% He
+% period 2
+\DeclareElectronDistribution{3}{2,1}
+\DeclareElectronDistribution{4}{2,2}
+\DeclareElectronDistribution{5}{2,2+1}
+\DeclareElectronDistribution{6}{2,2+2}
+\DeclareElectronDistribution{7}{2,2+3}
+\DeclareElectronDistribution{8}{2,2+4}
+\DeclareElectronDistribution{9}{2,2+5}
+\DeclareElectronDistribution{10}{2,2+6}% Ne
+% period 3
+\DeclareElectronDistribution{11}{2,2+6,1}
+\DeclareElectronDistribution{12}{2,2+6,2}
+\DeclareElectronDistribution{13}{2,2+6,2+1}
+\DeclareElectronDistribution{14}{2,2+6,2+2}
+\DeclareElectronDistribution{15}{2,2+6,2+3}
+\DeclareElectronDistribution{16}{2,2+6,2+4}
+\DeclareElectronDistribution{17}{2,2+6,2+5}
+\DeclareElectronDistribution{18}{2,2+6,2+6}% Ar
+% period 4
+\DeclareElectronDistribution{19}{2,2+6,2+6,1}
+\DeclareElectronDistribution{20}{2,2+6,2+6,2}
+\DeclareElectronDistribution{21}{2,2+6,2+6+1,2}
+\DeclareElectronDistribution{22}{2,2+6,2+6+2,2}
+\DeclareElectronDistribution{23}{2,2+6,2+6+3,2}
+\DeclareElectronDistribution{24}{2,2+6,2+6+5,1}
+\DeclareElectronDistribution{25}{2,2+6,2+6+5,2}
+\DeclareElectronDistribution{26}{2,2+6,2+6+6,2}
+\DeclareElectronDistribution{27}{2,2+6,2+6+7,2}
+\DeclareElectronDistribution{28}{2,2+6,2+6+8,2}
+\DeclareElectronDistribution{29}{2,2+6,2+6+10,1}
+\DeclareElectronDistribution{30}{2,2+6,2+6+10,2}
+\DeclareElectronDistribution{31}{2,2+6,2+6+10,2+1}
+\DeclareElectronDistribution{32}{2,2+6,2+6+10,2+2}
+\DeclareElectronDistribution{33}{2,2+6,2+6+10,2+3}
+\DeclareElectronDistribution{34}{2,2+6,2+6+10,2+4}
+\DeclareElectronDistribution{35}{2,2+6,2+6+10,2+5}
+\DeclareElectronDistribution{36}{2,2+6,2+6+10,2+6}% Kr
+% period 5
+\DeclareElectronDistribution{37}{2,2+6,2+6+10,2+6,1}
+\DeclareElectronDistribution{38}{2,2+6,2+6+10,2+6,2}
+\DeclareElectronDistribution{39}{2,2+6,2+6+10,2+6+1,2}
+\DeclareElectronDistribution{40}{2,2+6,2+6+10,2+6+2,2}
+\DeclareElectronDistribution{41}{2,2+6,2+6+10,2+6+4,1}
+\DeclareElectronDistribution{42}{2,2+6,2+6+10,2+6+5,1}
+\DeclareElectronDistribution{43}{2,2+6,2+6+10,2+6+6,1}
+\DeclareElectronDistribution{44}{2,2+6,2+6+10,2+6+7,1}
+\DeclareElectronDistribution{45}{2,2+6,2+6+10,2+6+8,1}
+\DeclareElectronDistribution{46}{2,2+6,2+6+10,2+6+10}
+\DeclareElectronDistribution{47}{2,2+6,2+6+10,2+6+10,1}
+\DeclareElectronDistribution{48}{2,2+6,2+6+10,2+6+10,2}
+\DeclareElectronDistribution{49}{2,2+6,2+6+10,2+6+10,2+1}
+\DeclareElectronDistribution{50}{2,2+6,2+6+10,2+6+10,2+2}
+\DeclareElectronDistribution{51}{2,2+6,2+6+10,2+6+10,2+3}
+\DeclareElectronDistribution{52}{2,2+6,2+6+10,2+6+10,2+4}
+\DeclareElectronDistribution{53}{2,2+6,2+6+10,2+6+10,2+5}
+\DeclareElectronDistribution{54}{2,2+6,2+6+10,2+6+10,2+6}% Xe
+% period 6
+\DeclareElectronDistribution{55}{2,2+6,2+6+10,2+6+10,2+6,1}
+\DeclareElectronDistribution{56}{2,2+6,2+6+10,2+6+10,2+6,2}
+\DeclareElectronDistribution{57}{2,2+6,2+6+10,2+6+10,2+6+1,2}
+\DeclareElectronDistribution{58}{2,2+6,2+6+10,2+6+10+2,2+6,2}
+\DeclareElectronDistribution{59}{2,2+6,2+6+10,2+6+10+3,2+6,2}
+\DeclareElectronDistribution{60}{2,2+6,2+6+10,2+6+10+4,2+6,2}
+\DeclareElectronDistribution{61}{2,2+6,2+6+10,2+6+10+5,2+6,2}
+\DeclareElectronDistribution{62}{2,2+6,2+6+10,2+6+10+6,2+6,2}
+\DeclareElectronDistribution{63}{2,2+6,2+6+10,2+6+10+7,2+6,2}
+\DeclareElectronDistribution{64}{2,2+6,2+6+10,2+6+10+7,2+6+1,2}
+\DeclareElectronDistribution{65}{2,2+6,2+6+10,2+6+10+9,2+6,2}
+\DeclareElectronDistribution{66}{2,2+6,2+6+10,2+6+10+10,2+6,2}
+\DeclareElectronDistribution{67}{2,2+6,2+6+10,2+6+10+11,2+6,2}
+\DeclareElectronDistribution{68}{2,2+6,2+6+10,2+6+10+12,2+6,2}
+\DeclareElectronDistribution{69}{2,2+6,2+6+10,2+6+10+13,2+6,2}
+\DeclareElectronDistribution{70}{2,2+6,2+6+10,2+6+10+14,2+6,2}
+\DeclareElectronDistribution{71}{2,2+6,2+6+10,2+6+10+14,2+6+1,2}
+\DeclareElectronDistribution{72}{2,2+6,2+6+10,2+6+10+14,2+6+2,2}
+\DeclareElectronDistribution{73}{2,2+6,2+6+10,2+6+10+14,2+6+3,2}
+\DeclareElectronDistribution{74}{2,2+6,2+6+10,2+6+10+14,2+6+4,2}
+\DeclareElectronDistribution{75}{2,2+6,2+6+10,2+6+10+14,2+6+5,2}
+\DeclareElectronDistribution{76}{2,2+6,2+6+10,2+6+10+14,2+6+6,2}
+\DeclareElectronDistribution{77}{2,2+6,2+6+10,2+6+10+14,2+6+7,2}
+\DeclareElectronDistribution{78}{2,2+6,2+6+10,2+6+10+14,2+6+9,1}
+\DeclareElectronDistribution{79}{2,2+6,2+6+10,2+6+10+14,2+6+10,1}
+\DeclareElectronDistribution{80}{2,2+6,2+6+10,2+6+10+14,2+6+10,2}
+\DeclareElectronDistribution{81}{2,2+6,2+6+10,2+6+10+14,2+6+10,2+1}
+\DeclareElectronDistribution{82}{2,2+6,2+6+10,2+6+10+14,2+6+10,2+2}
+\DeclareElectronDistribution{83}{2,2+6,2+6+10,2+6+10+14,2+6+10,2+3}
+\DeclareElectronDistribution{84}{2,2+6,2+6+10,2+6+10+14,2+6+10,2+4}
+\DeclareElectronDistribution{85}{2,2+6,2+6+10,2+6+10+14,2+6+10,2+5}
+\DeclareElectronDistribution{86}{2,2+6,2+6+10,2+6+10+14,2+6+10,2+6}% Rn
+% period 7
+\DeclareElectronDistribution{87}{2,2+6,2+6+10,2+6+10+14,2+6+10,2+6,1}
+\DeclareElectronDistribution{88}{2,2+6,2+6+10,2+6+10+14,2+6+10,2+6,2}
+\DeclareElectronDistribution{89}{2,2+6,2+6+10,2+6+10+14,2+6+10,2+6+1,2}
+\DeclareElectronDistribution{90}{2,2+6,2+6+10,2+6+10+14,2+6+10,2+6+2,2}
+\DeclareElectronDistribution{91}{2,2+6,2+6+10,2+6+10+14,2+6+10+2,2+6+1,2}
+\DeclareElectronDistribution{92}{2,2+6,2+6+10,2+6+10+14,2+6+10+3,2+6+1,2}
+\DeclareElectronDistribution{93}{2,2+6,2+6+10,2+6+10+14,2+6+10+4,2+6+1,2}
+\DeclareElectronDistribution{94}{2,2+6,2+6+10,2+6+10+14,2+6+10+6,2+6,2}
+\DeclareElectronDistribution{95}{2,2+6,2+6+10,2+6+10+14,2+6+10+7,2+6,2}
+\DeclareElectronDistribution{96}{2,2+6,2+6+10,2+6+10+14,2+6+10+7,2+6+1,2}
+\DeclareElectronDistribution{97}{2,2+6,2+6+10,2+6+10+14,2+6+10+9,2+6,2}
+\DeclareElectronDistribution{98}{2,2+6,2+6+10,2+6+10+14,2+6+10+10,2+6,2}
+\DeclareElectronDistribution{99}{2,2+6,2+6+10,2+6+10+14,2+6+10+11,2+6,2}
+\DeclareElectronDistribution{100}{2,2+6,2+6+10,2+6+10+14,2+6+10+12,2+6,2}
+\DeclareElectronDistribution{101}{2,2+6,2+6+10,2+6+10+14,2+6+10+13,2+6,2}
+\DeclareElectronDistribution{102}{2,2+6,2+6+10,2+6+10+14,2+6+10+14,2+6,2}
+\DeclareElectronDistribution{103}{2,2+6,2+6+10,2+6+10+14,2+6+10+14,2+6+1,2}
+\DeclareElectronDistribution{104}{2,2+6,2+6+10,2+6+10+14,2+6+10+14,2+6+2,2}
+\DeclareElectronDistribution{105}{2,2+6,2+6+10,2+6+10+14,2+6+10+14,2+6+3,2}
+\DeclareElectronDistribution{106}{2,2+6,2+6+10,2+6+10+14,2+6+10+14,2+6+4,2}
+\DeclareElectronDistribution{107}{2,2+6,2+6+10,2+6+10+14,2+6+10+14,2+6+5,2}
+\DeclareElectronDistribution{108}{2,2+6,2+6+10,2+6+10+14,2+6+10+14,2+6+6,2}
+\DeclareElectronDistribution{109}{2,2+6,2+6+10,2+6+10+14,2+6+10+14,2+6+7,2}
+\DeclareElectronDistribution{110}{2,2+6,2+6+10,2+6+10+14,2+6+10+14,2+6+9,1}
+\DeclareElectronDistribution{111}{2,2+6,2+6+10,2+6+10+14,2+6+10+14,2+6+10,1}
+\DeclareElectronDistribution{112}{2,2+6,2+6+10,2+6+10+14,2+6+10+14,2+6+10,2}
+
+% --------------------------------------------------------------------------
+% declare isotope lists:
+\DeclareAtomIsotopes{1}  {!1,2,3}
+\DeclareAtomIsotopes{2}  {3,!4,5,6}
+
+\DeclareAtomIsotopes{3}  {3,!4,5,6}
+\DeclareAtomIsotopes{4}  {7,8,!9,10,11}
+\DeclareAtomIsotopes{5}  {8,9,10,!11,12,13}
+\DeclareAtomIsotopes{6}  {10,11,!12,13,14,15,16}
+\DeclareAtomIsotopes{7}  {13,!14,15,16}
+\DeclareAtomIsotopes{8}  {15,!16,17,18}
+\DeclareAtomIsotopes{9}  {17,18,!19,20,21}
+\DeclareAtomIsotopes{10} {18,19,!20,21,22,23,24}
+
+\DeclareAtomIsotopes{11} {21,22,!23,24,25}
+\DeclareAtomIsotopes{12} {23,!24,25,26,27,28}
+\DeclareAtomIsotopes{13} {25,26,!27,28,29}
+\DeclareAtomIsotopes{14} {26,27,!28,29,30,31,32,33,34}
+\DeclareAtomIsotopes{15} {28,29,30,!31,32,33,34,35}
+\DeclareAtomIsotopes{16} {30,31,!32,33,34,35,36,37,38,39,40}
+\DeclareAtomIsotopes{17} {!35,36,37}
+\DeclareAtomIsotopes{18} {33,34,35,36,37,38,39,!40,41,42}
+
+\DeclareAtomIsotopes{19} {38,!39,40,41,42,43}
+\DeclareAtomIsotopes{20} {!40,41,42,43,44,45,46,47,48}
+\DeclareAtomIsotopes{21} {43,44,!45,46,47,48,49}
+\DeclareAtomIsotopes{22} {44,45,46,47,!48,49,50,51,52}
+\DeclareAtomIsotopes{23} {48,49,50,!51}
+\DeclareAtomIsotopes{24} {48,49,50,51,!52,53,54,55,56}
+\DeclareAtomIsotopes{25} {52,53,54,!55,56}
+\DeclareAtomIsotopes{26} {52,53,54,55,!56,57,58,59,60}
+\DeclareAtomIsotopes{27} {55,56,57,58,!59,60,61}
+\DeclareAtomIsotopes{28} {!58,59,60,61,62,63,64}
+\DeclareAtomIsotopes{29} {61,62,!63,64,65,66,67}
+\DeclareAtomIsotopes{30} {!64,65,66,67,68,69,70}
+\DeclareAtomIsotopes{31} {67,68,!69,70,71,72,73}
+\DeclareAtomIsotopes{32} {68,69,70,71,72,73,!74,75,76,77}
+\DeclareAtomIsotopes{33} {72,73,74,!75,76,77}
+\DeclareAtomIsotopes{34} {74,75,76,77,78,79,!80,81,82}
+\DeclareAtomIsotopes{35} {77,78,!79,80,81,82,83}
+\DeclareAtomIsotopes{36} {78,79,80,81,82,83,!84,85,86}
+
+\DeclareAtomIsotopes{37} {83,84,!85,86,87,88,89}
+\DeclareAtomIsotopes{38} {82,83,84,85,86,87,!88,89,90}
+\DeclareAtomIsotopes{39} {87,88,!89,90,91}
+\DeclareAtomIsotopes{40} {89,!90,91,92,93,94,95,96}
+\DeclareAtomIsotopes{41} {91,92,!93,94,95}
+\DeclareAtomIsotopes{42} {92,93,94,95,96,97,!98,99,100}
+\DeclareAtomIsotopes{43} {95,96,97,98,!99}
+\DeclareAtomIsotopes{44} {96,97,98,99,100,101,!102,103,104,105,106}
+\DeclareAtomIsotopes{45} {101,102,102,!103,104,105}
+\DeclareAtomIsotopes{46} {102,103,104,105,!106,107,108,109,110}
+\DeclareAtomIsotopes{47} {105,106,!107,108,109,110,111}
+\DeclareAtomIsotopes{48} {106,107,108,109,110,111,112,113,!114,115,116}
+\DeclareAtomIsotopes{49} {111,112,113,114,!115}
+\DeclareAtomIsotopes{50} {112,113,114,115,116,117,118,119,!120,121,122,123,124,125,126}
+\DeclareAtomIsotopes{51} {119,120,!121,122,123,124,125}
+\DeclareAtomIsotopes{52} {120,121,122,123,124,125,126,127,128,129,!130}
+\DeclareAtomIsotopes{53} {123,124,125,126,!127,128,129,130,131}
+\DeclareAtomIsotopes{54} {124,125,126,127,128,129,130,131,!132,133,134,135,136}
+
+\DeclareAtomIsotopes{55} {131,132,!133,134,135,136,137}
+\DeclareAtomIsotopes{56} {128,129,130,131,132,133,134,135,136,137,!138,139,140}
+\DeclareAtomIsotopes{57} {135,136,137,138,!139,140,141}
+\DeclareAtomIsotopes{58} {134,135,136,137,138,139,!140,141,142,143,144}
+\DeclareAtomIsotopes{59} {137,138,139,140,!141,142,143,144,145}
+\DeclareAtomIsotopes{60} {!142,143,144,145,146,147,148,149,150}
+\DeclareAtomIsotopes{61} {143,144,145,146,!147,148,149}
+\DeclareAtomIsotopes{62} {144,145,146,147,148,149,150,151,!152,153,154}
+\DeclareAtomIsotopes{63} {149,150,151,152,!153,154,155}
+\DeclareAtomIsotopes{64} {150,151,152,153,154,155,156,157,!158,159,160}
+\DeclareAtomIsotopes{65} {155,156,157,158,!159,160,161}
+\DeclareAtomIsotopes{66} {154,155,156,157,158,159,160,161,162,163,!164}
+\DeclareAtomIsotopes{67} {163,164,!165,166,167}
+\DeclareAtomIsotopes{68} {162,163,164,165,166,!167,168,169,170}
+\DeclareAtomIsotopes{69} {167,168,!169,170,171}
+\DeclareAtomIsotopes{70} {168,169,170,171,172,173,!174,175,176}
+\DeclareAtomIsotopes{71} {173,174,!175,176,177}
+\DeclareAtomIsotopes{72} {174,175,176,177,178,179,!180,181,182}
+\DeclareAtomIsotopes{73} {177,178,179,180,!181,182,183}
+\DeclareAtomIsotopes{74} {178,179,180,181,182,183,!184,185,186,187,188}
+\DeclareAtomIsotopes{75} {185,186,!187,188}
+\DeclareAtomIsotopes{76} {184,185,186,187,188,189,190,191,!192}
+\DeclareAtomIsotopes{77} {189,190,191,192,!193,194,195}
+\DeclareAtomIsotopes{78} {188,189,190,191,192,193,194,!195,196,197,198,199,200}
+\DeclareAtomIsotopes{79} {195,196,!197,198,199}
+\DeclareAtomIsotopes{80} {196,197,198,199,200,201,!202,203,204,206}
+\DeclareAtomIsotopes{81} {199,200,201,202,203,204,!205,206,207,208,210}
+\DeclareAtomIsotopes{82} {202,203,204,205,206,207,!208,209,210,211,212,213,214}
+\DeclareAtomIsotopes{83} {205,206,207,208,!209,210,211,212,213,214,215}
+\DeclareAtomIsotopes{84} {208,209,!210,211,212,213,214,215,216,217,218}
+% no main isotope:
+\DeclareAtomIsotopes{85} {209,210,211,212,213,214,215,218,219,220}
+\DeclareAtomIsotopes{86} {210,211,212,217,218,219,220,221,!222,223,224}
+
+\DeclareAtomIsotopes{87} {222,!223}
+\DeclareAtomIsotopes{88} {223,224,225,!226,227,228}
+\DeclareAtomIsotopes{89} {224,225,226,!227,228}
+\DeclareAtomIsotopes{90} {227,228,229,230,231,!232,233,234}
+\DeclareAtomIsotopes{91} {229,230,!231,232,233,234}
+\DeclareAtomIsotopes{92} {232,233,234,235,236,237,!238,239}
+% no main isotope:
+\DeclareAtomIsotopes{93} {235,236,237,238,239}
+\DeclareAtomIsotopes{94} {236,237,238,239,240,241,242,243,!244}
+% no main isotope:
+\DeclareAtomIsotopes{95} {238,239,240,241,242,243,244}
+% no main isotope:
+\DeclareAtomIsotopes{96} {240,241,242,243,244,245,246,247,248,249,250}
+% no main isotope:
+\DeclareAtomIsotopes{97} {242,243,244,245,246,247,248,249,250}
+% no main isotope:
+\DeclareAtomIsotopes{98} {244,245,246,247,248,249,250,251,252,253,254}
+% no main isotope:
+\DeclareAtomIsotopes{99} {248,249,250,251,252,253,254,255}
+% no main isotope:
+\DeclareAtomIsotopes{100}{250,251,252,253,254,255,256,257,258,259}
+% no main isotope:
+\DeclareAtomIsotopes{101}{257,258,259,260}
+% no main isotope:
+\DeclareAtomIsotopes{102}{257,259}
+% no main isotope:
+\DeclareAtomIsotopes{103}{260,261,262,266}
+% no main isotope:
+\DeclareAtomIsotopes{104}{253,254,255,256,257,258,259,260,261,262}
+% no main isotope:
+\DeclareAtomIsotopes{105}{261,262,263}
+% no main isotope:
+\DeclareAtomIsotopes{106}{265,266}
+% no main isotope:
+\DeclareAtomIsotopes{107}{261,262,264}
+% no main isotope:
+\DeclareAtomIsotopes{108}{268,269,270}
+% no main isotope:
+\DeclareAtomIsotopes{109}{266,267,268,270,274,275,276}
+% no main isotope:
+\DeclareAtomIsotopes{110}{267,268,269,270,271,272,273,279,280,281,282}
+% no main isotope:
+\DeclareAtomIsotopes{111}{272,274,278,279,280}
+% no main isotope:
+\DeclareAtomIsotopes{112}{277,283,285}
+
+% --------------------------------------------------------------------------
+\endinput
+
+HISTORY:
+2015/06/14 v0.1  - first public version
+2015/06/30 v0.1a - bug fix in loading the fallback translations
+2015/10/15 v0.1b - minor fix in French translations
+2015/11/24 v0.1c - small code improvements
+2016/04/17 v0.1d - minor fix in French translations
+                 - new macro \mainelementisotope
+2016/05/15 v0.2  - new macro \setangularmomentum
+                 - new macro \printangularmomentum
+                 - add spanish language -- thanks to Schmidt Cristian Hernan

@@ -1,0 +1,185 @@
+%% Copyright 2016-… Maïeul Rouquette
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Maïeul Rouquette
+% This work consists of the files realauthor.dbx, realauthor.bbx
+\ProvidesFile{morenames.bbx}
+[2016/06/07 v1.1.0 biblatex bibliography style to have more name fields (MR)]
+
+
+%0. Preamble
+\ifdef{\biblatexmultipledm@bibstyle}
+	{\RequireBibliographyStyle{\biblatexmultipledm@bibstyle}}
+	{\RequireBibliographyStyle{verbose}}
+
+\RequirePackage{xpatch}
+\RequireBiber
+%1. Datainheritance
+\DeclareDataInheritance{mvcollection,mvreference,mvproceedings}{collection,reference,proceedings}{
+  \inherit{editor}{maineditor}
+}
+
+%2. New label names
+
+\DeclareLabelname[collection,proceedings,reference]{%
+  \field{shortauthor}
+  \field{author}
+  \field{maineditor}
+  \field{shorteditor}
+  \field{editor}
+  \field{translator}
+}
+
+\DeclareLabelname[inbook,bookinbook]{%
+  \field{shortauthor}
+  \field{author}
+  \field{ineditor}
+  \field{bookineditor}
+  \field{shorteditor}
+  \field{editor}
+  \field{translator}
+}
+
+
+%3. New bibmacro or bibmacro patching
+
+%3.1 Patching editor+others, in order to add the maineditor in @collection (original was defined in authortitle.bbx or authoryear.bbx)
+
+\xpatchbibmacro{editor+others}%
+  {\usebibmacro{bbx:editor}{editor+othersstrg}}% Original content
+  {%New content
+    \ifboolexpr{%
+      test \ifusemaineditor
+      and
+      not test {\ifnameundef{maineditor}}
+    }{%
+     \usebibmacro{bbx:dashcheck}
+         {\bibnamedash}
+         {\printnames{maineditor}%
+  	       \setunit{\addcomma\space}%
+  	       \usebibmacro{bbx:savehash}}%
+       \usebibmacro{maineditor+othersstrg}%
+       \clearname{maineditor}%
+    }
+    {\usebibmacro{bbx:editor}{editor+othersstrg}}
+  }
+
+% Inspired from editor+othersstrg macro
+
+\newbibmacro*{maineditor+othersstrg}{%
+  \iffieldundef{editortype}
+    {\ifboolexpr{
+       test {\ifnumgreater{\value{maineditor}}{1}}
+       or
+       test {\ifandothers{maineditor}}
+     }
+       {\def\abx@tempa{editors}}
+       {\def\abx@tempa{editor}}}
+    {\ifboolexpr{
+       test {\ifnumgreater{\value{maineditor}}{1}}
+       or
+       test {\ifandothers{maineditor}}
+     }
+       {\edef\abx@tempa{\thefield{editortype}s}}
+       {\edef\abx@tempa{\thefield{editortype}}}}%
+  \let\abx@tempb=\empty
+  \ifnamesequal{maineditor}{translator}
+    {\appto\abx@tempa{tr}%
+     \appto\abx@tempb{\clearname{translator}}}
+    {}%
+  \ifnamesequal{maineditor}{commentator}
+    {\appto\abx@tempa{co}%
+     \appto\abx@tempb{\clearname{commentator}}}
+    {\ifnamesequal{maineditor}{annotator}
+       {\appto\abx@tempa{an}%
+        \appto\abx@tempb{\clearname{annotator}}}
+       {}}%
+  \ifnamesequal{maineditor}{introduction}
+    {\appto\abx@tempa{in}%
+     \appto\abx@tempb{\clearname{introduction}}}
+    {\ifnamesequal{maineditor}{foreword}
+       {\appto\abx@tempa{fo}%
+        \appto\abx@tempb{\clearname{foreword}}}
+       {\ifnamesequal{maineditor}{afterword}
+          {\appto\abx@tempa{af}%
+           \appto\abx@tempb{\clearname{afterword}}}
+          {}}}%
+  \ifbibxstring{\abx@tempa}
+    {\printtext[editortype]{\bibstring{\abx@tempa}}\abx@tempb}
+    {\usebibmacro{editorstrg}}}
+
+% 3.2 Patching maintitle+title in order to add the maineditor in @incollection (original was defined in standard.bbx)
+%
+
+\newcommand{\morenames@failpatch@macro}[1]{%
+  \PackageError{biblatex-morenames}{Fail to patch `#1` macro}{}%
+}
+
+\newbibmacro*{bymaineditor+others}{%
+  \ifnameundef{maineditor}
+    {}
+    {\usebibmacro{byeditor+othersstrg}%
+     \setunit{\addspace}%
+     \printnames[byeditor]{maineditor}%
+     \clearname{maineditor}%
+     \newunit}
+}
+
+\xpatchbibmacro{maintitle+booktitle}
+  {\usebibmacro{maintitle}}% Original
+  {\usebibmacro{maintitle}%
+   \newunit%
+   \usebibmacro{bymaineditor+others}%
+  }
+  {}
+  {\morenames@failpatch@macro{maintitle+booktitle}}
+
+% 3.3 Patching @inbook and @article drivers in order to add the ineditor 
+
+\newcommand{\morenames@failpatch@driver}[1]{%
+  \PackageError{biblatex-morenames}{Fail to patch `#1` driver}{}%
+}
+
+\xpatchbibdriver{inbook}%
+  {\usebibmacro{byauthor}}
+  {\usebibmacro{byauthor}\newunit\usebibmacro{byineditor}}
+  {}
+  {\morenames@failpatch@driver{inbook}}
+
+\xpatchbibdriver{article}%
+  {\usebibmacro{byauthor}}
+  {\usebibmacro{byauthor}\newunit\usebibmacro{byineditor}}
+  {}
+  {\morenames@failpatch@driver{article}} 
+
+\DeclareNameAlias{bookineditor}[byeditor]{ineditor}
+  
+\newbibmacro*{byineditor}{%
+  \ifnameundef{ineditor}
+    {\usebibmacro{bybookineditor}}
+    {\usebibmacro{bytypestrg}{ineditor}{editor}%
+     \setunit{\addspace}%
+     \printnames[byeditor]{ineditor}%
+     \newunit}%
+  }
+\newbibmacro*{bybookineditor}{%
+  \ifnameundef{bookineditor}
+    {}
+    {\usebibmacro{bytypestrg}{bookineditor}{editor}%
+     \setunit{\addspace}%
+     \printnames[byeditor]{bookineditor}%
+     \newunit}%
+  }
+
+
+
+\endinput

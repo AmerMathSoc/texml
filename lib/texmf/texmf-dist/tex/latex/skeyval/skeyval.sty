@@ -1,0 +1,971 @@
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++%
+% This is file 'skeyval.sty', version 1.3, 2013/05/15.                     %
+%                                                                          %
+%                                  NOTE                                    %
+%                                                                          %
+% Beginning from version 1.0, 2012/09/01, the skeyval package has changed  %
+% radically. Users of pre-version 1.0 of the package can load it now by    %
+% calling:                                                                 %
+%                                                                          %
+%    \usepackage[compatibility]{skeyval}                                   %
+%    \RequirePackage[compatibility]{skeyval}                               %
+%                 or                                                       %
+%    \usepackage{skeyval-bc}                                               %
+%    \RequirePackage{skeyval-bc}                                           %
+%                                                                          %
+%                                LICENSE                                   %
+%                                                                          %
+% This package and accompanying files may be distributed and/or            %
+% modified under the conditions of the LaTeX Project Public License,       %
+% either version 1.3 of this license or any later version. The latest      %
+% version of this license is in http://www.latex-project.org/lppl.txt      %
+% and version 1.3 or later is part of all distributions of LaTeX           %
+% version 2005/12/01 or later.                                             %
+%                                                                          %
+% The LPPL maintenance status of this software is 'author-maintained'.     %
+%                                                                          %
+% This software is provided 'as it is', without warranty of any kind,      %
+% either expressed or implied, including, but not limited to, the          %
+% implied warranties of merchantability and fitness for a particular       %
+% purpose.                                                                 %
+%                                                                          %
+%                              DISTRIBUTION                                %
+%                                                                          %
+% The following files constitute the skeyval bundle and must be            %
+% distributed as a whole:                                                  %
+%                                                                          %
+%  README, skeyval.sty, skeyval-core.tex, skeyval-for.tex,                 %
+%  skeyval-view.sty, skeyval-ltxpatch.sty, skeyval-ltxcmds.tex,            %
+%  skeyval-pstkey.sty, skeyval-pstkey.tex, skeyval-testclass.cls,          %
+%  skeyval-testpkg.sty, skeyval-pokayoke1, skeyval-pokayoke2,              %
+%  skeyval-view-pokayoke1.                                                 %
+%                                                                          %
+% Copyright (c) 2010-2013 Ahmed Musa (amusa22@gmail.com).                  %
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++%
+
+\begingroup
+\catcode035 06 % #
+\catcode064 11 % @
+\catcode123 01 % {
+\catcode125 02 % }
+\catcode044 12 % ,
+\def\skv@prova{\endgroup
+  \def\do##1,{%
+    \ifx\do##1\else
+      \catcode##1\string=\the\catcode##1\relax
+      \expandafter\do
+    \fi
+  }%
+  \edef\skv@restorecodes{\do35,64,123,125,61,59,13,\do,}%
+}
+\skv@prova
+
+\edef\skv@restorecodes{%
+  \unexpanded\expandafter{\skv@restorecodes}%
+  \endlinechar\the\endlinechar\relax
+}
+\endlinechar13 %
+\catcode035 06 % #
+\catcode064 11 % @
+\catcode123 01 % {
+\catcode125 02 % }
+\catcode061 12 % =
+\catcode044 12 % ,
+\def\do#1=#2,{%
+  \ifx\do#1\else
+    \edef\skv@restorecodes{%
+      \unexpanded\expandafter{\skv@restorecodes}%
+      \catcode#1=\the\catcode#1\relax
+    }%
+    \catcode#1=#2\relax
+    \expandafter\do
+  \fi
+}
+\do 032=10,033=12,036=03,038=04,040=12,041=12,042=12,043=12,%
+  059=12,045=12,047=12,058=12,063=12,091=12,093=12,126=13,\do=,%
+
+\ProvidesPackage{skeyval}[2013/05/15 v1.3 Robust key-value parser (AM)]
+\NeedsTeXFormat{LaTeX2e}[2011/06/27]
+
+\input skeyval-core
+
+\skvrobustdef*\skvafterendpackage{%
+  \skvifcsdefTF{\@currname.\@currext-skv@endpkghook}{}{%
+    \@namedef{\@currname.\@currext-skv@endpkghook}{}%
+  }%
+  \expandafter\g@addto@macro
+  \csname\@currname.\@currext-skv@endpkghook\endcsname
+}
+\skvrobustdef*\skvafterpackage#1{%
+  \skvafterbegindocument{%
+    \skvifcsdefTF{ver@#1.\@pkgextension}{}{%
+      \skv@warn{Package '#1' was never loaded}%
+    }%
+  }
+  \skvifcsdefTF{ver@#1.\@pkgextension}{%
+    \@firstofone
+  }{%
+    \skvappendtomacro{#1.\@pkgextension-skv@endpkghook}%
+  }%
+}
+\xdef\@popfilename{%
+  \unexpanded{%
+    \csname\@currname.\@currext-skv@endpkghook\endcsname
+    \expandafter\let
+    \csname\@currname.\@currext-skv@endpkghook\endcsname\relax
+  }%
+  \unexpanded\expandafter{\@popfilename}%
+}
+\skvundef\skv@documentclass
+\skvrobustdef*\skv@getdocumentclass{%
+  \ifcase0%
+    \ifx\@filelist\@undefined 1\fi
+    \ifx\@filelist\relax 1\fi
+    \ifx\@filelist\@gobble 1\fi\relax
+    \skvcommaparse*\@filelist\skv@tempa{%
+      \filename@parse\skv@tempa
+      \ifx\filename@ext\@clsextension
+        \skvifcsdefFT{opt@\filename@area\filename@base.\filename@ext}{}{%
+          \edef\skv@documentclass{%
+            \filename@area\filename@base.\filename@ext
+          }%
+        }%
+      \fi
+      \ifx\skv@documentclass\@undefined\else\skvbreakloop\fi
+    }%
+  \fi
+}
+
+% The following packages need access to the original \@classoptionslist:
+\skvnewdef*\skv@optionprocessorpackages{%
+  xkeyval,kvoptions,catoptions,biblatex,pgfopts,ltxkeys%
+}
+% Filter class options to remove those with '=':
+\skvrobustdef*\skv@filterclassoptions{%
+  \ifcase0%
+    \ifx\@classoptionslist\@undefined 1\fi
+    \ifx\@classoptionslist\relax 1\fi\relax
+    \global\let\skv@filterclassoptions\relax
+    \skvkvnormalize\@classoptionslist
+    \let\skvoriginalclassoptionslist\@classoptionslist
+    \let\skv@classoptionslist\@classoptionslist
+    \let\@classoptionslist\@empty
+    \skvcommaloop*\skvoriginalclassoptionslist\skv@tempa{%
+      \skvxifinTF{=}{\skvexpandonce\skv@tempa}{}{%
+        \skvaddtolist*\@classoptionslist\skv@tempa
+      }%
+    }%
+    \def\@fileswith@ptions##1[##2]##3{%
+      \edef\skv@tempa{\unexpanded{##3}}%
+      \skvcsvnormalize\skv@tempa
+      \skvcommaloop*\skv@optionprocessorpackages\skv@prova{%
+        \skvxifinTF{,\skv@prova,}{,\skv@tempa,}{%
+          \let\@classoptionslist\skvoriginalclassoptionslist
+          \skvbreakloop
+        }{}%
+      }%
+      \skvifnextchar[{\@fileswith@pti@ns##1[##2]##3}%
+        {\@fileswith@pti@ns##1[##2]##3[]}%
+    }%
+  \fi
+}
+\skvrobustdef*\skvbeforebegindocument{%
+  \skvgappendtomacro\skv@beforebegindoc
+}
+\skvnewdef*\skv@beforebegindoc{}
+\skvprependtomacro\document{%
+  \endgroup
+  \let\skvbeforebegindocument\@firstofone
+  \skv@beforebegindoc
+  \gdef\skvbeforebegindocument{\skv@notprerr\skvbeforebegindocument}%
+  \global\let\skv@beforebegindoc\relax
+  \begingroup
+}
+\skvrobustdef*\skvafterbegindocument{%
+  \skvgappendtomacro\skv@afterbegindoc
+}
+\skvnewdef*\skv@afterbegindoc{}
+\skvgappendtomacro\document{%
+  \let\skvafterbegindocument\@firstofone
+  \skv@afterbegindoc
+  \gdef\skvafterbegindocument{\skv@notprerr\skvafterbegindocument}%
+  \global\let\skv@afterbegindoc\relax
+  \ignorespaces
+}
+\skvrobustdef*\skv@notprerr#1{%
+  \@latex@error{Command \detokenize{#1} should be used only
+    in preamble}\skv@ehd
+}
+\skvnewdef*\skv@everypagehook{}
+\skvrobustdef*\skvatbegineverypage{\skvgappendtomacro\skv@everypagehook}
+\skvafterbegindocument{%
+  \let\skv@savedoutputpage\@outputpage
+  \def\@outputpage{%
+    \let\skv@savedbegindvi\@begindvi
+    \def\@begindvi{%
+      \skv@everypagehook
+      \skv@savedbegindvi
+    }%
+    \skv@savedoutputpage
+    \let\@begindvi\skv@savedbegindvi
+  }%
+}
+
+\skvnewdef*\skv@preamblecmdhook{}
+\skvrobustdef*\skvonlypreamble#1{%
+  \def\skv@provb##1{%
+    \skvifntypeTF{##1}{}{%
+      \skv@err{More than one macro
+        \MessageBreak '\detokenize{##1}'.
+        \MessageBreak Maybe a comma is missing in the list}\skv@ehd
+    }%
+    \skvxifinTF{\detokenize{\do##1}}{\skvoxdetok\skv@preamblecmdhook}{%
+      \skv@warn{Command '\noexpand##1' multiply
+        \MessageBreak submitted to \string\skvonlypreamble: ignored}%
+    }{%
+      \xdef\skv@preamblecmdhook{%
+        \skvexpandonce\skv@preamblecmdhook\unexpanded{\do##1}%
+      }%
+    }%
+  }%
+  \skvcommaparse{#1}\skv@prova{%
+    \expandafter\skv@provb\expandafter{\skv@prova}%
+  }%
+}
+\AtEndOfPackage{%
+  \skvafterbegindocument{%
+    \def\do#1{%
+      \skvifdefTF#1{%
+        \gdef#1{\@latexerr{'\string#1' is a preamble command}\skv@ehd}%
+      }{%
+        \ifx\relax#1\else
+          \@@warning{Undefined command '\unexpanded{#1}'
+            \MessageBreak appeared in \string\skvonlypreamble.
+            \MessageBreak Only defined commands should be
+            \MessageBreak submitted to \string\skvonlypreamble.}%
+        \fi
+      }%
+    }%
+    \skv@preamblecmdhook
+    \let\skv@preamblecmdhook\relax
+    \let\do\relax
+  }%
+}
+
+%%+++++++++++++++++ Utilities for handling options ++++++++++++++++%%
+
+% \skvunknownoptionhandler[<prefixes>]<<families>>{<handler>}
+%
+\skvrobustdef*\skvunknownoptionhandler{%
+  \skv@testopt\skv@unknownoptionhandler\skvdefaultprefix
+}
+\skvrobustdef*\skv@unknownoptionhandler[#1]{%
+  \skvifnextchar<{\skv@unkn@wnoptionhandler{#1}}%
+    {\skv@unkn@wnoptionhandler{#1}<\@currname.\@currext>}%
+}
+\skvrobustdef*\skv@unkn@wnoptionhandler#1<#2>{%
+  \skv@unknownkeyhandler[#1]{#2}%
+}
+\skvrobustdef*\skv@testopte#1{\skv@testopta{\skv@t@stopte{#1}}}
+\skvrobustdef*\skv@t@stopte#1{\skv@testopt{\skv@t@st@pte{#1}}\skvdefaultprefix}
+\skvrobustdef*\skv@t@st@pte#1[#2]{%
+  % Only one prefix is allowed:
+  \skvxifinTF{,}{\detokenize{#2}}{%
+    \skv@err{Only one prefix is allowed, but you gave '#2'}\skv@ehd
+  }{%
+    \skv@makeprefix{#2}%
+    \skvifnextchar<{\skv@@t@st@pte{#1}}%
+      {\skv@@t@st@pte{#1}<\@currname.\@currext>}%
+  }%
+}
+\skvrobustdef*\skv@@t@st@pte#1<#2>{%
+  \edef\skv@fams{#2}%
+  \skvxifinTF{,}{\detokenize{#2}}{%
+    \skvcsvnormalize\skv@fams
+  }{%
+    \skvdespacecontent\skv@fams
+  }%
+  \skv@testopt{#1}{}%
+}
+
+\skvrobustdef*\skveveryunknownoption{\skvdeclareoption*}
+% \skvdeclareoption[<pref>]<<fam>>{<key>}[<defa>]{<callback>}
+% \skvdeclareoption*{<message>}
+\skvrobustdef*\skvdeclareoption{%
+  \let\@fileswith@pti@ns\@badrequireerror
+  \let\skvdefkey\skvordkey
+  \skvifstar\skv@dox\skv@dox@a
+}
+% \skvdeclarevoidoption[<pref>]<<fam>>{<key>}[<defa>]{<callback>}
+\skvrobustdef*\skvdeclarevoidoption{%
+  \let\@fileswith@pti@ns\@badrequireerror
+  \let\skvdefkey\skvvoidkey
+  \skv@dox@a
+}
+% \skvdeclareobsoleteoption
+%   [<pref>]{<fam>}{<obsolete key>}{<new key>}[<defa>]{<callback>}
+\skvrobustdef*\skvdeclareobsoleteoption{%
+  \let\@fileswith@pti@ns\@badrequireerror
+  \let\skvdefkey\skvobsoletekey
+  \skv@dox@a
+}
+
+% \skvdeclarebooloption[<pref>]<<fam>>[<mp>]{<key>}[<defa>]{<callback>}
+\skvrobustdef*\skvdeclarebooloption{%
+  \let\@fileswith@pti@ns\@badrequireerror
+  \let\skvdefkey\skvboolkey
+  \skv@dox@a
+}
+% \skvdeclarecmdoption[<pref>]<<fam>>[<mp>]{<key>}[<defa>]{<callback>}
+\skvrobustdef*\skvdeclarecmdoption{%
+  \let\@fileswith@pti@ns\@badrequireerror
+  \let\skvdefkey\skvcmdkey
+  \skv@dox@a
+}
+
+% Our default action for unknown options is tied to \@currname
+% and \@currext:
+\skvrobustdef\skv@dox#1{%
+  \skvcsedef{skv@dox@\@currname.\@currext}{%
+    \unexpanded{%
+      \ifx\skvcurrentvalue\skv@novaluetoks
+        \def\skvcurrentvalue{no value}%
+      \fi
+      #1%
+    }%
+  }%
+}
+\skvrobustdef*\skv@dox@a{\skv@testopt\skv@dox@b\skvdefaultprefix}
+\skvrobustdef*\skv@dox@b[#1]{%
+  \skvifnextchar<{\skv@dox@c{#1}}{\skv@dox@c{#1}<\@currname.\@currext>}%
+}
+\skvrobustdef*\skv@dox@c#1<#2>{\skvdefkey[#1]{#2}}
+
+% Declare options with default values that will be used when the options
+% are called without user values.
+%
+% \skvdeclarepassedoptions[<pref>]{<fam>}{<option>=<default>,...}
+%
+% Example:
+%
+%  \skvdeclarepassedoptions[KV]{fam}{%
+%    hyperref={colorlinks,breaklinks},xcolor=svgnames
+%  }
+%
+\skvrobustdef*\skvdeclarepassedoptions{%
+  \skv@testopt\skv@declarepassedoptions\skvdefaultprefix
+}
+\skvrobustdef*\skv@declarepassedoptions[#1]#2#3{%
+  \skvparsekvlist{#3}\skv@tempa{%
+    \skvexpbracenext\skv@kvsplit\skv@tempa{%
+      \skvdeclareoption[#1]<#2>{##1}[##2]{%
+        \skvifcsdefTF{ver@##1.sty}{%
+          \skv@warn{Package '##1' has been loaded and
+            \MessageBreak now you're passing options to it.
+            \MessageBreak Instruction ignored}%
+        }{%
+          \skvpassoptionstopackage{####1}{##1}%
+          \AtBeginDocument{%
+            \skvifpackageloadedTF{##1}{}{%
+              \skv@warn{Options were passed to package
+                \MessageBreak '##1' but it was never loaded}%
+            }%
+          }%
+        }%
+      }%
+    }%
+  }%
+}
+% \skvpassoptionstopackage{<opts>}{<pkg>}
+\skvrobustdef*\skvpassoptionstopackage{\skv@passoptions{sty}}
+\skvrobustdef*\skvpassoptionstoclass{\skv@passoptions{cls}}
+\skvrobustdef*\skv@passoptions#1#2#3{%
+  \begingroup
+  \edef\@elt{opt@\skvtrimspace{#3}.#1}%
+  \skvcsxdef{\@elt}{%
+    \skvifcsdefFT{\@elt}{}{\@nameuse{\@elt},}%
+    \skvtrimspace{#2}%
+  }%
+  \endgroup
+}
+
+% Pass options to package and load the package after processing options.
+%
+% \skvdeclarepassedoptionsloadpackage
+%    [<pref>]{<fam>}{<option>=<default>,...}
+%
+\skvrobustdef*\skvdeclarepassedoptionsloadpackage{%
+  \skv@testopt\skv@declarepassedoptions@load\skvdefaultprefix
+}
+\skvrobustdef*\skv@declarepassedoptions@load[#1]#2#3{%
+  \skvparsekvlist{#3}\skv@tempa{%
+    \skvexpbracenext\skv@kvsplit\skv@tempa{%
+      \skvdeclareoption[#1]<#2>{##1}[##2]{%
+        \skvifcsdefTF{ver@##1.sty}{%
+          \skv@warn{Package '##1' has been loaded and
+            \MessageBreak now you've asked for it to be
+            \MessageBreak loaded again. Instruction ignored}%
+        }{%
+          \skvafterprocessoptions{%
+            \RequirePackage[####1]{##1}%
+          }%
+        }%
+      }%
+    }%
+  }%
+}
+
+% \skvexecuteoptions[<pref>]<fams>[<na>]{<kvlist>}
+% \skvexecuteoptions+[<pref>]<fams>[<na>]{<kvlist>}
+%
+% This has no star (*) variant; any star suffix is quietly ignored.
+%
+\skvrobustdef*\skvexecuteoptions{%
+  \skv@testopte{\skv@stfalse\skv@setkeys@a}%
+}
+
+% \skvprocessoptions*+[<pref>]{<fams>}[<na>]
+%
+% 1. If not using LaTeX, then no processing of options.
+% 2. The plus (+) variant of \skvprocessoptions will process the options
+%    in all the listed families. The star (*) form of \skvprocessoptions
+%    -- like in LaTeX2e -- will also copy and use class options.
+% 3. Class options are always processed first, but class options that ocurr
+%    also as local/package options are dropped from the list of options
+%    to be processed. That is, package options always take priority over
+%    class options.
+% 4. The \ProcessOptionsX of xkeyval package doesn't expect any plus (+)
+%    suffix: it processes options only in a single family.
+%
+% 5. \skvpackagelist contains the list of loaded packages with their
+%    options that are found on the current paths. See
+%    <https://groups.google.com/forum/#!topic/comp.text.tex/XErNCMcT_jc>
+%    for the rationale. Example:
+%
+%       \usepackage[option1,option2]{foobar}
+%       \show\skvpackagelist
+%       \expandafter\show\csname foobar.sty.poxkeys\endcsname
+%
+\skvnewlet\skvpackagelist\@empty
+\skvrobustdef*\skvprocessoptions{%
+  \skv@getdocumentclass
+  \ifdefined\skv@documentclass
+    \global\let\skv@getdocumentclass\relax
+    \skv@filterclassoptions
+  \fi
+  \skv@testopte\skv@pox
+}
+\skvnewlet\skv@savprocessoptions\skvprocessoptions
+\skvrobustdef*\skv@badprocessoptions{%
+  \skv@testopte{%
+    \skv@err{\noexpand\skvprocessoptions can't be nested}\skv@ehd
+  }%
+}
+\skvrobustdef*\skv@pox[#1]{%
+  \skv@inpoxtrue
+  \let\@fileswith@pti@ns\@badrequireerror
+  \let\skvprocessoptions\skv@badprocessoptions
+  \begingroup
+  \edef\skv@userclassorpackage{\@currname.\@currext}%
+  \let\skv@classoptionsfound\@empty
+  \let\skv@classorpackageoptions\@empty
+  % The list of pox keys for each family, simply for taking
+  % pox keys outside the current scope:
+  \let\skv@exitpoxkeys\@empty
+  % The list of pox keys in all familes:
+  \let\skvcurrentpoxkeys\@empty
+  \ifx\skv@userclassorpackage\skv@documentclass
+    \skv@inclasstrue
+    \let\@unusedoptionlist\skv@classoptionslist
+  \else
+    \skv@inclassfalse
+    \ifcase0%
+      \ifx\skv@classoptionslist\@undefined 1\fi
+      \ifx\skv@classoptionslist\@empty 1\fi
+      \ifx\skv@classoptionslist\relax 1\fi\relax
+      \ifskv@st
+        \def\ifkeyundef##1##2##3{\skvexpanded{\skvifkeydefFT[##1]{##2}{##3}}}%
+        \skvcommaloop*\skv@classoptionslist\CurrentOption{%
+          \expandafter\expandafter\expandafter
+            \skv@g@tkeyname\CurrentOption=\skv@getname@nil\skvcurrentkey
+          % Test if key is defined in one of the families. The search will
+          % stop as soon as the key is found in any of the families.
+          \ifkeyundef\skvcurrentprefix\skv@fams\skvcurrentkey{}{%
+            \edef\skv@classoptionsfound{%
+              \skvaddlist,\skv@classoptionsfound\skvexpandonce\CurrentOption
+            }%
+            \expandafter\skv@removeoption\expandafter{\CurrentOption}%
+          }%
+        }%
+        \ifx\skv@classoptionsfound\@empty\else
+          \skvexpbracenext\skv@getnamesofkeys\skv@classoptionsfound\skv@tempd
+          \skvexpbracenext\skv@getpoxkeys\skv@tempd
+        \fi
+      \fi
+    \fi
+  \fi
+  \skvletcs\skv@classorpackageoptions{opt@\@currname.\@currext}%
+  \ifx\skv@classorpackageoptions\relax
+    \def\skv@classorpackageoptions{}%
+  \fi
+  \skvifemptyTF\skv@classorpackageoptions{}{%
+    \skvexpbracenext\skv@getnamesofkeys\skv@classorpackageoptions\skv@tempd
+    \skvexpbracenext\skv@getpoxkeys\skv@tempd
+    % Package options have higher priority than class options. Hence
+    % filter class options \skv@classoptionsfound that are also present
+    % as package options \skv@classorpackageoptions:
+    \skvifxTF\skv@userclassorpackage\skv@documentclass{}{%
+      \skvifemptyTF\skv@classoptionsfound{}{%
+        \skvcommaloop*\skv@classoptionsfound\CurrentOption{%
+          \expandafter\skv@g@tkeyname\CurrentOption=\skv@getname@nil\skv@tempa
+          \skvxifinTF{,\skvoxdetok\skv@tempa,}{,\skvoxdetok\skv@tempd,}{}{%
+            \edef\skv@classorpackageoptions{%
+              \skvaddlist,\skv@classorpackageoptions
+              \skvexpandonce\CurrentOption
+            }%
+          }%
+        }%
+      }%
+    }%
+  }%
+  % Get document class options that are on the current paths:
+  \ifx\skv@userclassorpackage\skv@documentclass
+    \def\skvclassoptionsfound{}%
+    \skvcommaloop*\skv@classorpackageoptions\skv@prova{%
+      \expandafter\skv@g@tkeyname\skv@prova=\skv@getname@nil\skvcurrentkey
+      \edef\skv@prova{[\skvcurrentprefix]{\skv@fams}{\skvcurrentkey}}%
+      \expandafter\skvifkeydefTF\skv@prova{%
+        \edef\skvclassoptionsfound{%
+          \skvaddlist,\skvclassoptionsfound\skvcurrentkey
+        }%
+      }{}%
+    }%
+  \else
+    \let\skvclassoptionsfound\skv@classoptionsfound
+  \fi
+  % \skvpackagelist is populated by all calls to \skvprocessoptions.
+  \skvletcs\skv@prova{\@currname.\@currext.poxkeys}%
+  \edef\skvpackagelist{%
+    \skvaddlist,\skvpackagelist
+    \skvifdefFT\skv@prova{}{\@currname.\@currext{\skv@prova}}%
+  }%
+  \let\do\skvcmdexit
+  \skvexpanded{\endgroup
+    \do\skvclassoptionsfound\do\skvcurrentpoxkeys
+    \do\skvpackagelist\do\@unusedoptionlist
+    \skvboolexit\ifskv@inclass\skv@exitpoxkeys
+    % There may be preset keys even when \skv@classorpackageoptions is empty:
+    \skvsetkeys\ifskv@pl+\fi[\skvcurrentprefix]{\skv@fams}[#1]%
+      {\skvexpandonce\skv@classorpackageoptions}%
+  }%
+  \skvcslet{skv@dox@\@currname.\@currext}\relax
+  \skv@inpoxfalse
+  \let\@fileswith@pti@ns\@@fileswith@pti@ns
+  \let\skvprocessoptions\skv@savprocessoptions
+  \AtEndOfPackage{\let\@unprocessedoptions\relax}%
+  \csname skv@\@currname.\@currext @afterprocess@hook\endcsname
+  \skvcslet{skv@\@currname.\@currext @afterprocess@hook}\relax
+}
+
+% \skvprocessoptionswithclassoptions*+[<pref>]{<fams>}[<na>]
+%
+% 1. The star (*) suffix is always assumed present, even when the
+%    user hasn't put it.
+%
+\skvrobustdef*\skvprocessoptionswithclassoptions{%
+  \skv@testopte\skv@processoptionswithclassoptions
+}
+\skvrobustdef*\skv@processoptionswithclassoptions[#1]{%
+  \skv@sttrue\skv@pox[#1]%
+}
+
+% \skvprocessoptionswithoutclassoptions*+[<pref>]{<fams>}[<na>]
+%
+% 1. The star (*) suffix is always assumed absent, even when the
+%    user has put it.
+%
+\skvrobustdef*\skvprocessoptionswithoutclassoptions{%
+  \skv@testopte\skv@processoptionswithoutclassoptions
+}
+\skvrobustdef*\skv@processoptionswithoutclassoptions[#1]{%
+  \skv@stfalse\skv@pox[#1]%
+}
+
+% \skv@getpoxkeys{<keys>}
+%
+% 1. Get pox keys (ie, keys processed as options) from package or
+%    class options.
+% 2. This isn't a user command! See \skvgetdefinedkeys in file
+%    skeyval-core.tex.
+\skvrobustdef*\skv@getpoxkeys#1{%
+  \begingroup
+  \skvcommaloop*\skv@fams\skvcurrentfamily{%
+    \skv@makeheader\skvcurrentfamily
+    % Prepare to take poxkeys outside the group:
+    \skvxifinTF{\skvoxdetok\skv@header}{\skvoxdetok\skv@exitpoxkeys}{}{%
+      \edef\skv@exitpoxkeys{%
+        \skvexpandonce\skv@exitpoxkeys
+        \noexpand\skvcsexit{\skvcurrentpath.@poxkeys}%
+      }%
+    }%
+    \edef\skv@prova{\@currname.\@currext.poxkeys}%
+    \skvxifinTF{\skvoxdetok\skv@prova}{\skvoxdetok\skv@exitpoxkeys}{}{%
+      \edef\skv@exitpoxkeys{%
+        \skvexpandonce\skv@exitpoxkeys\noexpand\skvcsexit{\skv@prova}%
+      }%
+    }%
+    \skvcommaloop{#1}\skvcurrentkey{%
+      \skvifcsdefFT{\skv@header\skvcurrentkey.@cbk}{}{%
+        \skvletcs\skv@prova{\skvcurrentpath.@poxkeys}%
+        \skvifdefTF\skv@prova{%
+          \skvxifinTF{,\skvcurrentkey,}{,\skv@prova,}{}{%
+            \skvcsedef{\skvcurrentpath.@poxkeys}{%
+              \skvaddlist,\skv@prova\skvcurrentkey
+            }%
+          }%
+        }{%
+          \skvcsedef{\skvcurrentpath.@poxkeys}{\skvcurrentkey}%
+        }%
+        \skvletcs\skv@prova{\@currname.\@currext.poxkeys}%
+        \skvifdefTF\skv@prova{%
+          \skvxifinTF{,\skvcurrentkey,}{,\skv@prova,}{}{%
+            \skvcsedef{\@currname.\@currext.poxkeys}{%
+              \skvaddlist,\skv@prova\skvcurrentkey
+            }%
+          }%
+        }{%
+          \skvcsedef{\@currname.\@currext.poxkeys}{\skvcurrentkey}%
+        }%
+        \skvxifinTF{,\skvcurrentkey,}{,\skvcurrentpoxkeys,}{}{%
+          \edef\skvcurrentpoxkeys{%
+            \skvaddlist,\skvcurrentpoxkeys\skvcurrentkey
+          }%
+        }%
+      }%
+    }%
+  }%
+  \let\do\skvcmdexit
+  \skvexpanded{\endgroup
+    \do\skvcurrentpoxkeys
+    % We need the list in \skv@exitpoxkeys outside the current scope.
+    % It will be used to take poxkeys (on each path) outside the scope
+    % in \skv@pox:
+    \do\skv@exitpoxkeys
+    % We need the poxkeys on each path outside the current scope:
+    \skv@exitpoxkeys
+  }%
+}
+
+% +++++++++ Utilities for handling options via \directkeys +++++++++%
+
+% \dirkeys@declareoptions{<star>}{<list>}
+%
+% <star>, if present, means new options.
+%
+\skvrobustdef*\dirkeys@declareoptions#1#2{%
+  \let\@fileswith@pti@ns\@badrequireerror
+  \begingroup
+  % The boolean skv@inopt differs from skv@inpox. skv@inopt is only
+  % meant to set the default family in \dirkeys@setdefaultpath
+  % when dealing with options.
+  \skv@inopttrue
+  \def\skv@tempa{}%
+  \edef\skv@tempb{\unexpanded{#2}}%
+  \def\skv@pathdo##1##2{%
+    \edef\skv@tempa{%
+      \skvexpandonce\skv@tempa
+      \skvdefinekeys#1[##1]{##2}%
+      [\dirkeys@holderprefixtoks]{\skvexpandonce\skv@tempb}%
+    }%
+  }%
+  \dirkeys@pathlist
+  \expandafter\endgroup\skv@tempa
+}
+% \dirkeys@executeoptions{<plus sign or empty>}{<kvlist>}
+%
+% 1. <no-plus> = Execute options on ONLY the first path found. If an
+%    option isn't found on the given paths, report error (ie,
+%    don't save the option to the list of 'remaining keys'). Unknown
+%    options should be flagged by an error immediately. Hence no
+%    star (*) form of \dirkeys@executeoptions.
+% 2. <plus> = Execute options on all the prevailing paths. If an
+%    option isn't found on the given paths, flag error.
+%
+\skvrobustdef*\dirkeys@executeoptions#1#2{%
+  \begingroup
+  \skv@inopttrue
+  % If the number of families is greater than one, gnored keys
+  % from different families will mixed. This is the case even in
+  % \skvsetkeys.
+  \skvemptify{\skv@igkeys,\skv@fams}%
+  \@tempcnta\skvz@
+  \def\skv@pathdo##1##2{%
+    \advance\@tempcnta\@ne
+    \def\skv@pref{##1}%
+    \ifnum\@tempcnta=\@ne
+      \def\skv@firstpref{##1}%
+    \else
+      \ifx\skv@pref\skv@firstpref\else
+        \skv@err{You can't use multiple prefixes when
+          \MessageBreak calling the handler '.execute options'.
+          \MessageBreak Check your values of '.prefix' and '.paths'}\skv@ehd
+      \fi
+    \fi
+    \skvxifinTF{,##2,}{,\skv@fams,}{}{%
+      \edef\skv@fams{\skvaddlist,\skv@fams##2}%
+    }%
+    \skvletcs\skv@prova{##1/##2/.@ignoredkeys}%
+    \ifdefined\skv@prova
+      \edef\skv@igkeys{\skvaddlist,\skv@igkeys\skv@prova}%
+    \fi
+  }%
+  \dirkeys@pathlist
+  \ifx\skv@fams\@empty
+    \skv@err{No family before calling '.execute options'}\skv@ehd
+  \fi
+  \skvexpanded{\endgroup
+    \skvsetkeys#1[\skv@pref]{\skv@fams}[\skv@igkeys]%
+  }{#2}%
+}
+\skvrobustdef*\dirkeys@processoptions#1#2{%
+  \begingroup
+  \skv@inopttrue
+  % If the number of families is greater than one, gnored keys
+  % from different families will mixed. This is the case even in
+  % \skvprocessoptions.
+  \skvemptify{\skv@igkeys,\skv@fams}%
+  \@tempcnta\skvz@
+  \def\skv@pathdo##1##2{%
+    \advance\@tempcnta\@ne
+    \def\skv@pref{##1}%
+    \ifnum\@tempcnta=\@ne
+      \def\skv@firstpref{##1}%
+    \else
+      \ifx\skv@pref\skv@firstpref\else
+        \skv@err{You can't use multiple prefixes when
+          \MessageBreak calling the handler '.process options'.
+          \MessageBreak Check your values of '.prefix' and '.paths'}\skv@ehd
+      \fi
+    \fi
+    \skvxifinTF{,##2,}{,\skv@fams,}{}{%
+      \edef\skv@fams{\skvaddlist,\skv@fams##2}%
+    }%
+    \skvletcs\skv@prova{##1/##2/.@ignoredkeys}%
+    \ifdefined\skv@prova
+      \edef\skv@igkeys{\skvaddlist,\skv@igkeys\skv@prova}%
+    \fi
+  }%
+  \dirkeys@pathlist
+  \ifx\skv@fams\@empty
+    \skv@err{No family before calling '.process options'}\skv@ehd
+  \fi
+  \skvexpanded{\endgroup
+    \skvprocessoptions#1#2[\skv@pref]<\skv@fams>[\skv@igkeys]%
+  }%
+}
+
+% ++++++++ Keys for the handler <.mega process options> +++++++++ %
+
+\directkeys*{%
+  .path={SKV/megapox},
+  .holder prefix=dirkeys@pox@,
+  .initialize keys after define=true,
+  .new keys={
+    .ord/.ignore options//
+      \def\dirkeys@pox@igkeys{#1}
+      \skvstripouterbraces{2}\dirkeys@pox@igkeys
+    ,
+    .ord/{.prefix,.options prefix}/\skvdefaultprefix/
+      \skv@ifoneprefix{#1}{%
+        \edef\dirkeys@pox@pref{#1}
+        \skvstripouterbraces{2}\dirkeys@pox@pref
+      }{%
+        \skv@err{Only one prefix is allowed in
+          \MessageBreak processing options}\skv@ehd
+      }
+    ,
+    .ord/{.family,.families,.options families,.options family}/
+      \@currname.\@currext/
+      \edef\dirkeys@pox@fams{#1}
+      \skvstripouterbraces{2}\dirkeys@pox@fams
+      \skv@makepaths\dirkeys@pox@pref\dirkeys@pox@fams
+        \dirkeys@megapox@pathlist\skv@pathdo
+    ,
+    .ord/{path,.paths,.option path,.option paths}/
+      {KV/\@currname.\@currext}/
+      \skv@formatpaths{#1}\dirkeys@megapox@pathlist
+    ,
+    .ord/{.copy class options,.include class options}/true/
+      \edef\dirkeys@pox@copyclass{0\skvifstrcmpTF{#1}{true}{0}{1}}
+    ,
+  },
+}
+
+\skvnewnumbers[skv@]{megapoxdepth}
+\skvrobustdef*\dirkeys@megaprocessoptions#1{%
+  \skvpushfunctions\dirkeys@megapox{%
+    \do\dirkeys@pathlist\do\skv@pathdo\do\dirkeys@megapox@pathlist
+    \do\dirkeys@pox@igkeys\do\dirkeys@pox@copyclass
+  }\skv@megapoxdepth
+  \skvemptify{\dirkeys@megapox@pathlist,\dirkeys@pox@igkeys}%
+  \let\dirkeys@pox@pref\skvdefaultprefix
+  \def\dirkeys@pox@copyclass{01}%
+  \skvsetkeys[SKV]{megapox}{#1}%
+  \ifx\dirkeys@pox@igkeys\@empty
+    % So that all '...@ignoredkeys' will be undefined:
+    \let\dirkeys@pox@igkeys\undefined
+  \fi
+  \let\dirkeys@pathlist\dirkeys@megapox@pathlist
+  \def\skv@pathdo##1##2{%
+    \skvcslet{##1/##2/.@ignoredkeys}\dirkeys@pox@igkeys
+  }%
+  \dirkeys@pathlist
+  \skvexpanded{%
+    \dirkeys@processoptions\if\dirkeys@pox@copyclass*\fi{+}%
+  }%
+  \skvpopfunctions\dirkeys@megapox\skv@megapoxdepth
+}
+
+% +++++++++++++ Handlers for executing and processing options ++++++++++++ %
+
+\directkeys*{%
+  .new handlers={
+    {.action for unknown options,.action for unknown options}={
+      \let\@fileswith@pti@ns\@badrequireerror
+      \skv@dox{#1}
+    },
+    {.declare option,.declare options,.define option,.define options}={
+      \dirkeys@declareoptions{}{#1}
+    },
+    {.new option,.new options}={
+      \dirkeys@declareoptions{*}{#1}
+    },
+    {.execute options,.executeoptions,.execute options in one family}={
+      \dirkeys@executeoptions{}{#1}
+    },
+    {.execute options*,.executeoptions*}={
+      \skv@err
+        {Handler '.execute options*' is undefined}
+        {Handler '.execute options' has no star (*) variant,
+        \MessageBreak since we don't want to ignore unknown
+        \MessageBreak options from within package or class file.}%
+    },
+    {.execute options+,.executeoptions+,.execute options in all families}={
+      \dirkeys@executeoptions{+}{#1}
+    },
+    % 1. All <.process options> handlers will filter out ignored keys.
+    % 2. <.process options*> will copy class options.
+    {.process options,.processoptions,.process options in one family}={
+      \dirkeys@processoptions{}{}
+    },
+    {.process options*,.processoptions*,
+      .copy class options and process options,
+      .copy class options and process options in one family}={
+      \dirkeys@processoptions{*}{}
+    },
+    {.process options+,.processoptions+,.process options in all families}={
+      \dirkeys@processoptions{}{+}
+    },
+    {.process options*+,.processoptions*+,
+      .copy class options and process options in all families}={
+      \dirkeys@processoptions{*}{+}
+    },
+    % The handler <.mega process options> will:
+    % 1. Search all families in its key <paths>.
+    % 2. Not filter ignored paths and keys; in fact, it will not
+    %    use active paths and keys.
+    % 3. The handler '.mega process options' has the keys <ignore options>,
+    %    <options prefix>, <options families>, and <copy class options>.
+    %    These keys have aliases.
+    %    See an example later in this file.
+    {.mega process options,.megaprocessoptions}={
+      \dirkeys@megaprocessoptions{#1}
+    },
+    {.mega process options*,.megaprocessoptions*}={
+      \dirkeys@megaprocessoptions{#1,copy class options}
+    },
+  },
+  .handler let={
+    {.action for unknown option,.every unknown option}=
+      .action for unknown options,
+  },
+}
+
+% Loading a package while in options section is illegal. The command
+% \skvafterprocessoptions can be used to defer the loading of packages
+% till after the options section:
+\skvrobustdef*\skvafterprocessoptions{%
+  \expandafter\skvgappendtomacro
+  \csname skv@\@currname.\@currext @afterprocess@hook\endcsname
+}
+\skvnewlet\skvifpackageloadedTF\@ifpackageloaded
+
+\skvnewdef*\skv@visiteduseoptions{01}
+\skvrobustdef*\skv@removeoption#1{%
+  \ifx\@unusedoptionlist\@empty\else
+    \if\skv@visiteduseoptions\else
+      \skvcsvnormalize\@unusedoptionlist
+      \def\skv@visiteduseoptions{00}%
+    \fi
+    \begingroup
+    \skv@g@tkeyname#1=\skv@getname@nil\skv@tempb
+    \@onelevel@sanitize\skv@tempb
+    \def\skv@tempa{}%
+    \skvcommaloop*\@unusedoptionlist\skv@prova{%
+      \expandafter\skv@g@tkeyname\skv@prova=\skv@getname@nil\skv@provb
+      \@onelevel@sanitize\skv@provb
+      \ifx\skv@provb\skv@tempb\else
+        \edef\skv@tempa{\skvaddlist,\skv@tempa\skvexpandonce\skv@prova}%
+      \fi
+    }%
+    \let\@unusedoptionlist\skv@tempa
+    \skvaftergroupdef\@unusedoptionlist\endgroup
+  \fi
+}
+\skvonlypreamble{%
+  \skvdeclareoption,\skvexecuteoptions,\skvprocessoptions,\skv@removeoption,
+  \skveveryunknownoption,\dirkeys@declareoptions,
+  \dirkeys@megaprocessoptions,\dirkeys@processoptions,\dirkeys@executeoptions,
+  \skvprocessoptionswithclassoptions,\skvprocessoptionswithoutclassoptions
+}
+
+%+++++++++++++++++ This package's options section ++++++++++++++++++%
+
+\skvrobustdef*\setupskeyval{\skvsetkeys[SKV]{skeyval}}
+\skv@inoptionsectrue
+\directkeys*{%
+  .every unknown option={
+    \@onelevel@sanitize\CurrentOption
+    \PackageWarning{skeyval}{Unknown option '\CurrentOption' ignored}%
+  },
+  .path=SKV/skeyval,
+  .holder prefix=skv@,
+  .new options={
+    .bool/{verbose,tracingkeys}/true,
+    .ord/{keyparser,key parser}/{,}/
+      \def\skv@keyparser{#1}%
+      \skvstripouterbraces{2}\skv@keyparser,
+    .bool/compatibility/true/
+      \ifskv@compatibility
+        \skvafterprocessoptions{%
+          \skvifpackageloadedTF{skeyval-bc}{}{%
+            \RequirePackage{skeyval-bc}%
+          }
+        }%
+      \fi
+    ,
+  },
+  .execute options={
+    tracingkeys=false,keyparser,verbose=false
+  },
+  .mega process options={
+    .options prefix=SKV,
+    .options families={skeyval,definekeys},
+    .ignore options={},
+    .copy class options,
+  },
+}
+\skv@inoptionsecfalse
+
+\skv@restorecodes
+\endinput

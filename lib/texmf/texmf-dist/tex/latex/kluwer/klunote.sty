@@ -1,0 +1,211 @@
+%
+%<*other>
+%
+%
+\ifcat a\noexpand @\let\next\relax\else \def\next{%
+\documentclass{kluwer}\usepackage{doc}\MakePercentIgnore}\fi\next
+\def\filedate{2000/04/29}
+\def\filename{klunote.sty}
+%\DoNotIndex{\@M,\def,\c@secnumdepth,\baselineskip,\@pnumwidth,\else,\fi}
+%\DoNotIndex{\newcommand,\z@,\relax,\renewcommand,\ifnum,\csname,\endcsname}
+%\DoNotIndex{\baselineskip,\vskip,\hskip,\relax,\secdef,\gdef,\@cla,\@clb}
+%\DoNotIndex{\normalsize,\protect,\global,\setbox,\hbox,\vbox,\endinput}
+%\DoNotIndex{\egroup,\endgroup,\bgroup,\begingroup,\let}
+%\changes{v??}{1999/12/22}{SK: footnotemarks implemented with textsuperscript}
+%\CodelineIndex
+%\newcommand{\Bs}{$\backslash$}
+%\parindent=0pt
+%\parskip=3pt
+%\hfuzz=11pt
+%\MakeShortVerb{\|} 
+%\setlength{\marginparwidth}{0in} 
+%\addtolength{\textwidth}{4pc}
+%\begin{document}
+%\begin{opening}
+%\title{\filename}
+%\date{\filedate}
+%\author{T. \surname{Hoekwater}}
+%\institute{Kluwer Academic Publishers}
+%\begin{abstract}
+% This internal stylefile takes care of footnotes, endnotes and marginpars.
+%\end{abstract}                                                            
+%\end{opening}
+%\tableofcontents
+%\section{Usage}
+%
+%
+% Footnotes are quite normal in usage, so please see Lamport for
+% details. 
+%
+% Endnotes were originally code from |endnotes.sty| (\LaTeX 2.09
+% package),  with some minor adjustments to aid\endnote{Example}
+% kluwer layout. Endnotes can be used just as |\footnote|s, with the
+% command |\endnote| and family. Say |\theendnotes| where you
+% want\endnote{another}. 
+% them to appear in your document. 
+%
+% This endnote code {\it does\/} obey |\nofiles|, but will not work
+% then (prevents an NFS error i've had). This means: any
+% writing command will be ignored, but the file will be read if
+% available. Note that this might mean that the endnotes are incorrect! 
+%\newpage\section{Implementation}
+%    \begin{macrocode}
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{klunote}[\filedate ]
+%    \end{macrocode}
+% 
+%
+% \subsection{Footnotes}
+%
+% Most stylefiles need to redefine the following lines, but we
+% need a default anyway... 
+%    \begin{macrocode}
+%</other>
+%<*main>
+\def\footnoterule{\kern-3\p@
+  \hrule width 3pc
+  \kern 2.6\p@}
+% \long\def\@makefntext#1{\parindent 1em\noindent
+%  \hbox to 1.5em{\hss$^{\@thefnmark}$}\hskip0.5em\footnotesize#1}
+% \def\@makefnmark{\hbox{$^{\@thefnmark}\m@th$}}
+% SK: reimplemented with \textsuperscript, following LaTeX format
+\long\def\@makefntext#1{\parindent 1em\noindent
+ \hbox to 1.5em{\hss\textsuperscript{\@thefnmark}}%
+   \hskip0.5em\footnotesize#1}
+\def\@makefnmark{\hbox{\textsuperscript{\@thefnmark}}}
+\footnotesep 6pt
+\skip\footins 10pt plus 4pt minus 2pt
+%    \end{macrocode}
+% \subsection{Endnotes}
+% User options first. 
+%    \begin{macrocode}
+\newcounter{endnote}
+\def\theendnote{\arabic{endnote}}
+\def\@makeenmark{\hbox{$^{\@theenmark}$}}
+\newdimen\endnotesep
+\setlength\endnotesep{1pt}
+\def\notesname{Notes}% <------ JK
+\def\endnotesize{\footnotesize}
+\def\endnoteformat{\vskip\endnotesep
+     \rightskip\z@ \leftskip\z@ 
+     \parindent=1.8em\leavevmode\llap{\hbox{$^{\@theenmark}$ }}}
+%    \end{macrocode}
+% User level interface: |\endnote|, |\addtoendnotes| and
+% |\theendnotes|. 
+%    \begin{macrocode}
+\def\endnote{%
+   \@ifnextchar[
+      {\@xendnote}%
+      {\stepcounter{endnote}%
+          \xdef\@theenmark{\theendnote}%
+          \@endnotemark
+          \@endnotetext}}
+\long\def\addtoendnotes#1{%
+     \if@endnotesopen \else \@openendnotes \fi
+     \begingroup
+        \newlinechar='40
+        \let\protect\string
+        \if@filesw \immediate\write\@endnotes{#1}\fi
+     \endgroup}
+%    \end{macrocode}
+%
+% I can't remember what the |\makeatletter| is doing here.
+%
+%    \begin{macrocode}
+\def\theendnotes{%
+  \if@filesw \immediate\closeout\@endnotes \fi
+  \global\@endnotesopenfalse
+  \begingroup
+    \makeatletter
+    \def\@doanendnote##1##2>{%
+        \def\@theenmark{##1}%
+        \par\begingroup
+        \endnoteformat}%
+    \def\@endanendnote{\par\endgroup}%
+    \def\ETC.{\PackageError{klunote}{%
+         Some endnotes will be truncated}{%
+         Because of memory constraints, LaTeX truncated some\MessageBreak 
+         long endnotes while writing the auxiliary file.\MessageBreak
+         Use a bigger TeX main memory size to avoid this,\MessageBreak
+         It is save to continue by pressing <enter>}%
+         \def\ETC.{\relax}}%
+       \IfFileExists{\jobname.ent}{%
+    \endnoteheading
+    \endnotesize
+    \@input{\jobname.ent}}{}%
+  \endgroup }
+%    \end{macrocode}
+% The less commonly used part of the user interface.
+%    \begin{macrocode}
+\def\endnotemark{%
+  \@ifnextchar[{\@xendnotemark}%
+               {\stepcounter{endnote}%
+                \xdef\@theenmark{\theendnote}%
+                \@endnotemark}}
+\def\endnotetext{%
+   \@ifnextchar[{\@xendnotenext}%
+                {\xdef\@theenmark{\theendnote}%
+                 \@endnotetext}}
+\def\endnoteheading{\section*{\notesname
+     \imarkboth{\notesname}{\notesname}}\leavevmode\par}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\def\@xendnote[#1]{\begingroup 
+   \c@endnote=#1\relax
+   \xdef\@theenmark{\theendnote}\endgroup
+   \@endnotemark\@endnotetext}
+\let\@doanendnote=0
+\let\@endanendnote=0
+\newwrite\@endnotes
+\newif\if@endnotesopen \@endnotesopenfalse
+\def\@openendnotes{%
+      \if@filesw \immediate\openout\@endnotes=\jobname.ent\relax
+                 \global\@endnotesopentrue \fi}
+\long\def\@endnotetext#1{%
+     \if@endnotesopen \else \@openendnotes \fi
+     \if@filesw \immediate\write\@endnotes{\@doanendnote{\@theenmark}}\fi
+     \begingroup
+        \def\next{#1}%
+        \newlinechar='40
+        \if@filesw \immediate\write\@endnotes{\meaning\next}\fi
+     \endgroup
+     \if@filesw \immediate\write\@endnotes{\@endanendnote}\fi
+     \edef\@currentlabel{\csname p@endnote\endcsname\@theenmark}}
+\def\@xendnotemark[#1]{%
+    \begingroup 
+    \c@endnote #1\relax
+    \xdef\@theenmark{\theendnote}\endgroup 
+    \@endnotemark}
+\def\@endnotemark{%
+   \leavevmode
+   \ifhmode \edef\@x@sf{\the\spacefactor}\fi 
+   \@makeenmark
+   \ifhmode\spacefactor\@x@sf\fi\relax}
+\def\@xendnotenext[#1]{%
+   \begingroup \c@endnote=#1\relax
+   \xdef\@theenmark{\theendnote}\endgroup 
+   \@endnotetext}
+%    \end{macrocode}
+% 
+%
+% \subsection{marginparbox}
+% This redefinition puts a |\marginparbox| in a |\fbox|. I am not sure
+% whether we want this, because it is quite hard to restore if needed.
+%    \begin{macrocode}
+%\long\def\@savemarbox#1#2{%
+%  \global\setbox #1
+%     \vtop{\fbox{\vtop{\hsize\marginparwidth
+%              \@parboxrestore  
+%              \raggedright
+%              \footnotesize 
+%              #2}}}}
+%</main>
+%<*other>
+\endinput
+%    \end{macrocode}
+% \theendnotes
+%\PrintIndex
+%\end{document}
+% end of klunote.sty
+%</other>

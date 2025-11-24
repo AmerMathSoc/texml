@@ -1,0 +1,482 @@
+% \iffalse
+%% File: randomwalk.dtx Copyright (C) 2011-2015 Bruno Le Floch
+%%
+%% It may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License (LPPL), either version 1.3c of this
+%% license or (at your option) any later version.  The latest version
+%% of this license is in the file
+%%
+%%    http://www.latex-project.org/lppl.txt
+%%
+%% -----------------------------------------------------------------------
+%
+%<*driver|package>
+%</driver|package>
+%<*driver>
+\RequirePackage{expl3}
+\documentclass[full]{l3doc}
+\usepackage{randomwalk}
+\AtBeginDocument{\chgrand[seed = 411500]\rand}
+\usepackage{amsmath}
+\begin{document}
+  \DocInput{randomwalk.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+%^^A The date here also is in \ProvidesExplPackage, and in the copyright.
+% \def\fileversion{v0.4}
+% \def\filedate{2015/09/20}
+%
+% \title{The \pkg{randomwalk} package: \\
+%   customizable random walks\thanks{This file describes version
+%     \fileversion, last revised \filedate.}}
+% \author{Bruno Le Floch\thanks{E-mail blflatex@gmail.com}}
+% \date{Released on \filedate}
+%
+% \maketitle
+% \tableofcontents
+%
+% \begin{documentation}
+%
+% \begin{abstract}
+%
+% The \pkg{randomwalk} package draws random walks. The
+% following parameters can be customized:
+% \begin{itemize}
+%   \item The number of steps, of course.
+%   \item The length of the steps, either a fixed length, or a length
+%     taken uniformly at random from a given list.
+%   \item The angle of each step, either taken uniformly at random
+%     from a given list, or uniformly distributed between $0$~and
+%     $360$ degrees.
+% \end{itemize}
+%
+% \end{abstract}
+%
+%
+% \section{How to use \pkg{randomwalk}}
+%
+% \newcommand{\examplei}
+%   {\RandomWalk {number = 200, length = {4pt, 10pt}}}
+% \newcommand{\exampleii}
+%   {\RandomWalk {number = 100, angles = {0,60,120,180,240,300}, degree}}
+% \newcommand{\exampleiii}
+%   {\RandomWalk {number = 50, length = 1ex, angles = {0,24,48,-24,-48}, degree, angles-relative}}
+% \begin{function}{\RandomWalk}
+% The \pkg{randomwalk} package has a single user command:
+% \cs{RandomWalk}, which takes a list of key-value pairs as its
+% argument. A few examples are given in Figures~\ref{examplei}, \ref{exampleii}, and~\ref{exampleiii}:
+% \begin{quote}\ttfamily
+% \detokenize\expandafter{\examplei}\\
+% \detokenize\expandafter{\exampleii}\\
+% \detokenize\expandafter{\exampleiii}
+% \end{quote}
+% Here is a list of all the keys, and their meaning:
+% \begin{itemize}
+%   \item \texttt{number}: the number of steps (default \(10\))
+%   \item \texttt{length}: the length of each step: either one dimension
+%     (\emph{e.g.}, |1ex|), or a comma-separated list of dimensions
+%     (\emph{e.g.}, |{2pt, 5pt}|), by default |10pt|. The length of each
+%     step is a (uniformly distributed) random element in this set of
+%     possible dimensions.
+%   \item \texttt{angles}: the polar angle for each step: a
+%     comma-separated list of angles, and each step takes a random angle
+%     in the list.  If this is not specified, then the angle is
+%     uniformly distributed along the circle.
+%   \item \texttt{degree} or \texttt{degrees}: specify that the angles
+%     are given in degrees (by default, they are in radians).
+%   \item \texttt{angles-relative}: instead of being absolute, the
+%     angles are relative to the direction of the previous step.
+%   \item \texttt{revert-random} (boolean, false by default): revert the
+%     seed of the random number generator to its original value after
+%     the random walk.
+% \end{itemize}
+% \end{function}
+%
+% \begin{figure}
+%   \begin{center}
+%     \framebox{\examplei}
+%     \caption{\label{examplei}A \(200\) steps long
+%       walk, where each step has one of two lengths:
+%       \texttt{\detokenize\expandafter{\examplei}}}
+%   \end{center}
+% \end{figure}
+%
+% \begin{figure}
+%   \begin{center}
+%     \framebox{\exampleii}
+%     \caption{\label{exampleii}A walk with constrained angles:
+%       \texttt{\detokenize\expandafter{\exampleii}}}
+%   \end{center}
+% \end{figure}
+%
+% \begin{figure}
+%   \begin{center}
+%     \framebox{\exampleiii}
+%     \caption{\label{exampleiii}A last example, with small relative
+%       angles: \texttt{\detokenize\expandafter{\exampleiii}}}
+%   \end{center}
+% \end{figure}
+%
+% \end{documentation}
+%
+% \begin{implementation}
+%
+% \section{\pkg{randomwalk} implementation}
+%
+% \subsection{Packages}
+%
+% The \pkg{expl3} bundle is loaded first.
+%
+%<*package>
+%    \begin{macrocode}
+%<@@=randomwalk>
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\RequirePackage{expl3}[2015/09/11]
+\ProvidesExplPackage
+  {randomwalk.sty} {2015/09/20} {0.4} {Customizable random walks}
+\RequirePackage{xparse}[2015/09/11]
+%    \end{macrocode}
+%
+% Load \pkg{pgfcore} for figures.
+%    \begin{macrocode}
+\RequirePackage{pgfcore}
+%    \end{macrocode}
+%
+% Load \pkg{lcg} for random numbers.
+% It needs to know the smallest and biggest random numbers that
+% should be produced, which we take to be $0$ and $\cs{c_@@_lcg_last_int}
+% = 2^{31}-2$.  It will then store them in \cs{c@lcg@rand}: the |\c@| is
+% there because of how \LaTeXe{} defines counters. To make it clear that
+% |\c| has a very special meaning here, I do not follow \LaTeX3 naming
+% conventions.  Also of note is that I use \cs{cr@nd} in \cs{@@_walk:}.
+%
+% It seems that the \pkg{lcg} package has to be loaded after the
+% document class, hence we do it \cs{AtBeginDocument}.  Also worth noting
+% is the call to \cs{rand}, which avoids some very odd bug.
+%    \begin{macrocode}
+\int_const:Nn \c_@@_lcg_last_int { \c_max_int - \c_one }
+\AtBeginDocument
+  {
+    \RequirePackage
+      [
+        first= \c_zero ,
+        last = \c_@@_lcg_last_int ,
+        counter = lcg@rand
+      ]
+      { lcg }
+    \rand
+  }
+%    \end{macrocode}
+%
+% \subsection{Variables}
+%
+% \begin{variable}[aux]{\l_@@_internal_tl, \l_@@_internal_int}
+%   Used for scratch assignments.
+%    \begin{macrocode}
+\tl_new:N \l_@@_internal_tl
+\int_new:N \l_@@_internal_int
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}[aux]{\l_@@_step_number_int}
+%   The number of steps requested by the caller.
+%    \begin{macrocode}
+\int_new:N \l_@@_step_number_int
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}[aux]{\l_@@_relative_angles_bool, \l_@@_degrees_bool}
+%   Booleans for whether angles are relative (keyval option),
+%   and whether they are in degrees.
+%    \begin{macrocode}
+\bool_new:N \l_@@_relative_angles_bool
+\bool_new:N \l_@@_degrees_bool
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}[aux]{\l_@@_revert_random_bool}
+%   Booleans for whether to revert the random seed to its original value
+%   or keep the last value reached at the end of a random path.
+%    \begin{macrocode}
+\bool_new:N \l_@@_revert_random_bool
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}[aux]{\@@_next_angle:, \@@_next_length:}
+%   Set the \cs{l_@@_angle_fp} and \cs{l_@@_length_fp} of the next step,
+%   most often randomly.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_next_angle: { }
+\cs_new_protected_nopar:Npn \@@_next_length: { }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{variable}[aux]{\l_@@_angle_fp, \l_@@_length_fp}
+%   Angle and length of the next step.
+%    \begin{macrocode}
+\fp_new:N \l_@@_angle_fp
+\fp_new:N \l_@@_length_fp
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}[aux]{\l_@@_x_dim, \l_@@_y_dim}
+%   Current coordinates: each \cs{pgfpathlineto} statement
+%   goes from the previous value of these to the next.  See
+%   \cs{@@_walk_step:}.
+%    \begin{macrocode}
+\dim_new:N \l_@@_x_dim
+\dim_new:N \l_@@_y_dim
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{variable}[aux]{\l_@@_angles_seq, \l_@@_lengths_seq}
+%   Sequences containing all allowed angles and lengths, as
+%   floating point numbers.
+%    \begin{macrocode}
+\seq_new:N \l_@@_angles_seq
+\seq_new:N \l_@@_lengths_seq
+%    \end{macrocode}
+% \end{variable}
+%
+% \subsection{User command and key-value list}
+%
+% \begin{macro}{\RandomWalk, \randomwalk:n}
+%   The user command \cs{RandomWalk} is based on the code-level
+%   command \cs{randomwalk:n}, which simply does the setup and calls
+%   the internal macro \cs{@@_walk:}.
+%    \begin{macrocode}
+\DeclareDocumentCommand \RandomWalk { m }
+  { \randomwalk:n {#1} }
+\cs_new_protected:Npn \randomwalk:n #1
+  {
+    \@@_setup_defaults:
+    \keys_set:nn { randomwalk } {#1}
+    \@@_walk:
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% We introduce the keys for the package.
+%    \begin{macrocode}
+\keys_define:nn { randomwalk }
+  {
+    number .value_required:n = true ,
+    length .value_required:n = true ,
+    angles .value_required:n = true ,
+    number .int_set:N = \l_@@_step_number_int ,
+    length .code:n = { \@@_setup_length:n {#1} } ,
+    angles .code:n = { \@@_setup_angles:n {#1} } ,
+    degree .bool_set:N = \l_@@_degrees_bool ,
+    degrees .bool_set:N = \l_@@_degrees_bool ,
+    angles-relative .bool_set:N = \l_@@_relative_angles_bool ,
+    revert-random .bool_set:N = \l_@@_revert_random_bool ,
+  }
+%    \end{macrocode}
+%
+% \subsection{Setup}
+%
+% \begin{macro}[aux]{\@@_setup_defaults:}
+%   The package treats the length of steps, and the angle,
+%   completely independently.  The function \cs{@@_next_length:}
+%   contains the action that decides the length of the next step, while
+%   the function \cs{@@_next_angle:} pertains to the angle.
+%
+%   \cs{@@_setup_defaults:} sets the default values before processing the
+%   user's key-value input.  This also sets initial values of variables
+%   that currently cannot be altered through keys, because it might be
+%   good to provide keys for their initial values too later on.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_setup_defaults:
+  {
+    \int_set:Nn \l_@@_step_number_int {10}
+    \cs_gset_protected_nopar:Npn \@@_next_angle:
+      { \@@_fp_set_rand:Nnn \l_@@_angle_fp { 0 } { 360 } }
+    \cs_gset_protected_nopar:Npn \@@_next_length:
+      { \fp_set:Nn \l_@@_length_fp {10} }
+    \bool_set_false:N \l_@@_revert_random_bool
+    \bool_set_false:N \l_@@_relative_angles_bool
+    \fp_zero:N \l_@@_angle_fp
+    \fp_zero:N \l_@@_length_fp
+    \dim_zero:N \l_@@_x_dim
+    \dim_zero:N \l_@@_y_dim
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_setup_length:n}
+%   Convert each item in the comma list into a floating point, then
+%   define \cs{@@_next_length:} to set \cs{l_@@_length_fp} to a random
+%   floating point in the list.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_setup_length:n #1
+  {
+    \seq_set_split:Nnn \l_@@_lengths_seq { , } {#1}
+    \seq_set_map:NNn \l_@@_lengths_seq
+      \l_@@_lengths_seq { \dim_to_fp:n {##1} }
+    \cs_gset_protected_nopar:Npn \@@_next_length:
+      {
+        \@@_get_rand_seq_item:NN
+          \l_@@_lengths_seq \l_@@_internal_tl
+        \fp_set:Nn \l_@@_length_fp { \l_@@_internal_tl }
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_setup_angles:n}
+%   Two complications compared to \cs{@@_setup_length:n}.  First, the
+%   angle can be given in radians rather than degrees: then add |rad|
+%   after the randomly chosen value (in principle it would be better to
+%   convert angles once and for all at the beginning, but that
+%   interacts in a complicated way with the fact that keys can be given
+%   in any order).  Second, angles can be relative, in which case we
+%   use \cs{fp_add:Nn} to take the last angle into account.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_setup_angles:n #1
+  {
+    \seq_set_split:Nnn \l_@@_angles_seq { , } {#1}
+    \seq_set_map:NNn \l_@@_angles_seq
+      \l_@@_angles_seq { \fp_to_tl:n {##1} }
+    \cs_gset_protected_nopar:Npn \@@_next_angle:
+      {
+        \@@_get_rand_seq_item:NN
+          \l_@@_angles_seq \l_@@_internal_tl
+        \bool_if:NF \l_@@_degrees_bool
+          { \tl_put_right:Nn \l_@@_internal_tl { rad } }
+        \bool_if:NTF \l_@@_relative_angles_bool
+          { \fp_add:Nn } { \fp_set:Nn }
+          \l_@@_angle_fp { \l_@@_internal_tl }
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Drawing}
+%
+% \begin{macro}[aux]{\@@_walk:}
+%   We are ready to define \cs{@@_walk:}, which draws a \pkg{pgf}
+%   picture of a random walk with the parameters set up by the
+%   \texttt{keys}.  We reset coordinates to zero originally.
+%   Then draw the relevant \pkg{pgf} picture by repeatedly calling
+%   \cs{@@_walk_step:}.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_walk:
+  {
+    \@@_walk_start:
+    \prg_replicate:nn { \l_@@_step_number_int }
+      { \@@_walk_step: }
+    \bool_if:NF \l_@@_revert_random_bool
+      { \int_gset_eq:NN \cr@nd \cr@nd }
+    \@@_walk_stop:
+  }
+%    \end{macrocode}
+%   \cs{cr@nd} is internal to the lcg package.
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_walk_start:, \@@_walk_line:, \@@_walk_stop:}
+%   These functions encapsulate all of the \pkg{pgf}-related code.  The
+%   \texttt{start} function begins the pgfpicture environment and
+%   starts a path at position (x,y).  The \texttt{line} function adds
+%   to the path a line from the previous position to the new (x,y).
+%   The \texttt{stop} function draws the path constructed by
+%   \cs{@@_walk_step:} and ends the pgfpicture environment.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_walk_start:
+  {
+    \begin{pgfpicture}
+      \pgfpathmoveto
+        { \pgfpoint { \l_@@_x_dim } { \l_@@_y_dim } }
+  }
+\cs_new_protected_nopar:Npn \@@_walk_line:
+  {
+    \pgfpathlineto
+      { \pgfpoint { \l_@@_x_dim } { \l_@@_y_dim } }
+  }
+\cs_new_protected_nopar:Npn \@@_walk_stop:
+  {
+      \pgfusepath { stroke }
+    \end{pgfpicture}
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_walk_step:}
+%   \cs{@@_walk_step:} calls \cs{@@_next_length:} and
+%   \cs{@@_next_angle:} to determine the length and angle of the new
+%   step.  This is then converted to cartesian coordinates and added to
+%   the previous end-point.  Finally, we call \pkg{pgf}'s \cs{pgfpathlineto} to
+%   produce a line to the new point.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_walk_step:
+  {
+    \@@_next_length:
+    \@@_next_angle:
+    \dim_add:Nn \l_@@_x_dim
+      {
+        \fp_to_dim:n
+          { \l_@@_length_fp * cosd ( \l_@@_angle_fp ) }
+      }
+    \dim_add:Nn \l_@@_y_dim
+      {
+        \fp_to_dim:n
+          { \l_@@_length_fp * sind ( \l_@@_angle_fp ) }
+      }
+    \@@_walk_line:
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{On random numbers and items}
+%
+% For random numbers, the interface of \pkg{lcg} is not quite enough, so
+% we provide our own \LaTeX3-y functions.  Also, this will allow us to
+% change quite easily our source of random numbers.
+%
+% \begin{macro}[aux]{\@@_fp_set_rand:Nnn}
+%   We also need floating point random numbers, assigned
+%   to the variable |#1|.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_fp_set_rand:Nnn #1#2#3
+  {
+    \rand
+    \fp_set:Nn #1
+      { #2 + (#3 - (#2)) * \c@lcg@rand / \c_@@_lcg_last_int }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_get_rand_seq_item:NN}
+%   We can now pick an element at random from a sequence.  If the
+%   sequence has a single element, no need for randomness.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_get_rand_seq_item:NN #1#2
+  {
+    \int_set:Nn \l_@@_internal_int { \seq_count:N #1 }
+    \int_compare:nTF { \l_@@_internal_int = 1 }
+      { \tl_set:Nx #2 { \seq_item:Nn #1 { 1 } } }
+      {
+        \rand
+        \tl_set:Nx #2
+          {
+            \seq_item:Nn #1
+              {
+                1 +
+                \int_mod:nn { \c@lcg@rand } { \l_@@_internal_int }
+              }
+          }
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+%
+% \end{implementation}
+%
+% \endinput

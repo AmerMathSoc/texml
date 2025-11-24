@@ -1,0 +1,94 @@
+%% Copyright (C) 2014 Christian Dietrich <stettberger@dokucode.de>
+%% -------------------------------------------------------
+%% 
+%% This package may be distributed and/or modified under the conditions
+%% of the LaTeX Project Public License, either version 1.3c of this
+%% license or (at your option) any later version.  The latest version of
+%% this license is in
+%% 
+%%    http://www.latex-project.org/lppl.txt
+%% 
+%% and version 1.3c or later is part of all distributions of LaTeX
+%% version 2008/05/04 or later.
+%
+% This interacts with the avr-gcc and provides a loader for ihex files
+%
+
+\def\avr@ihex@parse@line:#1#2#3#4#5#6#7#8#9;{%
+  \avr@hex@tobin{#1#2}{\avr@ihex@bytes}%
+  \avr@hex@tobin{#3#4#5#6}{\avr@ihex@address}%
+  \def\avr@ihex@type{#7#8}%
+  \def\avr@ihex@data{#9}%
+}
+
+\def\avr@ihex@readop#1#2#3{%
+  \def\avr@ihex@readop@helper##1##2##3##4##5\@nnil{%
+    \avr@hex@tobin{##3##4##1##2}{#2}%
+    \xdef#3{##5}%
+  }%
+  \edef\@tempa{#1}%
+  \expandafter\avr@ihex@readop@helper\@tempa\@nnil%
+}
+
+
+\newcount\avr@ihex@addr
+\newcount\avr@ihex@count
+\newcount\avr@ihex@instrs
+
+\def\avr@ihex@load#1{%
+  \newread\avr@input%
+  \avr@ihex@instrs=0\relax%
+  \openin\avr@input=#1\relax%
+  \@whilesw\unless\ifeof\avr@input\fi{%
+    \endlinechar59% 59==;
+    \readline\avr@input to \avr@line \relax%
+    \endlinechar=-1%
+    \expandafter\ifstrequal\expandafter{\avr@line}{;}{}{%
+      \expandafter\avr@ihex@parse@line \avr@line%
+      \ifdefstring{\avr@ihex@type}{00}{%
+        \avr@bin@tocount{\avr@ihex@bytes}{\avr@ihex@count}%
+        \avr@bin@tocount{\avr@ihex@address}{\avr@ihex@addr}%
+        \divide\avr@ihex@addr by 2\relax%
+        \divide\avr@ihex@count by 2\relax%
+        \loop \ifnum \avr@ihex@count > 0%
+          \avr@ihex@readop{\avr@ihex@data}{\avr@ihex@opcode}{\avr@ihex@data}%
+          \avr@code@set{\avr@ihex@opcode}{\the\avr@ihex@addr}%
+          %\avr@debug{=\avr@ihex@opcode}%
+          \advance \avr@ihex@count by -1\relax%
+          \advance \avr@ihex@addr by 1\relax%
+        \repeat%
+      }{}%
+    }%
+  }%
+  \closein\avr@input%
+}
+
+
+\def\avr@compile#1#2{%
+  \ifnum\pdfshellescape=1%
+     \immediate\write18{rm #1.hex #1.elf}%
+     \immediate\write18{avr-gcc -o #1.elf #1 #2}%
+     \immediate\write18{avr-objcopy -O ihex -R .eeprom #1.elf #1.hex}%
+     \IfFileExists{#1.hex}{}{%
+       \errmessage{avremu: Compilation of Source code failed (#1)}%
+     }%
+  \else%
+     \errmessage{avremu: --shell-escape is disabled; cannot compile}%
+  \fi%
+}
+
+\newcommand{\avrloadc}[2][-Os -mmcu=atmega8]{%
+  \avr@init%
+  \avr@compile{#2}{#1}%
+  \avr@ihex@load{#2.hex}%
+}
+
+\newcommand{\avrcompile}[2][-Os -mmcu=atmega8]{%
+  \avr@compile{#2}{#1}%
+}
+
+\newcommand{\avrloadihex}[1]{%
+  \avr@init%
+  \avr@ihex@load{#1}%
+}
+

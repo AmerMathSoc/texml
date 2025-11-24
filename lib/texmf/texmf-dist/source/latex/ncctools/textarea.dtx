@@ -1,0 +1,236 @@
+% \iffalse
+%%
+%% File: textarea.dtx Copyright (C) 2005 by Alexander I. Rozhenko
+%%
+%<package>\NeedsTeXFormat{LaTeX2e}
+%<package>\ProvidesPackage{textarea}
+%<package>         [2005/12/26 v1.0 Text area control (NCC)]
+%
+% \changes{v1.0}{2005/12/26}{Initial version}
+%
+%<*driver>
+\let\makeindex\relax
+\documentclass{ltxdoc}
+\usepackage{textarea}
+\GetFileInfo{textarea.sty}
+\begin{document}
+\title{The \textsf{textarea} package\thanks{This file
+        has version number \fileversion, last
+        revised \filedate.}}
+\author{Alexander I. Rozhenko\\rozhenko@oapmg.sscc.ru}
+\date{\filedate}
+\maketitle
+\DocInput{textarea.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% The package allows expand the text area of a document on other
+% areas: footer, header, and margin. There are two ways for such
+% expansion --- temporary expansion of a current page on the header using
+% a special negative vertical skip, or global change of page layout
+% parameters with possibility of later restoration them to the original
+% values. All these actions should be applied at the beginning of page.
+%
+% \section{User Interface}
+%
+% \DescribeMacro\StartFromTextArea
+% Applied at the beginning of page, it allows using the non-starred
+% form of the |\vspace| command after it. The introduced command provides
+% exact vertical skips at the beginning of page. Unlike it, the standard
+% \LaTeX's |\vspace*| command skips more space at the beginning of page
+% than it is required in its parameter. So, using the
+% |\StartFromTextArea| command prevents
+% incorrect spacing at the beginning of page.
+%
+% \DescribeMacro\StartFromHeaderArea
+% Applied at the beginning of page, it adjusts the beginning of text area
+% to the header area by inserting a negative vertical skip. The header
+% of this page should be empty. Otherwise, the consequent text will
+% overprint the header.
+%
+% \DescribeMacro{\ExpandTextArea\oarg{hfm}}
+% Expands the text area on other areas of page by changing page layout
+% parameters. It can be used in one-column mode only.
+% The letters in optional argument mean the following: |h| (header),
+% |f| (footer), and |m| (margins). If an optional argument is omitted
+% or equals to |[*]|, the temporary expansion to the header is applied
+% with the |\StartFromHeaderArea| command. Anyway, you can use the
+% non-starred form of the |\vspace| command after expansion of the
+% text area.
+%
+% When a text area is expanded (non-temporary), the repeated call of
+% this command is disallowed.
+%
+% \DescribeMacro\RestoreTextArea
+% Restores page layout parameters to their previous values. After that,
+% the |\ExpandTextArea| command can be applied again.
+%
+% \DescribeMacro\NCC@restoretextarea
+% This hook can be used to provide an automatic restoration of the text
+% area. In \textbf{ncc} class, we use it as follows: set it empty at
+% the beginning of |titlepage| environment and call this command at
+% the end of |titlepage| environment. So, if the text area will be
+% expanded within the |titlepage| environment, it will be automatically
+% restored at the end of it.
+%
+% \StopEventually{}
+%
+% \section{The Implementation}
+%
+% \begin{macro}{\StartFromTextArea}
+% \begin{macro}{\StartFromHeaderArea}
+% Both these commands are defined in two packages: in this and in
+% \textbf{nccsect}. To be sure that the commands are specified
+% in these packages only, we mutually test packages to be loaded.
+%    \begin{macrocode}
+%<*package>
+\@ifpackageloaded{nccsect}{}{%
+  \newcommand\StartFromTextArea{\par
+    {\parskip\z@ \strut\par}\vskip -\baselineskip
+  }
+  \newcommand\StartFromHeaderArea{%
+    \StartFromTextArea
+    \vskip -\headsep \vskip -\ht\strutbox
+  }
+}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\RestoreTextArea}
+% This command is usually empty. But it is globally redefined
+% when the layout of page is modified by the |\ExpandTextArea|
+% command.
+%    \begin{macrocode}
+\newcommand*\RestoreTextArea{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\ExpandTextArea}
+% This command should be applied at the beginning of page
+% in one-column mode only.
+%    \begin{macrocode}
+\newcommand*\ExpandTextArea[1][*]{%
+  \if@twocolumn
+    \PackageError{textarea}%
+                 {The \string\ExpandTextArea\space command\MessageBreak
+                  cannot work in two-column mode}{}%
+%    \end{macrocode}
+% Test for temporary expansion mode and do it.
+%    \begin{macrocode}
+  \else
+   \def\@tempa{*}\edef\@tempb{#1}%
+   \ifx\@tempa\@tempb
+     \StartFromHeaderArea
+%    \end{macrocode}
+% Otherwise, apply the permanent expansion but in the only case if
+% it was not already applied.
+%    \begin{macrocode}
+   \else
+    \ifx\RestoreTextArea\@empty
+%    \end{macrocode}
+% |\NCC@|\meta{x} hooks will be applied right here to modify the layout and
+% |\NCC@resore@|\meta{x} hooks will applied later when the original layout
+% will be restored.
+%    \begin{macrocode}
+     \let\NCC@h\@empty \global\let\NCC@restore@h\@empty
+     \let\NCC@f\@empty \global\let\NCC@restore@f\@empty
+     \let\NCC@m\@empty \global\let\NCC@restore@m\@empty
+%    \end{macrocode}
+% Analyze letters in the optional parameter and prepare the respective hooks.
+% The first parameter in all adjustment commands is a sign of adjustment:
+% the empty value means adjust and the minus sign means restore.
+%    \begin{macrocode}
+     \expandafter\@tfor\expandafter\@tempa\expandafter:\expandafter=#1\do{%
+       \if h\@tempa
+        \def\NCC@h{\NCC@adjusttoheader{}}%
+        \gdef\NCC@restore@h{\NCC@adjusttoheader-}%
+       \else
+        \if f\@tempa
+         \def\NCC@f{\NCC@adjusttofooter{}}%
+         \gdef\NCC@restore@f{\NCC@adjusttofooter-}%
+        \else
+         \if m\@tempa
+          \if@reversemargin \@tempcnta\@ne \else \@tempcnta\tw@ \fi
+          \edef\NCC@m{\noexpand\NCC@adjusttomargin{}{\the\@tempcnta}}%
+          \xdef\NCC@restore@m{\noexpand\NCC@adjusttomargin-{\the\@tempcnta}}%
+         \fi
+        \fi
+       \fi
+     }%
+%    \end{macrocode}
+% Modify the layout, apply the |\StartFromTextArea| command, and prepare
+% the |\RestoreTextArea| command and the auto-restoration hook.
+%    \begin{macrocode}
+     \NCC@h\NCC@f\NCC@m
+     \StartFromTextArea
+     \gdef\RestoreTextArea{%
+       \NCC@restore@h\NCC@restore@f\NCC@restore@m
+       \global\let\RestoreTextArea\@empty
+     }%
+     \def\NCC@restoretextarea{\RestoreTextArea}%
+    \fi
+   \fi
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\NCC@adjusttoheader}
+% Adjust text height parameters and |\topmargin|.
+%    \begin{macrocode}
+\def\NCC@adjusttoheader#1{%
+  \@tempdima #1\headheight
+  \advance\@tempdima #1\headsep
+  \global\advance\textheight\@tempdima
+  \global\advance\topmargin-\@tempdima
+  \global\@colht\textheight
+  \global\@colroom\textheight
+  \global\vsize\textheight
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\NCC@adjusttofooter}
+% Adjust text height parameters.
+%    \begin{macrocode}
+\def\NCC@adjusttofooter#1{%
+  \global\advance\textheight#1\footskip
+  \global\@colht\textheight
+  \global\@colroom\textheight
+  \global\vsize\textheight
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\NCC@adjusttomargin}
+% Adjust text width parameters, |\oddsidemargin| or
+% |\evensidemargin|. The second parameter specifies
+% the mode of marginal notes: reverse (1) or normal (2) margins.
+%    \begin{macrocode}
+\def\NCC@adjusttomargin#1#2{%
+  \@tempdima #1\marginparwidth
+  \advance\@tempdima #1\marginparsep
+  \@tempcnta#2%
+  \ifodd\@tempcnta
+    \global\advance\oddsidemargin -\@tempdima
+  \else
+    \global\advance\evensidemargin -\@tempdima
+  \fi
+  \global\advance\textwidth\@tempdima
+  \global\columnwidth\textwidth
+  \global\linewidth\textwidth
+  \global\hsize\textwidth
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\NCC@restoretextarea}
+% Text area auto-restoration hook.
+%    \begin{macrocode}
+\let\NCC@restoretextarea\@empty
+%</package>
+%    \end{macrocode}
+% \end{macro}
+\endinput

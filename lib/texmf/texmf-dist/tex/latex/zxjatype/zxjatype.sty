@@ -1,0 +1,1036 @@
+%
+% zxjatype.sty
+%
+%% package declaration
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{zxjatype}[2012/09/09 v0.6 ZX Japanese typeset]
+\RequirePackage{ifxetex}\RequireXeTeX
+
+%% code guards
+\edef\zxjt@restore@codes{%
+  \catcode34=\the\catcode34%
+  \catcode39=\the\catcode39%
+  \catcode43=\the\catcode43%
+  \catcode45=\the\catcode45%
+  \catcode46=\the\catcode46%
+  \catcode47=\the\catcode47%
+  \catcode58=\the\catcode58%
+  \catcode60=\the\catcode60%
+  \catcode62=\the\catcode62%
+  \catcode63=\the\catcode63%
+  \catcode94=\the\catcode94%
+  \catcode96=\the\catcode96%
+  \endlinechar=\the\endlinechar%
+\relax}
+\catcode34=12 % <">
+\catcode39=12 % <'>
+\catcode43=12 % <+>
+\catcode45=12 % <->
+\catcode46=12 % <.>
+\catcode47=12 % </>
+\catcode58=12 % <:>
+\catcode60=12 % <<>
+\catcode62=12 % <>>
+\catcode63=12 % <?>
+\catcode94=7 % <^>
+\catcode96=12 % <`>
+\AtEndOfPackage{%
+  \zxjt@restore@codes
+  \let\zxjt@restore@codes\@undefined
+}
+\endlinechar=13 %
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% BOOTSTRAP CODE
+% 
+
+%% definitions
+\def\zxjt@pkgname{zxjatype}
+\newif\ifzxjt@default
+\newif\ifzxjt@checksingle
+\newif\ifzxjt@adjustcharclass
+\providecommand*\bxDebug{\@gobble}
+
+%% process options
+\DeclareOption{default}{\zxjt@defaulttrue}
+\DeclareOption{nodefault}{\zxjt@defaultfalse}
+\DeclareOption{oldxetex}{% no longer supported
+  \PackageError\zxjt@pkgname
+   {'oldxetex' is no longer supported}\@ehc
+}
+\DeclareOption{CJKchecksingle}{\zxjt@checksingletrue}
+\DeclareOption{noCJKchecksingle}{\zxjt@checksinglefalse}
+% effective only in 'new-age' code
+\DeclareOption{adjustcharclass}{\zxjt@adjustcharclasstrue}
+\DeclareOption{noadjustcharclass}{\zxjt@adjustcharclassfalse}
+%
+\DeclareOption*{\PassOptionsToPackage{\CurrentOption}{xeCJK}}
+\ExecuteOptions{default,CJKchecksingle,adjustcharclass}
+\ProcessOptions\relax
+
+%% load xeCJK package
+\@ifpackageloaded{xeCJK}{}{%
+  \RequirePackage{xeCJK}%
+}
+\@ifpackagelater{xeCJK}{2012/05/01}{%
+  \bxDebug{xeCJK v3.x found.}%
+  \let\zxjt@go@to@main\@empty
+}{%
+  \bxDebug{xeCJK v2.x found.}%
+  \long\def\zxjt@go@to@main#1\zxjt@begin@old@code{}%
+}
+
+%% jump to main code
+\zxjt@go@to@main
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% NEW-AGE CODE
+
+%% load packages
+\RequirePackage{xparse} % xeCJK has already done it...
+\ExplSyntaxOn
+
+%%-------------------------------------- transition
+
+%% \l__zxjt_default_bool
+\bool_new:N \l__zxjt_default_bool
+\ifzxjt@default
+    \bool_set_true:N \l__zxjt_default_bool
+\fi
+%% \l__zxjt_checksingle_bool
+\bool_new:N \l__zxjt_checksingle_bool
+\ifzxjt@checksingle
+    \bool_set_true:N \l__zxjt_checksingle_bool
+\fi
+%% \l__zxjt_adjustcharclass_bool
+\bool_new:N \l__zxjt_adjustcharclass_bool
+\ifzxjt@adjustcharclass
+    \bool_set_true:N \l__zxjt_adjustcharclass_bool
+\fi
+
+%%-------------------------------------- error messages
+
+%% \c__zxjt_pkgname_tl
+\tl_const:Nn \c__zxjt_pkgname_tl { zxjatype }
+%
+\cs_new:Npn \__zxjt_msg_new:nn
+  { \msg_new:nnn { \c__zxjt_pkgname_tl } }
+\cs_new:Npn \__zxjt_error:nx
+  { \msg_error:nnx { \c__zxjt_pkgname_tl } }
+\cs_new:Npn \__zxjt_error:n
+  { \msg_error:nn { \c__zxjt_pkgname_tl } }
+%
+\__zxjt_msg_new:nn { xeCJK-incompatible }
+  {
+    Some~incompatible~settings~used~inside~xeCJK.\\
+    This~command~will~not~work~properly.
+  }
+\__zxjt_msg_new:nn { jafamilyinverbatim-disabled }
+  {
+    \token_to_str:N \(no)jafamilyinverbatim \c_space_tl
+    ~is~disabled~in~this~version.
+  }
+\__zxjt_msg_new:nn { CJKfam-failed }
+  {
+    Cannot~switch~to~CJK~family,~since~fetching~the~information~for\\
+    the~current~family~has~failed~for~some~reason.\\
+    (family=#1)
+  }
+
+%%-------------------------------------- helper functions
+
+%% temporary variables
+\tl_new:N \g__zxjt_tmpa_tl
+\dim_new:N \l__zxjt_tmpa_dim
+\box_new:N \g__zxjt_tmpa_box
+
+%% \c__zxjt_Default_class_int
+%% \c__zxjt_CJK_class_int
+%% \c__zxjt_FullLeft_class_int
+% The integer constants for char-classes. These classes are predefined in
+% XeLaTeX kernel, and not likely to change in near future.
+\int_const:Nn \c__zxjt_Default_class_int  { 0 }
+\int_const:Nn \c__zxjt_CJK_class_int      { 1 }
+\int_const:Nn \c__zxjt_FullLeft_class_int { 2 }
+
+%% \__zxjt_boundary:
+% Invokes the interchar-tokens for transition to the boundary class (255).
+% (A mere \scan_stop: suffices?)
+\cs_new:Nn \__zxjt_boundary:
+  {
+    \ifhmode
+        \hbox:n {}
+    \fi
+  }
+
+%% \__zxjt_leavevmode:
+% The well-known \leavevmode.
+\cs_new:Nn \__zxjt_leavevmode:
+  { \hbox_unpack:N \c_empty_box }
+
+%% \__zxjt_swap_doccmd:NN \cmdA \cmdB
+% Swaps the meaning of two document commands \cmdA and \cmdB. Although \cmdA
+% could call its submacros (\[cmdA code] etc.) produced by xparse mechanism,
+% one only has to simply swap the meaning of macros \cmdA and \cmdB.
+\cs_new:Nn \__zxjt_swap_doccmd:NN
+  {
+    \cs_set_eq:NN \__zxjt_swap_tmp: #1
+    \cs_set_eq:NN #1 #2
+    \cs_set_eq:NN #2 \__zxjt_swap_tmp:
+    \cs_undefine:N \__zxjt_swap_tmp:
+  }
+
+%%-------------------------------------- font-declaration hooks
+
+% The \setCJKxxxfont commands of xeCJK are redefined so that a hook
+% \__zxjt_after_decl_CJKfam:n {<CJK_fam_name>} is invoked on each declration
+% of a CJK family, including a generic one (\CJKrmdefault etc.).
+% If the declaration is done in the preamble then the execution of hook will
+% be delayed until the beginning of the document.
+
+%% Adds a hook to \setCJKxxxfont commands.
+\NewDocumentCommand \__setCJKmainfont { O{} m }
+  {
+    \__setCJKmainfont [ \l__zxjt_scale_spec_tl #1 ] { #2 }
+    \exp_args:Nx \__zxjt_after_decl_CJKfam:n { \CJKrmdefault }
+  }
+\__zxjt_swap_doccmd:NN \__setCJKmainfont \setCJKmainfont
+\NewDocumentCommand \__setCJKsansfont { O{} m }
+  {
+    \__setCJKsansfont [ \l__zxjt_scale_spec_tl #1 ] { #2 }
+    \exp_args:Nx \__zxjt_after_decl_CJKfam:n { \CJKsfdefault }
+  }
+\__zxjt_swap_doccmd:NN \__setCJKsansfont \setCJKsansfont
+\NewDocumentCommand \__setCJKmonofont { O{} m }
+  {
+    \__setCJKmonofont [ \l__zxjt_scale_spec_tl #1 ] { #2 }
+    \exp_args:Nx \__zxjt_after_decl_CJKfam:n { \CJKttdefault }
+  }
+\__zxjt_swap_doccmd:NN \__setCJKmonofont \setCJKmonofont
+\NewDocumentCommand \__setCJKfamilyfont { m O{} m }
+  {
+    \__setCJKfamilyfont { #1 } [ \l__zxjt_scale_spec_tl #2 ] { #3 }
+    \__zxjt_after_decl_CJKfam:n { #1 }
+  }
+\__zxjt_swap_doccmd:NN \__setCJKfamilyfont \setCJKfamilyfont
+
+%% \g__zxjt_CJKfam_seq
+% The record of CJK-family names declared in the preamble.
+\seq_new:N \g__zxjt_CJKfam_seq
+%% \__zxjt_after_decl_CJKfam:n {<fam_name>}
+% The hook.
+% (in the preamble)
+\cs_new:Nn \__zxjt_after_decl_CJKfam:n
+  {
+    \seq_gput_right:Nn \g__zxjt_CJKfam_seq { #1 }
+  }
+% (in the document body)
+\cs_new:Nn \__zxjt_after_decl_CJKfam_db:n
+  {
+    \__zxjt_inspect_CJKfam_info:n { #1 }
+    \__zxjt_invoke_ext_hook:n { #1 }
+  }
+%% The begin-document hook.
+% Processes the entires in \g__zxjt_CJKfam_seq and alters the definition of
+% \__zxjt_after_decl_CJKfam:n.
+\AtBeginDocument
+  {
+    \cs_set_eq:NN \__zxjt_after_decl_CJKfam:n \__zxjt_after_decl_CJKfam_db:n
+    \seq_remove_duplicates:N \g__zxjt_CJKfam_seq
+    \seq_map_function:NN \g__zxjt_CJKfam_seq \__zxjt_after_decl_CJKfam:n
+    \seq_gclear:N \g__zxjt_CJKfam_seq
+  }
+
+%%-------------------------------------- font-selection hooks
+
+% The \CJKfamily of xeCJK is redefined so that a hook
+% \__zxjt_after_decl_CJKfam:n {<CJK_fam_name>} is invoked. The CJK-family
+% name given is recorded in \l__zxjt_CJKfam_tl.
+% NB. \l__zxjt_CJKfam_tl should be same as \xeCJK@family.
+
+%% Adds a hook to \CJKfamily command.
+\NewDocumentCommand \__CJKfamily { m }
+  {
+    \__CJKfamily { #1 }
+    \exp_args:Nx \__zxjt_after_sel_CJKfam:n { #1 }
+  }
+\__zxjt_swap_doccmd:NN \__CJKfamily \CJKfamily
+
+%% \__zxjt_after_decl_CJKfam:n {<fam_name>}
+% The hook.
+\cs_new:Nn \__zxjt_after_sel_CJKfam:n
+  {
+    \tl_set:Nn \l__zxjt_CJKfam_tl { #1 }
+  }
+
+%--------------------------------------- CJK-family inspection
+
+% \__zxjt_inspect_CJKfam_info:n tries to know the NFSS family correspoding to
+% the given CJK-family name (without hacking into xeCJK internal) in the
+% following way:
+%   - A text including a CJK letter is typeset in an hbok with a "fresh"
+%     CJK-family. 
+%   - This process would trigger the declaration of the fontspec family
+%     corresponding to the CJk-family in issue.
+%   - So a hook is attached in advance to \fontspec_set_family:Nnn; the hook
+%     record the NFSS family into a temporary global variable.
+
+%% \g__zxjt_CJKfam_prop
+% The map from CJK-family names to NFSS family names.
+\prop_new:N \g__zxjt_CJKfam_prop
+%% \g__zxjt_onefam_info_tl
+\tl_new:N \g__zxjt_onefam_info_tl
+%% \l__zxjt_onefam_info_tl
+\tl_new:N \l__zxjt_onefam_info_tl
+%% \__zxjt_inspect_CJKfam_info:n {<CJK_fam_name>}
+% Tries to fetch the NFSS family name corresponding the given CJK family
+% name; if it succeeds, then the obtained name will be recorded in the map
+% \g__zxjt_CJKfam_prop.
+\cs_new:Nn \__zxjt_inspect_CJKfam_info:n
+  {
+    \prop_if_in:NnF \g__zxjt_CJKfam_prop { #1 }
+      { \__zxjt_inspect_CJKfam_info_aux_i:n { #1 } }
+  }
+\cs_new:Nn \__zxjt_inspect_CJKfam_info_aux_i:n
+  {
+    \tl_gclear:N \g__zxjt_onefam_info_tl
+    \int_compare:nNnT { \XeTeXcharclass "5B57 } = { \c__zxjt_CJK_class_int }
+      {
+        \group_begin:
+            \cs_set_eq:NN \__zxjt_org_set_family:Nnn \fontspec_set_family:Nnn
+            \cs_set:Nn \fontspec_set_family:Nnn {
+              \__zxjt_org_set_family:Nnn ##1 { ##2 } { ##3 }
+              \cs_gset_eq:NN \g__zxjt_onefam_info_tl ##1
+            }
+            \__CJKfamily { #1 }
+            \hbox_set:Nn \l_tmpa_box { ^^^^5b57 }
+        \group_end:
+      }
+    \bxDebug { family( #1 )~<=~ \g__zxjt_onefam_info_tl }
+    \tl_if_empty:NF \g__zxjt_onefam_info_tl
+      {
+        \prop_put:NnV \g__zxjt_CJKfam_prop { #1 } \g__zxjt_onefam_info_tl
+      }
+  }
+
+%--------------------------------------- external hook
+
+%%<+> \zxJaFamilyFontHook
+% The variable to store the hook code.
+\tl_clear_new:N \zxJaFamilyFontHook
+%%<+> \zxJaFamilyName
+% The variable holds the name of the declared CJK family name when the hook
+% is invoked.
+\tl_clear_new:N \zxJaFamilyName
+
+%% \__zxjt_invoke_ext_hook:n {<CJK_fam_name>}
+% Invokes the external hook code.
+\cs_new:Nn \__zxjt_invoke_ext_hook:n 
+  {
+    \tl_set:Nn \zxJaFamilyName { #1 }
+    \zxJaFamilyFontHook
+  }
+
+%%-------------------------------------- switching to CJK-family
+
+%% \g__zxjt_encoding_tl
+% The encoding used for CJK-families.
+\tl_new:N \g__zxjt_encoding_tl
+\tl_gset:Nn \g__zxjt_encoding_tl { EU1 }
+
+%% \__zxjt_use_CJKfam:
+% Switches the NFSS family to the family corresponding to the current CJK-
+% family (designated by \CJKfamily etc.).
+\cs_new:Nn \__zxjt_use_CJKfam:
+  {
+    \exp_args:NNx
+      \prop_get:NnNTF \g__zxjt_CJKfam_prop { \l__zxjt_CJKfam_tl }
+      \l__zxjt_onefam_info_tl
+      {
+        \bxDebug { family(\l__zxjt_CJKfam_tl)~=>~\l__zxjt_onefam_info_tl }
+        \fontencoding { \g__zxjt_encoding_tl }
+        \fontfamily { \l__zxjt_onefam_info_tl }
+        \selectfont
+      }
+      {
+        \__zxjt_error:nx { CJKfam-failed } { \l__zxjt_CJKfam_tl }
+      }
+  }
+
+%%-------------------------------------- inhibitglue
+
+%%<*> \inhibitglue
+% Cancles adjustment glues around this command.
+% NB: This is different from suppressing all adjustment; only glues vanish,
+% so punctuation characters will have a truncated width.
+\bool_if:nT
+  % if \inhibitglue does not seem to have a valid definition, one is provided
+  % by this package.
+  { ( \cs_if_free_p:N \inhibitglue )
+    || ( \cs_if_eq:p:NN \inhibitglue \scan_stop: )
+    || ( \cs_if_eq:p:NN \inhibitglue \prg_do_nothing: ) }
+  {
+    \cs_undefine:N \inhibitglue
+    \NewDocumentCommand \inhibitglue {}
+      {
+        \scan_stop:
+        \__zxjt_leavevmode:
+        % cancels left-side glue
+        \unskip \unskip \unskip
+        % cancels right-side glue to come, which is tricky...
+        \__zxjt_cancel_postglue:
+      }
+  }
+
+%% \__zxjt_cancel_postglue:
+% Tries to cancel the right-side glue coming from adjustment process done
+% by xeCJK. This is implemented as follows:
+%  - Peek the following token.
+%  - If the token is a non-letter character and has the FullLeft char-class,
+%    then proceed; otherwise stop here.
+%  - Measure the left-side glue of the character.
+%  - Put the negative of the measured glue.
+\cs_new:Nn \__zxjt_cancel_postglue:
+  {
+    \peek_after:Nw \__zxjt_cancel_postglue_aux_i:
+  }
+\cs_new:Nn \__zxjt_cancel_postglue_aux_i:
+  {
+    \token_if_other:NT \l_peek_token { \__zxjt_cancel_postglue_aux_ii:N }
+  }
+\cs_new:Nn \__zxjt_cancel_postglue_aux_ii:N
+  {
+    \bool_if:nT
+      { ! (\token_if_cs_p:N #1 )
+        && ( \int_compare_p:nNn
+             { \XeTeXcharclass `#1 } = \c__zxjt_FullLeft_class_int ) }
+      {
+        \__zxjt_measure_leftglue:N #1
+        \skip_horizontal:N \l__zxjt_leftglue_skip
+      }
+    #1
+  }
+
+%% \l__zxjt_leftglue_skip
+% The left-side cenceling glue resulted from the measurement.
+\skip_new:N \l__zxjt_leftglue_skip
+
+%% \__zxjt_measure_leftglue:N {<char>}
+\cs_new:Nn \__zxjt_measure_leftglue:N
+  {
+    \group_begin:
+        \hbox_set:Nn \l_tmpa_box { #1 }
+        \skip_set:Nn \l__zxjt_tmpa_dim { \box_wd:N \l_tmpa_box }
+        \vbox_set:Nn \l_tmpa_box
+          {
+            \dim_set:Nn \hsize { 2\l__zxjt_tmpa_dim }
+            \noindent
+            \hbox:n {} \newline
+            #1
+          }
+        \vbox_set:Nn \l_tmpb_box
+          {
+            \vbox_unpack:N \l_tmpa_box
+            \box_gset_to_last:N \g__zxjt_tmpa_box
+          }
+        \hbox_set:Nn \l_tmpa_box
+          {
+            \hbox_unpack:N \g__zxjt_tmpa_box
+            \unskip \unskip
+          }
+        \dim_set:Nn \l__zxjt_tmpa_dim
+          { \l__zxjt_tmpa_dim - \box_wd:N \l_tmpa_box }
+        \dim_compare:nNnTF { \l__zxjt_tmpa_dim } > { \c_zero_dim }
+          {
+            \skip_set:Nn \l__zxjt_leftglue_skip
+              { -\l__zxjt_tmpa_dim minus -\l__zxjt_tmpa_dim }
+          }
+          { \skip_zero:N \l__zxjt_leftglue_skip }
+        \tl_gset:Nx \g__zxjt_tmpa_tl
+          { \skip_use:N \l__zxjt_leftglue_skip }
+    \group_end:
+    \skip_set:Nn \l__zxjt_leftglue_skip { \g__zxjt_tmpa_tl }
+    \bxDebug { postglue(#1)~=~\skip_use:N \l__zxjt_leftglue_skip }
+  }
+
+%%-------------------------------------- char-class adjustment
+
+%% \__zxjt_adjust_charclass:
+\cs_new:Nn \__zxjt_adjust_charclass:
+  {
+    \xeCJKDeclareCharClass { CJK }
+      {
+        % Assigning 'FullRight' to small kana letters enables kinsoku at
+        % the left side, but sometimes disrupts spacing around them
+        % (these letters must be behaved same as ordinary kana/kanji letters
+        % with respect to spacing). Moreover kinsoku before small kana
+        % is criticized as "too strong" to use as default by some experts.
+        % So they are treated as normal CJK letters.
+        "3041, "3043, "3045, "3047, "3049, "3063, "3083, "3085, "3087, "308E,
+        "309B, "309C, "309D, "309E, "30A1, "30A3, "30A5, "30A7, "30A9, "30C3,
+        "30E3, "30E5, "30E7, "30EE, "30F5, "30F6, "30FB, "30FC, "30FD, "30FE,
+      }
+    \xeCJKDeclareCharClass { FullRight }
+      {
+        % U+2015 is treated same as U+2014.
+        "2015,
+      }
+  }
+
+%% Dispatches adjustment if 'adjustcharclass' option is set.
+\bool_if:NT \l__zxjt_adjustcharclass_bool
+  {
+    \__zxjt_adjust_charclass:
+    \xeCJKsetup { LongPunct+ = { ^^^^2015 } }
+  }
+
+%%-------------------------------------- public commands
+
+%%<*> \setjamainfont / \setjasansfont / \setjamonofont
+%%<*> \setjafamilyfont / \jafamily
+% Now these are synonymous to corresponding \...CJK... commands.
+\NewDocumentCommand \setjamainfont {}
+  { \setCJKmainfont }
+\NewDocumentCommand \setjasansfont {}
+  { \setCJKsansfont }
+\NewDocumentCommand \setjamonofont {}
+  { \setCJKmonofont }
+\NewDocumentCommand \setjafamilyfont {}
+  { \setCJKfamilyfont }
+\NewDocumentCommand \jafamily {}
+  { \CJKfamily }
+
+%%<*> \zxjapanesestyle
+%% Switches to a setting suitable for Japanese typesetting.
+\NewDocumentCommand { \zxjapanesestyle } {}
+  {
+    \xeCJKsetup
+      {
+        AllowBreakBetweenPuncts = true,
+        PunctStyle = fullwidth,
+      }
+    \zxusejapaneseparameters
+  }
+
+%%<*> \zxusejapaneseparameters
+%% Sets some xeCJK parameters to values suiable for Japanese.
+\NewDocumentCommand { \zxusejapaneseparameters } {}
+  {
+    \xeCJKsetup
+      {
+        CJKglue =
+          { \hspace { 0pt plus .08\baselineskip minus .008\baselineskip } },
+        CJKecglue =
+          { \hspace { 0.25em plus 0.15em minus 0.05em } },
+      }
+  }
+%%<*> \zxuseoriginalparameters
+%% Reets some xeCJK parameters to their original values.
+\NewDocumentCommand { \zxuseoriginalparameters } {}
+  {
+    \xeCJKsetup
+      {
+        CJKglue =
+          { \hspace { 0pt plus .08\baselineskip } },
+        CJKecglue =
+          { \c_space_token },
+      }
+  }
+
+%% \__zxjt_scale_tl
+% The scale value to be applied to CJK fonts.
+\tl_new:N \__zxjt_scale_tl
+%% \l__zxjt_scale_spec_tl
+\tl_new:N \l__zxjt_scale_spec_tl
+
+%%<*> \setjafontscale{<real>}
+%% Sets the value of \__zxjt_scale_tl, which defaults to 1.
+\NewDocumentCommand \setjafontscale { m }
+  {
+    % NB: the argument is not expanded
+    \tl_set:Nn \__zxjt_scale_tl { #1 }
+    \tl_if_blank:VTF \__zxjt_scale_tl
+      { \tl_clear:N \l__zxjt_scale_spec_tl }
+      { 
+        \tl_set:Nn \l__zxjt_scale_spec_tl
+          { Scale = \__zxjt_scale_tl , }
+      }
+  }
+
+%%<*> \[no]jafamilyinverbatim
+% NB: THESE COMMADS ARE DISABLED at the current version.
+\NewDocumentCommand \jafamilyinverbatim {}
+  { \__zxjt_error_jafamilyinverbatim: }
+\NewDocumentCommand \nojafamilyinverbatim {}
+  { \__zxjt_error_jafamilyinverbatim: }
+\cs_new:Nn \__zxjt_error_jafamilyinverbatim:
+  {
+    \__zxjt_error:n { jafamilyinverbatim-disabled }
+    \cs_set_eq:NN \__zxjt_error_jafamilyinverbatim: \prg_do_nothing:
+  }
+
+%% Shorthand commands \< and \>
+\AtBeginDocument
+  {
+    % \< is equated with \inhibitglue only if it is undefined.
+    \cs_if_free:NT \<
+      { \cs_set_eq:NN \< \inhibitglue }
+    % \> is redefined so it does \CJKecglue in text mode, only if it is
+    % not changed from the original LaTeX definition.
+    \tl_set:Nn \l_tmpa_tl { \mskip \medmuskip }
+    \token_if_eq_meaning:NNT \> \l_tmpa_tl
+      {
+        \cs_set:Npn \>
+          {
+            \ifmmode
+                \mskip \medmuskip
+            \else
+                \CJKecglue \scan_stop:
+            \fi
+          }
+      }
+  }
+
+%%<*> \textrawja {<text>}
+% Prints the text in the current CJK font, without xeCJK processing.
+\NewDocumentCommand \textrawja {}
+  { \__zxjt_text_raw:nn { \__zxjt_use_CJKfam: } }
+%%<*> \textrawen {<text>}
+% Prints the text in the current non-CJK font, without xeCJK processing.
+\NewDocumentCommand \textrawen {}
+  { \__zxjt_text_raw:nn { \prg_do_nothing: } }
+\cs_new:Nn \__zxjt_text_raw:nn
+  {
+    \__zxjt_leavevmode:
+    \__zxjt_boundary:
+    \group_begin:
+        \xeCJKsetup { xeCJKactive = false }
+        #1#2
+    \group_end:
+    \__zxjt_boundary:
+  }
+
+%%<*> rawjatext/rawentext environments
+\NewDocumentEnvironment { rawjatext } {}
+  { \__zxjt_raw_text:n { \__zxjt_use_CJKfam: } }
+  { \__zxjt_boundary: }
+\NewDocumentEnvironment { rawentext } {}
+  { \__zxjt_raw_text:n { \prg_do_nothing: } }
+  { \__zxjt_boundary: }
+\cs_new:Nn \__zxjt_raw_text:n
+  {
+    \__zxjt_leavevmode:
+    \__zxjt_boundary:
+    \xeCJKsetup { xeCJKactive = false }
+    #1
+  }
+
+%%-------------------------------------- initial settings
+
+%% cooperation with BXJS classes
+\setjafontscale { }
+\cs_if_exist:NT \jsDocClass
+  {
+    \setjafontscale { \jsScale }
+  }
+\cs_if_exist:NT \Cjascale
+  {
+    \setjafontscale { \Cjascale }
+  }
+
+%% drivers for \UI & \Ux
+\cs_set:Npn \zxjt@Ux
+  { \char \bxUcv }
+\cs_set:Npn \zxjt@Uxh #1
+  { \char "#1 \c_space_tl }
+\cs_set:Npn \zxjt@UI
+  {
+    \group_begin:
+        \__zxjt_use_CJKfam:
+        \char \bxUcv
+    \group_end:
+  }
+\cs_set:Npn \zxjt@UIh #1
+  {
+    \group_begin:
+        \__zxjt_use_CJKfam:
+        \char "#1 \c_space_tl
+    \group_end:
+  }
+
+%% when option 'checksingle' is set
+\bool_if:NT \l__zxjt_checksingle_bool
+  {
+    \xeCJKsetup
+      { CheckSingle = true }
+  }
+
+%% when option 'default' is set
+\bool_if:NT \l__zxjt_default_bool
+  { \zxjapanesestyle }
+
+%%-------------------------------------- all done
+\ExplSyntaxOff
+\endinput
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% NEW-AGE CODE
+\zxjt@begin@old@code
+
+%% load prerequisite packages
+\RequirePackage{etoolbox}
+\endlinechar=-1 %
+
+%%%% definitions
+%\def\zxjt@pkgname{zxjatype}
+\def\zxjt@error{\PackageError\zxjt@pkgname}
+\def\zxjt@warn{\PackageWarningNoLine\zxjt@pkgname}
+%
+\newcount\zxjt@olspc
+\newcount\zxjt@orspc
+\newcount\zxjt@lspc
+\newcount\zxjt@rspc
+\newcount\zxjt@lbspc
+\newcount\zxjt@raspc
+\newcount\zxjt@cnta
+\newcount\zxjt@cntb
+\newif\ifzxjt@jafamilyinverbatim
+\newif\ifzxjt@patch@success
+
+% make 'checksingle' effective
+\ifzxjt@checksingle
+  \let\xeCJK@i@i\xeCJK@checksingle
+\fi
+
+
+%%-------- Patches to xeCJK's internal macros
+
+\zxjt@patch@successtrue
+% \xeCJK@setkern
+\@gobble{\if}%if-match
+\patchcmd{\xeCJK@setkern}
+ {\fi\ifnum\xeCJK@cnta<0}
+ {\else\zxjt@patch@xeCJK@setkern#1#2\fi\ifnum\xeCJK@cnta<0}
+ {}{\zxjt@patch@successfalse}
+\@gobble{\fi}%if-match
+% \xeCJK@punctrule
+\@gobble{\if\if}%if-match
+\patchcmd{\xeCJK@punctrule}
+ {\fi\xeCJK@cntd=\xeCJK@cntc}
+ {\else\zxjt@patch@xeCJK@punctrule#1{#2}\fi\xeCJK@cntd=\xeCJK@cntc}
+ {}{\zxjt@patch@successfalse}
+%
+\ifzxjt@patch@success
+  \bxDebug{Patch applied to xeCJK.}
+\else
+  \zxjt@error{Failed in patching to xeCJK}
+   {Package loading is aborted right now.}
+  \zxjt@restore@codes
+\expandafter\endinput\fi\relax
+
+%%-------- User interface
+
+%%<*> \zxjapanesestyle
+%% Switches to a setting suitable for Japanese typesetting.
+\newcommand*\zxjapanesestyle{
+  \punctstyle{quasijis}
+  \xeCJKallowbreakbetweenpuncts
+  %\CJKaddspaces
+  \zxusejapaneseparameters
+}
+
+%%<*> \zxusejapaneseparameters
+%% Sets some xeCJK parameters to values suiable for Japanese.
+\newcommand*\zxusejapaneseparameters{
+\def\CJKglue{\hskip \z@ \@plus .08\baselineskip \@minus .008\baselineskip}
+\CJKsetecglue{\hskip 0.25em\@plus 0.15em\@minus 0.05em}
+}
+
+%%<*> \zxuseoriginalparameters
+%% Reets some xeCJK parameters to their original values.
+\newcommand*\zxuseoriginalparameters{
+\def\CJKglue{\hskip \z@ \@plus .08\baselineskip}
+\CJKsetecglue{ }
+}
+
+%%<*> \setjamainfont[<features>]{<font_name>}
+%%<*> \setjasansfont[<features>]{<font_name>}
+%%<*> \setjamonofont[<features>]{<font_name>}
+%%<*> \setjafamilyfont{<CJK_family_name>}[<features>]{<font_name>}
+%% Same as setCJK...font, except that 'Scale=\zxjt@scale' is specified as a feature.
+\def\setjamainfont{\zxjt@newfontfamily{rm}}
+\def\setjasansfont{\zxjt@newfontfamily{sf}}
+\def\setjamonofont{\zxjt@newfontfamily{tt}}
+\def\setjafamilyfont{\zxjt@newfontfamily}
+\def\zxjt@newfontfamily#1{
+  \@ifnextchar[{\zxjt@newfontfamily@a{#1}}
+    {\zxjt@newfontfamily@a{#1}[]}}
+\def\zxjt@newfontfamily@a#1[#2]{
+  \def\zxJaFamilyName{#1}\zxJaFamilyFontHook
+  \xeCJK@newfontfamily@{#1}[Scale=\zxjt@scale,#2]}
+
+%%<*> \jafamily{<CJK_family_name>}
+\let\jafamily\CJKfamily
+\let\zxjafamily\CJKfamily
+
+%%<+> \zxJaFamilyFontHook
+%% Hook set in \setja...font commands. The new family name is
+%% stored in \zxJaFamilyName.
+\let\zxJaFamilyFontHook\@empty
+
+%%<*> \setjafontscale{<real>}
+%% Sets the value of \zxjt@scale, which defaults to 1.
+\def\setjafontscale#1{\def\zxjt@scale{#1}}
+\setjafontscale{1}
+
+%% <*> \>
+\def\>{\ifmmode\mskip\medmuskip\else \CJKecglue\relax \fi}
+
+%%<*> \zxinhibitglue
+%% Removes a intercharacter glue inserted for space adjustment.
+\protected\def\inhibitglue{
+  \relax\leavevmode % build bounadry
+  \ifdim\lastskip=\zxjt@icgprobe@value\relax
+    \unskip\unskip\unskip % removes the adjuster skip plus probe skips
+    \bxDebug{cancel glue right}%
+  \fi
+  \kern-\zxjt@icgprobe@value\kern\zxjt@icgprobe@value % probe for forward check
+}
+\AtBeginDocument{
+  \ifx\<\@undefined \let\<\inhibitglue \fi
+}
+
+%%-------- Define a new punctrule 'quasijis'
+% The punctrule 'quasijis' is a spacing rule which roughly implements the rule
+% descrived in JIS X 4051 on the xeCJK system.
+
+%% \xeCJK@ps@quasijis
+% NB: The package should not depend on its value (10).
+\def\xeCJK@ps@quasijis{10}
+
+%% \zxjt@icgprobe@value
+\def\zxjt@icgprobe@value{10sp}
+
+%% \zxjt@cpar
+\def\zxjt@cpar#1#2{%
+  \ifcsname xeCJK\xeCJK@punctstyle\xeCJK@bboxname @#1@#2\endcsname
+    \csname xeCJK\xeCJK@punctstyle\xeCJK@bboxname @#1@#2\endcsname
+  \else 0
+  \fi\relax
+}
+
+%% \zxjt@patch@xeCJK@setkern
+\def\zxjt@patch@xeCJK@setkern#1#2{
+  \ifnum\xeCJK@punctstyle=\xeCJK@ps@quasijis\relax
+    \zxjt@lbspc=\zxjt@cpar{loglue}{#1}
+    \zxjt@rspc=\zxjt@cpar{roglue}{#1}
+    \zxjt@lspc=\zxjt@cpar{loglue}{#2}
+    \zxjt@raspc=\zxjt@cpar{roglue}{#2}
+    \ifnum\zxjt@lspc=25
+      \xeCJK@cnta=25\relax
+    \else\ifnum\zxjt@rspc=25
+      \xeCJK@cnta=25\relax
+    \else\ifnum\numexpr\zxjt@lbspc+\zxjt@rspc=0\relax
+      \xeCJK@cnta=\numexpr\zxjt@rspc+\zxjt@lspc\relax
+    \else\ifnum\numexpr\zxjt@lspc+\zxjt@raspc=0\relax
+      \xeCJK@cnta=\numexpr\zxjt@rspc+\zxjt@lspc\relax
+    \else
+      \xeCJK@cnta=\numexpr\zxjt@rspc+\zxjt@lspc-50\relax
+      \ifnum\xeCJK@cnta<0 \xeCJK@cnta=0 \fi
+    \fi\fi\fi\fi
+    \bxDebug{<#1>\the\zxjt@rspc+<#2>\the\zxjt@lspc::\the\xeCJK@cnta}
+  \fi
+}
+
+%% \zxjt@patch@xeCJK@punctrule
+\def\zxjt@patch@xeCJK@punctrule#1#2{
+  \ifnum\xeCJK@punctstyle=\xeCJK@ps@quasijis\relax
+    \zxjt@olspc=\csname xeCJK@\xeCJK@bboxname @lspace@#1\endcsname\relax
+    \zxjt@orspc=\csname xeCJK@\xeCJK@bboxname @rspace@#1\endcsname\relax
+    % limit sum of both side-bearings to either 0 or 50
+    \zxjt@lspc=0 \zxjt@rspc=0\relax
+    \ifcsname zxjt@jisfullwidth@#1\endcsname
+    \else\ifnum\zxjt@olspc>40\relax
+      \zxjt@lspc=50\relax
+    \else\ifnum\zxjt@orspc>40\relax
+      \zxjt@rspc=50\relax
+    \else
+      \ifnum\zxjt@olspc>15 \ifnum\zxjt@orspc>15\relax
+          \zxjt@lspc=25 \zxjt@rspc=25\relax
+      \fi\fi
+    \fi\fi\fi
+    \xeCJK@cnta=\csname zxjt@#2spc\endcsname
+    \xeCJK@cntc=\xeCJK@cnta
+    \xeCJK@cntd=\xeCJK@cnta
+    \bxDebug{<#1>:\the\zxjt@lspc/\the\zxjt@rspc}
+  \fi
+}
+
+%% \zxjt@jis@fullwidth{<char>}
+\def\zxjt@jis@fullwidth#1{
+  \expandafter\def\csname zxjt@jisfullwidth@#1\endcsname{}
+}
+\zxjt@jis@fullwidth{^^^^ff01}% FULLWIDTH EXCLAMATION MARK
+
+%%------ adjustment for Japanese font scaling
+
+%% \zxjt@lettodimenx{<CSname>}
+\def\zxjt@lettodimenx#1{
+  \expandafter\let\expandafter\zxjt@dimenx\csname#1\endcsname
+}
+
+%% \zxjt@outputglue
+\def\zxjt@outputglue{
+  \ifnum\xeCJK@punctstyle=\xeCJK@ps@quasijis\relax
+    \ifdim\lastkern=\zxjt@icgprobe@value\relax
+      \unkern\unkern
+      \bxDebug{cancel glue left}%
+    \else
+      {\xeCJK@setfont % switch to CJK font
+       \hskip\zxjt@dimenx\space\@minus\zxjt@dimenx
+       \hskip-\zxjt@icgprobe@value\hskip\zxjt@icgprobe@value}
+    \fi
+  \else
+    \hskip\zxjt@dimenx\space\@plus0.1em \@minus0.1em\relax
+  \fi
+}
+
+%% REVISE: \xeCJK@i@ii
+\def\xeCJK@i@ii#1{
+  \xeCJK@punctrule{#1}{l}
+  \zxjt@lettodimenx{xeCJK\xeCJK@punctstyle\xeCJK@bboxname @lglue@#1}
+  \zxjt@outputglue
+  \xeCJK@setprepunct{#1}}
+
+%% REVISE: \xeCJK@afterpostpunct
+\def\xeCJK@afterpostpunct{
+  \vrule width \csname xeCJK\xeCJK@punctstyle\xeCJK@bboxname
+     @rrule@\xeCJK@lastpunct\endcsname depth \z@ height \z@
+  \zxjt@lettodimenx{xeCJK\xeCJK@punctstyle\xeCJK@bboxname @rglue@\xeCJK@lastpunct}
+  \zxjt@outputglue}
+
+%%------ add hook to \verbatim@font
+
+%%<*> \[no]jafamilyinverbatim
+\let\jafamilyinverbatim\zxjt@jafamilyinverbatimtrue
+\let\nojafamilyinverbatim\zxjt@jafamilyinverbatimfalse
+
+%% \zxjt@verbatim@font
+\def\zxjt@verbatim@font{
+  \ifnum\XeTeXinterchartokenstate>\z@
+    \XeTeXinterchartokenstate\z@
+    \ifzxjt@jafamilyinverbatim
+      \CJKfamily{tt}\xeCJK@setfont
+    \fi
+  \fi}
+\AtBeginDocument{
+  \g@addto@macro\verbatim@font{\zxjt@verbatim@font}
+}
+
+%%------ raw input
+
+%%<*> \textrawja/\textrawen
+\DeclareRobustCommand\textrawja{
+  \zxjt@text@raw{\zxjt@setCJKfont}}
+\DeclareRobustCommand\textrawen{
+  \zxjt@text@raw{\relax}}
+\def\zxjt@text@raw#1#2{
+  \leavevmode\zxjt@boundary{\XeTeXinterchartokenstate\z@#1#2}
+  \zxjt@boundary}
+
+%%<*> rawjatext/rawentext (environment)
+\newenvironment{rawjatext}
+  {\zxjt@raw@text{\zxjt@setCJKfont}}{\zxjt@boundary}
+\newenvironment{rawentext}
+  {\zxjt@raw@text{\relax}}{\zxjt@boundary}
+\def\zxjt@raw@text#1{
+  \zxjt@boundary\XeTeXinterchartokenstate\z@#1}
+
+%% \zxjt@boundary
+\def\zxjt@boundary{\ifhmode\hbox{}\fi}
+
+%% \zxjt@setCJKfont
+% Sometimes needed instead of \xeCJK@setfont.
+\def\zxjt@setCJKfont{
+  \csname xeCJK@font@\xeCJK@family\endcsname}
+
+%%------ other adaptations
+
+% make U+2015 behave similarly as U+2014
+\xeCJK@postPunct{20}{15}
+\expandafter\def\csname xeCJK@specialpunct^^^^2015\endcsname{}
+
+%% fix to \xeCJK@@checksingle
+\def\zxjt@xeCJK@@checksingle{%
+  \ifcat ^^^^3002\@let@token \expandafter\xeCJK@@@checksingle
+  \else \expandafter\xeCJK@setcurrentchar@i \fi}
+\ifx\xeCJK@@checksingle\zxjt@xeCJK@@checksingle
+\def\xeCJK@@checksingle{%
+  \ifcat ^^^^3002\noexpand\@let@token \expandafter\xeCJK@@@checksingle
+  \else \expandafter\xeCJK@setcurrentchar@i \fi}
+\fi
+\let\zxjt@xeCJK@@checksingle\@undefined
+
+%%------ initial settings
+
+% cooperation with BXJS classes
+\ifx\jsDocClass\@undefined\else
+\edef\zxjt@scale{\jsScale}
+%\let\jsInhibitGlue\inhibitglue
+\fi
+
+% drivers for \UI & \Ux
+\def\zxjt@Ux{\char\bxUcv}
+\def\zxjt@Uxh#1{\char"#1 }
+\def\zxjt@UI{{\xeCJK@setfont\char\bxUcv}}
+\def\zxjt@UIh#1{{\xeCJK@setfont\char"#1 }}
+
+% when option 'default' is set
+\ifzxjt@default
+  \zxjapanesestyle
+\fi
+
+% verbatim font
+\jafamilyinverbatim
+
+%%------ backward compatibility
+
+\def\zxjt@compat#1#2{\ifx#1\@undefined \let#1#2\fi}
+\zxjt@compat\xeCJKjapanesestyle\zxjapanesestyle
+\zxjt@compat\xeCJKusejapaneseparameters\zxusejapaneseparameters
+\zxjt@compat\xeCJKuseoriginalparameters\zxuseoriginalparameters
+\zxjt@compat\CJKinhibitglue\inhibitglue
+
+%%------ all done
+\endlinechar `\^^M
+\endinput
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\iffalse%%
+
+\cs_new:Nn \zxjt_get_CJKfont_info:
+  {
+    \tl_clear:N \l_CJKfont_info_tl
+    \int_compare:nNnT { \XeTeXcharclass "5B57 } = { \c_zxjt_CJK_class_int }
+      {
+        \group_begin:
+            \int_set:Nn \XeTeXinterchartokenstate { 1 }
+            \XeTeXcharclass `\? = \c_zxjt_Default_class_int
+            \XeTeXinterchartoks \c_zxjt_CJK_class_int
+              \c_zxjt_Default_class_int = { \scan_stop: }
+            \XeTeXinterchartoks \c_zxjt_Default_class_int
+              \c_zxjt_CJK_class_int = { \scan_stop: }
+              \cs_show:c { xeCJK@rm/m/n/10 }
+            \hbox_set:Nn \l_tmpa_box
+              {
+                ^^^^5b57 ?\bxDebug{\the\font/\f@family}
+                \cs_gset:Npn \g_zxjt_tmpa_tl
+                  { { \f@encoding } { \f@family } }
+                ? ^^^^5b57
+              }\box_show:N \l_tmpa_box
+        \group_end:
+        \cs_set_eq:NN \l_zxjt_CJKfont_info_tl \g_zxjt_tmpa_tl
+      }
+  }
+
+\fi%%
+%% EOF

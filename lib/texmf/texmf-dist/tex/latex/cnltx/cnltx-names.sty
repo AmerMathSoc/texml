@@ -1,0 +1,177 @@
+% a /very/ preliminary draft – don't use it
+\RequirePackage{cnltx-base}
+\ProvidesPackage{cnltx-names}[\cnltx@@date\space \cnltx@@version\space \cnltx@@info]
+
+% --------------------------------------------------------------------------
+\cnltx@create@bundle@message{names}{Error}
+\cnltx@create@bundle@message{names}{Warning}
+\cnltx@create@bundle@message{names}{WarningNoLine}
+\cnltx@create@bundle@message{names}{Info}
+
+% \newfirstformat\foo
+%
+% definiert
+%   => \foo{bar}       % als `benutzt' markieren, verwendet zuerst
+%                      %   \foofirstformat , dann \fooformat
+%   => \foo*{bar}      % nicht als `benutzt' markieren, verwendet \fooformat
+%   => \fooformat      % kann später umdefiniert werden nach eigenem Geschmack
+%   => \foofirstformat % kann später umdefiniert werden nach eigenem Geschmack
+%   => \resetfoo       % setzt alle \foo wieder (lokal) auf unbenutzt zurück
+\newrobustcmd*\newfirstformat[1]{%
+  \newrobustcmd*#1{%
+    \@ifstar
+      {\csuse{\cnltx@stripbs#1@star}}
+      {\csuse{\cnltx@stripbs#1@nostar}}%
+  }%
+  \cnltx@robust@cs{\cnltx@stripbs#1@nostar}[1]{%
+    \ifcsdef{\cnltx@stripbs#1@\detokenize{##1}}
+      {\csuse{\cnltx@stripbs#1format}{##1}}
+      {\csuse{\cnltx@stripbs#1firstformat}{##1}\csuse{define@\cnltx@stripbs#1}{##1}}%
+  }%
+  \cnltx@robust@cs{\cnltx@stripbs#1@star}[1]{\csuse{\cnltx@stripbs#1starformat}{##1}}%
+  \cnltx@new@cs{\cnltx@stripbs#1@used}{}%
+  \cnltx@robust@cs{define@\cnltx@stripbs#1}[1]{%
+    \csgdef{\cnltx@stripbs#1@\detokenize{##1}}{}%
+    \listcsgadd{\cnltx@stripbs#1@used}{##1}%
+  }%
+  \cnltx@robust@cs{undefine@\cnltx@stripbs#1}[1]{%
+    \csundef{\cnltx@stripbs#1@\detokenize{##1}}%
+  }%
+  \cnltx@robust@cs{reset\cnltx@stripbs#1}{%
+    \forlistcsloop{\csuse{undefine@\cnltx@stripbs#1}}{\cnltx@stripbs#1@used}%
+    \csdef{\cnltx@stripbs#1@used}{}%
+  }%
+  \cnltx@new@cs{\cnltx@stripbs#1firstformat}[1]{##1}%
+  \cnltx@new@cs{\cnltx@stripbs#1format}[1]{##1}%
+  \cnltx@new@cs{\cnltx@stripbs#1starformat}[1]{##1}%
+}
+
+% --------------------------------------------------------------------------
+
+\newcommand*\writename[1]{\cnltx@write@name#1 \q@stop}
+
+\newcommand*\cnltx@write@firstname[1]{#1}
+\newcommand*\cnltx@write@middlename[1]{\cnltx@initial{#1}}
+\newcommand*\cnltx@write@lastname[1]{\textsc{#1}}
+\newcommand*\cnltx@between@names{\,}
+
+\newcommand*\cnltx@initial[1]{\cnltx@initial@aux#1\q@stop}
+\def\cnltx@initial@aux#1#2\q@stop{#1.}
+
+\newcommand*\cnltx@name@idx[3]{%
+  \ifblank{#1}
+    {\index{#3@\cnltx@write@lastname{#3}}}
+    {\index{#3, #1@\cnltx@write@lastname{#3}, \cnltx@write@firstname{#1}}}%
+}
+
+% TODO: Index hinzufügen \newcommand*\cnltx@name@idx[2]{\index{#1@#2}}
+\newcommand*\cnltx@write@fullname[2]{%
+  \cnltx@write@firstname{#1}\cnltx@between@names
+  \cnltx@write@lastname{#2}%
+}
+
+\newcommand*\cnltx@write@fullmiddlename[3]{%
+  \cnltx@write@firstname{#1}\cnltx@between@names
+  \cnltx@write@middlename{#2}\cnltx@between@names
+  \cnltx@write@lastname{#3}%
+}
+\def\cnltx@write@fullmiddlename@aux#1#2#3 \q@stop{%
+  \cnltx@write@fullmiddlename{#1}{#2}{#3}%
+  \ifbool{cnltx@name@noidx}{}{%
+    \cnltx@name@idx{#1}{#2}{#3}%
+  }%
+}
+
+\def\cnltx@write@name#1 #2\q@stop{%
+  \ifblank{#2}
+    {%
+      \cnltx@write@lastname{#1}%
+      \ifbool{cnltx@name@noidx}{}
+        {\cnltx@name@idx{}{}{#1}}%
+    }
+    {\cnltx@write@completename{#1}#2\q@stop}%
+}
+% TODO: erweitern auf mehrere mittlere Namen:
+\def\cnltx@write@completename#1#2 #3\q@stop{%
+  \ifblank{#3}
+    {%
+      \cnltx@write@fullname{#1}{#2}%
+      \ifbool{cnltx@name@noidx}{}
+        {\cnltx@name@idx{#1}{}{#2}}%
+    }
+    {\cnltx@write@fullmiddlename@aux{#1}{#2}#3\q@stop}%
+}
+
+% name formats:
+\newrobustcmd*\defnameformat[4]{%
+  \cnltx@def@nameformat{#1}{#2}{#3}{#4}%
+}
+\newrobustcmd*\cnltx@def@nameformat[4]{%
+  \protected\csdef{cnltx@nameformat@#1}{%
+    \def\cnltx@write@firstname####1{#2}%
+    \def\cnltx@write@middlename####1{#3}%
+    \def\cnltx@write@lastname####1{#4}%
+  }%
+}
+
+\defnameformat{fullname}
+  {##1}
+  {##1}
+  {\textsc{##1}}
+\defnameformat{middledot}
+  {##1}
+  {\cnltx@initial{##1}}
+  {\textsc{##1}}
+\defnameformat{firstmiddledot}
+  {\cnltx@initial{##1}}
+  {\cnltx@initial{##1}}
+  {\textsc{##1}}
+\defnameformat{alldot}
+  {\cnltx@initial{##1}}
+  {\cnltx@initial{##1}}
+  {\cnltx@initial{##1}}
+\defnameformat{nomiddle}
+  {##1}
+  {\@gobble}
+  {\textsc{##1}}
+\defnameformat{nomiddledot}
+  {\cnltx@initial{##1}}
+  {\@gobble}
+  {\textsc{##1}}
+% \show\cnltx@nameformat@nomiddledot
+\defnameformat{onlylast}
+  {\@gobble}
+  {\@gobble}
+  {\textsc{##1}}
+
+% choose name format:
+\newrobustcmd*\writenameformat[1]{%
+  \csuse{cnltx@nameformat@#1}%
+}
+
+% --------------------------------------------------------------------------
+
+\newbool{cnltx@name@noidx}
+
+\newfirstformat\name
+\renewcommand*\namefirstformat[1]{\writename{#1}}
+\renewcommand*\nameformat[1]{{\writenameformat{nomiddle}\writename{#1}}}
+\renewcommand*\namestarformat[1]{%
+  \begingroup
+    \booltrue{cnltx@name@noidx}%
+    \namefirstformat{#1}%
+  \endgroup
+}
+
+\newrobustcmd*\cnltx@newname[2]{%
+  \newrobustcmd*#1{%
+    \@ifstar
+      {\name*{#2}}
+      {\name{#2}}%
+    }%
+}
+
+\newrobustcmd*\newname{\cnltx@newname}
+
+\endinput
+% --------------------------------------------------------------------------

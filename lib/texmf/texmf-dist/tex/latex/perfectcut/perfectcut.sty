@@ -1,0 +1,475 @@
+%%% perfectcut.sty 
+%%%%%%%%%%%%%%%%%%%
+%%%
+%%% Author: Guillaume Munch-Maccagnoni
+%%% http://www.pps.univ-paris-diderot.fr/~munch/
+%%% 
+%%% This work may be distributed and/or modified under the conditions of
+%%% the LaTeX Project Public License, either version 1.3 of this license
+%%% or (at your option) any later version. Refer to the README file.
+%%% 
+%%%
+\ProvidesPackage{perfectcut}[03/11/2014 Perfect Cut v2.0]
+%%% Option processing
+\newif\ifcut@mathstyle@
+\cut@mathstyle@true
+\newif\ifcut@realVert@
+\cut@realVert@false
+\newif\ifcut@fixxits@
+\cut@fixxits@false
+\DeclareOption{nomathstyle}{\cut@mathstyle@false}
+\let\cutstyle\textstyle
+\DeclareOption{realVert}{\cut@realVert@true}
+\DeclareOption{fixxits}{\cut@fixxits@true}
+\ProcessOptions*
+%%% End option processing
+\RequirePackage{graphicx}
+\RequirePackage{calc}
+\newmuskip\cutangleskip
+\newmuskip\cutbarskip
+\newmuskip\cutinterbarskip
+\newmuskip\cutangleouterskip
+\newif\ifcutdebug
+%%% Exported commands
+%%See end of file for a more detailed description of the commands 
+\newcommand{\perfectcut}[2]{\cut@{#1}{#2}}%% displays <#1||#2>
+\newcommand{\perfectbra}[1]{\cut@bra{#1}}%% displays <#1|
+\newcommand{\perfectket}[1]{\cut@ket{#1}}%%  displays |#2>
+\let\cutprimitive\perfectcut%backward compat
+\let\cutbraprimitive\perfectbra%backward compat
+\let\cutketprimitive\perfectket%backward compat
+\newcommand{\perfectcase}[2]{\cut@case{#1}{#2}}%% displays [#1|#2]
+\newcommand{\perfectbrackets}[1]{\cut@brackets{#1}}%% displays [#1]
+\newcommand{\perfectparens}[1]{\cut@parens{#1}}%% displays (#1)
+\newcommand{\perfectunary}[4]{\cut@customUnary{#1}{#2}{#3}{#4}}%% displays
+  %% #2#3#4 where #2 and #4 are delimiters. The size of the delimiters is
+  %% computed according to #1 which must be one of IncreaseHeight,
+  %% CurrentHeight, or CurrentHeightPlusOne.
+\newcommand{\perfectbinary}[6]{\cut@customBinary{#1}{#2}{#3}{#4}{#5}{#6}}%%
+  %% displays #2#3#4#5#6 where #2, #4 and #6 are delimiters. The size of the
+  %% delimiters is computed according to #1 which must be one of IncreaseHeight,
+  %% CurrentHeight, or CurrentHeightPlusOne.
+%% The following variables can be redefined in your preamble
+\cutbarskip=5.0mu plus 8.0mu minus 2.0mu
+\cutangleskip=0.0mu plus 8mu minus 1.0mu
+\cutangleouterskip=0.0mu plus 8mu minus 0.0mu
+\cutinterbarskip=1.4mu plus 0mu minus 0mu
+\cutdebugfalse%% print the size after each \rangle?
+%%% Various reimplementations of \left, \right and \middle.
+%% \nthleft{4}\langle ==> fourth size of \langle; begins at 0
+\newcommand{\nthleft}[2]{\cut@nthldelim{#1}{#2}}
+\newcommand{\nthright}[2]{\cut@nthrdelim{#1}{#2}}
+\newcommand{\nthmiddle}[2]{\cut@nthmdelim{#1}{#2}}
+%% \matchleft{\big\langle}| ===> | of the same size as \big\langle obtained
+%% by resizing the closest glyph
+\newcommand{\matchleft}[2]{\cut@matchingldelim{#1}{#2}}
+\newcommand{\matchright}[2]{\cut@matchingrdelim{#1}{#2}}
+\newcommand{\matchmiddle}[2]{\cut@matchingmdelim{#1}{#2}}
+%% \lenleft{3mm}\langle ===> \langle of size at least 3mm
+%% (in math mode it is preferable to use math units such as 10mu,...
+%% however only regular units are implemented now.)
+\newcommand{\lenleft}[2]{\cut@lengthldelim{#1}#2}
+\newcommand{\lenright}[2]{\cut@lengthrdelim{#1}#2}
+\newcommand{\lenmiddle}[2]{\cut@lengthmdelim{#1}#2}
+%% \reallenleft{3mm}\langle ===> \langle of size 3mm by resizing the
+%% closest glyph
+\newcommand{\reallenleft}[2]{\cut@reallengthldelim{#1}{#2}}
+\newcommand{\reallenright}[2]{\cut@reallengthrdelim{#1}{#2}}
+\newcommand{\reallenmiddle}[2]{\cut@reallengthmdelim{#1}{#2}}
+
+
+%%% Preliminary commands
+
+%% setting up mathstyle
+\ifcut@mathstyle@
+  \RequirePackage{mathstyle}
+  \def\currentcutstyle{\currentmathstyle}
+\else
+  \def\currentcutstyle{\cutstyle}
+\fi
+
+%% sets the behaviour of delimiters to always grow while evaluating #1
+\newcommand{\cut@setshortfall}[1]{%
+  \skip0=\delimitershortfall%
+  \global\delimitershortfall=-0.1pt%that's the trick to get perfect growth
+  \count0=\delimiterfactor%
+  \global\delimiterfactor=901\relax%
+  \hbox{$\m@th\currentcutstyle#1$}%
+  \global\delimitershortfall=\skip0%
+  \global\delimiterfactor=\count0%
+}
+
+%% scale #2 to size #1 (length)
+\newcommand{\cut@resizetoheight}[2]{%
+  \resizebox{!}{#1}{\hbox{$\m@th\currentcutstyle#2$}}%
+}
+
+\newsavebox\cut@boxi
+\newsavebox\cut@boxj
+%% scale #2 to the size of #1. Assumes that #1 goes above and below the base line.
+\newcommand{\cut@resizetoheightof}[2]{%
+  \sbox{\cut@boxi}{$\m@th\currentcutstyle#1$}%
+  \sbox{\cut@boxj}{$\m@th\currentcutstyle#2$}%
+  \raisebox{-\dp\cut@boxi}{%
+    \resizebox{!}{\ht\cut@boxi+\dp\cut@boxi}{%
+      \raisebox{\dp\cut@boxj}{\usebox{\cut@boxj}}%
+    }%
+  }%
+}
+
+%% gives the delimiter #1 which is immediately bigger than #2
+%% notice that \delimitershortfall is not modified so LaTeX can decide to give
+%% a smaller one.
+\newcommand{\cut@nextrdelim}[2]{\left.\hspace{-\nulldelimiterspace}\vphantom{#2}\right#1}
+\newcommand{\cut@nextldelim}[2]{\left#1\vphantom{#2}\hspace{-\nulldelimiterspace}\right.}
+\newcommand{\cut@nextmdelim}[2]{\left.\hspace{-\nulldelimiterspace}\middle#1\vphantom{#2}\hspace{-\nulldelimiterspace}\right.}
+
+%% like the previous one but resized to exactly match argument #1
+%% used in order to have vertical bars of the perfect size
+\newcommand{\cut@matchingldelim}[2]{\mathopen{\cut@resizetoheightof{#1}{\cut@nextldelim{#2}{#1}}}}
+\newcommand{\cut@matchingrdelim}[2]{\mathclose{\cut@resizetoheightof{#1}{\cut@nextrdelim{#2}{#1}}}}
+\newcommand{\cut@matchingmdelim}[2]{\mathrel{\cut@resizetoheightof{#1}{\cut@nextmdelim{#2}{#1}}}}
+
+%% gives the delimiter #2 which is immediately longer than #1 (length)
+\newcommand{\cut@lengthldelim}[2]{\mathopen{\cut@setshortfall{\cut@nextldelim#2{\rule[-0.101pt]{0pt}{#1}}}}}
+\newcommand{\cut@lengthrdelim}[2]{\mathclose{\cut@setshortfall{\cut@nextrdelim#2{\rule[-0.101pt]{0pt}{#1}}}}}
+\newcommand{\cut@lengthmdelim}[2]{\mathrel{\cut@setshortfall{\cut@nextmdelim#2{\rule[-0.101pt]{0pt}{#1}}}}}
+
+%% like the previous one but resized to exactly match #1 (length) 
+\newcommand{\cut@reallengthldelim}[2]{\mathopen{\cut@resizetoheight{#1}{\cut@nextldelim#2{\rule[-0.101pt]{0pt}{#1}}}}}
+\newcommand{\cut@reallengthrdelim}[2]{\mathclose{\cut@resizetoheight{#1}{\cut@nextrdelim#2{\rule[-0.101pt]{0pt}{#1}}}}}
+\newcommand{\cut@reallengthmdelim}[2]{\mathrel{\cut@resizetoheight{#1}{\cut@nextmdelim#2{\rule[-0.101pt]{0pt}{#1}}}}}
+
+%I don't get anything about this bug which affects the
+%alignment with respect to the math axis
+\ifcut@fixxits@
+  \def\bugfix{}
+\else
+  \def\bugfix{\cdot}
+\fi
+%% iterates #2 over itself #1 number of times
+\newcommand{\cut@iter}[2]{%
+  \ifcase#1%
+    #2{\bugfix} % 0 = smallest. This dot is here to prevent a
+                 % bug regarding vertical positioning.
+  \else%
+    \count0=#1%
+    \advance\count0 -1\relax%
+    \expandafter#2{\expandafter\cut@iter{\the\count0}#2}%
+ \fi%
+}
+
+%% \cut@nthdelim{n}{delim}{f} iterates f{delim} n time over itself after
+%% resetting delimiter shortfall
+\newcommand{\cut@nthdelim}[3]{
+  \def\cut@tempnextdelim{#3{#2}}%
+  \cut@setshortfall{\cut@iter{#1}\cut@tempnextdelim}%
+}
+%% \cut@nthxdelim gives the #1-th size of the delimiter #2  
+\newcommand{\cut@nthldelim}[2]{\mathopen{\cut@nthdelim{#1}{#2}{\cut@nextldelim}}}
+\newcommand{\cut@nthrdelim}[2]{\mathclose{\cut@nthdelim{#1}{#2}{\cut@nextrdelim}}}
+\newcommand{\cut@nthmdelim}[2]{\mathrel{\cut@nthdelim{#1}{#2}{\cut@nextmdelim}}}
+
+
+%%%% now the main algorithm
+
+\newcounter{cut@depth}
+
+% lengths with names of the form \cut@height{depth}
+\newcommand{\cut@localheight}{cut@height\thecut@depth}
+\newcommand{\cut@newlocalheightcounter}{%
+  \@ifundefined{c@\cut@localheight}{\newcounter{\cut@localheight}}{}
+}
+
+% boxes with names of the form \cut@savebox{num}@{depth}
+\newcommand{\cut@localsavebox}[1]{cut@savebox#1@\thecut@depth}
+\newcommand{\cut@newlocalsavebox}[1]{%
+  \@ifundefined{\cut@localsavebox{#1}}{%
+    \expandafter\newsavebox\csname\cut@localsavebox{#1}\endcsname%
+  }{}%
+}
+
+\newcounter{cut@finalheight}
+
+\newsavebox\cut@boxleft
+\newsavebox\cut@boxright
+
+%%% Definition of Cut primitives
+
+%% Main loop. #1 determines how the height is incremented. #2 and #3 are saved
+%% in cut@boxleft and cut@boxright. Computed height is stored in cut@finalheight
+\newcommand{\cut@computeBinary@main}[3]{%
+  \setcounter{cut@finalheight}{0}%
+  {%
+    \addtocounter{cut@depth}{1}%
+    %defining variables
+    \cut@newlocalheightcounter%
+    \cut@newlocalsavebox{0}%
+    \cut@newlocalsavebox{1}%
+    %computing recursively
+    \setcounter{\cut@localheight}{-1}%
+    \expandafter\sbox\csname\cut@localsavebox{0}\endcsname%
+      {$\m@th\currentcutstyle#2$}%
+    \expandafter\sbox\csname\cut@localsavebox{1}\endcsname%
+      {$\m@th\currentcutstyle#3$}%
+    \addtocounter{\cut@localheight}{#1}%
+    %exporting values outside the local scope
+    \setcounter{cut@finalheight}{\value{\cut@localheight}}%
+    \global\sbox\cut@boxleft%
+      {\expandafter\usebox\csname\cut@localsavebox{0}\endcsname}%
+    \global\sbox\cut@boxright%
+      {\expandafter\usebox\csname\cut@localsavebox{1}\endcsname}%
+    \addtocounter{cut@depth}{-1}%
+  }%
+}
+
+%% Displays #1#2#3#4#5. Arguments #2 and #4 can contain other cut primitives.
+%% Calls to cut primitives inside #2 and #4 will have a smaller height.
+%% Arguments #1, #3 and #5 can access the current height in two different
+%% forms via \cut@n and \count0.
+\newcommand{\cut@computeBinary@IncreaseHeight}[5]{%
+  \cut@computeBinary@main{1}{#2}{#4}%
+  \@ifundefined{c@\cut@localheight}{}{% if #2 and #4 did not contain any cut primitive
+    \ifnum\value{cut@finalheight}>\value{\cut@localheight}%
+     \setcounter{\cut@localheight}{\value{cut@finalheight}}%
+    \fi%
+  }%end @ifundefined
+  \count0=\value{cut@finalheight}%
+  \edef\cut@n{\expandafter\the\count0}%
+  #1%
+  \usebox{\cut@boxleft}%
+  #3%
+  \usebox{\cut@boxright}%
+  #5%
+}
+
+%% Displays #1#2#3#4#5. Arguments #2 and #4 can contain other cut primitives.
+%% Does not increase the current height computed by cut primitives inside #2
+%% and #4. 
+%% Arguments #1, #3 and #5 can access the current height in two different
+%% forms via \cut@n and \count0.
+\newcommand{\cut@computeBinary@CurrentHeight}[5]{%
+  \cut@computeBinary@main{0}{#2}{#4}%
+  \ifnum\value{cut@finalheight}<0%
+    \setcounter{cut@finalheight}{0}%
+  \fi%
+  \@ifundefined{c@\cut@localheight}{}{% if #2 and #4 did not contain any cut primitive
+    \ifnum\value{cut@finalheight}>\value{\cut@localheight}%
+     \setcounter{\cut@localheight}{\value{cut@finalheight}}%
+    \fi%
+  }%end @ifundefined
+  \count0=\value{cut@finalheight}%
+  \edef\cut@n{\expandafter\the\count0}%
+  #1%
+  \usebox{\cut@boxleft}%
+  #3%
+  \usebox{\cut@boxright}%
+  #5%
+}
+
+%% Displays #1#2#3#4#5. Arguments #2 and #4 can contain other cut primitives.
+%% Does not increase the current height computed by cut primitives inside #2
+%% and #4 but the height to display is increased by 1. 
+%% Arguments #1, #3 and #5 can access the height height in two different
+%% forms via \cut@n and \count0.
+\newcommand{\cut@computeBinary@CurrentHeightPlusOne}[5]{%
+  \cut@computeBinary@main{0}{#2}{#4}
+  \@ifundefined{c@\cut@localheight}{}{% if #2 and #4 did not contain any cut primitive
+    \ifnum\value{cut@finalheight}>\value{\cut@localheight}%
+     \setcounter{\cut@localheight}{\value{cut@finalheight}}%
+    \fi%
+  }%end @ifundefined
+  \count0=\value{cut@finalheight}%
+  \advance\count0 1%
+  \edef\cut@n{\expandafter\the\count0}%
+  #1%
+  \usebox{\cut@boxleft}%
+  #3%
+  \usebox{\cut@boxright}%
+  #5%
+}
+
+%%% Implementation of the particular delimiters
+
+%% special vertical bars
+%% \vert adjusted to #1
+\newcommand{\cut@matchvert}[1]{%
+  \setbox0=\hbox{$\matchmiddle{#1}\vert$}%
+  \mkern.6mu%
+  \kern -.5\wd0%
+  \copy0%
+  \kern -.5\wd0%
+  \mkern.6mu%
+}
+
+%% special double vertical bars
+\newcommand{\cut@doublevert}[1]{%
+  \cut@matchvert{\nthleft{#1}\langle}
+  \mskip\cutinterbarskip%
+  \penalty \the\binoppenalty\relax%
+  \cut@matchvert{\nthleft{#1}\langle}
+}
+
+%% special double vertical bars (alternate)
+\newcommand{\cut@Vert}[1]{%
+  \setbox0=\hbox{$\matchmiddle{\nthleft{#1}\langle}\Vert$}%
+  \mkern.8mu%
+  \kern -.3\wd0%
+  \copy0%
+  \kern -.3\wd0%
+  \mkern.8mu%
+%\mkern-3.26mu%
+%\matchmiddle{\nthleft{#1}\langle}\Vert%
+%\mkern-3.26mu%
+}
+
+%% setting up realVert
+\ifcut@realVert@
+  \let\cut@bars\cut@Vert
+\else
+  \let\cut@bars\cut@doublevert
+\fi
+
+%% \perfectcut
+%% <#1||#2>, increases height, inserts skips
+\newcommand{\cut@}[2]{%
+  \cut@computeBinary@IncreaseHeight%
+    {\mskip\cutangleouterskip%
+     \nthleft{\cut@n}{\langle}%
+     \mskip\cutangleskip}%
+    {#1}%
+    {\mskip\cutbarskip%
+     \cut@bars{\cut@n}%
+     \mskip\cutbarskip}%
+    {#2}%
+    {\mskip\cutangleskip%
+     \nthright{\cut@n}{\rangle}%
+     \mskip\cutangleouterskip}%
+}
+
+%% \perfectbra
+%% <#1|, increases height, inserts skips
+\newcommand{\cut@bra}[1]{%
+  \cut@computeBinary@IncreaseHeight%
+    {\mskip\cutangleouterskip%
+     \nthleft{\cut@n}{\langle}%
+     \mskip\cutangleskip}%
+    {#1}%
+    {\mskip\cutbarskip%
+     \cut@matchvert{\nthleft{\cut@n}\langle}%
+     \mskip\cutangleouterskip}%
+    {}{}%only one argument
+}
+
+%% \perfectket
+%% |#1>, increases height, inserts skips
+\newcommand{\cut@ket}[1]{%
+  \cut@computeBinary@IncreaseHeight%
+    {\mskip\cutangleouterskip%
+     \cut@matchvert{\nthleft{\cut@n}\langle}%
+     \mskip\cutbarskip}%
+    {#1}%
+    {\mskip\cutangleskip%
+     \nthright{\cut@n}{\rangle}%
+     \mskip\cutangleouterskip}%
+    {}{}%only one argument
+}
+
+%% \perfectcase
+%% [#1|#2], height is current height plus one, inserts skips
+\newcommand{\cut@case}[2]{%
+  \cut@computeBinary@CurrentHeightPlusOne%
+    {\nthleft{\cut@n}[%
+     \mskip\cutangleskip}%
+    {#1}%
+    {\mskip\cutbarskip%
+     \cut@matchvert{\nthleft{\cut@n}[}%
+     \mskip\cutbarskip}%
+    {#2}%
+    {\mskip\cutangleskip%
+     \nthright{\cut@n}]}%
+}
+
+%% \perfectbrackets
+%% [#1], height is current height plus one, inserts skips only inside
+\newcommand{\cut@brackets}[1]{%
+  \cut@computeBinary@CurrentHeightPlusOne%
+    {\nthleft{\cut@n}[%
+     \mskip\cutangleskip}%
+    {#1}%
+    {\mskip\cutangleskip%
+     \nthright{\cut@n}]}%
+    {}{}%only one argument
+}
+
+%% \perfectparens
+%% (#1), height is current height, inserts skips only inside
+\newcommand{\cut@parens}[1]{%
+  \cut@computeBinary@CurrentHeight%
+    {\nthleft{\cut@n}(%
+     \mskip\cutangleskip}%
+    {#1}%
+    {\mskip\cutangleskip%
+     \nthright{\cut@n})}%
+    {}{}%only one argument
+}
+
+%% \perfectunary
+%% #2#4#3 where #2 and #3 are delimiters. The size of the delimiters is computed
+%% according to #1 which must be one of IncreaseHeight, CurrentHeight,
+%% or CurrentHeightPlusOne.
+\newcommand{\cut@customUnary}[4]{%
+  \csname cut@computeBinary@#1\endcsname%
+    {\nthleft{\cut@n}#2}%
+    {#4}%
+    {\nthright{\cut@n}#3}%
+    {}{}%
+}%
+
+%% \perfectbinary
+%% #2#5#3#6#4 where #2, #3 and #4 are delimiters. The size of the delimiters is
+%% computed according to #1 which must be one of IncreaseHeight, CurrentHeight,
+%% or CurrentHeightPlusOne.
+\newcommand{\cut@customBinary}[6]{%
+   \csname cut@computeBinary@#1\endcsname%
+    {\nthleft{\cut@n}#2}%
+    {#5}%
+    {\matchmiddle{\nthleft{\cut@n}#2}#3}%{{\nthmiddle{\cut@n}#4}}%
+    {#6}%
+    {\nthright{\cut@n}#4}%
+}%
+%% Example: The following displays a set {#1|#2} with delimiters of the
+%% appropriate size if there are \perfectcommands inside #1 and #2.
+%% \def\Set#1#2{\perfectbinary{IncreaseHeight}\{|\}{#1\mathrel{}}{\mathrel{}#2}}
+
+
+
+%%% for testing purposes
+\newcommand{\cut@testsize}[2]{
+{#1 \[ \mathrm{\f@size\,pt:} \begin{array}{l}
+  \scriptscriptstyle{#2}\\
+  \scriptstyle{#2}\\
+  \textstyle{#2}
+  \end{array}\]}
+}
+\newcommand{\cut@test}[1]{%
+\cut@testsize{\Large}{#1}%
+\cut@testsize{\large}{#1}%
+\cut@testsize{}{#1}%
+\cut@testsize{\small}{#1}%
+\cut@testsize{\footnotesize}{#1}%
+\cut@testsize{\scriptsize}{#1}%
+\cut@testsize{\tiny}{#1}%
+}
+\newcommand{\cut@testangles}{\cut@test{%
+  \cut@{\cut@{\cut@{\cut@{\cut@{a}{b}}{c}}{d}}{e}}{f}}%
+}%
+\newcommand{\cut@testverts}{
+ \def\line{\rule[-3ex]{0.5em}{3ex}}%
+ \def\v##1{\cut@doublevert{##1}\line}
+ \def\V##1{\cut@Vert{##1}\line}
+ \cut@test{%
+ \line\vert\line\v{0}\v{1}\v{2}\v{3}\v{4}\v{5}
+ \line\Vert\line\V{0}\V{1}\V{2}\V{3}\V{4}\V{5}
+}}%
+

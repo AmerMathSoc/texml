@@ -1,0 +1,585 @@
+\ProvidesFile{gost-inline.cbx}
+[2016/04/05\space v1.6\space biblatex-gost styles]
+
+\DeclareLabelname
+  [inbook,incollection,inproceedings,inreference,suppbook,suppcollection,suppperiodical,bookinbook]
+  {\field{shortauthor}\field{author}\field{translator}}
+
+\DeclareFieldFormat{bibhyperlink}{%
+  \bibhyperlink{\thefield{entrykey}:\csuse{cbx@\iffootnote{f}{t}@\thefield{entrykey}}}{#1}}
+\DeclareFieldFormat{bibhypertarget}{%
+  \bibhypertarget{\thefield{entrykey}:\the\value{instcount}}{#1}}
+\providecommand*{\mkibid}[1]{#1}
+\renewcommand*{\iffinalcitedelim}{%
+  \ifnumequal{\value{textcitecount}}{\value{textcitetotal}-1}}
+
+\newtoggle{cbx:loccit}      % needed because \blx@loccittracker is executed before 'postnote'
+\newtoggle{cbx:xrefloccit}
+\newtoggle{cbx:opt:inbookibid}
+
+\DeclareBibliographyOption{strict}[true]{%
+  \ifstrequal{#1}{true}
+    {\ExecuteBibliographyOptions{ibidtracker=constrict,loccittracker=constrict}}
+    {\ExecuteBibliographyOptions{ibidtracker=context,loccittracker=context}}}
+
+\DeclareBibliographyOption{citepages}[permit]{%
+  \ifcsdef{cbx@opt@citepages@#1}
+    {\csuse{cbx@opt@citepages@#1}}
+    {\PackageError{biblatex}
+       {Invalid option 'citepages=#1'}
+       {Valid values are 'permit', 'suppress', 'omit', 'separate'.}}}
+
+\providebibmacro*{cite:citepages}{}
+\providebibmacro*{cite:full:citepages}{}
+\providebibmacro*{cite:postnote}{}
+
+\def\cbx@opt@citepages@permit{%
+  \renewbibmacro*{cite:citepages}{}%
+  \renewbibmacro*{cite:full:citepages}{}%
+  \renewbibmacro*{cite:postnote}{%
+    \usebibmacro{cite:postnote:ibidpage}}}
+
+\def\cbx@opt@citepages@suppress{%
+  \renewbibmacro*{cite:citepages}{}%
+  \renewbibmacro*{cite:full:citepages}{%
+    \clearfield{pages}%
+    \clearfield{pagetotal}}%
+  \renewbibmacro*{cite:postnote}{%
+    \usebibmacro{cite:postnote:ibidpage}}}
+
+\def\cbx@opt@citepages@omit{%
+  \renewbibmacro*{cite:citepages}{}%
+  \renewbibmacro*{cite:full:citepages}{%
+    \ifboolexpr{
+      test {\ifnumequal{\value{citecount}}{\value{citetotal}}}
+      and
+      test {\iffieldpages{postnote}}
+    }
+      {\clearfield{pages}%
+       \clearfield{pagetotal}}
+      {}}%
+  \renewbibmacro*{cite:postnote}{%
+    \usebibmacro{cite:postnote:ibidpage}}}
+
+\def\cbx@opt@citepages@separate{%
+  \providetoggle{cbx:fullcite}%
+  \renewbibmacro*{cite:citepages}{%
+    \global\togglefalse{cbx:fullcite}}%
+  \renewbibmacro*{cite:full:citepages}{%
+    \global\toggletrue{cbx:fullcite}}%
+  \renewbibmacro*{cite:postnote}{%
+    \ifboolexpr{
+      togl {cbx:fullcite}
+      and
+      test {\iffieldpages{postnote}}
+      and
+      test {\ifnumequal{\value{citecount}}{\value{citetotal}}}
+      and
+      (
+      	not test {\iffieldundef{pages}}
+      	or
+      	not test {\iffieldundef{pagetotal}}
+      )
+    }
+      {\usebibmacro{cite:postnote:pages}}
+      {\usebibmacro{cite:postnote:ibidpage}}}%
+  \providebibmacro*{cite:postnote:pages}{%
+    \setunit{\postnotedelim}%
+    \bibstring{thiscite}%
+    \setunit{\addspace}%
+    \printfield{postnote}}}
+
+\DeclareBibliographyOption{inbookibid}[true]{%
+  \settoggle{cbx:opt:inbookibid}{#1}%
+  \iftoggle{cbx:opt:inbookibid}
+    {\def\blx@mincrossrefs{1}}
+    {}}
+
+\DeclareNameAlias{labelname}{heading}
+\DeclareFieldFormat*{citetitle}{#1}
+
+\renewcommand{\postnotedelim}{\addperiod\space}
+\renewcommand{\multicitedelim}{\setunit{\addsemicolondelim}}
+
+% two xref trackers below should go before the option execution
+%
+% xref ibidem tracker
+
+\appto\blx@ibidtracker@global{%
+  \ifbool{citetracker}
+    {\blx@imc@iffieldundef{crossref}
+       {\blx@imc@iffieldundef{xref}
+          {\global\undef\blx@lastxref@text}
+          {\blx@imc@savefield{xref}{\blx@lastxref@text}}}
+       {\blx@imc@savefield{crossref}{\blx@lastxref@text}}}
+    {}}
+
+\appto\blx@ibidtracker@context{%
+  \ifbool{citetracker}
+    {\iftoggle{blx@footnote}
+      {\blx@imc@iffieldundef{crossref}
+        {\blx@imc@iffieldundef{xref}
+          {\global\undef\blx@lastxref@foot}
+          {\blx@imc@savefield{xref}{\blx@lastxref@foot}}}
+        {\blx@imc@savefield{crossref}{\blx@lastxref@foot}}}
+      {\blx@imc@iffieldundef{crossref}
+       {\blx@imc@iffieldundef{xref}
+          {\global\undef\blx@lastxref@text}
+          {\blx@imc@savefield{xref}{\blx@lastxref@text}}}
+       {\blx@imc@savefield{crossref}{\blx@lastxref@text}}}}
+    {}}
+
+\appto\blx@ibidreset@force{%
+  \global\undef\blx@lastxref@text%
+  \global\undef\blx@lastxref@foot}
+
+\appto\blx@ibidreset@global{%
+  \global\undef\blx@lastxref@text}
+
+\appto\blx@ibidreset@context{%
+  \iftoggle{blx@footnote}
+    {\global\undef\blx@lastxref@foot}
+    {\global\undef\blx@lastxref@text}}
+
+\protected\appto\abx@savetrackers{%
+  \global\let\blx@saved@lastxref@text\blx@lastxref@text%
+  \global\let\blx@saved@lastxref@foot\blx@lastxref@foot}
+
+\protected\appto\abx@resttrackers{%
+  \global\let\blx@lastxref@text\blx@saved@lastxref@text%
+  \global\let\blx@lastxref@foot\blx@saved@lastxref@foot}
+
+\protected\appto\abx@cleartrackers{%
+  \global\undef\blx@saved@lastxref@text%
+  \global\undef\blx@saved@lastxref@foot}
+
+% {<true>}{<false>}
+
+\def\blx@xrefibid@check#1{%
+  \ifboolexpr{
+          test {\blx@imc@iffieldequalcs{crossref}{blx@lastxref@#1}}
+          or
+          test {\blx@imc@iffieldequals{xref}{blx@lastxref@#1}}
+      }}
+
+\def\blx@ifxrefibid@global{%
+  \blx@xrefibid@check{text}}
+
+\def\blx@ifxrefibid@context{%
+  \iftoggle{blx@footnote}
+    {\blx@xrefibid@check{foot}}
+    {\blx@xrefibid@check{text}}}
+
+\def\blx@ifxrefibid@strict{%
+  \blx@ifcitesingle
+    {\blx@ifciteibid@global}
+    {\@secondoftwo}}%
+
+\def\blx@ifxrefibid@constrict{%
+  \blx@ifcitesingle
+    {\iftoggle{blx@footnote}
+       {\blx@ifmpfncheck
+          {\blx@xrefibid@check{foot}}
+          {\@secondoftwo}}
+       {\blx@xrefibid@check{text}}}
+    {\@secondoftwo}}%
+
+\blx@regimcs{\ifxrefibid}
+
+\appto\blx@blxinit{%
+  \appto\blx@TE@hook{%
+    \def\ifxrefibid{\blx@TE\blx@imc@ifxrefibid}}}
+
+\appto\blx@opt@ibidtracker@true{%
+  \let\blx@imc@ifxrefibid\blx@ifxrefibid@global}
+\appto\blx@opt@ibidtracker@false{%
+  \let\blx@imc@ifxrefibid\@secondoftwo}
+\appto\blx@opt@ibidtracker@context{%
+  \let\blx@imc@ifxrefibid\blx@ifxrefibid@context}
+\appto\blx@opt@ibidtracker@strict{%
+  \let\blx@imc@ifxrefibid\blx@ifxrefibid@strict}
+\appto\blx@opt@ibidtracker@constrict{%
+  \let\blx@imc@ifxrefibid\blx@ifxrefibid@constrict}
+
+% end of xref ibidem tracker code
+
+% xrefloccit tracker
+% {<true>}{<false>}
+
+\def\blx@ifxrefloccit@global{%
+  \blx@xrefloccit@check{text}}
+
+\def\blx@ifxrefloccit@context{%
+  \iftoggle{blx@footnote}
+    {\blx@xrefloccit@check{foot}}
+    {\blx@xrefloccit@check{text}}}
+
+\def\blx@ifxrefloccit@strict{%
+  \blx@ifcitesingle
+    {\blx@xrefloccit@numcheck{text}}
+    {\@secondoftwo}}%
+
+\def\blx@ifxrefloccit@constrict{%
+  \blx@ifcitesingle
+    {\iftoggle{blx@footnote}
+       {\blx@ifmpfncheck
+          {\blx@xrefloccit@numcheck{foot}}
+          {\@secondoftwo}}
+       {\blx@xrefloccit@numcheck{text}}}
+    {\@secondoftwo}}
+
+\def\blx@xrefloccit@check#1{%
+  \blx@imc@ifxrefibid
+    {\blx@imc@iffieldundef{postnote}
+      {\@secondoftwo}
+      {\blx@imc@iffieldequalcs{postnote}{blx@xreflastnote@#1}}}
+    {\@secondoftwo}}
+
+\def\blx@xrefloccit@numcheck#1{%
+  \blx@imc@ifxrefibid
+    {\blx@imc@iffieldundef{postnote}
+      {\@secondoftwo}
+      {\expandafter\blx@imc@ifpages
+       \expandafter{\abx@field@postnote}
+         {\blx@imc@iffieldequalcs{postnote}{blx@xreflastnote@#1}}
+         {\@secondoftwo}}}
+    {\@secondoftwo}}
+
+\blx@regimcs{\ifxrefloccit}
+
+% loccit tracker patching
+
+\appto\blx@loccittracker@global{%
+  \ifbool{citetracker}
+    {\blx@xrefloccit@tracker{text}}
+    {}}
+
+\appto\blx@loccittracker@context{%
+  \ifbool{citetracker}
+    {\iftoggle{blx@footnote}
+       {\blx@xrefloccit@tracker{foot}}
+       {\blx@xrefloccit@tracker{text}}}
+    {}}
+
+\appto\blx@loccittracker@strict{%
+  \ifbool{citetracker}
+    {\blx@xrefloccit@stricttracker{text}}
+    {}}
+
+\appto\blx@loccittracker@constrict{%
+  \ifbool{citetracker}
+    {\iftoggle{blx@footnote}
+       {\blx@mpfnsave
+        \blx@xrefloccit@stricttracker{foot}}
+       {\blx@xrefloccit@stricttracker{text}}}
+    {}}
+
+\def\blx@xrefloccit@tracker#1{%
+  \global\csundef{blx@xreflastnote@#1}%
+  \blx@imc@iffieldundef{postnote}
+    {}
+    {\global\cslet{blx@xreflastnote@#1}\abx@field@postnote}}
+
+\def\blx@xrefloccit@stricttracker#1{%
+  \global\csundef{blx@xreflastnote@#1}%
+  \blx@imc@iffieldundef{postnote}
+    {}
+    {\blx@ifcitesingle
+       {\expandafter\blx@imc@ifpages
+        \expandafter{\abx@field@postnote}
+          {\global\cslet{blx@xreflastnote@#1}\abx@field@postnote}
+          {}}
+       {}}}
+
+\apptocmd\blx@loccit@reset{%    #1
+  \begingroup
+  \global\csundef{blx@xreflastnote@#1}%
+  \endgroup}
+  {}
+  {}
+
+\protected\appto\abx@savetrackers{%
+  \begingroup
+  \global\csletcs{blx@saved@xreflastnote@text}{blx@xreflastnote@text}%
+  \global\csletcs{blx@saved@xreflastnote@foot}{blx@xreflastnote@foot}%
+  \endgroup}
+
+\protected\appto\abx@resttrackers{%
+  \begingroup
+  %\blx@loccit@reset{text}%
+  \global\csletcs{blx@xreflastnote@text}{blx@saved@xreflastnote@text}%
+  %\blx@loccit@reset{foot}%
+  \global\csletcs{blx@xreflastnote@foot}{blx@saved@xreflastnote@foot}%
+  \endgroup}
+
+\protected\appto\abx@cleartrackers{%
+  \begingroup
+  \global\csundef{blx@saved@xreflastnote@text}%
+  \global\csundef{blx@saved@xreflastnote@foot}%
+  \endgroup}
+
+\appto\blx@blxinit{%
+  \appto\blx@TE@hook{%
+    \def\ifxrefloccit{\blx@TE\blx@imc@ifxrefloccit}}}
+
+\appto\blx@opt@loccittracker@true{%
+  \let\blx@imc@ifxrefloccit\blx@ifxrefloccit@global}
+\appto\blx@opt@loccittracker@false{%
+  \let\blx@imc@ifxrefloccit\@secondoftwo}
+\appto\blx@opt@loccittracker@context{%
+  \let\blx@imc@ifxrefloccit\blx@ifxrefloccit@context}
+\appto\blx@opt@loccittracker@strict{%
+  \let\blx@imc@ifxrefloccit\blx@ifxrefloccit@strict}
+\appto\blx@opt@loccittracker@constrict{%
+  \let\blx@imc@ifxrefloccit\blx@ifxrefloccit@constrict}
+
+% end of xrefloccit tracker code
+
+\ExecuteBibliographyOptions{citetracker=constrict,autocite=inline,inbookibid=false,
+                            citepages=omit,strict,opcittracker=constrict,labeltitle,
+                            citeisbn=false,citeurl=false,citedoi=false,citeeprint=false}
+
+\newbibmacro*{set:cbx:loccit:toggles}{%
+  \ifloccit
+    {\global\toggletrue{cbx:loccit}}
+    {\global\togglefalse{cbx:loccit}}%
+  \ifxrefloccit
+    {\global\toggletrue{cbx:xrefloccit}}
+    {\global\togglefalse{cbx:xrefloccit}}}
+
+\newbibmacro*{cite:seen}{%  the same for cite and footcite
+  \iffirstonpage
+    {\iffieldundef{shorthand}
+      {\usebibmacro{cite:short}}
+      {\usebibmacro{cite:shorthand}}}
+    {\ifciteibid
+      {\usebibmacro{cite:ibid}}
+      {\ifopcit
+        {\usebibmacro{cite:opcit}}
+        {\iffieldundef{shorthand}
+          {\usebibmacro{cite:short}}
+          {\usebibmacro{cite:shorthand}}}}}}
+
+\newbibmacro*{cite}{%
+  \usebibmacro{cite:citepages}%
+  \usebibmacro{set:cbx:loccit:toggles}%
+  \ifciteseen
+    {\usebibmacro{cite:seen}}
+    {\usebibmacro{cite:full}%
+     \usebibmacro{cite:save}{t}}}
+
+\newbibmacro*{cite:save:bookref}[1]{%
+  \usebibmacro{cbx:bookibid:check}
+    {}
+    {\iffieldundef{crossref}
+      {\iffieldundef{xref}
+        {}
+        {\csxdef{cbx@#1@bookref@\thefield{xref}}{\thefield{entrykey}:\the\value{instcount}}}}
+      {\csxdef{cbx@#1@bookref@\thefield{crossref}}{\thefield{entrykey}:\the\value{instcount}}}}}
+
+\newbibmacro*{cite:save}[1]{%
+  \csxdef{cbx@#1@\thefield{entrykey}}{\the\value{instcount}}%
+  \label{cbx@\the\value{instcount}}%    what for?
+  \usebibmacro{cite:save:bookref}{#1}}
+
+\newbibmacro{cite:clearfields}{%
+   \renewbibmacro*{series+number}{}%
+   \clearfield{addendum}%
+   \clearfield{pubstate}%
+   \clearfield{titleaddon}}
+
+\newbibmacro*{cite:full}{%
+  \usebibmacro{cite:full:citepages}%
+  \printtext[bibhypertarget]{%
+    \usedriver
+      {\usebibmacro{cite:clearfields}}%\DeclareNameAlias{sortname}{default}}
+      {\thefield{entrytype}}}%
+  \usebibmacro{shorthandintro}}
+
+\newbibmacro*{cite:short}{%
+  \global\togglefalse{cbx:loccit}%  always print postnote after short citation
+  \global\togglefalse{cbx:xrefloccit}%
+  \ifnameundef{labelname}
+    {\printfield{label}}
+    {\printnames{labelname}}%
+  \iffieldundef{labeltitle}
+    {}
+    {\setunit*{\labelnamepunct}%
+     \printtext[bibhyperlink]{%
+        \printfield[citetitle]{labeltitle}}}%
+  \ifboolexpr{
+    ( test {\ifentrytype{book}}     % do we use macro{volume+parts} ?
+      or test {\ifentrytype{collection}}
+      or test {\ifentrytype{proceedings}}
+      or test {\ifentrytype{reference}}
+    )
+    and not
+    ( test {\iffieldundef{volume}}        % does macro{volume+parts} prints anything ?
+      and test {\iffieldundef{part}}
+      and test {\iffieldundef{issue}}
+      and test {\iffieldundef{book}}
+    )
+    }
+    {\newunit%
+     \printtext[bibhyperlink]{\usebibmacro{volume+parts}{\setunit*{\addcomma\space}}}}%
+    {}}
+
+\newbibmacro*{cite:opcit}{%
+  \ifnameundef{labelname}
+    {\printfield{label}}
+    {\printnames{labelname}}%
+  \setunit*{\labelnamepunct}%
+  \bibsentence%
+  \printtext[bibhyperlink]{%
+    \bibstring[\mkibid]{opcit}}}
+
+\newbibmacro*{cite:ibid}{%
+  \bibsentence\printtext[bibhyperlink]{\bibstring[\mkibid]{ibidem}}}
+
+\newbibmacro*{cite:shorthand}{%
+  \printfield[bibhyperlink]{shorthand}}
+
+\newbibmacro*{cite:postnote:ibidpage}{%
+  \ifboolexpr{
+        togl {cbx:loccit}
+        or
+        togl {cbx:xrefloccit}
+        }
+    {}
+    {\usebibmacro{postnote}}}
+
+\newbibmacro*{footcite}{%
+  \usebibmacro{cite:citepages}%
+  \usebibmacro{set:cbx:loccit:toggles}%
+  \ifciteseen
+    {\usebibmacro{cite:seen}}
+    {\usebibmacro{cite:full}%
+     \usebibmacro{cite:save}{f}}}
+
+\DeclareCiteCommand{\cite}
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \iffootnote
+     {\usebibmacro{footcite}}
+     {\usebibmacro{cite}}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\DeclareCiteCommand{\parencite}[\mkbibparens]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \iffootnote
+     {\usebibmacro{footcite}}
+     {\usebibmacro{cite}}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\DeclareCiteCommand{\footcite}[\mkbibfootnote]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \usebibmacro{footcite}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\DeclareCiteCommand{\footcitetext}[\mkbibfootnotetext]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \usebibmacro{footcite}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\DeclareCiteCommand{\smartcite}[\iffootnote\mkbibparens\mkbibfootnote]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \iffootnote
+     {\usebibmacro{footcite}}
+     {\usebibmacro{cite}}}
+  {\multicitedelim}
+  {\usebibmacro{cite:postnote}}
+
+\newbibmacro*{textcite}{%
+  \ifnameundef{labelname}
+    {\printfield[citetitle]{labeltitle}}
+    {\printnames{labelname}}}
+
+\newbibmacro*{textcite:init}{%
+  \citetrackerfalse%
+  \pagetrackerfalse%
+  \iffirstcitekey
+    {\global\undef\cbx@lasthash}
+    {}}
+
+\newbibmacro*{textcite:count}{%
+  \stepcounter{textcitetotal}%
+  \ifnumgreater{\value{labelname}}{\value{textcitemaxnames}}
+    {\setcounter{textcitemaxnames}{\value{labelname}}}
+    {}}
+
+\DeclareCiteCommand{\cbx@textcite}
+  {\usebibmacro{textcite:init}}
+  {\iffieldequals{namehash}{\cbx@lasthash}
+     {}
+     {\iffirstcitekey
+        {}
+        {\textcitedelim}%
+      \stepcounter{textcitecount}%
+      \usebibmacro{textcite}%
+      \savefield{namehash}{\cbx@lasthash}}}
+  {}
+  {}
+
+\DeclareCiteCommand{\textcite}[\cbx@textcite@init\cbx@textcite\footcite]
+  {\usebibmacro{textcite:init}%
+   \gdef\cbx@savedkeys{}%
+   \DeferNextCitekeyHook}
+  {\ifthenelse{\iffirstcitekey\AND\value{multicitetotal}>0}
+     {\protected@xappto\cbx@footcite@args{%
+        (\thefield{multiprenote})(\thefield{multipostnote})}}
+     {}%
+   \xappto\cbx@savedkeys{\thefield{entrykey},}%
+   \iffieldequals{namehash}{\cbx@lasthash}
+     {}
+     {\usebibmacro{textcite:count}%
+      \savefield{namehash}{\cbx@lasthash}}%
+   \ifnumequal{\value{citecount}}{\value{citetotal}}
+     {\protected@xappto\cbx@textcite@args{{\cbx@savedkeys}}%
+      \protected@xappto\cbx@footcite@args{%
+        [\thefield{prenote}][\thefield{postnote}]{\cbx@savedkeys}}%
+      \iflastcitekey
+        {\protected@xappto\cbx@textcite@args{\thefield{postpunct}}%
+         \protected@xappto\cbx@footcite@args{\nopunct}}
+        {}}
+     {}}
+  {}
+  {}
+
+\newrobustcmd{\cbx@textcite@init}[3]{%
+  \setcounter{textcitetotal}{0}%
+  \setcounter{textcitecount}{0}%
+  \setcounter{textcitemaxnames}{0}%
+  \def\cbx@textcite@args{#1}\def\cbx@footcite@args{#2}#3%
+  \cbx@textcite@args\empty\cbx@footcite@args\empty}
+
+\DeclareMultiCiteCommand{\cbx@textcites}{\cbx@textcite}{}
+\DeclareMultiCiteCommand{\textcites}
+  [\cbx@textcites@init\cbx@textcites\footcites]{\textcite}{}
+
+\let\cbx@textcites@init\cbx@textcite@init
+\pretocmd{\cbx@textcites@init}{%
+  \UseNextMultiCiteHook%
+  \AtNextMultiCite{%
+    \renewbibmacro{multiprenote}{}%
+    \renewbibmacro{multipostnote}{}}}{}{}
+
+\renewbibmacro*{cbx:bookibid:check}[2]{%
+  \ifboolexpr{%
+      togl {cbx:opt:inbookibid}
+      and
+      test {\ifcitation}
+      and
+      test {\ifxrefibid}
+      }
+    {#1}
+    {#2}}
+
+\endinput

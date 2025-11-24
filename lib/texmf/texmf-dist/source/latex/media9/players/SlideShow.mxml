@@ -1,0 +1,486 @@
+<?xml version="1.0"?>
+<!--                                                               -->
+<!-- Apache Flex 4 source file of SlideShow.swf,                   -->
+<!-- a FlashPlayer-10 compatible component for                     -->
+<!-- JPEG/PNG/GIF slideshows.                                      -->
+<!--                                                               -->
+<!-- version 20150718                                              -->
+<!--                                                               -->
+<!--                                                               -->
+<!-- The free Apache Flex 4 SDK is required to compile             -->
+<!-- this file. Get it from                                        -->
+<!--                                                               -->
+<!--         http://flex.apache.org/download-binaries.html         -->
+<!--                                                               -->
+<!-- and run                                                       -->
+<!--                                                               -->
+<!-- mxmlc -static-link-runtime-shared-libraries SlideShow.mxml    -->
+<!--                                                               -->
+<!-- on the command line.                                          -->
+<!--                                                               -->
+<!--                                                               -->
+<!-- Copyright (C) 2015-today  Alexander Grahn                     -->
+<!--                                                               -->
+<!-- This work may be distributed and/or modified under the        -->
+<!-- conditions of the LaTeX Project Public License, either        -->
+<!-- version 1.3 of this license or (at your option) any later     -->
+<!-- version.                                                      -->
+<!--                                                               -->
+<!-- The latest version of this license is in                      -->
+<!--   http://www.latex-project.org/lppl.txt                       -->
+<!-- and version 1.3 or later is part of all distributions of      -->
+<!-- LaTeX version 2005/12/01 or later.                            -->
+<!--                                                               -->
+<!-- This work has the LPPL maintenance status `maintained'.       -->
+<!--                                                               -->
+<!-- The current maintainer of this work is A. Grahn.              -->
+<!--                                                               -->
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+  xmlns:s="library://ns.adobe.com/flex/spark"
+  xmlns:mx="library://ns.adobe.com/flex/mx"
+  preinitialize="initialise(this.parameters);"
+  applicationComplete="initApp();"
+  resize="if(dynResolution){dynResolution=false;forcedByUsr=true;setImgSrc();}"
+  backgroundAlpha="0"
+>
+  <fx:Script>
+    <![CDATA[
+      import mx.managers.CursorManager;
+
+      private var slideshowXML:XML;
+      private var setXMLDone:Boolean;
+      private var isEnabled:Boolean=true;
+
+      private function setXML(s:String):void {
+        var loader:URLLoader = new URLLoader();
+        loader.addEventListener(Event.COMPLETE, onURLLoaderComplete);
+        loader.addEventListener(IOErrorEvent.IO_ERROR, onAnyError);
+        loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onAnyError);
+        isEnabled=false;
+        slideshowXML=null;
+        setXMLDone=false;
+        isIOError=true;
+        CursorManager.setBusyCursor();
+        timeoutTimer.start();
+        loader.load(new URLRequest(s));
+      }
+
+      private function onURLLoaderComplete(event:Event):void
+      {
+        CursorManager.removeBusyCursor();
+        isEnabled=true;
+        var loader:URLLoader = event.target as URLLoader;
+        if (loader != null)
+        {
+           slideshowXML = new XML(loader.data);
+           setXMLDone=true;
+           rotations=new Object();
+           seek(0);
+           if(autoPlay) play();
+        }
+      }
+
+      [Bindable] private var delay:Number=5;
+      [Bindable] private var autoPlay:Boolean=false;
+      private var xmlfile:String=null;
+
+      private function initialise(flashVars:Object):void {
+        xmlfile=flashVars.xml;
+        if(flashVars.delay){delay=flashVars.delay}
+        if(flashVars.autoPlay=='true'){autoPlay=true}
+      }
+
+      private var reloadTimer:Timer = null;
+      private var playTimer:Timer = null;
+      private var timeoutTimer:Timer;
+      private var curFile:String;
+
+      private var idx:Number=0;
+      private var urlIdx:Number=0;
+      [Bindable] private var src1:String;
+      [Bindable] private var src2:String;
+
+      private var rotations:Object;
+
+      private function rotate(n:Number=1):void {
+        if(Img1.visible){
+          n==0 ? Img1.rotation=0 : Img1.rotation+=90*Math.floor(n);
+          Img1.rotation%=360;
+          rotations[slideshowXML.Img[idx].URL[urlIdx].toString()]=
+            Img1.rotation/90;
+        } else {
+          n==0 ? Img2.rotation=0 : Img2.rotation+=90*Math.floor(n);
+          Img2.rotation%=360;
+          rotations[slideshowXML.Img[idx].URL[urlIdx].toString()]=
+            Img2.rotation/90;
+        }
+      }
+
+      import mx.collections.ArrayCollection;
+      import spark.collections.Sort;
+      import spark.collections.SortField;
+
+      private var forcedByUsr:Boolean;
+      private var dynResolution:Boolean;
+
+      private function setImgSrc():void {
+        if(reloadTimer && reloadTimer.hasEventListener(TimerEvent.TIMER)){
+          reloadTimer.removeEventListener(TimerEvent.TIMER, reloadImg);
+          reloadTimer=null;
+        }
+        if(setXMLDone && slideshowXML && (isEnabled||forcedByUsr)){
+          isEnabled=false;
+          forcedByUsr=false;
+          CursorManager.removeBusyCursor();
+          CursorManager.setBusyCursor();
+          timeoutTimer.start();
+          isIOError=true;
+
+          urlIdx=0;
+          if(slideshowXML.Img[idx].URL.length()>1){
+            var sizes:ArrayCollection = new ArrayCollection();
+            for(var i:Number=0; i<slideshowXML.Img[idx].URL.length(); i++){
+              var sizeStr:String=slideshowXML.Img[idx].URL[i].attribute("size");
+              if(sizeStr.match(/^\s*[0-9]+x[0-9]+\s*$/)){
+                var xsize:Number=Number(sizeStr.replace(/x[0-9]+/, ""));
+                var ysize:Number=Number(sizeStr.replace(/[0-9]+x/, ""));
+                sizes.addItem(
+                  {size: xsize*ysize, index: i, x: xsize, y: ysize});
+              }
+            }
+            if(sizes.length>0){
+              dynResolution=true;
+              var sort:Sort = new Sort();
+              sort.fields=[new SortField("size",true,true)];
+              sizes.sort=sort;//                  ^--descending order
+              sizes.refresh();
+
+              urlIdx=sizes.getItemAt(0).index;
+              for(i=0; i<sizes.length; i++){
+                if(
+                  sizes.getItemAt(i).x >= this.width ||
+                  sizes.getItemAt(i).y >= this.height
+                ) urlIdx=sizes.getItemAt(i).index;
+              }
+            }
+          }
+
+          curFile=slideshowXML.Img[idx].URL[urlIdx].toString();
+
+          var pattern:RegExp;
+          if(slideshowXML.Img[idx].URL[urlIdx].attribute('height').length() > 0){
+            pattern = new RegExp(
+              slideshowXML.Img[idx].URL[urlIdx].attribute('height'), "g");
+            if(curFile.search(pattern)>-1){
+              dynResolution=true;
+              curFile=curFile.replace(pattern, this.height.toString());
+            }
+          }
+
+          if(slideshowXML.Img[idx].URL[urlIdx].attribute('width').length() > 0){
+            pattern = new RegExp(
+              slideshowXML.Img[idx].URL[urlIdx].attribute('width'), "g");
+            if(curFile.search(pattern)>-1){
+              dynResolution=true;
+              curFile=curFile.replace(pattern, this.width.toString());
+            }
+          }
+
+          if(Img1.visible) {
+            src2=null; src2=curFile;
+          } else {
+            src1=null; src1=curFile;
+          }
+        }
+        if(slideshowXML.Img[idx].attribute('live')>0){
+          reloadTimer=new Timer(slideshowXML.Img[idx].attribute('live')*1000,1);
+          reloadTimer.addEventListener(TimerEvent.TIMER, reloadImg);
+          reloadTimer.start();
+        }
+      }
+
+      private var isReload:Boolean;
+      private function reloadImg(e:TimerEvent):void {
+        isReload=true; setImgSrc();
+      }
+
+      private var isPlaying:Boolean=false;
+
+      private function playPause():void {
+        if(isPlaying) pause(); else play();
+      }
+
+      private function play():void {
+        if(!isPlaying && slideshowXML.Img.length()>1) {
+          if(!playTimer){
+            playTimer=new Timer(delay*1000, 0);
+            playTimer.addEventListener(TimerEvent.TIMER, nextSlide);
+          }
+          isPlaying=true;
+          playTimer.start();
+        }
+      }
+
+      private function pause():void {
+        if(isPlaying) {
+          isPlaying=false;
+          playTimer.stop();
+        }
+      }
+
+      private function nextSlide(e:Event=null):void {
+        if(!isEnabled && !forcedByUsr) return;
+        if(isPlaying) playTimer.stop();
+        var evnt:MouseEvent = e as MouseEvent;
+        if(evnt && evnt.type=="mouseUp" && evnt.shiftKey) {
+          prevSlide();
+        } else {
+          idx++;
+          if(idx==slideshowXML.Img.length()) idx=0;
+          isReload=false;
+          setImgSrc();
+        }
+      }
+
+      private function prevSlide(e:MouseEvent=null):void {
+        if(!isEnabled && !forcedByUsr) return;
+        if(isPlaying) playTimer.stop();
+        idx--;
+        if(idx<0) idx=slideshowXML.Img.length()-1;
+        isReload=false;
+        setImgSrc();
+      }
+
+      private function seek(i:Number):void {
+        if(!isEnabled && !forcedByUsr) return;
+        if(isPlaying) playTimer.stop();
+        if(i<0 || i>=slideshowXML.Img.length())
+          idx=slideshowXML.Img.length()-1;
+        else
+          idx=Math.floor(i);
+        isReload=false;
+        setImgSrc();
+      }
+
+      private function onKeyDown(e:KeyboardEvent):void {
+        forcedByUsr=true;
+        switch(e.keyCode) {
+          case 32: //space bar
+            playPause();
+            break;
+          case 36: //home
+            if(isPlaying) pause();
+            seek(0);
+            break;
+          case 35: //end
+            if(isPlaying) pause();
+            seek(-1);
+            break;
+          case 37: //<--
+            prevSlide();
+            break;
+          case 39: //-->
+            nextSlide();
+            break;
+          case 82: //`r'
+            e.shiftKey ? rotate(-1) : rotate();
+            break;
+        }
+      }
+
+      private function slideNum():Number {return idx;}
+
+      private function numSlides():Number {return slideshowXML.Img.length();}
+
+      private function playing():Boolean {return isPlaying;}
+
+      private function initApp():void {
+        this.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+        ExternalInterface.addCallback("setXML", setXML);
+        ExternalInterface.addCallback("play",
+          function():void{forcedByUsr=true;play();});
+        ExternalInterface.addCallback("pause",
+          function():void{forcedByUsr=true;pause();});
+        ExternalInterface.addCallback("playPause",
+          function():void{forcedByUsr=true;playPause();});
+        ExternalInterface.addCallback("seek",
+          function(i:Number):void{forcedByUsr=true;seek(i);});
+        ExternalInterface.addCallback("slideNum", slideNum);
+        ExternalInterface.addCallback("numSlides", numSlides);
+        ExternalInterface.addCallback("playing", playing);
+        ExternalInterface.addCallback("rotate", rotate);
+
+        var itemNextSlide:ContextMenuItem =
+          new ContextMenuItem("Next Slide, [\u2192]");
+        this.contextMenu.customItems.push(itemNextSlide);
+        itemNextSlide.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+          function(e:ContextMenuEvent):void{forcedByUsr=true;nextSlide();});
+
+        var itemPrevSlide:ContextMenuItem =
+          new ContextMenuItem("Previous Slide, [\u2190]");
+        this.contextMenu.customItems.push(itemPrevSlide);
+        itemPrevSlide.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+          function(e:ContextMenuEvent):void{forcedByUsr=true;prevSlide();});
+
+        var itemPlayPause:ContextMenuItem = new ContextMenuItem("N.N.");
+        this.contextMenu.customItems.push(itemPlayPause);
+        itemPlayPause.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+          function(e:ContextMenuEvent):void{forcedByUsr=true;playPause();});
+
+        var itemFirstSlide:ContextMenuItem =
+          new ContextMenuItem("First Slide, [Home]");
+        this.contextMenu.customItems.push(itemFirstSlide);
+        itemFirstSlide.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+          function(e:ContextMenuEvent):void{
+            forcedByUsr=true;if(isPlaying) pause();seek(0);});
+
+        var itemLastSlide:ContextMenuItem =
+          new ContextMenuItem("Last Slide, [End]");
+        this.contextMenu.customItems.push(itemLastSlide);
+        itemLastSlide.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+          function(e:ContextMenuEvent):void{
+            forcedByUsr=true;if(isPlaying) pause();seek(-1);});
+
+        var itemRotRight:ContextMenuItem =
+          new ContextMenuItem("Rotate Right, [r]");
+        this.contextMenu.customItems.push(itemRotRight);
+        itemRotRight.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+          function(e:ContextMenuEvent):void{forcedByUsr=true;rotate();});
+
+        var itemRotLeft:ContextMenuItem =
+          new ContextMenuItem("Rotate Left, [\u21e7]+[r]");
+        this.contextMenu.customItems.push(itemRotLeft);
+        itemRotLeft.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+          function(e:ContextMenuEvent):void{forcedByUsr=true;rotate(-1);});
+
+        this.contextMenu.addEventListener(ContextMenuEvent.MENU_SELECT,
+          function(e:ContextMenuEvent):void{
+            itemPlayPause.caption=(isPlaying ? "Pause" : "Play")+", [Space]";
+            itemPlayPause.visible=itemNextSlide.visible=itemPrevSlide.visible=
+              itemFirstSlide.visible=itemLastSlide.visible=false;
+            if(slideshowXML.Img.length()>1){
+              itemPlayPause.visible=itemNextSlide.visible=itemPrevSlide.visible=
+                itemFirstSlide.visible=itemLastSlide.visible=true;
+            }
+        });
+
+        timeoutTimer=new Timer(30000, 1);
+        timeoutTimer.addEventListener(TimerEvent.TIMER, onAnyError);
+        curFile=xmlfile; if(xmlfile) setXML(xmlfile);
+        CursorManager.hideCursor();
+      }
+
+      private var isIOError:Boolean;
+      private function onAnyError(e:Event):void {
+        if(e.type!=IOErrorEvent.IO_ERROR || setXMLDone==false){
+          isIOError=false;
+          setXMLDone=true;
+          if(Img1.visible){
+            src2=null; src2="/dev/null"
+          }else{
+            src1=null; src1="/dev/null"
+          }
+          caption.text=e.type+': '+curFile;
+          if(e.type==TimerEvent.TIMER)
+            caption.text="timeout after 30 s: "+curFile;
+          CursorManager.removeBusyCursor();
+        }else{
+          if(isIOError) caption.text=e.type+': '+curFile;
+          onImgDone(e);
+        }
+        caption.visible=true;
+        if(reloadTimer && reloadTimer.hasEventListener(TimerEvent.TIMER)){
+          reloadTimer.removeEventListener(TimerEvent.TIMER, reloadImg);
+          reloadTimer=null; isReload=false;
+        }
+      }
+
+      private function onImgDone(e:Event):void {
+        timeoutTimer.reset();
+        if(e.target==Img1){
+          Img1.visible=true;Img2.visible=false;
+        } else {
+          Img2.visible=true;Img1.visible=false;
+        }
+        if(slideshowXML.Img.length()>1){
+          slideNo.text=String(idx+1)+"/"+slideshowXML.Img.length().toString();
+          slideNo.visible=slideNo.includeInLayout=true;
+        } else {
+          slideNo.visible=slideNo.includeInLayout=false;
+        }
+        var curRot:Number=0;
+        if (rotations.hasOwnProperty(slideshowXML.Img[idx].URL[urlIdx].toString()))
+          curRot=rotations[slideshowXML.Img[idx].URL[urlIdx].toString()];
+        else
+          curRot=Number(slideshowXML.Img[idx].attribute('rot90'));
+        rotate(0);
+        if(e.type==FlexEvent.READY) {
+          rotate(curRot);
+          if(slideshowXML.Img[idx].caption.toString()!=""){
+            caption.text=slideshowXML.Img[idx].caption.toString();
+            caption.visible=true;
+          } else {
+            caption.text="";
+            caption.visible=false;
+          }
+          if(!isReload) anim.play();
+          if(slideshowXML.Img[idx].attribute('live')>0)
+            cache.removeCacheEntry(curFile);
+        }
+        CursorManager.removeBusyCursor();
+        isEnabled=true;
+        if(isPlaying && !playTimer.running) playTimer.start();
+      }
+    ]]>
+  </fx:Script>
+
+  <fx:Declarations>
+    <s:Animate id="anim" target="{grpCaption}">
+      <s:motionPaths>
+          <s:SimpleMotionPath property="bottom"
+              valueFrom="{-grpCaption.height}" valueTo="0"/>
+      </s:motionPaths>
+    </s:Animate>
+    <s:ContentCache id="cache"/>
+  </fx:Declarations>
+
+  <s:Image id="Img1" source="{src1}" visible="false"
+    width="100%" height="100%"
+    horizontalCenter="0" verticalCenter="0"
+    contentLoader="{cache}"
+    ready="onImgDone(event)"
+    ioError="onAnyError(event)"
+    securityError="onAnyError(event)"
+    smooth="true"
+  />
+
+  <s:Image id="Img2" source="{src2}" visible="true"
+    width="100%" height="100%"
+    horizontalCenter="0" verticalCenter="0"
+    contentLoader="{cache}"
+    ready="onImgDone(event)"
+    ioError="onAnyError(event)"
+    securityError="onAnyError(event)"
+    smooth="true"
+  />
+
+  <s:Group id="grpCaption" width="100%" bottom="{-grpCaption.height}">
+    <s:Label id="caption" left="0" bottom="0" visible="false"
+      paddingLeft="2" paddingBottom="2" paddingRight="2" paddingTop="4"
+      backgroundColor="0xdddddd" backgroundAlpha="0.7"
+      maxWidth="{grpCaption.width-slideNo.width}"
+      maxDisplayedLines="{-1}"  lineBreak="toFit"
+    />
+    <s:Label id="slideNo" right="0" bottom="0" visible="false"
+      paddingLeft="2" paddingBottom="2" paddingRight="2" paddingTop="4"
+      backgroundColor="0xdddddd" backgroundAlpha="0.7"
+    />
+  </s:Group>
+
+  <s:Button alpha="0" width="100%" height="100%"
+    mouseUp="forcedByUsr=true;nextSlide(event);"
+    mouseOver="anim.play();CursorManager.showCursor();"
+    mouseOut="if(anim.isPlaying) anim.reverse(); else anim.play(null,true);
+      CursorManager.hideCursor();"
+  />
+</s:Application>

@@ -1,0 +1,407 @@
+%%
+%% This is file `blochsphere.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% blochsphere.dtx  (with options: `package')
+%% 
+%% This generated file is part of the blochsphere package.
+%% 
+%% Copyright (C) 2015 by Matthew Wardrop <mister.wardrop@gmail.com>
+%% 
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%   http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%% 
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{blochsphere}
+    [2015/09/15 v1.1 blochsphere drawing package]
+\NeedsTeXFormat{LaTeX2e}[1994/06/01]
+\ProvidesPackage{blochsphere}[2015/08/17]
+%% \usepackage{trace}
+%%\tracingall
+\usepackage{tikz,etoolbox,environ,ifthen,kvsetkeys,kvoptions}
+\usetikzlibrary{decorations.pathreplacing, decorations.markings, calc, fadings}
+\define@key{blochsphere}{radius}{%
+\def\blochsphere@radius{#1}%
+}
+\providecommand{\blochsphere@radius}{1cm}
+\define@key{blochsphere}{tilt}{%
+\def\blochsphere@tilt{#1}%
+}
+\providecommand{\blochsphere@tilt}{15}
+\define@key{blochsphere}{rotation}{%
+\def\blochsphere@rotation{#1}%
+}
+\providecommand{\blochsphere@rotation}{-20}
+\define@key{blochsphere}{color}{%
+\def\blochsphere@color{#1}%
+}
+\providecommand{\blochsphere@color}{white}
+\define@key{blochsphere}{opacity}{%
+\def\blochsphere@opacity{#1}%
+}
+\providecommand{\blochsphere@opacity}{0.7}
+\define@key{blochsphere}{style}{%
+\def\blochsphere@style{#1}%
+}
+\providecommand{\blochsphere@style}{}
+\define@key{blochsphere}{scale}{%
+\def\blochsphere@scale{#1}%
+}
+\providecommand{\blochsphere@scale}{1}
+\define@key{blochsphere}{plane}{%
+\def\blochsphere@plane{#1}%
+}
+\providecommand{\blochsphere@plane}{current plane}
+\define@key{blochsphere}{shift}{%
+\def\blochsphere@shift{{#1}}%
+}
+\providecommand{\blochsphere@shift}{{0,0,0}}
+\define@key{blochsphere}{ball}{%
+\def\blochsphere@ball{#1}%
+}
+\providecommand{\blochsphere@ball}{3d}
+\define@key{blochsphere}{statecolor}{%
+\def\blochsphere@statecolor{#1}%
+}
+\providecommand{\blochsphere@statecolor}{black}
+\define@key{blochsphere}{statewidth}{%
+\def\blochsphere@statewidth{#1}%
+}
+\providecommand{\blochsphere@statewidth}{0.4pt}
+\define@key{blochsphere}{axisarrow}{%
+\def\blochsphere@axisarrow{#1}%
+}
+\providecommand{\blochsphere@axisarrow}{}
+\define@key{blochsphere}{labelmark}{%
+    \setboolean{blochsphere@labelmark}{#1}%
+}
+\newboolean{blochsphere@labelmark}
+\setboolean{blochsphere@labelmark}{false}
+\define@key{blochsphere}{nested}{%
+\setboolean{blochsphere@nested}{#1}%
+}
+\newboolean{blochsphere@nested}
+\setboolean{blochsphere@nested}{false}
+\ProcessKeyvalOptions{blochsphere}\relax
+\newenvironment{blochsphere}[1][]{
+\begingroup
+\makeatletter
+\ignorespaces\setkeys{blochsphere}{#1}\unskip%
+\pgfdeclarelayer{back}%
+\pgfdeclarelayer{front}%
+\pgfsetlayers{back,main,front}%
+\pgfkeys{%
+/tikz/on layer/.code={%
+\pgfonlayer{##1}\begingroup%
+\aftergroup\endpgfonlayer%
+\aftergroup\endgroup%
+},%
+/tikz/node on layer/.code={%
+\gdef\node@@on@layer{%
+\setbox\tikz@tempbox=\hbox\bgroup\pgfonlayer{##1}\unhbox\tikz@tempbox\endpgfonlayer\egroup}%
+\aftergroup\node@on@layer%
+},%
+/tikz/end node on layer/.code={%
+\endpgfonlayer\endgroup\endgroup%
+}%
+}%
+\def\node@on@layer{\aftergroup\node@@on@layer}%
+\newcommand\drawBall[1][]{
+\begingroup
+\setkeys{blochsphere}{##1}
+\expandafter\ifstrequal\expandafter{\blochsphere@ball}{3d}{
+\fill[on layer=main,ball color=\blochsphere@color,opacity=\blochsphere@opacity] (0,0) circle (\blochsphere@radius); % 3D lighting effect
+}{}
+\expandafter\ifstrequal\expandafter{\blochsphere@ball}{circle}{
+\draw[on layer=main,color=\blochsphere@color] (0,0) circle (\blochsphere@radius); % 3D lighting effect
+}{}
+\endgroup
+}%
+\newcommand\drawBallGrid[3][]{
+\begingroup
+\setkeys{blochsphere}{##1}
+\foreach \phi in {0,##2,...,89} {
+\drawLatitudeCircle{\phi}
+\drawLatitudeCircle{-\phi}
+}
+\foreach \theta in {0,##3,...,179} {
+\drawLongitudeCircle{\theta}
+}
+\endgroup
+}%
+\newcommand\setDrawingPlane[3][]{%
+\setkeys{blochsphere}{##1}
+\pgfmathsetmacro\aphi{##2}
+\pgfmathsetmacro\atheta{##3}
+\pgfmathsetmacro\dot{cos(\aphi)}
+\ifdim\dot pt<0.7 pt\relax%
+\pgfmathsetmacro\norm{cos(asin(\dot))}
+\pgfmathsetmacro\xx{-sin(\aphi)*sin(\blochsphere@rotation - \atheta)}
+\pgfmathsetmacro\xy{sin(\aphi)*sin(\blochsphere@tilt)*cos(\blochsphere@rotation - \atheta)}
+\pgfmathsetmacro\yx{-sin(2*\aphi - \blochsphere@rotation + \atheta)/4 - sin(2*\aphi + \blochsphere@rotation - \atheta)/4}
+\pgfmathsetmacro\yy{(sin(\aphi)*cos(\blochsphere@tilt) - sin(\blochsphere@tilt)*sin(\blochsphere@rotation - \atheta)*cos(\aphi))*sin(\aphi)}
+\else
+\pgfmathsetmacro\norm{sqrt(abs(sin(\blochsphere@rotation - \atheta)*cos(\aphi))^2 + abs(sin(\blochsphere@tilt)*cos(\aphi)*cos(\blochsphere@rotation - \atheta))^2 + abs(cos(\aphi)*cos(\blochsphere@tilt)*cos(\blochsphere@rotation - \atheta))^2)}
+\pgfmathsetmacro\xx{-sin(\blochsphere@rotation - \atheta)*cos(\aphi)}
+\pgfmathsetmacro\xy{sin(\blochsphere@tilt)*cos(\aphi)*cos(\blochsphere@rotation - \atheta)}
+\pgfmathsetmacro\yx{-cos(\aphi)^2*cos(\blochsphere@rotation - \atheta)}
+\pgfmathsetmacro\yy{(sin(\aphi)*cos(\blochsphere@tilt) - sin(\blochsphere@tilt)*sin(\blochsphere@rotation - \atheta)*cos(\aphi))*cos(\aphi)}
+\fi
+\computeOffset{shift}
+  \begingroup\newcommand\tmp[1]{\endgroup\noexpand\relax%
+\tikzset{\blochsphere@plane/.style={cm={\xx/\norm, \xy/\norm, \yx/\norm, \yy/\norm, \unexpanded\expandafter{####1} }}}%
+} \tmp{\shift}
+}%
+\newcommand\setLatitudinalDrawingPlane[2][]{%
+\pgfmathsetmacro\yshift{sin(##2)*\the\blochsphere@radius}
+\setDrawingPlane[##1,shift={{0,0,\yshift}}]{0}{0}
+}%
+\newcommand\setLongitudinalDrawingPlane[2][]{%
+\setDrawingPlane[##1]{90}{##2}
+}%
+\newcommand\drawCircle[3][]{
+\begingroup
+\setkeys{blochsphere}{##1}
+\setDrawingPlane{##2}{##3}
+\computeVisibility{##2}{##3}{agamma}{abeta}
+\begingroup\edef\tmp{\endgroup%
+\noexpand\draw[current plane,on layer=back,\unexpanded\expandafter{\blochsphere@style}] \unexpanded\expandafter{(\agamma-\abeta-0.2:\blochsphere@radius+\the\pgflinewidth*0.5) arc (\agamma-\abeta-0.2:\agamma+\abeta+0.2:\blochsphere@radius+\the\pgflinewidth*0.5)};
+\noexpand\draw[current plane,on layer=front,\unexpanded\expandafter{\blochsphere@style}] \unexpanded\expandafter{(\agamma+\abeta:\blochsphere@radius+\the\pgflinewidth*0.5) arc (\agamma+\abeta:\agamma-\abeta+360:\blochsphere@radius+\the\pgflinewidth*0.5)};
+} \tmp
+\endgroup
+}%
+\newcommand\drawGreatCircle[3][]{
+\drawCircle[##1]{##2}{##3}
+}
+\newcommand\drawSmallCircle[4][]{
+\begingroup
+\pgfmathsetmacro\xshift{sin(##2)*cos(##3)*\blochsphere@radius*sin(##4)}
+\pgfmathsetmacro\yshift{sin(##2)*sin(##3)*\blochsphere@radius*sin(##4)}
+\pgfmathsetmacro\zshift{cos(##2)*\blochsphere@radius*sin(##4)}
+\pgfmathsetmacro\radius{\blochsphere@radius*cos(##4)}
+\drawCircle[##1,shift={{\xshift,\yshift,\zshift}},radius=\radius]{##2}{##3}
+\endgroup
+}%
+\newcommand\drawLatitudeCircle[2][]{
+\begingroup
+\pgfmathsetmacro\yshift{sin(##2)*\blochsphere@radius}
+\pgfmathsetmacro\radius{\blochsphere@radius*cos(##2)}
+\drawCircle[##1,shift={{0,0,\yshift}},radius=\radius]{0}{0}
+\endgroup
+}%
+\newcommand\drawLongitudeCircle[2][]{
+\begingroup
+\drawCircle[##1]{90}{##2+90}
+\endgroup
+}%
+\newcommand\drawRotationLeft[5][]{
+\begingroup
+\setkeys{blochsphere}{##1}
+\pgfmathsetmacro\xshift{sin(##2)*cos(##3)*##4}
+\pgfmathsetmacro\yshift{sin(##2)*sin(##3)*##4}
+\pgfmathsetmacro\zshift{cos(##2)*##4}
+\setDrawingPlane[shift={\xshift,\yshift,\zshift}]{##2}{##3}
+\computeVisibility{##2}{##3}{agamma}{abeta}
+\begingroup\edef\tmp{\endgroup%
+\noexpand\draw[current plane,on layer=back,\unexpanded\expandafter{\blochsphere@style}] \unexpanded\expandafter{(\agamma-\abeta-0.2:\blochsphere@radius*\blochsphere@scale+\the\pgflinewidth*0.5) arc (\agamma-\abeta-0.2:\agamma+\abeta+0.2:\blochsphere@radius*\blochsphere@scale+\the\pgflinewidth*0.5)};
+\noexpand\draw[<-,current plane,on layer=front,\unexpanded\expandafter{\blochsphere@style}] \unexpanded\expandafter{(\agamma+\abeta+##5:\blochsphere@radius*\blochsphere@scale+\the\pgflinewidth*0.5) arc (\agamma+\abeta+##5:\agamma-\abeta+360:\blochsphere@radius*\blochsphere@scale+\the\pgflinewidth*0.5)};
+} \tmp
+\endgroup
+}%
+\newcommand\drawRotationRight[5][]{
+\begingroup
+\setkeys{blochsphere}{##1}
+\pgfmathsetmacro\xshift{sin(##2)*cos(##3)*##4}
+\pgfmathsetmacro\yshift{sin(##2)*sin(##3)*##4}
+\pgfmathsetmacro\zshift{cos(##2)*##4}
+\setDrawingPlane[shift={\xshift,\yshift,\zshift}]{##2}{##3}
+\computeVisibility{##2}{##3}{agamma}{abeta}
+\begingroup\edef\tmp{\endgroup%
+\noexpand\draw[current plane,on layer=back,\unexpanded\expandafter{\blochsphere@style}] \unexpanded\expandafter{(\agamma-\abeta-0.2:\blochsphere@radius*\blochsphere@scale+\the\pgflinewidth*0.5) arc (\agamma-\abeta-0.2:\agamma+\abeta+0.2:\blochsphere@radius*\blochsphere@scale+\the\pgflinewidth*0.5)};
+\noexpand\draw[->,current plane,on layer=front,\unexpanded\expandafter{\blochsphere@style}] \unexpanded\expandafter{(\agamma+\abeta:\blochsphere@radius*\blochsphere@scale+\the\pgflinewidth*0.5) arc (\agamma+\abeta:\agamma-\abeta+360-##5:\blochsphere@radius*\blochsphere@scale+\the\pgflinewidth*0.5)};
+} \tmp
+\endgroup
+}%
+\newcommand\drawAxis[3][] {
+\begingroup
+\setkeys{blochsphere}{##1}
+\pgfmathsetmacro\behind{ifthenelse(-sin(##2)*sin(\blochsphere@rotation - ##3)*cos(\blochsphere@tilt) + sin(\blochsphere@tilt)*cos(##2)<0, 1, 0)}
+\pgfmathsetmacro\newphi{180-##2}
+\pgfmathsetmacro\newtheta{##3+180}
+\ifnum\behind=0\relax
+\labelPolar[scale=1]{blochspheretmpp}{##2}{##3}
+\labelPolar{blochspheretmps}{##2}{##3}
+\labelPolar{blochspheretmpe}{\newphi}{\newtheta}
+\else
+\labelPolar[scale=1]{blochspheretmpp}{\newphi}{\newtheta}
+\labelPolar{blochspheretmpe}{##2}{##3}
+\labelPolar{blochspheretmps}{\newphi}{\newtheta}
+\fi
+\begingroup\edef\tmp{\endgroup%
+\ifnum\behind=0\relax
+\noexpand\draw[on layer=front,\unexpanded\expandafter{\blochsphere@style},\blochsphere@axisarrow] (blochspheretmpp) -- (blochspheretmps);
+\noexpand\draw[on layer=back,\unexpanded\expandafter{\blochsphere@style}] (blochspheretmpe) -- (blochspheretmpp);
+\else
+\noexpand\draw[on layer=front,\unexpanded\expandafter{\blochsphere@style},\blochsphere@axisarrow] (blochspheretmpp) -- (blochspheretmpe);
+\noexpand\draw[on layer=back,\unexpanded\expandafter{\blochsphere@style}] (blochspheretmps) -- (blochspheretmpp);
+\fi
+} \tmp
+\endgroup
+}%
+\newcommand\labelPolar[4][]{%
+\begingroup
+\setkeys{blochsphere}{##1}
+\setLongitudinalDrawingPlane{##4+90}
+\pgfmathsetmacro\behind{ifthenelse(-sin(##3)*sin(\blochsphere@rotation - ##4)*cos(\blochsphere@tilt) + sin(\blochsphere@tilt)*cos(##3)<0, 1, 0)}
+\ifthenelse{\boolean{blochsphere@labelmark}}
+        {
+            \ifnum\behind=1\relax
+                \path[current plane,on layer=back] (90-##3:\blochsphere@radius*\blochsphere@scale) coordinate[mark coordinate] (##2); %
+            \else
+                \path[current plane,on layer=front] (90-##3:\blochsphere@radius*\blochsphere@scale) coordinate[mark coordinate] (##2); %
+            \fi
+        }
+        {
+            \ifnum\behind=1\relax
+                \path[current plane,on layer=back] (90-##3:\blochsphere@radius*\blochsphere@scale) coordinate (##2); %
+            \else
+                \path[current plane,on layer=front] (90-##3:\blochsphere@radius*\blochsphere@scale) coordinate (##2); %
+            \fi
+        }
+\endgroup
+}%
+\newcommand\labelLatLon[4][]{%
+\begingroup
+\pgfmathsetmacro\newphi{90-##3}
+\labelPolar[##1]{##2}{\newphi}{##4}
+\endgroup
+}%
+\newcommand\drawStateLatLon[4][]{
+\begingroup
+\pgfmathsetmacro\newphi{90-##3}
+\drawStatePolar[##1]{##2}{\newphi}{##4}
+\endgroup
+}%
+\newcommand\drawStatePolar[4][]{
+\begingroup
+\setkeys{blochsphere}{##1}
+\labelPolar{##2}{##3}{##4}
+\pgfmathsetmacro\behind{ifthenelse(-sin(##3)*sin(\blochsphere@rotation - ##4)*cos(\blochsphere@tilt) + sin(\blochsphere@tilt)*cos(##3)<0, 1, 0)}
+\ifnum\behind=1\relax
+\tikzset{test/.style={
+postaction={
+decorate,
+decoration={
+markings,
+mark=at position \pgfdecoratedpathlength-0.5pt with {\arrow[\blochsphere@statecolor,line width=\blochsphere@statewidth,opacity=0.2] {>}; },
+mark=between positions 0 and \pgfdecoratedpathlength-5pt step 0.5pt with {
+\pgfmathsetmacro\myval{multiply(divide(
+\pgfkeysvalueof{/pgf/decoration/mark info/distance from start}, \pgfdecoratedpathlength),100)};
+\pgfsetfillcolor{\blochsphere@statecolor};
+\pgfsetfillopacity{0.4-\myval/100*0.2}
+\pgfpathcircle{\pgfpointorigin}{\blochsphere@statewidth};
+\pgfusepath{fill};}
+}}}}
+\else
+\tikzset{test/.style={
+postaction={
+decorate,
+decoration={
+markings,
+mark=at position \pgfdecoratedpathlength-0.5pt with {\arrow[\blochsphere@statecolor,line width=\blochsphere@statewidth] {>}; },
+mark=between positions 0 and \pgfdecoratedpathlength-5pt step 0.5pt with {
+\pgfmathsetmacro\myval{multiply(divide(
+\pgfkeysvalueof{/pgf/decoration/mark info/distance from start}, \pgfdecoratedpathlength),100)};
+\pgfsetfillcolor{\blochsphere@statecolor};
+\pgfsetfillopacity{0.4+\myval/100*0.6}
+\pgfpathcircle{\pgfpointorigin}{\blochsphere@statewidth};
+\pgfusepath{fill};}
+}}}}
+\fi
+\path [test,on layer=main] (0,0) -- (##2);
+\endgroup
+}%
+\newcommand\computeOffset[2][]{%
+\setkeys{blochsphere}{##1}%
+\pgfmathsetmacro{\x}{\blochsphere@shift[0]*cos(\blochsphere@rotation) + \blochsphere@shift[1]*sin(\blochsphere@rotation)}%
+\pgfmathsetmacro\y{\blochsphere@shift[0]*sin(\blochsphere@rotation)*sin(\blochsphere@tilt) - \blochsphere@shift[1]*sin(\blochsphere@tilt)*cos(\blochsphere@rotation) + \blochsphere@shift[2]*cos(\blochsphere@tilt)}
+\expandafter\def\csname ##2\endcsname{(\x pt,\y pt)}%
+}%
+\newcommand\computeVisibility[5][]{
+\setkeys{blochsphere}{##1}
+\pgfmathsetmacro\aphi{##2}
+\pgfmathsetmacro\atheta{##3}
+\pgfmathsetmacro\d{sqrt(\blochsphere@shift[0]^2+\blochsphere@shift[1]^2+\blochsphere@shift[2]^2)}%% distance from origin of shift
+\pgfmathsetmacro\tatheta{\atheta+\blochsphere@rotation}
+\pgfmathsetmacro\dot{cos(\aphi)}
+\ifdim\dot pt<0.7 pt\relax%
+\pgfmathsetmacro\domaintest{ifthenelse(and(\blochsphere@rotation - \atheta==0,or(\aphi==0,sin(\blochsphere@tilt==0))),0,1)}
+\ifdim\domaintest pt=0 pt\relax
+\pgfmathsetmacro\agamma{0}
+\else
+\pgfmathsetmacro\agamma{-90+atan(cos(\blochsphere@tilt)*cos(\blochsphere@rotation - \atheta)/(sin(\aphi)*sin(\blochsphere@tilt) + sin(\blochsphere@rotation - \atheta)*cos(\aphi)*cos(\blochsphere@tilt)))}
+\fi
+\else
+\pgfmathsetmacro\domaintest{ifthenelse(and(Mod(\blochsphere@rotation-\atheta,180)==90,Mod(\blochsphere@tilt,180)==90),0,1)}
+\pgfmathsetmacro\domaintesttwo{ifthenelse(Mod(\blochsphere@rotation-\atheta,180)==90,0,1)}
+\pgfmathsetmacro\domaintestthree{ifthenelse(Mod(\blochsphere@tilt,180)==90,0,1)}
+\ifdim\domaintest pt=0 pt\relax
+\pgfmathsetmacro\agamma{360-90*\blochsphere@tilt/abs(\blochsphere@tilt)}
+\else
+\ifdim\domaintesttwo pt=0 pt\relax
+\pgfmathsetmacro\agamma{360-90*(sin(\aphi)*tan(\blochsphere@tilt)+cos(\aphi)*sin(\blochsphere@rotation-\atheta))/abs(sin(\aphi)*tan(\blochsphere@tilt)+cos(\aphi)*sin(\blochsphere@rotation-\atheta))}
+\else
+\ifdim\domaintestthree pt=0 pt\relax
+\pgfmathsetmacro\agamma{360-90*\blochsphere@tilt/abs(\blochsphere@tilt)*cos(\blochsphere@rotation-\atheta)/abs(cos(\blochsphere@rotation-\atheta))}
+\else
+\pgfmathsetmacro\agamma{360-atan( (sin(\aphi)*tan(\blochsphere@tilt)+cos(\aphi)*sin(\blochsphere@rotation-\atheta))/cos(\blochsphere@rotation-\atheta) )}
+\fi
+\fi
+\fi
+\fi
+\pgfmathsetmacro\aalpha{acos(-sin(\aphi)*sin(\blochsphere@rotation)*cos(\atheta)*cos(\blochsphere@tilt) + sin(\aphi)*sin(\atheta)*cos(\blochsphere@rotation)*cos(\blochsphere@tilt) + sin(\blochsphere@tilt)*cos(\aphi))}
+\pgfmathsetmacro\aalphatest{atan(\d/\blochsphere@radius)}
+\ifdim\aalpha pt<\aalphatest pt\relax
+\pgfmathsetmacro\abeta{0}
+\else
+\pgfmathsetmacro\abeta{acos(\d*cot(\aalpha)/\blochsphere@radius)}
+\fi
+\pgfmathsetmacro\abeta{ifthenelse(\blochsphere@shift[2]<0,\abeta+2*(90-\abeta),\abeta)}
+\expandafter\pgfmathsetmacro\csname ##4\endcsname{\agamma}
+\expandafter\pgfmathsetmacro\csname ##5\endcsname{\abeta}
+}%
+\tikzset{%
+>=latex, % option for nice arrows
+inner sep=0pt,%
+outer sep=2pt,%
+mark coordinate/.style={inner sep=0pt,outer sep=0pt,minimum size=3pt,
+fill=black,circle}%
+}%
+\pgfdeclareradialshading[tikz@ball]{ball}{\pgfqpoint{-10bp}{10bp}}{%
+color(0bp)=(tikz@ball!30!white);
+color(9bp)=(tikz@ball!75!white);
+color(18bp)=(tikz@ball!90!black);
+color(25bp)=(tikz@ball!70!black);
+color(50bp)=(black)
+}%
+\ifthenelse{\boolean{blochsphere@nested}}{}{%
+\begin{tikzpicture}
+\drawBall
+}%
+}
+{
+\ifthenelse{\boolean{blochsphere@nested}}{}{
+\end{tikzpicture}%
+}%
+\endgroup%
+}
+\endinput
+%%
+%% End of file `blochsphere.sty'.

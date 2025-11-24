@@ -1,0 +1,290 @@
+\def\pkgname{minibox}
+
+\RequirePackage{filecontents}
+\begin{filecontents*}{README.txt}
+___________________
+The minibox package
+v0.2a
+
+A small package to provide a convenient input syntax for
+boxes that don't break their text over lines automatically,
+but do allow manual lines breaks, and that shrink to
+the natural width of the maximum line width.
+
+    \minibox{Some\\ broken\\ text}
+    \minibox[c]{Centred\\ broken\\ text}
+    \minibox[c,t]{Centred\\ aligned\\ top}
+
+Will Robertson
+Copyright 2009, 2013
+\end{filecontents*}
+
+
+%%%%%%%%%1%%%%%%%%%2%%%%%%%%%3%%%%%%%%%4%%%%%%%%%5%%%%%%%%%6%%%%%%%%%7%%%%%%%%%
+\begin{filecontents*}{minibox.sty}
+%    \begin{macrocode}
+\RequirePackage{expl3}
+\ProvidesExplPackage
+  {minibox}
+  {2013/06/21}
+  {0.2a}
+  {Another type of box.}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\bool_new:N \l_minibox_frame_bool
+\keys_define:nn {minibox}
+ {
+  frame .choice: ,
+  frame / true  .code:n = { \bool_set_true:N  \l_minibox_frame_bool } ,
+  frame / false .code:n = { \bool_set_false:N \l_minibox_frame_bool } ,
+  frame .default:n  = { true } ,
+  
+  l .code:n = { \tl_set:Nn \l_minibox_tabular_preamble_tl {l} } ,
+  c .code:n = { \tl_set:Nn \l_minibox_tabular_preamble_tl {c} } ,
+  r .code:n = { \tl_set:Nn \l_minibox_tabular_preamble_tl {r} } ,
+  
+  t .code:n = { \tl_set:Nn \l_minibox_tabular_valign_tl {t} } ,
+  m .code:n = { \tl_set:Nn \l_minibox_tabular_valign_tl {c} } ,
+  b .code:n = { \tl_set:Nn \l_minibox_tabular_valign_tl {b} } ,
+  
+  rule .dim_set:N = \l_minibox_rule_dim ,
+  pad  .dim_set:N = \l_minibox_pad_dim  ,
+ }
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\cs_new:Npn \miniboxsetup #1 { \keys_set:nn {minibox} {#1} }
+\miniboxsetup {l,m,rule=\fboxrule,pad=\fboxsep}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\newcommand\minibox[2][]
+ {
+  \group_begin:
+  \keys_set:nn {minibox} {#1}
+  \bool_if:NTF \l_minibox_frame_bool
+   {
+    \setlength\fboxrule{\l_minibox_rule_dim}
+    \setlength\fboxsep{\l_minibox_pad_dim}
+    \fbox
+   } 
+   { \use:n }
+   {
+    \use:x
+     {
+      \exp_not:N \begin{tabular}
+        [\l_minibox_tabular_valign_tl]
+        { @{} \l_minibox_tabular_preamble_tl @{} }
+       \exp_not:n {#2}
+      \exp_not:N \end{tabular}
+     }
+   }
+  \group_end:
+ }
+%    \end{macrocode}
+\end{filecontents*}
+%%%%%%%%%1%%%%%%%%%2%%%%%%%%%3%%%%%%%%%4%%%%%%%%%5%%%%%%%%%6%%%%%%%%%7%%%%%%%%%
+
+
+
+
+% Conditionally compile the documentation & generate the .ins file:
+\providecommand\pstoolCompile{Y}
+\if\pstoolCompile N
+  \expandafter\endinput
+\fi
+
+
+\begin{filecontents*}{\pkgname.ins}
+%&latex
+\def\pstoolCompile{N}
+\input minibox.tex
+\csname@@end\endcsname
+\end{filecontents*}
+
+
+
+
+\makeatletter
+\documentclass{ltxdoc}
+
+\usepackage[rm,medium]{titlesec}
+
+\usepackage{xcolor,booktabs}
+\usepackage[colorlinks,linktocpage]{hyperref}
+
+\usepackage{tocloft,varwidth,array}
+\setcounter{tocdepth}{1}
+\def\tocwidthA{0.45}
+\def\tocwidthB{0.45}
+\def\cftpartfont{\scshape}
+\def\cftsecfont{\small}
+\cftbeforesecskip=0pt
+\def\cftpartleader{}
+\def\cftpartafterpnum{\cftparfillskip}
+\def\cftsecleader{}
+\def\cftsecafterpnum{\cftparfillskip}
+
+\let\pkg\textsf
+\def\pkgopt#1{\texttt{[#1]}}
+
+\def\PDF{\textsc{pdf}}
+\def\PS{\textsc{ps}}
+\def\DVI{\textsc{dvi}}
+\def\EPS{\textsc{eps}}
+
+\usepackage{\pkgname}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+\usepackage{lmodern}
+\linespread{1.1}
+\frenchspacing
+
+\GetFileInfo{\pkgname.sty}
+\begin{document}
+
+\title{The \pkg{\pkgname} package}
+\author{Will Robertson\\\texttt{wspr81@gmail.com}}
+\date{\fileversion\qquad\filedate}
+
+\maketitle
+
+\section{Introduction}
+
+It's sometimes useful to be able to stack text over lines
+in a small box; this is similar to paragraph text broken over lines, but 
+for small amounts of text when automatic line breaking is not required.
+In other words, I'm looking for an \cmd\mbox\ that allows manual line breaks.
+\begin{center}
+\fbox{\vbox{\hbox{abcd}\hbox{efg}\hbox{h}}}
+\end{center}
+This sort of thing is a little awkward in plain \TeX\ and \LaTeX.
+\begin{center}
+|\vbox{\hbox{abcd}\hbox{efg}\hbox{h}}|\par
+\end{center}
+
+\section{The command \cs{minibox}}
+
+This package defines the \cmd\minibox\DescribeMacro{\minibox}\ command
+to write this more conveniently separately lines with \verb"\\".
+Various options are allowed to control the alignment and whether to frame the box, shown in Table~\ref{opt}.
+
+\begin{table}
+\centering
+\begin{tabular}{rl}
+\toprule
+\texttt{frame(=true)}  & Has a frame \\
+\texttt{frame=false} & Has not a frame (default) \\
+\texttt{rule=}\meta{dim} & Thickness of the rule (default \the\fboxrule) \\
+\texttt{pad=}\meta{dim} & Space on the inside of the frame (default \the\fboxsep) \\
+\midrule
+\texttt{l} & Left-aligned text (default) \\
+\texttt{c} & Centred text \\
+\texttt{r} & Right-aligned text \\
+\midrule
+\texttt{b} & Align the box with the bottom line \\
+\texttt{m} & Vertically centre the box (default) \\
+\texttt{t} & Align the box with the top line \\
+\bottomrule
+\end{tabular}
+\caption{Optional arguments for the \cs{minibox} command.}
+\label{opt}
+\end{table}
+
+\subsection{Horizontal alignment of the text}
+Here's an example adjusting the horizontal alignment.
+\miniboxsetup{frame}
+\begin{center}
+\verb|\def\x{abcd\\efg\\h}|
+\def\x{abcd\\efg\\h}
+\begin{tabular}{ccc}
+\verb"\minibox{\x}" &
+\verb"\minibox[c]{\x}" &
+\verb"\minibox[r]{\x}" \\
+\minibox{\x} &
+\minibox[c]{\x} &
+\minibox[r]{\x}
+\end{tabular}
+\end{center}
+
+\subsection{Vertical alignment of the box}
+Here's an example adjusting the vertical alignment.
+\begin{center}
+\verb|\def\x{abcd\\efg\\h}|
+\medskip
+
+\def\x{abcd\\efg\\h}
+\begin{tabular}{ccc}
+\verb"xyz\minibox{\x}" &
+\verb"xyz\minibox[b]{\x}" &
+\verb"xyz\minibox[t]{\x}" \\
+xyz\minibox{\x} &
+xyz\minibox[b]{\x} &
+xyz\minibox[t]{\x}
+\end{tabular}
+\end{center}
+
+\subsection{Framing your box}
+The boxes which are showed in these examples are not displayed by default; use the \verb"frame" option to make them appear:
+\miniboxsetup{frame=false}
+\begin{center}
+\verb|\def\x{abcd\\efg\\h}|
+\medskip
+
+\def\x{abcd\\efg\\h}
+\begin{tabular}{ccc}
+\verb"\minibox{\x}" &
+\verb"\minibox[frame]{\x}" &
+\verb"\minibox[frame,rule=1pt,pad=0pt]{\x}" \\
+\minibox{\x} &
+\minibox[frame]{\x} &
+\minibox[frame,rule=1pt,pad=0pt]{\x} \\
+\end{tabular}
+\end{center}
+Negative values can be input for \texttt{pad}.
+\begin{quote}\itshape
+\LaTeX\ experts: while these padding and rule options are internally controlled by \cs{fboxsep} and \cs{fboxrule}, changing these variables will have no effect on \cs{minibox}'s behaviour. Use \cs{miniboxsetup} as described next to change these options globally.
+\end{quote}
+
+\subsection{Setting options}
+
+Obviously, any combination of these options can be applied:
+\begin{center}
+\verb|\def\x{abcd\\efg\\h}|
+\medskip
+
+\def\x{abcd\\efg\\h}
+\begin{tabular}{ccc}
+\verb"x\minibox[frame]{\x}" &
+\verb"x\minibox[frame,c,b]{\x}" \\
+x\minibox[frame]{\x} &
+x\minibox[frame,c,b]{\x}
+\end{tabular}
+\end{center}
+\DescribeMacro{\miniboxsetup}
+You can change the defaults of \cs{minibox} using this command.
+\begin{center}
+\verb|\def\x{abcd\\efg\\h}|
+\medskip
+
+\def\x{abcd\\efg\\h}
+\begin{tabular}{ccc}
+& \verb"\miniboxsetup{frame,r}" \\
+\verb"\minibox{\x}" &
+\verb"\minibox{\x}" \\
+\minibox{\x} &
+\miniboxsetup{frame,r}\minibox{\x}
+\end{tabular}
+\end{center}
+
+\section{Licence}
+
+This package is freely modifiable and distributable under the terms and conditions of the \LaTeX\ Project Public Licence, version 1.3c or greater (your choice). The latest version of
+this license is available at: \url{http://www.latex-project.org/lppl.txt}. This work is maintained by \textsc{Will Robertson}.
+
+\newpage
+\part{Implementation}
+\parindent=0pt
+\DocInput{\pkgname.sty}
+\end{document}

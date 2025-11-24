@@ -1,0 +1,247 @@
+\ProvidesPackage{readarray}
+[2016/07/07 v1.3
+Routines for inputting array data and recalling it on an 
+element-by-element basis.  Currently supports 2-D and 3-D array]
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3c or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+%
+% The Current Maintainer of this work is Steven B. Segletes.
+%
+% Revisions:
+% v1.01 Documentation revision
+% v1.1  Added \csname record\roman{@row}\endcsname to \readdef
+% v1.2  -Corrected the [truncated] LPPL license info
+%       -Added \arrayij and \arrayijk, which can be put into \edef
+%       -Used \romannumeral in preference to \roman{}, when possible,
+%        to avoid unnecessary use of counters.
+% v1.3  -Moved \newread outside of \readdef, so as not to exhaust the
+%        16 allotted file streams (Thanks to Ken Kubota for the tip).
+\usepackage{ifthen}
+\usepackage{ifnextok}
+%
+\newcounter{@index}
+\newcounter{@plane}
+\newcounter{@row}
+\newcounter{@col}
+\newcounter{use@args}
+\newcounter{@record}
+\def\the@rule{\rule{.8ex}{1.6ex}}%
+%
+\newcommand\readArrayijk[4]{%
+  \getargsC{#1}%
+  \setcounter{@plane}{\numexpr(\narg/#4/#3)}%
+  \setcounter{use@args}{\numexpr\arabic{@plane}*#3*#4}%
+  \ifthenelse{\arabic{use@args} > \narg}{%
+    \addtocounter{@plane}{-1}%
+    \setcounter{use@args}{\numexpr\arabic{@plane}*#3*#4}%
+  }{}%
+  \expandafter\edef\csname#2PLANES\endcsname{\arabic{@plane}}%
+  \expandafter\edef\csname#2ROWS\endcsname{#3}%
+  \expandafter\edef\csname#2COLS\endcsname{#4}%
+  \expandafter\edef\csname#2CELLS\endcsname{\arabic{use@args}}%
+  \setcounter{@index}{0}%
+  \setcounter{@plane}{1}%
+  \setcounter{@row}{1}%
+  \setcounter{@col}{0}%
+  \whiledo{\value{@index} < \value{use@args}}{%
+    \addtocounter{@index}{1}%
+    \addtocounter{@col}{1}%
+    \ifthenelse{\value{@col} > #4}%
+      {\addtocounter{@row}{1}%
+       \addtocounter{@col}{-#4}}%
+      {}%
+    \ifthenelse{\value{@row} > #3}%
+      {\addtocounter{@plane}{1}%
+       \addtocounter{@row}{-#3}}%
+      {}%
+    \expandafter\protected@edef%
+         \csname#2X\roman{@plane}X\roman{@row}X\roman{@col}\endcsname%
+      {\expandafter\csname arg\roman{@index}\endcsname}%
+  }%
+}
+%
+\newcommand\readArrayij[3]{%
+  \getargsC{#1}%
+  \setcounter{@row}{\numexpr(\narg/#3)}%
+  \setcounter{use@args}{\numexpr\arabic{@row}*#3}%
+  \ifthenelse{\arabic{use@args} > \narg}{%
+    \addtocounter{@row}{-1}%
+    \setcounter{use@args}{\numexpr\arabic{@row}*#3}%
+  }{}%
+  \expandafter\edef\csname#2PLANES\endcsname{1}%
+  \expandafter\edef\csname#2ROWS\endcsname{\arabic{@row}}%
+  \expandafter\edef\csname#2COLS\endcsname{#3}%
+  \expandafter\edef\csname#2CELLS\endcsname{\arabic{use@args}}%
+  \setcounter{@index}{0}%
+  \setcounter{@row}{1}%
+  \setcounter{@col}{0}%
+  \whiledo{\value{@index} < \value{use@args}}{%
+    \addtocounter{@index}{1}%
+    \addtocounter{@col}{1}%
+    \ifthenelse{\value{@col} > #3}%
+      {\addtocounter{@row}{1}%
+       \addtocounter{@col}{-#3}}%
+      {}%
+    \expandafter\protected@edef%
+                   \csname#2X\roman{@row}X\roman{@col}\endcsname%
+      {\expandafter\csname arg\roman{@index}\endcsname}%
+  }%
+}
+%
+\def\nonposrecordmessage{{\tiny Only positive showrecords permitted}}
+\def\recordmessage#1{{\tiny RECORD=#1 exceeds records read}}
+%
+\def\nonposmessage{{\tiny Only positive array indices permitted}}
+\def\planemessage#1#2{{\tiny PLANE=#2 exceeds limit for #1}}
+\def\rowmessage#1#2{{\tiny ROW=#2 exceeds limit for #1}}
+\def\colmessage#1#2{{\tiny COL=#2 exceeds limit for #1}}
+%
+\newcommand\arrayijk[4]{%
+  \csname#1X\romannumeral#2X\romannumeral#3X\romannumeral#4\endcsname%
+}
+%
+\newcommand\Arrayijk[5][$]{%
+  \ifthenelse{\value{@plane}<1 \OR \value{@row}<1 \OR \value{@col}<1}{%
+    \if$#1\nonposmessage\else#1\fi}{%
+    \ifthenelse{#3 > \csname#2PLANES\endcsname}{%
+      \if$#1\planemessage{#2}{#3}\else#1\fi}{%
+      \ifthenelse{#4 > \csname#2ROWS\endcsname}{%
+        \if$#1\rowmessage{#2}{#4}\else#1\fi}{%
+        \ifthenelse{#5 > \csname#2COLS\endcsname}{%
+          \if$#1\colmessage{#2}{#5}\else#1\fi}{%
+          \csname#2X\romannumeral#3X\romannumeral#4X\romannumeral#5\endcsname}%
+        }%
+      }%
+  }%
+}
+%
+\newcommand\arrayij[3]{%
+  \csname#1X\romannumeral#2X\romannumeral#3\endcsname%
+}
+%
+\newcommand\Arrayij[4][$]{%
+  \ifthenelse{\value{@row}<1 \OR \value{@col}<1}{%
+    \if$#1\nonposmessage\else#1\fi}{%
+    \ifthenelse{#3 > \csname#2ROWS\endcsname}{%
+      \if$#1\rowmessage{#2}{#3}\else#1\fi}{%
+      \ifthenelse{#4 > \csname#2COLS\endcsname}{%
+        \if$#1\colmessage{#2}{#4}\else#1\fi}{%
+        \csname#2X\romannumeral#3X\romannumeral#4\endcsname}%
+      }%
+  }%
+}
+%
+\newcommand\copyrecords[1]{%
+  \setcounter{@record}{0}%
+  \whiledo{\value{@record} < \nrecords}{%
+    \addtocounter{@record}{1}%
+    \expandafter\protected@edef\csname#1X\roman{@record}Xi\endcsname{%
+      \csname record\roman{@record}\endcsname}%
+  }%
+  \expandafter\edef\csname#1PLANES\endcsname{1}%
+  \expandafter\edef\csname#1ROWS\endcsname{\nrecords}%
+  \expandafter\edef\csname#1COLS\endcsname{1}%
+  \expandafter\edef\csname#1CELLS\endcsname{\nrecords}%
+}
+%
+\newcommand\showrecord[2][$]{%
+  \ifthenelse{#2<1}{%
+    \if$#1\nonposrecordmessage\else#1\fi}{%
+    \ifthenelse{#2 > \nrecords}{%
+      \if$#1\recordmessage{#2}\else#1\fi}{%
+        \csname record\romannumeral#2\endcsname}%
+  }%
+}
+%
+\newread\file%
+%
+\newcommand\readdef[2]{%
+\def\first@row{T}%
+\def\first@plane{T}%
+\catcode\endlinechar=10\relax%
+\def#2{}%
+\setcounter{@record}{0}%
+\openin\file=#1%
+\loop\unless\ifeof\file%
+    \read\file to\fileline % Reads a line of the file into \fileline%
+    \addtocounter{@record}{1}%
+    \protected@edef#2{#2\fileline}%
+    \if T\first@row\getargsC{#2}\setcounter{@col}{\numexpr(\narg-1)}%
+      \edef\ncols{\arabic{@col}}\def\first@row{F}\setcounter{@row}{1}%
+    \else%
+      \if T\first@plane\getargsC{\fileline}\ifthenelse{\equal{\narg}{1}}{%
+        \edef\nrows{\arabic{@row}}\def\first@plane{F}}{%
+        \addtocounter{@row}{1}}%
+      \fi%
+    \fi%
+    \expandafter\protected@edef\csname record\roman{@record}\endcsname{%
+      \fileline}%
+\repeat%
+\edef\nrecords{\arabic{@record}}%
+\closein\file%
+\catcode\endlinechar=5\relax%
+}
+%
+\newcommand\showargs[1][0]{%
+  narg=\narg:~%
+  \the@rule%
+  \setcounter{arg@index}{0}%
+  \setcounter{break@count}{0}%
+  \whiledo{\value{arg@index} < \narg}{%
+    \addtocounter{arg@index}{1}%
+    \addtocounter{break@count}{1}%
+    \csname arg\roman{arg@index}\endcsname%
+    \the@rule%
+    \ifthenelse{\equal{#1}{\value{break@count}}}{%
+      \ifthenelse{\equal{\value{arg@index}}{\narg}}{}{%
+        \newline\the@rule\addtocounter{break@count}{-#1}}%
+      }%
+    {}%
+  }%
+  \setcounter{arg@index}{0}%
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The \getargsC macro mimics the behavior of the \getargs macro
+% of the stringstrings package, but runs faster, and can handle
+% arbitrary tokens.  For the development of \getargsC, significant
+% assistance was provided by David Carlisle, for which the author is
+% most appreciative.
+% http://tex.stackexchange.com/questions/101604/
+%      parsing-strings-containing-diacritical-marks-macros
+%
+\def\string@end{$\SaveHardspace}
+\def\converttilde{F}
+\newcounter{arg@index}
+\newcounter{break@count}
+\let\SaveHardspace~%%%
+%
+\def\getargsC#1{%
+  \if T\converttilde\def~{ }\else\catcode`~=12\fi
+  \protected@edef\the@string{#1}%
+  \setcounter{arg@index}{0}%
+  \lowercase{\expandafter\parse@Block\the@string} \string@end
+  \let~\SaveHardspace%
+  \catcode`~=13
+}
+%
+\def\parse@Block#1 {%
+  \stepcounter{arg@index}%
+  \@namedef{arg\roman{arg@index}}{#1}%
+  \futurelet\tmp\parse@Block@}
+%
+\def\parse@Block@{%
+\ifx\tmp\string@end\edef\narg{\thearg@index}\expandafter\@gobble
+\else\expandafter\parse@Block\fi}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\endinput
+
+

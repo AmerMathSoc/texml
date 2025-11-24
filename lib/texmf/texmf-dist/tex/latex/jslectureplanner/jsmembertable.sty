@@ -1,0 +1,696 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% File jsmembertable.sty
+%%
+%% Generate a longtable suitable for course member or presence lists
+%%
+%% This file is part of the jslectureplanner bundle.
+%%
+%% Author: Juergen Spitzmueller <juergen.spitzmueller@univie.ac.at>
+%%
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%   http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2003/12/01 or later.
+%%
+%% This work has the LPPL maintenance status "maintained".
+%% 
+%% The Current Maintainer of this work is Juergen Spitzmueller.
+%%
+%% Code repository and issue tracker: https://github.com/jspitz/jslectureplanner
+%%
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\filedate{2015/07/15}
+\def\fileversion{1.1}
+\def\filename{jsmembertable.sty}
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{jsmembertable}
+	[\filedate\space v\fileversion\space JS Course member table generation]
+
+%
+% REQUIRED PACKAGES
+%
+
+\RequirePackage{ifthen}
+\RequirePackage{calc}
+\RequirePackage{array}
+\RequirePackage{longtable}
+\RequirePackage{hhline}
+\RequirePackage{xkeyval}
+
+%
+% PACKAGE OPTIONS
+%
+
+\newif\if@datatool\@datatoolfalse
+\def\jsmt@datafile{}
+\define@key{mem}{datafile}{%
+  \def\jsmt@datafile{#1.csv}
+  \@datatooltrue
+}
+\DeclareOptionX{datafile}{\setkeys{mem}{datafile=#1}}
+\ProcessOptionsX
+
+%
+% OPT-IN PACKAGES
+%
+
+% Load datatool if necessary
+\if@datatool
+  \RequirePackage{datatool}
+  \DTLloadrawdb[noheader,keys={fname,sname,mid,email}]{data}{\jsmt@datafile}
+  \dtlsort{sname,fname}{data}{\dtlicompare}
+\fi
+
+%
+% STRETCH ROW HEIGHT
+%
+
+\renewcommand\arraystretch{2}
+
+%
+% COUNTERS
+%
+
+% Total members
+\newcounter{members}
+% Current member
+\newcounter{member}
+% Tabular row
+\newcounter{tabrow}
+% session (pres. list column)
+\newcounter{session}
+% Total sessions
+% (if jslectureplanner is used,
+%  this is already defined)
+\@ifundefined{thesnum}{%
+  \newcounter{snum}
+  \setcounter{snum}{15}
+}{}
+
+
+%
+% STRINGS
+%
+
+% 1.) Session
+% Try to retrieve from jslectureplanner metadata
+\@ifundefined{\lectypesession}{%
+   \providecommand*\jsmsession{Sitzung}%
+}{%
+   \providecommand*\jsmsession{\lectypesession}%
+}
+\providecommand*\jsmsessionheader{\textbf{\thesession.~\jsmsession}}
+
+% 2.) Student Name
+\providecommand*\jsmnameheader{\textbf{Name, Vorname}}
+
+% 3.) Student ID
+\providecommand*\jsmidheader{\textbf{Matrikel-Nr.}}
+
+% 3.) E-Mail
+\providecommand*\jsemailheader{\textbf{E-Mail-Adresse}}
+
+% 4.) Signature advice
+\providecommand*\jssigheader{Unterschrift Teilnehmer*innen}
+
+
+%
+% GET VALUES
+%
+
+\newif\iffixedseshead\fixedsesheadfalse
+
+% Get the session date (self-incrementing)
+\newcommand*\sescolhead{%
+  \stepcounter{session}%
+  \iffixedseshead
+    \jsmsessionheader%
+  \else
+    \@ifundefined{SessionDate}{%
+        \PackageWarning{jsmembertable}{%
+           Command makemembertable (unstarred) requires jslectureplanner.\MessageBreak
+           Falling back to starred version.}%
+         \jsmsessionheader%
+    }{%
+        \textbf{\SessionDate{\thesession}}%
+    }
+  \fi
+}
+
+% Get member count (self-incrementing)
+\newcommand*\getmembernr{%
+  \stepcounter{member}%
+  \themember%
+}
+
+
+%
+% Define tokens for expanding table rows
+% (courtesy of Herbert Voss at http://tex.stackexchange.com/a/7594)
+%
+
+\newtoks\@tabtoks
+\newcommand\addtabtoks[1]{\@tabtoks\expandafter{\the\@tabtoks#1}}
+\newcommand*\resettabtoks{\@tabtoks{}}
+\newcommand*\printtabtoks{\the\@tabtoks}
+
+
+%
+% GENERATE A MEMBER TABLE
+% (code for dynamic row generation courtesy of Herbert Voss
+%  at http://tex.stackexchange.com/a/7594)
+%
+
+\newcommand\makemembertable[1]{%
+  \ifx\relax#1\relax\else
+    % test if the input is a number
+    % courtesy of egreg at http://tex.stackexchange.com/a/50131
+    \if\relax\detokenize\expandafter{\romannumeral-0#1}\relax
+      \setcounter{members}{#1}%
+    \else
+      \PackageError{jsmembertable}{%
+          Argument of 'makemembertable' must be\MessageBreak
+          a positive integer number\MessageBreak
+          ('#1' was given instead)}{}%
+    \fi
+  \fi
+  \resettabtoks
+  \loop\ifnum\thetabrow<\themembers\relax
+    \stepcounter{tabrow}
+    \addtabtoks{\getmembernr &  &  & \tabularnewline\hline}%
+  \repeat
+  \begin{longtable}{|r|>{\raggedright}p{0.2\textwidth}|>{\raggedright}%
+                    p{0.35\textwidth}|>{\raggedright}p{0.32\textwidth}|}
+  \cline{2-4}
+  \multicolumn{1}{l|}{} & \jsmidheader & \jsmnameheader%
+         &   \jsemailheader\tabularnewline
+  \hhline{-===}
+  \endhead
+  \if@datatool
+    \DTLforeach*{data}{%
+      \jsmt@firstname=fname,\jsmt@surname=sname,\jsmt@mid=mid,\jsmt@email=email}{%
+      \DTLiffirstrow{}{\tabularnewline\hline}%
+      \getmembernr & \jsmt@mid & \jsmt@surname, \jsmt@firstname & \jsmt@email%
+    }%
+    \tabularnewline\hline
+  \fi%
+  \printtabtoks%
+  \end{longtable}
+}
+
+
+%
+% GENERATE PRESENCE TABLES
+%
+
+\newcommand*{\makeprestable}{%
+  \@ifstar{%
+    \fixedsesheadtrue\@makeprestable%
+  }{%
+    \fixedsesheadfalse\@makeprestable%
+  }%
+}
+
+\newcommand*\@makeprestable[2][]{
+  \ifx\relax#1\relax\else\setcounter{snum}{#1}\fi
+  \@@makeprestable{#2}
+}
+
+% Width of session columns (table 1)
+\newlength\sescolwidth
+% Width of session columns (table 2)
+\newlength\sescolwidthtwo
+
+
+%
+% TEMPLATES FOR DYNAMIC TABLES (2--16 SESSIONS)
+%
+
+\newcommand\inittemplates{%
+% Default table design (16 sessions)
+\setlength\sescolwidth{.075\textwidth}
+\setlength\sescolwidthtwo{.075\textwidth}
+\def\bodyrowone##1{##1 & & & & & & & & }
+\def\bodyrowtwo##1{##1 & & & & & & & & }
+\def\visumcell{\raisebox{8pt}{\footnotesize\jssigheader}}
+\def\headerpone{%
+  \cline{2-9}
+   \multicolumn{1}{c|}{} & \multicolumn{8}{c|}{\visumcell}\tabularnewline[-12pt]
+  \hline
+  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+       & \sescolhead & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+}
+\def\headerptwo{%
+  \cline{2-9}
+   \multicolumn{1}{c|}{} & \multicolumn{8}{c|}{\visumcell}\tabularnewline[-12pt]
+  \hline
+  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+        & \sescolhead & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+}
+\def\ltstartone{%
+  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+                    |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+                    |>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|}
+}
+\def\ltstarttwo{%
+  \begin{longtable}[l]{|>{\raggedright}p{0.24\textwidth}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+                    |>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+                    |>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|}
+}
+%
+% Table design: 15 sessions
+\ifnum\thesnum=15
+	\setlength\sescolwidth{.085\textwidth}
+	\setlength\sescolwidthtwo{.075\textwidth}
+	\def\bodyrowone##1{##1 & & & & & & & }
+	\def\bodyrowtwo##1{##1 & & & & & & & & }
+	\def\headerpone{%
+	  \cline{2-8}
+	   \multicolumn{1}{c|}{} & \multicolumn{7}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+	       & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\headerptwo{%
+	  \cline{2-9}
+	   \multicolumn{1}{c|}{} & \multicolumn{8}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+		& \sescolhead & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|}
+	}
+	\def\ltstarttwo{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.24\textwidth}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+		            |>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+		            |>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|}
+	}
+\fi
+%
+% Table design: 14 sessions
+\ifnum\thesnum=14
+        \setlength\sescolwidth{.085\textwidth}
+        \setlength\sescolwidthtwo{.085\textwidth}
+	\def\bodyrowone##1{##1 & & & & & & & }
+	\def\bodyrowtwo##1{##1 & & & & & & & }
+	\def\headerpone{%
+	  \cline{2-8}
+	   \multicolumn{1}{c|}{} & \multicolumn{7}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+	        & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\headerptwo{%
+	  \cline{2-8}
+	   \multicolumn{1}{c|}{} & \multicolumn{7}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+		 & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+                            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|}
+	}
+	\def\ltstarttwo{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+		            |>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+                            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidthtwo}|}
+	}
+\fi
+%
+% Table design: 13 sessions
+\ifnum\thesnum=13
+        \setlength\sescolwidth{.085\textwidth}
+        \setlength\sescolwidthtwo{.102\textwidth}
+	\def\bodyrowone##1{##1 & & & & & & & }
+	\def\bodyrowtwo##1{##1 & & & & & & }
+	\def\headerpone{%
+	  \cline{2-8}
+	   \multicolumn{1}{c|}{} & \multicolumn{7}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+	        & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\headerptwo{%
+	  \cline{2-7}
+	   \multicolumn{1}{c|}{} & \multicolumn{6}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+		 & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+                            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|}
+	}
+	\def\ltstarttwo{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+		            |>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+                            |>{\raggedright}p{\sescolwidthtwo}|}
+	}
+\fi
+%
+% Table design: 12 sessions
+\ifnum\thesnum=12
+        \setlength\sescolwidth{.102\textwidth}
+        \setlength\sescolwidthtwo{.102\textwidth}
+	\def\bodyrowone##1{##1 & & & & & & }
+	\def\bodyrowtwo##1{##1 & & & & & & }
+	\def\headerpone{%
+	  \cline{2-7}
+	   \multicolumn{1}{c|}{} & \multicolumn{6}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+	        & \sescolhead& \sescolhead\tabularnewline
+	}
+	\def\headerptwo{%
+	  \cline{2-7}
+	   \multicolumn{1}{c|}{} & \multicolumn{6}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+		 & \sescolhead& \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+                            |>{\raggedright}p{\sescolwidth}|}
+	}
+	\def\ltstarttwo{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+		            |>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+                            |>{\raggedright}p{\sescolwidthtwo}|}
+	}
+\fi
+%
+% Table design: 11 sessions
+\ifnum\thesnum=11
+        \setlength\sescolwidth{.102\textwidth}
+        \setlength\sescolwidthtwo{.125\textwidth}
+	\def\bodyrowone##1{##1 & & & & & & }
+	\def\bodyrowtwo##1{##1 & & & & & }
+	\def\headerpone{%
+	  \cline{2-7}
+	   \multicolumn{1}{c|}{} & \multicolumn{6}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+	        & \sescolhead& \sescolhead\tabularnewline
+	}
+	\def\headerptwo{%
+	  \cline{2-6}
+	   \multicolumn{1}{c|}{} & \multicolumn{5}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+		 & \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+                            |>{\raggedright}p{\sescolwidth}|}
+	}
+	\def\ltstarttwo{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+		            |>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|}
+	}
+\fi
+%
+% Table design: 10 sessions
+\ifnum\thesnum=10
+        \setlength\sescolwidth{.125\textwidth}
+        \setlength\sescolwidthtwo{.125\textwidth}
+	\def\bodyrowone##1{##1 & & & & & }
+	\def\bodyrowtwo##1{##1 & & & & & }
+	\def\headerpone{%
+	  \cline{2-6}
+	   \multicolumn{1}{c|}{} & \multicolumn{5}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+	       & \sescolhead\tabularnewline
+	}
+	\def\headerptwo{%
+	  \cline{2-6}
+	   \multicolumn{1}{c|}{} & \multicolumn{5}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+		& \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|}
+	}
+	\def\ltstarttwo{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+		            |>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|}
+	}
+\fi
+%
+% Table design: 9 sessions
+\ifnum\thesnum=9
+        \setlength\sescolwidth{.125\textwidth}
+        \setlength\sescolwidthtwo{.161\textwidth}
+	\def\bodyrowone##1{##1 & & & & & }
+	\def\bodyrowtwo##1{##1 & & & & }
+	\def\headerpone{%
+	  \cline{2-6}
+	   \multicolumn{1}{c|}{} & \multicolumn{5}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+	       & \sescolhead\tabularnewline
+	}
+	\def\headerptwo{%
+	  \cline{2-5}
+	   \multicolumn{1}{c|}{} & \multicolumn{4}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|}
+	}
+	\def\ltstarttwo{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+		            |>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|}
+	}
+\fi
+%
+% Table design: 8 sessions
+\ifnum\thesnum=8
+        \setlength\sescolwidth{.161\textwidth}
+        \setlength\sescolwidthtwo{.161\textwidth}
+	\def\bodyrowone##1{##1 & & & & }
+	\def\bodyrowtwo##1{##1 & & & & }
+	\def\headerpone{%
+	  \cline{2-5}
+	   \multicolumn{1}{c|}{} & \multicolumn{4}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\headerptwo{%
+	  \cline{2-5}
+	   \multicolumn{1}{c|}{} & \multicolumn{4}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|}
+	}
+	\def\ltstarttwo{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}%
+		            |>{\raggedright}p{\sescolwidthtwo}|>{\raggedright}p{\sescolwidthtwo}|}
+	}
+\fi
+%
+% Table design: 7 sessions
+\ifnum\thesnum=7
+        \setlength\sescolwidth{.085\textwidth}
+	\def\bodyrowone##1{##1 & & & & & & & }
+	\def\headerpone{%
+	  \cline{2-8}
+	   \multicolumn{1}{c|}{} & \multicolumn{7}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+	        & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+                            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|}
+	}
+\fi
+%
+% Table design: 6 sessions
+\ifnum\thesnum=6
+        \setlength\sescolwidth{.102\textwidth}
+	\def\bodyrowone##1{##1 & & & & & & }
+	\def\headerpone{%
+	  \cline{2-7}
+	   \multicolumn{1}{c|}{} & \multicolumn{6}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+	        & \sescolhead& \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+                            |>{\raggedright}p{\sescolwidth}|}
+	}
+\fi
+%
+% Table design: 5 sessions
+\ifnum\thesnum=5
+        \setlength\sescolwidth{.125\textwidth}
+	\def\bodyrowone##1{##1 & & & & & }
+	\def\headerpone{%
+	  \cline{2-6}
+	   \multicolumn{1}{c|}{} & \multicolumn{5}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead
+	       & \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|}
+	}
+\fi
+%
+% Table design: 4 sessions
+\ifnum\thesnum=4
+        \setlength\sescolwidth{.161\textwidth}
+	\def\bodyrowone##1{##1 & & & & }
+	\def\headerpone{%
+	  \cline{2-5}
+	   \multicolumn{1}{c|}{} & \multicolumn{4}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.27\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|}
+	}
+\fi
+%
+% Table design: 3 sessions
+\ifnum\thesnum=3
+        \setlength\sescolwidth{.2\textwidth}
+	\def\bodyrowone##1{##1 & & & }
+	\def\headerpone{%
+	  \cline{2-4}
+	   \multicolumn{1}{c|}{} & \multicolumn{3}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.33\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}%
+		            |>{\raggedright}p{\sescolwidth}|}
+	}
+\fi
+%
+% Table design: 2 sessions
+\ifnum\thesnum=2
+        \setlength\sescolwidth{.3\textwidth}
+	\def\bodyrowone##1{##1 & & }
+	\def\headerpone{%
+	  \cline{2-3}
+	   \multicolumn{1}{c|}{} & \multicolumn{2}{c|}{\visumcell}\tabularnewline[-12pt]
+	  \hline
+	  \jsmnameheader & \sescolhead & \sescolhead\tabularnewline
+	}
+	\def\ltstartone{%
+	  \begin{longtable}[l]{|>{\raggedright}p{0.35\textwidth}|>{\raggedright}p{\sescolwidth}|>{\raggedright}p{\sescolwidth}|}
+	}
+\fi
+}% close \inittemplates
+%
+% End templates
+
+
+%
+% ROUTINE FOR DYNAMIC PRESENCE TABLE
+% \makeprestable{rows}
+% (code for dynamic row generation courtesy of Herbert Voss
+%  at http://tex.stackexchange.com/a/7594)
+
+\newcommand\@@makeprestable[1]{%
+  \inittemplates
+  \ifx\relax#1\relax\else
+    % test if the input is a number
+    % courtesy of egreg at http://tex.stackexchange.com/a/50131
+    \if\relax\detokenize\expandafter{\romannumeral-0#1}\relax
+      \setcounter{members}{#1}%
+    \else
+      \PackageError{jsmembertable}{%
+          Argument of 'makeprestable' must be\MessageBreak
+          a positive integer number\MessageBreak
+          ('#1' was given instead)}{}%
+    \fi
+  \fi
+  \resettabtoks
+  \loop\ifnum\thetabrow<\themembers\relax
+    \stepcounter{tabrow}
+    \addtabtoks{\bodyrowone{}\tabularnewline\hline}%
+  \repeat
+  \ltstartone
+  \headerpone
+  \hline
+  \hline
+  \endhead
+  \if@datatool%
+    \DTLforeach*{data}{%
+      \jsmt@firstname=fname,\jsmt@surname=sname}{%
+      \DTLiffirstrow{}{\tabularnewline\hline}%
+      \bodyrowone{\jsmt@surname, \jsmt@firstname}%
+    }%
+    \tabularnewline\hline
+  \fi%
+  \printtabtoks
+  \end{longtable}
+  \ifnum\thesnum>7
+    \clearpage
+    \setcounter{tabrow}{0}
+    \ifx\relax#1\relax\else
+      % test if the input is a number
+      % courtesy of egreg at http://tex.stackexchange.com/a/50131
+      \if\relax\detokenize\expandafter{\romannumeral-0#1}\relax
+        \setcounter{members}{#1}%
+      \else
+        \PackageError{jsmembertable}{%
+            Argument of 'makeprestable' must be\MessageBreak
+            a positive integer number\MessageBreak
+            ('#1' was given instead)}{}%
+      \fi
+    \fi
+    \resettabtoks
+    \loop\ifnum\thetabrow<\themembers\relax
+      \stepcounter{tabrow}
+      \addtabtoks{\bodyrowtwo{}\tabularnewline\hline}%
+    \repeat
+    \ltstarttwo
+    \headerptwo
+    \hline
+    \hline
+    \endhead
+    \if@datatool
+      \DTLforeach*{data}{%
+        \jsmt@firstname=fname,\jsmt@surname=sname}{%
+        \DTLiffirstrow{}{\tabularnewline\hline}%
+        \bodyrowtwo{\jsmt@surname, \jsmt@firstname}%
+      }%
+      \tabularnewline\hline
+    \fi%
+    \printtabtoks
+    \end{longtable}
+  \fi
+}
+
+% Finis!
+%%%

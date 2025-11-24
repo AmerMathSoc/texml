@@ -1,0 +1,619 @@
+% \iffalse meta-comment
+%
+%% File: primargs.dtx Copyright (C) 2012-2013 Bruno Le Floch
+%%
+%% It may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License (LPPL), either version 1.3c of this
+%% license or (at your option) any later version.  The latest version
+%% of this license is in the file
+%%
+%%    http://www.latex-project.org/lppl.txt
+%%
+%% -----------------------------------------------------------------------
+%
+%<*driver>
+\documentclass[full]{l3doc}
+\newcommand{\proc}[1]{\texttt{#1}}
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \title{The \textsf{primargs} package: \\
+%   Parsing arguments of primitives\thanks{This
+%     file has version number v0.2e, last revised 2013/01/08.}}
+% \author{Bruno Le Floch}
+% \date{2013/01/08}
+%
+% \maketitle
+% \tableofcontents
+%
+% \begin{documentation}
+%
+% \section{\pkg{primargs} documentation}
+%
+% This \LaTeX{} package is currently used by \pkg{morewrites} when
+% redefining primitives: it allows to read arguments of primitives in
+% place of \TeX{}.  Of course, this is much slower than letting \TeX{}
+% do things directly, but it may not be possible.
+%
+% \subsection{Read one token}
+%
+% \begin{variable}{\g_primargs_token}
+%   The result of \cs{primargs_read_x_token:N} and
+%   \cs{primargs_read_token:N}.
+% \end{variable}
+%
+% \begin{function}{\primargs_read_x_token:N}
+%   \begin{syntax}
+%     \cs{primargs_read_x_token:N} \meta{function}
+%   \end{syntax}
+%   Expands tokens recursively with \cs{exp_after:wN}, until
+%   encountering a non-expandable token, and calls the \meta{function}
+%   afterwards.  The non-expandable token found is stored as
+%   \cs{g_primargs_token}.
+% \end{function}
+%
+% \begin{function}{\primargs_read_token:N}
+%   \begin{syntax}
+%     \cs{primargs_read_token:N} \meta{function}
+%   \end{syntax}
+%   Sets \cs{g_primargs_token} globally to the value of the next token,
+%   then calls the \meta{function}.
+% \end{function}
+%
+% \subsection{Grabbing arguments}
+%
+% A whole lot of functions have the same syntax:
+% \begin{syntax}
+%   \cs{primargs_get_\meta{foo}:N} \meta{function}
+% \end{syntax}
+% Finds what \TeX{}'s grammar calls a \meta{foo} in the input stream,
+% and feeds its value as a braced argument to the \meta{function}.  Here
+% is a list of the functions currently defined:
+% \begin{itemize}
+%   \item \cs{primargs_get_number:N}
+%   \item \cs{primargs_get_dimen:N}
+%   \item \cs{primargs_get_glue:N}
+%   \item \cs{primargs_get_mudimen:N} (\emph{not implemented properly})
+%   \item \cs{primargs_get_muglue:N}
+%   \item \cs{primargs_get_general_text:N}
+%   \item \cs{primargs_get_file_name:N}
+% \end{itemize}
+%
+% \subsection{Discarding tokens}
+%
+% \begin{function}{\primargs_remove_token:N}
+%   \begin{syntax}
+%     \cs{primargs_remove_token:N} \meta{function}
+%   \end{syntax}
+%   Removes one \meta{token} following the \meta{function}, which is
+%   performed next.
+% \end{function}
+%
+% \begin{function}{\primargs_remove_one_optional_space:N}
+%   \begin{syntax}
+%     \cs{primargs_remove_one_optional_space:N} \meta{function}
+%   \end{syntax}
+%   Removes \meta{one optional space} after the \meta{function}.
+% \end{function}
+%
+% \begin{function}{\primargs_remove_optional_spaces:N}
+%   \begin{syntax}
+%     \cs{primargs_remove_optional_spaces:N} \meta{function}
+%   \end{syntax}
+%   Removes \meta{optional spaces} after the \meta{function}.
+% \end{function}
+%
+% \begin{function}{\primargs_remove_equals:N}
+%   \begin{syntax}
+%     \cs{primargs_remove_equals:N} \meta{function}
+%   \end{syntax}
+%   Removes \meta{equals}, namely \meta{optional spaces} followed
+%   optionally by an explicit |=| character with category other.
+% \end{function}
+%
+% \subsection{Afterassignment and \tn{globaldefs}}
+%
+% The \tn{globaldefs} parameter is not taken into account yet, and
+% setting it to a non-zero value may make everything crash.  It is
+% straightforward to fix that for negative \tn{globaldefs}, but positive
+% \tn{globaldefs} make things complicated.
+%
+% Tokens inserted using \tn{afterassignment} may be lost when using this
+% package, since it uses \tn{afterassignment} internally.
+%
+% \subsection{Internal functions}
+%
+% \begin{function}{\@@_get_rhs:NnN, \@@_get_rhs:NoN}
+%   \begin{syntax}
+%     \cs{@@_get_rhs:NnN} \meta{register} \Arg{register rhs} \meta{function}
+%   \end{syntax}
+%   Use the \meta{register} to find a right-hand side of a valid
+%   assignment for this type of variable, and feed the value found to
+%   the \meta{function}.  The value of the \meta{register} is then
+%   restored using \meta{register} |=| \meta{register rhs}, where the
+%   \meta{register rhs} should be the initial value of the
+%   \meta{register}.  All those assignments are performed within a
+%   group, but some are automatically global, and \tn{globaldefs} may
+%   cause trouble with others.
+% \end{function}
+%
+% \end{documentation}
+%
+% \begin{implementation}
+%
+% \section{\pkg{primargs} implementation}
+%
+%<*package>
+%    \begin{macrocode}
+\RequirePackage {expl3} [2012/08/14]
+\ProvidesExplPackage
+  {primargs} {2013/01/08} {0.2e} {Parsing arguments of primitives}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%<@@=primargs>
+%    \end{macrocode}
+%
+% \subsection{Helpers}
+%
+% \begin{macro}[aux]{\g_@@_code_tl}
+%   Used to contain temporary code.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \g_@@_code_tl { }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_no_afterassignment:}
+%   Supersedes any \tn{afterassignment} token.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_no_afterassignment:
+  { \tex_afterassignment:D \tex_relax:D }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_no_localdefs:}
+%   This function, which must be called in a group, ensures that
+%   \tn{global} indeed makes definitions global.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_no_localdefs:
+  {
+    \@@_no_afterassignment:
+    \int_compare:nNnF \tex_globaldefs:D > \c_zero
+      { \tex_globaldefs:D = \c_zero }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Read token with or without expansion}
+%
+% \TeX{} often calls the \proc{get_x_token} procedure when parsing
+% various parts of its grammar.  This expands tokens recursively until
+% reaching a non-expandable token.  We emulate this by expanding with
+% \tn{expandafter}, then checking whether the upcoming token is
+% expandable or not using \tn{futurelet}, and if it is, expanding again.
+%
+% One thing to be careful about is that
+% \begin{quote}
+%   \tn{expandafter} \tn{show} \tn{noexpand} \cs{space}
+% \end{quote}
+% shows the \tn{meaning} of the \tn{notexpanded:} \cs{space},
+% namely \tn{relax} (frozen, in fact, hence a bit different from the
+% normal \tn{relax}), while expanding twice with
+% \begin{quote}
+%   \tn{expandafter} \tn{expandafter} \tn{expandafter} \tn{show}
+%   \tn{noexpand} \cs{space}
+% \end{quote}
+% expands the \cs{space} to the underlying space character token.
+% What this means is that we must first check if the token is expandable
+% or not, and only then expand, and that the token should not be queried
+% again using \tn{futurelet}.  On this latter point, run
+% \begin{verbatim}
+%   \def \test { \show \next \futurelet \next \test }
+%   \expandafter \test \noexpand \space
+% \end{verbatim}
+% to see how \cs{next} changes from \tn{relax} to becoming a macro.
+%
+% \begin{macro}{\primargs_read_x_token:N}
+% \begin{macro}[aux]{\@@_read_x_token:N, \@@_read_x_token_ii:N}
+%   First query the following token.  Then test whether it is
+%   expandable, using a variant of the \cs{token_if_expandable:NTF}
+%   test.\footnote{This \LaTeX3 test returns \texttt{false} for
+%     undefined tokens (by design), but \TeX{}'s \proc{get_x_token}
+%     expands those undefined tokens, causing errors, so we should as
+%     well.}  If the token is expandable, \cs{exp_not:N} will change its
+%   \tn{meaning} to \tn{relax}, the test is \texttt{false}, we expand,
+%   and call the loop.  Otherwise, we stop.  Interestingly, we don't
+%   ever need to take the user's function as an argument.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \primargs_read_x_token:N
+  {
+    \group_begin:
+      \@@_no_localdefs:
+      \@@_read_x_token:N
+  }
+\cs_new_protected_nopar:Npn \@@_read_x_token:N
+  {
+    \tex_afterassignment:D \@@_read_x_token_ii:N
+    \tex_global:D \tex_futurelet:D \g_primargs_token
+  }
+\cs_new_protected_nopar:Npn \@@_read_x_token_ii:N
+  {
+    \exp_after:wN
+    \if_meaning:w \exp_not:N \g_primargs_token \g_primargs_token
+      \group_end:
+      \exp_after:wN \use_none:nnn
+    \fi:
+    \exp_after:wN \@@_read_x_token:N \exp_after:wN
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\primargs_read_token:N}
+%   The same without expansion, for use when we already know that what
+%   follows is expanded.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \primargs_read_token:N
+  {
+    \group_begin:
+      \@@_no_localdefs:
+      \tex_afterassignment:D \group_end:
+      \tex_global:D \tex_futurelet:D \g_primargs_token
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Removing tokens}
+%
+% \subsubsection{One token}
+%
+% \begin{macro}{\primargs_remove_token:N}
+%   Remove token using \tn{let} (note the presence of |=| and a space,
+%   to correctly remove explicit space characters), then insert the
+%   \meta{function} with \tn{afterassignment}.
+%    \begin{macrocode}
+\cs_new_protected:Npn \primargs_remove_token:N #1
+  {
+    \group_begin:
+      \@@_no_localdefs:
+      \tex_aftergroup:D #1
+      \tex_afterassignment:D \group_end:
+      \tex_global:D \tex_let:D \g_primargs_token = ~
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsubsection{Optional space token}
+%
+% ^^A Not sure of the interaction with \notexpanded:
+%
+% \begin{macro}{\primargs_remove_one_optional_space:N}
+% \begin{macro}[aux]{\@@_remove_one_optional_space:}
+%   Start a group: we will insert the \meta{function} at its end.
+%    \begin{macrocode}
+\cs_new_protected:Npn \primargs_remove_one_optional_space:N #1
+  {
+    \group_begin:
+      \@@_no_localdefs:
+      \tex_aftergroup:D #1
+      \primargs_read_x_token:N \@@_remove_one_optional_space:
+  }
+\exp_args:NNo \cs_new_protected_nopar:Npn \@@_remove_one_optional_space:
+  {
+    \use:n { \if_catcode:w } ~ \exp_not:N \g_primargs_token
+      \exp_after:wN \primargs_remove_token:N
+    \fi:
+    \group_end:
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\primargs_remove_optional_spaces:N}
+% \begin{macro}[aux]
+%   {\@@_remove_optional_spaces:, \@@_remove_optional_spaces_ii:}
+%   Start a group: we will insert the \meta{function} at its end.
+%    \begin{macrocode}
+\cs_new_protected:Npn \primargs_remove_optional_spaces:N #1
+  {
+    \group_begin:
+      \@@_no_localdefs:
+      \tex_aftergroup:D #1
+      \@@_remove_optional_spaces:
+  }
+\cs_new_protected_nopar:Npn \@@_remove_optional_spaces:
+  { \primargs_read_x_token:N \@@_remove_optional_spaces_ii: }
+\exp_args:NNo \cs_new_protected_nopar:Npn \@@_remove_optional_spaces_ii:
+  {
+    \use:n { \if_catcode:w } ~ \exp_not:N \g_primargs_token
+      \exp_after:wN \primargs_remove_token:N
+      \exp_after:wN \@@_remove_optional_spaces:
+    \else:
+      \exp_after:wN \group_end:
+    \fi:
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\primargs_remove_equals:N}
+%   Remove \meta{optional spaces}, then test for an explicit |=|, both
+%   in \tn{meaning} and as a token list (once we know its \tn{meaning},
+%   we can grab it safely).
+%    \begin{macrocode}
+\cs_new_protected:Npn \primargs_remove_equals:N #1
+  {
+    \group_begin:
+      \tex_aftergroup:D #1
+      \primargs_remove_optional_spaces:N \@@_remove_equals:
+  }
+\cs_new_protected_nopar:Npn \@@_remove_equals:
+  {
+      \if_meaning:w = \g_primargs_token
+        \exp_after:wN \@@_remove_equals_ii:NN
+      \fi:
+    \group_end:
+  }
+\cs_new_protected:Npn \@@_remove_equals_ii:NN #1#2
+  { \tl_if_eq:nnTF { #2 } { = } { #1 } { #1 #2 } }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Right-hand sides of assignments}
+%
+% The naive approach to reading an integer, or a general text, is to let
+% \TeX{} perform an assignment to a \tn{count}, or a \tn{toks}, register
+% and regain control using \tn{afterassignment}.  The question is then
+% to know which \tn{count} or \tn{toks} register to use.  One might
+% think that any can be used as long as the assignment happens in a
+% group.
+%
+% However, there comes the question of the \tn{globaldefs} parameter.
+% If this parameter is positive, every assignment is global, including
+% assignments to the parameter itself, preventing us from setting it to
+% zero locally; hence, we are stuck with global assignments (if
+% \tn{globaldefs} is negative, we can change it, locally, to whatever
+% value pleases us, as done by \cs{@@_no_localdefs:}).  We may thus not
+% use scratch registers to parse integers, general texts, and other
+% pieces of \TeX{}'s grammar.
+%
+% For integers, we will use \tn{deadcycles}, a parameter which is
+% automatically assigned globally, and we revert it to its previous
+% value afterwards.  For general text, we will use \tn{errhelp}, which
+% we will assign locally if possible (\tn{globaldefs} negative or zero),
+% and otherwise reset to be empty.
+%
+% \begin{macro}[int]{\@@_get_rhs:NnN, \@@_get_rhs:NoN}
+%   The last two lines of this function are the key: assign to |#1|,
+%   then take control using \tn{afterassignment}.  After the assignment,
+%   we expand the value found, |\tex_the:D #1|, within a brace group,
+%   then restore |#1| using its initial value |#2|, and end the group.
+%   The earlier use of \cs{tex_aftergroup:D} inserts the \meta{function}
+%   |#3| before the brace group containing the value found.
+%    \begin{macrocode}
+\cs_new_protected:Npn \@@_get_rhs:NnN #1#2#3
+  {
+    \group_begin:
+      \@@_no_localdefs:
+      \tex_aftergroup:D #3
+      \tl_gset:Nn \g_@@_code_tl
+        {
+          \use:x
+            {
+              \exp_not:n { #1 = #2 \group_end: }
+              { \tex_the:D #1 }
+            }
+        }
+      \tex_afterassignment:D \g_@@_code_tl
+      #1 =
+  }
+\cs_generate_variant:Nn \@@_get_rhs:NnN { No }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\primargs_get_number:N}
+%   We use the general \cs{@@_get_rhs:NoN}, using the internal register
+%   \tn{deadcycles}, for which all assignments are global: thus,
+%   restoring its value will not interact badly with groups.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \primargs_get_number:N
+  {
+    \@@_get_rhs:NoN \tex_deadcycles:D
+      { \tex_the:D \tex_deadcycles:D }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\primargs_get_dimen:N}
+%   Use \tn{hoffset} as a register since it is not too likely to be
+%   changed locally (anyways, which register we use is not that
+%   important since normally, \tn{globaldefs} is zero, and everything is
+%   done within a group).
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \primargs_get_dimen:N
+  {
+    \@@_get_rhs:NoN \tex_hoffset:D
+      { \tex_the:D \tex_hoffset:D }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\primargs_get_glue:N}
+%   Use \tn{topskip}.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \primargs_get_glue:N
+  {
+    \@@_get_rhs:NoN \tex_topskip:D
+      { \tex_the:D \tex_topskip:D }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\primargs_get_mudimen:N}
+%   There is no such thing as a \meta{mudimen variable}, so we're on our
+%   own to parse a \meta{mudimen}.  Warn about that problem, and parse a
+%   \meta{muglue} instead.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \primargs_get_mudimen:N
+  {
+    \msg_warning:nn { primargs } { get-mudimen }
+    \primargs_get_muglue:N
+  }
+\msg_new:nnn { primargs } { get-mudimen }
+  { The~\iow_char:N\\primargs_get_mudimen:N~function~is~buggy. }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\primargs_get_muglue:N}
+%   Use \tn{thinmuskip}.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \primargs_get_muglue:N
+  {
+    \@@_get_rhs:NoN \tex_thinmuskip:D
+      { \tex_the:D \tex_thinmuskip:D }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\primargs_get_general_text:N}
+%   For a general text, use \tn{errhelp}, since it shouldn't be a big
+%   problem if that's changed.  We don't revert it to its value, but to
+%   be empty (note the extra braces, though, since it's a token
+%   register), because it is probably better to have no help than the
+%   wrong help hanging around.  Besides, \tn{errhelp} is always set
+%   for immediate use.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \primargs_get_general_text:N
+  { \@@_get_rhs:NoN \tex_errhelp:D { { } } }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Get file name}
+%
+% ^^A todo: Figure out when \group_align_safe_begin: is needed.
+%
+% \begin{variable}{\g_@@_file_name_tl}
+%   Token list used to build a file name, one character at a time.
+%    \begin{macrocode}
+\tl_new:N \g_@@_file_name_tl
+%    \end{macrocode}
+% \end{variable}
+%
+% \begin{macro}{\primargs_get_file_name:N}
+%   Empty the file name (globally), and build it one character at a time.
+%   The \meta{function} is added at the end of a group, started here.
+%   As described in the \TeX{}book, a \meta{file name} should start with
+%   \meta{optional spaces}, which we remove, then character tokens,
+%   ending with a non-expandable character or control sequence.  After
+%   space removal, \cs{g_primargs_token} contains the next token, so no
+%   need for \cs{primargs_read_token:N}.
+%    \begin{macrocode}
+\cs_new_protected:Npn \primargs_get_file_name:N #1
+  {
+    \group_begin:
+      \@@_no_localdefs:
+      \tex_aftergroup:D #1
+      \tl_gclear:N \g_@@_file_name_tl
+      \primargs_remove_optional_spaces:N \@@_get_file_name_test:
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_get_file_name_test:}
+%   The token read is in \cs{g_primargs_token}, and is non-expandable.
+%   If it is a control sequence, end the \meta{file name}.  If it is a
+%   space, the the \meta{file name} ends after its removal.  Otherwise,
+%   we extract the character from the \tn{meaning} of the \meta{token},
+%   which we remove anyways: in that case, we'll recurse.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_get_file_name_test:
+  {
+    \token_if_cs:NTF \g_primargs_token
+      { \@@_get_file_name_end: }
+      {
+        \token_if_eq_charcode:NNTF \c_space_token \g_primargs_token
+          { \primargs_remove_token:N \@@_get_file_name_end: }
+          { \primargs_remove_token:N \@@_get_file_name_char: }
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_get_file_name_end:}
+%   When the end of the file name is reached, end the group, after
+%   expanding the contents of \cs{g_@@_file_name_tl}.
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_get_file_name_end:
+  { \exp_args:No \group_end: \g_@@_file_name_tl }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux]{\@@_get_file_name_char:}
+% \begin{macro}[aux, EXP]
+%   {\@@_get_file_name_char_ii:w, \@@_get_file_name_char_iii:w}
+%   With an explicit character, applying \tn{string} would give the
+%   character code.  Here, implicit characters have to be converted too,
+%   so we must work with the \tn{meaning}, which is two or three words
+%   separated by spaces, then the character.  The \texttt{ii} auxiliary
+%   removes the first two words, and duplicates the remainder (either
+%   one character, or a word and a character), and the second auxiliary
+%   leaves the second piece in the definition (in both cases, the
+%   character).  Then loop with expansion.  This technique would fail if
+%   the character could be a space (character code~$32$).
+%    \begin{macrocode}
+\cs_new_protected_nopar:Npn \@@_get_file_name_char:
+  {
+    \tl_gput_right:Nx \g_@@_file_name_tl
+      {
+        \exp_after:wN \@@_get_file_name_char_ii:w
+        \token_to_meaning:N \g_primargs_token
+        \q_stop
+      }
+    \primargs_read_x_token:N \@@_get_file_name_test:
+  }
+\cs_new:Npn \@@_get_file_name_char_ii:w #1 ~ #2 ~ #3 \q_stop
+  { \@@_get_file_name_char_iii:w #3 ~ #3 ~ \q_stop }
+\cs_new:Npn \@@_get_file_name_char_iii:w #1 ~ #2 ~ #3 \q_stop {#2}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \section{Examples}
+%
+% [Old text which I don't want to remove yet.]  A few examples of what
+% this package can parse.
+% \begin{itemize}
+%   \item \meta{integer} denotes an integer in any form that \TeX{}
+%     accepts as the right-hand side of a primitive integer assignment
+%     of the form \tn{count}|0=|\meta{integer};
+%   \item \meta{equals} is an arbitrary (optional) number of explicit or
+%     implicit space characters, an optional explicit equal sign of
+%     category other, and further (optional) explicit or implicit space
+%     characters;
+%   \item \meta{file name} is an arbitrary sequence of explicit or
+%     implicit characters with arbitrary category codes (except active
+%     characters, which are expanded before reaching \TeX{}'s mouth),
+%     ending either with a space character (character code $32$,
+%     arbitrary non-active category code, explicit or implicit), which
+%     is removed, or with a non-expandable token, with some care needed
+%     for the case of a \tn{notexpanded:} expandable token;
+%   \item \meta{filler} is an arbitrary combination of tokens each of
+%     whose meaning is \tn{relax} or a character with category code
+%     $10$;
+%   \item \meta{general text} is a \meta{filler}, followed by braced
+%     tokens, starting with an explicit or implicit begin-group
+%     character, and ending with the matching explicit end-group
+%     character (both with any character code), with an equal number of
+%     explicit begin-group and end-group characters in between: this is
+%     precisely the right-hand side of an assignment of the form
+%     \tn{toks}|0=|\meta{general text}.
+% \end{itemize}
+%
+%</package>
+%
+% \end{implementation}
+%
+% \endinput

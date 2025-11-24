@@ -1,0 +1,126 @@
+% bxenclose.sty
+
+%% package declaration
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{bxenclose}[2016/04/01 v0.2]
+\def\bxew@pkgame{bxenclose}
+
+%--------------------------------------- main
+
+%% \bxew@begin@body@hook
+% Things to be prepended to the document body.
+\let\bxew@begin@body@hook\@empty
+%% \bxew@end@body@hook
+% Things to be appended to the document body.
+\let\bxew@end@body@hook\@empty
+
+% The insertion of \bxew@begin@body@hook is realized by appending
+% the token to \document macro. But of course there are dozens of
+% packages that do the same thing, and in order to "win the race"
+% and put \bxew@begin@body@hook immediately before the actual body
+% content, I need to postpone the patching to \document as late as
+% possible. Hence comes my tactics, where the patching will be done
+% in invocation of "\begin{document}", just before expanding the
+% \document macro.
+
+%%<*> \enclosebodywith{<begin>}{<end>}
+\@onlypreamble\enclosebodywith
+\newcommand\enclosebodywith[2]{%
+ \begingroup
+    \ifx\bxew@patch@begin\@undefined\else
+      \bxew@patch@begin
+    \fi
+    \toks@\expandafter{\bxew@begin@body@hook}%
+    \toks\tw@{#1}%
+    \xdef\bxew@begin@body@hook{%
+      \the\toks@\the\toks\tw@}%
+    \toks@\expandafter{\bxew@end@body@hook}%
+    \toks\tw@{#2}%
+    \xdef\bxew@end@body@hook{%
+      \the\toks\tw@\the\toks@}%
+  \endgroup
+}
+
+%% \bxew@patch@begin
+% Patches to \begin macro. Specifically, it prepends
+% "\bxew@begin@hook{#1}" to \begin.
+\def\bxew@patch@begin{%
+  \global\let\bxew@patch@begin\@undefined % one-shot
+  \begingroup
+    \toks@\expandafter{\begin{##1}}%
+    \edef\bxew@tempa{\gdef\noexpand\begin####1{%
+      \noexpand\bxew@begin@hook{####1}\the\toks@}}%
+    \bxew@tempa
+  \endgroup
+}
+
+%% \bxew@unpatch@begin
+% Revokes the patch of \bxew@patch@begin. That is, it removes
+% "\bxew@begin@hook{#1}" from \begin macro.
+\def\bxew@unpatch@begin{%
+  \global\let\bxew@unpatch@begin\@undefined % one-shot
+  \begingroup
+    % check the target
+    \long\def\bxew@tempa##1\bxew@begin@hook##2##3\bxew@end{%
+      \def\bxew@tempa{##2}}%
+    \expandafter\bxew@tempa\begin{}\bxew@begin@hook!\bxew@end
+    \ifx\bxew@tempa\@empty % if target is there
+      \long\def\bxew@tempa##1\bxew@begin@hook##2{##1}%
+      \toks@\expandafter\expandafter\expandafter
+       {\expandafter\bxew@tempa\begin{##1}}%
+      \edef\bxew@tempa{\gdef\noexpand\begin####1{\the\toks@}}%
+      \bxew@tempa
+    \fi % if not there, then do nothing
+  \endgroup
+}
+
+%% \bxew@begin@hook{<envname>}
+% The patch attached to \begin. When "\begin{document}"
+% is called, this macro patches to \document, before
+% \document is expanded.
+\def\bxew@begin@hook#1{%
+  \begingroup
+    \def\bxew@tempa{#1}\def\bxew@tempb{document}%
+    \ifx\bxew@tempa\bxew@tempb % if it is \begin{document}
+      % just in case unpatching failed
+      \global\let\bxew@begin@hook\@gobble % neutralize
+      \bxew@unpatch@begin
+      \bxew@patch@document
+    \fi
+  \endgroup
+}
+
+%% \bxew@patch@document
+% Appends something and \bxew@begin@body@hook to \document macro.
+\def\bxew@patch@document{%
+  \begingroup
+    \global\let\bxew@patch@document\@undefined % one-shot
+    \g@addto@macro\document{%
+      \bxew@patch@enddocument
+      % and \bxew@begin@body@hook will come last
+      \let\reserved@a\bxew@begin@body@hook
+      \global\let\bxew@begin@body@hook\@undefined
+      \reserved@a}%
+  \endgroup
+}
+
+% Just like \bxew@begin@body@hook, prepending \bxew@end@body@hook
+% to \enddocument need to be deferred as much as possible. So I
+% decided to patch \enddocument just before executing the
+% \bxew@begin@body@hook macro.
+
+%% \bxew@patch@enddocument
+% Prepends \bxew@end@body@hook to \enddocument.
+\def\bxew@patch@enddocument{%
+  \global\let\bxew@patch@enddocument\@undefined % one-shot
+  \begingroup
+    \toks@\expandafter{\enddocument}%
+    \toks\tw@{\bxew@end@body@hook
+      \global\let\bxew@end@body@hook\@undefined}%
+    \xdef\enddocument{\the\toks\tw@\the\toks@}%
+  \endgroup
+}
+
+%--------------------------------------- done
+\endinput
+%% EOF

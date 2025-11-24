@@ -1,0 +1,620 @@
+%
+% pdftricks2.sty
+%
+% Copyright (c) 2012, Christian Reibiger
+%
+% This program is free software; you can redistribute it and/or
+% modify it under the terms of the GNU General Public License
+% as published by the Free Software Foundation; either version 2
+% of the License, or (at your option) any later version.
+%
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+%
+% You should have received a copy of the GNU General Public License
+% along with this program (gpl.txt); if not, write to the Free
+% Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+% MA  02111-1307, USA.
+%
+% This package is motivated by the pdftricks package
+%
+
+\NeedsTeXFormat{LaTeX2e}
+\def\Fileversion$#1: #2 ${\gdef\fileversion{#2}}
+\def\Filedate$#1: #2 #3 ${\gdef\filedate{#2}}
+\Fileversion$Revision: 1.01 $
+\Filedate$Date: 2013/06/7 16:05:15 $
+\ProvidesPackage{pdftricks2}[\filedate\space\fileversion\space psTricks support in PDF]
+
+\newif\if@additionalInfo\@additionalInfofalse
+\newif\if@autotranslate\@autotranslatetrue
+\newif\if@iswin\@iswinfalse
+\newif\if@sysdetect\@sysdetecttrue
+\newif\if@scriptpaths\@scriptpathstrue
+\newcount\ps@figno
+\ps@figno=1
+\def\processfp figpath=#1,{\def\PdfT@tmpDir{#1}}
+\processfp figpath=.,
+\newwrite\psconfigs@out
+\newif\ifconfigout@open\configout@openfalse
+\let\pst@args\@gobble
+
+\def\PdfTInfo#1{\if@additionalInfo\PackageWarning{pdftricks2}{%
+	************************************INFO\MessageBreak%
+	#1\MessageBreak%
+	****************************************}\fi}
+\def\PdfTInfoNoLine#1{\if@additionalInfo\PackageWarningNoLine{pdftricks2}{%
+	************************************INFO\MessageBreak%
+	#1\MessageBreak%
+	****************************************}\fi}
+
+\DeclareOption{info}{\@additionalInfotrue}				% show additional info
+\DeclareOption{noshell}{\@autotranslatefalse}			% don't use w18 to translate transcripted figure files
+\DeclareOption{shell}{\@autotranslatetrue}				% use w18 to translate transcripted figure files
+\DeclareOption{windows}{\@iswintrue\@sysdetectfalse}	% this is a windows system, disabeling autodetection
+\DeclareOption{unix}{\@iswinfalse\@sysdetectfalse}		% this is a unix system, disabeling autodetection
+\DeclareOption{scriptpaths}{\@scriptpathstrue}			% write paths to the transcripted figure files and translate script
+\DeclareOption{noscriptpaths}{\@scriptpathsfalse}		% ignore paths while writing the transcripted figure files and translate script if using pdf mode without w18
+
+
+\DeclareOption*{{
+	\def\test #1=#2,{\def\cmp{#1}}\def\cmpto{figpath}
+	\expandafter\test\CurrentOption=,
+	\ifx\cmp\cmpto % test if given option is figpath
+		\def\next{\expandafter\processfp\CurrentOption,} % use given figpath
+	\else
+		\PdfTInfoNoLine{Unknown package option `\CurrentOption'.\MessageBreak Pass option to pstricks.}
+		\def\next{\edef\pst@args{\pst@args,\CurrentOption}
+			\PassOptionsToPackage{\CurrentOption}{pstricks}} % pass unused options to pstricks
+	\fi
+	\expandafter}\next}
+
+\ProcessOptions\relax
+
+% initial work of package
+\RequirePackage{pstricks,graphicx,ifpdf,moreverb,ifplatform}
+
+\@ifundefined{verbatim@out}{\newwrite\verbatim@out}{}
+\def\PackageInfoNoLine#1#2{\PackageInfo{#1}{#2\@gobble}}
+\def\PdfT@temporariesName{\PdfT@tmpDir/\jobname}
+\def\PdfT@figName{\PdfT@temporariesName-fig\the\ps@figno}
+\def\PdfT@confName#1{\PdfT@temporariesName-fig\the#1-config}
+\newif\if@figuresnotfound\@figuresnotfoundfalse
+\let\old@verbatim@rescan\verbatim@rescan
+
+{	\def\the#1{\string##}
+	\def\msg{{The used temporary files are\MessageBreak
+			\PdfT@figName.tex,\MessageBreak
+			\PdfT@confName\ps@figno.tex and\MessageBreak
+			\PdfT@temporariesName-special.tex}}
+	\expandafter\PdfTInfoNoLine\msg}
+
+% ignore paths only in pdf mode without w18
+\ifpdf
+	\ifshellescape
+		\@scriptpathstrue
+	\fi
+\else
+	\@scriptpathstrue
+\fi
+
+% detect system if needed
+\if@sysdetect
+	\ifwindows
+		\@iswintrue
+	\else
+		\@iswinfalse
+	\fi
+\fi
+% test for w18 and inform about usage
+\ifpdf
+	\if@autotranslate
+		\ifshellescape
+			\PackageInfoNoLine{pdftricks2}{%
+				****************************************\MessageBreak
+				Using \csname write\endcsname18 capability \MessageBreak
+				for producing PDF-figures.  \MessageBreak
+				****************************************}
+		\else
+			\PackageWarningNoLine{pdftricks2}{%
+				****************************************\MessageBreak
+				No \csname write\endcsname18 capability.\MessageBreak
+				You'll have to run a script by yourself!\MessageBreak
+				****************************************}
+			\@autotranslatefalse
+		\fi
+	\else
+		\PackageInfoNoLine{pdftricks2}{%
+			****************************************\MessageBreak
+			No \csname write\endcsname18 capability.\MessageBreak
+			You'll have to run a script by yourself!\MessageBreak
+			****************************************}
+	\fi
+\else
+	\PackageInfoNoLine{pdftricks2}{%
+		****************************************\MessageBreak
+		No special translation needed.\MessageBreak
+		****************************************}
+\fi
+
+% needed supporting stuff
+% process a linux style path to produce a windows style path
+\if@iswin
+	\def\process@Dir#1{%
+		\verbatim@startline
+		\expandafter\process@Dir@#1/\@nil}
+%
+	\begingroup % hack from verbatim.sty - in this part every ~ is read as the \ char, nevertheless all definitions are not local
+		\catcode`\~=12
+		\lccode`\~=`\\
+	\lowercase{\endgroup
+		\def\process@Dir@#1/#2{%
+			\ifx\@nil#2
+				\verbatim@addtoline{#1}
+				\let\next\relax
+			\else
+				\verbatim@addtoline{#1~}
+				\def\next{\process@Dir@#2}
+			\fi
+			\next}
+
+		\process@Dir\PdfT@tmpDir
+		\edef\PdfT@temporariesNameW{\the\verbatim@line~\jobname}
+
+		\def\PdfT@figNameW{\PdfT@temporariesNameW-fig\the\ps@figno}
+	}% end of hack
+\fi
+
+% eat an argument group enclosed in {, } verbatim, respect inner grouping with {, }
+\newcount\grouping@depth
+\let\verbgroup@end\relax
+
+\def\verbgroup{% eat one group and process it with \verbatim@processline, after doing so execute \verbgroup@end
+	\begingroup
+	\grouping@depth=0
+	\let\do\@makeother
+	\dospecials
+	\catcode`\^^M=\active \catcode`\^^I=10
+	\catcode`\ =10
+	\verbgroup@start}
+
+\begingroup % hack from verbatim.sty - in this part every [,] is read as the char {,} respectively, nevertheless all definitions are not local
+	\catcode`\[=12 \catcode`\]=12
+	\lccode`\[=`\{ \lccode`\]=`\}
+\lowercase{\endgroup
+%
+	\def\verbgroup@start#1{%
+		\if \noexpand#1[
+			\catcode`\ =12
+			\catcode`\^^I=12
+			\verbatim@startline
+			\let\next\verbgroup@read
+		\else
+			\endgroup
+			\PackageError{pdftricks2}{%
+%			\PackageWarning{pdftricks2}{%
+				****************************************\MessageBreak
+				Expected a \expandafter\@gobble\string\{ to start argument.\MessageBreak
+				****************************************}{%
+				Expected a \expandafter\@gobble\string\{ to start an argument of a command. But received an other token.}
+			\let\next\relax
+		\fi
+		\next}
+%
+	\def\verbgroup@read#1]{%
+		\verbgroup@read@#1[\@nil}
+%
+	\def\verbgroup@read@#1[#2{
+		\verbatim@addtoline{#1}
+		\ifx #2\@nil % no new group is opend inside
+			\ifnum\grouping@depth=0
+				\verbatim@processline
+				\def\next{\endgroup\verbgroup@end\relax\let\verbgroup@end\relax}
+			\else
+				\advance \grouping@depth by -1
+				\verbatim@addtoline{]}
+				\let\next\verbgroup@read
+			\fi
+		\else
+			\advance \grouping@depth by 1
+			\verbatim@addtoline{[}
+			\def\next{\verbgroup@read@#2}
+		\fi
+		\next}
+} % end of hack
+
+% tools for writing to a pspicture config file
+\def\config@opentested{%
+	\ifconfigout@open\else
+		\PdfTInfo{Opening `\PdfT@confName\ps@figno.tex'.}
+		\immediate\openout\psconfigs@out=\PdfT@confName\ps@figno.tex
+		\global\configout@opentrue
+	\fi}
+
+\def\config@write#1{%
+	\config@opentested
+	\immediate\write\psconfigs@out{#1}}
+
+\def\config@writeNT{\immediate\write\psconfigs@out}
+
+\def\config@finish{%
+	\ifconfigout@open
+		\PdfTInfo{Closing `\PdfT@confName\ps@figno.tex'.}%
+		\global\configout@openfalse
+	\else
+		\PdfTInfo{Creating `\PdfT@confName\ps@figno.tex'.}%
+		\immediate\openout\psconfigs@out=\PdfT@confName\ps@figno.tex
+	\fi
+	\immediate\write\psconfigs@out{\string\endinput}%
+	\immediate\closeout\psconfigs@out}
+
+\AtEndDocument{%
+	\ifconfigout@open
+		\PdfTInfo{Closing `\PdfT@confName\ps@figno.tex'.}
+		\immediate\closeout\psconfigs@out
+	\fi}
+
+% collect ps settings
+\ifpdf
+	\newcommand{\usepackageps}[2][]{% import the package and import it into the transcripted figure files
+		\PassOptionsToPackage{#1}{#2}
+		\RequirePackage{#2}
+		\config@write{\string\usepackage[#1]{#2}}}
+	\newcommand{\usepackagepsonly}[2][]{% import the package only into the transcripted figure files
+		\config@write{\string\usepackage[#1]{#2}}}
+\else
+	% define substitutional behaviour when there is no pdf-mode, intended to show same result
+	\def\usepackageps{\usepackage}
+	\def\usepackagepsonly{\usepackage}
+\fi
+
+\AtBeginDocument{%
+	\let\old@psset\psset
+	\def\psset{% write the config commands to the transcripted config file
+		\def\verbatim@processline{\config@write{\string\psset{\the\verbatim@line}}}
+		\verbgroup}
+%
+	\let\old@newpsstyle\newpsstyle
+	\def\newpsstyle#1{% write the config commands to the transcripted config file
+		\def\verbatim@processline{\config@write{\string\newpsstyle{#1}{\the\verbatim@line}}}
+		\verbgroup}
+%
+	\let\old@addtopsstyle\addtopsstyle
+	\def\addtopsstyle#1{% write the config commands to the transcripted config file
+		\def\verbatim@processline{\config@write{\string\addtopsstyle{#1}{\the\verbatim@line}}}
+		\verbgroup}
+%
+	\let\old@degrees\degrees
+	\def\degrees{\@ifnextchar[{\degrees@I}{\config@write{\string\degrees}}}
+	\def\degrees@I[#1]{\@bsphack\config@write{\string\degrees[#1]}\@esphack}
+%
+	\let\old@radians\radians
+	\def\radians{\config@write{\string\radians}}
+%
+	\let\old@SpecialCoor\SpecialCoor
+	\def\SpecialCoor{\config@write{\string\SpeciaCoor}}}
+
+\def\configps{%
+	\PdfTInfo{Opening `\PdfT@temporariesName-special.tex'.}
+	\immediate\openout\verbatim@out=\PdfT@temporariesName-special.tex
+	\def\verbatim@processline{%
+		\config@write{\the\verbatim@line}\immediate\write\verbatim@out{\the\verbatim@line}}
+	\def\verbgroup@end{%
+		\PdfTInfo{Closing `\PdfT@temporariesName-special.tex'.}
+		\immediate\closeout\verbatim@out
+		\input{\PdfT@temporariesName-special.tex}}
+	\verbgroup}
+
+\def\configpsonly{
+	\def\verbatim@processline{\config@write{\the\verbatim@line}}
+	\verbgroup}
+
+\def\configpsblock{%
+	\@bsphack
+	\let\old@endcmd\end
+	\def\end##1{\old@endcmd{##1}\input{\PdfT@temporariesName-special.tex}}
+	\PdfTInfo{Opening `\PdfT@temporariesName-special.tex'.}
+	\immediate\openout\verbatim@out=\PdfT@temporariesName-special.tex
+	\config@opentested
+	\let\do\@makeother\dospecials
+	\catcode`\^^M=\active \catcode`\^^I=12
+	\def\verbatim@processline{%
+		\config@writeNT{\the\verbatim@line}\immediate\write\verbatim@out{\the\verbatim@line}}
+	\verbatim@start}
+\def\endconfigpsblock{%
+	\PdfTInfo{Closing `\PdfT@temporariesName-special.tex'.}
+	\immediate\closeout\verbatim@out
+	\@esphack}
+
+\def\configpsonlyblock{%
+	\@bsphack
+	\config@opentested
+	\let\do\@makeother\dospecials
+	\catcode`\^^M\active \catcode`\^^I=12
+	\def\verbatim@processline{%
+		\config@writeNT{\the\verbatim@line}}
+	\verbatim@start}
+\def\endconfigpsonlyblock{%
+	\@esphack}
+
+% transcript figure files
+\let\old@pspicture\pspicture
+\let\old@endpspicture\endpspicture
+\ifpdf
+	\def\pspicture{%
+		\config@finish
+		\PdfTInfo{Opening `\PdfT@figName.tex'.}%
+		\immediate\openout\verbatim@out=\PdfT@figName.tex
+		% write preamble
+		\write@PSFigureFileHeaderI
+		\begingroup
+			\if@scriptpaths\else
+				\let\PdfT@temporariesName\jobname
+			\fi
+			\pst@cnta=1
+			\loop
+				\immediate\write\verbatim@out{\string\input{\PdfT@confName\pst@cnta.tex}}%
+			\ifnum\pst@cnta<\ps@figno
+				\advance\pst@cnta by 1
+			\repeat
+		\endgroup
+		% start reading figure
+		\pst@ifstar
+		\pspicture@normalize}
+
+	\def\pspicture@normalize{%
+		\let\do\@makeother\dospecials
+		\catcode`\^^M\active \catcode`\^^I=12
+		\if@star
+		\else
+			\PackageWarning{pdftricks2}{You use pspicture environment. This might have not\MessageBreak the same result when using pdflatex. Consider\MessageBreak using pspicture* environment instead.\MessageBreak}%
+		\fi
+		\@ifnextchar[{\read@psbaseline}{\def\ps@baseline{0}\pspicture@normalize@}}
+
+	\def\read@psbaseline[#1]{\def\ps@baseline{#1}\pspicture@normalize@}
+
+	\def\pspicture@normalize@#1(#2,#3){%
+		\@ifnextchar({\pspicture@readtofile(#2,#3)}{\pspicture@readtofile(0,0)(#2,#3)}}
+
+	\def\pspicture@readtofile(#1,#2)(#3,#4){%
+		\write@PSFigureFileHeaderII{#1}{#2}{#3}{#4}%
+		\def\verbatim@processline{%
+			\immediate\write\verbatim@out{\the\verbatim@line}}%
+		\verbatim@start}
+
+	\def\endpspicture{%
+		\immediate\write\verbatim@out{\string\end{\@currenvir}}%
+		\immediate\write\verbatim@out{\string\end{document}}%
+		\PdfTInfo{Closing `\PdfT@figName.tex'.}%
+		\immediate\closeout\verbatim@out
+		\if@autotranslate
+			\PdfTInfo{Process `\PdfT@figName.tex'.}%
+			\if@iswin
+				\immediate\write18{del \PdfT@figNameW.pdf}%
+			\else
+				\immediate\write18{rm \PdfT@figName.pdf}%
+			\fi
+			\IfFileExists{\PdfT@figName.tex}{%
+				\PdfTInfoNoLine{Invoke latex for \PdfT@figName.tex.}%
+				\immediate\write18{latex -output-directory=\PdfT@tmpDir\space -interaction=batchmode \PdfT@figName.tex}%
+				\IfFileExists{\PdfT@figName.dvi}{%
+					\PdfTInfoNoLine{Invoke dvips for \PdfT@figName.dvi.}%
+					\immediate\write18{dvips -o \PdfT@figName.ps \PdfT@figName}%
+					\IfFileExists{\PdfT@figName.ps}{%
+						\PdfTInfoNoLine{Invoke ps2pdf for \PdfT@figName.ps.}%
+						\immediate\write18{ps2pdf \PdfT@figName.ps \PdfT@figName.pdf}%
+						\IfFileExists{\PdfT@figName.pdf}{%
+							\PdfTInfoNoLine{Cleaning up temorary files for transcrip \the\ps@figno}%
+							\if@iswin
+								\immediate\write18{del \PdfT@figNameW.aux \PdfT@figNameW.dvi \PdfT@figNameW.ps}%
+							\else
+								\immediate\write18{rm \PdfT@figName.aux \PdfT@figName.dvi \PdfT@figName.ps}%
+							\fi}{%
+							\PackageError{pdftricks2}{%
+								****************************************\MessageBreak
+								Could not create \PdfT@figName.pdf.\MessageBreak
+								****************************************}}}{%
+						\PackageError{pdftricks2}{%
+							****************************************\MessageBreak
+							Could not create \PdfT@figName.ps.\MessageBreak
+							****************************************}}}{%
+					\PackageError{pdftricks2}{%
+						****************************************\MessageBreak
+						Could not create \PdfT@figName.dvi.\MessageBreak
+						****************************************}}}{%
+				\PackageError{pdftricks2}{%
+					****************************************\MessageBreak
+					Could not write \PdfT@figName.tex.\MessageBreak
+					****************************************}}%
+		\fi
+		\IfFileExists{\PdfT@figName.pdf}{%
+			%\includegraphics{\PdfT@figName.pdf}
+			\setbox\pst@hbox=\hbox{\includegraphics{\PdfT@figName.pdf}}%
+			\pst@dima=\dp\pst@hbox
+			\advance\pst@dima by \ht\pst@hbox
+			\pst@dimb=\ps@baseline\pst@dima
+			\advance\pst@dimb by -\dp\pst@hbox
+			\leavevmode\hbox{\lower\pst@dimb\box\pst@hbox}}{%
+			\@figuresnotfoundtrue}%
+		\global\advance\ps@figno by 1
+		\global\let\verbatim@rescan\pspicture@rescan}
+
+	\begingroup % hack from verbatim.sty - in this part every !,~,[,] is read as the char <cr>,%, ,<tab> respectively, preserving the char C, nevertheless all definitions are not local
+		\catcode`\!=\active \catcode`\~=12 \catcode`\[=12 \catcode`\]=12
+		\lccode`\!=`\^^M \lccode`\~=`\% \lccode`\[=`\  \lccode`\]=`\^^I
+		\lccode`\C=`\C
+	\lowercase{\endgroup
+		\def\pspicture@rescan#1#2!{%
+			\if\noexpand!\noexpand#2!
+			\else
+				\let\next\relax
+				\pspicture@rescan@{#1}#2\@nil
+			\fi
+			\global\let\verbatim@rescan\old@verbatim@rescan}
+
+		\def\pspicture@rescan@#1#2#3\@nil{%
+			\if[\noexpand#2%
+				\let\next\space
+				\pspicture@rescan@{#1}#3\@nil%
+			\else
+				\if]\noexpand#2%
+					\let\next\space
+					\pspicture@rescan@{#1}#3\@nil%
+				\else
+					\if~\noexpand#2\next\else
+						\PackageWarning{pdftricks2}{Characters lost after `\string\end{#1}'}
+					\fi
+				\fi
+			\fi}
+	}% end of hack
+
+	\def\write@PSFigureFileHeaderI{%
+		\immediate\write\verbatim@out{\string\documentclass{scrartcl}}%
+		\immediate\write\verbatim@out{\string\usepackage[driver=dvips]{geometry}}%
+		\immediate\write\verbatim@out{\string\pagestyle{empty}}%
+		\immediate\write\verbatim@out{\string\setlength{\string\parindent}{0pt}}%
+		\immediate\write\verbatim@out{\string\setlength{\string\parskip}{0pt}}%
+		\ifx\pst@args\@gobble
+			\immediate\write\verbatim@out{\string\usepackage{pstricks}}%
+		\else
+			\immediate\write\verbatim@out{\string\usepackage[\pst@args]{pstricks}}%
+		\fi}
+
+	\def\write@PSFigureFileHeaderII#1#2#3#4{%
+		\immediate\write\verbatim@out{\string\makeatletter}% setting needed document size
+		\immediate\write\verbatim@out{\string\pst@dima=#3\string\psxunit}%
+		\immediate\write\verbatim@out{\string\pst@dimc=#1\string\psxunit}%
+		\immediate\write\verbatim@out{\string\advance\string\pst@dima\space by -\string\pst@dimc}%
+		\immediate\write\verbatim@out{\string\ifdim\string\pst@dima<0pt \string\pst@dima=-\string\pst@dima\string\fi}%
+		\immediate\write\verbatim@out{\string\pst@dimb=#4\string\psyunit}%
+		\immediate\write\verbatim@out{\string\pst@dimc=#2\string\psyunit}%
+		\immediate\write\verbatim@out{\string\advance\string\pst@dimb\space by -\string\pst@dimc}%
+		\immediate\write\verbatim@out{\string\ifdim\string\pst@dimb<0pt \string\pst@dimb=-\string\pst@dimb\string\fi}%
+		\immediate\write\verbatim@out{\string\geometry{paperwidth=\string\pst@dima, paperheight=\string\pst@dimb, margin=0pt}}%
+		\immediate\write\verbatim@out{\string\makeatother}%
+		\immediate\write\verbatim@out{\string\begin{document}}%
+		\immediate\write\verbatim@out{\string\begin{\@currenvir}(#1,#2)(#3,#4)}}
+\else
+	\def\pspicture{%
+		\config@finish
+		\let\psset\old@psset
+		\let\newpsstyle\old@newpsstyle
+		\let\addtopsstyle\old@addtopsstyle
+		\let\degrees\old@degrees
+		\let\radians\old@radians
+		\let\SpecialCoor\old@SpecialCoor
+		\pst@cnta=1
+		\leavevmode\hbox to 0pt{}% trick to remove spaces from reading the config files but not the spaces in front of the pspicture
+		\loop
+			\input{\PdfT@confName\pst@cnta.tex}\unskip\unskip%
+		\ifnum\pst@cnta<\ps@figno
+			\advance\pst@cnta by 1
+		\repeat
+		\begingroup
+		\pst@ifstar
+		\pspicture@}
+
+	\def\pspicture@{%
+		\if@star
+		\else
+			\PackageWarning{pdftricks2}{You use pspicture environment. This might have not\MessageBreak the same result when using pdflatex. Consider\MessageBreak using pspicture* environment instead.}%
+		\fi
+		\@ifnextchar[{\pspicture@I}{\psset{shift=0}\pst@picture}}
+
+	\def\pspicture@I[#1]{%
+		\def\ps@baseline{#1}%
+		\pspicture@II}
+
+	\def\pspicture@II#1(#2,#3){%
+		\@ifnextchar({\pspicture@III(#2,#3)}{\pspicture@III(0,0)(#2,#3)}}
+
+	\def\pspicture@III(#1,#2)(#3,#4){%
+		\@ifundefined{pst@shift}{%
+			\pst@picture[\ps@baseline](#1,#2)(#3,#4)}{%
+			\pst@dima=#4\psyunit
+			\pst@dimb=#2\psyunit
+			\advance\pst@dima by -\pst@dimb
+			\ifdim\pst@dima>0pt \pst@dima=-\pst@dima\fi
+			\pst@dima=\ps@baseline\pst@dima
+			\edef\ps@shift@cmd{[shift=\the\pst@dima]}%
+			\expandafter\pst@picture\ps@shift@cmd(#1,#2)(#3,#4)}}
+
+	\def\endpspicture{%
+		\old@endpspicture%
+		\global\advance\ps@figno by 1\relax}
+\fi
+
+\def\configpsonlyblock{%
+	\@bsphack
+	\config@opentested
+	\let\do\@makeother\dospecials
+	\catcode`\^^M\active \catcode`\^^I=12
+	\def\verbatim@processline{%
+		\config@writeNT{\the\verbatim@line}}
+	\verbatim@start}
+\def\endconfigpsonlyblock{%
+	\@esphack}
+
+% end document handle
+\AtEndDocument{%
+	\if@figuresnotfound
+		\PackageWarningNoLine{pdftricks2}{%
+			****************************************\MessageBreak
+			Not all figure files were found.\MessageBreak
+			****************************************}
+	\fi
+	\ifpdf\if@autotranslate\else
+		\Write@TranslateScript
+		\if@iswin
+			\PackageWarningNoLine{pdftricks2}{%
+				****************************************\MessageBreak
+				You have to rename `\PdfT@tmpDir /transscr.txt'\MessageBreak
+				to `\PdfT@tmpDir /transscr.bat' and run it.\MessageBreak
+				****************************************}
+		\else
+			\PackageWarningNoLine{pdftricks2}{%
+				****************************************\MessageBreak
+				You have to make `\PdfT@tmpDir /transscr.sh'\MessageBreak
+				executable and run it.
+				****************************************}
+		\fi
+	\fi\fi}
+
+\def\Write@TranslateScript{%
+	\PdfTInfoNoLine{Writing script for manual translation.}
+	\if@iswin
+		\immediate\openout\verbatim@out=\PdfT@tmpDir /transscr.txt
+	\else
+		\immediate\openout\verbatim@out=\PdfT@tmpDir /transscr.sh
+	\fi
+	\if@scriptpaths\else
+		\let\PdfT@temporariesName\jobname
+	\fi
+	\pst@cnta=\ps@figno
+	\ps@figno=1
+	\loop
+	\ifnum\ps@figno<\pst@cnta
+		\Write@TranslateScript@
+		\advance\ps@figno by 1
+	\repeat
+	\immediate\closeout\verbatim@out}
+
+\def\Write@TranslateScript@{%
+	\immediate\write\verbatim@out{echo Process \PdfT@figName.}
+	\if@scriptpaths
+		\immediate\write\verbatim@out{latex -output-directory=\PdfT@tmpDir\space -interaction=batchmode \PdfT@figName.tex}
+	\else
+		\immediate\write\verbatim@out{latex -interaction=batchmode \PdfT@figName.tex}
+	\fi
+	\immediate\write\verbatim@out{dvips -o \PdfT@figName.ps \PdfT@figName}
+	\immediate\write\verbatim@out{ps2pdf \PdfT@figName.ps \PdfT@figName.pdf}
+	\if@iswin
+		\immediate\write\verbatim@out{del \PdfT@figNameW.aux \PdfT@figNameW.dvi \PdfT@figNameW.ps}
+	\else
+		\immediate\write\verbatim@out{rm \PdfT@figName.aux \PdfT@figName.dvi \PdfT@figName.ps}
+	\fi}
+
+\endinput
+

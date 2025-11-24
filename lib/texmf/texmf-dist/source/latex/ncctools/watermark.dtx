@@ -1,0 +1,217 @@
+% \iffalse
+%%
+%% File: watermark.dtx Copyright (C) 2002--2004 by Alexander I. Rozhenko
+%%
+%<package>\NeedsTeXFormat{LaTeX2e}
+%<package>\ProvidesPackage{watermark}
+%<package>         [2004/12/09 v1.1 Watermarks (NCC)]
+%
+% \changes{v1.00}{2002/01/29}{This version is uploaded to CTAN}
+% \changes{v1.01}{2002/02/13}{Hbox underfull removed in empty |\thispageheading|}
+% \changes{v1.02}{2003/04/04}{Hbox underfull removed in plain and empty styles}
+% \changes{v1.1}{2004/12/09}{Simplify the implementation of |\thispageheading|}
+% \changes{v1.1}{2004/12/09}{Documentation was prepared}
+%
+%<*driver>
+\let\makeindex\relax
+\documentclass{ltxdoc}
+\usepackage{watermark,nccboxes}
+\GetFileInfo{watermark.sty}
+\begin{document}
+\title{The \textsf{watermark} package\thanks{This file
+        has version number \fileversion, last
+        revised \filedate.}}
+\author{Alexander I. Rozhenko\\rozhenko@oapmg.sscc.ru}
+\date{\filedate}
+\maketitle
+\DocInput{watermark.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \thispageheading{This heading was prepared with the
+% {\tt\string\thispageheading} command.\\
+% It allows long multi-line headings!}
+%
+% \section{User Interface}
+%
+% \DescribeMacro\watermark
+% \DescribeMacro\leftwatermark
+% \DescribeMacro\rightwatermark
+% \DescribeMacro\thiswatermark
+% The package provides watermarks on output pages. A watermark is
+% some text or picture printed at the background of paper.
+% A watermark is prepared in a picture box stored at the
+% beginning of header. So, you should place
+% the watermark material with LaTeX's |\put| and |\multiput| commands.
+% Allowed watermark commands are shown in the table:
+% \begin{center}\catcode`|=12
+% \small
+% \renewcommand\cboxstyle{\footnotesize}
+% \begin{tabular}{|l|l|}\hline
+% \hfill\cbox{Command}\hfill\mbox{} &
+% \hfill\cbox{Meaning}\hfill\mbox{}\\\hline
+% \Strut/.8/
+% \verb+\watermark+\marg{body} &
+% Set the same watermark for all pages\\
+% \verb+\leftwatermark+\marg{body} &
+% Set the even-page watermark\\
+% \verb+\rightwatermark+\marg{body} &
+% Set the odd-page watermark\\
+% \verb+\thiswatermark+\marg{body} &
+% Set a watermark for the current page only \\
+% \hline
+% \end{tabular}
+% \end{center}
+% In one-side mode, the |\leftwatermark| is ignored and the
+% |\rightwatermark| is applied to all pages.
+%
+% \DescribeMacro\thispageheading
+% The package also provides the command
+% |\thispageheading|\marg{heading}
+% which replaces a heading for the current page to the specified
+% multi-line heading. The heading is prepared in the parbox
+% of the |\textwidth| width aligned on the top line. This
+% command does not suppress watermarks.
+%
+% Examples of using watermarks are shown in the |ncccropmark|
+% package.
+% \StopEventually{}
+%
+% \section{The Implementation}
+%
+% \begin{macro}{\@begindvi}
+% To support watermarks, we use the |\@begindvi| hook from the output
+% routine. This hook works only once at the beginning of dvi,
+% but some packages (e.g. |hyperref|) also use it for their own needs.
+% So, we redefine it at the beginning of document in such a way to
+% accurately save its behaviour after the first call when it can be
+% redefined by other packages. All the we need from this hook~---
+% to call the |\WMK@insert| command every time when the output
+% routine composes a new page.
+%    \begin{macrocode}
+%<*package>
+\AtBeginDocument{
+  \let\WMK@begindvi\@begindvi
+  \def\@begindvi{%
+%    \end{macrocode}
+% Apply saved |\@begindvi| hook and then call the
+% |\WMK@insert| command:
+%    \begin{macrocode}
+    \WMK@begindvi
+    \WMK@insert
+%    \end{macrocode}
+% After that we must redefine the |\@begindvi| hook,
+% because it is already redefined here to the |\@empty| value
+% (or to something else if another package using this hook is loaded).
+% We save its new meaning in the |\WMK@begindvi| command
+% and redefine the |\@begindvi|:
+%    \begin{macrocode}
+    \global\let\WMK@begindvi\@begindvi
+    \gdef\@begindvi{\WMK@begindvi\WMK@insert}%
+  }%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\WMK@insert}
+% The command redefines the current header and inserts the
+% |\WMK@hook| at the beginning of header.
+% A box produced by this hook has zero natural sizes.
+%    \begin{macrocode}
+\def\WMK@insert{%
+  \let\WMK@head\@thehead
+  \def\@thehead{\WMK@hook\WMK@head}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\WMK@hook}
+% The command applies
+% this watermark (|\WMK@this|), odd watermark (|\WMK@odd|),
+% or even watermark (|\WMK@even|). The watermarks are prepared
+% within the picture environment:
+%    \begin{macrocode}
+\def\WMK@hook{%
+  \begin{picture}(0,0)\relax
+    \ifx\WMK@this\relax
+      \if@twoside
+        \ifodd\c@page\WMK@odd\else\WMK@even\fi
+      \else
+        \WMK@odd
+      \fi
+    \else
+      \WMK@this \global\let\WMK@this\relax
+    \fi
+  \end{picture}%
+%    \end{macrocode}
+% After that we test the header. At the first, we test the
+% |\WMK@thishead| command. If it is specified, we let
+% |\WMK@head| to |\WMK@thishead|.
+%    \begin{macrocode}
+  \ifx\WMK@thishead\relax \else
+    \let\WMK@head\WMK@thishead
+    \global\let\WMK@thishead\relax
+  \fi
+%    \end{macrocode}
+% The original |\@thehead| command
+% saved in |\WMK@head| can be defined with |\@oddhead| content
+% or can be let to |\@oddhead| or |\@evenhead|.
+% We test all these cases to recognize when the head is really empty.
+% A head prepared with |\thispageheading| can be also empty.
+% If the empty case is recognized, we insert the |\hfil| command
+% to avoid underfull.
+%    \begin{macrocode}
+  \ifx\WMK@head\@empty \hfil
+  \else
+    \def\@tempa{\@oddhead}%
+    \ifx\WMK@head\@tempa
+      \ifx\@oddhead\@empty \hfil \fi
+    \fi
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% Set defaults for this heading and watermarks.
+%    \begin{macrocode}
+\let\WMK@thishead\relax
+\let\WMK@this\relax
+\let\WMK@odd\@empty
+\let\WMK@even\@empty
+%    \end{macrocode}
+%
+% \begin{macro}{\watermark}
+% \begin{macro}{\leftwatermark}
+% \begin{macro}{\rightwatermark}
+% \begin{macro}{\thiswatermark}
+% Define watermark producing commands:
+%    \begin{macrocode}
+\newcommand{\watermark}[1]{\leftwatermark{#1}\rightwatermark{#1}}
+\newcommand{\leftwatermark}[1]{\gdef\WMK@even{#1}}
+\newcommand{\rightwatermark}[1]{\gdef\WMK@odd{#1}}
+\newcommand{\thiswatermark}[1]{\gdef\WMK@this{#1}}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\thispageheading}
+% Finally, define the |\thispageheading|\marg{heading} command.
+% We especially test the case of empty heading and
+% set |\WMK@thishead| to the |\@empty| value in this case.
+% This allows avoiding underfull in the |\WMK@hook|.
+%    \begin{macrocode}
+\newcommand{\thispageheading}[1]{%
+  \def\@tempa{#1}%
+  \ifx\@tempa\@empty
+    \global\let\WMK@thishead\@empty
+  \else
+    \gdef\WMK@thishead{\parbox[t]\textwidth{#1}}%
+  \fi
+}
+%</package>
+%    \end{macrocode}
+% \end{macro}
+\endinput

@@ -1,0 +1,81 @@
+# Copyright (C) 1994-2015  Werner Lemberg <wl@gnu.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program in doc/COPYING; if not, write to the Free
+# Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+# MA 02110-1301 USA
+
+# This script fixes the Wadalab fonts which have been created with the
+# `makefont' script of the CJK package version 4.5.1 or earlier.
+#
+# It converts all PFB files in the current directory.
+
+
+for i in *.pfb; do
+  echo $i
+  mv $i $i.old
+  cat $i.old | \
+  t1disasm | \
+  awk '
+    {
+      sub(/001\.001/, "001.002")
+
+      if (/%%Creation/) {
+        print "%%CreationDate: 2003-Feb-07"
+        next
+      }
+
+      if (/0 -160 rmoveto/ && last_is_hsbw) {
+        last_is_hsbw = 0
+        next
+      }
+
+      if (/hsbw/) {
+        last_is_hsbw = 1
+        waiting_for_Xmoveto = 1
+      }
+      else
+        last_is_hsbw = 0
+
+      if (waiting_for_Xmoveto) {
+        if (/rmoveto/) {
+          printf "\t%d %d rmoveto\n", $1, $2 - 160
+          waiting_for_Xmoveto = 0
+          next
+        }
+        else if (/vmoveto/) {
+          printf "\t%d vmoveto\n", $1 - 160
+          waiting_for_Xmoveto = 0
+          next
+        }
+        else if (/hmoveto/) {
+          printf "\t%d %d rmoveto\n", $1, -160
+          waiting_for_Xmoveto = 0
+          next
+        }
+      }
+
+      if (/moveto/)
+        print "\tclosepath"
+
+      if (/hstem/) {
+        printf "\t%d %d hstem\n", $1 - 160, $2
+        next
+      }
+
+      print
+    }
+  ' | \
+  t1asm > $i
+  rm $i.old
+done

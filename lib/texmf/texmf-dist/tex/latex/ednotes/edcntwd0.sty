@@ -1,0 +1,368 @@
+%% EdCntWd0.sty--count word occurrences with ednotes.sty. 
+\def\fileversion{0.32d} \def\filedate{2006/07/06} %% TODO 
+
+%% Copyright (C) 2004 Uwe L\"uck & Christian Tapp (direction) 
+%%               2005 2006 Uwe L\"uck. 
+%% Munich, http://www.contact-ednotes.sty.de.vu. 
+%% Current maintainer is Uwe L\"uck. 
+
+%% This program can be redistributed and/or modified under the terms
+%% of the LaTeX Project Public License distributed from CTAN
+%% archives in directory macros/latex/base/lppl.txt; either
+%% version 1.3c of the License, or any later version.
+%% We did our best to help you, but there is NO WARRANTY. 
+
+%% * USAGE: *
+%% 
+% 1.) The present file is loaded by the `countoccurrences' package 
+% option of version v0.8 (onwards) of `ednotes.sty'. 
+%% 
+% 2.) If your source code somewhere contains 
+%     <WORD><TEXT>\Anote{<WORD>}{<NOTE>}
+% and produces some 
+%     <WORD><TEXT><WORD> 
+% in *one* printed line, the lemma preceding the note should indicate 
+% that the note is concerned with the *second* occurrence of <WORD>. 
+% It would be extremly tedious to implement this requirement in a 
+% LaTeX macro package. The present package does some part of it. 
+% If you are, in typing, not sure that the first and second 
+% occurrence of <WORD> will be printed in different lines, type 
+%     \countword{<WORD>}<TEXT>\Anote{\countword{<WORD>}}{<NOTE>} 
+% The macro \countword will then check whether the occurrences of 
+% <WORD> are printed in the same line, and if this happens, the lemma 
+% preceding the note will have an index `2'. The analogous thing 
+%     <WORD><TEXT><WORD><MORE>\Anote{<WORD>}{<NOTE>} 
+% works as well (resulting in an index `3'), and so on. 
+% 
+% (So the macros do not save you from looking for earlier word 
+% occurrences, but at least from counting occurrences in the printed 
+% lines, and you do not have to repeat the procedure when you 
+% change the width of the printed text.) 
+% 
+% Of course, you only have to look for earlier occurrences in the 
+% same paragraph. 
+%% 
+% 3.) Sometimes <WORD> may contain tokens which must not appear in 
+% label names, e.g., `r\^ole'. In this case, e.g., \countword{r\^ole} 
+% will break. Then type, e.g., \countword[role]{r\^ole} instead. 
+% To be more precise: If <WORD> expands to something containing 
+% a token which is no character token, type 
+% \countword[<SUBST>]{<WORD>} instead, where <SUBST> expands to 
+% nothing but character tokens. (Cf. \csname on p. 203 of TeXbook.) 
+% 4.) Customization: Index numbers appear as subscripts by default. 
+% To change this, type 
+%   \renewcommand{\CWtextscript}{\textsuperscript} 
+% or \let\CWtextscript\textsuperscript . 
+% 5.) Pagewise/running line numbering: Switching from pagewise to 
+% running line numbering needs an extra run or deletion of 
+% \jobname.aux. So don't be frightened by an error message. 
+
+%% Please send comments via http://www.contact-ednotes.sty.de.vu. 
+
+%% For wizards: changes lineno.sty's \linenumberpar. 
+
+\NeedsTeXFormat{LaTeX2e}[1994/12/01] 
+%% <- \newcommand*, \providecommand* 
+\ProvidesPackage{edcntwd0}[\filedate\space\fileversion\space 
+                           ^^JCounting word occurrences with 
+                              ednotes.sty (ul)]
+
+%% * IMPLEMENTATION: * %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 
+%% * Main ideas: * 
+% \countword occurrences write their order (per paragraph) and line 
+% numbers into the .aux-file. With these informations from the 
+% latter, a table is created which assigns line and place 
+% numbers to words. A second table re-orders the first one and 
+% assigns an index to each place number. An index of 0 means that the 
+% corresponding word appears only once in a line. A higher index 
+% tells the order in which an occurrence follows others in the line. 
+% When processed for the lemma tag, \countword realizes its place 
+% number and, using this, reads the index from the former table and 
+% prints or does not print an index accordingly. 
+
+% \RequirePackage{ednotes}[2004/01/04]
+%% Does this work for mere version checking? 
+%% No--had the problem with edtable. See LaTeX bug latex/3730. 
+
+% Auxiliaries: 
+\def\@CW@stepcnt#1{\advance#1\@ne} 
+\def\@CW@emptylist{\@eltt} %% Need bound for table rows. 
+% \newif\if@CW@firstinpar \global\@CW@firstinpartrue %% ! 
+
+% \c@CW@par identifies paragraphs which contain \countword. 
+% From v0.32a onwards, it is kind of a LaTeX counter in order 
+% to work properly with \includeonly:
+\newcount\c@CW@par 
+\@addtoreset{CW@par}{@ckpt}
+
+% \@CW@wordlist is made a list of \countword-arguments in one 
+% paragraph, to be written to the .aux . 
+\global\let\@CW@wordlist\@empty 
+
+% At the first occurrence of \countword in a paragraph, 
+% \@CW@makeplaceindex reads the corresponding \@CW@wordlist 
+% and transforms it into \@CW@wordlinelist -- if it has been 
+% written in the previous run. Whether the latter is the case 
+% is recorded by \if@CW@pardef. 
+\global\let\@CW@make@placindexlist\@CW@makeplaceindexlist 
+\newif\if@CW@pardef \global\@CW@pardeffalse 
+\global\let\@CW@wordlinelist\@CW@emptylist
+% When there is evidence that there are more occurrences of 
+% \countword than in the previous run: 
+\def\@CW@missingdata{\G@refundefinedtrue 
+  \@EN@warning{Missing data (.aux) for 
+               \string\countword\MessageBreak}% 
+%Package ednotes Warning: Missing data (.aux) for \countword 
+%on inputline
+  \CWtextscript?}
+%% <- TODO: warning when some \countword has been removed!? 
+
+\def\@CW@makeplaceindexlist{% 
+  \global\let\@CW@make@placeindexlist\relax 
+  \stepcounter{CW@par}%          % v0.32a
+%   \global\@CW@stepcnt\c@CW@par 
+  \@ifundefined{CWp\romannumeral\c@CW@par}%
+%                {\G@refundefinedtrue \global\@CW@pardeffalse}% 
+               {\global\@CW@pardeffalse}% 
+               {% 
+    \global\@CW@pardeftrue
+%   \global\let\@CW@wordlinelist\@CW@emptylist
+%% \@CW@wordlinelist is built as a "table", each row being 
+%% <WORD>\@elt<LINENO>\@elt<PLACENO>\@eltt 
+%% --and there is an extra leading \@eltt. 
+%% Latter needed for determining exact matching. 
+%   \global\let\@CW@placeindexlist\@CW@emptylist 
+    \begingroup 
+      \count@\z@ \let\@elt\relax \let\@eltt\relax 
+      \edef\@tempa{\noexpand\@tfor \noexpand\@tempa :=% 
+        \csname CWp\romannumeral\c@CW@par\endcsname}% 
+      \@tempa\do{% 
+        \@CW@stepcnt\count@
+        \edef\@tempc{r@CWw@\number\c@CW@par @\number\count@}% 
+%% 2004/07/27: hack for pagewise line numbering: 
+        \expandafter \@ifundefined \expandafter{\@tempc}% 
+            {\gdef\@gtempa{?}}%% \global: cf. below! 
+            {\ifx\c@linenumber\c@runninglinenumber
+               \gdef\@gtempa{% 
+                 \expandafter\expandafter\expandafter \@car 
+%% Beware hyperref. 
+                 \csname\@tempc\endcsname \@nil}% 
+             \else 
+               \begingroup 
+                 \def\thelinenumber{% 
+                   \xdef\@gtempa{\number\c@linenumber}}% 
+%% Assumes \getpagewisenumber -> {... \thelinenumber}
+%% Local vs. global assignments to \c@linenumber OK according to 
+%% Stephan. (!?) 
+                 \expandafter\expandafter\expandafter \@car 
+                 \csname\@tempc\endcsname \@nil
+               \endgroup 
+             \fi}% 
+%       \typeout{G:\meaning\@gtempa}% TEST 
+        \edef\@tempb{% 
+          \noexpand\g@addto@macro \noexpand\@CW@wordlinelist{% 
+          \@tempa \@elt 
+          \@gtempa
+%           \expandafter \@ifundefined \expandafter{\@tempc}{?}% 
+%             {\expandafter\expandafter\expandafter \@car 
+%              \csname\@tempc\endcsname \@nil}% 
+          \@elt 
+          \number\count@ \@eltt}}% 
+        \@tempb}% 
+%% TODO: empty referring macros after use -> ednotes as well. 
+      \xdef\@CW@numberofwords{\number\count@}% 
+%% \@CW@wordlinelist next is transformed into \@CW@placeindexlist: 
+      \loop 
+%  \typeout{WL=\meaning\@CW@wordlinelist}%% TEST 
+      \ifx\@CW@wordlinelist\@CW@emptylist \else 
+        \global\let\@CW@nextwordlinelist\@empty 
+        \expandafter\@CW@takerow\@CW@wordlinelist\@nil 
+        \ifx\@CW@nextwordlinelist\@empty 
+          \global\let\@CW@wordlinelist\@CW@emptylist 
+        \else
+          \global\let\@CW@wordlinelist\@CW@nextwordlinelist 
+        \fi 
+      \repeat 
+    \endgroup 
+               }% 
+%  \typeout{PI=\meaning\@CW@placeindexlist}%% TEST 
+%   \global\let\countword\@CW@cntwii
+%   \@CW@cntwii 
+} 
+%% \@CW@placeindexlist has, after starting \@eltt, rows of form 
+%% <PLACE>\@elt<INDEX>\@eltt . 
+\global\let\@CW@placeindexlist\@CW@emptylist 
+
+\def\@CW@takerow\@eltt#1\@elt#2\@elt#3\@eltt#4\@nil{% 
+  \count@\@ne 
+  \g@addto@macro\@CW@placeindexlist{#3\@elt}% 
+%% \@CW@placeindexlist always closes with mostly spurios 
+%% 0\@eltt, don't know why, but harmless for reading the list. 
+  \def\@CW@matchline##1\@eltt#1\@elt#2\@elt##2\@eltt##3\@nil{% 
+%  \typeout{WL=\meaning\@CW@wordlinelist}%% TEST 
+    \def\@tempa{##1}%
+%    \typeout{##1}%% TEST 
+    \ifx\@tempa\@CW@emptylist 
+      \g@addto@macro\@CW@placeindexlist{0\@eltt}%
+    \else 
+  %% \@tempcnta determines one out of four cases, 
+  %% while \count@ counts equal words in a line: 
+      \@tempcnta \ifnum\count@=\@ne \z@ \else \tw@ \fi 
+      \ifx\@nnil##2\@nnil %% No match. 
+        \let\@CW@next\relax 
+      \else %% Match. 
+        \@CW@stepcnt\@tempcnta \@CW@stepcnt\count@ 
+        \@CW@buildnextwordlinelist{##1}%
+        \def\@CW@next{\@CW@matchline\@eltt##3\@nil}% 
+      \fi 
+  %% Cases determined. 
+%    \typeout{\number\@tempcnta}%% TEST 
+      \ifcase\@tempcnta %% \typeout{Case 0: \count@=1, no match}% 
+        \g@addto@macro\@CW@placeindexlist{0\@eltt}%
+        \xdef\@CW@nextwordlinelist{\@eltt#4}% 
+      \or %% \typeout{Case 1: \count@=1, match}% 
+        \g@addto@macro\@CW@placeindexlist{1\@eltt##2\@elt2\@eltt}%
+      \or %% \typeout{Case 2: \count@>1, no match}% 
+        \@CW@buildnextwordlinelist{##1}% 
+      \or %% \typeout{Case 3: \count@>1, match}% 
+        \edef\@tempc{\noexpand\g@addto@macro \noexpand\@CW@placeindexlist 
+          {##2\@elt \number\count@ \@eltt}}% 
+        \@tempc 
+      \fi 
+      \@CW@next 
+    \fi 
+  }% 
+  \@CW@matchline\@eltt#4\@eltt#1\@elt#2\@elt\@eltt\@nil 
+  %% TODO #4 void!? Cf. dummy above, \@CW@next. 
+}
+%% \@CW@buildnextwordlinelist{#1} appends non-void #1 to 
+%% \@CW@nextwordlinelist: 
+\def\@CW@buildnextwordlinelist#1{% 
+  \ifx\@nnil#1\@nnil \else 
+    \g@addto@macro\@CW@nextwordlinelist{\@eltt#1}\fi} 
+
+% \c@CW@repword counts occurrences of \countword in a paragraph: 
+\newcount\c@CW@repword 
+
+\newcommand*\countword[2][\@nil]{% 
+% \newcommand*\@CW@cntwii[2][\@nil]{% 
+%   \global\@CW@firstinparfalse 
+  \@CW@make@placeindexlist
+  \global\@CW@stepcnt\c@CW@repword 
+  \def\@tempa{#1}% 
+  \ifx\@tempa\@nnil 
+    \g@addto@macro\@CW@wordlist{{#2}}% 
+  \else 
+    \g@addto@macro\@CW@wordlist{{#1}}% 
+  \fi
+  \edef\@tempa{\noexpand\linelabel{% 
+    CWw@\number\c@CW@par @\number\c@CW@repword}}%
+  \@tempa 
+  #2}
+
+% \@ifdefinable\countword{\global\let\countword\@CW@cntwi}
+
+% In the lemma tag of the note, \countword behaves as follows. 
+\addlemmaexpands{\let\countword\@CW@cntwl 
+                 \global\c@CW@nrepword\c@CW@repword} 
+\newcount\c@CW@nrepword 
+
+\newcommand*\@CW@cntwl[2][]{%% First argument just gobbled, 
+%% using place number instead. 
+  #2% 
+  \@CW@make@placeindexlist
+  \if@CW@pardef
+    \global\@CW@stepcnt\c@CW@nrepword 
+    \ifnum\c@CW@repword>\@CW@numberofwords\relax 
+      \@CW@missingdata
+    \else 
+      \edef\@tempc{% 
+        \def\noexpand\@tempb####1\noexpand\@eltt
+          \number\c@CW@nrepword}% 
+      %% "look up". 
+      \@tempc \@elt##2\@eltt##3\@nil{\def\@tempa{##2}}% 
+      \expandafter\@tempb \@CW@placeindexlist \@nil 
+      \if 0\@tempa \else 
+%         \CWtextscript{\if ?\@tempa ?\else \@tempa \fi}% 
+        \if ?\@tempa \@CW@missingdata 
+        \else        \CWtextscript\@tempa \fi 
+      \fi 
+    \fi
+  \else 
+%% \if@CW@pardef and the question marks could have been given up, 
+%% since there is already the `undefined references' warning. 
+%     \if@CW@firstinpar \CWtextscript 1\else \CWtextscript ?\fi 
+%     \CWtextscript?% 
+    \@CW@missingdata 
+  \fi} 
+\providecommand*\textsubscript[1]{%
+%% Cf. LaTeX \textsuperscript: we will be in a note here! 
+  $\m@th_{\mbox{\fontsize\sf@size\z@\selectfont#1}}$} 
+\let\CWtextscript\textsubscript 
+\def\@EN@CWhook{\setbox\z@\hbox} %% To recognize stepping counters. 
+
+%% TODO: empty referring macros after use. -> ednotes as well. 
+
+% \CWClosePar writes \@CW@wordlist to the .aux-file and 
+% resets the lists and \if@CWpardef: 
+\newcommand*\CWClosePar{% %% TODO: -> doc.!? Useful? 
+  \ifx\@CW@wordlist\@empty \else 
+%     \immediate\write\@mainaux{% 
+    \immediate\write\@auxout{%%  for \includeonly 
+      \gdef\expandafter\noexpand 
+       \csname CWp\romannumeral\c@CW@par\endcsname 
+        {\@CW@wordlist}}% 
+    \global\let\@CW@wordlist\@empty 
+    \global\c@CW@repword\z@ 
+  \fi 
+%   \global\let\countword\@CW@cntwi
+  \global\let\@CW@placeindexlist\@CW@emptylist 
+  \global\let\@CW@make@placeindexlist\@CW@makeplaceindexlist 
+  \global\let\@CW@wordlinelist\@CW@emptylist
+  \global\let\@CW@nextwordlinelist\@empty 
+%   \global\@CW@firstinpartrue 
+  \global\@CW@pardeffalse}
+\expandafter\def\expandafter\linenumberpar\expandafter{% 
+  \expandafter\CWClosePar\linenumberpar} 
+
+\endinput 
+
+VERSION HISTORY: 
+v0.01 2004/01/05  Very first release under name `ecntw0.sty'. 
+v0.1  2004/01/05  Changed names and documentation, new name 
+                  `edcntwd0.sty'. 
+v0.11 2004/01/05  renamed \CWnext -> \@CW@next, added main ideas of 
+                  implementation. 
+v0.12 2004/05/12  Added remark on `linenox1.sty' (load earlier); 
+                  added `(C)' and Christian for copyright; 
+                  L"uck -> L\"uck. \RequirePackage{ednotes}; 
+                  changed doc. accordingly. 
+      2004/07/06  Added explanation for order with `linenox1.sty' 
+                  ("for wizards"). 
+      2004/07/28  ^^J; cope with pagewise numbering; note on 
+                  switching from pagewise to running. 
+v0.12b .../08/31  Changed to LPPL v1.3, added maintenance. 
+v0.2  2004/09/20  Removed mentions of `linenox1.sty', for 
+                  `lineno.sty' v4... 
+v0.3  2004/10/07  Usage: to be loaded by `ednotes.sty' option. 
+      2004/10/11  Removed \RequirePackage{ednotes}; changed some 
+                  TODOs. 
+      2004/10/12  latex/3730. 
+v0.3a 2004/11/07  LPPL v1.3a. 
+v0.3b 2005/01/10  Contact via http. 
+v0.31 2005/02/20  Added \@EN@first. 
+      2005/03/08  Added Copyright 2005. 
+v0.32 2005/05/01  Replaced \@EN@first by LaTeX's \@car. 
+      [sent to CTAN, contrary to final line!]
+      2006/02/25  Typo fix `USAGE' 5. 
+      2006/05/01  \if@CW@firstinpar to avoid spurious `?'. 
+      [given to Lekhtman] 
+v0.32a    /06/07  \c@CW@par with \includeonly. 
+      2006/06/15  replaced \if@CW@firstinpar by 
+                  \@CW@make@placeindexlist etc.; 
+                  extended documentation; rearranged code. 
+      2006/06/16  \@CW@missingdata. 
+v0.32b    /06/26  LPPL v1.3c. 
+          /06/29  `Missing data (.aux)' 
+v0.32c    /07/06  \includeonly with less LaTeX counter features. 

@@ -1,0 +1,654 @@
+% --------------------------------------------------------------------------
+% the GHSYSTEM package
+%
+%   globally harmonised system
+%
+% --------------------------------------------------------------------------
+% Clemens Niederberger
+% --------------------------------------------------------------------------
+% https://github.org/cgnieder/ghsystem/
+% contact@mychemistry.eu
+% --------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% --------------------------------------------------------------------------
+% Copyright 2011-2014 Clemens Niederberger
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+%
+% The Current Maintainer of this work is Clemens Niederberger.
+% --------------------------------------------------------------------------
+\RequirePackage{ expl3, xparse, l3keys2e }
+\def\ghsystem@version{4.6}
+\def\ghsystem@date{2014/08/07}
+\ProvidesExplPackage
+  {ghsystem}
+  {\ghsystem@date}
+  {\ghsystem@version}
+  {globally harmonised system}
+
+% --------------------------------------------------------------------------
+% check expl3 version:
+\@ifpackagelater { expl3 } { 2012/11/21 }
+  { }
+  {
+    \PackageError { ghsystem } { Support~package~expl3~too~old }
+      {
+        You~need~to~update~your~installation~of~the~bundles~'l3kernel'~and~
+        'l3packages'.\MessageBreak
+        Loading~ghsystem~will~abort!
+      }
+    \tex_endinput:D
+  }
+
+% --------------------------------------------------------------------------- %
+% error and warning messages:
+\msg_set:nnnn { ghsystem } { explicit }
+  { It~seems~you've~loaded~`ghsystem'~explicitly. }
+  {
+    It~seems~you've~loaded~`ghsystem'~explicitly.~This~should~work~but~the~
+    recommended~way~is~to~load~it~via~the~bundle,~i.e.~by~using~
+    \token_to_str:N \usepackage \{ chemmacros \}.
+  }
+  
+\msg_set:nnnn { ghsystem } { statements }
+  {
+    You've~tried~to~call~statement~#1#2~ \msg_line_context: \c_space_tl but~it~
+    it~is~not~defined~in~ghsystem.sty .
+  }
+  {
+    You've~tried~to~call~statement~#1#2~ \msg_line_context: \c_space_tl but~it~
+    it~is~not~defined~in~ghsystem.sty . ~ Are~you~sure~it~exists? ~ If~so~please
+    ~send~a~message~to~the~author.~Thanks.
+  }
+
+\msg_set:nnnn { ghsystem } { booktabs }
+  { Package~`booktabs'~missing~\msg_line_context: . }
+  {
+    Option~#1~of~the~\token_to_str:N \ghslistall \c_space_tl command~
+    \msg_line_context: \c_space_tl needs~the~`booktabs'~package . ~Please~make~
+    sure~to~load~it~in~your~preamble.
+  }
+
+\cs_new_protected:Npn \ghsystem_msg:nnxx #1#2#3#4
+  {
+    \bool_if:NTF \l__ghsystem_strict_bool
+      { \msg_error:nnxx { #1 } { #2 } { #3 } { #4 } }
+      { \msg_warning:nnxx { #1 } { #2 } { #3 } { #4 } }
+  }
+
+% --------------------------------------------------------------------------
+% package options:
+\bool_new:N \l__ghsystem_strict_bool
+\keys_define:nn { chemmacros / ghsystem }
+  {
+    strict   .bool_set:N = \l__ghsystem_strict_bool ,
+    strict   .default:n  = true ,
+    language .code:n     = \ghsystem_load_language:n { #1 }
+  }
+
+\AtBeginDocument
+  {
+    \@ifpackageloaded{ chemmacros }
+      {
+        \bool_if:NT \l_chemmacros_strict_bool
+          { \bool_set_true:N \l__ghsystem_strict_bool }
+      }
+      {
+        \cs_new:Npn \iupac #1
+          {
+            \group_begin:
+              \cs_set_eq:NN \| \scan_stop:
+              #1
+            \group_end:
+          }
+      }
+  }
+
+% --------------------------------------------------------------------------- %
+% variants of kernel functions:
+\cs_generate_variant:Nn \file_if_exist:nTF { x }
+
+% --------------------------------------------------------------------------- %
+% scratch variables
+\tl_new:N  \l__ghsystem_tmpa_tl
+\tl_new:N  \l__ghsystem_tmpb_tl
+\int_new:N \l__ghsystem_tmpa_int
+\int_new:N \l__ghsystem_tmpb_int
+
+% load required packages:
+\RequirePackage{ translations , siunitx , graphicx , longtable , ifpdf }
+
+% --------------------------------------------------------------------------- %
+% define variables:
+\prop_new:N \l__ghsystem_h_prop
+\prop_new:N \l__ghsystem_euh_prop
+\prop_new:N \l__ghsystem_p_prop
+
+\cs_new:Npn \ghsystem_exposure: {}
+\cs_new:Npn \ghsystem_effect: {}
+\cs_new:Npn \ghsystem_organs: {}
+\cs_new:Npn \ghsystem_substance: {}
+\cs_new:Npn \ghsystem_text: {}
+\cs_new:Npn \ghsystem_dash:
+  {
+    \tex_penalty:D \c_ten_thousand
+    -
+    \skip_horizontal:N \c_zero_skip
+  }
+
+\cs_new:Npn \ghsystem_slash:
+  {
+    \tex_penalty:D \c_ten_thousand
+    /
+    \skip_horizontal:N \c_zero_skip
+  }
+
+\bool_new:N \l__ghsystem_fill_in_bool
+\bool_new:N \l__ghsystem_show_number_bool
+\bool_new:N \l__ghsystem_substance_bool
+\bool_new:N \l__ghsystem_organs_bool
+\bool_new:N \l__ghsystem_hide_statement_bool
+\bool_new:N \l__ghsystem_engine_pdftex_bool
+\bool_new:N \l__ghsystem_engine_xetex_bool
+\bool_new:N \l__ghsystem_engine_luatex_bool
+
+\tl_new:N   \l__ghsystem_number_space_tl
+\tl_new:N   \l__ghsystem_celsius_temperature_tl
+\tl_new:N   \l__ghsystem_fahrenheit_temperature_tl
+\tl_new:N   \l__ghsystem_kg_mass_tl
+\tl_new:N   \l__ghsystem_lbs_mass_tl
+\tl_new:N   \l__ghsystem_dots_tl
+\tl_set:Nn  \l__ghsystem_dots_tl { \ldots }
+\tl_new:N   \l__ghsystem_picture_scale_default_tl
+\tl_set:Nn  \l__ghsystem_picture_scale_default_tl { .05 }
+\tl_new:N   \l__ghsystem_picture_scale_tl
+\tl_set_eq:NN \l__ghsystem_picture_scale_tl \l__ghsystem_picture_scale_default_tl
+\tl_new:N   \l__ghsystem_picture_includegraphics_tl
+\tl_new:N   \l__ghsystem_picture_type_tl
+\tl_new:N   \l__ghsystem_identifier_tl
+\tl_new:N   \l__ghsystem_table_text_tl
+\tl_new:N   \l__ghsystem_table_next_page_tl
+\tl_new:N   \l__ghsystem_table_head_rule_tl
+\tl_set:Nn  \l__ghsystem_table_head_rule_tl { \hline }
+\tl_new:N   \l__ghsystem_table_top_head_rule_tl
+\tl_set:Nn  \l__ghsystem_table_top_head_rule_tl { \hline }
+\tl_new:N   \l__ghsystem_table_foot_rule_tl
+\tl_set:Nn  \l__ghsystem_table_foot_rule_tl { \hline }
+\tl_new:N   \l__ghsystem_table_last_foot_rule_tl
+\tl_set:Nn  \l__ghsystem_table_last_foot_rule_tl { \hline }
+\tl_new:N   \l__ghsystem_table_caption_tl
+\tl_new:N   \l__ghsystem_table_caption_short_tl
+\tl_new:N   \l__ghsystem_table_label_tl
+\tl_set:Nn  \l__ghsystem_table_label_tl { tab : ghs-hp-statements }
+\tl_new:N   \l__ghsystem_list_all_column_format_tl
+
+\dim_new:N  \l__ghsystem_list_all_column_width_dim
+\dim_set:Nn \l__ghsystem_list_all_column_width_dim { .7\linewidth }
+\dim_new:N  \l__ghsystem_table_line_sep_dim
+\dim_set:Nn \l__ghsystem_table_line_sep_dim { 3pt }
+
+\fp_new:N   \l__ghsystem_picture_scale_fp
+\fp_set:Nn  \l__ghsystem_picture_scale_fp { \l__ghsystem_picture_scale_tl }
+
+\DeclareSIUnit { \GHSfahrenheit } { \SIUnitSymbolDegree F }
+\DeclareSIUnit { \GHScelsius } { \SIUnitSymbolDegree C }
+\DeclareSIUnit { \GHSkilogram } { kg }
+\DeclareSIUnit { \GHSpounds } { lbs }
+
+% language settings
+\bool_new:N \l__ghsystem_language_file_loaded_bool
+\bool_new:N \l__ghsystem_language_directory_bool
+
+% load the language file -- it needs expl3 namespace but shouldn't care about
+% what catcode regime was before and simply restore it...
+% so we basically copy the definitions of \ExplSyntaxOn and \ExplSyntaxOff
+
+\cs_new_protected:Npn \__ghsystem_namespace_restore: {}
+\bool_new:N \l__ghsystem_expl_namespace_bool
+
+\cs_new_protected:Npn \__ghsystem_expl_namespace:
+  {
+    \bool_if:NF \l__ghsystem_expl_namespace_bool
+      {
+        \cs_set_protected:Npx \__ghsystem_namespace_restore:
+          {
+            \char_set_catcode:nn { 9 }   { \char_value_catcode:n { 9 } }
+            \char_set_catcode:nn { 32 }  { \char_value_catcode:n { 32 } }
+            \char_set_catcode:nn { 34 }  { \char_value_catcode:n { 34 } }
+            \char_set_catcode:nn { 38 }  { \char_value_catcode:n { 38 } }
+            \char_set_catcode:nn { 58 }  { \char_value_catcode:n { 58 } }
+            \char_set_catcode:nn { 94 }  { \char_value_catcode:n { 94 } }
+            \char_set_catcode:nn { 95 }  { \char_value_catcode:n { 95 } }
+            \char_set_catcode:nn { 124 } { \char_value_catcode:n { 124 } }
+            \char_set_catcode:nn { 126 } { \char_value_catcode:n { 126 } }
+            \tex_endlinechar:D = \tex_the:D \tex_endlinechar:D \scan_stop:
+            \bool_set_false:N \l__ghsystem_expl_namespace_bool
+            \cs_set_protected:Npn \__ghsystem_namespace_restore: {}
+          }
+      }
+    \char_set_catcode_ignore:n { 9 }
+    \char_set_catcode_ignore:n { 32 }
+    \char_set_catcode_other:n { 34 }
+    \char_set_catcode_math_toggle:n { 36 }
+    \char_set_catcode_alignment:n { 38 }
+    \char_set_catcode_letter:n { 58 }
+    \char_set_catcode_math_superscript:n { 94 }
+    \char_set_catcode_letter:n { 95 }
+    \char_set_catcode_other:n { 124 }
+    \char_set_catcode_space:n { 126 }
+    \tex_endlinechar:D = 32 \scan_stop:
+    \bool_set_true:N \l__ghsystem_expl_namespace_bool
+  }
+
+\cs_new:Npn \ghsystem_load_language_file:n #1
+  {
+    \__ghsystem_expl_namespace:
+    \file_input:n { ghsystem_#1.def }
+    \__ghsystem_namespace_restore:
+  }
+
+\cs_new_protected:Npn \ghsystem_load_language:n #1
+  {
+    \file_if_exist:xTF { ghsystem_ #1 .def }
+      {
+        \bool_set_true:N \l__ghsystem_language_file_loaded_bool
+        \ghsystem_load_language_file:n { #1 }
+      }
+      { \ghsystem_load_language_file:n { english } }
+  }
+\cs_generate_variant:Nn \ghsystem_load_language:n { V }
+
+\NewDocumentCommand \loadghsystemlanguage { m }
+  { \ghsystem_load_language:n { #1 } }
+
+\AtBeginDocument{
+  \bool_if:NF \l__ghsystem_language_file_loaded_bool
+    {
+      \cs_if_exist:NTF \l_chemmacros_language_tl
+        { \ghsystem_load_language:V \l_chemmacros_language_tl }
+        {
+          \ghsystem_load_language:n
+            { \@trnslt@language{\@trnslt@current@language} }
+        }
+    }
+}
+
+\cs_new_nopar:Nn \ghsystem_booktabs:n
+  {
+    \cs_if_exist:cF { ver@booktabs.sty }
+      { \msg_error:nnx { ghsystem } { booktabs } { #1 } }
+  }
+
+% --------------------------------------------------------------------------- %
+% define options:
+\keys_define:nn { chemmacros / ghsystem }
+  {
+    % \ghs options:
+    hide                            .bool_set:N =
+      \l__ghsystem_hide_statement_bool ,
+    hide                            .default:n  = true ,
+    fill-in                         .bool_set:N = \l__ghsystem_fill_in_bool ,
+    fill-in                         .default:n  = true ,
+    exposure                        .code:n     =
+      \cs_set:Npn \ghsystem_exposure: { ~ #1 } ,
+    effect                          .code:n     =
+      \cs_set:Npn \ghsystem_effect: { ~ #1 } ,
+    organs                          .code:n     =
+      \bool_set_true:N \l__ghsystem_organs_bool
+      \cs_set:Npn \ghsystem_organs: { ~ #1 } ,
+    substance                       .code:n     =
+      \bool_set_true:N \l__ghsystem_substance_bool
+      \cs_set:Npn \ghsystem_substance: { ~ #1 } ,
+    text                            .code:n     =
+      \cs_set:Npn \ghsystem_text: { ~ #1 } ,
+    space                           .tl_set:N   =
+      \l__ghsystem_number_space_tl ,
+    C-temperature                   .tl_set:N   =
+      \l__ghsystem_celsius_temperature_tl ,
+    F-temperature                   .tl_set:N   =
+      \l__ghsystem_fahrenheit_temperature_tl ,
+    kg-mass                         .tl_set:N   = \l__ghsystem_kg_mass_tl ,
+    lbs-mass                        .tl_set:N   = \l__ghsystem_lbs_mass_tl ,
+    dots                            .tl_set:N   = \l__ghsystem_dots_tl ,
+    % \ghspic options:
+    scale                           .code:n     =
+      \fp_set:Nn \l__ghsystem_picture_scale_fp { #1 * \l__ghsystem_picture_scale_fp } ,
+    includegraphics                 .code:n     =
+      \tl_set:Nn \l__ghsystem_picture_includegraphics_tl { , #1 } ,
+    pic-type                        .choices:nn = { eps , jpg , png , pdf }
+      { \tl_set_eq:NN \l__ghsystem_picture_type_tl \l_keys_choice_tl } ,
+    % \ghslistall options:
+    table-head-number               .tl_set:N   = \l__ghsystem_identifier_tl ,
+    table-head-text                 .tl_set:N   = \l__ghsystem_table_text_tl ,
+    table-next-page                 .tl_set:N   =
+      \l__ghsystem_table_next_page_tl ,
+    table-row-sep                   .dim_set:N  =
+      \l__ghsystem_table_line_sep_dim ,
+    table-head-rule                 .choice: ,
+    table-head-rule / default       .code:n     =
+      \tl_set:Nn \l__ghsystem_table_head_rule_tl { \hline } ,
+    table-head-rule / booktabs      .code:n     =
+      \ghsystem_booktabs:n { table-head-rule }
+      \tl_set:Nn \l__ghsystem_table_head_rule_tl { \midrule } ,
+    table-head-rule / none          .code:n     =
+      \tl_clear:N \l__ghsystem_table_head_rule_tl ,
+    table-top-head-rule             .choice: ,
+    table-top-head-rule / default   .code:n     =
+      \tl_set:Nn \l__ghsystem_table_top_head_rule_tl { \hline } ,
+    table-top-head-rule / booktabs  .code:n     =
+      \ghsystem_booktabs:n { table-top-head-rule }
+      \tl_set:Nn \l__ghsystem_table_top_head_rule_tl { \toprule } ,
+    table-top-head-rule / none      .code:n     =
+      \tl_clear:N \l__ghsystem_table_top_head_rule_tl ,
+    table-foot-rule                 .choice: ,
+    table-foot-rule / default       .code:n     =
+      \tl_set:Nn \l__ghsystem_table_foot_rule_tl { \hline } ,
+    table-foot-rule / booktabs      .code:n     =
+      \ghsystem_booktabs:n { table-foot-rule }
+      \tl_set:Nn \l__ghsystem_table_foot_rule_tl { \midrule } ,
+    table-foot-rule / none          .code:n     =
+      \tl_clear:N \l__ghsystem_table_foot_rule_tl ,
+    table-last-foot-rule            .choice: ,
+    table-last-foot-rule / default  .code:n     =
+      \tl_set:Nn \l__ghsystem_table_last_foot_rule_tl { \hline } ,
+    table-last-foot-rule / booktabs .code:n     =
+      \ghsystem_booktabs:n { table-last-foot-rule }
+      \tl_set:Nn \l__ghsystem_table_last_foot_rule_tl { \bottomrule } ,
+    table-last-foot-rule / none     .code:n     =
+      \tl_clear:N \l__ghsystem_table_last_foot_rule_tl ,
+    table-rules                     .choice: ,
+    table-rules / default           .code:n     =
+      \tl_set:Nn \l__ghsystem_table_head_rule_tl { \hline }
+      \tl_set:Nn \l__ghsystem_table_top_head_rule_tl { \hline }
+      \tl_set:Nn \l__ghsystem_table_foot_rule_tl { \hline }
+      \tl_set:Nn \l__ghsystem_table_last_foot_rule_tl { \hline } ,
+    table-rules / booktabs          .code:n     =
+      \ghsystem_booktabs:n { table-rules }
+      \tl_set:Nn \l__ghsystem_table_head_rule_tl { \midrule }
+      \tl_set:Nn \l__ghsystem_table_top_head_rule_tl { \toprule }
+      \tl_set:Nn \l__ghsystem_table_foot_rule_tl { \midrule }
+      \tl_set:Nn \l__ghsystem_table_last_foot_rule_tl { \bottomrule } ,
+    table-rules / none              .code:n     =
+      \tl_clear:N \l__ghsystem_table_head_rule_tl
+      \tl_clear:N \l__ghsystem_table_top_head_rule_tl
+      \tl_clear:N \l__ghsystem_table_foot_rule_tl
+      \tl_clear:N \l__ghsystem_table_last_foot_rule_tl ,
+    table-caption                   .tl_set:N   =
+      \l__ghsystem_table_caption_tl ,
+    table-caption-short             .tl_set:N   =
+      \l__ghsystem_table_caption_short_tl ,
+    table-label                     .tl_set:N   =
+      \l__ghsystem_table_label_tl ,
+    table-column-format             .tl_set:N   =
+      \l__ghsystem_list_all_column_format_tl ,
+    table-column-width              .dim_set:N  =
+      \l__ghsystem_list_all_column_width_dim
+  }
+
+% --------------------------------------------------------------------------- %
+% the main command for getting the H/EUH/P statements
+%   \ghs{<type>}{<num>}
+%   \ghs*{<type>}{<num>} : type without number
+%
+\NewDocumentCommand \ghs { somm }
+  {
+    \group_begin:
+      \IfBooleanF { #1 } { \bool_set_true:N \l__ghsystem_show_number_bool }
+      \IfNoValueF { #2 } { \keys_set:nn { chemmacros / ghsystem } { #2 } }
+      \ghsystem_read_args:nn { #3 } { #4 }
+    \group_end:
+  }
+
+\cs_new:Nn \ghsystem_read_args:nn
+  {
+    \__ghsystem_get_type:nN { #1 } \l__ghsystem_tmpa_tl
+    \prop_get:cnNTF { l__ghsystem_ \l__ghsystem_tmpa_tl _prop } { #2 } \l__ghsystem_tmpb_tl
+      {
+        \__ghsystem_is_combination:nn { #1 } { #2 }
+        \bool_if:NF \l__ghsystem_hide_statement_bool
+          { \tl_use:N \l__ghsystem_tmpb_tl  }
+      }
+      { \ghsystem_msg:nnxx { ghsystem } { statements } { #1 } { #2 } }
+  }
+
+\cs_new_protected:Nn \__ghsystem_get_type:nN
+  {
+    \tl_if_eq:nnT { #1 } { h }   { \tl_set:Nn #2 { h } }
+    \tl_if_eq:nnT { #1 } { H }   { \tl_set:Nn #2 { h } }
+    \tl_if_eq:nnT { #1 } { euh } { \tl_set:Nn #2 { euh } }
+    \tl_if_eq:nnT { #1 } { Euh } { \tl_set:Nn #2 { euh } }
+    \tl_if_eq:nnT { #1 } { euH } { \tl_set:Nn #2 { euh } }
+    \tl_if_eq:nnT { #1 } { eUh } { \tl_set:Nn #2 { euh } }
+    \tl_if_eq:nnT { #1 } { EUh } { \tl_set:Nn #2 { euh } }
+    \tl_if_eq:nnT { #1 } { EuH } { \tl_set:Nn #2 { euh } }
+    \tl_if_eq:nnT { #1 } { eUH } { \tl_set:Nn #2 { euh } }
+    \tl_if_eq:nnT { #1 } { EUH } { \tl_set:Nn #2 { euh } }
+    \tl_if_eq:nnT { #1 } { p }   { \tl_set:Nn #2 { p } }
+    \tl_if_eq:nnT { #1 } { P }   { \tl_set:Nn #2 { p } }
+  }
+
+\cs_new:Nn \__ghsystem_is_combination:nn
+  {
+    \tl_if_in:nnTF { #2 } { + }
+      { \__ghsystem_is_combination_aux_i:w #1,#2 \q_stop }
+      { \__ghsystem_is_combination_aux_ii:w #1,#2 \q_stop }
+  }
+
+\cs_new:Npn \__ghsystem_is_combination_aux_i:w #1,#2+#3 \q_stop
+  {
+    \bool_if:NT \l__ghsystem_show_number_bool
+      {
+        \tl_to_uppercase:n { #1 }
+        \tl_use:N \l__ghsystem_number_space_tl
+        #2 ~ + ~
+        \tl_if_in:nnTF { #3 } { + }
+          { \__ghsystem_is_combination_aux_iii:w #1,#3 \q_stop }
+          {
+            \tl_to_uppercase:n { #1 }
+            \tl_use:N \l__ghsystem_number_space_tl
+            #3 \bool_if:NF \l__ghsystem_hide_statement_bool { : ~ }
+          }
+      }
+  }
+
+\cs_new:Npn \__ghsystem_is_combination_aux_ii:w #1,#2 \q_stop
+  {
+    \bool_if:NT \l__ghsystem_show_number_bool
+      {
+        \tl_to_uppercase:n { #1 }
+        \tl_use:N \l__ghsystem_number_space_tl
+        #2 \bool_if:NF \l__ghsystem_hide_statement_bool { : ~ }
+      }
+  }
+
+\cs_new:Npn \__ghsystem_is_combination_aux_iii:w #1,#2+#3 \q_stop
+  {
+    \bool_if:NT \l__ghsystem_show_number_bool
+      {
+        \tl_to_uppercase:n { #1 }
+        \tl_use:N \l__ghsystem_number_space_tl
+        #2 ~ + ~
+        \tl_to_uppercase:n { #1 }
+        \tl_use:N \l__ghsystem_number_space_tl
+        #3 \bool_if:NF \l__ghsystem_hide_statement_bool { : ~ }
+      }
+  }
+
+% --------------------------------------------------------------------------- %
+% list all statements in a table
+%
+\NewDocumentCommand \ghslistall { o }
+  {
+    \group_begin:
+      \IfNoValueF { #1 } { \keys_set:nn { chemmacros / ghsystem } { #1 } }
+      \ghsystem_list_all:
+    \group_end:
+  }
+
+\cs_new_protected:Npn \ghsystem_list_all:
+  {
+    \int_zero:N \l__ghsystem_tmpa_int
+    \int_zero:N \l__ghsystem_tmpb_int
+    \prop_map_inline:Nn \l__ghsystem_p_prop { \int_incr:N \l__ghsystem_tmpa_int }
+    \dim_set_eq:NN \extrarowheight \l__ghsystem_table_line_sep_dim
+    \begin { longtable }
+      {
+        l
+        >{ \l__ghsystem_list_all_column_format_tl }
+        p{ \l__ghsystem_list_all_column_width_dim }
+      }
+        \caption [ \l__ghsystem_table_caption_short_tl ]
+          {
+            \l__ghsystem_table_caption_tl
+            \exp_args:No \label { \l__ghsystem_table_label_tl }
+          } \\
+        \l__ghsystem_table_top_head_rule_tl
+        \textbf { \l__ghsystem_identifier_tl } &
+        \textbf { \l__ghsystem_table_text_tl } \\
+        \l__ghsystem_table_head_rule_tl
+      \endfirsthead
+        \l__ghsystem_table_top_head_rule_tl
+        \textbf { \l__ghsystem_identifier_tl } &
+        \textbf { \l__ghsystem_table_text_tl } \\
+        \l__ghsystem_table_head_rule_tl
+      \endhead
+        \l__ghsystem_table_last_foot_rule_tl
+        \multicolumn{2}{r} { \textit { \l__ghsystem_table_next_page_tl } }
+      \endfoot
+        \l__ghsystem_table_foot_rule_tl \multicolumn{2}{r} { }
+      \endlastfoot
+      \prop_map_inline:Nn \l__ghsystem_h_prop
+        { \__ghsystem_read_number:nn { H } { ##1 } & ##2 \\ }
+      \prop_map_inline:Nn \l__ghsystem_euh_prop
+        { \__ghsystem_read_number:nn { EUH } { ##1 } & ##2 \\ }
+      \int_zero:N \l__ghsystem_tmpa_int
+      \prop_map_inline:Nn \l__ghsystem_p_prop { \int_gincr:N \l__ghsystem_tmpa_int }
+      \int_zero:N \l__ghsystem_tmpb_int
+      \prop_map_inline:Nn \l__ghsystem_p_prop
+        {
+          \int_gincr:N \l__ghsystem_tmpb_int
+          \__ghsystem_read_number:nn { P } { ##1 } & ##2
+          \int_compare:nNnT { \l__ghsystem_tmpb_int } < { \l__ghsystem_tmpa_int } { \\ }
+        }
+    \end { longtable }
+  }
+
+\cs_new:Nn \__ghsystem_read_number:nn
+  {
+    \tl_if_in:nnTF { #2 } { + }
+      { \__ghsystem_read_number_aux_i:w #1 , #2 \q_stop }
+      { #1 \tl_use:N \l__ghsystem_number_space_tl #2 }
+  }
+
+\cs_new:Npn \__ghsystem_read_number_aux_i:w #1,#2+#3\q_stop
+  {
+     #1 \tl_use:N \l__ghsystem_number_space_tl #2 ~+~
+     \tl_if_in:nnTF { #3 } { + }
+       { \__ghsystem_read_number_aux_ii:w #1,#3 \q_stop }
+       { #1#3 }
+  }
+
+\cs_new:Npn \__ghsystem_read_number_aux_ii:w #1,#2+#3\q_stop
+  { #1#2 ~+~ #1#3 }
+
+% --------------------------------------------------------------------------- %
+% the picture command
+%   \ghspic[<options>]{<name>}
+%
+% test for compilation engine/mode:
+\pdftex_if_engine:T { \bool_set_true:N \l__ghsystem_engine_pdftex_bool }
+\xetex_if_engine:T  { \bool_set_true:N \l__ghsystem_engine_xetex_bool }
+\luatex_if_engine:T { \bool_set_true:N \l__ghsystem_engine_luatex_bool }
+
+\bool_new:N \l__ghsystem_picture_directory_bool
+
+\bool_if:NT \l__ghsystem_engine_pdftex_bool
+  {
+    \ifpdf
+      \tl_set:Nn \l__ghsystem_picture_type_tl { pdf }
+    \else
+      \tl_set:Nn \l__ghsystem_picture_type_tl { eps }
+    \fi
+  }
+\bool_if:NT \l__ghsystem_engine_xetex_bool
+  { \tl_set:Nn \l__ghsystem_picture_type_tl { pdf } }
+\bool_if:NT \l__ghsystem_engine_luatex_bool
+  { \tl_set:Nn \l__ghsystem_picture_type_tl { pdf } }
+
+% the command:
+\NewDocumentCommand \ghspic { om }
+  {
+    \group_begin:
+      \IfNoValueF { #1 } { \keys_set:nn { chemmacros / ghsystem } { #1 } }
+      \ghsystem_pic:n { #2 }
+    \group_end:
+  }
+
+\cs_new_protected:Npn \ghsystem_pic:n #1
+  {
+    \__ghsystem_includegraphics:xn
+      {
+        scale = \fp_to_tl:N \l__ghsystem_picture_scale_fp
+        \exp_not:V \l__ghsystem_picture_includegraphics_tl
+      }
+      { ghsystem_ #1 . \l__ghsystem_picture_type_tl }
+  }
+
+\cs_new:Nn \__ghsystem_includegraphics:nn
+  { \includegraphics[#1]{#2} }
+\cs_generate_variant:Nn \__ghsystem_includegraphics:nn { xn }
+
+% --------------------------------------------------------------------------
+% options and setup
+\ProcessKeysOptions{ chemmacros / ghsystem }
+
+\cs_new_protected:Npn \ghsystem_setup:n #1
+  { \keys_set:nn { chemmacros / ghsystem } { #1 } }
+
+\NewDocumentCommand \ghssetup { m }
+  { \ghsystem_setup:n { #1 } }
+
+\tex_endinput:D
+
+% --------------------------------------------------------------------------
+VERSION HISTORY
+2012/01/30 - version 3.0a - renamed ghs => ghsystem to make the names unique
+                            (following a request by Karl Berry for TeXlive)
+2012/02/05 - version 3.0c - renamed pictogram files (following a request by
+                            Karl Berry for TeXlive)
+2012/05/13 - version 3.3a - Italian translations of the H, EUH and P statements
+2012/05/18 - version 3.3b - compatibility with MiKTeX
+2012/05/18 - version 3.3c - fix in the `ghsystem/language' option
+2012/07/24 - version 3.3d - additional picture file type `pdf'
+2013/02/19 - version 3.5a - bug fix: `ghsystem' recognizes language again
+2013/07/06 - version 4.0  - dropped requirement of `tabu' package.
+                          - new options `table-column-width' and
+                            `table-column-format'
+                          - adapted to changed language setting mechanism in
+                            `chemmacros'
+                          - new command: \loadghsystemlanguage
+                          - the package can be used independently from
+                            `chemmacros'
+2013/12/13 - version 4.0a - small changes to `ghsystem_german.def'
+                          - added \ghsystem_dash: and \ghsystem_slash:
+2014/01/09 - version 4.2e - bug fix: namespace after language file loading
+                            properly restored
+2014/04/08 - version 4.5  - small changes in `ghsystem_italian.def'
+2014/04/13 - version 4.5a - added Spanish translations, thanks to Ignacio
+                            Fernández Galván
+2014/06/30 - version 4.5b - adapt to deprecated expl3 function
+2014/08/07 - version 4.6  - split from `chemmacros' bundle as independent
+                            package
+
+% --------------------------------------------------------------------------
+% TODO:
+- add option to switch between `longtable` and `supertabular` for \ghslistall ?

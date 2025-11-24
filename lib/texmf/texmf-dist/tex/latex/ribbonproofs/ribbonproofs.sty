@@ -1,0 +1,1696 @@
+%% ribbonproofs.sty
+%% Copyright 2013 John Wickerson
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is John Wickerson.
+%
+% This work consists of the files ribbonproofs.sty,
+% ribbonproofsmanual.tex, and ribbonproofsmanual.pdf.
+
+% Title:         Ribbon Proofs
+% Description:   A package for drawing ribbon proofs
+% Author:        John Wickerson
+% Creation date: 20-Apr-2013
+% Last modified: 8-Jul-2013
+
+
+% ===================================================================
+% TODO LIST
+%
+% * more error detection, e.g. start/fit overlap,
+%   finish/fit overlap, repetition within start,
+%   fit or finish ribbons.
+%
+%
+% * Consider the case where we have a var label and a 
+%   rotated main label. Should we write
+%     label=p&, rotated label=q
+%   or
+%     label=p&\rotate{q}
+%   ?
+
+
+% ===================================================================
+% LOAD REQUIRED PACKAGES
+%
+% For colours
+\RequirePackage[svgnames,usenames]{xcolor}
+% For drawing stuff
+\RequirePackage{tikz}
+% For using the `let` construct
+\usetikzlibrary{calc}
+% For drawing shadows
+\usetikzlibrary{fadings}
+% For drawing zigzag lines
+\usetikzlibrary{decorations.pathmorphing}
+% For splitting a string at a given character
+\RequirePackage{xstring}
+% For expansion control
+\RequirePackage{etextools}
+
+% ===================================================================
+% GENERAL-PURPOSE COMMANDS
+
+% Extension of the ExpandNextTwo command provided by etextools.
+% ExpandNextTwo\foo{arg1}{arg2} fully expands arg1 and arg2 
+% and then passes them to the \foo command.
+\newcommand*\ExpandNextThree[4]{%
+  \ExpandNext{%
+    \ExpandNext{%
+      \ExpandNext{#1}{#2}%
+    }{#3}%
+  }{#4}%
+}
+
+% Another extension of the ExpandNextTwo command provided by 
+% etextools. ExpandNextThree\foo{arg1}{arg2}{arg3} fully expands 
+% arg1, arg2 and arg3 and then passes them to the \foo command.
+\newcommand*\ExpandNextFour[5]{%
+  \ExpandNext{%
+    \ExpandNext{%
+      \ExpandNext{%
+        \ExpandNext{#1}{#2}%
+      }{#3}%
+    }{#4}%
+  }{#5}%
+}
+
+% Append to the beginning of a comma-separated list.
+% If \list={} then \cons{\list}{a} defines \list={a}.
+% If \list={p,e} then \cons{\list{a} defines \list={a,p,e}.
+% The optional argument can be used to change the comma into
+% something else. The element being appended is not 
+% expanded, and neither is the list.
+\newcommand*\cons[3][,]{%
+  \ifx#2\@empty
+    \xdef#2{\expandonce{#3}}
+  \else
+    \xdef#2{\expandonce{#3}#1\expandonce{#2}}
+  \fi
+}
+
+% Append to the end of a comma-separated list. (The name
+% is "cons" backwards.) If \list={} then \snoc{\list}{a} defines
+% \list={a}. If \list={p,e} then \snoc{\list{a} defines \list={p,e,a}.
+% The optional argument can be used to change the comma into
+% something else. The element being appended is not 
+% expanded, and neither is the list.
+\newcommand*\snoc[3][,]{%
+  \ifx#2\@empty
+    \xdef#2{\expandonce{#3}}
+  \else
+    \xdef#2{\expandonce{#2}#1\expandonce{#3}}
+  \fi
+}
+
+% Test whether a comma-separated list contains a given element. If
+% element el is in list L, then 
+% \@ifListContains{el}{L}{<true code>}{<false code>} will execute
+% <true code>, and if it is not, it will execute <false code>.
+\newcommand*\@ifListContains[4]{%
+  \gdef\myflag{0}
+  \edef\mylist{\expandonce{#2}}
+  \foreach\j in \mylist {
+    \IfStrEq{#1}{\j}{
+      \gdef\myflag{1}
+      #3
+      \breakforeach
+    }{}
+  }
+  \ifnum\myflag=0\relax
+    #4
+  \fi
+}
+
+% Test whether a comma-separated list of key-value pairs contains 
+% a given key. If key k is in the "domain" of list L, then 
+% \@ifPairListContainsKey{k}{L}{<true code>}{<false code>} will 
+% execute <true code>, and if it is not, it will execute <false code>.
+\newcommand*\@ifPairListContainsKey[4]{%
+  \gdef\myflag{0}
+  \edef\mylist{\expandonce{#2}}
+  \foreach\j/\values in \mylist {
+    \IfStrEq{#1}{\j}{
+      \gdef\myflag{1}
+      #3
+      \breakforeach
+    }{}
+  }
+  \ifnum\myflag=0\relax
+    #4
+  \fi
+}
+
+% \undefine{foo} makes the command \foo undefined. The effect is
+% that \ifcsname foo\endcsname will henceforth return false.
+\newcommand*\undefine[1]{%
+  \expandafter\global%
+    \expandafter\let\csname #1\endcsname=\@undefined%
+}
+
+% A foreach command that iterates over two lists (of the same
+% length) simultaneously, plucking an element from both lists
+% on each iteration. For instance, \foreachtwo\foo{1,2}{a,b} 
+% executes \foo{1}{a} and then \foo{2}{b}.
+\def\@@foreachtwo#1#2,#3;#4,#5;{%
+  #1{#2}{#4}%
+  \@foreachtwo{#1}{#3}{#5}%
+}
+\newcommand*\@foreachtwo[3]{%
+  \ifboolexpr{test{\IfSubStr{#2}{,}} and test{\IfSubStr{#3}{,}}}{%
+    \@@foreachtwo{#1}#2;#3;%
+  }{%
+    \ifboolexpr{test{\notblank{#2}} and test{\notblank{#3}}}{%
+      #1{#2}{#3}%
+    }{}%
+  }%
+}
+\newcommand*\foreachtwo[3]{%
+  \def\lenI{0}
+  \def\lenII{0}
+  \foreach\x in {#2} {
+    \pgfmathtruncatemacro\lenI{\lenI+1}
+    \global\let\lenI=\lenI
+  }
+  \foreach\x in {#3} {
+    \pgfmathtruncatemacro\lenII{\lenII+1}
+    \global\let\lenII=\lenII
+  }
+  \ifnum\lenI=\lenII \else
+    \errmessage{The lists {#2} (length \lenI) and 
+      {#3} (length \lenII) are not the same length}
+  \fi
+  \@foreachtwo{#1}{#2}{#3}
+}
+
+% ===================================================================
+% CONSTANTS
+
+% background colour of "justification" steps
+\newcommand\jusColor{black!50} 
+% background colour of "command" steps
+\newcommand\comColor{black} 
+% background colour of ribbons
+\newcommand\ribColor{black!10} 
+% background colour of vars-as-res ribbons
+\newcommand\varribColor{black!20} 
+% foreground colour of ribbons
+\newcommand\ribTextColor{black}
+% foreground colour of boxes
+\newcommand\boxTextColor{black}
+% foreground colour of "guide" text
+\newcommand\guideTextColor{red!40}
+% default step height
+\newcommand\defaultStepHeight{5} 
+% default row height (includes the step)
+\newcommand\defaultRowHeight{11}
+% distance from top of ribbon to its label 
+\newcommand\ribTextVOffset{4}
+% distance from top of box to its label
+\newcommand\boxTextVOffset{3} 
+% horizontal adjustment of box label
+\newcommand\boxTextHOffset{1}
+% distance from bottom of row to guide text on ribbons
+\newcommand\guideTextVOffset{2} 
+% radius of rounded corners on block steps
+\newcommand\roundingRadius{2}
+% radius of rounded corners on boxes
+\newcommand\boxRoundingRadius{1}
+% thickness of vertical lines delimiting block steps
+\newcommand\blockLineWidth{0.5}
+% thickness of lines delimiting existential boxes
+\newcommand\boxLineWidth{0.8pt}
+% height of the shadows that are drawn when a step
+% passes over a catalyst ribbon
+\newcommand\shadowHeight{2}
+% size of the jagged edges on "else" steps
+\newcommand\zigzagHeight{1}
+\newcommand\zigzagLength{3}
+% color of [the darkest point of] a shadow
+\newcommand\shadowColor{black!40}
+% adjust the shape of the ribbon twists (value between 0 and 1)
+\newcommand\twistiness{0.7}
+
+% ===================================================================
+% ERROR MESSAGES
+
+\newcommand\printActiveRibbons{%
+  The currently active ribbons are {\@activeRibbons}%
+}
+
+\newcommand\printActiveBoxes{%
+  The currently active existential boxes are {\@activeBoxes}%
+}
+
+\newcommand\errorI[1]{\PackageError{RibbonProofs}{%
+  Ribbon #1\space is specified as a start ribbon, 
+  but is already active. \printActiveRibbons}}
+
+\newcommand\errorII[1]{\PackageError{RibbonProofs}{%
+  Existential box #1\space is specified as a start 
+  box, but is already active. \printActiveBoxes}}
+
+\newcommand\errorIII[1]{\PackageError{RibbonProofs}{%
+  Ribbon #1\space is specified as a fit ribbon, 
+  but is not currently active. \printActiveRibbons}}
+
+\newcommand\errorIV[1]{\PackageError{RibbonProofs}{%
+  Ribbon #1\space is specified as a finish ribbon, 
+  but is not currently active. \printActiveRibbons}}
+
+\newcommand\errorV[1]{\PackageError{RibbonProofs}{%
+  Existential box #1\space is specified as a fit 
+  box, but is not currently active. \printActiveBoxes}}
+
+\newcommand\errorVI[1]{\PackageError{RibbonProofs}{%
+  Existential box #1\space is specified as an finish 
+  box, but is not currently active. \printActiveBoxes}}
+
+\newcommand\errorVII[1]{\PackageError{RibbonProofs}{%
+  Ribbon #1\space is not active, so cannot be moved.
+  \printActiveRibbons}}
+
+\newcommand\errorVIII[1]{\PackageError{RibbonProofs}{%
+  Existential box #1\space is not active, so cannot be moved.
+  \printActiveBoxes}}
+
+\newcommand\errorIX[1]{\PackageError{RibbonProofs}{%
+  Existential box #1\space is not active, so cannot be 
+  extended. \printActiveBoxes}}
+
+% ===================================================================
+% STORAGE 
+% Data is stored in pgf keys, in macros, and in counters.
+% The "execute style" and "execute code" keys are due to
+% Andrew Stacey: http://tex.stackexchange.com/q/85637/86.
+
+\pgfqkeys{/ribbons/ribbon}{
+  .unknown/.code={\errmessage{Unknown key: \pgfkeyscurrentkeyRAW}},
+  left/.estore in=              {\ribbons@left},
+  right/.estore in=             {\ribbons@right},
+  var width/.estore in=         {\ribbons@varwidth},
+  label/.store in=              {\ribbons@label},
+  rotated label/.store in=      {\ribbons@rotatedlabel},
+  execute style/.style =       {#1},
+  execute macro/.style =       {execute style/.expand once=#1},
+}
+\pgfqkeys{/ribbons/box}{
+  .unknown/.code={\errmessage{Unknown key: \pgfkeyscurrentkeyRAW}},
+  left/.estore in=                 {\ribbons@left},
+  right/.estore in=                {\ribbons@right},
+  label/.store in=                 {\ribbons@label},
+  color/.store in=                 {\ribbons@boxcolor},
+  vertical offset/.store in=       {\ribbons@boxvoffset},
+  horizontal offset/.store in=     {\ribbons@boxhoffset},
+  execute style/.style =       {#1},
+  execute macro/.style =       {execute style/.expand once=#1},
+}
+\pgfqkeys{/ribbons/step}{
+  .unknown/.code={\errmessage{Unknown key: \pgfkeyscurrentkeyRAW}},
+  pale/.code=                     {\def\ribbons@color{\jusColor}},
+  height/.store in=               {\ribbons@stepheight},
+  extra left/.store in=           {\ribbons@extraleft},
+  extra right/.store in=          {\ribbons@extraright},
+  finish ribbons/.store in=       {\ribbons@finishribbons},
+  start ribbons/.store in=        {\ribbons@startribbons},
+  start boxes/.store in=          {\ribbons@startboxes},
+  finish boxes/.store in=         {\ribbons@finishboxes},
+  text/.store in=                 {\ribbons@text},
+}
+\pgfqkeys{/ribbons/startblock}{
+  .unknown/.code={\errmessage{Unknown key: \pgfkeyscurrentkeyRAW}},
+  height/.store in=         {\ribbons@stepheight},
+  extra left/.store in=     {\ribbons@extraleft},
+  extra right/.store in=    {\ribbons@extraright},
+  finish ribbons/.store in= {\ribbons@finishribbons},
+  start ribbons/.store in=  {\ribbons@startribbons},
+  finish boxes/.store in=   {\ribbons@finishboxes},
+  start boxes/.store in=    {\ribbons@startboxes},
+  fit ribbons/.store in=    {\ribbons@fitribbons},
+  fit boxes/.store in=      {\ribbons@fitboxes},
+  text/.store in=           {\ribbons@text},
+}
+\pgfqkeys{/ribbons/continueblock}{
+  .unknown/.code={\errmessage{Unknown key: \pgfkeyscurrentkeyRAW}},
+  height/.store in=      {\ribbons@stepheight},
+  start ribbons/.store in={\ribbons@startribbons},
+  start boxes/.store in= {\ribbons@startboxes},
+  text/.store in=        {\ribbons@text},
+  jagged/.code=          {\def\ribbons@jagged{1}},
+  repeat labels/.code=   {\def\ribbons@repeatlabels{1}},
+}
+\pgfqkeys{/ribbons/finishblock}{
+  .unknown/.code={\errmessage{Unknown key: \pgfkeyscurrentkeyRAW}},
+  height/.store in=        {\ribbons@stepheight},
+  finish ribbons/.store in={\ribbons@finishribbons},
+  start ribbons/.store in= {\ribbons@startribbons},
+  finish boxes/.store in=  {\ribbons@finishboxes},
+  start boxes/.store in=   {\ribbons@startboxes},
+  extra left/.store in=    {\ribbons@extraleft},
+  extra right/.store in=   {\ribbons@extraright},
+  text/.store in=          {\ribbons@text},
+}
+\pgfqkeys{/ribbons/ribbonproof}{
+  .unknown/.code={\errmessage{Unknown key: \pgfkeyscurrentkeyRAW}},
+  scale/.store in=         {\ribbons@scale},
+  extra height/.store in=  {\ribbons@extraheight},
+  start boxes/.store in=   {\ribbons@startboxes},
+  start ribbons/.store in= {\ribbons@startribbons},
+  draw grid/.code= {%
+    \tikzset{every picture/.append style={%
+      execute at end picture={\@drawNotches},%
+      show grid=all}}
+    \@showidstrue}
+}
+
+% For tracking the distance from the top of the diagram.
+\newcounter{VCursor}
+
+% Height of the current row.
+\newcounter{RowHeight}
+
+% ===================================================================
+% SHOW GRID
+%
+% This code is based on Martin Scharrer's showgrid TikZ
+% library, which can be downloaded from his website:
+% http://latex.scharrer-online.de/general/wiki/showgrid
+% I have changed the colour of the grid, provided minor
+% and major grid lines, and added a numeric scale to
+% each of the four edges.
+
+\pgfdeclarelayer{background}
+\pgfdeclarelayer{foreground}
+\pgfsetlayers{background,main,foreground}
+
+\newif\if@showgrid@grid
+\newif\if@showgrid@left
+\newif\if@showgrid@right
+\newif\if@showgrid@below
+\newif\if@showgrid@above
+\newif\if@showids
+\tikzset{%
+    every show grid/.style={},
+    show grid/.style={%
+      execute at end picture={\@showgrid{grid=true,#1}}},%
+    show grid/.default={true},
+    show grid/.cd,
+    labels/.style={font={\sffamily\small},help lines,text=red!40},
+    xlabels/.style={},
+    ylabels/.style={},
+    keep bb/.code={%
+      \useasboundingbox (current bounding box.south west) 
+        rectangle (current bounding box.north east);},
+    true/.style={left,below},
+    false/.style={left=false,right=false,above=false,
+      below=false,grid=false},
+    none/.style={left=false,right=false,above=false,below=false},
+    all/.style={left=true,right=true,above=true,below=true},
+    grid/.is if=@showgrid@grid,
+    left/.is if=@showgrid@left,
+    right/.is if=@showgrid@right,
+    below/.is if=@showgrid@below,
+    above/.is if=@showgrid@above,
+    false,
+}
+
+\def\@showgrid#1{%
+    \begin{scope}[every show grid,show grid/.cd,#1]
+    \if@showgrid@grid
+    \begin{pgfonlayer}{background}
+    \draw [help lines, draw=red!10, step=1mm]
+       let \p1 = (current bounding box.south west),
+           \p2 = (current bounding box.north east)
+       in (\x1-2mm,\y1-2mm) grid (\x2+2mm,\y2+2mm);
+    \draw [help lines, draw=red!20, step=10mm]
+       (current bounding box.south west) grid 
+       (current bounding box.north east);
+    \pgfpointxy{1}{1}%
+    \edef\xs{\the\pgf@x}%
+    \edef\ys{\the\pgf@y}%
+    \pgfpointanchor{current bounding box}{south west}
+    \edef\xa{\the\pgf@x}%
+    \edef\ya{\the\pgf@y}%
+    \pgfpointanchor{current bounding box}{north east}
+    \edef\xb{\the\pgf@x}%
+    \edef\yb{\the\pgf@y}%
+    \pgfmathtruncatemacro\xbeg{ceil(\xa/\xs)}
+    \pgfmathtruncatemacro\xend{floor(\xb/\xs)}
+    \if@showgrid@below
+    \foreach \X in {\xbeg,...,\xend} {
+      \pgfmathparse{int(mod(\X,10))}
+      \ifnum\pgfmathresult=0
+        \node [below,show grid/labels,show grid/xlabels] 
+          at (\X,\ya) {\X};
+      \else\fi
+    }
+    \fi
+    \if@showgrid@above
+    \foreach \X in {\xbeg,...,\xend} {
+      \pgfmathparse{int(mod(\X,10))}
+      \ifnum\pgfmathresult=0
+        \node [above,show grid/labels,show grid/xlabels] 
+          at (\X,\yb) {\X};
+      \else\fi
+    }
+    \fi
+    \pgfmathtruncatemacro\ybeg{ceil(\ya/\ys)}
+    \pgfmathtruncatemacro\yend{floor(\yb/\ys)}
+    \if@showgrid@left
+    \foreach \Y in {\ybeg,...,\yend} {
+      \pgfmathparse{int(mod(\Y,10))}
+      \ifnum\pgfmathresult=0
+        \node [left,show grid/labels,show grid/ylabels] 
+          at (\xa,\Y) {\Y};
+      \else\fi
+    }
+    \fi
+    \if@showgrid@right
+    \foreach \Y in {\ybeg,...,\yend} {
+      \pgfmathparse{int(mod(\Y,10))}
+      \ifnum\pgfmathresult=0
+        \node [right,show grid/labels,show grid/ylabels] 
+          at (\xb,\Y) {\Y};
+      \else\fi
+    }
+    \fi
+    \end{pgfonlayer}
+    \fi
+    \end{scope}
+}
+% End TikZ showgrid code
+
+% ===================================================================
+% MINOR COMMANDS
+
+% The expression
+%   \@defineRibbon{foo}{34}{57}{10}{x=5}
+% expands to the following definitions
+%   \xdef\RIBfooLEFT{34}
+%   \xdef\RIBfooRIGHT{57}
+%   \xdef\RIBfooVARWIDTH{10}
+%   \gdef\RIBfoo@label{x=5}
+% and saves "foo" in the list of defined ribbons.
+\newcommand*\@defineRibbon[5]{%
+  \snoc{\@allDefinedRibbons}{#1}
+  \expandafter\xdef\csname RIB#1LEFT\endcsname{#2}
+  \expandafter\xdef\csname RIB#1RIGHT\endcsname{#3}
+  \expandafter\xdef\csname RIB#1VARWIDTH\endcsname{#4}
+  \expandafter\xdef\csname RIB#1@label\endcsname{\expandonce{#5}}
+}
+
+% The expression
+%   \@defineBox{foo}{34}{57}{green}
+% expands to the following definitions
+%   \xdef\BOXfooLEFT{34}
+%   \xdef\BOXfooRIGHT{57}
+%   \xdef\BOXfoo@color{green}
+% and saves "foo" in the list of defined boxes.
+\newcommand*\@defineBox[5]{%
+  \snoc{\@allDefinedBoxes}{#1}
+  \expandafter\xdef\csname BOX#1LEFT\endcsname{#2}
+  \expandafter\xdef\csname BOX#1RIGHT\endcsname{#3}
+  \expandafter\xdef\csname BOX#1@color\endcsname{#4}
+  \expandafter\xdef\csname BOX#1@label\endcsname{#5}
+}
+
+% In a state where
+%   \RIBfooLEFT = 88
+%   \RIBfooRIGHT = 99
+%   \RIBfooVARWIDTH = 10
+% the expression
+%   \@rememberPrevRibbon{foo}
+% expands to the following definitions
+%   \xdef\RIBfoo@prevleft{88}
+%   \xdef\RIBfoo@prevright{99}
+%   \xdef\RIBfoo@prevvarwidth{10}
+\newcommand*\@rememberPrevRibbon[1]{%
+  \expandafter\xdef\csname RIB#1@prevleft\endcsname{%
+    \csname RIB#1LEFT\endcsname}
+  \expandafter\xdef\csname RIB#1@prevright\endcsname{%
+    \csname RIB#1RIGHT\endcsname}
+  \expandafter\xdef\csname RIB#1@prevvarwidth\endcsname{%
+    \csname RIB#1VARWIDTH\endcsname}
+}
+
+% In a state where
+%   \BOXfooLEFT = 88
+%   \BOXfooRIGHT = 99
+% the expression
+%   \@rememberPrevBox{foo}
+% expands to the following definitions
+%   \xdef\BOXfoo@prevleft{88}
+%   \xdef\BOXfoo@prevright{99}
+\newcommand*\@rememberPrevBox[1]{%
+  \expandafter\xdef\csname BOX#1@prevleft\endcsname{%
+    \csname BOX#1LEFT\endcsname}
+  \expandafter\xdef\csname BOX#1@prevright\endcsname{%
+    \csname BOX#1RIGHT\endcsname}
+}
+
+% Various projection functions
+\newcommand*\@getRibbonLeft[1]{%
+  \csname RIB#1LEFT\endcsname}
+\newcommand*\@getRibbonRight[1]{%
+  \csname RIB#1RIGHT\endcsname}
+\newcommand*\@getRibbonVarWidth[1]{%
+  \csname RIB#1VARWIDTH\endcsname}
+\newcommand*\@getRibbonLabel[1]{%
+  \expandafter\expandonce\csname RIB#1@label\endcsname}
+\newcommand*\@getRibbonPrevLeft[1]{%
+  \csname RIB#1@prevleft\endcsname}
+\newcommand*\@getRibbonPrevRight[1]{%
+  \csname RIB#1@prevright\endcsname}
+\newcommand*\@getRibbonPrevVarWidth[1]{%
+  \csname RIB#1@prevvarwidth\endcsname}
+\newcommand*\@getBoxLeft[1]{%
+  \csname BOX#1LEFT\endcsname}
+\newcommand*\@getBoxRight[1]{%
+  \csname BOX#1RIGHT\endcsname}
+\newcommand*\@getBoxColor[1]{%
+  \csname BOX#1@color\endcsname}
+\newcommand*\@getBoxLabel[1]{%
+  \csname BOX#1@label\endcsname}
+\newcommand*\@getBoxPrevLeft[1]{%
+  \csname BOX#1@prevleft\endcsname}
+\newcommand*\@getBoxPrevRight[1]{%
+  \csname BOX#1@prevright\endcsname}
+
+% Add the given identifier to the list of active ribbons.
+\newcommand*\@addToActiveRibbons[1]{%
+  \snoc\@activeRibbons{#1}
+}
+
+% Add the given identifier to the list of active boxes.
+\newcommand*\@addToActiveBoxes[1]{%
+  \snoc\@activeBoxes{#1}
+}
+
+% Add the given numbers to the lists of left- and 
+% right-positions of blocks.
+\newcommand*\@addToBlocks[2]{%
+  \cons\@blocks@left{#1}
+  \cons\@blocks@right{#2}
+}
+
+% Return the left-/right-position of the current
+% block step
+\newcommand*\@getBlockLeft{%
+  \expandafter\headOfList\@blocks@left
+}
+\newcommand*\@getBlockRight{%
+  \expandafter\headOfList\@blocks@right
+}
+
+% Remove the given identifier from the list of active ribbons.
+\newcommand*\@removeFromActiveRibbons[1]{%
+  \@expandtwoargs\@removeelement{#1}\@activeRibbons\@activeRibbons
+  \global\let\@activeRibbons=\@activeRibbons
+}
+
+% Remove the given identifier from the list of active boxes.
+\newcommand*\@removeFromActiveBoxes[1]{%
+  \@expandtwoargs\@removeelement{#1}\@activeBoxes\@activeBoxes
+  \global\let\@activeBoxes=\@activeBoxes
+}
+
+% Split a label into a variable resource and a remainder. For
+% instance:
+% \@splitLabel{foo&bar}{\l}{\r} defines \l=foo and \r=bar.
+% \@splitLabel{foo}{\l}{\r} defines \l={} and \r=foo.
+% \@splitLabel{&foo}{\l}{\r} defines \l={} and \r=foo.
+% \@splitLabel{foo&}{\l}{\r} defines \l=foo and \r={}.
+\newcommand\@splitLabel[3]{
+{ % This brace-group is to protect the ampersand from
+%   a possibly-enclosing tabular or array environment.
+  \noexpandarg 
+  \IfSubStr{#1}{&}{
+    \StrCut{#1}{&}{#2}{#3}
+  }{
+    \gdef #2{}
+    \gdef #3{#1}
+  }
+}
+}
+
+% Draw a label on a ribbon
+\newcommand*\@drawRibbonLabel{%
+  {
+  %
+  % \expandarg arranges that each argument to xstring macros
+  % is expanded once, rather than fully or not at all.
+  \expandarg 
+  \IfSubStr{\ribbons@label}{&}{
+    \StrCut{\ribbons@label}{&}{\ribbons@varlabel}{\ribbons@label}
+  }{
+    \gdef \ribbons@varlabel{}
+  }
+  \pgfmathsetmacro\@ribbonCentre{%
+    0.5*(\ribbons@left+\ribbons@varwidth+\ribbons@right)}
+  \pgfmathsetmacro\@ribbonVarCentre{%
+    \ribbons@left+(0.5*\ribbons@varwidth)}
+  \begin{pgfonlayer}{foreground}
+  \node[text=\ribTextColor, anchor=base] at
+    (\@ribbonCentre,\theVCursor+\ribbons@stepheight+\ribTextVOffset)
+    {$\begin{array}[t]{@{}l@{}}\ribbons@label\end{array}$};
+  \node[rotate=-90,text=\ribTextColor, anchor=west] at
+    (\@ribbonCentre,\theVCursor+\ribbons@stepheight)
+    {$\begin{array}[t]{@{}l@{}}\ribbons@rotatedlabel\end{array}$};
+  \node[text=\ribTextColor, anchor=base] at
+    (\@ribbonVarCentre,\theVCursor+\ribbons@stepheight+\ribTextVOffset)
+    {$\begin{array}[t]{@{}l@{}}\ribbons@varlabel\end{array}$};
+  \end{pgfonlayer}
+  }
+}
+
+% Draw a label on a box
+\newcommand*\@drawBoxLabel{%
+  \begin{pgfonlayer}{foreground}
+  \node[text=\ribbons@boxcolor, anchor=east,%
+    inner sep=0mm, fill=white] at
+    (\ribbons@left+\boxTextHOffset+\ribbons@boxhoffset,%
+    \theVCursor+\ribbons@stepheight+%
+    \boxTextVOffset+\ribbons@boxvoffset)%
+    {\strut $\ribbons@label$};
+  \end{pgfonlayer}
+}
+
+% For each ribbon in \ribbons@startribbons, add its identifier to
+% the list of active ribbons, store its horizontal position, and
+% draw a label on it.
+\newcommand*\@processStartRibbons{%
+  \foreach \i/\values in \ribbons@startribbons {
+    %
+    % If ribbon \i is already active, raise an error.
+    \@ifListContains{\i}{\@activeRibbons}{\errorI\i}{}
+    %
+    % NB. The space after \i is important, otherwise
+    % the command \iLEFT will be expanded.
+    \ifcsname RIB\i LEFT\endcsname 
+      \gdef\defaultLeft{\@getRibbonLeft\i}
+      \gdef\defaultRight{\@getRibbonRight\i}
+      \gdef\defaultVarWidth{\@getRibbonVarWidth\i}
+    \else
+      \gdef\defaultLeft{0}
+      \gdef\defaultRight{0}
+      \gdef\defaultVarWidth{0}
+    \fi
+    \pgfqkeys{/ribbons/ribbon}{%
+      left=\defaultLeft,right=\defaultRight,%
+      label={}, rotated label={},%
+      var width=\defaultVarWidth,%
+      execute macro=\values}
+    \ExpandNextFour\@defineRibbon\i\ribbons@left%
+      \ribbons@right\ribbons@varwidth\ribbons@label
+    \@rememberPrevRibbon\i
+    \ExpandNext\@addToActiveRibbons\i
+    \@drawRibbonLabel
+  } 
+}
+
+% For each box in \ribbons@startboxes, add its identifier to
+% the list of active boxes, store its horizontal position, and
+% draw a label on it.
+\newcommand*\@processStartBoxes{%
+  \foreach \i/\values in \ribbons@startboxes {
+    %
+    % If existential box \i is already active, raise an error.
+    \@ifListContains{\i}{\@activeBoxes}{\errorII\i}{}
+    %
+    % NB. The space after \i is important, since otherwise
+    % the command \iLEFT would be expanded.
+    \ifcsname BOX\i LEFT\endcsname 
+      \gdef\defaultLeft{\@getBoxLeft\i}
+      \gdef\defaultRight{\@getBoxRight\i}
+      \gdef\defaultColor{\@getBoxColor\i}
+    \else
+      \gdef\defaultLeft{0}
+      \gdef\defaultRight{0}
+      \gdef\defaultColor{black}
+    \fi
+    \pgfqkeys{/ribbons/box}{%
+      left=\defaultLeft,right=\defaultRight,%
+      color=\defaultColor,label={},%
+      vertical offset=0, horizontal offset=0,%
+      execute macro=\values}
+    \ExpandNextThree\@defineBox%
+      \i\ribbons@left\ribbons@right\ribbons@boxcolor\ribbons@label
+    \@rememberPrevBox\i
+    \ExpandNext\@addToActiveBoxes\i
+    \@drawBoxLabel
+  } 
+}
+
+% Draw a rectangle whose northwest and northeast corners are
+% rounded. Usage:
+% \topRoundedRectangle{<left>}{<top>}{<right>}{<bottom>}
+\newcommand\topRoundedRectangle[4]{%
+  \fill[\ribbons@color] (#1+\roundingRadius,#2) 
+    to[bend right=45] (#1,#2+\roundingRadius) 
+    -- (#1,#4) -- (#3,#4) -- (#3,#2+\roundingRadius)
+    to[bend right=45] (#3-\roundingRadius,#2) -- cycle;
+}
+
+% Draw a rectangle whose southwest and southeast corners are
+% rounded. Usage:
+% \botRoundedRectangle{<left>}{<top>}{<right>}{<bottom>}
+\newcommand\botRoundedRectangle[4]{%
+  \fill[\ribbons@color] (#1+\roundingRadius,#4) 
+    to[bend left=45] (#1,#4-\roundingRadius) 
+    -- (#1,#2) -- (#3,#2) -- (#3,#4-\roundingRadius)
+    to[bend left=45] (#3-\roundingRadius,#4) -- cycle;
+}
+
+%\@roundedElbow{<radius>}{<y>}{<oldx>}{<newx>}
+%           
+%  y       .------------'
+%         newx         oldx 
+\newcommand\@roundedElbow[4]{%
+  \def\radius{#1}
+  \def\y{#2}
+  \def\oldx{#3}
+  \def\newx{#4}
+  \pgfmathsetmacro\oldxsuc{\oldx+1}
+  \pgfmathsetmacro\newxsuc{\newx+1}
+  \ifnum\newx=\oldx
+    \draw(\oldx,\y-\radius) -- (\newx,\y+\radius);
+  \fi
+  \ifnum\oldx>\newx
+    \ifnum\oldx=\newxsuc
+      \draw(\oldx,\y-\radius) 
+        to[in=90, out=270] (\newx,\y+\radius);
+    \else
+      \draw(\oldx,\y-\radius) 
+        to[bend left=45] (\oldx-\radius,\y)
+        -- (\newx+\radius,\y)
+        to[bend right=45] (\newx,\y+\radius);
+    \fi
+  \fi
+  \ifnum\newx>\oldx
+    \ifnum\newx=\oldxsuc
+      \draw(\oldx,\y-\radius) 
+        to[in=90, out=270] (\newx,\y+\radius);
+    \else
+      \draw(\oldx, \y-\radius) 
+        to[bend right=45] (\oldx+\radius,\y)
+        -- (\newx-\radius,\y)
+        to[bend left=45] (\newx,\y+\radius);
+    \fi
+  \fi
+}
+
+% Check that each fit ribbon is currently active. If 
+% not, raise an error.
+\newcommand*\@checkFitRibbons{%
+  \foreach\i in \ribbons@fitribbons {
+    \@ifListContains{\i}{\@activeRibbons}{}{\errorIII\i}
+  }
+}
+
+% Check that each incoming ribbon is currently active. If 
+% not, raise an error.
+\newcommand*\@checkFinishRibbons{%
+  \foreach\i in \ribbons@finishribbons {
+    \@ifListContains{\i}{\@activeRibbons}{}{\errorIV\i}
+  }
+}
+
+% Check that each fit box is currently active. If 
+% not, raise an error.
+\newcommand*\@checkFitBoxes{%
+  \foreach\i in \ribbons@fitboxes {
+    \@ifListContains{\i}{\@activeBoxes}{}{\errorV\i}
+  }
+}
+
+% Check that each incoming box is currently active. If 
+% not, raise an error.
+\newcommand*\@checkFinishBoxes{%
+  \foreach\i in \ribbons@finishboxes {
+    \@ifListContains{\i}{\@activeBoxes}{}{\errorVI\i}
+  }
+}
+
+% Draw some notches down the left-hand edge of the picture
+% (only when "draw grid" is enabled).
+\newcommand\@drawNotches{%
+  \coordinate (originalbb) at (current bounding box.north west);
+  \foreach \yvalue in \notchPositions {%
+    \draw[\guideTextColor, ultra thick]
+      let \p1 = (originalbb) in 
+      (\x1-1mm,\yvalue) -- ++(-3,0);
+  }
+}
+
+% Draw shadows over "catalyst" ribbons, that is, those
+% ribbons that pass underneath a step without being a
+% precondition of that step.
+\newcommand*\@drawShadowsOverCatalysts{%
+  \pgfmathsetmacro\@shadowTop{\theVCursor+\ribbons@stepheight}
+  \foreach\i in \ribbons@catalystribbons {
+    \pgfmathsetmacro\@shadowLeft{\@getRibbonLeft\i}
+    \pgfmathsetmacro\@shadowRight{\@getRibbonRight\i}
+    \fill[\shadowColor, path fading=south] 
+      (\@shadowLeft,\@shadowTop) rectangle
+      (\@shadowRight,\@shadowTop+\shadowHeight);
+  }
+}
+
+% Draw a segment of a box
+\newcommand*\@drawExistentialBox[2]{%
+  \pgfmathsetmacro\xtopleft{\@getBoxPrevLeft{#1}}
+  \pgfmathsetmacro\xtopright{\@getBoxPrevRight{#1}}
+  \pgfmathsetmacro\xbotleft{\@getBoxLeft{#1}}
+  \pgfmathsetmacro\xbotright{\@getBoxRight{#1}}
+  \def\lineColor{\@getBoxColor{#1}}
+  \def\ytop{#2}
+  \def\ybot{\theVCursor+\theRowHeight}
+  { % a group to hide the &&-operator from a
+    % possibly-enclosing tabular environment.
+  \pgfmathtruncatemacro\isRectangular{%
+    (\xtopleft==\xbotleft)&&(\xtopright==\xbotright)}
+  \begin{scope}[draw=\lineColor,line width=\boxLineWidth]
+  \ifnum\isRectangular=1\relax
+    \draw[xshift=0.5*\boxLineWidth] 
+      (\xtopleft,\ytop) -- (\xbotleft,\ybot);
+    \draw[xshift=-0.5*\boxLineWidth] 
+      (\xtopright,\ytop) -- (\xbotright,\ybot);
+  \else
+    \def\controlLength{\twistiness*\theRowHeight}
+    \draw[xshift=-0.5*\boxLineWidth]
+         (\xtopright,\ytop) 
+      .. controls (\xtopright,\ytop+\controlLength)
+              and (\xbotright,\ybot-\controlLength)
+      .. (\xbotright,\ybot);
+    \draw[xshift=0.5*\boxLineWidth]
+         (\xbotleft,\ybot)
+      .. controls (\xbotleft,\ybot-\controlLength)
+              and (\xtopleft,\ytop+\controlLength)
+      .. (\xtopleft,\ytop);
+  \fi
+  \end{scope}
+  }
+}
+
+% Draw a segment of a ribbon
+\newcommand*\@drawRibbon[1]{%
+  \pgfmathsetmacro\xtopleft{\@getRibbonPrevLeft{#1}}
+  \pgfmathsetmacro\xtopmid{%
+    \@getRibbonPrevLeft{#1}+\@getRibbonPrevVarWidth{#1}}
+  \pgfmathsetmacro\xtopright{\@getRibbonPrevRight{#1}}
+  \pgfmathsetmacro\xbotleft{\@getRibbonLeft{#1}}
+  \pgfmathsetmacro\xbotmid{%
+    \@getRibbonLeft{#1}+\@getRibbonVarWidth{#1}}
+  \pgfmathsetmacro\xbotright{\@getRibbonRight{#1}}
+  \def\ytop{\theVCursor}
+  \def\ybot{\theVCursor+\theRowHeight}
+  { % a group to hide the &&-operator from a
+    % possibly-enclosing tabular environment.
+  \pgfmathtruncatemacro\isRectangular{%
+    (\xtopleft==\xbotleft)&&%
+    (\xtopmid==\xbotmid)&&%
+    (\xtopright==\xbotright)}
+  \ifnum\isRectangular=1\relax
+    \fill[\varribColor] (\xtopleft,\ytop) 
+      rectangle (\xbotmid,\ybot);
+    \fill[\ribColor] (\xtopmid,\ytop) 
+      rectangle (\xbotright,\ybot);
+  \else
+    \def\controlLength{\twistiness*\theRowHeight}
+    \def\rightDownwardCurve{(\xtopright,\ytop) 
+      .. controls (\xtopright,\ytop+\controlLength)
+              and (\xbotright,\ybot-\controlLength)
+      .. (\xbotright,\ybot)}
+    \def\midDownwardCurve{(\xtopmid,\ytop) 
+      .. controls (\xtopmid,\ytop+\controlLength)
+              and (\xbotmid,\ybot-\controlLength)
+      .. (\xbotmid,\ybot)}
+    \def\midUpwardCurve{(\xbotmid,\ybot) 
+      .. controls (\xbotmid,\ybot-\controlLength)
+              and (\xtopmid,\ytop+\controlLength)
+      .. (\xtopmid,\ytop)}
+    \def\leftUpwardCurve{(\xbotleft,\ybot)
+      .. controls (\xbotleft,\ybot-\controlLength)
+              and (\xtopleft,\ytop+\controlLength)
+      .. (\xtopleft,\ytop)}
+    \draw[white, line width=0.5mm] \rightDownwardCurve;
+    \draw[white, line width=0.5mm] \leftUpwardCurve;
+    \fill[\ribColor] \rightDownwardCurve 
+      -- \midUpwardCurve -- cycle;
+    \fill[\varribColor] \midDownwardCurve 
+      -- \leftUpwardCurve -- cycle;
+  \fi
+  }
+  \if@showids
+    \begin{pgfonlayer}{foreground}
+    \def\guideY{\theVCursor+\theRowHeight-\guideTextVOffset}
+    \node[anchor=west,text=\guideTextColor] at
+      (\@getRibbonLeft\i, \guideY) {\strut \i};
+    \end{pgfonlayer}
+  \fi
+}
+
+% ===================================================================
+% MAIN COMMANDS 
+% Accessible to the user
+
+% Finish the current row. A synonym for "\\".
+\newcommand*\finishrow[1][0]{%
+  \setcounter{RowHeight}{\defaultRowHeight}
+  \addtocounter{RowHeight}{#1}
+  %
+  % For each active ribbon, draw it and its guide text
+  \foreach\i in \@activeRibbons {%
+    \@drawRibbon\i
+  }
+  %
+  % For each active existential box, draw it
+  \foreach\i in \@activeBoxes {%
+    \@drawExistentialBox\i\theVCursor
+  }
+  %
+  % For each block step, draw the side lines that delimit it.
+  \foreach\x in \@blocks@left {%
+    \fill[\comColor] (\x,\theVCursor) rectangle 
+      (\x+\blockLineWidth,\theVCursor+\theRowHeight);
+  }
+  \foreach\x in \@blocks@right {%
+    \fill[\comColor] (\x,\theVCursor) rectangle
+      (\x-\blockLineWidth,\theVCursor+\theRowHeight);
+  }
+  %
+  % If there is a block step in "purgatory", i.e. one that
+  % has been added during the current row, then draw in its
+  % side lines, and add it to the list of block steps.
+  \ifx\@blocksPurgatory@left\@empty
+  \else
+    \pgfmathsetmacro\xleft{\@blocksPurgatory@left}
+    \pgfmathsetmacro\xright{\@blocksPurgatory@right}
+    \pgfmathsetmacro\ytop{\theVCursor+\ribbons@stepheight}
+    \pgfmathsetmacro\ybot{\theVCursor+\theRowHeight}
+    \fill[\comColor] (\xleft,\ytop) rectangle 
+      (\xleft+\blockLineWidth,\ybot);
+    \fill[\comColor] (\xright,\ytop) rectangle
+      (\xright-\blockLineWidth,\ybot);
+    \@addToBlocks\xleft\xright
+    \xdef\@blocksPurgatory@left{}
+    \xdef\@blocksPurgatory@right{}
+  \fi
+  %
+  % If there are existential boxes in "purgatory", i.e. some
+  % that have been extended during the current row, then draw
+  % them a little lower than normal (to leave vertical space
+  % for the extension operation), take them out of purgatory,
+  % and put them back into the set of active boxes.
+  \foreach \i in \@boxPurgatory {
+    \ExpandNext\@addToActiveBoxes\i
+    \@drawExistentialBox{\i}{\theVCursor+2*\boxRoundingRadius}
+  }
+  \xdef\@boxPurgatory{}
+  %
+  % Update i@prevleft and i@prevright for each active ribbon i
+  \foreach\i in \@activeRibbons {\@rememberPrevRibbon\i}
+  \foreach\i in \@activeBoxes {\@rememberPrevBox\i}
+  %
+  % If the grid is on, draw a little notch to show where
+  %  the row ends
+  \snoc\notchPositions{\theVCursor}
+  % \if@showids
+  %   \draw[\guideTextColor, ultra thick]
+  %     (0,\theVCursor) -- (3,\theVCursor);
+  % \fi
+  %
+  % Advance the vertical cursor by the height of this row
+  \addtocounter{VCursor}{\theRowHeight}%
+  %
+  % Reset the step height to the default value
+  \xdef\ribbons@stepheight{\defaultStepHeight}
+}
+
+% A command step or a justification step
+\newcommand*\step[2][]{%
+  %
+  % Set default values for the step colour and
+  % whether it is the start/end of a block step
+  \def\ribbons@color{\comColor}
+  %
+  % Process keys
+  \pgfqkeys{/ribbons/step}{%
+    extra left=0,extra right=0,text={},%
+    finish ribbons={},start ribbons={},%
+    finish boxes={},start boxes={},%
+    height=\defaultStepHeight,#1,text={#2}}
+  % 
+  \@checkFinishRibbons 
+  \@checkFinishBoxes
+  % 
+  % Build lists of all the left positions and right positions
+  % of the incoming ribbons (we must do this early, because
+  % their positions might get overwritten shortly).
+  \gdef\@leftPositions{}
+  \gdef\@rightPositions{}
+  \foreach\i in \ribbons@finishribbons {
+    \xdef\@leftPositions{\@getRibbonLeft\i,\@leftPositions}
+    \xdef\@rightPositions{\@getRibbonRight\i,\@rightPositions}
+  }
+  \foreach\i in \ribbons@finishboxes {
+    \xdef\@leftPositions{\@getBoxLeft\i,\@leftPositions}
+    \xdef\@rightPositions{\@getBoxRight\i,\@rightPositions}
+  }
+  %
+  % remove the incoming ribbons from the list of active 
+  % ribbons. 
+  \foreach\i in \ribbons@finishribbons {
+    \ExpandNext\@removeFromActiveRibbons\i
+  }
+  \foreach\i in \ribbons@finishboxes {
+    \ExpandNext\@removeFromActiveBoxes\i
+  }
+  %
+  % Store the data for the outgoing ribbons, draw their labels,
+  % and add them to the list of active ribbons
+  \@processStartRibbons
+  \@processStartBoxes
+  % 
+  % Continue the lists of all the left positions and right 
+  % positions, by adding the data for the outgoing ribbons
+  \foreach \i/\values in \ribbons@startribbons {
+    \xdef\@leftPositions{\@getRibbonLeft\i,\@leftPositions}
+    \xdef\@rightPositions{\@getRibbonRight\i,\@rightPositions}
+  }
+  \foreach \i/\values in \ribbons@startboxes {
+    \xdef\@leftPositions{\@getBoxLeft\i,\@leftPositions}
+    \xdef\@rightPositions{\@getBoxRight\i,\@rightPositions}
+  }
+  %
+  % Calculate the minimum left position and the maximum
+  % right position
+  \pgfmathsetmacro\@minPosition{min(\@leftPositions)}
+  \pgfmathsetmacro\@maxPosition{max(\@rightPositions)}
+  %
+  % Calculate the size and position of the step
+  \pgfmathsetmacro\@stepLeft{\@minPosition-\ribbons@extraleft}
+  \pgfmathsetmacro\@stepRight{\@maxPosition+\ribbons@extraright}
+  %
+  \pgfmathsetmacro\@stepCentre{\@stepLeft*0.5+\@stepRight*0.5}
+  \pgfmathsetmacro\@stepTop{\theVCursor}
+  \pgfmathsetmacro\@stepMid{\theVCursor+0.5*\ribbons@stepheight}
+  \pgfmathsetmacro\@stepBot{\theVCursor+\ribbons@stepheight}
+  %
+  % Draw the step
+  \begin{pgfonlayer}{foreground}
+  \fill[\ribbons@color] (\@stepLeft,\@stepTop) 
+    rectangle (\@stepRight,\@stepBot);
+  %
+  % Draw the text on the step
+  \node[text=white,anchor=west] at (\@stepLeft, \@stepMid)
+    {\begin{tabular}{@{}l@{}}\ribbons@text\end{tabular}};
+  %
+  % Work out which ribbons are the catalysts and draw
+  % shadows over them.
+  \gdef\ribbons@catalystribbons{}
+  \foreach\i in \@activeRibbons {
+    { % a group to hide the &&-operator from a
+    % possibly-enclosing tabular environment.
+    \pgfmathtruncatemacro\isInside{%
+      (\@stepLeft<=(\@getRibbonLeft\i)) && 
+      ((\@getRibbonRight\i)<=\@stepRight)}
+    \ifnum\isInside=1
+      \@ifPairListContainsKey\i\ribbons@startribbons{}{%
+        \cons\ribbons@catalystribbons\i
+      }
+    \fi}
+  }
+  \@drawShadowsOverCatalysts
+  \end{pgfonlayer}
+}
+
+% A justification step
+\newcommand*\jus[2][]{%
+  \step[pale,#1]{#2}}
+
+% A command step
+\newcommand*\com[2][]{%
+  \step[#1]{\texttt{#2}}}
+
+% The start of a block
+\newcommand*\startblock[2][] {%
+  %
+  % Set default value for the step colour
+  \def\ribbons@color{\comColor}
+  %
+  % Process keys
+  \pgfqkeys{/ribbons/startblock}{%
+    extra left=0,extra right=0,text={},%
+    finish ribbons={},start ribbons={},fit ribbons={},%
+    finish boxes={},start boxes={}, fit boxes={},%
+    height=\defaultStepHeight,#1,text={#2}}
+  %
+  \@checkFitRibbons
+  \@checkFinishRibbons
+  \@checkFitBoxes
+  \@checkFinishBoxes
+  %
+  % Build lists of all the left positions and right positions
+  % of the incoming/fit ribbons (we must do this early, because
+  % the positions of the incoming ribbons might get overwritten 
+  % shortly).
+  \gdef\@leftPositions{}
+  \gdef\@rightPositions{}
+  \foreach\i in \ribbons@finishribbons {
+    \xdef\@leftPositions{\@getRibbonLeft\i,\@leftPositions}
+    \xdef\@rightPositions{\@getRibbonRight\i,\@rightPositions}
+  }
+  \foreach\i in \ribbons@fitribbons {
+    \xdef\@leftPositions{\@getRibbonLeft\i,\@leftPositions}
+    \xdef\@rightPositions{\@getRibbonRight\i,\@rightPositions}
+  }
+  \foreach\i in \ribbons@finishboxes {
+    \xdef\@leftPositions{\@getBoxLeft\i,\@leftPositions}
+    \xdef\@rightPositions{\@getBoxRight\i,\@rightPositions}
+  }
+  \foreach\i in \ribbons@fitboxes {
+    \xdef\@leftPositions{\@getBoxLeft\i,\@leftPositions}
+    \xdef\@rightPositions{\@getBoxRight\i,\@rightPositions}
+  }
+  %
+  % Remove the incoming ribbons from the list of active 
+  % ribbons. 
+  \foreach\i in \ribbons@finishribbons {
+    \ExpandNext\@removeFromActiveRibbons\i
+  }
+  \foreach\i in \ribbons@finishboxes {
+    \ExpandNext\@removeFromActiveBoxes\i
+  }
+  %
+  % Store the data for the outgoing ribbons, draw their labels,
+  % and add them to the list of active ribbons
+  \@processStartRibbons
+  \@processStartBoxes
+  % 
+  % Continue the lists of all the left positions and right 
+  % positions, by adding the data for the outgoing ribbons
+  \foreach \i/\values in \ribbons@startribbons {
+    \xdef\@leftPositions{\@getRibbonLeft\i,\@leftPositions}
+    \xdef\@rightPositions{\@getRibbonRight\i,\@rightPositions}
+  }
+  \foreach \i/\values in \ribbons@startboxes {
+    \xdef\@leftPositions{\@getBoxLeft\i,\@leftPositions}
+    \xdef\@rightPositions{\@getBoxRight\i,\@rightPositions}
+  }
+  %
+  % Calculate the minimum left position and the maximum
+  % right position
+  \pgfmathsetmacro\@minPosition{min(\@leftPositions)}
+  \pgfmathsetmacro\@maxPosition{max(\@rightPositions)}
+  %
+  % Calculate the size and position of the step
+  \pgfmathsetmacro\@stepLeft{\@minPosition-\ribbons@extraleft}
+  \pgfmathsetmacro\@stepRight{\@maxPosition+\ribbons@extraright}
+  %
+  \pgfmathsetmacro\@stepCentre{\@stepLeft*0.5+\@stepRight*0.5}
+  \pgfmathsetmacro\@stepTop{\theVCursor}
+  \pgfmathsetmacro\@stepMid{\theVCursor+0.5*\ribbons@stepheight}
+  \pgfmathsetmacro\@stepBot{\theVCursor+\ribbons@stepheight}
+  %
+  % Draw a top-rounded rectangle, and add it to
+  % purgatory (the list of almost-ready block steps). 
+  \begin{pgfonlayer}{foreground}
+  \topRoundedRectangle\@stepLeft\@stepTop\@stepRight\@stepBot
+  \xdef\@blocksPurgatory@left{\@stepLeft}
+  \xdef\@blocksPurgatory@right{\@stepRight}
+  %
+  % Draw the text on the step
+  \node[text=white,anchor=west] at (\@stepLeft, \@stepMid)
+    {\begin{tabular}{@{}l@{}}\texttt{\ribbons@text}\end{tabular}};
+  %
+  % Work out which ribbons and boxes are the catalysts
+  \gdef\ribbons@catalystribbons{}
+  \foreach\i in \@activeRibbons {
+    { % a group to hide the &&-operator from a
+    % possibly-enclosing tabular environment.
+    \pgfmathtruncatemacro\isInside{%
+      (\@stepLeft<=(\@getRibbonLeft\i)) && 
+      ((\@getRibbonRight\i)<=\@stepRight)}
+    \ifnum\isInside=1
+      \@ifPairListContainsKey\i\ribbons@startribbons{}{%
+        \cons\ribbons@catalystribbons\i
+      }
+    \fi}
+  }
+  \gdef\ribbons@catalystboxes{}
+  \foreach\i in \@activeBoxes {
+    { % a group to hide the &&-operator from a
+    % possibly-enclosing tabular environment.
+    \pgfmathtruncatemacro\isInside{%
+      (\@stepLeft<=(\@getBoxLeft\i)) && 
+      ((\@getBoxRight\i)<=\@stepRight)}
+    \ifnum\isInside=1
+      \@ifPairListContainsKey\i\ribbons@startboxes{}{%
+        \cons\ribbons@catalystboxes\i
+      }
+    \fi}
+  }
+  %
+  % Save the position of each catalyst ribbon/box. 
+  % These positions will be restored each 
+  % time we enter an "else" branch.
+  \def\@savedRibbonPositions{}
+  \foreach\i in \ribbons@catalystribbons {
+    \edef\stuffToSave{%
+      \i/\@getRibbonLeft\i/\@getRibbonRight\i/%
+        {{\@getRibbonLabel\i}}}
+    \snoc\@savedRibbonPositions{\stuffToSave}
+  }
+  \cons[;]\@blocks@state{\@savedRibbonPositions}
+  \def\@savedBoxPositions{}
+  \foreach\i in \ribbons@catalystboxes {
+    \edef\stuffToSave{%
+      \i/\@getBoxLeft\i/\@getBoxRight\i/\@getBoxColor\i/%
+        {{\@getBoxLabel\i}}}
+    \snoc\@savedBoxPositions{\stuffToSave}
+  }
+  \cons[;]\@blocks@boxstate{\@savedBoxPositions}
+  %
+  \@drawShadowsOverCatalysts
+  \end{pgfonlayer}
+}
+
+% The middle of a block 
+\newcommand*\continueblock[2][]{%
+  %
+  % Set default value for the step colour 
+  \def\ribbons@color{\comColor}
+  %
+  % Set "jagged" flag to 0 (off)
+  \def\ribbons@jagged{0}
+  %
+  % Set "repeat labels" flag to 0 (off)
+  \def\ribbons@repeatlabels{0}
+  %
+  % Process keys
+  \pgfqkeys{/ribbons/continueblock}{%
+    start ribbons={},start boxes={},%
+    height=\defaultStepHeight,#1,text={#2}}
+  %
+  % Add to the set of start ribbons those ribbons that were saved 
+  % at the start of this block step, and draw shadows
+  % over them.
+  {\expandarg
+  \StrCut{\@blocks@state}{;}{\@restoredRibbonCatalysts}{\foo}
+  \begin{pgfonlayer}{foreground}
+  \foreach \i/\xleft/\xright/\lab in \@restoredRibbonCatalysts {
+    \ifnum\ribbons@repeatlabels=1
+      \edef\@tmp{%
+        \i/{left=\xleft,right=\xright,label={\expandonce\lab}}}
+    \else
+      \edef\@tmp{\i/{left=\xleft,right=\xright,label={}}}
+    \fi
+    \cons\ribbons@startribbons\@tmp
+    \fill[\shadowColor, path fading=south] 
+      (\xleft,\theVCursor+\ribbons@stepheight) rectangle
+      (\xright,\theVCursor+\ribbons@stepheight+\shadowHeight);
+  }
+  \end{pgfonlayer}
+  }
+  {\expandarg
+  \StrCut{\@blocks@boxstate}{;}{\@restoredBoxCatalysts}{\foo}
+  \foreach \i/\xleft/\xright/\color/\lab in \@restoredBoxCatalysts {
+    \ifnum\ribbons@repeatlabels=1
+      \edef\@tmp{\i/{left=\xleft,right=\xright,color=\color,%
+        label={\expandonce\lab}}}
+    \else
+      \edef\@tmp{\i/{left=\xleft,right=\xright,color=\color,%
+        label={}}}
+    \fi
+    \cons\ribbons@startboxes\@tmp
+  }
+  }
+  %
+  % Left and right positions are extracted from the
+  % stack of block left/right positions
+  \StrCut{\@blocks@left}{,}{\@stepLeft}{\foo}
+  \global\let\@stepLeft=\@stepLeft
+  \StrCut{\@blocks@right}{,}{\@stepRight}{\foo}
+  \global\let\@stepRight=\@stepRight
+  %
+  % Obliterate the ribbons/boxes inside the footprint of the  
+  % block step.
+  \foreach\i in \@activeRibbons {
+    { % a group to hide the &&-operator from a
+    % possibly-enclosing tabular environment.
+    \pgfmathtruncatemacro\isInside{%
+      (\@stepLeft<=(\@getRibbonLeft\i)) && 
+      ((\@getRibbonRight\i)<=\@stepRight)}
+    \ifnum\isInside=1
+      \ExpandNext\@removeFromActiveRibbons\i
+    \fi}
+  }
+  \foreach\i in \@activeBoxes {
+    { % a group to hide the &&-operator from a
+    % possibly-enclosing tabular environment.
+    \pgfmathtruncatemacro\isInside{%
+      (\@stepLeft<=(\@getBoxLeft\i)) && 
+      ((\@getBoxRight\i)<=\@stepRight)}
+    \ifnum\isInside=1
+      \ExpandNext\@removeFromActiveBoxes\i
+    \fi}
+  }
+  %
+  % Store the data for the outgoing ribbons, draw their labels,
+  % and add them to the list of active ribbons
+  \@processStartRibbons
+  \@processStartBoxes
+  %
+  \pgfmathsetmacro\@stepCentre{\@stepLeft*0.5+\@stepRight*0.5}
+  \pgfmathsetmacro\@stepTop{\theVCursor}
+  \pgfmathsetmacro\@stepMid{\theVCursor+0.5*\ribbons@stepheight}
+  \pgfmathsetmacro\@stepBot{\theVCursor+\ribbons@stepheight}
+  %
+  % Draw a rectangle for this step. If "jagged" is set, then
+  % draw a saw-tooth top to indicate that there is a 
+  % discontinuity at this step.
+  \begin{pgfonlayer}{foreground}
+  \ifnum\ribbons@jagged=1
+    \fill[\ribbons@color] (\@stepLeft,\@stepTop)
+      decorate [decoration=saw, segment length=\zigzagLength mm] {
+      -- (\@stepRight,\@stepTop)
+      } 
+      -- (\@stepRight,\@stepBot)
+      -- (\@stepLeft,\@stepBot)
+      -- cycle;
+  \else
+    \fill[\ribbons@color] (\@stepLeft,\@stepTop) 
+      rectangle (\@stepRight,\@stepBot);
+  \fi
+  %
+  % Draw the text on the step
+  \node[text=white,anchor=west] at (\@stepLeft, \@stepMid)
+    {\begin{tabular}{@{}l@{}}\texttt{\ribbons@text}\end{tabular}};
+  %
+  \end{pgfonlayer}
+}
+
+% The end of a block 
+\newcommand*\finishblock[2][]{%
+  %
+  % Set default values for the step colour and
+  % whether it is the start/end of a block step
+  \def\ribbons@color{\comColor}
+  %
+  % Process keys
+  \pgfqkeys{/ribbons/finishblock}{%
+    finish ribbons={},start ribbons={},%
+    finish boxes={},start boxes={},%
+    height=\defaultStepHeight,#1,text={#2}}
+  %
+  \@checkFinishRibbons 
+  \@checkFinishBoxes 
+  %
+  % Left and right positions are extracted from the
+  % stack of block left/right positions
+  \StrCut{\@blocks@left}{,}{\@stepLeft}{\foo}
+  \StrCut{\@blocks@right}{,}{\@stepRight}{\foo}
+  %
+  % Make the ribbons that are inside the footprint of the  
+  % block step, but are not start ribbons, into 
+  % catalyst ribbons.
+  \gdef\ribbons@catalystribbons{}
+  \foreach\i in \@activeRibbons {
+    { % a group to hide the &&-operator from a
+    % possibly-enclosing tabular environment.
+    \pgfmathtruncatemacro\isInside{%
+      (\@stepLeft<=(\@getRibbonLeft\i)) && 
+      ((\@getRibbonRight\i)<=\@stepRight)}
+    \ifnum\isInside=1
+      \@ifPairListContainsKey\i\ribbons@startribbons{}{%
+        \cons\ribbons@catalystribbons\i
+      }
+    \fi}
+  }
+  %
+  % Remove the incoming ribbons from the list of active 
+  % ribbons.
+  \foreach\i in \ribbons@finishribbons {
+    \ExpandNext\@removeFromActiveRibbons\i
+  }
+  \foreach\i in \ribbons@finishboxes {
+    \ExpandNext\@removeFromActiveBoxes\i
+  }
+  %
+  % Store the data for the outgoing ribbons, draw their labels,
+  % and add them to the list of active ribbons
+  \@processStartRibbons
+  \@processStartBoxes
+  %
+  \pgfmathsetmacro\@stepCentre{\@stepLeft*0.5+\@stepRight*0.5}
+  \pgfmathsetmacro\@stepTop{\theVCursor}
+  \pgfmathsetmacro\@stepMid{\theVCursor+0.5*\ribbons@stepheight}
+  \pgfmathsetmacro\@stepBot{\theVCursor+\ribbons@stepheight}
+  %
+  % Draw a bottom-rounded rectangle, and remove it from the
+  % the stack of block steps. 
+  \begin{pgfonlayer}{foreground}
+  \botRoundedRectangle\@stepLeft\@stepTop\@stepRight\@stepBot
+  \StrBehind{\@blocks@left}{,}[\@blocks@left]  
+  \global\let\@blocks@left=\@blocks@left
+  \StrBehind{\@blocks@right}{,}[\@blocks@right] 
+  \global\let\@blocks@right=\@blocks@right
+  {\expandarg
+  \StrBehind{\@blocks@state}{;}[\@blocks@state] 
+  \global\let\@blocks@state=\@blocks@state
+  }
+  %
+  % Draw the text on the step
+  \node[text=white,anchor=west] at (\@stepLeft, \@stepMid)
+    {\begin{tabular}{@{}l@{}}\texttt{\ribbons@text}\end{tabular}};
+  %
+  \@drawShadowsOverCatalysts
+  \end{pgfonlayer}
+}
+
+% Move ribbons
+\newcommand*\moveribbons[1]{%
+  \foreach \i/\values in {#1} {
+    %
+    % If ribbon \i is not already active, raise an error.
+    \@ifListContains{\i}{\@activeRibbons}{}{\errorVII\i}
+    %
+    \pgfqkeys{/ribbons/ribbon}{%
+      left={\@getRibbonLeft\i}, right={\@getRibbonRight\i},%
+      var width={\@getRibbonVarWidth\i},%
+      execute macro=\values}
+    \ExpandNextFour\@defineRibbon\i\ribbons@left%
+      \ribbons@right\ribbons@varwidth{\@getRibbonLabel\i}
+      % WORRY HERE ABOUT ERROR
+    %
+    % Remove and then re-add ribbon \i. This gives the user control
+    % over the z-order of the ribbons when they are being moved.
+    \ExpandNext\@removeFromActiveRibbons\i
+    \ExpandNext\@addToActiveRibbons\i
+  } 
+}
+
+% Move boxes
+\newcommand*\moveboxes[1]{%
+  \foreach \i/\values in {#1} {
+    %
+    % If box \i is not already active, raise an error.
+    \@ifListContains{\i}{\@activeBoxes}{}{\errorVIII\i}
+    %
+    \pgfqkeys{/ribbons/box}{%
+      left={\@getBoxLeft\i},right={\@getBoxRight\i},%
+      color={\@getBoxColor\i},execute macro=\values}
+    \ExpandNextThree\@defineBox%
+      \i\ribbons@left\ribbons@right\ribbons@boxcolor{\@getBoxLabel\i}
+  } 
+}
+
+% Permute ribbons
+\newcommand*\swapribbons[2]{%
+  \foreach \i in {#1} {
+    \expandafter\xdef\csname RIB\i @oldleft\endcsname{%
+      \csname RIB\i LEFT\endcsname}
+    \expandafter\xdef\csname RIB\i @oldright\endcsname{%
+      \csname RIB\i RIGHT\endcsname}
+    \expandafter\xdef\csname RIB\i @oldvarwidth\endcsname{%
+      \csname RIB\i VARWIDTH\endcsname}
+  }
+  \def\loopbody##1##2{%
+    \moveribbons{##2/{%
+      left=\csname RIB##1@oldleft\endcsname,%
+      right=\csname RIB##1@oldright\endcsname,%
+      var width=\csname RIB##1@oldvarwidth\endcsname}%
+    }%
+  }
+  \foreachtwo\loopbody{#1}{#2}
+}
+
+% Move boxes (an alternative to \moveboxes)
+\newcommand*\extendboxes[1]{%
+  \foreach \i/\values in {#1} {
+    %
+    % If box \i is not already active, raise an error.
+    \@ifListContains{\i}{\@activeBoxes}{}{\errorIX\i}
+    %
+    \pgfmathtruncatemacro\oldleft{\@getBoxLeft\i}
+    \pgfmathtruncatemacro\oldright{\@getBoxRight\i}
+    \def\boxcolor{\@getBoxColor\i}
+    \pgfqkeys{/ribbons/box}{%
+      left=\oldleft,right=\oldright,%
+      color=\boxcolor,execute macro=\values}
+    \ExpandNextThree\@defineBox%
+      \i\ribbons@left\ribbons@right%
+      \ribbons@boxcolor{\@getBoxLabel\i}
+    \pgfmathtruncatemacro\newleft{\@getBoxLeft\i}
+    \pgfmathtruncatemacro\newright{\@getBoxRight\i}
+    \begin{pgfonlayer}{foreground}
+      \begin{scope}[color=\boxcolor, line width=\boxLineWidth]
+        \begin{scope}[xshift=0.5*\boxLineWidth]
+          \@roundedElbow{\boxRoundingRadius}%
+            {\theVCursor+\boxRoundingRadius}{\oldleft}{\newleft}
+        \end{scope}
+        \begin{scope}[xshift=-0.5*\boxLineWidth]
+          \@roundedElbow{\boxRoundingRadius}%
+            {\theVCursor+\boxRoundingRadius}{\oldright}{\newright}
+        \end{scope}
+      \end{scope}
+    \end{pgfonlayer}
+    %
+    % Update i@prevleft and i@prevright
+    \@rememberPrevBox\i
+    %
+    % Put box i in purgatory, and take it out of the list 
+    % of active boxes 
+    \ExpandNext\@removeFromActiveBoxes\i
+    \cons\@boxPurgatory{\i}
+  } 
+}
+
+\newcommand\ribbonpagebreak{%
+  \end{tikzpicture}
+  \pagebreak
+  % Nudge vertical cursor up a bit. This is a hack to 
+  % counteract the fact that the first row does not have
+  % any steps in it. Without this hack, the labels in 
+  % the first row would be printed too far down.
+  \addtocounter{VCursor}{-\defaultStepHeight}%
+  \xdef\ribbons@stepheight{\defaultStepHeight}%
+  \begin{tikzpicture}[x=1mm,y=-1mm]
+  %
+  \foreach\i in \@activeRibbons {
+    \edef\ribbons@left{\@getRibbonLeft\i}
+    \edef\ribbons@right{\@getRibbonRight\i}
+    \edef\ribbons@varwidth{\@getRibbonVarWidth\i}
+    \edef\ribbons@label{\@getRibbonLabel\i}
+    \edef\ribbons@rotatedlabel{}
+    \@drawRibbonLabel
+  }
+  \foreach\i in \@activeBoxes {
+    \edef\ribbons@left{\@getBoxLeft\i}
+    \edef\ribbons@right{\@getBoxRight\i}
+    \edef\ribbons@boxcolor{\@getBoxColor\i}
+    \edef\ribbons@label{\@getBoxLabel\i}
+    \edef\ribbons@boxhoffset{0}
+    \edef\ribbons@boxvoffset{0}
+    \@drawBoxLabel
+  }
+  %
+  % Finish this row, making it a shorter row than
+  % usual. 
+  \addtocounter{VCursor}{\defaultStepHeight}%
+  \finishrow[\numexpr\ribbons@extraheight-\defaultStepHeight]
+}
+
+% The main environment
+\newenvironment{ribbonproof}[1][]{%
+  %
+  % Create state
+  %
+  % A comma-separated list of active ribbons. Each element is a ribbon
+  % identifier. 
+  \gdef\@activeRibbons{}%
+  \gdef\@activeBoxes{}%
+  %
+  % Remember all the ribbons and boxes that we define over
+  % the course of this ribbon proof, so that they can be 
+  % undefined at the end.
+  \gdef\@allDefinedRibbons{}%
+  \gdef\@allDefinedBoxes{}%
+  %
+  % Comma-separated lists of the left-positions and right-positions
+  % of block steps
+  \gdef\@blocks@left{}%
+  \gdef\@blocks@right{}%
+  \gdef\@blocks@state{}%
+  \gdef\@blocks@boxstate{}%
+  %
+  % Block steps in purgatory are those that will
+  % be in the proper list from the next row onwards.
+  \gdef\@blocksPurgatory@left{}%
+  \gdef\@blocksPurgatory@right{}%
+  %
+  % Existential boxes in purgatory are those that will
+  % be in the proper list from the next row onwards.
+  \gdef\@boxPurgatory{}%
+  %
+  % List of notches
+  \gdef\notchPositions{}%
+  %
+  % Process keys
+  \pgfqkeys{/ribbons/ribbonproof}{%
+    scale=1,start ribbons={},%
+    extra height=0,start boxes={},#1}%
+  %
+  % Nudge vertical cursor up a bit. This is a hack to 
+  % counteract the fact that the first row does not have
+  % any steps in it. Without this hack, the labels in 
+  % the first row would be printed too far down.
+  \setcounter{VCursor}{-\defaultStepHeight}%
+  \xdef\ribbons@stepheight{\defaultStepHeight}%
+  %
+  % Make the \\ command a synonym for \finishrow. The
+  % reason for this is mainly to exploit the syntax
+  % highlighting in AucTeX, which emphasises \\ commands.
+  \renewcommand\\{\finishrow}%
+  %
+  % Draw the picture "upside-down", with mm as the units
+  \begin{tikzpicture}[x=1mm,y=-1mm]
+    %
+    % Add the initial ribbons to the list of active 
+    % ribbons, and draw their labels
+    \@processStartRibbons
+    \@processStartBoxes
+    %
+    % Prepare the vertical cursor for the first
+    % proper row.
+    \setcounter{VCursor}{0}
+    %
+    % Finish this row, making it a shorter row than
+    % usual. 
+    \finishrow[\numexpr\ribbons@extraheight-\defaultStepHeight]
+}{%
+  \end{tikzpicture}%
+  %
+  % Undefine all the ribbons and boxes that were globally
+  % defined over the course of this picture.
+  \foreach\i in \@allDefinedRibbons{%
+    \undefine{RIB\i LEFT}%
+    \undefine{RIB\i RIGHT}%
+    \undefine{RIB\i VARWIDTH}%
+  }%
+  \foreach\i in \@allDefinedBoxes{%
+    \undefine{BOX\i LEFT}%
+    \undefine{BOX\i RIGHT}%
+    \undefine{BOX\i @color}%
+  }%
+}

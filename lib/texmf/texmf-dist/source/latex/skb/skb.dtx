@@ -1,0 +1,2775 @@
+% \CheckSum{0}
+% \iffalse
+%
+% skb.dtx
+%% Copyright (c) 2011 Sven van der Meer <sven@vandermeer.de>
+%%
+%% This work may be distributed  and/or modified under the conditions  of the
+%% LaTeX Project Public  License, either version  1.3 of this  license or (at
+%% your option) any later version.
+%% The latest version of this license is in
+%%    <http://www.latex-project.org/lppl.txt>
+%% and version 1.3  or later is  part of all  distributions of LaTeX  version
+%% 2005/12/01 or later.
+%%
+%% This work has the LPPL maintenance status `author-maintained'.
+%% 
+%% The Current Maintainer of this work is
+%%    Sven van der Meer <sven@vandermeer.de>
+%%
+%% This software is  provided 'as is',  without warranty of  any kind, either
+%% expressed  or  implied,  including,  but  not  limited  to,  the   implied
+%% warranties of merchantability and fitness for a particular purpose.
+%%
+%% This work consists of all files listed in MANIFEST.TXT.
+%%
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{skb}
+\usepackage{dirtree}
+\usepackage{etoolbox}
+\usepackage{textcomp}
+\usepackage{gensymb}
+\usepackage{wasysym}
+\usepackage{units}
+\usepackage{float}
+\usepackage{comment}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{colortbl}
+\usepackage{biblatex}
+\usepackage[x11names]{xcolor}
+\usepackage[colorlinks,linkcolor=Brown4,citecolor=SeaGreen4,urlcolor=RoyalBlue3]{hyperref}
+\usepackage[printonlyused]{acronym}
+
+\RecordChanges
+\makeindex
+\GetFileInfo{skb.sty}
+
+\IfFileExists{user-guide/user-guide.tex}{\skbconfig[root=user-guide/]{skb.dtx}}
+  {\IfFileExists{../doc/user-guide/user-guide.tex}{\skbconfig[root=../doc/user-guide/]{skb.dtx}}
+    {\IfFileExists{../doc/latex/skb/user-guide/user-guide.tex}{\skbconfig[root=../doc/latex/skb/user-guide/]{skb.dtx}}{}
+  }
+}
+\skbconfig[pub=,acr=database,bib=database]{skb.dtx}
+\skbbibtex
+
+\begin{document}
+  \IfFileExists{skb.dtx}{\DocInput{skb.dtx}}
+    {\IfFileExists{../source/skb.dtx}{\DocInput{../source/skb.dtx}}
+       {\IfFileExists{../../source/latex/skb/skb.dtx}{\DocInput{../../source/latex/skb/skb.dtx}}{}
+    }
+  }
+\end{document}
+%</driver>
+% \fi
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%^^A For Changes please see PDF (heading History) or HISTORY.TXT
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%
+%\title{The SKB package - Create and maintain%
+%       a repository for long-living documents}
+%
+%\author{Sven van der Meer}
+%
+%\date{2011-06-03 v0.52}
+%
+%\maketitle
+%
+%\begin{abstract}
+%  This package provides  macros that help  to build a  repository for
+%  long living  documents. It  focuses on  structure and  re-use of text, code,
+%  figures etc. The basic concept  is to first separate structure  from content
+%  (i.e. text about  a topic from  the structure it  is presented by)  and then
+%  separating the  content from  the actual  published document,  thus enabling
+%  easy re-use  of text  blocks in  different publications  (i.e. text  about a
+%  protocol in a short article about this  protocol as well as in a book  about
+%  many protocols); all without constantly copying or changing text. As a  side
+%  effect, using the document  classes provided, it hides  a lot of \LaTeX~from
+%  someone who just wants to write articles and books. 
+%\end{abstract}
+%
+%\tableofcontents
+%
+%\skbtitle{The SKB package - Create and maintain%
+%          a repository for long-living documents}
+%\skbauthor{Sven van der Meer, sven@vandermeer.de}
+%\skbsubject{LaTeX SKB}
+%\skbkeywords{SKB;LaTeX;Package}
+%
+%
+%\IfFileExists{user-guide/user-guide.tex}{\skbinput[from=pub]{user-guide-load}}
+%  {\IfFileExists{../doc/user-guide/user-guide.tex}{\skbinput[from=pub]{user-guide-load}}
+%    {\IfFileExists{../doc/latex/skb/user-guide/user-guide.tex}{\skbinput[from=pub]{user-guide-load}}{
+%      \section*{About this Document}
+%      \textbf{Note:} This PDF file was generated without the user guide.
+%    }
+%  }
+%}
+%
+%
+% \StopEventually{}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \setlength{\parindent}{0cm}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \section{Implementation: Kernel}
+%
+%    First we do announce the package.
+%    \begin{macrocode}
+%<*skbpackage>
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{skb}[2011/06/03 Sven's Knowledge Base - SKB for LaTeX v0.52]
+%    \end{macrocode}
+%
+%    Next we process the package's options. To do that, we define a new if 
+%    that indicates if we process slides with or without animation,
+%    and then we set that new if accordingly.
+%    \begin{macrocode}
+\newif\if@skbBeamerAnim
+\@skbBeamerAnimfalse
+\DeclareOption{beameranim}{\@skbBeamerAnimtrue}
+\DeclareOption{beamernoanim}{\@skbBeamerAnimfalse}
+\ProcessOptions\relax
+%    \end{macrocode}
+%
+% \subsection{Required Packages}
+%    Now we load a few packages that we need within the \skbacft{A3DS:SKB}. We use keyval
+%    to allow for options in macros, the listings package for all listings,
+%    dirtree to show tree structures similar to a directory tree, ifpdf 
+%    to establish whether we use \skbacft{ISO:PDF} or not, datetime to get the current date 
+%    and the versions package to allow for optional text. Note: some packages, 
+%    such as the package optional, are loaded at a later stage.
+%    \begin{macrocode}
+\RequirePackage{keyval}
+\RequirePackage{listings}
+\RequirePackage{dirtree}
+\RequirePackage{ifpdf}
+\RequirePackage{datetime}
+\RequirePackage{versions}
+%    \end{macrocode}
+%
+% \subsection{Conditiona/Optional Text Support}
+%    Now we set everything that we need to provide optional text. Basically, we
+%    want to distinguish between the following modes: text (normal text), slide
+%    (for slides), note (for slite annotations), anim (for animated slides,
+%    noanim (for non-animated slides) and memoir (if we use the memoir package).
+%
+%    We start with the memoir package. First we define a configuration value
+%    (used when loading the package optional) and a new if (telling us later 
+%    if memoir is loaded or not).
+%    \begin{macrocode}
+\def\skb@cfg@memoir{}
+\newif\ifSkbMemoirLoaded
+%    \end{macrocode}
+%
+%    Now we test for the memoir package. Note, if this package is loaded after the 
+%    \skbacft{A3DS:SKB}, this test and all following actions will fail. If the package is loaded,
+%    then we set the if to true, activate (include) the environment skbmodememoir 
+%    and set our configuration value to the string ", memoir". If the memoir 
+%    package is not loaded, then we set the if to false, deactivate (exclude) the 
+%    environment skbmodememoir and load the package booktabs (to provide the commands
+%    \cmd{\toprule} and \cmd{\bottomrule}.
+%    \begin{macrocode}
+\@ifclassloaded{memoir}
+  {\SkbMemoirLoadedtrue
+   \includeversion{skbmodememoir}
+   \def\skb@cfg@memoir{,memoir}}
+  {\SkbMemoirLoadedfalse
+   \excludeversion{skbmodememoir}
+   \RequirePackage{booktabs}}
+%    \end{macrocode}
+%
+%    Now we check for the style beamerarticle. We define an if, set its default value 
+%    to false and test for of the package is loaded (if so, we change the if to true).
+%    \begin{macrocode}
+\newif\ifSkbBeamerArticleLoaded
+\SkbBeamerArticleLoadedfalse
+\@ifpackageloaded{beamerarticle}{\SkbBeamerArticleLoadedtrue}{}
+%    \end{macrocode}
+%
+%    Now we check for the beamer package. e define an if, set its default value 
+%    to false and test for of the package is loaded (if so, we change the if to true).
+%    \begin{macrocode}
+\newif\ifSkbBeamerLoaded
+\SkbBeamerLoadedfalse
+\@ifclassloaded{beamer}{\SkbBeamerLoadedtrue}{}
+%    \end{macrocode}
+%
+%    Now we process the first optional text support. First, we define a configuration value 
+%    for beamer animations. If animations are requested (skb package option, see above),
+%    we set that value to the string ",anim" and activate (include) the environment skbmodeanim 
+%    and deactivate (exclude) the environment skbmodenoanim. If no-animation is requested 
+%    (skb package option, see above) or as default we set the value to the string ",noanim" and 
+%    deactivate (exclude) the environment skbmodeanim and activate (include) the environment 
+%    skbmodenoanim.
+%    \begin{macrocode}
+\def\skb@cfg@beameranim{}
+\if@skbBeamerAnim
+  \def\skb@cfg@beameranim{,anim}
+  \excludeversion{skbmodenoanim}
+  \includeversion{skbmodeanim}
+\else
+  \def\skb@cfg@beameranim{,noanim}
+  \excludeversion{skbmodeanim}
+  \includeversion{skbmodenoanim}
+\fi
+%    \end{macrocode}
+%
+%    Now we are ready to provide for all other optional text support. The code configures the environments 
+%    skbmodetext, skbmodenote and skbmodeslide and loads the optional package depending if we have the 
+%    beamer package loaded or have the package beamerarticle loaded or have none of the two packages loaded.
+%    The environments (package versions) are excluded or included accordingly. The package optional is loaded 
+%    with the respective option activated (text, note or slide) and using the two configuration values we have 
+%    defined above (these values are either empty having no effect or contain the option to be included).
+%    \begin{macrocode}
+\ifSkbBeamerLoaded
+  \excludeversion{skbmodetext}
+  \excludeversion{skbmodenote}
+  \includeversion{skbmodeslide}
+  \RequirePackage[slide\skb@cfg@memoir\skb@cfg@beameranim]{optional}
+\else\ifSkbBeamerArticleLoaded
+  \excludeversion{skbmodetext}
+  \includeversion{skbmodenote}
+  \excludeversion{skbmodeslide}
+  \RequirePackage[note\skb@cfg@memoir\skb@cfg@beameranim]{optional}
+\else
+  \includeversion{skbmodetext}
+  \excludeversion{skbmodenote}
+  \excludeversion{skbmodeslide}
+  \RequirePackage[text\skb@cfg@memoir\skb@cfg@beameranim]{optional}
+\fi\fi
+%    \end{macrocode}
+%
+%
+% \subsection{Provide Command}
+%    \DescribeMacro{\BibTeX}
+%    \DescribeMacro{\DescribeMacro}
+%    \DescribeMacro{\cmdprint}
+%    \DescribeMacro{\cmd}
+%    The \skbacft{A3DS:SKB} provides for a few commands that the documentation (and maybe your documents as well)
+%    expect to be available. The first two are for typesetting SKB and BibTeX, the rest are simply
+%    usefull.
+%    \begin{macrocode}
+\providecommand{\BibTeX}{{\scshape Bib}\TeX}
+\providecommand{\DescribeMacro}[1]{\relax}
+\providecommand{\cmdprint}[1]{\texttt{\string#1}}
+\providecommand{\cmd}[1]{\cmdprint{#1}}%
+%    \end{macrocode}
+%
+%
+% \subsection{Macro Redefinitions}
+%    The \skbacft{A3DS:SKB} documentation uses the package dirtree and we want to have some of its default settings
+%    changed. For the comments, the default configuration we want is an small, italic serif font in blue; and
+%    for the style part we want a type writer font in black.
+%    \begin{macrocode}
+\renewcommand*\DTstylecomment{\itshape\sffamily\color{blue}\small}
+\renewcommand*\DTstyle{\ttfamily\textcolor{black}}
+%    \end{macrocode}
+%
+%
+% \subsection{At End of Document}
+%
+%    Last not least, we define what should happen at the end of the processing of the input 
+%    document. At them moment, we call \cmd{\skbpdfinfo} to set \skbacft{ISO:PDF} meta information and 
+%    \cmd{\skboptionsused} to print out the change log and current set of \skbacft{A3DS:SKB} configuration 
+%    options.
+%    \begin{macrocode}
+\AtEndDocument{
+  \skbpdfinfo
+  \skboptionsused
+}
+%    \end{macrocode}
+%
+%
+% \subsection{Package Configuration}
+%    The basic idea of the \skbacft{A3DS:SKB} is that different parts of a document (figures, slides,
+%    repository, published documents) reside in different folders. So the main configuration 
+%    of the \skbacft{A3DS:SKB} is to provide macros to set and get these folders and to load files from them.
+%
+%    To simplify coding, we introduce some macros that handle configuration information.
+%    These macros will be used by the \skbacft{A3DS:SKB} package to define, set and get configuration 
+%    information. The macros also store the origin of changes to the configuration information.
+%
+%    \DescribeMacro{\skb@tmp}
+%    This variable is used to temporarily store macros and strings. The value can change anytime
+%    a new \skbacft{A3DS:SKB} macro is called.
+%    \begin{macrocode}
+\newcommand{\skb@tmp}{}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@cfg@origlast}
+%    Is used to store the last location (second argument of \cmd{\skbconfig}) were any configuration
+%    information has been changed. The currently possible locations are \skbem[code]{skb.sty}
+%    for default values, \skbem[code]{skb.cfg} for the general configuration file,
+%    \skbem[code]{skblocal.cfg} for the local configuration file and \skbem[code]{skbconfig}
+%    when the macro \cmd{\skbconfig} was called.
+%    \begin{macrocode}
+\newcommand{\skb@cfg@origlast}{skb.sty}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@defCfgVars}
+%    This macro is used to define new configuration information. It defines two new macros, one for the 
+%    name of the configuration information and one for storing a change log. The first argument is the 
+%    name to be used and the second argument the default initialisation. For instance, to add the 
+%    configuration information for the root path with the default value `/doc' call
+%    \begin{lstlisting}[style=generic,language=TeX,gobble=2]
+% \skb@defCfgVars{root}{/doc}
+%    \end{lstlisting}
+%    \begin{macrocode}
+\newcommand{\skb@defCfgVars}[2]{
+  \@namedef{skb@cfg@var@#1}{#2}
+  \@namedef{skb@cfg@orig@#1}{skb.sty}
+}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@setCfgVars}
+%    Alter configuration information and append the location from where its called (second argument of \cmd{\skbconfig}
+%    taken from \cmd{skb@cfg@origlast}) to the change log.
+%    \begin{macrocode}
+\newcommand{\skb@setCfgVars}[2]{
+  \@namedef{skb@cfg@var@#1}{#2}
+  \expandafter\protected@edef\csname skb@cfg@orig@#1\endcsname%
+    {\csname skb@cfg@orig@#1\endcsname,\space \skb@cfg@origlast}%
+}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@getCfgVars}
+%    This macro provides access to configuration values. It is used everywhere in the \skbacft{A3DS:SKB} to retrieve 
+%    configuration values.
+%    \begin{macrocode}
+\newcommand{\skb@getCfgVars}[1]{%
+  \csname skb@cfg@var@#1\endcsname%
+}%
+%    \end{macrocode}
+%
+%    Now we use \cmd{\skb@defCfgVars} to initialise all configuration values the \skbacft{A3DS:SKB} uses.
+%
+%    \DescribeMacro{\skb@cfg@var@root}
+%    The first one is the root directory. Everything that the \skbacft{A3DS:SKB} processes should be located
+%    below the root. The \skbacft{A3DS:SKB} can currently not handle inputs from directories outside the root
+%    hierarchy (Note: one can call \cmd{\skbconfig} anytime to change the root directory, but be carefull
+%    with potential side effects!). The default value for the root directory is \skbem[code]{/doc}.
+%    \begin{macrocode}
+\skb@defCfgVars{root}{/doc}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@cfg@var@acr}
+%    \DescribeMacro{\skb@cfg@var@acrfile}
+%    These two values define the directory and the file name for the acronym database.
+%    The \skbacft{A3DS:SKB} uses the \skbem[code]{acronym} package and the two macros detail the directory
+%    (\skbem[code]{acr}) and the file (\skbem[code]{acrfile}) where the acronyms can be found.
+%    The default for the directory is \skbem[code]{database/latex} and the default
+%    for the file is \skbem[code]{acronym}.
+%    \begin{macrocode}
+\skb@defCfgVars{acr}{database/latex}
+\skb@defCfgVars{acrfile}{acronyms}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@cfg@var@bib}
+%    \DescribeMacro{\skb@cfg@var@bibfile}
+%    These two values define the directory and the file name for the \BibTeX~database.
+%    The two macros detail the directory (\skbem[code]{bib}) and the main file (\skbem[code]{bibfile})
+%    where bibliographic information can be found.
+%    The default for the directory is \skbem[code]{database/bibtex} and the default for the 
+%    file is \skbem[code]{bibliography.tex}.
+%    \begin{macrocode}
+\skb@defCfgVars{bib}{database/bibtex}
+\skb@defCfgVars{bibfile}{bibliography.tex}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@cfg@var@rep}
+%    This value points to the \skbem[code]{repository} directory. The default value is \skbem[code]{repository}.
+%    \begin{macrocode}
+\skb@defCfgVars{rep}{repository}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@cfg@var@pub}
+%    This value points to the folder with the published documents. The default value is \skbem[code]{publish}.
+%    \begin{macrocode}
+\skb@defCfgVars{pub}{publish}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@cfg@var@fig}
+%    This value points to the directory for figures. The default value is \skbem[code]{figures}.
+%    \begin{macrocode}
+\skb@defCfgVars{fig}{figures}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@cfg@var@sli}
+%    This value points to the directory for slides. The default value is \skbem[code]{transparencies}.
+%    \begin{macrocode}
+\skb@defCfgVars{sli}{transparencies}
+%    \end{macrocode}
+%
+%
+% \subsection{Generic Input Macro}
+%    \DescribeMacro{\skb@input@doife}
+%    \cmd{\skb@input@doife} is the generic input macro. It expects four arguments.
+%    The first argument is the \skbacft{A3DS:SKB} macro that should be used to input a file.
+%    The second argument is the actual file to be loaded, without file extension.
+%    The third argument is the file extension to be used.
+%    The fours argument is plain text that should be added to the help message in 
+%    case an arror occured while loading the file.
+%    If the second and third argument are empty, we assume that the first argument
+%    already contains directory and file and file extension information.
+%    \begin{macrocode}
+\newcommand{\skb@input@doife}[4]{%
+  \def\filearg{#2}
+  \ifx\filearg\empty%
+    \edef\intfile{\csname #1\endcsname}%
+  \else%
+    \edef\intfile{\csname #1\endcsname{#2}#3}%
+  \fi%
+  \InputIfFileExists{\intfile}{}%
+    {\PackageError{skb}%
+      {file not found: \intfile}%
+      {I did not find the requested file #4,%
+       \MessageBreak please check: \intfile%
+       \MessageBreak <return> to continue, no file loaded}%
+    }%
+}
+%    \end{macrocode}
+%
+%
+% \subsection{Kernel support for skbinput}
+%    This is the actual core functionality of the \skbacft{A3DS:SKB} package: flexibly load files from 
+%    various pre-defined locations (folders). We start with a few macros that we can use 
+%    later to test options using the package keyval.
+%
+%    \DescribeMacro{\skb@input@var@rep}
+%    This macro represents the string "rep", which will be later used to test for macro options, for instance in \cmd{\skbinput}.
+%    \begin{macrocode}
+\def\skb@input@var@rep{rep}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@input@var@pub}
+%    This macro represents the string "pub", which will be later used to test for macro options, for instance in \cmd{\skbinput}.
+%    \begin{macrocode}
+\def\skb@input@var@pub{pub}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@input@var@fig}
+%    This macro represents the string "fig", which will be later used to test for macro options, for instance in \cmd{\skbinput}.
+%    \begin{macrocode}
+\def\skb@input@var@fig{fig}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@input@var@sli}
+%    This macro represents the string "sli", which will be later used to test for macro options, for instance in \cmd{\skbinput}.
+%    \begin{macrocode}
+\def\skb@input@var@sli{sli}
+%    \end{macrocode}
+%
+%    The next set of macros will load files from various supported folders. All of them behave identical:
+%    they expect argument 1 being the reuqest file and use \cmd{\InputIfFileExists} to check whether this
+%    file exists. If so, they simply input the file using \cmd{\input}. If not, they use \cmd{\PackageError} to 
+%    throw an error with a help message, showing the requested directory and file.
+%    The extention .tex is automatically added to the argument, which in turn should only contain the path and the 
+%    basename of the file.
+%
+%    \DescribeMacro{\skb@input@doroot}
+%    Load a given .tex file from the root directory.
+%    \begin{macrocode}
+\newcommand{\skb@input@doroot}[1]{%
+  \def\intarg{#1}
+  \skb@input@doife{skbfileroot}{\intarg}{.tex}{in given location}
+}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@input@dorep}
+%    Load a given .tex file from the repository.
+%    \begin{macrocode}
+\newcommand{\skb@input@dorep}[1]{%
+  \def\intarg{#1}
+  \skb@input@doife{skbfilerep}{\intarg}{.tex}{in the repository}
+}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@input@dopub}
+%    Load a given .tex file from the directory with the published documents.
+%    \begin{macrocode}
+\newcommand{\skb@input@dopub}[1]{%
+  \def\intarg{#1}
+  \skb@input@doife{skbfilepub}{\intarg}{.tex}{in the published document folder}
+}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@input@dofig}
+%    Load a given .tex file from the figure directory.
+%    \begin{macrocode}
+\newcommand{\skb@input@dofig}[1]{%
+  \def\intarg{#1}
+  \skb@input@doife{skbfilefig}{\intarg}{.tex}{in the figure folder}
+}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skb@input@dosli}
+%    Load a given .tex file from the slide directory.
+%    \begin{macrocode}
+\newcommand{\skb@input@dosli}[1]{%
+  \def\intarg{#1}
+  \skb@input@doife{skbfilesli}{\intarg}{.tex}{in the slide folder}
+}
+%    \end{macrocode}
+%
+%
+%    \DescribeMacro{\skb@input@call}
+%    \DescribeMacro{\skb@input@set}
+%    These two macros are used to load files. \cmd{\skb@input@call} will point to the currently requested 
+%    load macro (see above).
+%    \cmd{\skb@input@set} sets the default load option in \cmd{\skb@input@call} to \cmd{\skb@input@doroot}. That 
+%    means if no option is given for an input directory, then the \skbacft{A3DS:SKB} root directory will be used.
+%    \begin{macrocode}
+\def\skb@input@call{}
+\newcommand\skb@input@set{%
+  \gdef\skb@input@call{\skb@input@doroot}
+}
+%    \end{macrocode}
+%
+%
+%  \section{Implementation: Configuring the \skbacft{A3DS:SKB}}
+%    \subsection{Changing Configuration: skbconfig}
+%      \subsubsection{The Macro Options}
+%        The macro provides one option per \skbacft{A3DS:SKB} configuration value. Each option expects
+%        one paramter; the new value. The options are 
+%        \skbem[code]{root} (for the root directory),
+%        \skbem[code]{acr} (for the acronym directory),
+%        \skbem[code]{acrfile} (for the acronym file),
+%        \skbem[code]{bib} (for the bibtex directory),
+%        \skbem[code]{bibfile} (for the bibtex file),
+%        \skbem[code]{rep} (for the repository directory),
+%        \skbem[code]{pub} (for the directory with the published documents) and
+%        \skbem[code]{sli} (for the directory with slides).
+%    \begin{macrocode}
+\define@key{skbconfig}{root}[]{\skb@setCfgVars{root}{#1}}
+\define@key{skbconfig}{acr}[]{\skb@setCfgVars{acr}{#1}}
+\define@key{skbconfig}{acrfile}[]{\skb@setCfgVars{acrfile}{#1}}
+\define@key{skbconfig}{bib}[]{\skb@setCfgVars{bib}{#1}}
+\define@key{skbconfig}{bibfile}[]{\skb@setCfgVars{bibfile}{#1}}
+\define@key{skbconfig}{rep}[]{\skb@setCfgVars{rep}{#1}}
+\define@key{skbconfig}{pub}[]{\skb@setCfgVars{pub}{#1}}
+\define@key{skbconfig}{fig}[]{\skb@setCfgVars{fig}{#1}}
+\define@key{skbconfig}{sli}[]{\skb@setCfgVars{sli}{#1}}
+%    \end{macrocode}
+%
+%      \subsubsection{The Macro}
+%        \DescribeMacro{\skbconfig}
+%        This macro allows to change the main directory and path information for the \skbacft{A3DS:SKB}.
+%        It reads the provided options and changes the requested values in the \skbacft{A3DS:SKB}.
+%        The macro takes one argument which will set the origin of the configuration change. If this 
+%        argument is empty, the origin will be set to \skbem[code]{skbconfig}.
+%    \begin{macrocode}
+\newcommand{\skbconfig}[2][]{
+  \def\intarg{#2}
+%    \end{macrocode}
+%        If no second argument is given, then set \cmd{\skb@cfg@origlast} to the string 
+%        "skbconfig" (this macro's name) otherwise use the second argument to set 
+%        \cmd{\skb@cfg@origlast}. In both cases, print out a general warning about the change of 
+%        configuration values for later trace or debugging.
+%    \begin{macrocode}
+  \ifx\intarg\empty
+    \renewcommand{\skb@cfg@origlast}{skbconfig}
+    \PackageWarning{skb}{load options overwritten by skbconfig}
+  \else
+    \renewcommand{\skb@cfg@origlast}{#2}
+    \PackageWarning{skb}{load options overwritten by #2}
+  \fi
+%    \end{macrocode}
+%        Now use the keyval package to process the options. They will set the respective 
+%        configuration values, so there is nothing else to do here.
+%    \begin{macrocode}
+  \setkeys{skbconfig}{#1}
+}
+%    \end{macrocode}
+%
+%
+%    \subsection{Changing Configuration: skb.cfg and skblocal.cfg}
+%      The \skbacft{A3DS:SKB} can also be configured using external configuration files. Two files will be loaded if they exist:
+%      \begin{skbnotelist}
+%        \item \skbem[code]{skb.cfg} -- Should be used with the installed package in your 
+%              \TeX/\LaTeX~distribution. If it exists, it will overwrite the default options
+%              for directories and paths.
+%        \item \skbem[code]{skblocal.cfg} -- Should be used in your local styles/template
+%              directory. If it exsits, it will overwrite the default options as well as the 
+%              options loaded with \skbem[code]{skb.cfg}.
+%      \end{skbnotelist}
+%      We use \cmd{\InputIfFileExists} to test if the configuration file exist. If true, we load the 
+%      configuration file and print out a general warning for later trace or debugging. If not, we 
+%      simply do nothing.
+%    \begin{macrocode}
+\InputIfFileExists{skb.cfg}{%
+  \PackageWarning{skb}{load options from skb.cfg}
+}{}
+\InputIfFileExists{skblocal.cfg}{%
+  \PackageWarning{skb}{load options from skblocal.cfg}
+}{}
+%    \end{macrocode}
+%
+%
+%    \subsection{Viewing Configuration: skboptionsused}
+%      \DescribeMacro{\skboptionsused}
+%      This macro can be used to print out a message (as package warning), which contains 
+%      the change log and the currently used value for all \skbacft{A3DS:SKB} configuration values.
+%    \begin{macrocode}
+\newcommand{\skboptionsused}{
+  \PackageWarningNoLine{skb}{%
+    Options last changed by: \skb@cfg@origlast \MessageBreak
+    Change log: \MessageBreak
+    - root = \skb@cfg@orig@root \MessageBreak
+    - acr = \skb@cfg@orig@acr \MessageBreak
+    - acrfile = \skb@cfg@orig@acrfile \MessageBreak
+    - bib = \skb@cfg@orig@bib \MessageBreak
+    - bibfile = \skb@cfg@orig@bibfile \MessageBreak
+    - rep = \skb@cfg@orig@rep \MessageBreak
+    - pub = \skb@cfg@orig@pub \MessageBreak
+    - fig = \skb@cfg@orig@fig \MessageBreak
+    - sli = \skb@cfg@orig@sli \MessageBreak
+    Last set Path/File Options: \MessageBreak
+    - file root = \skbfileroot{} \MessageBreak
+    - path root = \skbpathroot \MessageBreak
+    - file acr = \skbfileacr \MessageBreak
+    - file bib = \skbfilebib \MessageBreak
+    - path bib = \skbpathbib \MessageBreak
+    - path rep = \skbfilerep{} \MessageBreak
+    - path pub = \skbfilepub{} \MessageBreak
+    - path fig = \skbfilefig{} \MessageBreak
+    - path sli = \skbfilesli{}
+  }
+}
+%    \end{macrocode}
+%
+%
+%  \section{Implementation: Files, Figures and Slides}
+%
+%    \subsection{Declaring Headings: skbheading}
+%      \DescribeMacro{\skbheading}
+%      This macro can be used everywhere to declare a new heading and let the \skbacft{A3DS:SKB} decide which
+%      document level to use. The actual document level must be declared in the loading file using
+%      \cmd{\skbinput} with the option \skbem[code]{level}, otherwise this command will have no effect.
+%    \begin{macrocode}
+\newcommand{\skbheading}[1]{
+  \ifx\empty\skb@inputLevel
+    #1
+  \else%
+    \skb@inputLevel{#1}%  
+  \fi
+}
+%    \end{macrocode}
+%
+%    \subsection{Loading \TeX~files: skbinput}
+%      \subsubsection{Macro Options}
+%      \DescribeMacro{skbinput: opt from}
+%        The option \skbem[code]{from} is used to point to one of the following \skbacft{A3DS:SKB} directories:
+%        the repository (\skbem[code]{from=rep}),
+%        the folder with the published documents (\skbem[code]{from=pub}),
+%        the figure folder (\skbem[code]{from=fig}) or
+%        the slide folder (\skbem[code]{from=sli}).
+%        The option is optional, but when used must give one of the those values.
+%        The \skbacft{A3DS:SKB} will throw an error otherwise. The implementation works as follows: if the 
+%        option is used, its paramter is evaluated. Depending on which \skbacft{A3DS:SKB} directories is 
+%        requested, the value \cmd{\skb@input@call} is set to point to the respective load 
+%        load macro. For instance, if the requested directory is the repository (\skbem[code]{from=rep})
+%        then \cmd{\skb@input@call} will be pointed to \cmd{\skb@input@dorep}.
+%    \begin{macrocode}
+\define@key{skbinput}{from}[]{%
+  \def\intarg{#1}
+  \ifx\skb@input@var@rep\intarg
+    \gdef\skb@input@call{\skb@input@dorep}
+  \else\ifx\skb@input@var@pub\intarg
+    \gdef\skb@input@call{\skb@input@dopub}
+  \else\ifx\skb@input@var@fig\intarg
+    \gdef\skb@input@call{\skb@input@dofig}
+  \else\ifx\skb@input@var@sli\intarg
+    \gdef\skb@input@call{\skb@input@dosli}
+  \else
+    \PackageError{skb}%
+      {Value for option \@tempa\space not supported: \intarg}%
+      {I do not know the value \intarg\space for the option \@tempa.%
+       \MessageBreak Please use either "rep", "pub", "fig" or "sli".%
+       \MessageBreak <return> to continue, no file will be loaded}
+  \fi\fi\fi\fi
+}
+%    \end{macrocode}
+%
+%      \DescribeMacro{skbinput: opt level}
+%      The option \skbem[code]{level} is used to define the document level to 
+%      be used for the next occurance of \cmd{\skbheading}. Supported are all 
+%      document levels known to \LaTeX~and no check is done whether the currently 
+%      used document class supports them or not (for instance, the article class 
+%      does not support the document level chapter, however, memoir supports it even
+%      in article mode). The supported paramters for this option are: 
+%      \skbem[code]{book} (memoir pacakge),
+%      \skbem[code]{part} (memoir pacakge),
+%      \skbem[code]{title} (base \LaTeX~classes),
+%      \skbem[code]{chapter} (\LaTeX~book class),
+%      \skbem[code]{section} (base \LaTeX~classes),
+%      \skbem[code]{subsection} (base \LaTeX~classes) and
+%      \skbem[code]{subsubsection} (base \LaTeX~classes).
+%
+%      The option is optional, but when used must give one of the above described values.
+%      The package will throw an error otherwise.
+%
+%      We start be defining the macros we use later for testing the option.
+%      This might be a slightly awkward way to do it, I am still looking into
+%      optimising this code. Anyway, we define everything we need for book, part, title,
+%      chapter, section, subsection and subsubsection.
+%    \begin{macrocode}
+\def\skb@inputLevelBook{book}
+\def\skb@inputLevelPart{part}
+\def\skb@inputLevelTitle{title}
+\def\skb@inputLevelChapter{chapter}
+\def\skb@inputLevelSection{section}
+\def\skb@inputLevelSubSection{subsection}
+\def\skb@inputLevelSubSubSection{subsubsection}
+%    \end{macrocode}
+%
+%      Now we define a macro that will be used to point to the selected input level (\cmd{\skb@inputLevel})
+%      and a macro that will be used to set the default input level to be empty (i.e. do nothing, \cmd{\skb@SetInputLevel}).
+%      \begin{macrocode}
+\def\skb@inputLevel{}
+\newcommand\skb@SetInputLevel{\gdef\skb@inputLevel{}}
+%    \end{macrocode}
+%
+%      And here is the actual definition of the option \skbem[code]{level}. For each supported parameter (introduced and defined 
+%      above) we test if it was provided calling the option (put into \cmd{\\intarg} on start) and if so we point \cmd{\skb@inputLevel}
+%      to the \LaTeX~macro realising that document level. For instance, if the requested level is subsection we point \cmd{\skb@inputLevel}
+%      to the \LaTeX~macro \cmd{\subsection}. That means we can later simply call \cmd{\skb@inputLevel} to instruct \LaTeX~to realise the 
+%      requested document level. In case the parameter is not supported, the option will throw an error along with a help message.
+%    \begin{macrocode}
+\define@key{skbinput}{level}[]{%
+  \def\intarg{#1}
+  \ifx\skb@inputLevelBook\intarg
+    \let\skb@inputLevel=\book
+  \else\ifx\skb@inputLevelPart\intarg
+    \let\skb@inputLevel=\part
+  \else\ifx\skb@inputLevelTitle\intarg
+    \let\skb@inputLevel=\title
+  \else\ifx\skb@inputLevelChapter\intarg
+    \let\skb@inputLevel=\chapter
+  \else\ifx\skb@inputLevelSection\intarg
+    \let\skb@inputLevel=\section
+  \else\ifx\skb@inputLevelSubSection\intarg
+    \let\skb@inputLevel=\subsection
+  \else\ifx\skb@inputLevelSubSubSection\intarg
+    \let\skb@inputLevel=\subsubsection
+  \else
+    \PackageError{skb}%
+      {Value for option \@tempa\space not supported: \intarg}%
+      {I do not know the value \intarg\space for the option \@tempa.%
+       \MessageBreak Please use only: book, part, title, chapter,%
+       \MessageBreak section, subsection or subsubsection.%
+       \MessageBreak <return> to continue, no level will be set and heading is ignored}
+   \fi\fi\fi\fi\fi\fi\fi
+}
+%    \end{macrocode}
+%
+%      \subsubsection{The Macro}
+%      \DescribeMacro{\skbinput}
+%       This macro will load a .tex file from the root directory or from an \skbacft{A3DS:SKB} known directory (if option \skbem[code]{from} is applied).
+%       It will also configure the document level macro for the next use of \cmd{\skbjeading}, if the option \skbem[code]{level} is applied.
+%       If \skbem[code]{level} is not used, then \cmd{\skbheading} will have no effect. The macro first sets the input level to be empty (\cmd{\skb@input@set})
+%       and the input macro to the default value (\cmd{\skb@input@set}). The it processes the options (using the keyval pacakge) and finally calls
+%       \cmd{\skb@input@call} to realise the load of the requested file.
+%    \begin{macrocode}
+\newcommand\skbinput[2][]{%
+  \skb@input@set
+  \skb@SetInputLevel
+  \setkeys{skbinput}{#1}
+  \skb@input@call{#2}
+}
+%    \end{macrocode}
+%
+%
+%    \subsection{Loading Figures: skbfigure}
+%      \subsubsection{Macro Options}
+%      This macro supportes a number of options. To be able to test for the applied options, we first define a few macros 
+%      that will be used by \cmd{\skbfigure} to realise the requested figure input. We define one macro per option supported.
+%    \begin{macrocode}
+\def\skb@FigureOptWidth{}
+\def\skb@FigureOptHeight{}
+\def\skb@FigureOptCenter{}
+\def\skb@FigureOptFigure{}
+\def\skb@FigureOptPosition{}
+\def\skb@FigureOptCaption{}
+\def\skb@FigureOptLabel{}
+\def\skb@FigureOptMultiinclide{}
+%    \end{macrocode}
+%
+%      To be able to reset all of these macros before processing a figure, we define a reset macro.
+%    \begin{macrocode}
+\newcommand{\skb@figureOptReset}{
+  \gdef\skb@FigureOptWidth{}
+  \gdef\skb@FigureOptHeight{}
+  \gdef\skb@FigureOptCenter{}
+  \gdef\skb@FigureOptFigure{}
+  \gdef\skb@FigureOptPosition{}
+  \gdef\skb@FigureOptCaption{}
+  \gdef\skb@FigureOptLabel{}
+  \gdef\skb@FigureOptMultiinclide{}
+}
+%    \end{macrocode}
+%
+%      Now we define all options for \cmd{\skbfigure}. All options work the same way: they either take the parameter given and put it into 
+%      the corresponding macro we defined above or simply set the corresponding macro to true. This way we can test these corresponding macros
+%      for being empty (default) or not and then decide how to process the figure input.
+%
+%      \DescribeMacro{skbfigure opt width}
+%      The first one is called \skbem[code]{width} used  for the width of \cmd{\resizebox} and \cmd{includegraphics}.
+%    \begin{macrocode}
+\define@key{skbfigures}{width}[]{%
+  \gdef\skb@FigureOptWidth{#1}
+}
+%    \end{macrocode}
+%
+%      \DescribeMacro{skbfigure opt height}
+%      The option height is used  for the height of \cmd{\resizebox} and \cmd{includegraphics}.
+%    \begin{macrocode}
+\define@key{skbfigures}{height}[]{%
+  \gdef\skb@FigureOptHeight{#1}
+}
+%    \end{macrocode}
+%
+%      \DescribeMacro{skbfigure opt center}
+%      The option center is used to trigger the center environment (so it only needs to set true).
+%    \begin{macrocode}
+\define@key{skbfigures}{center}[true]{%
+  \gdef\skb@FigureOptCenter{true}
+}
+%    \end{macrocode}
+%
+%      \DescribeMacro{skbfigure opt figure}
+%      The option figure is used to trigger the figure environment (so it only needs to set true).
+%    \begin{macrocode}
+\define@key{skbfigures}{figure}[true]{%
+  \gdef\skb@FigureOptFigure{true}
+}
+%    \end{macrocode}
+%
+%      \DescribeMacro{skbfigure opt position}
+%      The option position is used to fix the position when figure environment is used
+%    \begin{macrocode}
+\define@key{skbfigures}{position}[]{%
+  \gdef\skb@FigureOptPosition{\begin{figure}[#1]}
+}
+%    \end{macrocode}
+%
+%      \DescribeMacro{skbfigure opt caption}
+%      The option caption is used to define the caption of the figure used as \cmd{\caption}
+%    \begin{macrocode}
+\define@key{skbfigures}{caption}[]{%
+  \gdef\skb@FigureOptCaption{\caption{#1}}
+}
+%    \end{macrocode}
+%
+%      \DescribeMacro{skbfigure opt label}
+%      The option label is used to define the label of the figure used as \cmd{\label}
+%    \begin{macrocode}
+\define@key{skbfigures}{label}[]{%
+  \gdef\skb@FigureOptLabel{\label{fig:#1}}
+}
+%    \end{macrocode}
+%
+%      \DescribeMacro{skbfigure opt multiinclude}
+%      The option multiinclude is a special option to use \cmd{\multiinclude}, automatically deactivates all other options
+%    \begin{macrocode}
+\define@key{skbfigures}{multiinclude}[]{%
+  \gdef\skb@FigureOptMultiinclide{#1}
+}
+%    \end{macrocode}
+%
+%
+%      \subsubsection{The Macro}
+%        \DescribeMacro{\skbfigure}
+%        \cmd{\skbfigure} itself expects options (processed using keyval) and the actual file to be included.
+%        The file name should start at the figure root directory.
+%    \begin{macrocode}
+\newcommand{\skbfigure}[2][]{
+%    \end{macrocode}
+%    First, we call our reset function and then use keyval to process the options.
+%    \begin{macrocode}
+  \skb@figureOptReset
+  \setkeys{skbfigures}{#1}%
+
+%    \end{macrocode}
+%        Now we process the options figure and position to decide if and how to use the figure environment. If the figure option has been used, we
+%        test if the position option has been used as well. If figure and position have been used, we
+%        call \cmd{\skb@FigureOptPosition}, which expands to \cmd{\begin{figure}[option]}. If only the figure
+%        option was used, we directly invoke \cmd{\begin{figure}}. 
+%    \begin{macrocode}
+  \ifx\skb@FigureOptFigure\empty\else
+    \ifx\skb@FigureOptPosition\empty
+      \begin{figure}
+    \else
+      \skb@FigureOptPosition
+    \fi
+  \fi
+%    \end{macrocode}
+%        Next is the center option. If it was used, we call \cmd{\begin{center}}.
+%    \begin{macrocode}
+  \ifx\skb@FigureOptCenter\empty\else\begin{center}\fi
+
+%    \end{macrocode}
+%        The core of the macro. If the option multiinclude was not used, we proceed load the figure 
+%        as we would usually do with \LaTeX. If multiinclude was used, then we simply call \cmd{\multiinclude}
+%        with the given overlay information, starting at number 0, using \skbacft{ISO:PDF} format and scaling everything to \cmd{\textwidth}.
+%    \begin{macrocode}
+  \ifx\skb@FigureOptMultiinclide\empty
+    \ifx\skb@FigureOptWidth\empty
+      \ifx\skb@FigureOptHeight\empty
+        \resizebox{!}{!}%
+        {\includegraphics[]%
+        {\skbfilefig{#2}}}
+      \else
+        \resizebox{!}{\skb@FigureOptHeight}%
+        {\includegraphics[height=\skb@FigureOptHeight]%
+        {\skbfilefig{#2}}}
+      \fi
+    \else
+      \ifx\skb@FigureOptHeight\empty
+        \resizebox{\skb@FigureOptWidth}{!}%
+        {\includegraphics[width=\skb@FigureOptWidth]%
+        {\skbfilefig{#2}}}
+      \else
+        \resizebox{\skb@FigureOptWidth}%
+                  {\skb@FigureOptHeight}%
+        {\includegraphics[%
+            width=\skb@FigureOptWidth,%
+            height=\skb@FigureOptHeight%]%
+        {\skbfilefig{#2}}}
+      \fi
+    \fi
+  \else
+    \resizebox{\textwidth}{!}%
+    {\multiinclude[<\skb@FigureOptMultiinclide>]%
+    [start=0,format=pdf,graphics={width=\textwidth}]%
+    {\skbfilefig{#2}}}
+  \fi
+
+%    \end{macrocode}
+%        If we did use the figure environment, then we check for given caption and label.
+%    \begin{macrocode}
+  \ifx\skb@FigureOptFigure\empty\else%
+    \skb@FigureOptCaption
+    \skb@FigureOptLabel
+  \fi%
+
+%    \end{macrocode}
+%        And finally we close the figure and center environments if we did open them earlier.
+%    \begin{macrocode}
+  \ifx\skb@FigureOptCenter\empty\else\end{center}\fi
+  \ifx\skb@FigureOptFigure\empty\else\end{figure}\fi
+}
+%    \end{macrocode}
+%
+%
+%    \subsection{Loading Slides: skbslide}
+%      This macro allows to load a (configurable) combination of \skbacft{ISO:PDF} slide and \LaTeX~
+%      annotation to be loaded in a single call.
+%
+%      \subsubsection{Some Extentions}
+%        \DescribeMacro{\skb@slides@callpath}
+%        The first is a macro that will maintain the current path and file for loading slides.
+%    \begin{macrocode}
+\def\skb@slides@callpath{}
+%    \end{macrocode}
+%        \DescribeMacro{\skb@slides@doslinote}
+%        The second is a macro to load annotations from the slide folder.
+%    \begin{macrocode}
+\newcommand{\skb@slides@doslinote}[1]{%
+  \def\intarg{#1}
+  \skb@input@doife{skbfilesli}{\intarg}{.tex}{in the slides folder}
+}
+%    \end{macrocode}
+%
+%      \subsubsection{Macro Options}
+%        \DescribeMacro{\skbslide opt slidefrom}
+%        The option \skbem[code]{slidefrom} is used to point to one of the following \skbacft{A3DS:SKB} directories:
+%        \skbem[code]{sli} (the folder for slides) or
+%        \skbem[code]{pub} (the folder for published documents) or
+%        \skbem[code]{rep} (the repository directory).
+%        The option is optional, but when used must give one of the above described values.
+%        The \skbacft{A3DS:SKB} will throw an error otherwise.
+%    \begin{macrocode}
+\define@key{skbslide}{slidefrom}[]{%
+  \def\intarg{#1}
+  \ifx\skb@input@var@sli\intarg
+    \let\skb@slides@callpath=\skbfilesli
+  \else\ifx\skb@input@var@pub\intarg
+    \let\skb@slides@callpath=\skbfilepub
+  \else\ifx\skb@input@var@rep\intarg
+    \let\skb@slides@callpath=\skbfilerep
+  \else
+    \PackageError{skb}%
+      {Value for option \@tempa\space not supported: \intarg}%
+      {I do not know the value \intarg\space for the option \@tempa.%
+       \MessageBreak Please use either "pub", "rep" or "sli".%
+       \MessageBreak <return> to continue, no file will be loaded}
+  \fi\fi\fi
+}
+%    \end{macrocode}
+%
+%        \DescribeMacro{\skbslide opt notefrom}
+%        The option \skbem[code]{notefrom} is used to point to one of the following \skbacft{A3DS:SKB} directories:
+%        \skbem[code]{sli} (the folder for slides) or
+%        \skbem[code]{pub} (the folder for published documents) or
+%        \skbem[code]{rep} (the repository directory).
+%        The option is optional, but when used must give one of the above described values.
+%        The \skbacft{A3DS:SKB} will throw an error otherwise.
+%    \begin{macrocode}
+\define@key{skbslide}{notefrom}[]{%
+  \def\intarg{#1}
+  \ifx\skb@input@var@sli\intarg
+    \gdef\skb@input@call{\skb@slides@doslinote}
+  \else\ifx\skb@input@var@pub\intarg
+    \gdef\skb@input@call{\skb@input@dopub}
+  \else\ifx\skb@input@var@rep\intarg
+    \gdef\skb@input@call{\skb@input@dorep}
+  \else
+    \PackageError{skb}%
+      {Value for option \@tempa\space not supported: \intarg}%
+      {I do not know the value \intarg\space for the option \@tempa.%
+       \MessageBreak Please use either "pub", "rep" or "sli".%
+       \MessageBreak <return> to continue, no file will be loaded}
+  \fi\fi\fi
+}
+%    \end{macrocode}
+%
+%        \DescribeMacro{\skbslide opt annotate}
+%        The option \skbem[code]{annotate} requests to load annotations for the slide. If not given, no 
+%        annotations will be loaded.
+%    \begin{macrocode}
+\def\skb@slides@loadnote{}
+\define@key{skbslide}{annotate}[true]{%
+  \gdef\skb@slides@loadnote{true}
+}
+%    \end{macrocode}
+%
+%
+%      \subsubsection{The Macro}
+%        \DescribeMacro{\skbslide}
+%        This macro will load the slide and annotation, depending on the options provided.
+%    \begin{macrocode}
+\newcommand\skbslide[3][]{%
+  \gdef\skb@slides@loadnote{}
+  \gdef\skb@input@call{\skb@slides@doslinote}
+  \let\skb@slides@callpath=\skbfilesli
+  \setkeys{skbslide}{#1}
+
+  \def\sl{#2}
+  \def\an{#3}
+
+  \ifx\sl\empty\else
+    \begin{figure}[!bh]
+      \resizebox{\textwidth}{!}{\includegraphics[width=\textwidth]{\skb@slides@callpath{#2}}}
+    \end{figure}
+  \fi
+
+  \ifx\skb@slides@loadnote\empty\else
+    \ifx\an\empty
+      \skb@input@call{#2}
+      \clearpage
+    \else
+      \skb@input@call{#3}
+      \clearpage
+    \fi
+  \fi
+}
+%    \end{macrocode}
+%
+%        \DescribeMacro{\skbslide}
+%        This simple macro can help to provide standardised citations on annotation pages.
+%    \begin{macrocode}
+\newcommand{\skbslidecite}[2]{\small Source \textit{#2}: \textit{#1} \normalsize}
+%    \end{macrocode}
+%
+%
+%  \section{Implementation: Filenames, Acronyms and References}
+%    \subsection{Path and File Names}
+%      These macros are used within the \skbacft{A3DS:SKB} to generate path and filenames for all known 
+%      directories and files. They basically provide user-level access to kernel-level processed
+%      configuration date.
+%      All path names, except root, are fully qualified from root.
+%      All filenames are fully qualified from root. Macros that expect an argument use that
+%      very argument as the reuqested filename to provide path and filename. 
+%
+%      \DescribeMacro{\skbpathroot}
+%      This macro returns the currently set root path.
+%    \begin{macrocode}
+\newcommand{\skbpathroot}{\skb@getCfgVars{root}}
+%    \end{macrocode}
+%      \DescribeMacro{\skbfileroot}
+%      This macro takes the given argument and prefixes the root path to it.
+%    \begin{macrocode}
+\newcommand{\skbfileroot}[1]{\skb@getCfgVars{root}/#1}
+%    \end{macrocode}
+%      \DescribeMacro{\skbfileacr}
+%      This macro returns the file of the acronym database.
+%    \begin{macrocode}
+\newcommand{\skbfileacr}{\skb@getCfgVars{root}/\skb@getCfgVars{acr}/\skb@getCfgVars{acrfile}}
+%    \end{macrocode}
+%      \DescribeMacro{\skbpathbib}
+%      This macro returns the path to the reference library.
+%    \begin{macrocode}
+\newcommand{\skbpathbib}{\skb@getCfgVars{root}/\skb@getCfgVars{bib}}
+%    \end{macrocode}
+%      \DescribeMacro{\skbfilebib}
+%      This macro returns the file that is used to load the reference library.
+%    \begin{macrocode}
+\newcommand{\skbfilebib}{\skb@getCfgVars{root}/\skb@getCfgVars{bib}/\skb@getCfgVars{bibfile}}
+%    \end{macrocode}
+%      \DescribeMacro{\skbfilerep}
+%      This macro takes the provided argument and prefixes the path to the repository to it.
+%    \begin{macrocode}
+\newcommand{\skbfilerep}[1]{\skb@getCfgVars{root}/\skb@getCfgVars{rep}/#1}
+%    \end{macrocode}
+%      \DescribeMacro{\skbfilepub}
+%      This macro takes the provided argument and prefixes the path to the published documents to it.
+%    \begin{macrocode}
+\newcommand{\skbfilepub}[1]{\skb@getCfgVars{root}/\skb@getCfgVars{pub}/#1}
+%    \end{macrocode}
+%      \DescribeMacro{\skbfilefig}
+%      This macro takes the provided argument and prefixes the path to the figures to it.
+%    \begin{macrocode}
+\newcommand{\skbfilefig}[1]{\skb@getCfgVars{root}/\skb@getCfgVars{fig}/#1}
+%    \end{macrocode}
+%      \DescribeMacro{\skbfilesli}
+%      This macro takes the provided argument and prefixes the path to the slides to it.
+%    \begin{macrocode}
+\newcommand{\skbfilesli}[1]{\skb@getCfgVars{root}/\skb@getCfgVars{sli}/#1}
+%    \end{macrocode}
+%
+%
+%    \subsection{Loading Acronyms}
+%      \DescribeMacro{\skbacronyms}
+%      This macro will load the acronym database. It should be used at the place in your document were you want 
+%      the list of acronyms to appear. If the file is not found, an error is thrown.
+%    \begin{macrocode}
+\newcommand{\skbacronyms}{%
+  \skb@input@doife{skbfileacr}{}{}{for acronym database}
+}
+%    \end{macrocode}
+%
+%    \subsection{Loading Reference Database}
+%      \DescribeMacro{\skbbibtex}
+%      This macro will load the reference database. It should be used before you start the actual document.
+%      If the file is not found, an error is thrown.
+%    \begin{macrocode}
+\newcommand{\skbbibtex}{%
+  \skb@input@doife{skbfilebib}{}{}{for bibtex database}
+}
+%    \end{macrocode}
+%
+%
+%
+%  \section{Implementation: Other useful Macros}
+%
+%    \subsection{Emphasising Text: skbem}
+%      \subsubsection{Macro Options}
+%        \DescribeMacro{skbem opt italic}
+%        This option will typset the given text for \cmd{\skbem} using italic font.
+%    \begin{macrocode}
+\def\skb@emCmd{}
+\define@key{skbem}{italic}[true]{%
+  \gdef\skb@emCmd{\textit}%
+}%
+%    \end{macrocode}
+%        \DescribeMacro{skbem opt bold}
+%        This option will typset the given text for \cmd{\skbem} using bold font.
+%    \begin{macrocode}
+\define@key{skbem}{bold}[true]{%
+  \gdef\skb@emCmd{\textbf}%
+}%
+%    \end{macrocode}
+%        \DescribeMacro{skbem opt code}
+%        This option will typset the given text for \cmd{\skbem} using the command \cmd{\skbcode} (see below).
+%    \begin{macrocode}
+\define@key{skbem}{code}[true]{%
+  \gdef\skb@emCmd{\skbcode}%
+}%
+%    \end{macrocode}
+%
+%      \subsubsection{The Macro}
+%        \DescribeMacro{\skbem}
+%        This macro helps to emphasise text in an explicit way (as compared to use font commands within
+%        the actual text). Simply call with the one of the option to emphasise text.
+%    \begin{macrocode}
+\newcommand{\skbem}[2][]{%
+  \gdef\skb@emCmd{}%
+  \setkeys{skbem}{#1}%
+  \skb@emCmd{#2}%
+}%
+%    \end{macrocode}
+%
+%    \subsection{Emphasising Text: skbcode}
+%      \DescribeMacro{\skbcode}
+%      This macro is a facade for calling \cmd{\lstinline} with basicstyle set to type writer font.
+%      It is used by \skbem[code]{skbem} with the option \skbem[code]{code} to call
+%      \cmd{\lstinline} but can also be called directly.
+%    \begin{macrocode}
+\newcommand{\skbcode}[1]{%
+  \lstinline[basicstyle=\ttfamily]{#1}%
+}%
+%    \end{macrocode}
+%
+%    \subsection{List Environments: skbnotelist and skbnoteenum}
+%      These environments simulate \cmd{\tightlist} from the memoir package.
+%      They work identical: call the environment itemize (for skbnotelist) or enumerate
+%      (for skbnoteenum) and set the two values to 0 (thus minimising the margin between items).
+%
+%      \DescribeMacro{\skbnotelist}
+%      New Environment skbnotelist to minimise the margin between list items.
+%    \begin{macrocode}
+\newenvironment{skbnotelist}
+  {\begin{itemize}
+   \ifSkbMemoirLoaded\else
+     \setlength{\parskip}{0cm}\setlength{\itemsep}{0cm}
+   \fi
+  }
+  {\end{itemize}}
+%    \end{macrocode}
+%
+%      \DescribeMacro{\skbnoteenum}
+%      New Environment skbnotelist to minimise the margin between list items.
+%    \begin{macrocode}
+\newenvironment{skbnoteenum}%
+  {\begin{enumerate}
+   \ifSkbMemoirLoaded\else
+     \setlength{\parskip}{0cm}\setlength{\itemsep}{0cm}
+   \fi
+  }
+  {\end{enumerate}}
+%    \end{macrocode}
+%
+%
+%    \subsection{Acronyms in Footnotes: skbacft}
+%      \DescribeMacro{\skbacft}
+%      This macro provides some functionality that the \skbem[code]{acronym} package does not offer: 
+%      introducing acronyms in a footnote (if they are used the first time) or simply use the short
+%      form. I found this is useful when writing books, where sometimes introducing acronym in the 
+%      normal text flow somehow disturbs that very flow.
+%    \begin{macrocode}
+\newcommand{\skbacft}[1]{%
+  \ifAC@dua
+     \ifAC@starred\acl*{#1}\else\acl{#1}\fi%
+  \else
+  \expandafter\ifx\csname ac@#1\endcsname\AC@used%
+    \acs{#1}%
+  \else
+    \acs{#1}\footnote{\acf{#1}}%
+    \fi
+  \fi}
+%    \end{macrocode}
+%
+%
+%    \subsection{PDF Meta Information: skbpdfinfo and more}
+%
+%      \DescribeMacro{\skbtitle}
+%      This macro allows to set text for the title of the generated \skbacft{ISO:PDF}.
+%    \begin{macrocode}
+\def\skb@TitleText{}
+\newcommand{\skbtitle}[1]{\gdef\skb@TitleText{#1}}
+%    \end{macrocode}
+%      \DescribeMacro{\skbauthor}
+%      This macro allows to set text for the author of the generated \skbacft{ISO:PDF}.
+%    \begin{macrocode}
+\def\skb@AuthorText{}
+\newcommand{\skbauthor}[1]{\gdef\skb@AuthorText{#1}}
+%    \end{macrocode}
+%      \DescribeMacro{\skbsubject}
+%      This macro allows to set text for the subject of the generated \skbacft{ISO:PDF}.
+%    \begin{macrocode}
+\def\skb@SubjectText{}
+\newcommand{\skbsubject}[1]{\gdef\skb@SubjectText{#1}}
+%    \end{macrocode}
+%      \DescribeMacro{\skbkeywords}
+%      This macro allows to set text for the keywords of the generated \skbacft{ISO:PDF}.
+%    \begin{macrocode}
+\def\skb@KeywordsText{}
+\newcommand{\skbkeywords}[1]{\gdef\skb@KeywordsText{#1}}
+%    \end{macrocode}
+%      \DescribeMacro{\skbpdfinfo}
+%      This macro will set the \skbacft{ISO:PDF} information in the generated \skbacft{ISO:PDF}. It first checks if 
+%      we are in \skbacft{ISO:PDF} mode, and then uses the information from \cmd{\skb@AuthorText},
+%      \cmd{\skb@TitleText} plus subject and keywords from above.
+%    \begin{macrocode}
+\newcommand{\skbpdfinfo}{%
+  \ifpdf
+    \pdfinfo{
+       /Author (\skb@AuthorText)
+       /Title  (\skb@TitleText)
+       /ModDate (D:\pdfdate)
+       /Subject (\skb@SubjectText)
+       /Keywords (\skb@KeywordsText)
+    }
+  \fi
+}
+%    \end{macrocode}
+%
+%
+%    \subsection{Listing Styles and Support}
+%      The \skbacft{A3DS:SKB} comes with a few pre-defined styles for the \skbem[code]{listing} package.
+%      Most of these predefined styles use type writer font in scriptsize, arrange a grey
+%      box around the listing and set the keywords to Blue4.
+%
+%      The first style is the for any generic listing without specifying a language and no
+%      line numbers.
+%    \begin{macrocode}
+\lstdefinestyle{generic}
+     {basicstyle=\scriptsize\ttfamily, backgroundcolor=\color[gray]{.9},
+      frame=single, framerule=.5pt, numbers=none,
+      linewidth=0.99\textwidth, xleftmargin=3pt,
+      keywordstyle=\bfseries\color{Blue4},
+      identifierstyle=\bfseries}
+%    \end{macrocode}
+%
+%      This style is designed for listings within tables. It is similar to the generic one above,
+%      except that the definitions for frame and numbers are not used, which seem to collide 
+%      with some table environments.
+%    \begin{macrocode}
+\lstdefinestyle{gentab}
+     {basicstyle=\scriptsize\ttfamily, backgroundcolor=\color[gray]{.9},
+      framerule=0pt,
+      linewidth=.86\textwidth, xleftmargin=3pt,
+      keywordstyle=\bfseries\color{Blue4},
+      identifierstyle=\bfseries}
+%    \end{macrocode}
+%
+%      This style is the same as the generic one above, except that it switches on line numbers
+%      and allows extra space for them within the grey box.
+%    \begin{macrocode}
+\lstdefinestyle{genericLN}
+     {basicstyle=\scriptsize\ttfamily, backgroundcolor=\color[gray]{.9},
+      frame=single, framerule=.5pt, numbers=left,
+      linewidth=0.99\textwidth, xleftmargin=20pt,
+      keywordstyle=\bfseries\color{Blue4},
+      identifierstyle=\bfseries}
+%    \end{macrocode}
+%
+%      This style is based on the style \skbem[code]{genricLN}, basically using a slightly brighter
+%      grey for the box.
+%    \begin{macrocode}
+\lstdefinestyle{genericLNspecial}
+     {basicstyle=\small\ttfamily, backgroundcolor=\color[gray]{.97},
+      frame=single, framerule=.5pt, numbers=left,
+      linewidth=0.99\textwidth, xleftmargin=20pt,
+      keywordstyle=\bfseries\color{Blue4},
+      identifierstyle=\bfseries}
+%    \end{macrocode}
+%
+%      This style is designed for examples within slides (frames) using the \skbem[code]{beamer}
+%      package.
+%    \begin{macrocode}
+\lstdefinestyle{beamer-example}
+     {basicstyle=\scriptsize\ttfamily,
+      frame=single, framerule=0pt, numbers=none,
+      linewidth=0.99\textwidth, xleftmargin=3pt,
+      keywordstyle=\bfseries\color{Blue4},
+      identifierstyle=\bfseries}
+%    \end{macrocode}
+%
+%      This style is designed for examples within slides (frames) using the \skbem[code]{beamer}
+%      with added line numbers.
+%    \begin{macrocode}
+\lstdefinestyle{beamer-exampleLN}
+     {basicstyle=\scriptsize\ttfamily,
+      frame=single, framerule=0pt, numbers=left,
+      linewidth=0.99\textwidth, xleftmargin=20pt,
+      keywordstyle=\bfseries\color{Blue4},
+      identifierstyle=\bfseries}
+%    \end{macrocode}
+%
+%      This style uses the definitions from the generic style above and set the language to Java.
+%    \begin{macrocode}
+\lstdefinestyle{javaCode}
+     {basicstyle=\scriptsize\ttfamily, backgroundcolor=\color[gray]{.9},
+      frame=single, framerule=0pt, language=JAVA,
+      numbers=none,
+      keywordstyle=\bfseries\color{Blue4},
+      identifierstyle=,
+      linewidth=0.99\columnwidth}
+%    \end{macrocode}
+%
+%      This style can be used to set `normal' style after changing it.
+%    \begin{macrocode}
+\lstdefinestyle{inText}
+     {basicstyle=\ttfamily}
+%    \end{macrocode}
+%
+%
+%  \section{Experimental Macros}
+%    This part of the \skbacft{A3DS:SKB} is experimental. Please do not use it for production code or important
+%    documents. The macros in this section will be moved as soon as they are stable, or simply 
+%    removed. They can, as long as they stay in this section, be changed at any time in future 
+%    releases.
+%
+%    \subsection{Defining new relative Headings: skbheadingudc}
+%      When we set the document level with \cmd{\skbheading}, it might be usefull to actually 
+%      have a macro that allows to relatively change headings. This is usefull if we have more than
+%      one heading in a repository file, where the first one defines the heading and will get 
+%      an associative document level from the calling document while any subsequent heading might 
+%      need to go one level up or down. The macro here works as long as we don't need to 
+%      recursively store document levels. So it is not stable right now and makes only sense if 
+%      used for single headings.
+%
+%      First, a macro that we use to point to the new heading (rather than the one used by \cmd{\skbinput}.
+%    \begin{macrocode}
+\def\skb@newHeading{}
+%    \end{macrocode}
+%
+%      \subsubsection{Macro Options}
+%        Now the option down, which indicates that this heading should be one level down from the previous one.
+%    \begin{macrocode}
+\define@key{skbheadings}{down}[true]{%
+  \ifx\skb@inputLevel\part
+    \let\skb@newHeading=\chapter
+    \let\skb@inputLevel=\chapter
+  \else\ifx\skb@inputLevel\chapter
+    \let\skb@newHeading=\section
+    \let\skb@inputLevel=\section
+  \else\ifx\skb@inputLevel\section
+    \let\skb@newHeading=\subsection
+    \let\skb@inputLevel=\subsection
+  \else\ifx\skb@inputLevel\subsection
+    \let\skb@newHeading=\subsubsection
+    \let\skb@inputLevel=\subsubsection
+  \else
+    \KV@err{Invalid current level for SkbNewHeading(down),
+            please use: part, chapter, section or subsection}
+   \fi\fi\fi\fi
+}
+%    \end{macrocode}
+%
+%        Now the option up, which indicates that this heading should be one level up from the previous one.
+%    \begin{macrocode}
+\define@key{skbheadings}{up}[true]{%
+  \ifx\skb@inputLevel\chapter
+    \let\skb@newHeading=\part
+    \let\skb@inputLevel=\part
+  \else\ifx\skb@inputLevel\section
+    \let\skb@newHeading=\chapter
+    \let\skb@inputLevel=\chapter
+  \else\ifx\skb@inputLevel\subsection
+    \let\skb@newHeading=\section
+    \let\skb@inputLevel=\section
+  \else\ifx\skb@inputLevel\subsubsection
+    \let\skb@newHeading=\subsection
+    \let\skb@inputLevel=\subsection
+  \else
+    \KV@err{Invalid current level for SkbNewHeading(up),
+            please use: chapter, section, subsection or subsubsection}
+   \fi\fi\fi\fi
+}
+%    \end{macrocode}
+%
+%        Now the option last, which indicates that this heading should be on the same level as the previous one.
+%    \begin{macrocode}
+\define@key{skbheadings}{last}[true]{%
+  \let\skb@newHeading=\skb@inputLevel%
+}
+%    \end{macrocode}
+%
+%      \subsubsection{The Macro}
+%
+%        \DescribeMacro{\skbheadingudc}
+%    \begin{macrocode}
+\newcommand{\skbheadingudc}[2][]{%
+  \gdef\skb@newHeading{}
+  \setkeys{skbheadings}{#1}%
+  \ifx\empty\skb@newHeading\else%
+    \skb@newHeading{#2}%
+  \fi
+}
+%    \end{macrocode}
+%
+%
+%
+%
+%    \begin{macrocode}
+%</skbpackage>
+%    \end{macrocode}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \section{The Configuration File skb.cfg}
+%
+%    This file is used to overwrite the default values for the \skbacft{A3DS:SKB} configuration 
+%    options. It calles the macro \cmd{\skbconfig} using all possible options 
+%    of that very macro and providing usefull text as origin of the configuration change 
+%    \skbem[code]{skb.cfg}. Use this as template for the local configuration file 
+%    \skbem[code]{skblocal.cfg} if you need one.
+%    \begin{macrocode}
+%<*skbcfg>
+\skbconfig[root=/doc,
+           acr=database/latex,
+           acrfile=acronyms,
+           bib=database/bibtex,
+           bibfile=bibliography.tex,
+           rep=repository,
+           pub=publish,
+           fig=figures,
+           sli=slides
+          ]{skb.cfg}
+%</skbcfg>
+%    \end{macrocode}
+%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \section{The \skbacft{A3DS:SKB} Classes}
+%
+%
+% \subsection{The Class skbarticle}
+%
+%    This class is an example on how to use the \skbacft{A3DS:SKB} with memoir. I use skbarticle
+%    for my articles. Using this class as a template, one can easily write other
+%    classes or change/overwrite the settings done here.
+%
+%    First, we announce the package and the font definition file.
+%    \begin{macrocode}
+%<*skbarticle>
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesClass{skbarticle}[2011/06/03 The SKB Article class v0.52]
+%    \end{macrocode}
+%
+%    Now we load the memoir class with the following options:
+%    \begin{skbnotelist}
+%      \item 10pt - for 10 point font size
+%      \item a4paper - I am European, so A4 paper makes sense here
+%      \item extrafontsizes - tbd
+%      \item twoside - I want my articles to be set with different even/odd pages
+%      \item onecolumn - I don't necessarily like 2-columns for my articles
+%      \item openright - tbd
+%      \item article - use memoir as if it is an article
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\LoadClass[10pt,a4paper,extrafontsizes,twoside,onecolumn,openright,article]{memoir}
+%    \end{macrocode}
+%
+%    Load the \skbacft{A3DS:SKB}.
+%    \begin{macrocode}
+\RequirePackage{skb}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Loaded Packages}
+%
+%    I prefer BibLaTeX over plain \BibTeX, and other parts of the \skbacft{A3DS:SKB} (such as the \skbacft{LAMP}
+%    server) produce BibLaTeX. The options are:
+%    \begin{skbnotelist}
+%      \item style - is set to alphanumeric, much better to find/remember references.
+%            If writing for IEEE or LNCS, numeric would be the prefered option.
+%      \item sorting - is set to none, not needed here.
+%      \item hyperref - I want to have hyperef with my citations
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage[style=alphabetic,sorting=none,hyperref]{biblatex}
+%    \end{macrocode}
+%
+%    Load the acronym package and print only the acronyms actually used in the document.
+%    This might move into the \skbacft{A3DS:SKB} package later.
+%    \begin{macrocode}
+\RequirePackage[printonlyused]{acronym}
+%    \end{macrocode}
+%
+%    Load a view packages that I tend to use quite often:
+%    \begin{skbnotelist}
+%      \item etoolbox - etoolbox
+%      \item comment - Add comments to your \LaTeX~files
+%      \item graphicx - Enhanced graphic support, with key/value interface for include graphics
+%      \item longtable - Helps with tables that span multiple pages
+%      \item colortbl - Allows coloured cells in tables
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage{etoolbox,comment,graphicx,longtable,colortbl}
+%    \end{macrocode}
+%
+%    And some more packages needed quite often:
+%    \begin{skbnotelist}
+%      \item textcomp - Special characters, such as \textregistered~and \textcopyright
+%      \item gensymb - Generic characters (math and text mode), such as  \degree, \celsius, \perthousand, \micro~and \ohm
+%      \item wasysym - Adds characters from \textit{wasy} font, such as \smiley, \XBox~and \rightturn
+%      \item units - Typeset units correctly (and produce 'nice' fractions), such as \unitfrac[10]{m}{s} and \nicefrac[\texttt]{1}{2}
+%      \item float - Improves interface for floating environments (such as figures, tables)
+%      \item xmpmulti - tbd
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage{textcomp,gensymb,wasysym,units,xmpmulti,float}
+%    \end{macrocode}
+%
+%    The xcolor package provides driver independent access to all sorts of colour tins,
+%    shades, tones and mixes. I like x11names, as you can tell.
+%    \begin{macrocode}
+\RequirePackage[x11names]{xcolor}
+%    \end{macrocode}
+%
+%    The hyperref package provides layout for hyper references, such as URLs and references within a document,
+%    such as acronyms, citations and the table of contents. We use the option colorlings and then provide
+%    the colors we prefer for links (linkcolor), citations (citecolor) and URLs (urlcolor).
+%    \begin{macrocode}
+\RequirePackage[colorlinks,%
+                linkcolor=Brown4,%
+                citecolor=SeaGreen4,%
+                urlcolor=RoyalBlue3%
+               ]{hyperref}
+%\RequirePackage[colorlinks,linkcolor=blue]{hyperref}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Memoir Options}
+%
+%    Not sure, but I don't think semi-iso-pages are good. So not used right now.
+%    \begin{macrocode}
+%\semiisopage
+%    \end{macrocode}
+%
+%    Change the margins for even and odd pages. Odd to 1cm and even to 1cm.
+%    \begin{macrocode}
+\setlength{\oddsidemargin}{1cm}
+\setlength{\evensidemargin}{0cm}
+%    \end{macrocode}
+%
+%    Set width and height for the text. At the moment only the width, to 15cm
+%    \begin{macrocode}
+\setlength{\textwidth}{15cm}
+%\setlength{\textheight}{24cm}
+%    \end{macrocode}
+%
+%    Don't use chapter numbers in sections, thus making them looking like sections
+%    in a classic article (1 instead of the default 0.1)
+%    \begin{macrocode}
+\def\thesection{\arabic{section}}
+%    \end{macrocode}
+%
+%    Allow table of contents to go up to sub-sections
+%    \begin{macrocode}
+\settocdepth{subsection}
+%    \end{macrocode}
+%
+%    And numbering up to subsubsections
+%    \begin{macrocode}
+\setsecnumdepth{subsubsection}
+%    \end{macrocode}
+%
+%    For lists, memoir provides different layouts. We use tightlists here, but can
+%    switch that to firmlists if needed
+%    \begin{macrocode}
+\tightlists
+%\firmlists
+%    \end{macrocode}
+%
+%     What are these for? I forgot...
+%    \begin{macrocode}
+\midsloppy
+\raggedbottom
+%    \end{macrocode}
+%
+%
+% \subsubsection{Misc Settings}
+%
+%    Finally, we do set the sort option for the bibliography to anyt (biblatex)
+%    \begin{macrocode}
+\ExecuteBibliographyOptions{sorting=anyt}
+%    \end{macrocode}
+%
+%    There is no code for \cmd{\AtBeginDocument} and \cmd{\AtEndDocument}, so we are done now.
+%    \begin{macrocode}
+%</skbarticle>
+%    \end{macrocode}
+%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \subsection{The Class skbbook}
+%
+%    This class is an example on how to use the \skbacft{A3DS:SKB} with memoir. I use skbbook
+%    for my books. Using this class as a template, one can easily write other
+%    classes or change/overwrite the settings done here.
+%
+%    First, we announce the package and the font definition file.
+%    \begin{macrocode}
+%<*skbbook>
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesClass{skbbook}[2011/06/03 The SKB Book class v0.52]
+%    \end{macrocode}
+%
+%    Now we load the memoir class with the following options:
+%    \begin{skbnotelist}
+%      \item 11pt - for 11 point font size
+%      \item a4paper - I am European, so A4 paper makes sense here
+%      \item extrafontsizes - tbd
+%      \item twoside - I want my articles to be set with different even/odd pages
+%      \item onecolumn - I don't necessarily like 2-columns for my articles
+%      \item openright - tbd
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\LoadClass[11pt,a4paper,extrafontsizes,twoside,onecolumn,openright]{memoir}
+%    \end{macrocode}
+%
+%    Load the \skbacft{A3DS:SKB}.
+%    \begin{macrocode}
+\RequirePackage{skb}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Loaded Packages}
+%
+%    I prefer BibLaTeX over plain \BibTeX, and other parts of the \skbacft{A3DS:SKB} (such as the \skbacft{LAMP}
+%    server) produce BibLaTeX. The options are:
+%    \begin{skbnotelist}
+%      \item style - is set to alphanumeric, much better to find/remember references.
+%            If writing for IEEE or LNCS, numeric would be the prefered option.
+%      \item sorting - is set to none, not needed here.
+%      \item hyperref - I want to have hyperef with my citations
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage[style=alphabetic,sorting=none,hyperref]{biblatex}
+%    \end{macrocode}
+%
+%    Load the acronym package and print only the acronyms actually used in the document.
+%    This might move into the \skbacft{A3DS:SKB} package later
+%    \begin{macrocode}
+\RequirePackage[printonlyused]{acronym}
+%    \end{macrocode}
+%
+%    Load a view packages that I tend to use quite often:
+%    \begin{skbnotelist}
+%      \item etoolbox - etoolbox
+%      \item comment - Add comments to your \LaTeX~files
+%      \item graphicx - Enhanced graphic support, with key/value interface for include graphics
+%      \item longtable - Helps with tables that span multiple pages
+%      \item colortbl - Allows coloured cells in tables
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage{etoolbox,comment,graphicx,longtable,colortbl}
+%    \end{macrocode}
+%
+%    And some more packages needed quite often:
+%    \begin{skbnotelist}
+%      \item textcomp - Special characters, such as \textregistered~and \textcopyright
+%      \item gensymb - Generic characters (math and text mode), such as  \degree, \celsius, \perthousand, \micro~and \ohm
+%      \item wasysym - Adds characters from \textit{wasy} font, such as \smiley, \XBox~and \rightturn
+%      \item units - Typeset units correctly (and produce 'nice' fractions), such as \unitfrac[10]{m}{s} and \nicefrac[\texttt]{1}{2}
+%      \item float - Improves interface for floating environments (such as figures, tables)
+%      \item xmpmulti - tbd
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage{textcomp,gensymb,wasysym,units,xmpmulti,float}
+%    \end{macrocode}
+%
+%    The xcolor package provides driver independent access to all sorts of colour tins,
+%    shades, tones and mixes. I like x11names, as you can tell.
+%    \begin{macrocode}
+\RequirePackage[x11names]{xcolor}
+%    \end{macrocode}
+%
+%    The hyperref package provides layout for hyper references, such as URLs and references within a document,
+%    such as acronyms, citations and the table of contents. We use the option colorlings and then provide
+%    the colors we prefer for links (linkcolor), citations (citecolor) and URLs (urlcolor).
+%    \begin{macrocode}
+\RequirePackage[colorlinks,%
+                linkcolor=Brown4,%
+                citecolor=SeaGreen4,%
+                urlcolor=RoyalBlue3%
+               ]{hyperref}
+%\RequirePackage[colorlinks,linkcolor=blue]{hyperref}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Memoir Options}
+%
+%    Not sure, but I don't think semi-iso-pages are good. So not used right now.
+%    \begin{macrocode}
+%\semiisopage
+%    \end{macrocode}
+%
+%    Set the head styles to komalike (the other nice style is memman).
+%    \begin{macrocode}
+\headstyles{komalike}
+%    \end{macrocode}
+%
+%    Change the margins for even and odd pages. Odd to .5cm and even to 0cm.
+%    \begin{macrocode}
+\setlength{\oddsidemargin}{.5cm}
+\setlength{\evensidemargin}{0cm}
+%    \end{macrocode}
+%
+%    Set width and height for the text. Width to 15cm and length t0 22cm.
+%    \begin{macrocode}
+\setlength{\textwidth}{15cm}
+\setlength{\textheight}{22cm}
+%    \end{macrocode}
+%
+%    Get half a centimeter back from the topmargin.
+%    \begin{macrocode}
+\setlength{\topmargin}{-.5cm}
+%    \end{macrocode}
+%
+%    Allow table of contents to go up to subsub-sections
+%    \begin{macrocode}
+\settocdepth{subsubsection}
+%    \end{macrocode}
+%
+%    And numbering up to subsubsections
+%    \begin{macrocode}
+\setsecnumdepth{subsubsection}
+%    \end{macrocode}
+%
+%    For lists, memoir provides different layouts. We use tightlists here, but can
+%    switch that to firmlists if needed
+%    \begin{macrocode}
+\tightlists
+%\firmlists
+%    \end{macrocode}
+%
+%    What are these for? I forgot...
+%    \begin{macrocode}
+\midsloppy
+\raggedbottom
+%    \end{macrocode}
+%
+%    Chapters shoud look like the memoir veelo style.
+%    \begin{macrocode}
+\chapterstyle{veelo}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Misc Settings}
+%
+%    Finally, we do set the sort option for the bibliography to anyt (biblatex)
+%    \begin{macrocode}
+\ExecuteBibliographyOptions{sorting=anyt}
+%    \end{macrocode}
+%
+%    There is no code for \cmd{\AtBeginDocument} and \cmd{\AtEndDocument}, so we are done now.
+%    \begin{macrocode}
+%</skbbook>
+%    \end{macrocode}
+%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \subsection{The Class skbbeamer}
+%
+%    This class is an example on how to use the \skbacft{A3DS:SKB} with memoir. I use skbbeamer
+%    for my beamer presentations. Using this class as a template, one can easily write other
+%    classes or change/overwrite the settings done here.
+%
+%    First, we announce the package and the font definition file and process the options.
+%    \begin{macrocode}
+%<*skbbeamer>
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesClass{skbbeamer}[2011/06/03 The SKB Beamer class v0.52]
+\DeclareOption{beameranim}{\PassOptionsToPackage{\CurrentOption}{skb}}
+\DeclareOption{beamernoanim}{\PassOptionsToPackage{\CurrentOption}{skb}}
+\ProcessOptions\relax
+%    \end{macrocode}
+%
+%    Now we load the xcolor package and then the beamer class. That should load the x11names some 
+%    of the \skbacft{A3DS:SKB} listing styles use while not creating any clash between the packages beamer and xcolor.
+%    \begin{macrocode}
+\RequirePackage[x11names]{xcolor}
+\LoadClass[x11names]{beamer}
+%    \end{macrocode}
+%
+%    Load the \skbacft{A3DS:SKB}.
+%    \begin{macrocode}
+\RequirePackage{skb}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Loaded Packages}
+%
+%    I prefer BibLaTeX over plain \BibTeX, and other parts of the \skbacft{A3DS:SKB} (such as the \skbacft{LAMP}
+%    server) produce BibLaTeX. The options are:
+%    \begin{skbnotelist}
+%      \item style - is set to alphanumeric, much better to find/remember references.
+%            If writing for IEEE or LNCS, numeric would be the prefered option.
+%      \item sorting - is set to none, not needed here.
+%      \item hyperref - I want to have hyperef with my citations
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage[style=alphabetic,sorting=none,hyperref]{biblatex}
+%    \end{macrocode}
+%
+%    Load the acronym package and print only the acronyms actually used in the document.
+%    This might move into the \skbacft{A3DS:SKB} package later
+%    \begin{macrocode}
+\RequirePackage[printonlyused]{acronym}
+%    \end{macrocode}
+%
+%    Load a view packages that I tend to use quite often:
+%    \begin{skbnotelist}
+%      \item etoolbox - etoolbox
+%      \item comment - Add comments to your \LaTeX~files
+%      \item graphicx - Enhanced graphic support, with key/value interface for include graphics
+%      \item longtable - Helps with tables that span multiple pages
+%      \item colortbl - Allows coloured cells in tables
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage{etoolbox,comment,graphicx,longtable,colortbl}
+%    \end{macrocode}
+%
+%    And some more packages needed quite often:
+%    \begin{skbnotelist}
+%      \item textcomp - Special characters, such as \textregistered~and \textcopyright
+%      \item gensymb - Generic characters (math and text mode), such as  \degree, \celsius, \perthousand, \micro~and \ohm
+%      \item wasysym - Adds characters from \textit{wasy} font, such as \smiley, \XBox~and \rightturn
+%      \item units - Typeset units correctly (and produce 'nice' fractions), such as \unitfrac[10]{m}{s} and \nicefrac[\texttt]{1}{2}
+%      \item float - Improves interface for floating environments (such as figures, tables)
+%      \item xmpmulti - tbd
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage{textcomp,gensymb,wasysym,units,xmpmulti,float}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Misc Settings}
+%
+%    And some default settings for the dirtree package.
+%    \begin{macrocode}
+\renewcommand*\DTstylecomment{\itshape\sffamily\color{blue}\scriptsize}
+\setlength{\DTbaselineskip}{10pt}
+\DTsetlength{0.2em}{1em}{0.2em}{0.4pt}{1.6pt}
+\renewcommand*\DTstyle{\scriptsize\ttfamily\textcolor{black}}
+%    \end{macrocode}
+%
+%    There is no code for \cmd{\AtBeginDocument} and \cmd{\AtEndDocument}, so we are done now.
+%    \begin{macrocode}
+%</skbbeamer>
+%    \end{macrocode}
+%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \subsection{The Class skblncsbeamer}
+%
+%    This class is an example on how to use the \skbacft{A3DS:SKB} with memoir. I use skblncsbeamer
+%    for my beamer based handouts. Using this class as a template, one can easily write other
+%    classes or change/overwrite the settings done here.
+%
+%    First, we announce the package and the font definition file.
+%    \begin{macrocode}
+%<*skblncsbeamer>
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesClass{skblncsbeamer}[2011/06/03 The SKB LNCS Beamer class v0.52]
+%    \end{macrocode}
+%
+%    Just in case there is no \cmd{\titlepage} declared, the beamerarticle wants that.
+%    \begin{macrocode}
+\providecommand{\titlepage}{}
+%    \end{macrocode}
+%
+%    Now we load the memoir class with the following options:
+%    \begin{skbnotelist}
+%      \item 9pt - for 9 point font size
+%      \item a4paper - I am European, so A4 paper makes sense here
+%      \item extrafontsizes - tbd
+%      \item twoside - I want my articles to be set with different even/odd pages
+%      \item onecolumn - I don't necessarily like 2-columns for my articles
+%      \item openright - tbd
+%      \item article - use memoir as if it is an article
+%      \item x11names - this option will be forwarded to the xcolor/graphics packages
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\LoadClass[9pt,a4paper,extrafontsizes,twoside,onecolumn,openright,article,x11names]{memoir}
+%    \end{macrocode}
+%
+%    For Beamer handouts, we need the beamerarticle package to load the frame thumbnails.
+%    \begin{macrocode}
+\RequirePackage{beamerarticle,pgf}
+%    \end{macrocode}
+%
+%    Load the \skbacft{A3DS:SKB}.
+%    \begin{macrocode}
+\RequirePackage{skb}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Loaded Packages}
+%
+%    I prefer BibLaTeX over plain \BibTeX, and other parts of the \skbacft{A3DS:SKB} (such as the \skbacft{LAMP}
+%    server) produce BibLaTeX. The options are:
+%    \begin{skbnotelist}
+%      \item style - is set to alphanumeric, much better to find/remember references.
+%            If writing for IEEE or LNCS, numeric would be the prefered option.
+%      \item sorting - is set to none, not needed here.
+%      \item hyperref - I want to have hyperef with my citations
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage[style=alphabetic,sorting=none,hyperref]{biblatex}
+%    \end{macrocode}
+%
+%    Load the acronym package and print only the acronyms actually used in the document.
+%    This might move into the \skbacft{A3DS:SKB} package later.
+%    \begin{macrocode}
+\RequirePackage[printonlyused]{acronym}
+%    \end{macrocode}
+%
+%    Load a view packages that I tend to use quite often:
+%    \begin{skbnotelist}
+%      \item etoolbox - etoolbox
+%      \item comment - Add comments to your \LaTeX~files
+%      \item graphicx - Enhanced graphic support, with key/value interface for include graphics
+%      \item longtable - Helps with tables that span multiple pages
+%      \item colortbl - Allows coloured cells in tables
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage{etoolbox,comment,graphicx,longtable,colortbl}
+%    \end{macrocode}
+%
+%    And some more packages needed quite often:
+%    \begin{skbnotelist}
+%      \item textcomp - Special characters, such as \textregistered~and \textcopyright
+%      \item gensymb - Generic characters (math and text mode), such as  \degree, \celsius, \perthousand, \micro~and \ohm
+%      \item wasysym - Adds characters from \textit{wasy} font, such as \smiley, \XBox~and \rightturn
+%      \item units - Typeset units correctly (and produce 'nice' fractions), such as \unitfrac[10]{m}{s} and \nicefrac[\texttt]{1}{2}
+%      \item float - Improves interface for floating environments (such as figures, tables)
+%      \item xmpmulti - tbd
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage{textcomp,gensymb,wasysym,units,xmpmulti}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Memoir Options}
+%
+%    Not sure, but I don't think semi-iso-pages are good. So not used right now.
+%    \begin{macrocode}
+%\semiisopage
+%    \end{macrocode}
+%
+%    We do want to list files.
+%    \begin{macrocode}
+\listfiles
+%    \end{macrocode}
+%
+%    Change the margins for even and odd pages. Odd to 0cm and even to 1cm.
+%    \begin{macrocode}
+\setlength{\oddsidemargin}{0cm}
+\setlength{\evensidemargin}{0cm}
+%    \end{macrocode}
+%
+%    Set width and height for the text. Width to 15cm and height to 24.5cm.
+%    \begin{macrocode}
+\setlength{\textwidth}{15cm}
+\setlength{\textheight}{24.5cm}
+%    \end{macrocode}
+%
+%    Get half a centimeter back from the topmargin.
+%    \begin{macrocode}
+\setlength{\topmargin}{-1.5cm}
+%    \end{macrocode}
+%
+%    Don't use chapter numbers in sections, thus making them looking like sections
+%    in a classic article (1 instead of the default 0.1)
+%    \begin{macrocode}
+\def\thesection{\arabic{section}}
+%    \end{macrocode}
+%
+%    Allow table of contents to go up to sub-sections
+%    \begin{macrocode}
+\settocdepth{subsection}
+%    \end{macrocode}
+%
+%    And numbering up to subsubsections
+%    \begin{macrocode}
+\setsecnumdepth{subsubsection}
+%    \end{macrocode}
+%
+%    Set the head styles to komalike (the other nice style is memman).
+%    \begin{macrocode}
+\headstyles{komalike}
+%    \end{macrocode}
+%
+%    For lists, memoir provides different layouts. We use tightlists here, but can
+%    switch that to firmlists if needed
+%    \begin{macrocode}
+\tightlists
+%\firmlists
+%    \end{macrocode}
+%
+%     What are these for? I forgot...
+%    \begin{macrocode}
+\midsloppy
+\raggedbottom
+%    \end{macrocode}
+%
+%    Set parindent to 0pt and parskip to 0.2pt.
+%    \begin{macrocode}
+\parindent0pt
+\setlength{\parskip}{0.2cm}
+%    \end{macrocode}
+%
+% \subsubsection{Misc Settings}
+%
+%    Do an index.
+%    \begin{macrocode}
+\makeindex
+%    \end{macrocode}
+%
+%    Before we start with the actual document, we want the title slide and
+%    the table of contents on the first page.
+%    \begin{macrocode}
+\AtBeginDocument{
+  \resizebox{\textwidth}{!}{\includeslide{title}}
+  \bigskip
+  \tableofcontents*
+  \bigskip
+  \newpage
+}
+%    \end{macrocode}
+%
+%    There is no code for \cmd{\AtEndDocument}, so we are done now.
+%    \begin{macrocode}
+%</skblncsbeamer>
+%    \end{macrocode}
+%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \subsection{The Class skblncsppt}
+%
+%    This class is an example on how to use the \skbacft{A3DS:SKB} with memoir. I use skblncsppt
+%    for handouts (anotated slides) based on Microsoft's PPT. Reason for that is
+%    that the \skbacft{ISO:PDF} export and print routines in Microsoft Office 2010 no longer
+%    support vector images for the slide thumbnails, which renders handouts almost
+%    useless. So I do print the PPT slides into \skbacft{ISO:PDF} (screen resolution, that way one
+%    avoids frames around the slides), and then \LaTeX~to generate handouts.
+%    Using this class as
+%    a template, one can easily write other
+%    classes or change/overwrite the settings done here.
+%
+%    First, we announce the package and the font definition file.
+%    \begin{macrocode}
+%<*skblncsppt>
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesClass{skblncsppt}[2011/06/03 The SKB LNCS PPT class v0.52]
+%    \end{macrocode}
+%
+%    Now we load the memoir class with the following options:
+%    \begin{skbnotelist}
+%      \item 9pt - for 9 point font size
+%      \item a4paper - I am European, so A4 paper makes sense here
+%      \item extrafontsizes - tbd
+%      \item twoside - I want my articles to be set with different even/odd pages
+%      \item onecolumn - I don't necessarily like 2-columns for my articles
+%      \item openright - tbd
+%      \item article - use memoir as if it is an article
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\LoadClass[9pt,a4paper,extrafontsizes,twoside,onecolumn,openright,article]{memoir}
+%    \end{macrocode}
+%
+%    Load the \skbacft{A3DS:SKB}.
+%    \begin{macrocode}
+\RequirePackage{skb}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Loaded Packages}
+%
+%    I prefer BibLaTeX over plain \BibTeX, and other parts of the \skbacft{A3DS:SKB} (such as the \skbacft{LAMP}
+%    server) produce BibLaTeX. The options are:
+%    \begin{skbnotelist}
+%      \item style - is set to alphanumeric, much better to find/remember references.
+%            If writing for IEEE or LNCS, numeric would be the prefered option.
+%      \item sorting - is set to none, not needed here.
+%      \item hyperref - I want to have hyperef with my citations
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage[style=alphabetic,sorting=none,hyperref]{biblatex}
+%    \end{macrocode}
+%
+%    Load the acronym package and print only the acronyms actually used in the document.
+%    This might move into the \skbacft{A3DS:SKB} package later.
+%    \begin{macrocode}
+\RequirePackage[printonlyused]{acronym}
+%    \end{macrocode}
+%
+%    Load a view packages that I tend to use quite often:
+%    \begin{skbnotelist}
+%      \item etoolbox - etoolbox
+%      \item comment - Add comments to your \LaTeX~files
+%      \item graphicx - Enhanced graphic support, with key/value interface for include graphics
+%      \item longtable - Helps with tables that span multiple pages
+%      \item colortbl - Allows coloured cells in tables
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage{etoolbox,comment,graphicx,longtable,colortbl}
+%    \end{macrocode}
+%
+%    And some more packages needed quite often:
+%    \begin{skbnotelist}
+%      \item textcomp - Special characters, such as \textregistered~and \textcopyright
+%      \item gensymb - Generic characters (math and text mode), such as  \degree, \celsius, \perthousand, \micro~and \ohm
+%      \item wasysym - Adds characters from \textit{wasy} font, such as \smiley, \XBox~and \rightturn
+%      \item units - Typeset units correctly (and produce 'nice' fractions), such as \unitfrac[10]{m}{s} and \nicefrac[\texttt]{1}{2}
+%      \item float - Improves interface for floating environments (such as figures, tables)
+%      \item xmpmulti - tbd
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage{textcomp,gensymb,wasysym,units,xmpmulti,float}
+%    \end{macrocode}
+%
+%    The xcolor package provides driver independent access to all sorts of colour tins,
+%    shades, tones and mixes. I like x11names, as you can tell.
+%    \begin{macrocode}
+\RequirePackage[x11names]{xcolor}
+%    \end{macrocode}
+%
+%    The hyperref package provides layout for hyper references, such as URLs and references within a document,
+%    such as acronyms, citations and the table of contents. We use the option colorlings and then provide
+%    the colors we prefer for links (linkcolor), citations (citecolor) and URLs (urlcolor).
+%    \begin{macrocode}
+\RequirePackage[colorlinks,%
+                linkcolor=Brown4,%
+                citecolor=SeaGreen4,%
+                urlcolor=RoyalBlue3%
+               ]{hyperref}
+%\RequirePackage[colorlinks,linkcolor=blue]{hyperref}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Memoir Options}
+%
+%    Not sure, but I don't think semi-iso-pages are good. So not used right now.
+%    \begin{macrocode}
+%\semiisopage
+%    \end{macrocode}
+%
+%    We do want to list files.
+%    \begin{macrocode}
+\listfiles
+%    \end{macrocode}
+%
+%    Change the margins for even and odd pages. Odd to 0cm and even to 1cm.
+%    \begin{macrocode}
+\setlength{\oddsidemargin}{0cm}
+\setlength{\evensidemargin}{0cm}
+%    \end{macrocode}
+%
+%    Set width and height for the text. Width to 15cm and height to 24.5cm.
+%    \begin{macrocode}
+\setlength{\textwidth}{15cm}
+\setlength{\textheight}{24.5cm}
+%    \end{macrocode}
+%
+%    Get half a centimeter back from the topmargin.
+%    \begin{macrocode}
+\setlength{\topmargin}{-1.5cm}
+%    \end{macrocode}
+%
+%    Don't use chapter numbers in sections, thus making them looking like sections
+%    in a classic article (1 instead of the default 0.1)
+%    \begin{macrocode}
+\def\thesection{\arabic{section}}
+%    \end{macrocode}
+%
+%    Allow table of contents to go up to sub-sections
+%    \begin{macrocode}
+\settocdepth{subsection}
+%    \end{macrocode}
+%
+%    And numbering up to subsubsections
+%    \begin{macrocode}
+\setsecnumdepth{subsubsection}
+%    \end{macrocode}
+%
+%    Set the head styles to komalike (the other nice style is memman).
+%    \begin{macrocode}
+\headstyles{komalike}
+%    \end{macrocode}
+%
+%    For lists, memoir provides different layouts. We use tightlists here, but can
+%    switch that to firmlists if needed
+%    \begin{macrocode}
+\tightlists
+%\firmlists
+%    \end{macrocode}
+%
+%     What are these for? I forgot...
+%    \begin{macrocode}
+\midsloppy
+\raggedbottom
+%    \end{macrocode}
+%
+%     We want ruled pages and arabic page numbering.
+%    \begin{macrocode}
+\pagestyle{ruled}
+\pagenumbering{arabic}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Misc Settings}
+%
+%    Do an index.
+%    \begin{macrocode}
+\makeindex
+%    \end{macrocode}
+%
+%    There is no code for \cmd{\AtBeginDocument} and \cmd{\AtEndDocument}, so we are done now.
+%    \begin{macrocode}
+%</skblncsppt>
+%    \end{macrocode}
+%
+%
+%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \subsection{The Class skbmoderncv}
+%
+%    This class integrates the moderncv package into the \skbacft{A3DS:SKB}. I use moderncv
+%    for my own CV and with the \skbacft{A3DS:SKB} I am able to maintain all information while
+%    producing different documents (i.e. one for a research proposal, for my website, for journals, etc.).
+%    This class provides some macros using biblatex to create several lists of publications, i.e. a different
+%    list for articles, proceedings, conference papers per year, etc.
+%
+%    First, we announce the package and the font definition file and process the options.
+%    \begin{macrocode}
+%<*skbmoderncv>
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesClass{skbmoderncv}[2011/06/03 The SKB Modern CV class v0.52]
+%    \end{macrocode}
+%
+%    Now we load the moderncv package. By default we use an 11 point font and A4 paper. Once can change these
+%    settings later in a CV document.
+%    \begin{macrocode}
+\LoadClass[11pt,a4paper]{moderncv}
+%    \end{macrocode}
+%
+%    Load the \skbacft{A3DS:SKB}.
+%    \begin{macrocode}
+\RequirePackage{skb}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Loaded Packages}
+%
+%    I prefer BibLaTeX over plain \BibTeX, and other parts of the \skbacft{A3DS:SKB} (such as the \skbacft{LAMP}
+%    server) produce BibLaTeX. The options are:
+%    \begin{skbnotelist}
+%      \item style - is set to alphabetic, much better to find/remember references.
+%                    If writing for IEEE or LNCS, numeric would be the prefered option.
+%      \item sorting - is set to ynt, year first, then author name then title.
+%      \item bibstyle - is set to standard, which means there are no labels (we set labels as enumerate list later).
+%      \item hyperref - I want to have hyperef with my citations
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\RequirePackage[style=alphabetic,sorting=ynt,bibstyle=standard,hyperref]{biblatex}
+%    \end{macrocode}
+%
+%    Load the eurofont package for the Euro sign.
+%    \begin{macrocode}
+\RequirePackage{eurofont}
+%    \end{macrocode}
+%
+%    Load the enumitem package, which is used later to change indents on the enumerate list for publication references.
+%    \begin{macrocode}
+\RequirePackage{enumitem}
+%    \end{macrocode}
+%
+%    Load the xcolor and hyperref packages to allow painting URLs in publication references.
+%    \begin{macrocode}
+\RequirePackage[x11names]{xcolor}
+\RequirePackage[colorlinks,%
+                linkcolor=Brown4,%
+                citecolor=SeaGreen4,%
+                urlcolor=RoyalBlue3,%
+                pdftex
+               ]{hyperref}
+%    \end{macrocode}
+%
+%
+% \subsubsection{Misc Settings}
+%
+%    Configure moderncv to use the classic layout.
+%    \begin{macrocode}
+\moderncvtheme{classic}
+%    \end{macrocode}
+%
+%    Some definitions for list symbols.
+%    \begin{macrocode}
+\newcommand{\up}[1]{\ensuremath{^\textrm{\scriptsize#1}}}
+\renewcommand{\listitemsymbol}{\textendash}
+%    \end{macrocode}
+%
+%    Define a new heading for BibLaTeX doing nothing, we want to set headings manually in the CV.
+%    \begin{macrocode}
+\defbibheading{None}{}
+%    \end{macrocode}
+%
+% \subsection{Macros}
+%
+%    \DescribeMacro{\skbcvrefplain}
+%    This macro prints a list of references without any labels. It expects a list of citation references, and empty list is valid and 
+%    and will result in an empty reference list. The macro defines a new environment for the BibTeX list adding an indent to the list
+%    using moderncv counters. \cmd{\hintscolumnwidth} is the left column of an entry and \cmd{\separatorcolumnwidth} is the middle column
+%    providing a spacer between left and right.
+%
+%    With the new environment defined, the macro then opens a new refsgment (BibLaTeX) to group all references without impacting the overall
+%    reference list. It uses \cmd{\nocite} to mark all references as being used without printing them, and then \cmd{\printbibliography} for
+%    printing the list. The options here are:
+%    \begin{skbnotelist}
+%      \item heading - refers to the new heading we have defined earlier, called None.
+%      \item segment - points to the current refsegment, so only references used here will be part of the list.
+%      \item maxnames - the maximum names shown per entry, we want to see as many as possible.
+%      \item minnames - the minimum names shown per entry, we want to see as many as possible.
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\newcommand{\skbcvrefplain}[1]{%
+  \defbibenvironment{bibliography}
+    {\list{}{%
+       \setlength{\parindent}{\hintscolumnwidth}
+       \addtolength{\parindent}{\separatorcolumnwidth}
+       \leftmargin\parindent
+       \setlength{\parindent}{0pt}
+       \itemindent\parindent
+       \itemsep\bibitemsep
+       \parsep\bibparsep
+    }}
+    {\endlist}
+    {\item}
+
+  \begin{refsegment}
+    \nocite{#1}
+    \printbibliography[heading=None,segment=\therefsegment,maxnames=20,minnames=20]
+  \end{refsegment}
+}
+%    \end{macrocode}
+%
+%    \DescribeMacro{\skbcvrefenum}
+%    This macro prints a list of references as an enumerated list, which helps to see how many entries a list has and also makes it
+%    easier to read the list in the final CV. It expects a list of citation references, and empty list is valid and 
+%    and will result in an empty reference list. The macro defines a new environment for the BibTeX list using an enumerate environment, which 
+%    was of course alreadt changed loading the enumitem package. First, we calculate the length for \cmd{\parindent} by setting it to \cmd{hintscolumnwidth},
+%    addint \cmd{separatorcolumnwidth} and finally adding another 1pt to it. This will make the items of the enumeration list appear within the left column of 
+%    the CV. We then apply a few options to the enumerate environment:
+%    \begin{skbnotelist}
+%      \item leftmargin - set to the newly calculate \cmd{\parindent}.
+%      \item labelsep - set to the spacer defined in moderncv \cmd{\separatorcolumnwidth}.
+%      \item label - set to use arabic numbers without any trailing full stop.
+%      \item noitemsep - no vertical separation between items, we want a small list.
+%      \item topsep - finally add a top separator for the items of 1pt.
+%    \end{skbnotelist}
+%    To reset \cmd{\parindent}, we set it back to 0pt once the enumerate environment is closed.
+%
+%    With the new environment defined, the macro then opens a new refsgment (BibLaTeX) to group all references without impacting the overall
+%    reference list. It uses \cmd{\nocite} to mark all references as being used without printing them, and then \cmd{\printbibliography} for
+%    printing the list. The options here are:
+%    \begin{skbnotelist}
+%      \item heading - refers to the new heading we have defined earlier, called None.
+%      \item segment - points to the current refsegment, so only references used here will be part of the list.
+%      \item maxnames - the maximum names shown per entry, we want to see as many as possible.
+%      \item minnames - the minimum names shown per entry, we want to see as many as possible.
+%    \end{skbnotelist}
+%    \begin{macrocode}
+\newcommand{\skbcvrefenum}[1]{%
+  \defbibenvironment{bibliography}
+    {\setlength{\parindent}{\hintscolumnwidth}
+     \addtolength{\parindent}{\separatorcolumnwidth}
+     \addtolength{\parindent}{1pt}
+     \begin{enumerate}[leftmargin=\parindent,labelsep=\separatorcolumnwidth,label*=\arabic*,noitemsep,topsep=1pt]{%
+    }}
+    {\end{enumerate}%
+     \setlength{\parindent}{0pt}
+    }
+    {\item}
+
+  \begin{refsegment}
+    \nocite{#1}
+    \printbibliography[heading=None,segment=\therefsegment,maxnames=20,minnames=20]
+  \end{refsegment}
+}
+%    \end{macrocode}
+%
+%
+%    There is no code for \cmd{\AtBeginDocument} and \cmd{\AtEndDocument}, so we are done now.
+%    \begin{macrocode}
+%</skbmoderncv>
+%    \end{macrocode}
+%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%
+%^^A \skbinput[from=rep,level=section]{history}
+%
+%\section{History and Change Log}
+%
+%\subsection{v0.10 from 06-Jul-2010}
+%
+%\begin{skbnotelist}
+%  \item first source forge release of the skb
+%  \item at this stage a collection of .sty and .tex files
+%  \item documentation in a separate pdf file
+%  \item included acronym list
+%\end{skbnotelist}
+%
+%
+%\subsection{v0.20 from 08-Jul-2010}
+%
+%\begin{skbnotelist}
+%  \item first \LaTeX~package version of the skb
+%  \item no changes in the documentation and no change in commands
+%  \item removed acronym list
+%\end{skbnotelist}
+%
+%
+%\subsection{v0.30 from 14-Jul-2010}
+%
+%\begin{skbnotelist}
+%  \item First dtx release of the skb, including the package and all classes introduced in v0.2
+%  \item Integrated parts of the v0.1 pdf as documentation and added documentation for many commands (not finished though)
+%  \item Re-write of all load commands (publish, repository, figures, acronyms, bib) and rename of all old load commands, new command names use only lowercases in their names
+%  \item In rewrite, many commands could be removed w/o losing their functionality
+%  \item New Commands:
+%    \begin{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\skbfigure} -- load figures with some options
+%      \item \lstinline[basicstyle=\ttfamily]{\skbinput} -- load files with some options
+%      \item \lstinline[basicstyle=\ttfamily]{\skbheading} -- set heading text in a file loaded
+%      \item \lstinline[basicstyle=\ttfamily]{\skbheadingudc} -- set heading relatively to the last heading level (up, down, current) (experimental)
+%      \item \lstinline[basicstyle=\ttfamily]{\skbem} -- emphasise code using options
+%      \item \lstinline[basicstyle=\ttfamily]{\skbacft} -- rename of \lstinline[basicstyle=\ttfamily]{\SkbAcFT}
+%      \item \lstinline[basicstyle=\ttfamily]{\skbacronyms} -- rename of \lstinline[basicstyle=\ttfamily]{\SkbLoadAcronyms}
+%      \item \lstinline[basicstyle=\ttfamily]{\skbbibtex} -- rename of \lstinline[basicstyle=\ttfamily]{\SkbLoadBibtex}
+%      \item environment \lstinline[basicstyle=\ttfamily]{skbnotelist} -- itemize list with \lstinline[basicstyle=\ttfamily]{\parskip 0} and \lstinline[basicstyle=\ttfamily]{\itemskip 0}
+%      \item environment \lstinline[basicstyle=\ttfamily]{skbnoteenum} -- enumerate list with \lstinline[basicstyle=\ttfamily]{\parskip 0} and \lstinline[basicstyle=\ttfamily]{\itemskip 0}
+%    \end{skbnotelist}
+%  \item Replaced Commands:
+%    \begin{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbSetTitle} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbheading}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbFigure} $\mapsto$ removed, closest is \lstinline[basicstyle=\ttfamily]{\skbfigure} (but changed behaviour!)
+%      \item \lstinline[basicstyle=\ttfamily]{\listingInline} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbem[code]}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbEmIT} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbem[italic]}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbEmBF} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbem[bold]}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbAcFT} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbacft}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbLoadAcronyms} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbacronyms}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbLoadBibtex} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbbibtex}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbLoadRepository} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbinput[from=rep]}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbLoadPublish} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbinput[from=pub]}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbItemizeBegin} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\begin{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbItemizeEnd} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\end{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbEnumerateBegin} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\begin{skbnoteenum}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbEnumerateEnd} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\end{skbnoteenum}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbFigureBeamerTextWidth} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbfigure[width=##]}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbFigureBeamerTextHeight} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbfigure[height=##]}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbFigureBeamerNoResize} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbfigure[]}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbFigureBeamerTextWidthPDFMulti} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbfigure[multiinclude=##]}
+%    \end{skbnotelist}
+%\end{skbnotelist}
+%
+%
+%\subsection{v0.31 from 20-Jul-2010}
+%
+%\begin{skbnotelist}
+%  \item fixed space problem in \cmd{\skbem}
+%  \item added error handling to the options skbconfig and skbheading
+%  \item added error handling for skbinput related macros
+%  \item separated documentation, skb.dtx is now using itself to create the documentation
+%  \item removed old code: DeclareOptions (none declared)
+%  \item changed a lot in the documentation
+%  \item prepare for CTAN submission, i.e. adding README and other things
+%
+%  \item New Commands:
+%    \begin{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\skbconfig} -- change the path/file options
+%      \item \lstinline[basicstyle=\ttfamily]{\skbsubject} -- add subject information for PDF
+%      \item \lstinline[basicstyle=\ttfamily]{\subkeywords} -- add keyword information for PDF
+%      \item \lstinline[basicstyle=\ttfamily]{\skbpdfinfo} -- generate PDF information
+%    \end{skbnotelist}
+%
+%  \item Changed Commands:
+%    \begin{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\skbfigure} -- added option for position, moved caption/label from argument to option
+%      \item \lstinline[basicstyle=\ttfamily]{\title} -- re-newed to store PDF info information (experimental)
+%      \item \lstinline[basicstyle=\ttfamily]{\author} -- re-newed to store PDF info information (experimental)
+%    \end{skbnotelist}
+%
+%  \item Replaced Commands:
+%    \begin{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbCodeInline} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbcode}
+%    \end{skbnotelist}
+%
+%\end{skbnotelist}
+%
+%
+%\subsection{v0.32 from 20-Jul-2010}
+%
+%\begin{skbnotelist}
+%  \item fastest re-release, I had built-in some problems and excluded important code in v0.31, fixed now
+%\end{skbnotelist}
+%
+%
+%\subsection{v0.4 from 21-Jul-2010}
+%
+%\begin{skbnotelist}
+%  \item major re-write of the kernel subsequently the documentation. Most internal macros will have been
+%        changed or removed, some are added. Also re-arranged the macros in the dtx file to (hopefully)
+%        optimise the documentation
+%  \item added input for skb.cfg and skblocal.cfg to overwrite package options with configuration files
+%  \item added skb.cfg to the distribution
+%
+%  \item New Commands:
+%    \begin{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\skbpathroot} -- returns current root path
+%      \item \lstinline[basicstyle=\ttfamily]{\skbfileroot} -- returns root/\#1
+%      \item \lstinline[basicstyle=\ttfamily]{\skbfileacr} -- returns current acronym path and file
+%      \item \lstinline[basicstyle=\ttfamily]{\skbfilebib} -- returns current bibtex path and file
+%      \item \lstinline[basicstyle=\ttfamily]{\skbpathbib} -- returns current bibtex path
+%      \item \lstinline[basicstyle=\ttfamily]{\skbfilerep} -- returns rep/\#1
+%      \item \lstinline[basicstyle=\ttfamily]{\skbfilepub} -- returns pub/\#1
+%      \item \lstinline[basicstyle=\ttfamily]{\skbfilefig} -- returns fig/\#1
+%      \item \lstinline[basicstyle=\ttfamily]{\skbfilesli} -- returns sli/\#1
+%      \item \lstinline[basicstyle=\ttfamily]{\skboptionsused} -- prints a warning with change log of otptions and current values
+%    \end{skbnotelist}
+%
+%  \item Changed Commands:
+%    \begin{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\skbconfig} -- added parameter to identify origin of the configuration change
+%    \end{skbnotelist}
+%
+%  \item Replaced Commands:
+%    \begin{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbPathBib} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbpathbib}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbPathFig} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbfilefig}
+%    \end{skbnotelist}
+%
+%\end{skbnotelist}
+%
+%
+%\subsection{v0.5 from 04-Aug-2010}
+%
+%\begin{skbnotelist}
+%  \item this is the first version on CTAN: http://www.ctan.org/tex-archive/macros/latex/contrib/skb/
+%  \item added example describing how the SKB uses itself to create parts of its documentation
+%  \item removed the redefinition of \cmd{\title} and \cmd{\author}, since they intererred with the beamer package definitions of these macros.
+%        added \cmd{\skbtitle} and \cmd{\skbauthor} instead.
+%  \item added RequiredPackage in the class skbbeamer before loading beamer to load xcolors with x11names
+%  \item added test for nemoir class: if loaded, then skbnotelist and skbnoteenum will have no effect; if not loaded, then the package
+%        booktabs will be loaded (for top/mid/bottomrule
+%  \item added test for beamer package: depending if beamer or beamerarticle are loaded, the SKB will initialise a few newe ifs
+%  \item added required package dirtree, and redefinition of some dirtree styles
+%  \item added two options to the SKB package: beameranim and beamernoanim
+%  \item added the package versions with the environments: skbmodetext, skbmodenote and skbmodeslide
+%  \item added the package optional with the options: text, note, slide, anim and noanim
+%  \item internally, the package optional also provides memoir
+%  \item changed the documentation, moved manual description to user guide in folder /doc, moved history.tex into the dtx file and
+%        changed most of the actual documentation (still not finished though)
+%  \item skbbeamer: corrected load of beamer package
+%  \item skblncsbeamer: moved load of skb after beamerarticle to allow skb to create proper options
+%  \item added \cmd{\providecommand} for \cmd{DescribeMacro} and \cmd{\cmd}, so that we can use the user-guide in the dtx and stand-alone
+%  \item added conditional load of skb.dtx in the driver
+%  \item changed the sequence of definitions in the dtx file, again, hopefully the last time
+%
+%  \item Bug Fixes (SF=sourceforge):
+%    \begin{skbnotelist}
+%      \item SF\#3032749 (skboptionsused doesn't work) -- fixed, changed \lstinline[basicstyle=\ttfamily]{\skb@setCfgVars}
+%      \item SF\#3032752 (history section for v0.4 has wrong date) -- fixed, changed the heading
+%      \item SF\#3032754 (skb.cfg missing/empty) -- fixed, changed the installer (skb.ins) to generate it and my local scripts to put it into /run
+%      \item SF\#3033124 (renewcommand title/author doesn't work) -- fixed, no renewcommand anymore, two new commands to set author/title for pdfinfo
+%      \item SF\#3038935 (skbinput not working w/o from) -- fixed, can load from root directory now
+%    \end{skbnotelist}
+%
+%  \item New Commands:
+%    \begin{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\skbtitle} -- title for PDF info
+%      \item \lstinline[basicstyle=\ttfamily]{\skbauthor} -- author for PDF info
+%      \item \lstinline[basicstyle=\ttfamily]{\skbslide} -- load slides and annotations
+%      \item \lstinline[basicstyle=\ttfamily]{\skbslidecite} -- for citations on slide annotation pages
+%    \end{skbnotelist}
+%
+%  \item Changed Commands:
+%    \begin{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\skbinput} -- added option to load tex files from figures directory (option fig)
+%    \end{skbnotelist}
+%
+%  \item Replaced Commands:
+%    \begin{skbnotelist}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbLoadSlideNotes} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbslide} with option annotate and first argument only
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbLoadSlideNotesDifferent} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbslide} with option annotate and both arguments
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbLoadSlideNotesExtern} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbslide} with option annotate and both arguments and option notefrom set
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbLoadSlideNotes} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbslide} without annotate and first argument only
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbLoadSlideOnlyNotes} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbslide} with option annotate and second argument only
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbSlideSource} $\mapsto$ replaced by \lstinline[basicstyle=\ttfamily]{\skbslidecite}
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbBeamerAnimtrue} $\mapsto$ replaced by options beameranim and beamernoanim for skbbeamer
+%      \item \lstinline[basicstyle=\ttfamily]{\SkbBeamerAnimtrue} $\mapsto$ usage of this if replaced by \cmd{\opt} with anim and noanim
+%    \end{skbnotelist}
+%
+%\end{skbnotelist}
+%
+%
+%\subsection{v0.51 from 12-May-2011}
+%
+%\begin{skbnotelist}
+%  \item worked on the documentation, lots of changes
+%  \item fixed a typo in skb.cfg, which made the bibliography file unloadable
+%  \item changed linkcolor from AntiqueWhite4 to Brown4
+%  \item added acronym database (short version of the automatically generated) and acronym handling in the documentation
+%  \item removed \cmd{\SKB}, appropriately it's now an acronym rather than a special type setting
+%  \item added bibtex load to the documentation
+%  \item removed call to \cmd{\skbbibtex} from class files, users need to call that now manually. reason is that otherwise
+%        configuration changes for bib/bibfile have no effect
+%  \item changed load mechanism for the user guide, due to bibtex load problems
+%  \item changed the two skbnote environments (list/enum), removed unnecessary temp storage
+%  \item changed default acronym file name to acronyms, note the added 's'
+%  \item added skbmoderncv class using the moderncv package and adding some macros for reference lists using biblatex
+%\end{skbnotelist}
+%
+%
+%\subsection{v0.52 from 03-Jun-2011}
+%
+%\begin{skbnotelist}
+%  \item changed directory and package structure to be CTAN conform
+%  \item re-worked README to reflect new package structure, and added information on generating files from the source
+%\end{skbnotelist}
+%
+%
+%
+%
+%\section*{Acronyms}
+%  \skbacronyms
+%
+%\printbibliography
+%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%
+% \Finale
+\endinput
+%
+%% \CharacterTable
+%%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
+%%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
+%%   Digits        \0\1\2\3\4\5\6\7\8\9
+%%   Exclamation   \!     Double quote  \"     Hash (number) \#
+%%   Dollar        \$     Percent       \%     Ampersand     \&
+%%   Acute accent  \'     Left paren    \(     Right paren   \)
+%%   Asterisk      \*     Plus          \+     Comma         \,
+%%   Minus         \-     Point         \.     Solidus       \/
+%%   Colon         \:     Semicolon     \;     Less than     \<
+%%   Equals        \=     Greater than  \>     Question mark \?
+%%   Commercial at \@     Left bracket  \[     Backslash     \\
+%%   Right bracket \]     Circumflex    \^     Underscore    \_
+%%   Grave accent  \`     Left brace    \{     Vertical bar  \|
+%%   Right brace   \}     Tilde         \~}
+ 

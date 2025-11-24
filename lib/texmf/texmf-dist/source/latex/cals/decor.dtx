@@ -1,0 +1,227 @@
+% \section{Decorations}
+
+% How much decoration requires a table? Initially I thought to implement
+% a generic approach, so an user could extend the set of what is
+% possible---for example, a dashed border instead of a solid one.
+% But this is a hard task for me, therefore I switched back
+% to the fixed set of properties. Indeed, the use case for cals
+% tables is technical documentation, not a wanna-be designer showcases.
+% 
+% The fixed set of decoration properties:
+% \begin{itemize}
+% \item padding
+% \item border thickness
+% \item cancelled after some thinking: border color
+% \item cell background
+% \end{itemize}
+%
+% In the first version of this package, decorations could be defined
+% for all cells in a row, for all cells in a column and finally
+% specially for a cell. Unfortunately, this approach does not work
+% for borders of multipage tables, when the decorations on a break are
+% different to the internal decorations. Trying different
+% workarounds, I finally found a descriptive and direct approach:
+% define default decorations for a cell plus define
+% decorations for the table frame.
+%
+% How to decorate the common border of two cells? The following
+% seems reasonable:
+% \begin{itemize}
+% \item The priority of settings: from the user, from the table
+%   frame, default. If cells have different priorities, use the
+%   highest one.
+% \item When priorities are the same, use the maximal thinkness.
+% \end{itemize}
+%
+% Imagine that the user uses only default decorations. Then all
+% the internal vertical borders are the same, and all internal
+% horizontal border are also the same. It took me time to
+% understand this obvious thing, that for the default setup
+% we need to define settings only for vertical and horizontal
+% borders, not for all four borders.
+%
+% Column separation and row separation are two very different
+% creatures. The former is fixed after a row is processed,
+% the latter could change somewhen later due to a table break.
+
+% \subsection{Setters and getters}
+
+% No more setter and getters provided to discourage cell formatting.
+% At the moment, if you really need it, use the knowledge of
+% the internal variables.
+
+% \begin{macro}{\cals@cs@width}
+% Width of column separators (vertical borders). For all the widths, |0pt| disables the rule.
+% \begin{macro}{\cals@framecs@width}
+% Width of the left and right table frame border.
+% \begin{macro}{\cals@rs@width}
+% Width of row separators (horizontal borders).
+% \begin{macro}{\cals@framers@width}
+% Width of the top and bottom table frame border.
+% \begin{macro}{\cals@bodyrs@width}
+% Width of row separators between the body and the header or the footer.
+% \begin{macro}{\cals@bgcolor}
+% Background color of the cells. If the macro is empty, it means no background.
+%    \begin{macrocode}
+\newcommand\cals@cs@width{.4pt}
+\newcommand\cals@framecs@width{0pt}
+\newcommand\cals@rs@width{.4pt}
+\newcommand\cals@framers@width{0pt}
+\newcommand\cals@bodyrs@width{1.2pt}
+\newcommand\cals@bgcolor{}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+
+% \begin{macro}{\cals@borderL}
+% \begin{macro}{\cals@borderT}
+% \begin{macro}{\cals@borderR}
+% \begin{macro}{\cals@borderB}
+% Overrides for the widths of the cell borders (left, top, right or bottom).
+% Macros, set to |\relax| by the |calstable| environment.
+% \end{macro}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+
+% Padding parameters (|\cals@paddingL| etc) and related
+% macros (|\alignC| etc) are defined near the macro |\cell|.
+
+% \subsection{Decorations for a row}
+
+% The whole code in this section is devoted to provide functionality
+% for the functions |\cals@decor@begin|, |...@next|, |...@end|. After a row is ended,
+% we have the following decorations:
+% \begin{itemize}
+% \item column separation: box |\cals@current@cs|
+% \item rowsep specification for the top: macro |\cals@rs@above|
+% \item rowsep specification for the bottom: macro |\cals@rs@below|
+% \end{itemize}
+% The high-level approach is obvious: we construct the decorations
+% cell-by-cell. First, we calculate column separation, getting
+% the width of the left and the right border. Then we use these
+% values to update the border above and below. Unfortunately,
+% there is a lot of small details. For example, as explained later,
+% we construct the decorations with a delay, therefore the end-function
+% is just a special sort of the next-function.
+
+% \begin{macro}{\cals@decor@begin}
+% Initialization.
+%    \begin{macrocode}
+\newcommand\cals@decor@begin{\cals@csrow@begin\cals@rs@spec@begin}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@decor@next}
+% Updates the decorations. The argument is the width of the cell.
+%    \begin{macrocode}
+\newcommand\cals@decor@next[1]{%
+\cals@csrow@nextcell{#1}\cals@borderL\cals@borderR\cals@bgcolor
+\cals@rs@spec@next{#1}\cals@lastLeftWidth\cals@borderT\cals@borderB}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@decor@end}
+% Finishes the decorations. Uses |\cals@lastLeftWidth|,
+% which is the width of the last right border.
+%    \begin{macrocode}
+\newcommand\cals@decor@end{%
+\cals@csrow@end
+\cals@rs@spec@end\cals@lastLeftWidth}
+%    \end{macrocode}
+% \end{macro}
+
+% \subsection{Deciding on the width and color}
+
+% \begin{macro}{\cals@widthII}
+% \begin{macro}{\cals@withWidthII}
+% Calculate a final width from the default one (argument 1)
+% and user-specified (argument 2, |\relax| means use the default),
+% put it to the macro |\cals@width|. Also, the macro |withWidthII|
+% start a conditional construction,
+% true branch is executed when the width is not zero.
+% Unused \#3 is for if-fi balancing, see |\cals@iftrue|.
+%    \begin{macrocode}
+\newcommand\cals@widthII[2]{%
+\ifx \relax#2\edef\cals@width{#1}%
+        \else \edef\cals@width{#2}\fi}
+
+\newcommand\cals@withWidthII[3]{%
+\cals@widthII{#1}{#2}%
+\ifdim \cals@width>0pt }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+
+% \begin{macro}{\cals@withColorII}
+% Calculate a final color from the default one (argument 1)
+% and user-specified (argument 2, |\relax| means use the default),
+% set the macro |\cals@color| to it. The both arguments must
+% be macro names, not token lists. Start a conditional
+% construction, true branch is executed when the color name is
+% given (not empty).
+% Unused \#3 is for if-fi balancing, see |\cals@iftrue|.
+%    \begin{macrocode}
+\newcommand\cals@withColorII[3]{%
+\ifx \relax#2\edef\cals@color{#1}%
+        \else \edef\cals@color{#2}\fi
+%    \end{macrocode}
+% Reversing a condition. Based on |\ifnot| macro by David Kastrup
+% posted to comp.text.tex 2 March 1998, Message-ID:
+% |<m2en0lebuc.fsf@mailhost.neuroinformatik.ruhr-uni-bochum.de>#1/1|.
+%    \begin{macrocode}
+\ifx \cals@color\empty \else\expandafter\expandafter\fi\iffalse\iftrue\fi}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@halfWidthToDimen}
+% Puts the half of the width in |#2| to the dimension
+% register |#1|.
+%    \begin{macrocode}
+\newcommand\cals@halfWidthToDimen[2]{%
+\dimen#1=#2\relax \divide\dimen#1 by 2 }
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@maxWidth}
+% Of two widths, given as macros, selects the maximal and put
+% the result to |\cals@width|. Takes care for |\relax|.
+%    \begin{macrocode}
+\newcommand\cals@maxWidth[2]{%
+\ifx \relax#1\relax
+  \ifx \relax#2\let\cals@width=\relax
+          \else \edef\cals@width{#2}\fi
+\else
+  \ifx \relax#2\relax
+    \edef\cals@width{#1}%
+  \else
+    \ifdim #1>#2 \edef\cals@width{#1}%
+           \else \edef\cals@width{#2}\fi\fi\fi}
+%    \end{macrocode}
+% \end{macro}
+
+% \begin{macro}{\cals@iftrue}
+% \begin{macro}{\cals@iffalse}
+% Balancing if-fi. The following does not work:
+% \begin{verbatim}
+% \let\next=\iftrue ...
+% \if ... \next ... \fi ... \fi
+% \end{verbatim}
+% But this code does work:
+% \begin{verbatim}
+% \let\next=\cals@iftrue ...
+% \if ... \next\iftrue ... \fi ... \fi
+% \end{verbatim}
+% We use |\iftrue| (or any other if-start), which is taken into
+% account when scanning for the fi-else-if balance,
+% but ignored when executed.
+%    \begin{macrocode}
+\def\cals@iftrue#1{\iftrue}
+\def\cals@iffalse#1{\iffalse}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}

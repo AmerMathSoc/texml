@@ -1,0 +1,1674 @@
+\errorcontextlines=\maxdimen
+% \iffalse
+%%
+%% Copyright (C) 2006, 2007 QuinScape GmbH
+%% http://www.quinscape.de
+%
+% This file may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%    http://www.latex-project.org/lppl.txt
+% \fi
+%
+% \CheckSum{1258}
+% \section{Using \texttt{qstest}}
+%
+% The basic idea of \texttt{qstest} is to let the user specify a
+% number of tests that can be performed either at package load time or
+% while running a separate test file through \LaTeX.  If you are
+% writing |.dtx| files, it is a good idea to use Docstrip `modules'
+% for specifying which lines are to be used for testing.  The file
+% |qstest.dtx| from which both the style file as well as this
+% documentation have been generated has been done in this manner.
+%
+% Since the following tests should be ignored when the |dtx| file is
+% compiled itself, we use this for skipping over the tests:
+%    \begin{macrocode}
+%<*dtx>
+\iffalse
+%</dtx>
+%    \end{macrocode}
+%
+% A standalone test file actually does not need a preamble.  We can
+% load the packages with \cmd{\RequirePackage} and just go ahead.  Let
+% us demonstrate how to build such a test file by testing the |qstest|
+% package itself:
+%    \begin{macrocode}
+%<*test>
+\RequirePackage{qstest}
+%    \end{macrocode}
+%
+% \subsection{Pattern and keyword lists}
+%
+% Check section \href{file:makematch#patterns}{``Match patterns and
+%   targets''} of the |makematch| package for an explanation of the
+% comma-separated pattern and keyword lists.  In a nutshell, both are
+% lists of arbitrary material that is not expanded but rather used in
+% sanitized (printable) form.  Patterns may contain wildcard
+% characters |*| matching zero or more characters, and may be preceded
+% by |!| in order to negate a match from an earlier pattern in the
+% pattern list.  Leading spaces before an item in either list are
+% discarded.
+%
+% \subsection{Specifying test sets}
+%
+% \DescribeMacro{\IncludeTests} This macro specifies a pattern list
+% matched to tests' keyword lists in order to determine the tests to
+% be included in this test run.  The characters |*| and |!| are
+% interpreted as explained above.
+%
+% For example,
+% \begin{quote}
+%   |\IncludeTests{*, !\cs}|
+% \end{quote}
+% will run all tests except those that have a test keyword of |\cs| in
+% their list of keywords.  It is a good convention to specify the
+% principal macro or environment to be tested as the first keyword.
+%
+% The default is to include all tests.  If you are interspersing
+% possibly expensive tests with your source file, you might want to
+% specify something like
+% \begin{quote}
+%   |\IncludeTests{*, !expensive}|
+% \end{quote}
+% or even
+% \begin{quote}
+%   |\IncludeTests{}|
+% \end{quote}
+% in your document preamble, and then possibly override this on the
+% command line with
+% \begin{quote}
+%   |latex "\AtBeginDocument{\IncludeTests{*}}\input{file}"|
+% \end{quote}
+% or similar for getting a more complete test.
+%
+% \DescribeMacro{\TestErrors} This defines test patterns that will
+% throw an error when failing.  A test that throws an error will not
+% also add a warning to the standard log file with extension |log|
+% since that would be redundant.
+%
+% The default is |\TestErrors{*, !fails}|, have all tests that are not
+% marked as broken throw an error when they fail.
+%
+% The throwing of errors does not depend on the logging settings (see
+% below) for the default |log| file.
+%
+% \DescribeMacro{\LogTests} This macro receives three arguments.  The
+% first is the filename extension of a log file (the extension |log|
+% is treated specially and uses package warning and info commands to
+% log test failures and passes, respectively).  The second is a
+% keyword list that indicates which passed tests are to be logged.
+% The third is a keyword list specifying which failed tests are to be
+% logged.  Let us open a file logging everything:
+%    \begin{macrocode}
+\LogTests{lgout}{*}{*}
+%    \end{macrocode}
+% The choice of |lgout| is made to make it possible to also have
+% |lgin| for comparison purposes: the latter would be an |lgout| file
+% from a previous, `definitive run', renamed and checked into version
+% control, for the sake of being able to compare the log output from
+% different versions.
+%
+% An already open log file stays open and just changes what is logged.
+% By default, the standard |log|
+% \mbox{(pseudo-)}\discretionary{}{}{}file is already open and logs
+% everything.
+%
+% Passed and failed tests are not completely symmetric with regard to
+% logging: test failures are logged and/or indicated on the individual
+% failed assertions, while a successful test is only logged and/or
+% indicated in summary.
+%
+% \DescribeMacro{\LogClose} You can explicitly close a log file if you
+% want to reread it in the course of processing, or call an executable
+% that would process it.  The standard file with extension |log| will
+% not actually get closed and flushed if you do this (though logging
+% would stop on it), but all others might.  The actual example for
+% this follows after the tests.  You can reopen a closed log file
+% using \cmd{\LogTests}.  It will then get rewritten from the
+% beginning (with the exception for the standard |log| file, of
+% course).
+%
+% \subsection{The tests}
+%
+% \DescribeEnv{qstest}
+% Tests are performed within the |qstest| environment.  The
+% environment gets two arguments.  The first is the name of the test
+% recorded in the log file.  The second is a list of test keywords
+% used for deciding which tests are performed and logged.
+%
+% Before delving in the details of what kind of tests you can perform
+% in this environment, we list the various commands that are given
+% patterns and thus control what kind of tests are performed and
+% logged.
+%
+% \DescribeMacro{\Expect}
+% This is the workhorse for checking that values, dimensions, macros
+% and other things are just like the test designer would expect them
+% to be.
+%
+% This macro basically receives two brace-delimited
+% arguments\footnote{The arguments are collected with a token register
+%   assignment.  This gives several options for specifying them,
+%   including giving a token register without braces around it.  It
+%   also makes it possible to precede the \textsl{balanced text} with
+%   \cmd{\expandafter} and similar expandable stuff.} and checks that
+% they are equal after being passed through \cmd{\def} and sanitized.
+% This means that you can't normally use |#| except when followed by a
+% digit (all from 1 to 9 are allowed) or |#|.  If you precede one of
+% those arguments with |*| it gets passed through through \cmd{\edef}
+% instead of \cmd{\def}.  There may also be additional tokens like
+% |\expandafter| before the opening brace.  Note that the combination
+% of \cmd{\edef} and |\the|\meta{token variable} can be used to pass
+% through |#| characters without interpretation.  e\TeX\ provides a
+% similar effect with \cmd{\unexpanded}.  So if you want to compare a
+% token list that may contain isolated hash characters, you can do so
+% by writing something like
+%    \begin{macrocode}
+%<*etex>
+\begin{qstest}{# in isolation}{\Expect, #, \unexpanded}
+  \toks0{# and #}
+  \Expect*{\the\toks0}*{\unexpanded{# and #}}
+\end{qstest}
+%</etex>
+%    \end{macrocode}
+% Since the sanitized version will convert |#| macro parameters to the
+% string |##|, you might also do this explicitly (and without e\TeX)
+% as
+%    \begin{macrocode}
+\begin{qstest}{# in isolation 2}{\Expect, #, \string}
+  \toks0{# and #}
+  \Expect*{\the\toks0}*{\string#\string# and \string#\string#}
+\end{qstest}
+%    \end{macrocode}
+% If the token register is guaranteed to only contain `proper' |#|
+% characters that are either followed by another |#| or a digit, you
+% can let the normal interpretation of a macro parameter for
+% \cmd{\def} kick in and use this as
+%    \begin{macrocode}
+\begin{qstest}{# as macro parameter}{\Expect, #}
+  \toks0{\def\xxx#1{}}
+  \Expect\expandafter{\the\toks0}{\def\xxx#1{}}
+\end{qstest}
+%    \end{macrocode}
+%   In this manner, |#1| is interpreted (and sanitized) as a macro
+%   parameter on both sides, and consequently no doubling of |#|
+%   occurs.
+%
+%   Before the comparison is done, both arguments are sanitized,
+%   converted into printing characters with standardized catcodes
+%   throughout\footnote{Spaces get catcode~10, all other characters
+%     catcode~12.}.  A word of warning: both sanitization as well as
+%   using \cmd{\meaning} still depend on catcode settings, since
+%   single-letter control sequences (made from a catcode 11 letter)
+%   are followed by a space, and other single-character control
+%   sequences are not.  For that reason, a standalone test file for
+%   \LaTeX\ class or package files will usually need to declare
+%    \begin{macrocode}
+\makeatletter
+%    \end{macrocode}
+%   in order to make `|@|' a letter, like it usually is in such
+%   files.
+%
+%   All of the of the following expectations would turn out correct:
+%    \begin{macrocode}
+\begin{qstest}{Some LaTeX definitions}{\Expect}
+  \Expect*{\meaning\@gobble}{\long macro:#1->}
+  \Expect*{\the\maxdimen}{16383.99998pt}
+\end{qstest}
+%    \end{macrocode}
+% Note that there is no way to convert the contents of a box into a
+% printable rendition, so with regard to boxes, you will be mostly
+% reduced to check that dimensions of a box meet expectations.
+%
+% \subsection{Expecting \texttt{ifthen} conditions}
+% \DescribeMacro{\ExpectIfThen}
+%   This is used for evaluating a condition as provided by the
+%   |ifthen| package.  See its docs for the kind of condition that is
+%   possible there.  You just specify one argument: the condition that
+%   you expect to be true.  Here is an example:
+%    \begin{macrocode}
+\RequirePackage{ifthen}
+\begin{qstest}{\ExpectIfThen}{\ExpectIfThen}
+  \ExpectIfThen{\lengthtest{\maxdimen=16383.99998pt}\AND
+    \maxdimen>1000000000}
+\end{qstest}
+%    \end{macrocode}
+%
+% \subsection{Dimension ranges}
+%
+% \DescribeMacro{\InRange} Sometimes we want to check whether some
+% dimension is not exactly like some value, but rather in some range.
+% We do this by specifying as the second argument to \cmd{\Expect} an
+% artificial macro with two arguments specifying the range in
+% question.  This will make \cmd{\Expect} succeed if its first
+% argument is in the range specified by the two arguments to
+% \cmd{\InRange}.
+%
+% The range is specified as two \TeX\ dimens.  If you use a dimen
+% register and you want to have a possible error message display the
+% value instead of the dimen register, you can do so by using the |*|
+% modifier before \cmd{\InRange} (which will cause the value to be
+% expanded before printing and comparing) and put \cmd{\the} before
+% the dimen register since such register are not expandible by
+% themselves.
+%
+% Here are some examples:
+%    \begin{macrocode}
+\begin{qstest}{\InRange success}{\InRange}
+  \dimen@=10pt
+  \Expect*{\the\dimen@}\InRange{5pt}{15pt}
+  \Expect*{\the\dimen@}\InRange{10pt}{15pt}
+  \Expect*{\the\dimen@}\InRange{5pt}{10pt}
+\end{qstest}
+\begin{qstest}{\InRange failure}{\InRange, fails}
+  \dimen@=10pt \dimen@ii=9.99998pt
+  \Expect*{\the\dimen@}\InRange{5pt}{\dimen@ii}
+  \dimen@ii=10.00002pt
+  \Expect*{\the\dimen@}*\InRange{\the\dimen@ii}{15pt}
+\end{qstest}
+%    \end{macrocode}
+% \DescribeMacro{\NearTo} This requires e\TeX's arithmetic and will
+% not be available for versions built without e\TeX\ support.  The
+% macro is used in lieu of an expected value and is similar to
+% \cmd{InRange} in that it is a pseudovalue to be used for the second
+% argument of \cmd{\Expect}.  It makes \cmd{\Expect} succeed if its
+% own mandatory argument is close to the first argument from
+% \cmd{\Expect}, where closeness is defined as being within |0.05pt|.
+% This size can be varied by specifying a different one as optional
+% argument to \cmd{\NearTo}.  Here is a test:
+%    \begin{macrocode}
+%<*etex>
+\begin{qstest}{\NearTo success}{\NearTo}
+  \dimen@=10pt
+  \Expect*{\the\dimen@}\NearTo{10.05pt}
+  \Expect*{\the\dimen@}\NearTo{9.95pt}
+  \Expect*{\the\dimen@}\NearTo[2pt]{12pt}
+  \Expect*{\the\dimen@}\NearTo[0.1pt]{9.9pt}
+\end{qstest}
+\begin{qstest}{\NearTo failure}{\NearTo, fails}
+  \dimen@=10pt
+  \Expect*{\the\dimen@}\NearTo{10.05002pt}
+  \Expect*{\the\dimen@}\NearTo[1pt]{11.00001pt}
+\end{qstest}
+%</etex>
+%    \end{macrocode}
+%
+% \subsection{Saved results}
+%
+% The purpose of saved results is to be able to check that the value
+% has remained the same over passes.  Results are given a unique label
+% name and are written to an auxiliary file where they can be read in
+% for the sake of comparison.  One can use the normal |aux| file for
+% this purpose, but it might be preferable to use a separate dedicated
+% file.  That way it is possible to input a versioned \emph{copy} of
+% this file and have a fixed point of reference rather than the last
+% run.
+%
+% While the |aux| file is read in automatically at the beginning of
+% the document, this does not happen with explicitly named files.  You
+% have to read them in yourself, preferably using
+% \begin{quote}
+%   |\InputIfFileExists|\marg{filename}|{}{}|
+% \end{quote}
+% so that no error is thrown when the file does not yet exist.
+%
+% \DescribeMacro{\SaveValueFile} This gets one argument specifying
+% which file name to use for saving results.  If this is specified, a
+% special file is opened.  If \cmd{\SaveValueFile} is not called, the
+% standard |aux| file is used instead, but then you can only save
+% values after |\begin||{document}|.  |\jobname.qsout| seems like a
+%   useful file name to use here (the extension |out| is already in
+%   use by PDF\TeX).
+%    \begin{macrocode}
+\begin{qstest}{\SavedValue}{\SavedValue}
+  \SaveValueFile{\jobname.qsout}
+%    \end{macrocode}
+% If this were a real test instead of just documentation, we probably
+% would have written something like
+% \begin{quote}
+%   |\InputIfFileExists{\jobname.qsin}{}{}|
+% \end{quote}
+% first in order to read in values from a previous run.  The given
+% file would have been a copy of a previous |qsout| file, possibly
+% checked into version control in order to make sure behavior is
+% consistent across runs.  If it is an error to not have such a file
+% (once you have established appropriate testing), you can just write
+% \begin{quote}
+%   |\input{\jobname.qsin}|
+% \end{quote}
+% instead, of course.
+%
+% \DescribeMacro{\CloseValueFile} This macro takes no argument and
+% will close a value save file if one is open (using this has no
+% effect if no file has been opened and values are saved on the |aux|
+% file instead).  We'll demonstrate use of it later.  It is probably
+% only necessary for testing |qstest| itself (namely, when you read in
+% saved values in the same run), or when you do the
+% processing/comparison with a previous version by executing commands
+% via \TeX's |\write18| mechanism.
+%
+% \DescribeMacro{\SaveValue} This gets the label name as first
+% argument.  If you are using the non-e\TeX-version, the label name
+% gets sanitized using \cmd{\string} and so can't deal with
+% non-character material except at its immediate beginning.  The
+% e\TeX-version has no such constraint.
+%
+% The second argument is the same kind of argument as \cmd{\Expect}
+% expects, namely something suitable for a token register assignment
+% which is passed through \cmd{\def} if not preceded by |*|, and by
+% \cmd{\edef} if preceded by |*|.  The value is written out to the
+% save file where it can be read in afterwards.
+%
+% Let us save a few values under different names now:
+%    \begin{macrocode}
+  \SaveValue{\InternalSetValue}*{\meaning\InternalSetValue}
+  \SaveValue{\IncludeTests}*{\meaning\IncludeTests}
+  \SaveValue{whatever}*{3.1415}
+  \SaveValue{\maxdimen}*{\the\maxdimen}
+%    \end{macrocode}
+% \DescribeMacro{\InternalSetValue} A call to this macro is placed
+% into the save file for each call of \cmd{\SaveValue}.  The details
+% are not really relevant: in case you run into problems while
+% inputting the save file, it might be nice to know.
+%
+% \DescribeMacro{\SavedValue} This is used for retrieving a saved
+% value.  When used as the second argument to \cmd{\Expect}, it will
+% default to the value of the first argument to \cmd{\Expect} unless
+% it has been read in from a save file.  This behavior is intended for
+% making it easy to add tests and saved values and not get errors at
+% first, until actually values from a previous test become available.
+%
+% Consequently, the following tests will all turn out true before we
+% read in a file, simply because all the saved values are not yet
+% defined and default to the expectations:
+%    \begin{macrocode}
+  \Expect{Whatever}\SavedValue{\InternalSetValue}
+  \Expect[\IncludeTests]{Whatever else}\SavedValue{\IncludeTests}
+  \Expect[whatever]{2.71828}\SavedValue{whatever}
+  \Expect[undefined]{1.618034}\SavedValue{undefined}
+%    \end{macrocode}
+% After closing and rereading the file, we'll need to be more careful
+% with our expectations, but the last line still works since there
+% still is no saved value for ``undefined''.
+%    \begin{macrocode}
+  \CloseValueFile
+  \input{\jobname.qsout}
+  \Expect*{\meaning\InternalSetValue}\SavedValue{\InternalSetValue}
+  \Expect[\IncludeTests]*{\meaning\IncludeTests}%
+                         \SavedValue{\IncludeTests}
+  \Expect[whatever]{3.1415}\SavedValue{whatever}
+  \Expect[undefined]{1.618034}\SavedValue{undefined}
+\end{qstest}
+%    \end{macrocode}
+% Ok, and now lets take the previous tests which succeeded again and
+% let them fail now that the variables are defined:
+%    \begin{macrocode}
+\begin{qstest}{\SavedValue failure}{\SavedValue,fails}
+  \Expect{Whatever}\SavedValue{\InternalSetValue}
+  \Expect[\IncludeTests]{Whatever else}\SavedValue{\IncludeTests}
+  \Expect{2.71828}\SavedValue{whatever}
+\end{qstest}
+%    \end{macrocode}
+% 
+%
+% \subsection{Checking for call sequences}
+% \DescribeEnv{ExpectCallSequence} The environment
+% |ExpectCallSequence| tells the test system that macros are going to
+% be called in a certain order and with particular types of arguments.
+%
+% It gets as an argument the expected call sequence.  The call
+% sequence contains entries that look like a macro definition:
+% starting with the macro name followed with a macro argument list and
+% a brace-enclosed substitution text that gets executed in place of
+% the macro.  The argument list given to this macro substitution will
+% get as its first argument a macro with the original definition of
+% the control sequence, so you can get at the original arguments for
+% this particular macro call starting with |#2|.  As a consequence, if
+% you specify no arguments at all and an empty replacement text for
+% the substitution, the original macro gets executed with the original
+% arguments.
+%
+% \DescribeMacro{\CalledName} If you want to get back from the control
+% sequence with the original meaning in |#1| to the original macro
+% name, you can use \cmd{\CalledName} on it.  This will expand to the
+% original control sequence \emph{name}, all in printable characters
+% fit for output or typesetting in a typewriter font (or use in
+% \cmd{\csname}), but without leading backslash character.  You can
+% get to the control sequence itself by using
+% \begin{quote}
+%   |\csname \CalledName#1\endcsname|
+% \end{quote}
+% and to a printable version including backslash by using
+% \begin{quote}
+%   |\expandafter \string \csname \CalledName#1\endcsname|
+% \end{quote}
+%
+% Going into more detail, a substitution function is basically defined
+% using
+% \begin{quote}
+%   |\protected| |\long| |\def|
+% \end{quote}
+% so it will not usually get expanded except when hit with
+% \cmd{\expandafter} or actually being executed.  Note that you can't
+% use this on stuff that has to work at expansion time.  This really
+% works mainly with macros that would also be suitable candidates for
+% \cmd{\DeclareRobustCommand}.
+%
+% It is also a bad idea to trace a conditional in this manner: while
+% the substitution could be made to work when being executed, it will
+% appear like an ordinary macro when being skipped, disturbing the
+% conditional nesting.
+%
+% Only macros occuring somewhere in the call sequence will get
+% tracked, other macros are not affected.  The environment can
+% actually get nested, in which case the outer sequences will get
+% tracked independently from the inner sequence.
+%
+% This makes it possible to use |ExpectCallSequence| in order to
+% spoof, for example, both input consuming and output producing macros
+% without knowing the exact relationship of both.
+%
+% Apart from specifying macro calls, the call sequence specification
+% can contain special characters that also carry meaning:
+% \begin{description}
+% \item[\texttt{\string`}] If this is set in the call sequence, it
+%   places the initial parsing state here.  This will make it an error
+%   if non-matching entries occur at the start of the sequence, which
+%   otherwise is effectively enclosed with
+%   \begin{quote}
+%     |.{}*(|\meta{sequence}|).{}*|
+%   \end{quote}
+%   meaning that nonmatching entries before the first and after the
+%   last matching item of the sequence are ignored by default (this
+%   makes it closer to normal regexp matchers).  Since the matching
+%   will then start at |`|, you can put macros before that position
+%   that you want to be flagged if they occur in the sequence, even
+%   when they are mentioned nowhere else (macros which would be an
+%   error if actually called).  Also available as the more customary
+%   |^| character, but that tends to behave worse in \LaTeX-aware
+%   editors.
+% \item[\texttt{\string'}] This indicates the last call sequence
+%   element to be matched.  If any traced macros appear after this
+%   point, an error will get generated.  Any immediately following
+%   call sequence entries will not get reached.
+% \item[|.|] A single dot indicates a wildcard: any of the tracked
+%   control sequences might occur here.  You still have to follow this
+%   with macro arguments and a braced replacement text.  Wildcards are
+%   considered as a fallback when nothing else matches.
+% \item[|(|\dots|)|] Parens may be used for grouping alternatives
+%   and\slash or combining items for the sake of repeating
+%   specifications, of which there are three:
+% \item[|?|] If a question mark follows either a macro call, wildcard
+%   call, parenthesized group, or call sequence end, the item before
+%   it is optional.
+% \item[|+|] A plus sign following an item means that this item may be
+%   repeated one or more times.
+% \item[|*|] An asterisk following an item means that this item may be
+%   repeated zero or more times.
+% \item[\texttt{\string|}] A vertical bar separates alternatives.
+%   Alternatives extend as far as possible, to the next bar, to an
+%   enclosing paren group, or to the start and\slash or end of the
+%   whole call sequence specification if nothing else intervenes.
+% \end{description}
+% Note that opposed to traditional regexp evaluation, no backtracking
+% is employed: at each point in the call sequence, the next match is
+% immediately chosen and a choice can (for obvious reasons) not be
+% reverted.  It is the task of the user to specify a call sequence in
+% a sufficiently non-ambiguous manner that will make the call sequence
+% tracing not pick dead ends.
+%    \begin{macrocode}
+\begin{qstest}{ExpectCallSequence}{ExpectCallSequence}
+  \def\e{e} \def\f{f}
+  \def\g{g} \def\h{h}
+  \begin{ExpectCallSequence}{`\e#1{%
+        \Expect\expandafter{\csname\CalledName#1\endcsname}{\e }%
+        \Expect*{\meaning#1}{macro:->e}}+\f#1{}'}
+    \e \e \e \e \f
+  \end{ExpectCallSequence}
+\end{qstest}
+%    \end{macrocode}
+% 
+% \subsection{Ending a standalone test file}
+% One finishes a standalone test file by calling the \LaTeX\ control
+% sequence \cmd{\quit}.  This stops processing even when we did not
+% actually get into a document.  We don't actually do this here since
+% there will be further tests in the full documentation file.
+% However, we will now close the log file we opened for this demonstration.
+%    \begin{macrocode}
+\LogClose{lgout}
+%</test>
+%    \end{macrocode}
+% \IfFileExists{qstest-qs.lgout}{%
+%   And now we will show the resulting standalone log file:
+%   \IndexInput{qstest-qs.lgout}}{%
+%   \GenericError{(\jobname) }%
+%   {`qstest-qs.lgout' is missing}
+%   {Please run `qstest-qs.tex' (unpacked by `qstest.ins') through LaTeX first.}
+%   {Documentation will be incomplete otherwise.}}
+% 
+% We can now stop skipping if we are compiling the |dtx| file
+% standalone.
+%    \begin{macrocode}
+%<*dtx>
+\fi
+%</dtx>
+%    \end{macrocode}
+% \StopEventually{}
+% \section{The driver file}
+%    \begin{macrocode}
+%<*driver>
+\documentclass{ltxdoc}
+\usepackage{qstest}
+\usepackage{hyperref}
+\OnlyDescription
+%<driver> \AlsoImplementation
+\begin{document}
+\GetFileInfo{qstest.sty}
+\date{\filedate}
+\title{\texttt{\filename}\\\fileinfo\\version \fileversion}
+\author{David Kastrup\thanks{\href{mailto:dak@gnu.org}
+    {David.Kastrup@QuinScape.de}, \href{http://quinscape.de}{QuinScape
+      GmbH}}}
+\maketitle
+\DocInput{qstest.dtx}
+\end{document}
+%</driver>
+%    \end{macrocode}
+% \hypertarget{installer}{%
+% \section{The installer file}
+% }
+% If you did not get an installer file with the package, you can
+% recreate it by running
+% \begin{quote}
+%   |tex docstrip|
+% \end{quote}
+% and specifying |dtx| as input extension, |ins| as output extension,
+% |installer| as option list and |qstest| as input file name.
+%
+% Installations with a non-e\TeX-based \LaTeX\ can try to remove the
+% |etex| option from the style, but it will impact robustness and
+% performance of the package.
+%
+% When called from a Makefile, you want to allow overwriting files,
+% and you don't want to install into the final target tree.  In this
+% case, call
+% \begin{quote}
+%   |tex "\let\Make=y \input makematch.ins"|
+% \end{quote}
+%    \begin{macrocode}
+%<*installer>
+\input docstrip
+\ifx\Make y\askforoverwritefalse\fi
+\generate{
+  \file{qstest.drv}{\from{qstest.dtx}{driver,test,etex}}
+  \file{qstest-qs.tex}{\from{qstest.dtx}{test,etex}}
+  \file{makematch.drv}{\from{makematch.dtx}{driver,etex}}
+  \file{makematch-qs.tex}{\from{makematch.dtx}{test,etex}}
+  \ifx\Make y\else \usedir{tex/latex/qstest}\fi
+  \file{qstest.sty}{\from{qstest.dtx}{package,etex}}
+  \file{makematch.sty}{\from{makematch.dtx}{package,etex}}}
+\endbatchfile
+%</installer>
+%    \end{macrocode}
+%
+% \section{The Implementation}
+% \subsection{Front matter}
+% Some data and version magic from SVN keyword expansion.
+%    \begin{macrocode}
+%<*package>
+\NeedsTeXFormat{LaTeX2e}
+\def\next$Id: #1.dtx #2 #3-#4-#5 #6${%
+  \ProvidesPackage{#1}[#3/#4/#5 1.#2 QuinScape Unit Test Package]
+}
+\next
+$Id: qstest.dtx 7896 2007-02-21 14:03:26Z dkastrup $
+\RequirePackage{makematch}
+\newtoks\qst@tmptoks
+%    \end{macrocode}
+%
+% \subsection{Error logging and treatment}
+% \begin{macro}{\TestErrors}
+%   This defines test patterns that will throw an error when failing.
+%    \begin{macrocode}
+\newcommand*{\TestErrors}{\MakeMatcher[,]\qst@errorcheck}
+\TestErrors{*, !fails}
+\newif\ifqst@error
+\def\qst@ifqst@error{\qst@errorcheck\qst@options
+  \qst@errortrue\qst@errorfalse\ifqst@error}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@failed}
+%   This is the internal macro we call for every failure.  It gets the
+%   test message which is expanded and then sanitized.
+%    \begin{macrocode}
+\long\def\qst@error#1{%
+  \global\qst@testpassedfalse
+  \global\let\qst@lastfailure\qst@testname
+  \edef\qst@message{Failed: \qst@testname^^J#1}%
+  \@onelevel@sanitize\qst@message
+  \qst@failed}
+%    \end{macrocode}   
+% \end{macro}
+% \begin{macro}{\ifqst@testpassed}
+%   This is used to flag failures in a test.
+%    \begin{macrocode}
+\newif\ifqst@testpassed
+%    \end{macrocode}
+% \end{macro}
+% 
+% \subsection{Logging}
+% \label{sec:logging}
+% \begin{macro}{\LogTests}
+%   This macro receives three arguments.  The first is the filename
+%   extension of a log file.  The second is a keyword list that
+%   indicates which passed tests are to be logged.  The third is a
+%   keyword list indicating which failed tests are to be logged.
+%    \begin{macrocode}
+\newcommand{\LogTests}[3]{%
+%<etex>  \ifcsname qst:log:#1\endcsname \else
+%<*!etex>
+  {\expandafter}\expandafter\ifx\csname qst:log:#1\endcsname
+      \@undefined
+%</!etex>
+    \expandafter\newwrite\csname qst:log:#1\endcsname
+    \qst@gpush\qst@passed{\qst@logentry+{#1}}%
+    \qst@gpush\qst@failed{\qst@logentry-{#1}}%
+    \global\expandafter\let\csname qst:+log:#1\endcsname\qst@matchnever
+    \global\expandafter\let\csname qst:-log:#1\endcsname\qst@matchnever
+  \fi
+  \expandafter\ifx \csname qst:+log:#1\endcsname \qst@matchnever
+    \PackageInfo{qstest}{Logging on: \jobname.#1}%
+    \ifnum\csname qst:log:#1\endcsname>\m@ne
+      \immediate\openout\csname qst:log:#1\endcsname\jobname.#1\relax
+    \fi
+  \fi
+  \MakeMatcher[,]\qst@tmp{#2}%
+  \global\expandafter\let\csname qst:+log:#1\endcsname\qst@tmp
+  \MakeMatcher[,]\qst@tmp{#3}%
+  \global\expandafter\let\csname qst:-log:#1\endcsname\qst@tmp
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@gpush}
+%    \begin{macrocode}
+%<*etex>
+\long\def\qst@gpush#1#2{\xdef#1{\unexpanded{#2}%
+    \unexpanded\expandafter{#1}}}
+%</etex>
+%<*!etex>
+\long\def\qst@gpush#1#2{\qst@tmptoks{#2}%
+  \qst@tmptoks\expandafter{\the\expandafter\qst@tmptoks#1}%
+  \xdef#1{\the\qst@tmptoks}}
+%</!etex>
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\qst@logentry}
+%   \begin{macrocode}
+\def\qst@logentry#1#2{\qst@maybelog#1{#2}{%
+  \immediate\write\csname qst:log:#2\endcsname{\qst@message}}}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@maybelog}
+%   \begin{macrocode}
+\def\qst@maybelog#1#2#3{\csname qst:#1log:#2\endcsname\qst@options
+  {#3}{}}
+%    \end{macrocode}
+% \end{macro}
+% If the user specifies |log| as the extension, we don't want to
+% overwrite the log file.  Instead we convert this to package warnings
+% and infos.
+%    \begin{macrocode}
+\expandafter\let\csname qst:log:log\endcsname\m@ne
+\global\expandafter\let\csname qst:+log:log\endcsname\qst@matchalways
+\global\expandafter\let\csname qst:-log:log\endcsname\qst@matchalways
+\def\qst@passed{\qst@maybelog+{log}%
+                              {\PackageInfo{qstest}{\qst@message}}}
+\def\qst@failed{\ifqst@error
+    \PackageError{qstest}{\qst@message}{}%
+  \else
+    \qst@maybelog-{log}{\PackageWarning{qstest}{\qst@message}}%
+  \fi}
+%    \end{macrocode}
+% \begin{macro}{\LogClose}
+%   This closes the specified log file again.  This is needed if the
+%   log file gets processed during the \TeX\ run, like with verbatim
+%   input or by running a |\write18| process on it.  It is possible to
+%   reopen the file later.  Specifying |log| will not actually close
+%   the log file, but just stop logging.
+%    \begin{macrocode}
+\newcommand*\LogClose[1]{%
+  \expandafter\ifx \csname qst:+log:#1\endcsname\qst@matchnever
+  \else
+    \PackageInfo{qstest}{Logging off: \jobname.#1}%
+    \ifnum\csname qst:log:#1\endcsname>\m@ne
+      \immediate\closeout\csname qst:log:#1\endcsname
+    \fi
+    \global\expandafter\let\csname qst:+log:#1\endcsname\qst@matchnever
+    \global\expandafter\let\csname qst:-log:#1\endcsname\qst@matchnever
+  \fi
+}
+%</package>
+%<*test>
+\IncludeTests{*}
+\makeatletter
+\begin{qstest}{\LogClose}{}
+\begin{ExpectCallSequence}{%
+    `\PackageInfo#1#2#3{\Expect[##1]{#2}{qstest}%
+      \Expect[##2]{#3}{Logging off: \jobname.log}%
+      #1{#2}{#3}}'}
+  \LogClose{log}
+\end{ExpectCallSequence}
+\end{qstest}
+\begin{qstest}{\LogTests}{}
+\begin{ExpectCallSequence}{%
+    \PackageInfo#1#2#3{\Expect[##1]{#2}{qstest}%
+      \Expect[##2]{#3}{Logging on: \jobname.log}%
+      #1{#2}{#3}}}
+  \LogTests{log}{*}{*}
+\end{ExpectCallSequence}
+\end{qstest}
+%</test> 
+%<*package>
+%    \end{macrocode}
+% \end{macro}
+% 
+% \subsection{The test code itself}
+% 
+% \begin{macro}{\IncludeTests}
+%   This defines the test case patterns to be included.  Keyword
+%   specifications and patterns are `sanitized': macros are not
+%   expanded, and everything but spaces is converted to catcode~12
+%   characters.  At the start of a pattern or a keyword, spaces get
+%   ignored.  Spaces inside of patterns or keywords should work as
+%   expected, however.
+%    \begin{macrocode}
+\def\IncludeTests{\MakeMatcher[,]\qst@includecheck}
+\let\qst@includecheck\qst@matchalways
+%    \end{macrocode}
+% \end{macro}
+% \begin{environment}{qstest}
+%   This is the environment for defining a test.  |#1| is the name of
+%   the test for the log file.  The name is sanitized, so control
+%   sequence names can be used verbatim.  |#2| is a sequence of
+%   options that may be matched by the patterns from
+%   \cmd{\IncludeTests}.  If there is no match the environment is
+%   skipped like a comment environment.
+%    \begin{macrocode}
+\RequirePackage{verbatim}
+\newenvironment{qstest}[2]{%
+%    \end{macrocode}
+% We sanitize test name and options.  In case people nest tests, we
+% don't want to announce an outer test passed when a single inner test
+% has passed.  So we don't set \cmd{\qst@testpassedtrue} globally.
+% While a mixture of local and global assignments should in general be
+% avoided as it leads to ``savestack buildup'', this can't actually
+% happen here since the local assignment is done only once at the
+% start of a group.
+%    \begin{macrocode}
+  \qst@testpassedtrue
+%<etex> \edef\qst@testname{\detokenize{#1}}%
+%<*!etex>
+  \qst@tmptoks{#1}%
+  \edef\qst@testname{\the\qst@tmptoks}%
+  \@onelevel@sanitize\qst@testname
+%</!etex>
+  \MakeMatchTarget[,]\qst@options{#2}%
+  \let\ifqst@error\qst@ifqst@error
+  \qst@includecheck\qst@options\ignorespaces{%
+    \let\endqstest\endcomment}}%
+  {\ifqst@testpassed
+     \edef\qst@message{Passed: \qst@testname}%
+     \qst@passed
+   \else
+     \ifx\qst@testname\qst@lastfailure
+     \else
+       \edef\qst@message{Failed: \qst@testname}%
+       \qst@failed
+     \fi
+  \fi}
+%    \end{macrocode}
+% \end{environment}
+% \begin{macro}{\qst@testname}
+%   Let us set up a default test name in case any tests occur outside
+%   of a |qstest| environment.
+%    \begin{macrocode}
+\def\qst@testname{unspecified}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\Expect}
+%   This macro basically receives two brace-delimited
+%   arguments\footnote{Actually, the arguments are collected with a
+%     token register assignment.  This gives several options for
+%     specifying them, including giving a token register without
+%     braces around it.} and checks that they are equal after being
+%   passed through \cmd{\def} and sanitized.
+%   If you precede one of those arguments
+%   with |*| it gets passed through through \cmd{\edef} instead of
+%   \cmd{\def}.  There may also be additional tokens like
+%   |\expandafter| before the opening brace.
+%    \begin{macrocode}
+\newcommand\Expect[1][]{%
+%<etex> \edef\qst@tmpc{\unexpanded{#1}}%
+%<!etex> \qst@tmptoks{#1}%
+%<!etex> \edef\qst@tmpc{\the\qst@tmptoks}%
+  \qst@expectarg\qst@defaultvalue\qst@expecttwo}
+\def\qst@expectarg#1#2{%
+  \@ifstar{\qst@expectargii\edef#1#2}{\qst@expectargii\def#1#2}}
+\def\qst@expectargii#1#2#3{\long\def\qst@tmp##1{%
+    #1#2####1####2####3####4####5####6####7####8####9{##1}%
+    \@onelevel@sanitize#2#3}%
+  \afterassignment\qst@expectargiii
+  \qst@tmptoks=}
+\def\qst@expectargiii{\expandafter
+  \qst@tmp\expandafter{\the\qst@tmptoks}}
+\def\qst@expecttwo{%
+  \ifx\qst@tmpc\@empty
+    \edef\qst@tmpc{\the\qst@tmptoks}%
+  \fi
+  \qst@expectarg\qst@tmpb\qst@expectfinish}
+\def\qst@expectfinish{%
+  \ifx\qst@defaultvalue\qst@tmpb
+  \else
+%<!etex>    \qst@tmptoks\expandafter{\qst@tmpc}%
+    \qst@error{
+%<!etex>    \string\Expect: \the\qst@tmptoks^^J
+%<etex>    \string\Expect: \unexpanded\expandafter{\qst@tmpc}^^J
+      <\qst@tmpb^^J
+      >\qst@defaultvalue}%
+  \fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Dimension ranges}
+%
+% \begin{macro}{\InRange}
+%   This is used as a second argument for \cmd{\Expect}.  It will
+%   make \cmd{\Expect} succeed if the first argument of \cmd{\Expect}
+%   happens to lie in the closed range defined by the two arguments of
+%   \cmd{\InRange}.
+%    \begin{macrocode}
+\def\InRange#1#2{%
+  \ifcase
+    \ifdim\qst@defaultvalue<#1\@ne\fi
+    \ifdim\qst@defaultvalue>#2\@ne\fi
+    \tw@
+  \or
+    \qst@afterfi{{in [#1..#2]}}%
+  \or
+    \qst@afterfi{\expandafter{\qst@defaultvalue}}%
+  \fi}
+%    \end{macrocode}
+% \begin{macro}{\qst@afterfi}
+%   This is just a helper macro cleaning up a following |\fi|.
+%    \begin{macrocode}
+\def\qst@afterfi#1#2\fi{\fi#1}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \begin{macro}{\NearTo}
+%   This is a pseudovalue like the last: it returns
+%   \cmd{\qst@defaultvalue} if the specified value |#1| is close to
+%   the given default value.  There is an optional argument specifying
+%   the closeness which defaults to |0.05pt|.  It requires e\TeX\
+%   since the arithmetic can't be done otherwise.
+%    \begin{macrocode}
+%<*etex>
+\newcommand*\NearTo[1]{%
+  \ifx[#1\expandafter\qst@nearto\expandafter[%]]
+  \else \qst@afterfi{\qst@nearto[0.05pt]{#1}}%
+  \fi}
+\def\qst@nearto[#1]#2{%
+  \ifcase
+    \ifdim\qst@defaultvalue>\dimexpr#2+(#1)\relax \@ne\fi
+    \ifdim\qst@defaultvalue<\dimexpr#2-(#1)\relax \@ne\fi
+    \tw@
+  \or
+    \qst@afterfi{{near[#1] to #2}}%
+  \or
+    \qst@afterfi{\expandafter{\qst@defaultvalue}}%
+  \fi}
+%</etex>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\ExpectIfThen}
+%   This is used for evaluating a condition as provided by the
+%   |ifthen| package.  See its docs for the kind of condition that is
+%   possible there.
+%    \begin{macrocode}
+\newcommand\ExpectIfThen[1]{%
+%<!etex>  \qst@tmptoks{#1}%
+  \ifthenelse{#1}{}{%
+    \qst@error{
+%<etex> \string\ExpectIfThen: \unexpanded{#1}%
+%<!etex> \string\ExpectIfThen: \the\qst@tmptoks
+  }}}
+%    \end{macrocode}
+% \end{macro}
+% 
+% 
+% \begin{environment}{ExpectCallSequence}
+%   This tells the test system that macros are going to be called in a
+%   certain order and with particular types of arguments.
+%
+%   The environment gets as an argument the expected call sequence.
+%   The call sequence contains entries that look like a macro
+%   definition: starting with the macro name followed with an argument
+%   list ended with |{| ^^A}%
+%   following it, followed by substitution code executed in place of
+%   the macro.  The argument list actually starts with an implicit
+%   argument of |#1| which contains a macro with the original value of
+%   the control sequence, so the explicitly specified argument list
+%   starts with the argument called~|#2|.
+%
+%   The substitution function is basically defined using
+%   \begin{quote}
+%     |\protected| |\long| |\def|
+%   \end{quote}
+%   so it will not usually get expanded except when hit with
+%   \cmd{\expandafter} or actually being executed.  Note that you
+%   can't use this on stuff that has to work at expansion time.  This
+%   really works mainly with macros that would also be suitable
+%   candidates for \cmd{\DeclareRobustCommand}.
+%
+%   It is also a bad idea to trace a conditional in this manner: while
+%   the substitution should actually work when being executed, it will
+%   appear like an ordinary macro when being skipped, disturbing the
+%   conditional nesting.
+% \begin{macro}{\qst@advance}
+%   We maintain a lot of counters and often need them expanded.
+%   Instead of allocating counter registers for them, we keep some of
+%   them in macros.  Advancing such a macro is done using
+%   \cmd{\qst@advance}.  Since we may do this in the middle of call
+%   tracing, we allocate our own temporary counter in the non-e\TeX\
+%   case.
+%    \begin{macrocode}
+%<etex> \def\qst@advance#1{\edef#1{\number\numexpr(#1)+1}}
+%<*!etex>
+\newcount\qst@tmpcnt
+\def\qst@advance#1{%
+  \qst@tmpcnt#1%
+  \advance\qst@tmpcnt\@ne
+  \edef#1{\number\qst@tmpcnt}}
+%</!etex>
+%    \end{macrocode}
+% \end{macro}
+% 
+% \subsection{The regexp state machine}
+% The whole idea of call sequence checking is to match the calls
+% happening throughout controlled macros to a sort of attributed
+% regular expression.  To facilitate that, we replace the macros by
+% some fixed code exercising a state machine.  For each state of the
+% state machine, we define a state macro (taking one argument) that
+% contains tokens to be matched followed by a corresponding action
+% sequence in braces.  The argument that this state macro takes is the
+% control sequence in question itself: by using |#1| as the matching
+% token, one can ensure a match at some place.  This is used for
+% implementing wildcards.
+%
+% An action sequence may be of three kinds:
+% \begin{description}
+% \item[explicit match] this matches a given token explicitly and
+%   causes the state to change to a defined new state, and causes an
+%   action to be called that has been user specified for this state transition.
+% \item[wildcard match] instead of immediately making a state transition,
+%   the transition is remembered in case there is not explicit match:
+%   explicit matches have priority.
+% \item[empty transition] this inserts the transitions of a different
+%   state recursively into the matching process.  Every state inserted
+%   in this manner is recorded so as to not insert it again.  This is
+%   not associated with a transition.
+% \end{description}
+% 
+% \begin{macro}{\qst@csmaketransition}
+%   This will perform an actual transition when called as an action
+%   code.  It receives in |#1| the state to move to, in |#2| the
+%   transition number to use for the replacement code, in |#3| the
+%   code sequence to be replaced.  Everything until the terminating
+%   |.| of the expanded transition table can be thrown away.
+%    \begin{macrocode}
+\long\def\qst@csmaketransition#1#2#3#4.{%
+  \qst@cssetstate{#1}%
+  \expandafter
+  \endgroup
+  \csname qst@cstrans:#2\expandafter\endcsname
+  \csname qst@cssaved\romannumeral\qst@csscope>\string#3\endcsname}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\CalledName}
+%   This is used for getting back the original name from the saved
+%   sequence name as text.
+%    \begin{macrocode}
+\def\CalledName#1{\expandafter\expandafter\expandafter\@gobble
+  \expandafter\strip@prefix\string#1}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\qst@csstate}
+%    \begin{macrocode}
+\def\qst@csstate{\csname qst@csstate\romannumeral
+  \qst@csscope\endcsname}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{qst@cssetstate}
+%    \begin{macrocode}
+\def\qst@cssetstate#1{%
+  \expandafter\expandafter\expandafter\xdef\qst@csstate{#1}}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\qst@csmakewildcard}
+%   This matches a wildcard.  Since those are considered last, it just
+%   redefines \cmd{\qst@csnomatch} to a different default behavior when
+%   nothing matched explicitly.  It also removes the replicated
+%   control sequence name in |#3| and restarts the matching process.
+%   Wildcards don't match the end of a match.
+%    \begin{macrocode}
+\long\def\qst@csmakewildcard#1#2#3{\ifx#3\endExpectCallSequence
+  \else
+    \def\qst@csnomatch{\qst@csmaketransition{#1}{#2}}%
+  \fi
+  \qst@tmp}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@cscheckempty}
+%   This first checks whether the current state has already been
+%   considered (entering it into \cmd{\qst@lockout} if it has not),
+%   then expands its table here and resumes the search.
+%    \begin{macrocode}
+\long\def\qst@cscheckempty#1#2{%
+  \ifcase\qst@cslockout{#1}\z@
+    \expandafter\def\expandafter\qst@cslockout
+    \expandafter##\expandafter1\expandafter{%
+      \qst@cslockout{##1}\ifnum##1=#1\@ne\fi}%
+    \expandafter\expandafter\expandafter\qst@tmp
+    \csname qst@csstate:#1\expandafter\endcsname\expandafter#2%
+  \or \expandafter\qst@tmp
+  \fi}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csnext}
+%   This does the work of finding a transition from the current state
+%   given a specified lookahead token.  It does this via defining
+%   \cmd{\qst@tmp} to a macro picking out the given token from the
+%   following string, taking the corresponding sequence to be called
+%   for it and calling it with the token as an argument.
+%
+%   The lockout sequence in \cmd{\qst@cslockout} is preloaded with one
+%   comparison locking out the current state.
+%    \begin{macrocode}
+\long\def\qst@csnext#1#2{%
+  \begingroup
+  \edef\qst@csscope{#1}%
+  \let\qst@csnomatch=\qst@csunexpected
+  \def\qst@cslockout##1{\ifnum\qst@csstate=##1\@ne\fi}%
+  \long\def\qst@tmp##1#2##2{##2#2}%
+  \expandafter\expandafter\expandafter\qst@tmp
+  \csname qst@csstate:\qst@csstate\endcsname#2%
+  #2{\qst@csnomatch}.}
+%<*!etex>
+\let\qst@csnextii\qst@csnext
+\def\qst@csnext{\ifx\protect\@typeset@protect
+  \expandafter\qst@csnextii
+  \else \expandafter \@firstoftwo \expandafter \protect
+  \fi}
+%</!etex>
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\qst@csunexpected}
+%   This is the default if we have had no match:
+%    \begin{macrocode}
+\long\def\qst@csunexpected#1#2.{%
+  \qst@error{
+    ExpectCallSequence: \string#1}%
+    \expandafter\expandafter\expandafter
+  \endgroup
+  \qst@cssavedcs#1%
+}
+\long\def\qst@cssavedcs#1{%
+  \csname qst@cssaved\romannumeral\qst@csscope>\string#1\endcsname}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csaddstate}
+%   This does the actual work of adding something to the state table.
+%   Uses \cmd{\def}.
+%    \begin{macrocode}
+\long\def\qst@csaddstate#1#2{%
+%<etex>  \ifcsname qst@csstate:#1\endcsname \else
+%<!etex>    \expandafter\ifx\csname qst@csstate:#1\endcsname\relax
+    \expandafter\let\csname qst@csstate:#1\endcsname \@gobble
+  \fi
+  \long\expandafter
+  \def\csname qst@csstate:#1\expandafter\endcsname
+  \expandafter##\expandafter1\expandafter{\romannumeral
+    \expandafter\expandafter\expandafter\z@
+    \csname qst@csstate:#1\endcsname{##1}#2}}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csaddempty}
+%    \begin{macrocode}
+\def\qst@csaddempty#1#2{%
+  \expandafter\qst@csaddstate\expandafter{\number#1\expandafter}%
+  \expandafter{\expandafter##\expandafter1\expandafter{\expandafter
+      \qst@cscheckempty\expandafter{\number#2}}}}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csallocstate}
+% \begin{macro}{\qst@csalloctrans}
+%   Those maintain the currently available next state, and the
+%   currently available next transition.
+%    \begin{macrocode}
+\def\qst@csallocstate{0}
+\def\qst@csalloctrans{0}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \begin{macro}{\qst@csscope}
+%   When we are nesting |ExpectCallSequence| environments,
+%   this keeps track of the scope we are in.
+%    \begin{macrocode}
+\def\qst@csscope{0}
+%    \end{macrocode}
+% \end{macro}
+%    \begin{macrocode}
+\newenvironment{ExpectCallSequence}[1]
+{%
+  \qst@advance\qst@csscope
+  \qst@cssetstate{\qst@csallocstate}%
+  \let\qst@csgroupstate\qst@csallocstate
+  \qst@advance\qst@csgroupstate
+  \qst@advance\qst@csgroupstate
+  \let\qst@csstack\@empty
+  \qst@csparse.{}*(#1){...}%
+}{%
+  \def\qst@cssavedcs{\@gobble}%
+  \expandafter\qst@csnext\expandafter\qst@csscope
+  \csname end {ExpectCallSequence}\endcsname}
+%    \end{macrocode}
+% \end{environment}
+% \begin{macro}{\qst@csparse}
+%   This is doing the basic parsing.  We are having some problems
+%   stopping non-e\TeX\ from hitting on the string space.  This
+%   approach will not work with implicit characters like
+%   \cmd{\bgroup}, but then there are not too many of those around,
+%   and so the impact on string space should be tolerable.
+%    \begin{macrocode}
+\long\def\qst@csparse#1{%
+%<etex>  \ifcsname qst@csparse:\string#1\endcsname
+%<*!etex>
+  \ifcase
+    \ifcat\relax\noexpand#1%
+    \else
+      \expandafter \ifx \csname qst@csparse:\string#1\endcsname \relax
+      \else @ne \fi
+    \fi \m@ne
+  \or
+%</!etex>
+    \csname qst@csparse:\string#1\expandafter\expandafter\expandafter
+    \endcsname
+    \expandafter\@gobble
+  \else
+    \expandafter\qst@csparsedefault
+  \fi{#1}}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csparse:...}
+%   This is what we do at the end of the patterns: we just jump to
+%   state~0.  At state~0 we add a wildcard restoring any remaining
+%   macro redirection when it occurs, and let the end of the call
+%   sequence be allowed there to move to state~1.  Oh, and we actually
+%   call the macro then.
+%    \begin{macrocode}
+\expandafter\def\csname qst@cstrans:0\endcsname
+  #1{\expandafter\let\csname\CalledName#1\endcsname= #1%
+    \let#1=\@undefined
+    \csname\CalledName#1\endcsname}
+\qst@csaddstate0{#1{\qst@csmakewildcard00}}
+\qst@csaddempty{0}{1}
+\expandafter\qst@csaddstate\expandafter1\expandafter{%
+  \csname end {ExpectCallSequence}\endcsname{\qst@csmaketransition21}}
+\expandafter\let\csname qst@cstrans:1\endcsname\@gobble
+
+\def\qst@csalloctrans{2}
+\def\qst@csallocstate{3}
+
+\expandafter\let\csname end {ExpectCallSequence}\endcsname
+  \endExpectCallSequence
+
+\expandafter\def\csname qst@csparse:...\endcsname{%
+  \ifx\qst@csstack\@empty
+  \else
+    \PackageError{qstest}{Unmatched `(' in call sequence %)
+      specification}{You need to fix this}%
+    \loop
+      \qst@csstack
+    \ifx\qst@csstack\@empty
+    \else
+    \repeat
+  \fi
+  \qst@csaddempty{\qst@csallocstate}{0}%
+  \qst@advance\qst@csallocstate
+  \ignorespaces}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csparsedefault}
+%   Ok, here is the default action.  We resolve any pending state to
+%   the next available state and set \cmd{\qst@cslaststate} accordingly.
+%   Then we add a pending transition from the last state to the next
+%   state.  The saved definition is not overwritten if the macro
+%   itself already has the proper setting.  The purpose of that is to
+%   be able to preserve undefined macros.
+%    \begin{macrocode}
+\long\def\qst@csparsedefault#1{%
+%<*etex>
+  \ifcsname qst@cssaved\romannumeral\qst@csscope>\string#1\endcsname
+  \else \protected
+%</etex>
+%<*!etex>
+  {\expandafter}%
+  \expandafter\ifx\csname qst@cssaved\romannumeral\qst@csscope>%
+    \string#1\endcsname \@undefined
+%</!etex>
+    \edef\qst@tmp{\noexpand\qst@csnext \qst@csscope \noexpand#1}%
+    \ifx#1\qst@tmp
+    \else
+      \expandafter\let
+         \csname qst@cssaved\romannumeral\qst@csscope>\string#1\endcsname
+       = #1%
+      \let#1\qst@tmp
+    \fi
+  \fi
+  \qst@csparsetransition{#1}\qst@csmaketransition}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csparsetransition}
+%   Ok, here we read in the code for an actual transition.  This will
+%   create a new definition using \cmd{\def}.
+%    \begin{macrocode}
+\long\def\qst@csparsetransition#1#2{%
+  \let\qst@cslaststate\qst@csallocstate
+  \qst@advance\qst@csallocstate
+  \long\edef\qst@tmp##1##2{%
+    \noexpand\qst@csaddstate{\qst@cslaststate}{%
+      ##1{%
+        ##2{\qst@csallocstate}%
+        {\qst@csalloctrans}}}}%
+  \qst@tmp{#1}{#2}%
+  \expandafter\qst@advance\expandafter\qst@csalloctrans
+  \expandafter\afterassignment\expandafter\qst@csparse
+  \expandafter\long\expandafter\def
+    \csname qst@cstrans:\qst@csalloctrans\endcsname}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csparse:.}
+%    \begin{macrocode}
+\expandafter\def\csname qst@csparse:.\endcsname{%
+  \qst@csparsetransition{##1}\qst@csmakewildcard}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csparse:?}
+%   This turns the last element into an optional element.
+%    \begin{macrocode}
+\expandafter\def\csname qst@csparse:?\endcsname{%
+  \qst@csensurelaststate?%
+  \qst@csaddempty\qst@cslaststate\qst@csallocstate
+  \let\qst@cslaststate\@undefined
+  \qst@csparse}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csensurelaststate}
+%   This checks that we have a valid last state to hook onto.  There
+%   is no really useful error recovery if we haven't.
+%    \begin{macrocode}
+\def\qst@csensurelaststate#1{\ifx\qst@cslaststate\@undefined
+    \PackageError{qstest}{Unexpected `#1' in call sequence}{%
+    Expect chaos to ensue}%
+    \def\qst@cslaststate{0}%
+  \fi}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csparse:*}
+%   This would need to make the pending state identical with the
+%   previous state while leaving all of it pending.  But we can't
+%   retroactively make previous states pending again, so we instead
+%   make do with adding an empty transition from the previous state to
+%   the next pending one.
+%    \begin{macrocode}
+\expandafter\def\csname qst@csparse:*\endcsname{%
+  \qst@csensurelaststate*%
+  \qst@csaddempty\qst@csallocstate\qst@cslaststate
+  \qst@advance\qst@csallocstate
+  \qst@csaddempty\qst@cslaststate\qst@csallocstate
+  \let\qst@cslaststate\@undefined
+  \qst@csparse}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csparse:+}
+%   This is somewhat similar.  Note that we have to add an empty
+%   transition at the end (like with |*| previously) to make sure that
+%   something like |\a{}+\b{}+| does not match |\a\b\a|.
+%    \begin{macrocode}
+\expandafter\def\csname qst@csparse:+\endcsname{%
+  \qst@csensurelaststate+%
+  \qst@csaddempty\qst@csallocstate\qst@cslaststate
+  \let\qst@cslaststate\qst@csallocstate
+  \qst@advance\qst@csallocstate
+  \qst@csaddempty\qst@cslaststate\qst@csallocstate
+  \let\qst@cslaststate\@undefined
+  \qst@csparse}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csparse:(}^^A%{)}
+%   Ok, now we are getting into grouping.  This adds a bit of
+%   complexity, but it is actually rather containable (took a lot of
+%   work, though).
+%    \begin{macrocode}
+\expandafter\def\csname qst@csparse:(\endcsname{%
+%<!etex>  \qst@tmptoks\expandafter{\qst@csstack}%
+  \edef\qst@csstack{\def\noexpand\qst@csstack{%
+%<etex>      \unexpanded\expandafter{\qst@csstack}%
+%<!etex>      \the\qst@tmptoks
+    }%
+    \def\noexpand\qst@csgroupstate{\qst@csgroupstate}}%
+  \let\qst@csgroupstate\qst@csallocstate
+  \qst@advance\qst@csallocstate
+  \qst@csaddempty\qst@csgroupstate\qst@csallocstate
+  \qst@csparse}
+%    \end{macrocode}
+% \end{macro}
+% \DeleteShortVerb\|
+% \begin{macro}{\qst@csparse:|}
+%    \begin{macrocode}
+\expandafter\def\csname qst@csparse:|\endcsname{%
+  \let\qst@cslaststate\qst@csallocstate
+%<!etex>  \qst@tmptoks\expandafter{\qst@csstack}%
+%<!etex>  \edef\qst@csstack{\the\qst@csstack
+%<etex>  \edef\qst@csstack{\unexpanded\expandafter{\qst@csstack}%
+    \noexpand\qst@csaddempty{\qst@cslaststate}%
+                            \noexpand\qst@csallocstate}%
+  \qst@advance\qst@csallocstate
+  \qst@csaddempty\qst@csgroupstate\qst@csallocstate
+  \let\qst@cslaststate\@undefined
+  \qst@csparse}
+%    \end{macrocode}
+% \end{macro}
+% \MakeShortVerb\|
+% \begin{macro}{\qst@csparse:)}^^A%{(}
+%    \begin{macrocode}
+\expandafter\def\csname qst@csparse:)\endcsname{%
+  \let\qst@cslaststate\qst@csgroupstate
+  \ifx\qst@csstack\@empty
+    \PackageError{qstest}{Unmatched `)' in call sequence
+      specification}{You need to fix this}%
+  \fi
+  \qst@csstack
+  \qst@csparse
+}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csparse:`}
+%   We don't check whether this is actually the first encounter with
+%   |`|: we just reset the state machine to come here.
+%    \begin{macrocode}
+\expandafter\def\csname qst@csparse:`\endcsname{%
+  \qst@cssetstate{\qst@csallocstate}%
+  \let\qst@cslaststate\@undefined
+  \qst@csparse}
+\expandafter\let\csname qst@csparse:^\expandafter\endcsname
+  \csname qst@csparse:`\endcsname
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@csparse:'}
+%    \begin{macrocode}
+\expandafter\def\csname qst@csparse:'\endcsname{%
+  \qst@csaddempty{\qst@csallocstate}{1}%
+  \let\qst@cslaststate\qst@csallocstate
+  \qst@advance\qst@csallocstate
+  \qst@csparse}
+\expandafter\let\csname qst@csparse:$%$
+\expandafter\endcsname\csname qst@csparse:'\endcsname
+%    \end{macrocode}
+% \end{macro}
+% Ok, let us test the state machine.  First define two macros that we
+% are going to replace:
+%    \begin{macrocode}
+%</package>
+%<*test>
+\begin{qstest}{ExpectCallSequence state machine}%
+  {ExpectCallSequence,internal}
+  \def\foo#1#2#3{\relax\relax}
+  \let\fie\relax
+%    \end{macrocode}
+% The free state table starts at 3, the free transitions at 2.
+%    \begin{macrocode}
+  \Expect*{\qst@csallocstate}{3}
+  \Expect*{\qst@csalloctrans}{2}
+%    \end{macrocode}
+% Now we have an implicit start into the call sequence that is |.{}*(|
+% and thus takes away 3 states and one transition.  The call sequence
+% starts off with one ignored entry and then the real state, so we
+% expect to be at state~7 initially.
+%    \begin{macrocode}
+  \begin{ExpectCallSequence}{\fie{}%
+      `\foo#1#2#3{#2\bar{#3}}(\bar#1#2{#2}|.#1{})+%
+      \foo#1{}}
+    \Expect*{\qst@csstate}{7}
+    \Expect*{\qst@csallocstate}{15}
+%    \end{macrocode}
+% The state transitions actually happen before the respective code is
+% called, so we can actually continue in the matching sequence while
+% still working off the replacement for a macro:
+%    \begin{macrocode}
+    \foo{\Expect*{\qst@csstate}{8}}{\Expect*{\qst@csstate}{10}}
+    \Expect*{\qst@csstate}{10}
+%    \end{macrocode}
+% \cmd{\fie} will match the wildcard.  Note that we arrive at a
+% different target state than previously.  While this is
+% counterintuively, we have to be aware that an empty transition from
+% state~10 to state~12 exists, so both are actually the same state in
+% reality.
+%    \begin{macrocode}
+    \fie
+    \Expect*{\qst@csstate}{12}
+%    \end{macrocode}
+% Now \cmd{\foo} kicks us out of the matching.  Again, state~14 looks
+% strange, but it has an empty transition to state~0, the ``match
+% everything until we are finished'' state.
+%    \begin{macrocode}
+    \foo
+    \Expect*{\qst@csstate}{14}
+%    \end{macrocode}
+% So we actually make use of this state and call \cmd{\fie} after
+% which it will have reverted to its original meaning:
+%    \begin{macrocode}
+    \fie
+    \Expect*{\qst@csstate}{0}
+    \Expect*{\meaning\fie}*{\meaning\relax}
+%    \end{macrocode}
+% It is sort of amusing that the above assertion will fail if we write
+% just
+% \begin{quote}
+%   |\Expect*{\meaning\fie}{\relax}|
+% \end{quote}
+% since the meaning of \cmd{\relax} is not ended with a blank, while
+% the printed string of its name does end with one.  We check that use
+% of \cmd{\foo} lets us revert its meaning as well.
+%    \begin{macrocode}
+    \foo\junk\junk\junk
+    \Expect*{\qst@csstate}{0}
+    \Expect*{\meaning\foo}{macro:#1#2#3->\relax \relax}
+  \end{ExpectCallSequence}
+\end{qstest}
+%</test>
+%<*package>
+%    \end{macrocode}
+% 
+% \subsection{Saved results}
+%
+% The purpose of saved results is to be able to check that the value
+% has remained the same over passes.  Results are given a unique label
+% name and are written to an auxiliary file where they can be read in
+% for the sake of comparison.  One can use the normal |.aux| file for
+% this purpose, but it might be preferable to use a separate dedicated
+% file.  That way it is possible to input a versioned \emph{copy} of
+% this file and have a fixed point of reference rather than the last
+% run.
+%
+% While the |.aux| file is read in automatically at the beginning of
+% the document, this does not happen with explicitly named files.  You
+% have to read them in yourself, preferably using
+% \begin{quote}
+%   |\InputIfFileExists|\marg{filename}|{}{}|
+% \end{quote}
+% so that no error is thrown when the file does not yet exist.
+%
+% \begin{macro}{\SaveValueFile}
+%   This specifies which file name to use for saving results.  If this
+%   is specified, a special file is opened.  If one does not specify
+%   this, instead the standard |.aux| file is used instead.
+%    \begin{macrocode}
+\newcommand*\SaveValueFile[1]{%
+  \ifnum\qst@savefile=\@auxout
+    \newwrite\qst@savefile
+  \else
+    \immediate\closeout\qst@savefile
+  \fi
+  \immediate\openout\qst@savefile #1\relax}
+\def\qst@savefile{\@auxout}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\CloseValueFile}
+%   This is not likely to be used except for testing this package
+%   itself: it closes the given file so that it may be read in again
+%   immediately.
+%    \begin{macrocode}
+\newcommand*\CloseValueFile{%
+  \ifnum\qst@savefile=\@auxout
+  \else
+    \immediate\closeout\qst@savefile
+  \fi}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\SaveValue}
+%   This gets the label name as first argument (which gets sanitized
+%   more or less, depending on whether you use e\TeX\ or not).
+%
+%   The second argument is the same kind of argument as \cmd{\Expect}
+%   expects.
+%    \begin{macrocode}
+\newcommand\SaveValue[1]{%
+%<etex>  \edef\qst@tmpc{\detokenize{#1}}%
+%<!etex>  \edef\qst@tmpc{\string#1}%
+  \ifnum\qst@savefile=\@auxout
+    \ifx\@onlypreamble\AtBeginDocument
+    \else
+      \PackageError{qstest}{You need to specify \string\SaveValueFile^^J
+        for test files without document.}{I can't use
+        `\string\SaveValue' before either `\string\begin%
+          {document}'^^J
+          or `\string\SaveValueFile'}%
+    \fi
+  \fi
+  \qst@expectarg\qst@defaultvalue\qst@saveval}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@saveval}
+%   This is tricky: we don't want to turn either |^^M| or |^^J| into
+%   each other.  But at least \TeX live will write out |^^J| as a
+%   single character (causing a line break) and only |^^M| will
+%   actually get escaped.  It would be principally ok to just crank
+%   out line feeds unmodified, if only \TeX\ would not strip spaces at
+%   the end of a line.  So we go through the string we want to put
+%   out, and change the single character |^^J| manually into the three
+%   characters |^^J| after which \TeX\ will preserve spaces.
+%    \begin{macrocode}
+\def\qst@saveval{%
+  {\immediate\write\qst@savefile{\string\InternalSetValue^^J%
+    \expandafter\qst@cleanlf\qst@tmpc\qst@endcleanlf^^J%
+    \expandafter\qst@cleanlf\qst@defaultvalue\qst@endcleanlf^^J%
+    \string\EndInternalSetValue^^J}}}
+%    \end{macrocode}
+% \end{macro}
+% \begin{macro}{\qst@cleanlf}
+% \begin{macro}{\qst@endcleanlf}
+%    \begin{macrocode}
+\def\qst@cleanlf#1^^J{#1^%
+  ^J\qst@cleanlf}
+\def\qst@endcleanlf^%
+  ^J\qst@cleanlf{:^^J}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \begin{macro}{\InternalSetValue}
+%   The chosen catcodes are picked in order to have |^^xx| escapes
+%   still work out (\TeX\ can't be kept from using them occasionally).
+%   Of course, in case |^^| sequences have indeed been present in the
+%   original macro (like in \cmd{\qst@cleanlf} above), we get
+%   flummoxed.  The spaces we read in here should be the same that
+%   occur during sanitization.  All of this is a bit of compromise.
+%   Newlines separate keys and values.
+%    \begin{macrocode}
+\newcommand*\InternalSetValue{\begingroup
+  \let\do\@makeother\dospecials
+  \endlinechar`\^^J
+  \catcode`\^7
+  \qst@setsavedii}
+\begingroup
+\catcode`\!=12
+\lccode`\!=`\\
+\lowercase{\endgroup
+  \def\qst@setsavedii#1:^^J#2:^^J!}EndInternalSetValue^^J{\endgroup
+%<etex>  \expandafter\gdef\csname qst@value:\detokenize{#1}\endcsname{#2}}
+%<!etex>  \expandafter\gdef\csname qst@value:\string#1\endcsname{#2}}
+%    \end{macrocode}   
+% \end{macro}
+% \begin{macro}{\EndInternalSetValue}
+% This should actually never get encountered:
+%    \begin{macrocode}
+\newcommand*{\EndInternalSetValue}{%
+  \PackageError{qstest}{\string\InternalSetValue\space got confused}%
+  {You probably wrote something bad to the save file}}
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\SavedValue}
+%   This is used for retrieving a saved value.  If there is no such
+%   value, instead the current setting in \cmd{\qst@defaultvalue} is
+%   used.
+%    \begin{macrocode}
+\def\SavedValue#1{%
+%<*etex>
+  \ifcsname qst@value:\detokenize{#1}\endcsname
+    \expandafter\expandafter\expandafter
+    {\csname qst@value:\detokenize{#1}\expandafter\endcsname\expandafter}%
+  \else
+    \expandafter\expandafter\expandafter{\expandafter\qst@defaultvalue
+      \expandafter}%
+%</etex>
+%<*!etex>
+  \expandafter\ifx\csname qst@value:\string#1\endcsname\relax
+    \expandafter\expandafter\expandafter{\expandafter\qst@defaultvalue
+      \expandafter}%
+  \else
+    \expandafter\expandafter\expandafter
+    {\csname qst@value:\string#1\expandafter\endcsname\expandafter}%
+%</!etex>
+  \fi}
+%    \end{macrocode}
+% \end{macro}
+% \subsection{The End}
+% The test can be ended either in the driver file, or in a standalone
+% testfile.  \cmd{\stop} is \LaTeX's way of ending the processing of
+% an input file before any document processing or setup has been done.
+%    \begin{macrocode}
+%</package>
+%<test> \stop
+%    \end{macrocode}
+% \Finale
+

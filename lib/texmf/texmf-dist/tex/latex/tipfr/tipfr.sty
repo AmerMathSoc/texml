@@ -1,0 +1,580 @@
+\def\fileversion{1.4b}
+\def\filedate{2015/01/05}
+\def\fileauthor{Philippe DE SOUSA}
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{tipfr}[%
+  \filedate\space v\fileversion\space
+  LaTeX package by \fileauthor]
+\RequirePackage[dvipsnames,table]{xcolor}
+\RequirePackage[zerostyle=d]{newtxtt}
+\@ifpackageloaded{tikz}{}{\RequirePackage{tikz}}
+\usetikzlibrary{calc,shapes,arrows,shadows,backgrounds,babel}
+\@ifpackageloaded{ifthen}{}{\RequirePackage{ifthen}}
+\@ifpackageloaded{xkeyval}{}{\RequirePackage{xkeyval}}
+\@ifpackageloaded{mathtools}{}{\RequirePackage{mathtools}}
+\@ifpackageloaded{amssymb}{}{\RequirePackage{amssymb}}
+\@ifpackageloaded{multido}{}{\RequirePackage{multido}}
+
+%% 13 décembre 2014 : v1.0 - création du package et du design des touches
+%% 14 décembre 2014 : v1.1 - création de la commande \Touche
+%% 19 décembre 2014 : v1.2 - création de la commande \Calculatrice, ajout de l'option entoure, ajout de l'option nom
+%% 27 décembre 2014 : v1.2a - anglicisation des noms d'options
+%% 27 décembre 2014 : v1.3 - ajout de la commande \Menu pour créer des menus de calculatrice
+%% 29 décembre 2014 : v1.4 - ajout de la commande \Ecran pour afficher un écran avec courbe ou avec calculs et résultats
+%% 02 janvier 2015 : v1.4a - changement de \ProvidesClass en \ProvidesPackage, suppression de \makeatletter, \makeatother
+%% 05 janvier 2015 : v1.4b - suppression de \shorthandon{;} et \shorthandoff{;} grace à la librairie babel de Tikz
+%% + possibilité de changer le nom de la touche Enter et les options Second et Alpha pour permettre le signe =
+%% + suppression du \RequirePackage{babel}
+%% 05 janvier 2015 : v1.5 - ajout de la commande étoilée de \Calculatrice pour dessiner une calculatrice mignature
+
+%% Merci à Daniel Flipo et Knut Lickert pour leurs conseils et remarques
+
+
+
+%%-----------------------------
+%--------- TOUCHES ------------
+%%-----------------------------
+
+% définition de l'accent circonflexe et de la racine carrée
+\newcommand*\Circonflexe{\tikz{\draw[scale=0.25] (0,0)--(1,1)--(2,0);}}
+\newcommand*\Racine{$\sqrt{\phantom{xx}}$}
+
+
+% création de booléen pour tester les styles de touche
+\newcommand*{\Def@Bool}[1]{%
+\newboolean{#1}
+\setboolean{#1}{false}
+}
+\newcommand*{\DefBool}[1]{\Def@Bool{#1}}
+
+\DefBool{ToucheChiffre}
+\DefBool{ToucheOperation}
+\DefBool{ToucheFonction}
+\DefBool{ToucheGraphe}
+\DefBool{ToucheAlpha}
+\DefBool{ToucheSeconde}
+\DefBool{ToucheOnOff}
+\DefBool{ToucheEntrer}
+\DefBool{ToucheFleches}
+\DefBool{ModeAlpha}
+\DefBool{ModeSeconde}
+\define@boolkey{Touche}{arrowup}[false]{}
+\define@boolkey{Touche}{arrowleft}[false]{}
+\define@boolkey{Touche}{arrowright}[false]{}
+\define@boolkey{Touche}{arrowdown}[false]{}
+\define@boolkey{Touche}{arrowtot}[false]{}
+\define@boolkey{Touche}{fixed}[true]{}
+\define@boolkey{Touche}{circle}[false]{}
+
+
+% Définition des keys
+\define@key{Touche}{fontsize}{\def\Font@Size{#1}}
+
+\define@key{Touche}{raise}{\def\Hauteur@Touche{#1}}
+
+\define@key{Touche}{name}{\def\Le@Nom{#1}}
+
+\define@key{Touche}{radius}{\def\Le@Rayon{#1}}
+
+\define@key{Touche}{colour}{\def\La@Couleur{#1}}
+\define@key{Touche}{color}{\def\La@Couleur{#1}}
+
+\define@key{Touche}{thickness}{\def\Ep@isseur{#1}}
+
+\define@key{Touche}{principal}{\def\Le@Principal{\fontsize{\Font@Size}{\Font@Size}\selectfont #1}}
+
+\define@key{Touche}{position}{\def\La@Position{#1}}
+
+\define@key{Touche}{alpha}{\ifthenelse{\equal{\string #1}{\string pasdealpha}}%
+                                        {\setboolean{ModeAlpha}{false}}%
+                                        {\def\Mode@Alpha{\fontsize{\Font@Size}{\Font@Size}\selectfont #1}\setboolean{ModeAlpha}{true}}%
+                                             }
+
+\define@key{Touche}{second}{\ifthenelse{\equal{\string #1}{\string pasdeseconde}}%
+                                        {\setboolean{ModeSeconde}{false}}%
+                                        {\def\Mode@Seconde{\fontsize{\Font@Size}{\Font@Size}\selectfont #1}\setboolean{ModeSeconde}{true}}%
+                            }
+
+\define@key{Touche}{xoffset}{\def\X@Decalage{#1}}
+\define@key{Touche}{yoffset}{\def\Y@Decalage{#1}}
+
+\define@key{Touche}{scalearrows}{\def\Scale@Fleches{#1}}
+
+% Définitions des styles disponibles
+\define@choicekey{Touche}{style}%
+    {number,operation,function,graph,second,on,enter,alpha,arrows}%
+    {\ifthenelse{\equal{\string #1}{\string number}}%
+                     {\setboolean{ToucheChiffre}{true}}
+                     {\setboolean{ToucheChiffre}{false}}%
+    \ifthenelse{\equal{\string #1}{\string operation}}%
+                     {\setboolean{ToucheOperation}{true}}
+                     {\setboolean{ToucheOperation}{false}}%
+    \ifthenelse{\equal{\string #1}{\string function}}%
+                     {\setboolean{ToucheFonction}{true}}
+                     {\setboolean{ToucheFonction}{false}}%
+    \ifthenelse{\equal{\string #1}{\string graph}}%
+                     {\setboolean{ToucheGraphe}{true}}
+                     {\setboolean{ToucheGraphe}{false}}%
+    \ifthenelse{\equal{\string #1}{\string second}}%
+                     {\setboolean{ToucheSeconde}{true}}
+                     {\setboolean{ToucheSeconde}{false}}%
+    \ifthenelse{\equal{\string #1}{\string on}}%
+                     {\setboolean{ToucheOnOff}{true}}
+                     {\setboolean{ToucheOnOff}{false}}%
+    \ifthenelse{\equal{\string #1}{\string enter}}%
+                     {\setboolean{ToucheEntrer}{true}}
+                     {\setboolean{ToucheEntrer}{false}}%
+    \ifthenelse{\equal{\string #1}{\string alpha}}%
+                     {\setboolean{ToucheAlpha}{true}}
+                     {\setboolean{ToucheAlpha}{false}}%
+    \ifthenelse{\equal{\string #1}{\string arrows}}%
+                     {\setboolean{ToucheFleches}{true}}
+                     {\setboolean{ToucheFleches}{false}}%
+    }
+
+
+% configurations par défaut
+\presetkeys{Touche}{style=function,principal=sin,alpha=pasdealpha,second=pasdeseconde,
+                    position=0.7,raise=0ex,fontsize=8pt,
+                    xoffset=0cm,yoffset=0cm,scalearrows=1,name=NOM,
+                    fixed=true,arrowup=false,arrowdown=false,arrowleft=false,arrowright=false,arrowtot=false,
+                    circle=false,radius=20pt,colour=red,thickness=1pt}{}
+
+
+%%-----------------------------
+% commande \Touche dont la forme dépend du style choisi
+%%-----------------------------
+
+\newcommand*\Touche[1][]{%
+\setkeys{Touche}{#1}
+%%-----------------------------
+% Touche blanche pour les chiffres
+%%-----------------------------
+\raisebox{\Hauteur@Touche}{
+\ifthenelse{\boolean{ToucheChiffre}}%
+                {\unskip\begin{tikzpicture}[x=0.5cm,y=0.5cm,remember picture]
+                    \draw[fill=white] (0,1)..controls+(40:0.4)and+(140:0.4).. (2,1) node[midway] (c) {} -- (2,1) arc (0:-180:1) -- cycle;
+                    \path (1,0) -- (c) node[pos=\La@Position] {\bfseries \Le@Principal};
+                    \coordinate (\Le@Nom) at (c);
+                    \ifKV@Touche@circle\draw[\La@Couleur,line width=\Ep@isseur] (c) circle (\Le@Rayon);\fi
+                    \ifthenelse{\boolean{ModeSeconde}}
+                                    {\ifthenelse{\boolean{ModeAlpha}}
+                                        {\node[above] at (c) {\makebox[1.2cm][s]{\bfseries\sffamily\textcolor{blue}%
+                                            {\Mode@Seconde}\hfill\textcolor{ForestGreen}{\Mode@Alpha}}};}
+                                        {\node[above] at (c) {\bfseries\sffamily\textcolor{blue}{\Mode@Seconde}};}}
+                                    {}
+                \end{tikzpicture}}%
+                {\unskip}%
+}%
+%%-----------------------------
+% Touche grise pour les opérations
+%%-----------------------------
+\raisebox{\Hauteur@Touche}{
+\ifthenelse{\boolean{ToucheOperation}}%
+                {\unskip\begin{tikzpicture}[x=0.5cm,y=0.5cm,remember picture]
+                    \draw[fill=gray] (0,1)..controls+(20:0.4)and+(160:0.4).. (2,1) node[midway] (c)
+                        {} -- (2,1)..controls+(-90:0.75)and+(0:0.5)..(1,0.2)..controls+(180:0.5)and+(-90:0.75)..(0,1) -- cycle ;
+                    \path (1,0.2) -- (c) node[color=white,pos=\La@Position] {\bfseries\sffamily \Le@Principal};
+                    \coordinate (\Le@Nom) at (c);
+                    \ifKV@Touche@circle\draw[\La@Couleur,line width=\Ep@isseur] (c) circle (\Le@Rayon);\fi
+                    \ifthenelse{\boolean{ModeSeconde}}
+                                    {\ifthenelse{\boolean{ModeAlpha}}
+                                       {\node[above] at (c) {\makebox[1.2cm][s]{\bfseries\sffamily\textcolor{blue}%
+                                            {\Mode@Seconde}\hfill\textcolor{ForestGreen}{\Mode@Alpha}}};}
+                                       {\node[above] at (c) {\bfseries\sffamily\textcolor{blue}{\Mode@Seconde}};}}
+                                    {}
+                \end{tikzpicture}}
+                {\unskip}%
+}%
+%%-----------------------------
+% Touche noire pour les fonctions
+%%-----------------------------
+\raisebox{\Hauteur@Touche}{
+\ifthenelse{\boolean{ToucheFonction}}
+                {\unskip\begin{tikzpicture}[x=0.5cm,y=0.5cm,remember picture]
+                    \draw[fill=black] (0,1)..controls+(20:0.4)and+(160:0.4).. (2,1) node[midway] (c) {} --
+                        (2,1)..controls+(-90:0.75)and+(0:0.5)..(1,0.2)..controls+(180:0.5)and+(-90:0.75)..(0,1) -- cycle ;
+                    \path (1,0.2) -- (c) node[color=white,pos=\La@Position] {\bfseries\sffamily \Le@Principal};
+                    \coordinate (\Le@Nom) at (c);
+                    \ifKV@Touche@circle\draw[\La@Couleur,line width=\Ep@isseur] (c) circle (\Le@Rayon);\fi
+                    \ifthenelse{\boolean{ModeSeconde}}
+                                    {\ifthenelse{\boolean{ModeAlpha}}
+                                        {\node[above] at (c) {\makebox[1.2cm][s]{\bfseries\sffamily\textcolor{blue}%
+                                            {\Mode@Seconde}\hfill\textcolor{ForestGreen}{\Mode@Alpha}}};}
+                                        {\node[above] at (c) {\bfseries\sffamily\textcolor{blue}{\Mode@Seconde}};}}
+                                    {}
+                \end{tikzpicture}}
+                {\unskip}%
+}%
+%%-----------------------------
+% Touche grise pour les graphes
+%%-----------------------------
+\raisebox{\Hauteur@Touche}{
+\ifthenelse{\boolean{ToucheGraphe}}
+                {\unskip\begin{tikzpicture}[x=0.5cm,y=0.7cm,remember picture]
+                    \draw[fill=gray] (0,1)..controls+(20:0.4)and+(160:0.4).. (2,1) node[midway] (c) {} --
+                        (2,1)..controls+(-90:0.3)and+(0:0.75)..(1,0.7)..controls+(180:0.75)and+(-90:0.3)..(0,1) -- cycle ;
+                    \path (1,0.2) -- (c) node[color=white,pos=\La@Position] {\bfseries\sffamily \Le@Principal};
+                    \coordinate (\Le@Nom) at (c);
+                    \ifKV@Touche@circle\draw[\La@Couleur,line width=\Ep@isseur] (c) circle (\Le@Rayon);\fi
+                    \ifthenelse{\boolean{ModeSeconde}}
+                                    {\ifthenelse{\boolean{ModeAlpha}}
+                                        {\node[above] at (c) {\makebox[1.2cm][s]{\bfseries\sffamily\textcolor{blue}%
+                                            {\Mode@Seconde}\hfill\textcolor{ForestGreen}{\Mode@Alpha}}};}
+                                        {\node[above] at (c) {\bfseries\sffamily\textcolor{blue}{\Mode@Seconde}};}}
+                                    {}
+                \end{tikzpicture}}
+                {\unskip}%
+}%
+%%-----------------------------
+% Touche Entrer
+%%-----------------------------
+\raisebox{\Hauteur@Touche}{
+\ifthenelse{\boolean{ToucheEntrer}}
+                {\unskip\begin{tikzpicture}[x=0.5cm,y=0.5cm,remember picture]
+                    \draw[fill=gray] (0,1)..controls+(20:0.4)and+(160:0.4).. (2,1) node[midway] (c) {} --
+                        (2,1)..controls+(-90:0.75)and+(0:0.7)..(1,-0.5)..controls+(180:0.7)and+(-90:0.75)..(0,1) -- cycle ;
+                    \path (1,0.2) -- (c) node[color=white,pos=\La@Position] {\bfseries\sffamily \Le@Principal};
+                    \coordinate (\Le@Nom) at (1,0.75);
+                    \ifKV@Touche@circle\draw[\La@Couleur,line width=\Ep@isseur] (1,0.75) circle (\Le@Rayon);\fi
+                    \ifthenelse{\boolean{ModeSeconde}}
+                                    {\ifthenelse{\boolean{ModeAlpha}}
+                                        {\node[above] at (c) {\makebox[1.2cm][s]{\bfseries\sffamily\textcolor{blue}%
+                                            {\Mode@Seconde}\hfill\textcolor{ForestGreen}{\Mode@Alpha}}};}
+                                        {\node[above] at (c) {\bfseries\sffamily\textcolor{blue}{\Mode@Seconde}};}}
+                                    {}
+                \end{tikzpicture}}
+                {\unskip}%
+}%
+%%-----------------------------
+% Touche On/Off
+%%-----------------------------
+\raisebox{\Hauteur@Touche}{
+\ifthenelse{\boolean{ToucheOnOff}}
+                {\unskip\begin{tikzpicture}[x=0.5cm,y=0.5cm,remember picture]
+                    \draw[fill=black] (0,1)..controls+(20:0.4)and+(160:0.4).. (2,1) node[midway] (c) {} --
+                        (2,1)..controls+(-90:0.75)and+(0:0.7)..(1,0)..controls+(180:0.7)and+(-90:0.75)..(0,1) -- cycle ;
+                    \path (1,0.2) -- (c) node[color=white,pos=\La@Position] {\fontsize{\Font@Size}{\Font@Size}\selectfont\bfseries\sffamily on};
+                    \coordinate (\Le@Nom) at (c);
+                    \ifKV@Touche@circle\draw[\La@Couleur,line width=\Ep@isseur] (c) circle (\Le@Rayon);\fi
+                    \node[above] at (c) {\fontsize{\Font@Size}{\Font@Size}\selectfont\bfseries\sffamily\textcolor{blue}{off}};
+                \end{tikzpicture}}
+                {\unskip}%
+}%
+%%-----------------------------
+% Touche 2nde
+%%-----------------------------
+\raisebox{\Hauteur@Touche}{
+\ifthenelse{\boolean{ToucheSeconde}}
+                {\unskip\begin{tikzpicture}[x=0.5cm,y=0.5cm,remember picture]
+                    \draw[fill=blue] (0,1)..controls+(20:0.4)and+(160:0.4).. (2,1) node[midway] (c) {} --
+                        (2,1)..controls+(-90:0.75)and+(0:0.5)..(1,0.2)..controls+(180:0.5)and+(-90:0.75)..(0,1) -- cycle ;
+                    \coordinate (\Le@Nom) at (c);
+                    \ifKV@Touche@circle\draw[\La@Couleur,line width=\Ep@isseur] (c) circle (\Le@Rayon);\fi
+                    \path (1,0.2) -- (c) node[color=white,pos=\La@Position] {\fontsize{\Font@Size}{\Font@Size}\selectfont\bfseries\sffamily 2nde};
+                \end{tikzpicture}}%
+                {\unskip}%
+}%
+%%-----------------------------
+% Touche Alpha
+%%-----------------------------
+\raisebox{\Hauteur@Touche}{
+\ifthenelse{\boolean{ToucheAlpha}}%
+                {\unskip\begin{tikzpicture}[x=0.5cm,y=0.5cm,remember picture]
+                    \draw[fill=ForestGreen] (0,1)..controls+(20:0.4)and+(160:0.4).. (2,1) node[midway] (c) {} --
+                        (2,1)..controls+(-90:0.75)and+(0:0.5)..(1,0.2)..controls+(180:0.5)and+(-90:0.75)..(0,1) -- cycle ;
+                    \path (1,0.2) -- (c) node[color=white,pos=\La@Position] {\fontsize{\Font@Size}{\Font@Size}\selectfont\bfseries\sffamily alpha};
+                    \coordinate (\Le@Nom) at (c);
+                    \ifKV@Touche@circle\draw[\La@Couleur,line width=\Ep@isseur] (c) circle (\Le@Rayon);\fi
+                    \node[above] at (c) {\fontsize{\Font@Size}{\Font@Size}\selectfont\bfseries\sffamily\textcolor{blue}{verr A}};
+                \end{tikzpicture}}
+                {\unskip}%
+}%
+%%-----------------------------
+% Touche des flèches
+%%-----------------------------
+\raisebox{\Hauteur@Touche}{
+\ifthenelse{\boolean{ToucheFleches}}%
+                {\unskip\begin{tikzpicture}[\ifKV@Touche@fixed\else overlay\fi,xshift=\X@Decalage,yshift=\Y@Decalage,scale=\Scale@Fleches]
+                    \fill[white] ({cos(110) -0.1},{sin(110)-0.2}) -- ({cos(160)+0.4},{sin(160)+0.12}) arc(30:-30:1) --
+                        ({cos(-110) -0.1},{sin(-110)+0.2}) arc(-30:30:1.47) ;
+                    \fill[white,xscale=-1] ({cos(110) -0.1},{sin(110)-0.2}) -- ({cos(160)+0.4},{sin(160)+0.12}) arc(30:-30:1) --
+                        ({cos(-110) -0.1},{sin(-110)+0.2}) arc(-30:30:1.47) ;
+                    \draw[fill=gray] ({cos(70)},{sin(70)}) arc (70:110:1) ..controls+(220:0.1)and+(90:0.1).. +(-0.1,-0.2)
+                        arc(30:-30:1.47) ..controls+(-90:0.1)and+(140:0.1)..
+                    ({cos(-110)},{sin(-110)}) arc (-110:-70:1)..controls+(40:0.1)and+(-90:0.1)..
+                    +(0.1,0.2) arc (210:150:1.47) ..controls+(90:0.1)and+(-40:0.1)..  ({cos(70)},{sin(70)});
+                    \draw[fill=gray] ({cos(160)},{sin(160)}) arc(160:200:1) ..controls+(-45:0.2)and+(170:0.2).. +(0.4,-0.2)
+                        arc(-30:30:1) ..controls+(180:0.2)and+(30:0.2).. ({cos(160)},{sin(160)});
+                    \draw[fill=gray,xscale=-1] ({cos(160)},{sin(160)}) arc(160:200:1) ..controls+(-45:0.2)and+(170:0.2)..
+                        +(0.4,-0.2) arc(-30:30:1) ..controls+(180:0.2)and+(30:0.2).. ({cos(160)},{sin(160)});
+                    \fill[white] (0,0.9) -- +(-0.15,-0.15) -- +(0.15,-0.15)-- cycle;
+                    \fill[white] (-0.9,0) -- +(0.15,0.15) -- +(0.15,-0.15)-- cycle;
+                    \fill[white,yscale=-1] (0,0.9) -- +(-0.15,-0.15) -- +(0.15,-0.15)-- cycle;
+                    \fill[white,xscale=-1] (-0.9,0) -- +(0.15,0.15) -- +(0.15,-0.15)-- cycle;
+                    \coordinate (FLE) at (0,0);
+                    \coordinate (FLH) at (0,0.825);
+                    \coordinate (FLB) at (0,-0.825);
+                    \coordinate (FLD) at (0.825,0);
+                    \coordinate (FLG) at (-0.825,0);
+                    \ifKV@Touche@arrowdown\draw[\La@Couleur,line width=\Ep@isseur] (FLB) circle (10pt);\fi
+                    \ifKV@Touche@arrowleft\draw[\La@Couleur,line width=\Ep@isseur] (FLG) circle (10pt);\fi
+                    \ifKV@Touche@arrowtot\draw[\La@Couleur,line width=\Ep@isseur] (FLE) circle (30pt);\fi
+                    \ifKV@Touche@arrowup\draw[\La@Couleur,line width=\Ep@isseur] (FLH) circle (10pt);\fi
+                    \ifKV@Touche@arrowright\draw[\La@Couleur,line width=\Ep@isseur] (FLD) circle (10pt);\fi
+                \end{tikzpicture}}
+                {\unskip}%
+}%
+}
+
+%%-----------------------------
+%------ CALCULATRICE ----------
+%%-----------------------------
+
+% options de la commande \Calculatrice*
+\define@key{Calculatrice}{calcscale}{\def\Calc@Echelle{#1}}
+\define@key{Calculatrice}{calcrotate}{\def\Calc@Rotation{#1}}
+\define@key{Calculatrice}{calcraise}{\def\Calc@Position{#1}}
+
+% configurations par défaut pour \Calculatrice*
+\presetkeys{Calculatrice}{calcscale=0.5,calcrotate=-30,calcraise=-2ex}{}
+
+%%-----------------------------
+%-------- Grand format --------
+%%-----------------------------
+\newcommand{\Calculatrice@nostar}[1][]{
+\begin{tikzpicture}[remember picture]
+\renewcommand{\tabcolsep}{-3pt}
+\node (tabcalc) at (0,0) {
+\Touche[style=arrows,fixed=false,xoffset=5.75cm,yoffset=3.75cm]
+\begin{tabular}{*{5}{>{\arraybackslash}c}}
+%Touche du haut
+    \Touche[style=graph,principal=$f(x)$,second={gr.stats},alpha=f1,position=0.95,fontsize=7pt,name=FX] &
+    \Touche[style=graph,principal={fenêtre},second=déf tab,alpha=f2,position=0.95,fontsize=7pt,name=FEN] &
+    \Touche[style=graph,principal={zoom},second={format},alpha={f3},position=0.95,fontsize=7pt,name=ZOOM] &
+    \Touche[style=graph,principal={trace},second={calculs},alpha={f4},position=0.95,fontsize=7pt,name=TRC] &
+    \Touche[style=graph,principal={graphe},second={table},alpha={f5},position=0.95,fontsize=7pt,name=GRA] \\
+%
+    \Touche[style=second,name=SCD] &
+    \Touche[principal={mode},second={quitter},position=0.8,name=MODE] &
+    \Touche[principal={suppr},second={insérer},position=0.65,name=SUP] & & \\
+%
+    \Touche[style=alpha,name=ALPHA] &
+    \Touche[principal={$x,t,\theta,n$},second={échanger},fontsize=7pt,position=0.8,name=XTN] &
+    \Touche[principal={stats},second={listes},name=STATS] & & \\
+%
+    \Touche[principal={math},second={tests},alpha={A},position=0.8,name=MAT] &
+    \Touche[principal={\textcolor{purple}{apps}},second={angle},alpha={B},position=0.7,name=APPS] &
+    \Touche[principal={prgm},second={dessin},alpha={C},position=0.7,name=PRGM] &
+    \Touche[principal={var},second={distrib},name=VAR] &
+    \Touche[principal={annul},name=ANN]\\
+%
+    \Touche[principal={$x^{-1}$},second={matrice},alpha={D},fontsize=7pt,name=INV] &
+    \Touche[principal={sin},second={arcsin},alpha={E},name=SIN] &
+    \Touche[principal={cos},second={arccos},alpha={F},name=COS] &
+    \Touche[principal={tan},second={arctan},alpha={G},name=TAN] &
+    \Touche[principal={\Circonflexe},second={$\pi$},alpha={H},name=POW]\\
+%
+    \Touche[principal={$x^2$},second={\Racine},alpha={I},name=CARRE] &
+    \Touche[principal={\large ,},second={EE},alpha={J},name=VIRG] &
+    \Touche[principal={(},second={\{},alpha={K},name=PO] &
+    \Touche[principal={)},second={\}},alpha={L},name=PF] &
+    \Touche[style=operation,principal={$\div$},second={e},alpha={M},name=DIV]\\
+%
+    \Touche[principal={log},second={$10^x$},alpha={N},name=LOG] &
+    \Touche[style=number,principal={7},second={$u_n$},alpha={O},name=T7] &
+    \Touche[style=number,principal={8},second={$v_n$},alpha={P},name=T8] &
+    \Touche[style=number,principal={9},second={$w_n$},alpha={Q},name=T9] &
+    \Touche[style=operation,principal={$\times$},second={[},alpha={R},name=MUL]\\
+%
+    \Touche[principal={ln},second={e$^x$},alpha={S},name=LN] &
+    \Touche[style=number,principal={4},second={L4},alpha={T},name=T4] &
+    \Touche[style=number,principal={5},second={L5},alpha={U},name=T5] &
+    \Touche[style=number,principal={6},second={L6},alpha={V},name=T6] &
+    \Touche[style=operation,principal={$-$},second={]},alpha={W},name=SUB]\\
+%
+    \Touche[principal={sto$\to$},second={rappel},alpha={X},name=STO] &
+    \Touche[style=number,principal={1},second={L1},alpha={Y},name=T1] &
+    \Touche[style=number,principal={2},second={L2},alpha={Z},name=T2] &
+    \Touche[style=number,principal={3},second={L3},alpha={$\theta$},name=T3] &
+    \Touche[style=operation,principal={+},second={mém},alpha={"},name=ADD]\\
+% Touches du bas
+    \Touche[style=on,name=ON] &
+    \Touche[style=number,principal={0},second={cat.},alpha={$\sqcup$},name=T0] &
+    \Touche[style=number,principal={$\centerdot$},second={$i$},alpha={:},name=DOT] &
+    \Touche[style=number,principal={(--)},second={rép},alpha={?},name=MS] &
+    \Touche[style=enter,fontsize=7pt, principal=entrer, second=préc, alpha=résol, name=ETR]
+\end{tabular}};
+
+    \node (ecran) at ($(tabcalc.north west)+(0.35,0)$) [inner sep=0pt,draw,fill=ForestGreen!15,rectangle,
+        minimum width=6.85cm,minimum height=5cm,anchor=south west] {};
+    \begin{scope}[shift={(ecran.center)}]
+    \clip ($(tabcalc.north west)+(0.35,0)$) rectangle ($(tabcalc.north east)+(0.2,5)$);
+    \draw(ecran.south)--(ecran.north);
+    \draw(ecran.west)--(ecran.east);
+    \multido{\i=0+1}{7}{\draw ({\i/2},0)--({\i/2},0.05);}
+    \multido{\i=0+1}{7}{\draw ({-\i/2},0)--({-\i/2},0.05);}
+    \multido{\i=0+1}{5}{\draw (0,{\i/2})--(0.05,{\i/2});}
+    \multido{\i=0+1}{5}{\draw (0,{-\i/2})--(0.05,{-\i/2});}
+    %\draw[line width=1pt] plot[domain=-5:5,samples=500] (\x,{(\x+1)^2-2.25});
+    \end{scope}
+
+\begin{scope}[on background layer]
+        \draw[fill=Orange!10]
+                ($(ecran.north west) + (-0.65,0.85)$)..controls+(-120:0.5)and+(90:1.5)..
+                ($(tabcalc.west) + (-0.4,-3.5)$) ..controls+(-90:1)and+(170:1)..
+                ($(tabcalc.south west)+ (0.8,-0.5)$) ..controls+(-10:0.5)and+(-170:1)..
+                ($(tabcalc.south east) + (-0.5,-0.5)$)  ..controls+(10:1)and+(-90:1)..
+                ($(tabcalc.east) + (0.75,-3.5)$) ..controls+(90:1.5)and+(-60:0.5)..
+                ($(ecran.north east) + (0.65,0.85)$) ..controls+(170:1.5)and+(10:1.5)..
+                ($(ecran.north west) + (-0.65,0.85)$)--cycle;
+                \node at ($(ecran.north) + (0,0.5)$) {{\Large\bfseries\sffamily #1}};
+\end{scope}
+\end{tikzpicture}
+}
+
+%%-----------------------------
+%-------- Petit format --------
+%%-----------------------------
+\newcommand*{\Calculatrice@star}[1][]{%
+\setkeys{Calculatrice}{#1}%
+\raisebox{\Calc@Position}{%
+\begin{tikzpicture}[x=0.5cm,scale=\Calc@Echelle,rotate=\Calc@Rotation]
+    \draw[fill=black] (0,0) rectangle (2.1,2.6);
+    \draw[white,fill=white] (0.1,1.5) rectangle (2,2.5);
+    \fill[white] (0.25,1.35) ellipse (0.15 and 0.05)
+        ++(0.4,0) ellipse (0.15 and 0.05)
+        ++(0.4,0) ellipse (0.15 and 0.05)
+        ++(0.4,0) ellipse (0.15 and 0.05)
+        ++(0.4,0) ellipse (0.15 and 0.05);
+    \fill[white] (1.8,1) ellipse (0.2 and 0.15);
+    \fill[white,rounded corners=2] (0.1,0.9) rectangle ++(0.4,0.2);
+    \fill[white,rounded corners=2] (0.6,0.9) rectangle ++(0.4,0.2);
+    \fill[white,rounded corners=2] (1.1,0.9) rectangle ++(0.4,0.2);
+%%
+    \fill[white,rounded corners=2] (0.1,0.45) rectangle ++(0.4,0.2);
+    \fill[white,rounded corners=2] (0.6,0.45) rectangle ++(0.4,0.2);
+    \fill[white,rounded corners=2] (1.1,0.45) rectangle ++(0.4,0.2);
+    \fill[white,rounded corners=2] (1.6,0.45) rectangle ++(0.4,0.2);
+%%
+    \fill[white,rounded corners=2] (0.1,0.1) rectangle ++(0.4,0.2);
+    \fill[white,rounded corners=2] (0.6,0.1) rectangle ++(0.4,0.2);
+    \fill[white,rounded corners=2] (1.1,0.1) rectangle ++(0.4,0.2);
+    \fill[white,rounded corners=2] (1.6,0.1) rectangle ++(0.4,0.2);
+%%
+\end{tikzpicture}%
+}%
+}
+
+%%-----------------------------
+%\Calculatrice  = Grand format-
+%\Calculatrice* = Petit format-
+%%-----------------------------
+\newcommand*\Calculatrice{\@ifstar{\Calculatrice@star}{\Calculatrice@nostar}}
+
+
+%%-----------------------------
+%------ MENU ------------------
+%%-----------------------------
+
+% Définitions des options
+\define@boolkey{Menu}{select}[false]{}
+\define@key{Menu}{size}{\def\t@ille{#1}}
+\define@key{Menu}{text}{\def\@texte{#1}}
+\define@key{Menu}{colourbox}{\def\Couleur@Boite{#1}}
+\define@key{Menu}{colorbox}{\def\Couleur@Boite{#1}}
+
+% Valeurs par défaut
+\presetkeys{Menu}{select=false,text=\unskip,colorbox=white}{size=15pt}
+
+% Définition de la touche \Menu
+\newcommand\@Menu[2][]{
+\setlength{\fboxsep}{0pt} \setlength{\fboxrule}{0.5pt}
+\setkeys{Menu}{#1}
+\ifKV@Menu@select \tikz[font=\ttfamily\bfseries]{\node (texte)
+{\fontsize{\t@ille}{0}\selectfont\colorbox{black}{\color{white}\protect\uppercase{#2}}};\draw
+(texte) node[right=10pt] {\fontsize{\t@ille}{0}\selectfont\@texte};} \else
+\tikz[font=\ttfamily\bfseries]{\node (texte)
+{\fontsize{\t@ille}{0}\selectfont\colorbox{\Couleur@Boite}{\color{black}\protect\uppercase{#2}}};\draw
+(texte) node[right=10pt] {\fontsize{\t@ille}{0}\selectfont\@texte};} \fi }
+
+\newcommand\Menu[2][]{\@Menu[#1]{#2}}
+
+
+
+%%-----------------------------
+%------ ECRAN ------------------
+%%-----------------------------
+
+
+\newcounter{LineCommand}
+\setcounter{LineCommand}{0}
+\newcounter{LineResult}
+\setcounter{LineResult}{0}
+
+\define@boolkey{Ecran}{graphic}[false]{}
+
+% Définition des keys
+\define@key{Ecran}{screencolor}{\def\Couleur@Ecran{#1}}
+\define@key{Ecran}{screencolour}{\def\Couleur@Ecran{#1}}
+\define@key{Ecran}{screenname}{\def\Nom@Ecran{#1}}
+\define@key{Ecran}{xgrad}{\def\X@Grad{#1}}
+\define@key{Ecran}{ygrad}{\def\Y@Grad{#1}}
+\define@key{Ecran}{nbgradx}{\def\@IncrementX{#1}}
+\define@key{Ecran}{nbgrady}{\def\@IncrementY{#1}}
+\define@key{Ecran}{width}{\def\L@ngueur{#1}}
+\define@key{Ecran}{height}{\def\H@uteur{#1}}
+\define@key{Ecran}{origin}{\def\@rigin{#1}}
+\define@key{Ecran}{plotcolour}{\def\courbe@couleur{#1}}
+\define@key{Ecran}{plotcolor}{\def\courbe@couleur{#1}}
+\define@key{Ecran}{plotwidth}{\def\courbe@epaisseur{#1}}
+
+% Configurations par défaut
+\presetkeys{Ecran}{graphic=false,
+                    screencolour=ForestGreen!15,
+                    screenname=ecran,
+                    width=8, height=5,
+                    xgrad=0.5, ygrad=0.5,
+                    nbgradx=8, nbgrady=5,
+                    origin=(\Nom@Ecran.center),
+                    plotcolour=blue,
+                    plotwidth=1pt
+                    }{}
+
+% Commande \Ecran
+\newcommand*\Ecran[2][]{%
+\setcounter{LineCommand}{0}
+\setcounter{LineResult}{0}
+\setkeys{Ecran}{#1}
+\ifKV@Ecran@graphic
+    \begin{tikzpicture}[remember picture]
+        \node (\Nom@Ecran) at (0,0) [inner sep=0pt,draw, fill=\Couleur@Ecran, rectangle, minimum width=\L@ngueur cm,
+        minimum height=\H@uteur cm, anchor=south west] {};
+        \clip (0,0) rectangle (\L@ngueur,\H@uteur);
+        \draw \@rigin -- +(0,\H@uteur) -- +(0,-\H@uteur);
+        \draw \@rigin -- +(\L@ngueur,0) -- +(-\L@ngueur,0);
+        \begin{scope}[shift=\@rigin,x=\X@Grad cm,y=\Y@Grad cm]
+            \multido{\i=0+1}{\@IncrementX}{\draw (\i,0)--(\i,0.05/\Y@Grad);}
+            \multido{\i=0+1}{\@IncrementX}{\draw (-\i,0)--(-\i,0.05/\Y@Grad);}
+            \multido{\i=0+1}{\@IncrementY}{\draw (0,{\i})--(0.05/\X@Grad,{\i});}
+            \multido{\i=0+1}{\@IncrementY}{\draw (0,{-\i})--(0.05/\X@Grad,{-\i});}
+            \foreach \courbe/\domain in {#2}
+                \ifx \domain\empty \def\domain{-6:6} \fi
+                \draw[line width=\courbe@epaisseur,color=\courbe@couleur] plot[domain=\domain,samples=500] (\x,{\courbe});
+        \end{scope}
+    \end{tikzpicture}
+\else
+    \begin{tikzpicture}[remember picture]
+        \node (\Nom@Ecran) at (0,0) [inner sep=0pt, draw, fill=\Couleur@Ecran, rectangle, minimum width=\L@ngueur cm,
+        minimum height=\H@uteur cm,anchor=south west] {};
+        \clip (0,0) rectangle (\L@ngueur,\H@uteur);
+        \foreach \command/\result in {#2}
+            {\ifx\command\empty {\addtocounter{LineResult}{-1}\addtocounter{LineCommand}{1}} \else
+                \node[anchor=north west] at ($(\Nom@Ecran.north west)+(0,-\theLineCommand/2)$) {\texttt{\command}};
+            \addtocounter{LineCommand}{2}\fi
+            \ifx\result\empty {\addtocounter{LineCommand}{-1}\addtocounter{LineResult}{1}} \else
+                \node[anchor=north east] at ($(\Nom@Ecran.north east)+(0,-0.5-\theLineResult/2)$) {\texttt{\result}};
+            \addtocounter{LineResult}{2}\fi}
+    \end{tikzpicture}
+\fi
+}

@@ -1,0 +1,156 @@
+%% gatech-thesis-losa.sty - support code for creating a 'List of 
+%%   Symbols or Abbreviations"
+%%
+%%   depends on gloss.sty, so it is not included by default in the
+%%   main gatech-thesis.cls (this cuts down on ``extra'' dependencies
+%%
+%% To use this package, all you need do is include
+%%   \usepackage{gatech-thesis-losa}
+%%   \losafiles{<database file, sans .bib suffix>}
+%% in your preamble, and the LOSA will be automatically generated
+%% and included in the frontmatter.  Of course, you need actual
+%% *entries* in the glossary file -- which must end in .bib -- and you
+%% need actual citations to those entries within your bodytext, like this:
+%%   \losa{key}.
+%% Note that \losa{<key>} typesets the <word> from the <key> entry of
+%% the losafile within the text, so there''s no need to do this:
+%%    (BAD) word\losa{key-for-word} 
+%% Again, you should read the gloss.sty documentation for more info, but
+%% basically gatech-thesis-losa.sty makes it simple:
+%%     1. insert the two commands above into your preamble
+%%     2. create a database with your glossary definitions
+%%     3. sprinkle \losa{} citations in your text
+%%     4. run ``bibtex'' on the <rootfile>.losa.aux file created
+%%        after the first ``latex'' run.  (But don''t include the
+%%        .aux extension.  So say ``bibtex <rootfile>.losa''  You
+%%        can do this at the same time you run ``bibtex'' for your
+%%        references. 
+%%     5. run ``latex'' twice more
+%%
+\NeedsTeXFormat{LaTeX2e}[1995/06/01] 
+\ProvidesPackage{gatech-thesis-losa}
+          [2002/08/08  List of Symbols support for gatech-thesis.cls]
+\@ifclassloaded{gatech-thesis}{}{
+  PackageError{This style can only be used with the gatech-thesis class}
+}
+\RequirePackage[refpages]{gloss}
+
+\newif\iflosapage
+\losapagetrue % why use this package if you're not going to USE it?
+
+\newcommand{\losafiles}[1]%
+  {\ifx\empty#1\empty\else\gdef\@losafiles{#1}\fi}
+\def\@losafiles{}
+
+\newcommand{\losaname}{}
+\newcommand{\gtlosaname}{}
+\newcommand{\losacontentlinestring}{}
+\newcommand{\losapdfbookmarkstring}{}
+
+\newcommand{\setlosastring}[1]{%
+  \renewcommand{\gtlosaname}{#1}
+  \renewcommand{\losaname}{\Makeuppercase{#1}}
+  \renewcommand{\losacontentlinestring}{%
+    \texorpdfstring{\Makeuppercase{#1}}{#1}
+  }
+  \renewcommand{\losapdfbookmarkstring}{#1}
+}
+\setlosastring{List of Symbols or Abbreviations}
+
+\makegloss
+\newgloss{losa}{.losa}{\losaname}{gatech-thesis-losa}
+\newlength{\losahang}
+\setlength{\losahang}{2cm}
+
+\newcommand\setlosagroup[1]{\@namedef{gls@group@#1}}
+\newcommand{\losaheading}[1]{} % don't print subsection headings ("A", "B", ...)
+\newcommand{\losagroup}[1]{%
+  \expandafter\losaheading\csname gls@group@#1\endcsname}
+
+% make the '\losa[otheroptions]{}' command a synonym for 
+% '\gloss[losa,otheroptions]{}'
+\newcommand\losa{\protect\losa@gloss@i}
+\def\losa@gloss@i{%
+  \@bsphack
+  \begingroup
+    \catcode`\ =9
+    \@ifnextchar[{\losa@gloss@iia}{\losa@gloss@iib[]}}
+\def\losa@gloss@iia[#1]{%
+    \endgroup
+  \gls@gloss@iii{losa,#1}}
+\def\losa@gloss@iib[#1]{% #1 is empty
+    \endgroup
+  \gls@gloss@iii{losa}}
+
+% and alternate forms
+\newcommand\Losa[1]{\losa[Word]{#1}}
+\newcommand\onlylosa[1]{\losa[nocite]{#1}}
+
+\newenvironment{losalist}
+  {\begin{singlespaced}\begin{list}{\relax}{%
+        \def\makelabel##1{##1\hfil}%
+        \setlength{\labelsep}{1em}%
+        \setlength{\labelwidth}{\losahang}%
+        \addtolength{\labelwidth}{-\labelsep}%
+        \setlength{\itemindent}{0em}%
+        \setlength{\leftmargin}{\losahang}}}
+  {\end{list}\end{singlespaced}}
+
+\newenvironment{losaitem}[4]%
+  {\ifgls@list
+     \expandafter\let\expandafter\gls@thispage  % relax if undefined
+             \csname glsp@\gls@name::#1\endcsname
+     \item[%
+       \gls@raisedlink{\hyper@anchorstart{\gls@name::#1}\hyper@anchorend}%
+       \gls@label{#2}{#3}{#4}]%
+     \begingroup
+       \let\protect\noexpand
+       \immediate\write\@auxout{%
+         \string\gls@cite{\gls@name::#1}{#2}{#3}{#4}}%
+     \endgroup
+   \else
+     \xdef\gls@a{\noexpand\begin{\@currenvir}}%
+     \endgroup
+     \begin{losalist}%
+     \gls@listtrue
+     \def\stopglosslist{\end{losalist}}%
+     \gls@a{#1}{#2}{#3}{#4}%
+   \fi
+   \ignorespaces}
+  {.\@@par}
+
+\expandafter\let\csname losaitem*\endcsname\losaitem
+\expandafter\let\csname endlosaitem*\endcsname\@@par
+
+\newcommand\losa@section{%
+  \if@twocolumn
+    \@restonecoltrue\onecolumn
+  \else
+    \@restonecolfalse
+  \fi
+  \chapter*{\losaname}%
+  \@mkboth{\scshape\MakeUppercase\losaname}%
+          {\scshape\MakeUppercase\losaname}%
+}
+\newenvironment{thelosa}
+  {\losa@section
+   \def\+##1+{}%
+   \@beginparpenalty\@M}%  
+  {\if@restonecol\twocolumn\fi%
+  \stopglosslist}
+  
+\renewcommand{\do@losapage}{%
+  \iflosapage
+    \if@openright\cleardoublepage\else\clearpage\fi 
+    % must clear page here, so that phantomsection\addcontentsline is on the correct page
+    \settoheight{\gt@tmpa}{A}
+    \set@gttocskip{\gt@tmpa}
+    {\newlinestretch{1}
+     \addvspace{\gt@tocentryskip@value}
+     \phantomsection%
+     \addcontentsline{toc}{chapter}{\losacontentlinestring}
+     \printgloss[losa]{\@losafiles}
+    }%
+    \newpage
+  \fi
+}

@@ -1,0 +1,404 @@
+=>PYTHONTEX#py#default#default#0#code#####26#
+import sys
+import fileinput
+import csv
+from subprocess import check_output
+import random as nucrandom
+
+u2Mev=931.502
+u2kev=u2Mev*1000.
+Mev2u=1.0/u2Mev
+kev2u=1.0/u2kev
+u2kg=1.660539e-27
+kg2u=1.0/u2kg
+
+hbarev=6.5828e-16
+hbarmev=hbarev/1.e6
+hbarkev=hbarev/1.e3
+
+class Nucdata(object):
+    def __init__(self):
+        self.units_dict={
+            'ev':'\si{\electronvolt}',
+            'mev':'\si{\mega\electronvolt}',
+            'Mev':'\si{\mega\electronvolt}',
+            'kev':'\si{\kilo\electronvolt}',
+            'us':'\si{\micro\second}',
+            'y':'\si{\ensuremath{\mathrm{yr}}}',
+            'yr':'\si{\ensuremath{\mathrm{yr}}}',
+            'm':'\si{\min}',
+            'min':'\si{\min}',
+            'h':'\si{\hour}',
+            'hr':'\si{\hour}',
+            'd':'\si{\day}',
+            'day':'\si{\day}',
+            's':'\si{\second}',
+            'ms':'\si{\ms}',
+            'ps':'\si{\ps}',
+            'ns':'\si{\\ns}',
+            'My':'\si{\ensuremath{\mathrm{My}}}',
+            'Gy':'\si{\ensuremath{\mathrm{Gy}}}'
+            }
+
+        self.time_dict={
+            "yr":1,
+            "y":1,
+            "d":365.25,
+            "day":365.25,
+            "days":365.25,
+            "h":365.25*24,
+            "hr":365.25*24,
+            "m":365.25*24*60,
+            "min":365.25*24*60,
+            "s":365.25*24*3600,
+            "ms":365.25*24*3600*1e3,
+            "us":365.25*24*3600*1e6,
+            "ns":365.25*24*3600*1e9,
+            "ps":365.25*24*3600*1e12,
+            "My":1e-6,
+            "Gy":1e-9}
+
+    def timeenergy(self,ene):
+        return hbarev*0.69315/ene/self.time_dict.get("s")
+
+    def  getNuclide(self,EL,A):
+        res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper() and v.get('A') == A]
+        return res
+
+    def getElement(self,Z):
+        res=[v for v in nucleardata if  int(v.get('Z'))== Z]
+        return res[0].get('SYM')
+
+    def getMass_u(self,EL,A):
+        try:
+            EL = int(eval(str(EL)))
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper() == EL.upper() and v.get('A') == A]
+        else:
+            res=[v for v in nucleardata if  int(v.get('Z')) == EL and v.get('A') == A]
+        return res[0].get('mass')
+
+    def getNuclearMass_u(self,EL,A):
+        try:
+            EL = int(eval(str(EL)))
+            res=[v for v in nucleardata if  int(v.get('Z'))== EL and v.get('A') == A]
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper() and v.get('A') == A]
+
+        return res[0].get('mass')-int(res[0].get('Z'))*0.511/931.502
+
+    def getMass_mev(self,EL,A):
+        massu=self.getMass_u(EL,A)
+        return massu*931.502
+
+    def getMass_kev(self,EL,A):
+        massu=self.getMass_u(EL,A)
+        return massu*931502.
+
+    def getNuclearMass_mev(self,EL,A):
+        massu=self.getNuclearMass_u(EL,A)
+        return massu*931.502
+
+    def getNuclearMass_kev(self,EL,A):
+        massu=self.getNuclearMass_u(EL,A)
+        return massu*931502.
+
+    def getReaction_u(self,EL1,A1,EL2,A2,EL3,A3,EL4,A4):
+        m1=self.getNuclearMass_u(EL1,A1)
+        m2=self.getNuclearMass_u(EL2,A2)
+        m3=self.getNuclearMass_u(EL3,A3)
+        m4=self.getNuclearMass_u(EL4,A4)
+        return m1+m2-m3-m4
+
+    def getReaction_mev(self,EL1,A1,EL2,A2,EL3,A3,EL4,A4):
+        qu=self.getReaction_u(EL1,A1,EL2,A2,EL3,A3,EL4,A4)
+        return qu*931.502
+
+    def getReaction_kev(self,EL1,A1,EL2,A2,EL3,A3,EL4,A4):
+        qu=self.getReaction_u(EL1,A1,EL2,A2,EL3,A3,EL4,A4)
+        return qu*931502.
+
+    def getExcess(self,EL,A):
+        try:
+            EL = int(eval(str(EL)))
+            res=[v for v in nucleardata if  int(v.get('Z'))== EL and v.get('A') == A]
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper() and v.get('A') == A]
+
+        return res[0].get('Excess')
+
+    def getHalfLife(self,EL,A,newunit):
+        try:
+            EL = int(eval(str(EL)))
+            res=[v for v in nucleardata if  int(v.get('Z'))== EL and v.get('A') == int(A)]
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper() and v.get('A') == int(A)]
+
+        rest=res[0].get('halflife')
+        if type(rest)==type('x'):
+            if rest.lower().strip():
+                value= rest.lower().strip().split()
+                if len(value)>1:
+                    number = eval(value[0].strip())
+                    unit = value[1].strip()
+                    if newunit: # user wants to change the unit
+                        if unit in ['ev','kev','mev']:
+                            number=self.timeenergy(number)
+                            if unit=='kev':
+                                number=number/1.e3
+                            elif unit=='mev':
+                                number=number/1.e6
+                            unit='y'
+                        number=number*self.time_dict.get(newunit)/self.time_dict.get(unit)
+                        unit=newunit
+                    result= "\\num{" + str(number) + "} " + self.units_dict.get(unit)
+                else:
+                    result=value[0].strip()
+                return result
+            else:
+                return 'undetermined'
+        else:
+            return rest
+
+    def getHalfLifeValue(self,EL,A,newunit):
+        try:
+            EL = int(eval(str(EL)))
+            res=[v for v in nucleardata if  int(v.get('Z'))== EL and v.get('A') == A]
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper() and v.get('A') == A]
+
+        rest=res[0].get('halflife')
+        if type(rest)==type('x'):
+            if rest.lower().strip():
+                value= rest.lower().strip().split()
+                if len(value)>1:
+                    number = eval(value[0].strip())
+                    unit = value[1].strip()
+                    if newunit: # user wants to change the unit
+                        if unit in ['ev','kev','mev']:
+                            number=self.timeenergy(number)
+                            if unit=='kev':
+                                number=number/1.e3
+                            elif unit=='mev':
+                                number=number/1.e6
+                            unit='y'
+                        number=number*self.time_dict.get(newunit)/self.time_dict.get(unit)
+                        unit=newunit
+                    result= number
+                else:
+                    result=value[0].strip()
+                return result
+            else:
+                return 'undetermined'
+        else:
+            return rest
+
+    def getHalfLifeUnit(self,EL,A):
+        try:
+            EL = int(eval(str(EL)))
+            res=[v for v in nucleardata if  int(v.get('Z'))== EL and v.get('A') == A]
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper() and v.get('A') == A]
+
+        rest=res[0].get('halflife')
+        if type(rest)==type('x'):
+            value= rest.lower().strip().split()
+            if len(value)>1:
+                unit = value[1].strip()
+                result= self.units_dict.get(unit)
+            else:
+                result=value[0].strip()
+            return result
+
+        else:
+            return(rest)
+
+    def getBea(self,EL,A):
+        try:
+            EL = int(eval(str(EL)))
+            res=[v for v in nucleardata if  int(v.get('Z'))== EL and v.get('A') == A]
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper() and v.get('A') == A]
+
+        return res[0].get('BEA')
+
+    def getQbeta(self,EL,A):
+        try:
+            EL = int(eval(str(EL)))
+            res=[v for v in nucleardata if  int(v.get('Z'))== EL and v.get('A') == A]
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper() and v.get('A') == A]
+        return res[0].get('Qbeta')
+
+    def getQposi(self,EL,A):
+        try:
+            EL = int(eval(str(EL)))
+            res=[v for v in nucleardata if  int(v.get('Z'))== EL and v.get('A') == A]
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper() and v.get('A') == A]
+        return res[0].get('Qposi')
+
+    def getQec(self,EL,A):
+        try:
+            EL = int(eval(str(EL)))
+            res=[v for v in nucleardata if  int(v.get('Z'))== EL and v.get('A') == A]
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper() and v.get('A') == A]
+        return res[0].get('Qec')
+
+    def getQalpha(self,EL,A):
+        try:
+            EL = int(eval(str(EL)))
+            res=[v for v in nucleardata if  int(v.get('Z'))== EL and v.get('A') == A]
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper() and v.get('A') == A]
+        return res[0].get('Qalpha')
+
+    def is_alpha(self,EL,A):
+        try:
+            val= self.getQalpha(EL,A)>0
+        except:
+            val = False
+        return val
+
+    def is_beta(self,EL,A):
+        try:
+            val= self.getQbeta(EL,A)>0
+        except:
+            val = False
+        return val
+
+    def is_posi(self,EL,A):
+        try:
+            val= self.getQposi(EL,A)>0
+        except:
+            val = False
+        return val
+
+    def is_ec(self,EL,A):
+        try:
+            val= self.getQec(EL,A)>0
+        except:
+            val = False
+        return val
+
+    def getIsotopes(self,EL):
+        try:
+            EL = int(eval(str(EL)))
+
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper()]
+        else:
+            res=[v for v in nucleardata if  int(v.get('Z'))== EL]
+
+        isotopes=[]
+        for v in res:
+            isotopes.append(int(v.get('A')))
+        return isotopes
+
+    def getZ(self,name):
+        res=[v for v in elementdata if  v.get('SYM').strip().upper()== name.upper() or v.get('NAME').strip().upper()== name.upper()]
+        return int(res[0].get('Z'))
+
+    def getSymbol(self,namez):
+        try:
+            namez = int(eval(str(namez)))
+        except:
+            pass
+        res=[v for v in elementdata if  int(v.get('Z'))== namez or v.get('NAME').strip().upper()== str(namez).upper()]
+        return res[0].get('SYM').strip()
+
+    def getName(self,namez):
+        try:
+            namez = int(eval(str(namez)))
+        except:
+            pass
+        res=[v for v in elementdata if  int(v.get('Z'))== namez or v.get('SYM').strip().upper()== str(namez).upper()]
+        return res[0].get('NAME').strip()
+
+    def getSpin(self,EL,A):
+        try:
+            EL = int(eval(str(EL)))
+            res=[v for v in nucleardata if  int(v.get('Z'))== EL and v.get('A') == A]
+        except:
+            res=[v for v in nucleardata if  v.get('SYM').strip().upper()== EL.upper() and v.get('A') == A]
+        return res[0].get('spin-parity')
+
+    def makeNucRandom(self,count,repeater):
+        alist=[]
+        zlist=[]
+        for k in range(0,count):
+            if repeater==0:
+                ok=0
+                while ok==0:
+                    myz=nucrandom.randint(1,118)
+                    ok=1 if (myz not in zlist) else 0
+                zlist.append(myz)
+            else:
+                zlist.append(nucrandom.randint(1,118))
+            mya=nucrandom.choice(self.getIsotopes(str(zlist[k])))
+            alist.append(mya)
+        return(zlist,alist)
+
+    def getRandomA(self,EL):
+        aRandomA=nucrandom.choice(self.getIsotopes(EL))
+        return(aRandomA)
+
+elementdata=[]  #list of dictionaries of Z, Elemental symbol, Name of element
+
+filename=check_output("kpsewhich elementlist.csv", shell=True)
+
+if sys.version_info.major == 2:
+    g = open(filename[0:-2], 'rb')
+else:
+    g = open(filename[0:-2], 'r', newline='')
+gin=csv.DictReader(g)#,quoting=csv.QUOTE_NONNUMERIC)
+
+#headline=['Z','SYM','NAME']
+for line in gin:
+    elementdata.append(line)
+g.close()
+
+nucleardata=[] #list of dictionaries of nuclear mass, halflife, etc.
+
+filename=check_output("kpsewhich massdata.csv", shell=True)
+
+if sys.version_info.major == 2:
+    g = open(filename[0:-2], 'rb')
+else:
+    g = open(filename[0:-2], 'r', newline='')
+gin=csv.DictReader(g,quoting=csv.QUOTE_NONNUMERIC)
+
+#headline=["C","N","Z","A","SYM","ORIG","Excess","unc1","BEA","unc2","btype","benergy","bunc","mass","munc","halflife","spin-parity","Qbeta","Qposi","Qec","Qalpha"]
+
+for line in gin:
+    nucleardata.append(line)
+g.close()
+
+nuc=Nucdata()
+
+=>PYTHONTEX:SETTINGS#
+version=0.14
+outputdir=pythontex-files-nucleardata
+workingdir=.
+workingdirset=false
+gobble=none
+rerun=default
+hashdependencies=default
+makestderr=false
+stderrfilename=full
+keeptemps=none
+pyfuture=default
+pyconfuture=none
+pygments=true
+pygglobal=:GLOBAL||
+fvextfile=-1
+pyconbanner=none
+pyconfilename=stdin
+depythontex=false
+pygfamily=py|python|
+pygfamily=pycon|pycon|
+pygfamily=sympy|python|
+pygfamily=sympycon|pycon|
+pygfamily=pylab|python|
+pygfamily=pylabcon|pycon|

@@ -1,0 +1,139 @@
+%% gatech-thesis-index.sty - support code for creating an index
+%%   depends on index.sty, so it is not included by default in the
+%%   main gatech-thesis.cls (this cuts down on ``extra'' dependencies.
+%%   It also depends on the multicol package.
+%%
+%% Note that index.sty is included in the ``camel'' package if you
+%% are using MikTeX.
+%%
+%% To use this package, all you need do is include
+%%   \usepackage{gatech-thesis-index}
+%% in your preamble, and 
+%%   \gtindex
+%% just after your vita section, but within the postliminary environment
+%% of your bodytext.  The, the index will be automatically
+%% and included in the location specified, and added to the table of
+%% contents.  Of course, you need actual index references within your
+%% main text like this:
+%%   foo\index{foo}
+%% Read the index.sty documentation for more info, but basically 
+%% gatech-thesis-gloss.sty makes it simple:
+%%    1. insert the \usepackage and \gtindex commands into your document
+%%    2. sprinkle \index{} citations in your text
+%%    3. run ``makeindex'' on the <rootfile>.idx file created
+%%       after the first ``latex'' run, like this:
+%%         makeindex -s gatech-thesis-index.ist <rootfile>.idx
+%%       This will create <rootfile>.ind (the gatech-thesis-index.ist
+%%       file is a format specification for the index).  If you want
+%%       to customize the index format, copy gatech-thesis-index.ist to
+%%       ``myformat.ist'' and change the copy.  Use ``-s myformat.ist'' 
+%%       instead of gatech-thesis-index.ist.
+%%          You can run the makeindex command at the same time you run `
+%%       `bibtex'' for your references and/or glossary.
+%%    4. run ``latex'' twice more (the same ``twice more'' needed for
+%%       bibtex and gatech-thesis-gloss.sty)
+%%
+\NeedsTeXFormat{LaTeX2e}[1995/06/01] \ProvidesPackage{gatech-thesis-index}
+          [2002/08/08  Index support for gatech-thesis.cls]
+\@ifclassloaded{gatech-thesis}{}{
+  PackageError{This style can only be used with the gatech-thesis class}
+}
+\RequirePackage{index}
+\RequirePackage{multicol}
+
+\newif\if@proofmode
+\@proofmodefalse
+
+\DeclareOption{proofmode}{%
+  \if@draft        % This is an internal gatech-thesis variable!
+    \@proofmodetrue % this is an internal index.sty variable
+  \else
+    \PackageWarn{option `proofmode' can't be used in 'final' mode.}
+    \@proofmodefalse
+  \fi
+}
+\DeclareOption{showidx}{%
+  \if@draft        % This is an internal gatech-thesis variable!
+    \@proofmodetrue % this is an internal index.sty variable
+  \else
+    \PackageWarn{option `showidx' can't be used in 'final' mode.}
+    \@proofmodefalse
+  \fi
+}
+\ProcessOptions
+
+\newif\ifindexpage
+\indexpagetrue% why use this package if you're not going to USE it?
+
+\if@proofmode
+  \proofmodetrue% pass option to index package
+\else
+  \proofmodefalse% ditto
+\fi
+
+\newcommand{\gtindexname}{}
+\newcommand{\idxcontentlinestring}{}
+\newcommand{\idxpdfbookmarkstring}{}
+
+\newcommand{\setindexstring}[1]{%
+  \renewcommand{\gtindexname}{#1}
+  \renewcommand{\indexname}{\Makeuppercase{#1}}
+  \renewcommand{\idxcontentlinestring}{%
+    \texorpdfstring{\Makeuppercase{#1}}{#1}
+  }
+  \renewcommand{\idxpdfbookmarkstring}{#1}
+}
+\setindexstring{Index}
+% if you want to change the name of the index, do it in the preamble
+% once the document begins, it''s too late.
+\AtBeginDocument{%
+  \newindex{default}{idx}{ind}{Index}
+}
+
+\renewenvironment{theindex}{%
+  \edef\indexname{\the\@nameuse{idxtitle@\@indextype}}%
+  \if@twocolumn
+    \@restonecolfalse
+  \else
+    \@restonecoltrue
+  \fi
+  \chapter*{\MakeUppercase{\gtindexname}}
+  \@mkboth{\scshape\MakeUppercase\indexname}%
+          {\scshape\MakeUppercase\indexname}%
+  \let\item\@idxitem
+  \columnseprule \z@
+  \columnsep 35\p@
+  \begin{multicols}{2}[%
+    \ifx\index@prologue\@empty\else
+      \index@prologue
+      \bigskip
+    \fi]%    
+    \parindent\z@
+    \parskip\z@ \@plus .3\p@\relax
+}{\end{multicols}%
+  \if@restonecol
+    \onecolumn
+  \else
+    \clearpage
+  \fi
+}
+
+\renewcommand{\do@indexpage}{%
+  \ifindexpage
+    \if@openright\cleardoublepage\else\clearpage\fi 
+    % must clear page here, so that phantomsection\addcontentsline is on the correct page
+    \phantomsection%
+    \addcontentsline{toc}{chapter}{\idxcontentlinestring}
+    \settoheight{\gt@tmpa}{A}
+    \set@gttocskip{\gt@tmpa}
+    {\newlinestretch{1}
+     \printindex
+    }%
+    \newpage
+  \fi
+}
+
+\newcommand{\gtindex}{\do@indexpage}
+\newcommand{\bs}{\symbol{'134}}% print backslash
+\newcommand{\gtCom}[1]{\texttt{\bs#1}\index{#1@\texttt{\bs#1}}}
+\newcommand{\gtProg}[1]{\texttt{#1}\index{#1@\texttt{#1} program}}

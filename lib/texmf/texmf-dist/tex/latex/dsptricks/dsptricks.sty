@@ -1,0 +1,1071 @@
+%% This is the package dsptricks
+%%
+%% (c) Paolo Prandoni <paolo.prandoni _at_ epfl.ch>
+%%
+%% This program can be redistributed and/or modified under the terms
+%% of the LaTeX Project Public License Distributed from CTAN archives
+%% in directory macros/latex/base/lppl.txt.
+%%
+%% DESCRIPTION:
+%%   `dsptricks' is a LaTeX package based on PSTricks to plot discrete- and continuous-time
+%%       signals, pole-zero plots and DSP block diagrams. The package has been developed 
+%%       while writing the textbook "Signal Processing for Communication" by P. Prandoni
+%%       and M. Vetterli, freely available at www.sp4comm.org
+%%
+%% v1.0, July 2014
+%%
+\RequirePackage{pstricks}
+\RequirePackage{pstricks-add}
+\RequirePackage{pst-xkey}
+\RequirePackage{calc}
+\RequirePackage{fp}
+\RequirePackage{ifthen}
+%
+\ProvidesPackage{dsptricks}[2014/07/24 package for signal processing graphics]
+
+% turn off FP messages
+\FPmessagesfalse
+
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Sizes and units:
+%%
+%% default values for plot size
+%%
+\newlength{\dspWidth}\setlength{\dspWidth}{0.7\textwidth}
+\newlength{\dspHeight}\setlength{\dspHeight}{0.43\dspWidth}
+\def\dspAxisColor{black}
+%
+%% Actual size (this is the size of the chart's frame, labels are extra)
+\newlength{\dspW}
+\newlength{\dspH}
+%% Basic Unit is a function of plot size
+\newlength{\dspBU}
+%% Derived units:
+\newlength{\dspLineWidth}
+\newlength{\dspStemWidth}
+\newlength{\dspDotSize}
+\newlength{\dspTickLen}
+\newlength{\dspXTickGap}
+\newlength{\dspYTickGap}
+\newlength{\dspTickLineWidth}
+\newlength{\dspFrameLineWidth}
+%% psTricks units
+\newlength{\dspUnitX}
+\newlength{\dspUnitY}
+\newlength{\dspTmpLen}
+%% booleans
+\newif\ifXTicks
+\newif\ifDoXTicks
+\newif\ifYTicks
+\newif\ifDoYTicks
+\newif\ifXLabel
+\newif\ifYLabel
+\newif\ifXAxisExp
+\newif\ifYAxisExp
+\newif\ifXAxisFreq
+\newif\ifXInside
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% dspPlot environment:
+%%
+%% \begin{dspPlot}[OPTIONS]{xMin, xMax}{yMin, yMAx}
+%%
+%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Keys for data plots :
+%%
+\define@key{dspDP}{width}{\setlength{\dspW}{#1}}
+\define@key{dspDP}{height}{\setlength{\dspH}{#1}}
+\define@key{dspDP}{xlabel}{\def\dspXLabel{#1}\XLabeltrue}
+\define@key{dspDP}{ylabel}{\def\dspYLabel{#1}\YLabeltrue}
+\define@key{dspDP}{rlabel}{\def\dspYLabelR{#1}\YLabeltrue} % right-side y-axis label
+\define@key{dspDP}{sidegap}{\def\sg{#1}}
+\define@choicekey*+{dspDP}{xtype}[\ll\ln]{time,freq}[time]{%
+  \ifcase\ln\relax
+    \XAxisFreqfalse
+  \or
+    \XAxisFreqtrue
+  \fi}{}
+\define@choicekey*+{dspDP}{xticks}[\ll\ln]{auto,none,custom}[auto]{%
+  \DoXTickstrue\XTickstrue\def\incX{-1}\def\piFrac{2}
+  \ifcase\ln\relax
+    \relax
+  \or
+    \DoXTicksfalse\XTicksfalse
+  \or
+    \DoXTicksfalse
+  \fi}{%
+  \DoXTickstrue\XTickstrue
+  \def\incX{#1}\def\piFrac{#1}}
+\define@choicekey*+{dspDP}{yticks}[\ll\ln]{auto,none,custom}[auto]{%
+  \DoYTickstrue\YTickstrue\def\incY{-1}
+  \ifcase\ln\relax
+    \relax
+  \or
+    \DoYTicksfalse\YTicksfalse
+  \or
+    \DoYTicksfalse
+  \fi}{%
+  \DoYTickstrue\YTickstrue
+  \def\incY{#1}}
+\newif\ifXTicksOut
+\define@key{dspDP}{xout}{\XTicksOuttrue}
+\define@key{dspDP}{inticks}{\XInsidetrue}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% dspPlot environment
+%%
+\newenvironment{dspPlot}[3][]{%
+% default values
+  \def\dspXlabel{}\XLabelfalse%
+  \def\dspYLabel{}\def\dspYLabelR{}\YLabelfalse%
+  \XAxisFreqfalse%
+  \XTicksOutfalse%
+  \setlength{\dspW}{\dspWidth}\setlength{\dspH}{\dspHeight}%
+
+  \presetkeys{dspDP}{xticks=auto,yticks=auto}{}%
+  \presetkeys{dspDP}{sidegap=-1}{}%
+  \setkeys{dspDP}{#1}%
+%%
+%% set up
+  \ifXAxisFreq\def\sg{0} \fi%
+  \dspSetDims#2,#3,\sg\relax%
+  \dspSetupAxes
+%%
+%% special x-axis for frequency plots
+  \ifXAxisFreq\FPset\incX{1}%
+    \ifXAxisExp%
+      % x-axis is not on bottom; skip last values
+      \FPupn\stX{\dspMinX{} \piFrac{} * 1 + 0 trunc}%
+      \FPupn\tlimX{\stX{} \dspMaxX{} \piFrac{} * - 0 trunc}%
+    \else%
+      \FPupn\stX{\dspMinX{} \piFrac{} * 0 trunc}%
+      \FPupn\tlimX{\stX{} \dspMaxX{} \piFrac{} * - 1 + 0 trunc}\relax\fi%
+    %
+    \ifXTicksOut% undo above if ticks explicitly out
+      \FPupn\stX{\dspMinX{} \piFrac{} * 0 trunc}%
+      \FPupn\tlimX{\stX{} \dspMaxX{} \piFrac{} * - 1 + 0 trunc}\relax\fi
+    %
+    \def\thisTickX##1{%
+      \FPupn\u{\piFrac{} ##1 /}%
+      \psline[linewidth=\dspTickLineWidth,linecolor=\dspAxisColor](\u,\haY)(\u,\tickEndX)}
+    \def\thisTickLabelX##1##2{%
+      \FPupn\u{\piFrac{} ##1 /}%
+      \rput*[B]{{0}}(\u,\tickTxtX){{\simplifyPiFrac{##1}{\piFrac}}}}%
+  \else
+    \def\thisTickX{\dspTickX}\def\thisTickLabelX{\dspTickLabelX}\relax\fi
+%%
+%% start the plot
+  \begin{pspicture}(\LX,\BY)(\RX,\TY)
+    %\showpointstrue
+    %\psframe[dimen=middle,linewidth=1pt,linecolor=red](\LX,\BY)(\RX,\TY)%
+    \ifXAxisExp\psline[linewidth=\dspFrameLineWidth,linecolor=\dspAxisColor](\dspMinX,0)(\dspMaxX,0)\fi
+    \dspPlotFrame
+%%
+%% draw ticks selectively according to user options
+    \ifDoXTicks\multido{\n=\stX+\incX}{\tlimX}{\thisTickX{\n}}\fi
+    \ifDoYTicks\multido{\n=\stY+\incY}{\tlimY}{\dspTickY{\n}}\fi
+}{%
+%% tick labels
+    \psset{xunit=\dspUnitX,yunit=\dspUnitY} %user may have changed those
+    \ifDoXTicks\multido{\n=\stX+\incX}{\tlimX}{\thisTickLabelX{\n}{$\n$}}\fi
+    \ifDoYTicks\multido{\n=\stY+\incY}{\tlimY}{\dspTickLabelY{\n}{$\n$}}\fi
+    \dspLabels
+\end{pspicture}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Custom ticks
+%%
+%% \dspCustomTicks[axis={x|y}]{value label ...}
+%%
+%% if using macros for values, enclose them in curly braces:
+%% \def\a{1 }
+%% \dspCustomTicks{{\a} 1}
+%%
+\define@choicekey*{dspCT}{axis}[\ll\ln]{x,y,ry}[x]{%
+  \def\dspCA{\ln}}
+\define@key{dspCT}{color}{\def\tickColor{#1}}
+\newcommand{\dspCustomTicks}[2][]{%
+  \presetkeys{dspCT}{axis=x,color=black}{}%
+  \setkeys{dspCT}{#1}%
+  \ifcase\dspCA\relax%
+    \def\dspMkTk##1##2{\dspTickX{##1}{\dspTickLabelX{##1}{##2}}}%
+  \or
+    \def\dspMkTk##1##2{\dspTickY{##1}{\dspTickLabelY{##1}{##2}}}%
+  \or
+    \def\dspMkTk##1##2{{\dspTickLabelYR{##1}{##2}}}%
+  \fi
+  \def\dspMakeTicks##1 ##2 ##3\relax{%
+    \ifx&##3&
+      \dspMkTk{##1}{##2} %
+    \else
+     \dspMkTk{##1}{##2} \relax %
+      \dspMakeTicks##3\relax%
+    \fi}%
+    \dspMakeTicks#2 \relax}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Draw legend
+%%
+%% \dspLegend(x,y){color label color label ...}
+%%
+\def\dspLegend(#1,#2)#3{%
+  \rput[lt](#1,#2){\fbox{%
+    \begin{tabular}{ll}
+      \@dsplegend#3 \@empty
+    \end{tabular}}}}
+\def\@dsplegend#1 #2 #3{%
+   {\color{#1}\rule[0.5ex]{2em}{2pt}} & #2\\ \space  % fbox here to have a visual test
+   \ifx #3\@empty\else
+    \expandafter\@dsplegend
+   \fi
+   #3}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Redraw frame around plot
+%%
+\newcommand{\dspPlotFrame}{
+  \psframe[dimen=middle,linewidth=\dspFrameLineWidth,linecolor=black]%
+    (\dspMinX,\dspMinY)(\dspMaxX,\dspMaxY)}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Environment to clip plots to within the frame box. Do not leave
+%%  spaces in the environment's body otherwise graph will shift
+%%
+\newenvironment{dspClip}{%
+  \psclip{\psframe[dimen=middle,linestyle=none](\dspMinX,\dspMinY)(\dspMaxX,\dspMaxY)}}{%
+  \endpsclip}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plotting discrete-time signals in the  dspPlot environment:
+%%
+%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Keys for plotting functions (these are set together with pstricks keys
+%%  so they must use the [psset] prefix and be declared)
+%%
+%%   xmin=N,
+%%   xmax=N       range for the plotted signal
+%%
+\define@key[psset]{dspData}{xmin}{\def\dspXmin{#1}}
+\define@key[psset]{dspData}{xmax}{\def\dspXmax{#1}}
+\pst@addfams{dspData}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plot discrete-time points
+%%
+%% \dspTaps[OPTIONS]{x1 y1 x2 y2 ...}
+%%
+\newcommand{\dspTaps}[2][]{%
+  \listplot[plotstyle=LineToXAxis, linestyle=solid,%
+    showpoints=true, dotstyle=*, linewidth=\dspStemWidth,%
+    dotsize=\dspDotSize, #1]{\expandafter\m@keList#2 \relax}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plot discrete-time points starting at a given abscissa
+%% Data in this case is only ordinates
+%%
+%% \dspTapsAt{x0}{y0 y1 y2,...}
+%%
+\newcommand{\dspTapsAt}[3][]{%
+  % use postscript to iterate over space-separated list and create indices
+  \listplot[plotstyle=LineToXAxis, linestyle=solid,%
+      showpoints=true, dotstyle=*, linewidth=\dspStemWidth,%
+      dotsize=\dspDotSize, #1]{%
+  #2
+  [#3] {    % n []
+            % n a0
+    1 index % n a0 n
+    1 add
+  } forall
+  pop
+}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plot discrete-time signal from a data file
+%%
+%% \dspTapsFile[OPTIONS]{FILE}
+%%
+\newcommand{\dspTapsFile}[2][]{%
+  \readdata{\data}{#2}%
+  \listplot[plotstyle=LineToXAxis, linestyle=solid,%
+            showpoints=true, dotstyle=*,%
+            linewidth=\dspStemWidth, dotsize=\dspDotSize,%
+            #1]{\data}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plot discrete-time signal
+%%
+%% \dspSignal[OPTIONS]{PS code}
+%%
+\newcommand{\dspSignal}[2][]{%
+  \presetkeys[psset]{dspData}{xmin=\dspMinActX, xmax=\dspMaxActX}{}%
+  \setkeys*[psset]{dspData}{#1}%
+  \FPupn\mn{{\dspXmin} 0 trunc clip }%
+  \FPupn\mx{{\dspXmax} 0 trunc clip }%
+  \FPupn\ntaps{\mn{} \mx{} - 1 + 0 trunc clip}%
+  \psplot[plotstyle=LineToXAxis, linestyle=solid,%
+          showpoints=true, dotstyle=*,%
+          linewidth=\dspStemWidth, dotsize=\dspDotSize,%
+          plotpoints=\ntaps, #1]%
+          {\mn}{\mx}{#2}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plot discrete-time signal with postscript initialization options
+%%
+%\dspSignalOpt[OPTIONS]{PS init code}{PS code}
+%%
+\newcommand{\dspSignalOpt}[3][]{%
+  \presetkeys[psset]{dspData}{xmin=\dspMinActX, xmax=\dspMaxActX}{}%
+  \setkeys*[psset]{dspData}{#1}%
+  \FPupn\ntaps{\dspXmin{} \dspXmax{} - 1 + 0 trunc}%
+  \psplot[plotstyle=LineToXAxis, linestyle=solid,%
+          showpoints=true, dotstyle=*,%
+          linewidth=\dspStemWidth, dotsize=\dspDotSize,%
+          plotpoints=\ntaps, #1]%
+          {\dspXmin}{\dspXmax}[{#2}]{#3}}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plotting continuous-time signals in the  dspPlot environment:
+%%
+%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plot smooth function
+%%
+%% \dspFunc[OPTIONS]{PS code}
+%%
+\newcommand{\dspFunc}[2][]{%
+  \presetkeys[psset]{dspData}{xmin=\dspMinActX, xmax=\dspMaxActX}{}%
+  \setkeys*[psset]{dspData}{#1}%
+  \psplot[linewidth=\dspLineWidth, plotpoints=\dspPSPoints,%
+    linejoin=1,#1]{\dspXmin}{\dspXmax}{#2}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plot smooth function with postscript initialization options
+%%
+%% \dspFuncOpt[OPTIONS]{PS init code}{PS code}
+%%
+\newcommand{\dspFuncOpt}[3][]{%
+  \presetkeys[psset]{dspData}{xmin=\dspMinActX, xmax=\dspMaxActX}{}%
+  \setkeys*[psset]{dspData}{#1}%
+  \psplot[linewidth=\dspLineWidth, plotpoints=\dspPSPoints,%
+    linejoin=1,#1]{\dspXmin}{\dspXmax}[{#2}]{#3}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plot smooth function from a set of points
+%%
+%% \dspFuncData[OPTIONS]{x1 y1 x2 y2 ...}
+%%
+\newcommand{\dspFuncData}[2][]{%
+  \listplot[linewidth=\dspLineWidth,linejoin=1,plotstyle=line,#1]{\expandafter\m@keList#2 \relax}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plot smooth function from a set of points starting at a given point
+%% Data in this case is only ordinates
+%%
+%% \dspFuncDataAt[OPTIONS]{x1}{y1 y2 ...}
+%%
+\newcommand{\dspFuncDataAt}[3][]{%
+  \listplot[linewidth=\dspLineWidth,linejoin=1,plotstyle=line,#1]{%
+  #2
+  [#3] {    % n []
+            % n a0
+    1 index % n a0 n
+    1 add
+  } forall
+  pop
+}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plot smooth function from a data file
+%% file must contain a list of space-separated abscissa and ordinate pairs
+%%
+%% \dspFuncFile[OPTIONS]{FILE}
+%%
+\newcommand{\dspFuncFile}[2][]{%
+  \readdata{\data}{#2}%
+  \listplot[linewidth=\dspLineWidth,linejoin=1,plotstyle=line,#1]{\data}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Plot Dirac deltas
+%%
+%% \dspDiracs[OPTIONS]{x1 y1 x2 y2 ...}
+%%
+\newcommand{\dspDiracs}[2][]{%
+  \def\dirac##1##2{\psline[linestyle=solid,linewidth=\dspLineWidth,#1]{->}(! ##1 0)(! ##1 ##2)}
+  \doOnPairs{dirac}{#2}}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%% Periodize function over the [-1, 1] interval
+%
+\newcommand{\dspPeriod}[1]{ #1 sub #1 2 mul div dup floor sub #1 2 mul mul #1 sub }
+\newcommand{\dspPeriodize}{ \dspPeriod{1} }
+\newcommand{\dspMainPeriod}[1][]{%
+  \psframe[linecolor=lightgray,linewidth=0.4pt,#1](-1,\dspMinY)(1,\dspMaxY)}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%% Plot text
+% \dspText(x,y){text}
+\newcommand{\dspText}[2]{%
+  \rput*[B]{0}#1{#2}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%% Pole-Zero Plots
+%
+% Specialized options:
+%
+%   circle=["true" | "false"]  draw unit circle
+%   clabel="text"  set a label at circle unit
+%   roc
+%
+\define@key{dspPZ}{width}{\setlength{\dspW}{#1}\setlength{\dspH}{#1}}
+\define@key{dspPZ}{height}{\setlength{\dspH}{#1}}
+\define@key{dspPZ}{circle}{\def\dspCircle{#1}}
+\define@key{dspPZ}{clabel}{\def\dspCircleLabel{#1}}
+\define@choicekey*+{dspPZ}{xticks}[\ll\ln]{auto,none}[auto]{%
+  \DoXTickstrue\def\incX{-1}
+  \ifcase\ln\relax
+    \relax
+  \or
+    \DoXTicksfalse
+  \fi}{%
+  \DoXTickstrue
+  \def\incX{#1}}
+\define@choicekey*+{dspPZ}{yticks}[\ll\ln]{auto,none}[auto]{%
+  \DoYTickstrue\def\incY{-1}
+  \ifcase\ln\relax
+    \relax
+  \or
+    \DoYTicksfalse
+  \fi}{%
+  \DoYTickstrue
+  \def\incY{#1}}
+\newif\ifComplexLabels
+\define@choicekey*{dspPZ}{cunits}[\ll\ln]{true,false}[true]{%
+  \ifcase\ln\relax
+    \ComplexLabelstrue
+  \or
+    \ComplexLabelsfalse
+  \fi}
+\define@key{dspPZ}{roc}{\def\PZCROC{#1}}
+\define@key{dspPZ}{antiroc}{\def\PZAROC{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newenvironment{dspPZPlot}[2][]{%
+  \setlength{\dspW}{\dspHeight}\setlength{\dspH}{\dspHeight}%
+  \ComplexLabelstrue%
+  \presetkeys{dspPZ}{xticks=auto,yticks=auto,circle=1,clabel={ },roc=-1,antiroc=-1}{}%
+  \setkeys{dspPZ}{#1}%
+%
+  %% set up
+  \dspSetDims{-#2},{#2},{-#2},{#2},0\relax%
+  \dspSetupAxes%
+%
+  \gdef\dspTickX##1{\psline[linewidth=\dspTickLineWidth,linecolor=\dspAxisColor](##1,-\tickEndX)(##1,\tickEndX)}%
+  \gdef\dspTickY##1{\psline[linewidth=\dspTickLineWidth,linecolor=\dspAxisColor](-\tickEndY,##1)(\tickEndY,##1)}%
+  \gdef\dspTickLabelY##1##2{\uput{{2\dspYTickGap}}[0]{{0}}(\tickEndY,##1){{##2}}}%
+  \gdef\dspTickLabelX##1##2{\rput[B]{{0}}(##1,\tickTxtX){{##2}}}%
+%
+  %% start the plot
+  \begin{pspicture}(\LX,\BY)(\RX,\TY)
+    \FPifpos\PZCROC%
+      \pscustom[fillstyle=vlines,hatchcolor=lightgray,linecolor=lightgray,linewidth=0]{%
+      \psarc(0,0){\PZCROC\dspUnitX}{0}{360}%
+      \psline[linecolor=\dspAxisColor](\dspMaxX,0)(\dspMaxX,\dspMinY)(\dspMinX,\dspMinY)%
+        (\dspMinX,\dspMaxY)(\dspMaxX,\dspMaxY)(\dspMaxX,0)}
+      \pscircle[linecolor=lightgray,dimen=middle]{\PZCROC\dspUnitX}\relax\fi
+    \FPifpos\PZAROC%
+      \pscircle[fillstyle=vlines,hatchcolor=lightgray,linecolor=lightgray,dimen=middle]{\PZAROC\dspUnitX}\relax\fi
+%%
+    \psline[linewidth=\dspFrameLineWidth,linecolor=\dspAxisColor](\dspMinX,0)(\dspMaxX,0)%
+    \psline[linewidth=\dspFrameLineWidth,linecolor=\dspAxisColor](0,\dspMinY,0)(0,\dspMaxY)%
+    \dspPlotFrame%
+    \FPifgt\dspCircle{0}%
+      \FPmul\r\dspCircle{\strip@pt\dspUnitX}%
+      \pscircle[linewidth=\dspFrameLineWidth,dimen=middle](0,0){{\r}pt}%
+      \ifx\@empty\dspCircleLabel%
+        \def\dspCircleLabel{\dspCircle}\relax\fi
+      \FPupn\r{0.6 \dspTSX{} mul \dspCircle{} add}%
+      \rput[b]{0}(\r,\tickTxtX){\dspCircleLabel}\relax\fi
+%
+    % draw ticks selectively according to user options
+    % but here skip zero and intersections with the circle (if any)
+    \FPupn\r{\tlimX{} 1 sub 2 div clip}%
+    \def\xt{%
+      \multido{\n=\stX+\incX}{\r}{\FPifeq\n{-\dspCircle}\relax\else\dspTickX{\n}\fi}%
+      \multido{\n=\incX+\incX}{\r}{\FPifeq\n\dspCircle\relax\else\dspTickX{\n}\fi}%
+      \multido{\n=\stX+\incX}{\r}{\FPifeq\n{-\dspCircle}\relax\else\dspTickLabelX{\n}{$\n$}\fi}%
+      \multido{\n=\incX+\incX}{\r}{\FPifeq\n\dspCircle\relax\else\dspTickLabelX{\n}{$\n$}\fi}}%
+    \def\yt{%
+      \multido{\n=\stY+\incY}{\r}{\FPifeq\n{-\dspCircle}\relax\else\dspTickY{\n}\fi}%
+      \multido{\n=\incY+\incY}{\r}{\FPifeq\n\dspCircle\relax\else\dspTickY{\n}\fi}%
+      \multido{\n=\stY+\incY}{\r}{\FPifeq\n{-\dspCircle}\relax\else\dspTickLabelY{\n}{$\n$}\fi}%
+      \multido{\n=\incY+\incY}{\r}{\FPifeq\n\dspCircle\relax\else\dspTickLabelY{\n}{$\n$}\fi}}%
+    \ifDoXTicks\xt\fi
+    \ifDoYTicks\yt\fi
+    \ifComplexLabels%
+      \rput[mr]{0}(\dspMaxX,1em){Re~}%
+      \FPupn\r{\dspMaxY{} 0.6 \dspTSY{} mul sub}%
+      \rput[t]{0}(-1.2em,\r){Im~}\relax\fi
+}{%
+  \end{pspicture}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Keyvals for poles and zeros
+%
+\newif\ifPZPole
+\define@choicekey*[psset]{dspPZP}{type}[\ll\ln]{zero,pole}[zero]{%
+  \ifcase\ln\relax
+    \PZPolefalse
+  \or
+    \PZPoletrue
+  \fi}
+\newif\ifPZLabel
+\define@choicekey*+[psset]{dspPZP}{label}[\ll\ln]{auto,none}[auto]{%
+  \def\PZLabel{}\relax%
+  \ifcase\ln\relax
+    \PZLabeltrue
+  \or
+    \PZLabelfalse
+  \fi}{%
+  \PZLabeltrue
+  \def\PZLabel{#1}}
+\define@key[psset]{dspPZP}{lpos}{\def\PZLP{#1}}
+\pst@addfams{dspPZP}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%% Plot pole-zero point
+%
+% \dspPZPoint[OPTIONS]{RE,IM}
+%
+%     RE, IM    coordinates
+%
+%   Options:
+%
+%     type = ["pole" | "zero"]    circle or cross (default: pole)
+%     label=["false" | TEXT ]     the point's label (default: false)
+%     lpos = ANGLE            label position (default: 45)
+%
+\newcommand{\dspPZ}[2][]{%
+  \presetkeys[psset]{dspPZP}{type=pole,label=auto}{}%
+  \setkeys*[psset]{dspPZP}{#1}%
+  \ifPZPole
+    \psdot[dotstyle=+,dotsize=1.4ex,dotscale=1.5,dotangle=45, #1](\twoArgSplit#2) \else
+    \psdot[dotstyle=*,dotsize=1.4ex,#1](\twoArgSplit#2) \fi
+  \ifx\@empty\PZLabel \def\PZLabel{$(\twoArgSplit#2)$} \fi
+  % tricky bug in pstricks so we can't use presetkeys for angle... Could not understand
+  \ifdefined\PZLP \relax \else \def\PZLP{45} \fi
+  \ifPZLabel \uput[\PZLP]{0}(\twoArgSplit#2){\PZLabel} \fi}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\define@key{dspCP}{width}{\setlength{\dspCPW}{#1}\setlength{\dspCPH}{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% dspCP environment
+%
+% \begin{dspCP}[OPTIONS]{MAX}
+%
+%
+\newlength{\dspCPW}\newlength{\dspCPH}
+\newenvironment{dspCP}[3][]{%
+%% scale dimensions so that axes have equal units
+  \setlength{\dspCPW}{0.37\textwidth}\setlength{\dspCPH}{\dspCPW}
+  \setlength{\dspW}{\dspCPW}\setlength{\dspH}{\dspCPH}
+  \setkeys*{dspCP}{#1}%
+  \dspSetDims#2,#3,0\relax%
+  \FPupn\g{\dspRngY{} {\strip@pt\dspCPW} / \dspRngX{} * 0 trunc}%
+  \setlength{\dspCPH}{1pt*\g}%
+%%
+  \begin{dspPlot}[#1,sidegap=0,inticks=true,width=\dspCPW,height=\dspCPH]{#2}{#3}%
+    \ifYAxisExp\psline[linewidth=\dspFrameLineWidth,linecolor=\dspAxisColor](0,\dspMinY)(0,\dspMaxY)\fi
+}{%
+%% redo ticks and axes since images may overlap a little
+    \dspPlotFrame
+    \ifDoXTicks\multido{\n=\stX+\incX}{\tlimX}{\dspTickX{\n}}\fi
+    \ifDoYTicks\multido{\n=\stY+\incY}{\tlimY}{\dspTickY{\n}}\fi
+  \end{dspPlot}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%% Plot Dirac deltas
+%
+% \dspPoints[OPTIONS]{x1 y1 x2 y2 ...}
+%
+\newcommand{\dspPoints}[2][]{%
+  \listplot[plotstyle=dots,%
+    showpoints=true, dotstyle=*,%
+    dotsize=\dspDotSize, #1]{\m@keList#2 \relax}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%% Plot Dirac delta with value
+%
+% \dspDiracs[OPTIONS]{x, y}{text}
+%
+\newcommand{\dspPointValue}[3][]{%
+  \psdot[dotstyle=*, dotsize=\dspDotSize, #1](\twoArgSplit#2)%
+  \uput[45]{0}(\twoArgSplit#2){#3}}
+
+\newcommand{\dspPointValueSC}[3][]{%
+  \SpecialCoor
+  \psdot[dotstyle=*, dotsize=\dspDotSize, #1](#2)%
+  \uput[45]{0}(\twoArgSplit#2){#3}
+  \NormalCoor}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%% Plot image from file
+\newcommand{\dspImageFile}[1]{%
+  \FPupn\u{2 \dspRngX{} 1.01 * / \dspMinX{} + }\FPupn\v{2 \dspRngY{} 1.01 * / \dspMinY{} + }%
+  \setlength{\dspCPW}{1.01\dspW}\setlength{\dspCPH}{1.01\dspH}%
+  \rput(\u,\v){\includegraphics[width=\dspCPW,height=\dspCPH]{#1}}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%% Quick image plot, with frame but no additional space around it
+\newcommand{\dspShowImage}[2][0.37\textwidth]{%
+  \psset{xunit=#1,yunit=#1}%
+  \begin{pspicture}(0,0)(0,1)%
+    \includegraphics[width=#1,height=#1]{#2}%
+    \psframe[dimen=middle,linewidth=1.1pt](-0.01,0)(-.99,.99)
+  \end{pspicture}}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%% Some geometrical primitives
+%
+\newif\ifPointToOrg
+\define@choicekey*[psset]{dspPZP}{toorg}[\ll\ln]{true,false}[false]{%
+  \ifcase\ln\relax
+    \PointToOrgtrue
+  \or
+    \PointToOrgfalse
+  \fi}
+
+% [opts]{x,y}{label}
+\newcommand{\dspCPPoint}[3][]{%
+  \setkeys*[psset]{dspPZP}{#1}%
+  \psdot[dotstyle=*, dotsize=\dspDotSize, #1](#2)%
+  \uput[45]{0}(#2){#3}%
+  \ifPointToOrg\psline[linewidth=\dspTickLineWidth, #1](0,0)(#2)\fi}
+
+% [opts]{x,y in special coor}{label}
+\newcommand{\dspCPPointSC}[3][]{%
+  \setkeys*[psset]{dspPZP}{#1}%
+  \SpecialCoor%
+  \psdot[dotstyle=*, dotsize=\dspDotSize, #1](#2)%
+  \uput[45]{0}(#2){#3}%
+  \ifPointToOrg\psline[linewidth=\dspTickLineWidth, #1](! 0 0 )(#2)\fi%
+  \NormalCoor}
+
+% [opts]{x,y}{r}
+\newcommand{\dspCPCircle}[3][]{%
+  \pscircle[#1](#2){#3\dspUnitX}}
+
+% [opts]{r}{a}{label}
+\newcommand{\dspCPCirclePoint}[4][]{%
+  \setkeys*[psset]{dspPZP}{#1}%
+  \SpecialCoor%
+  \def\pcorps{! #3 cos #2 mul #3 sin #2 mul}%
+  \FPupn\q{#2 1.1 * 2 trunc}%
+  \uput*{\q\dspUnitX}[#3]{0}(0,0){#4}%
+  \psdot[dotstyle=*, dotsize=\dspDotSize, #1](\pcorps)%
+  \ifPointToOrg\psline[linewidth=\dspTickLineWidth, #1](! 0 0 )(\pcorps)\fi%
+  \NormalCoor}
+
+% [opts] {r}{a}{b}{label}
+\newcommand{\dspCPArc}[5][]{%
+  \FPupn\p{#3 #4 + 0.5 * 2 trunc}%
+  \FPupn\q{#2 1.1 * 2 trunc}%
+  \uput*{\q\dspUnitX}[\p]{0}(0,0){#5}%
+  \psarc[linewidth=2\dspTickLineWidth, #1]{->}{#2\dspUnitX}{#3}{#4}}
+\newcommand{\dspCPArcn}[5][]{%
+  \FPupn\p{#3 #4 + 0.5 * 2 trunc}%
+  \FPupn\q{#2 1.1 * 2 trunc}%
+  \uput*{\q\dspUnitX}[\p]{0}(0,0){#5}%
+  \psarcn[linewidth=2\dspTickLineWidth, #1]{->}{#2\dspUnitX}{#3}{#4}}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Helpers
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% This is called at each plot setup with xmin, xmax, ymin, ymax and sidegap
+%%  and sets all lengths
+\def\dspSetDims#1,#2,#3,#4,#5\relax{%
+  \def\sideGap{#5}%
+  % default sidegap: 5% of range
+  \FPifneg\sideGap\FPupn\sideGap{#1 #2 - 0.05 * 0.5 + 2 trunc}\fi%
+  \FPifgt\sideGap{1}\FPtrunc\sideGap\sideGap{0}\fi%
+%%
+%% active range for the independent variable
+  \def\dspMinActX{#1}%
+  \def\dspMaxActX{#2}%
+%% axes range (including sidegap)
+  \FPupn\dspMinX{\sideGap{} #1 - clip}%
+  \FPupn\dspMaxX{\sideGap{} #2 + clip}%
+  \FPupn\dspRngX{#1 #2 - \sideGap{} 2 * + clip}%
+  \FPupn\dspMinY{#3 0 + clip}%
+  \FPupn\dspMaxY{#4 0 + clip}%
+  \FPupn\dspRngY{#3 #4 - clip}%
+%%
+% if y-range is across zero we'll need to draw the x-axis
+  \FPmul\u\dspMinY\dspMaxY%
+  \FPifneg\u\XAxisExptrue\else\XAxisExpfalse\fi%
+%% same for x (but usually we never draw the y axis)
+  \FPmul\u\dspMinX\dspMaxX%
+  \FPifneg\u\YAxisExptrue\else\YAxisExpfalse\fi%
+%%
+%% pstricks units: we scale the units so that coordinates are "real" coords on the axes
+  \FPupn\tmp{\dspRngX{} {\strip@pt\dspW} / }
+  \setlength{\dspUnitX}{\tmp pt}%
+  \FPupn\tmp{\dspRngY{} {\strip@pt\dspH} / }%
+  \setlength{\dspUnitY}{\tmp pt}%
+%%
+%% basic unit based on the size of the image: ~1pt for a 10x5 cm box
+  \FPupn\g{2 {\strip@pt\dspW} {\strip@pt\dspH} * root 0.005 * 0 round 1 max}%
+  \setlength{\dspBU}{1pt*\g}%
+%% derived sizes: lines and fonts
+  \setlength{\dspLineWidth}{1.8\dspBU}%
+  \setlength{\dspDotSize}{5\dspBU}%
+  \setlength{\dspStemWidth}{1.4\dspBU}%
+  \fontsize{9\dspBU}{10\dspBU}\selectfont%
+%  %% ticks on axes
+  \setlength{\dspTickLen}{4\dspBU}%
+  \setlength{\dspTickLineWidth}{0.4\dspBU}%
+  \setlength{\dspXTickGap}{6\dspBU}\addtolength{\dspXTickGap}{2ex}%
+  \setlength{\dspYTickGap}{2\dspBU}%
+  \setlength{\dspFrameLineWidth}{2.2\dspTickLineWidth}%
+%%
+%% height of a line of text in psticks units
+  \setlength{\dspTmpLen}{1em}%
+  \FPupn\dspTSX{{\strip@pt\dspUnitX} {\strip@pt\dspTmpLen} / }%
+  \FPupn\dspTSY{{\strip@pt\dspUnitY} {\strip@pt\dspTmpLen} / }%
+%%
+%% find the coordinates of the plot's bounding box, including labels
+  \ifYLabel%
+    \FPupn\LX{\dspTSX{} 4 * \dspMinX{} -}%
+    \FPupn\RX{\dspTSX{} 4 * \dspMaxX{} +}%
+  \else%
+    \FPupn\LX{\dspTSX{} 2 * \dspMinX{} -}%
+    \FPupn\RX{\dspTSX{} 2 * \dspMaxX{} +}%
+  \fi
+  \FPupn\TY{\dspTSY{} \dspMaxY{} +}%
+  \def\outTicks{%
+    \ifXTicks\FPupn\BY{\dspTSY{} 2.5 * \dspMinY{} -}\else\FPupn\BY{\dspTSY{} \dspMinY{} -}\fi%
+   \ifXLabel\FPupn\BY{\dspTSY{} 1.5 * \BY{} -}\else\relax\fi }%
+  \ifXAxisExp % ticks are inside
+    \ifXLabel\FPupn\BY{\dspTSY{} 2.5 * \dspMinY{} -}\else\FPupn\BY{\dspTSY{} \dspMinY{} -}\fi%
+  \else% ticks are outside
+    \outTicks \fi%
+  % did we select explicit outside ticks?
+  \ifXTicksOut\outTicks \fi%
+%%
+%% x-axis resolution for plotting functions: ~60 values/cm
+  \FPupn\dspPSPoints{{\strip@pt\dspW} 2 * 0 trunc}%
+%%
+  \psset{xunit=\dspUnitX, yunit=\dspUnitY}%
+  \psset{linewidth=\dspLineWidth}%www
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Draw axis labels (if required) under x axis and to left and right of y axes
+%%
+\def\dspLabels{%
+  % horizontal label
+  \ifXTicksOut\XAxisExpfalse\fi%
+  \ifXLabel%
+    \FPupn\mid{\dspMinX{} \dspMaxX{} + 0.5 mul}%
+    \ifXAxisExp%
+      \FPupn\pos{\dspTSY{} 2 * \dspMinY{} -}%
+    \else%
+      \ifXTicks%
+        \FPupn\pos{\dspTSY{} 3 * \dspMinY{} -}%
+      \else%
+        \FPupn\pos{\dspTSY{} 2 * \dspMinY{} -}%
+      \fi%
+    \fi%
+    \rput[b]{0}(\mid,\pos){\dspXLabel}%
+  \fi%
+%
+  \FPupn\mid{\dspMinY{} \dspMaxY{} + 0.5 mul}%
+  \ifYTicks%
+    \FPupn\pos{\dspTSX{} 3.4 * \dspMinX{} -}%
+  \else%
+    \FPupn\pos{\dspTSX{} 1 * \dspMinX{} -}%
+  \fi%
+  \rput[b]{90}(\pos,\mid){\dspYLabel}
+%%
+  \FPupn\pos{\dspTSX{} 3 * \dspMaxX{} +}%
+  \rput[b]{-90}(\pos,\mid){\dspYLabelR}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% This sets axes ticks (spacing and number) and prepares macros
+%%  for plotting ticks and tick labels
+\def\dspSetupAxes{%
+%% tick increments; if incX/Y is zero, compute suitable value
+  \FPifgt\incX{0}\FPupn\incX{\incX{} 2 trunc}%
+    \else\FPupn\incX{\dspMinActX{} \dspMaxActX{} - 1 + 6 swap / 0 trunc 1 max}\relax\fi%
+  \FPifgt\incY{0}\FPupn\incY{\incY{} 2 trunc}%
+    \else\FPupn\incY{\dspMinY{} \dspMaxY{} - 1 + 6 swap / 0 trunc 1 max}\relax\fi%
+%%
+%% now find starting point and increment for ticks (and number of ticks)
+%% start with y-axis:
+  \ifXAxisExp% is y=0 explicit or does it coincide with the lower edge?
+    \def\haY{0}%
+    % make sure ticks hit zero; add small epsilons to avoid ticks at the limits
+    \FPupn\stY{\incY{} \dspMinY{} / 0.001 + 0 trunc \incY{} * 2 trunc}%
+    \FPupn\tlimY{\stY{} \dspMaxY{} - 0.001 - \incY{} swap / abs 1 + 0 trunc}%
+  \else%
+    \def\haY{\dspMinY}%
+    \FPupn\tlimY{\incY{} \dspRngY{} / abs 1 + 0 trunc}%
+    \FPupn\stY{\dspMinY{} 2 trunc}% \incY{} 1 \tlimY{} - * \dspRngY{} - 0.5 * \dspMinY{} + 2 trunc}%
+  \fi%
+  % x-ticks outside of the box anyway?
+  \ifXTicksOut\def\haY{\dspMinY}\relax\fi%
+  % round off to integer if possible:
+  \FPupn\v{\stY{} 0 trunc \stY{} - abs \incY{} 0 trunc \incY{} - abs + clip}%
+  \FPifeq\v{0}\FPtrunc\stY\stY{0}\FPtrunc\incY\incY{0}\relax\fi%
+%
+%% now x-axis:
+  \ifYAxisExp% we almost never draw the y-axis but need to see if x-axis spans zero
+    % make sure ticks hit zero; add small epsilons to avoid ticks at the limits
+    \FPupn\stX{\incX{} \dspMinX{} / 0 trunc \incX{} * 2 trunc}%
+    \FPupn\tlimX{\incX{} \stX{} \dspMaxX{} - / abs 1 +  0 trunc}%
+  \else%
+    \FPupn\tlimX{\incX{} \dspRngX{} / abs 1 + 0 trunc}%
+    \FPupn\stX{\dspMinX{} 2 trunc}% \FPupn\stX{\incX{} 1 \tlimX{} - * \dspRngX{} - 0.5 * \dspMinX{} + 2 trunc}%
+  \fi%
+  \FPupn\v{\stX{} 0 trunc \stX{} - abs \incX{} 0 trunc \incX{} - abs +}%
+  \FPifzero\v\FPtrunc\stX\stX{0}\FPtrunc\incX\incX{0}\relax\fi%
+%%
+%% macros for drawing x-ticks
+  \ifXInside%
+    \FPupn\tickEndX{{\strip@pt\dspUnitY} {\strip@pt\dspTickLen} /}%
+    \FPupn\tickTxtX{{\strip@pt\dspUnitY} {\strip@pt\dspXTickGap} 0.9 * / \dspMinY{} -}% tick label pos in PS units
+    \FPupn\tickXB{\tickEndX{} \dspMinY{} +}%
+    \FPupn\tickXT{\tickEndX{} \dspMaxY{} -}%
+    \gdef\dspTickX##1{%
+      \psline[linewidth=\dspTickLineWidth,linecolor=\dspAxisColor](##1,\dspMinY)(##1,\tickXB)%
+      \psline[linewidth=\dspTickLineWidth,linecolor=\dspAxisColor](##1,\dspMaxY)(##1,\tickXT)}%
+  %  \gdef\dspTickLabelX##1##2{\uput{{2\dspYTickGap}}[180]{{0}}(\dspMinX,##1){{##2}}}%
+    \gdef\dspTickLabelX##1##2{\rput*[B]{{0}}(##1,\tickTxtX){{##2}}}%
+  \else%
+    \FPupn\tickEndX{{\strip@pt\dspUnitY} {\strip@pt\dspTickLen} / \haY{} -}% tick len in PS units
+    \FPupn\tickTxtX{{\strip@pt\dspUnitY} {\strip@pt\dspXTickGap} / \haY{} -}% tick label pos in PS units
+    \gdef\dspTickX##1{\psline[linewidth=\dspTickLineWidth,linecolor=\dspAxisColor](##1,\haY)(##1,\tickEndX)}%
+    \gdef\dspTickLabelX##1##2{\rput*[B]{{0}}(##1,\tickTxtX){{##2}}}%
+  \fi%
+%% macros for drawing y-ticks
+  \FPupn\tickEndY{{\strip@pt\dspUnitX} {\strip@pt\dspTickLen} /}%
+  \FPupn\tickXB{\tickEndY{} \dspMinX{} +}%
+  \FPupn\tickXT{\tickEndY{} \dspMaxX{} -}%
+  \gdef\dspTickY##1{%
+    \psline[linewidth=\dspTickLineWidth,linecolor=\dspAxisColor](\dspMinX,##1)(\tickXB,##1)%
+    \psline[linewidth=\dspTickLineWidth,linecolor=\dspAxisColor](\dspMaxX,##1)(\tickXT,##1)}%
+  \gdef\dspTickLabelY##1##2{\uput{{2\dspYTickGap}}[180]{{0}}(\dspMinX,##1){{##2}}}%
+  \gdef\dspTickLabelYR##1##2{\uput{{2\dspYTickGap}}[0]{{0}}(\dspMaxX,##1){{##2}}}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% simplify fractions of pi
+\newcount\dspNum \newcount\dspDen
+\def\simplifyPiFrac#1#2{%
+  \ifnum#1=0 $0$\else % zero is zero
+    \dspNum=#1 \dspDen=#2 %
+    \divide\dspNum by\dspDen \multiply\dspNum by\dspDen % see if frac is simply an integer
+    \ifnum\dspNum=#1 \divide\dspNum by\dspDen \ifnum\dspNum=1 $\pi$\else \ifnum\dspNum=-1 $-\pi$\else $\number\dspNum\pi$\fi\fi\else%
+      \dspNum=#1 %
+      \ifnum\dspNum<0 \multiply\dspNum by-1 \def\s{-}\else\def\s{}\fi % normalize sign
+      \divide\dspDen by\dspNum \multiply\dspDen by\dspNum % see if frac is of type 1/x
+      \ifnum\dspDen=#2 \divide\dspDen by\dspNum $\s\pi / \number\dspDen$\else %
+      \dspNum=#1\dspDen=#2 %
+      \removeFactor{10}\removeFactor{9}\removeFactor{8}% remove some common factors
+      \removeFactor{7}\removeFactor{6}\removeFactor{5}%
+      \removeFactor{4}\removeFactor{3}\removeFactor{2}%
+      $\number\dspNum \pi / \number\dspDen$\fi%
+    \fi %
+  \fi}
+
+%% simplify a fraction (not the full Euclid, but it's ok for our purposes)
+\newcount\dspTerm \newcount\dspFact
+\def\removeFactor#1{\dspFact=#1 \dspTerm=\dspNum%
+  \divide\dspTerm by\dspFact \multiply\dspTerm by\dspFact %
+  \ifnum\dspTerm=\dspNum %
+    \dspTerm=\dspDen %
+    \divide\dspTerm by\dspFact \multiply\dspTerm by\dspFact %
+    \ifnum\dspTerm=\dspDen %
+      \divide\dspNum by\dspFact \divide\dspDen by\dspFact %
+    \fi %
+  \fi}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% space-separated lists must have at least two pairs of elements.
+% Duplicate singletons
+%
+\def\m@keList#1 #2 #3\relax{%
+  \ifx&#3&
+    #1 #2 #1 #2
+  \else
+    #1 #2 #3
+  \fi
+}
+
+\def\twoArgSplit#1,#2{#1, #2}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prepend the ordinal index to each element of a space-separated list
+%
+\def\m@keIndexedList#1#2{%
+  \count0=#1%
+  \expandafter\m@kixl\trim #2 |}
+\def\m@kixl#1 {%
+  \ifx#1|%
+    \let\next=\relax%
+  \else{\number\count0} \ #1\ \advance\count0 by1\let\next=\m@kixl\fi%
+\next}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% perform an action on all consecutive pairs in a space-separated list
+%
+\def\doOnPairs#1#2{%
+  \def\action{#1}%
+  \expandafter\p@rseB\trim #2 |}
+\def\p@rseB#1 #2 #3{%
+ \csname \action\endcsname{#1}{#2}%
+  \ifx#3|%
+    \let\next=\@gobble%
+  \else%
+    \let\next=\p@rseB\fi%
+  \next #3}
+\def\@gobble#1{}
+
+
+\def\trim#1{%
+  \romannumeral-`\.\expandafter\noexpand#1%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% PsTricks overrides
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Lollipop line style, by Denis.Girou at idris.fr %%%%%%%%%%%%%%%%%%%%%%%%
+%%
+\let\beginplot@LineToXAxis\beginplot@line
+\def\endplot@LineToXAxis{\psLineToXAxis@ii}
+\let\beginqp@LineToXAxis\beginqp@line
+\let\doqp@LineToXAxis\doqp@line
+\let\endqp@LineToXAxis\endqp@line
+\let\testqp@LineToXAxis\testqp@line
+%
+\def\psLineToXAxis@ii{%
+\addto@pscode{\pst@cp \psline@iii \tx@LineToXAxis}%
+\end@OpenObj}
+%
+\def\tx@LineToXAxis{LineToXAxis }
+%
+% Adapted from Line
+\pst@def{LineToXAxis}<{%
+NArray
+n 0 eq not
+  { n 1 eq { 0 0 /n 2 def } if
+    ArrowA
+    /n n 2 sub def
+    CP 2 copy moveto pop 0 Lineto
+    n { 2 copy moveto pop 0 Lineto } repeat
+    CP
+    4 2 roll
+    ArrowB
+    2 copy moveto pop 0
+    L
+    pop pop } if}>
+
+
+\makeatother
+\endinput
+

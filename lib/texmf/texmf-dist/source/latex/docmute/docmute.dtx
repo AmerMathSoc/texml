@@ -1,0 +1,226 @@
+% \iffalse
+%<*internal>
+\iffalse
+% !TEX program = pdflatex
+%</internal>
+%
+%<*license>
+Copyright (C) 2009 by T.M. Trzeciak <t34www@googlemail.com>
+
+This work may be distributed and/or modified under the
+conditions of the LaTeX Project Public License (LPPL), either
+version 1.3c of this license or (at your option) any later
+version.  The latest version of this license is in the file:
+
+http://www.latex-project.org/lppl.txt
+
+This work is "maintained" (as per LPPL maintenance status) by
+T.M. Trzeciak.
+
+This work consists of the file  docmute.dtx
+and the derived files           docmute.ins,
+                                docmute.pdf,
+                                docmute.sty.
+%</license>
+%
+%<*readme>
+Input or include stand-alone LaTeX documents. Only the content 
+of the document environment is retained and the rest is 
+discarded.
+
+To install the package you only need to put docmute.sty style 
+file where LaTeX can find it. To extract the files and typeset 
+the documentation run pdflatex on docmute.dtx. Alternatively, 
+run tex on it to extract only.
+%</readme>
+%
+%<*internal>
+\fi
+\def\nameofplainTeX{plain}
+\ifx\fmtname\nameofplainTeX\else
+  \expandafter\begingroup
+\fi
+%</internal>
+%
+%<*batchfile>
+\input docstrip.tex
+\keepsilent\askforoverwritefalse
+\nopreamble\nopostamble
+\generate{\file{\jobname.sty}{\from{\jobname.dtx}{package}}}
+%</batchfile>
+%<batchfile>\endbatchfile
+%
+%<*internal>
+\generate{\file{\jobname.ins}{\from{\jobname.dtx}{batchfile}}}
+\generate{\file{README.TXT}{\from{\jobname.dtx}{readme}}}
+\ifx\fmtname\nameofplainTeX
+  \expandafter\endbatchfile
+\else
+  \expandafter\endgroup
+\fi
+%</internal>
+% \fi
+%
+% \begin{comment}
+% 
+%<*documentation>
+\documentclass{ltxdoc}
+\usepackage{verbatim}
+\usepackage{docmute}
+\EnableCrossrefs
+\CodelineIndex
+\RecordChanges
+%\OnlyDescription
+%
+\begin{document}
+
+\GetFileInfo{docmute.sty}
+\title{The \textsf{docmute} package%
+\thanks{This file describes version \fileversion, last revised \filedate.}}
+\author{Tomasz M. Trzeciak\thanks{E-mail: \texttt{t34www@googlemail.com}}}
+\date{\filedate}
+\maketitle
+
+\section{Intoduction}
+
+The structure of \LaTeX\ documents doesn't allow one document to be included as a part of another. This package tries to remedy this limitation and enables standalone documents to be used with the standard |\input| and |\include| commands just as if they had no preamble. 
+
+This package is intentionally kept simple. If you require more smarts, there are other possibilities that might suit you better, such as the \textsf{standalone} package and document class by M.\ Scharrer or the \textsf{combine} class by W.\ Robertson and P.\,R.\ Wilson.
+
+\section{Usage}
+
+The package is loaded with the usual |\usepackage{docmute}|. It redefines the |\documentclass| command in such a way that everything between this command and the |\begin{document}| is skipped, as well as everything after the |\end{document}|. No attempts are made to analyse the actual content of the preamble---it is simply discarded. It is up to the user to ensure that the main document loads all packages required by subsidiary documents. To easily share (part of) a preamble between documents, simply put it in a separate file and |\input| it in each document.
+
+\DescribeMacro{\docmute}
+In rare cases there might be some commands present already before the |\documentclass| command and these commands will be executed then by the main document. You can prevent that by putting |\csname docmute\endcsname| at the top of the inputted document. The |\docmute| command has the same effect as the redefined |\documentclass|. Executing it through the control sequence forming primitive rather than directly ensures that standalone compilation is still possible, even though the |\docmute| command is not defined yet (in which case |\csname docmute\endcsname| will have the same effect as |\relax|).
+
+Starting with version v1.2 nesting of inputted documents is allowed by default and doesn't require an explicit option nor does it introduce an additional level of grouping as in previous versions. For backwards compatibility the |nested| option is still accepted but it has no effect.
+
+\section{Known limitations}
+
+The |\documentclass| and/or |\csname docmute\endcsname| command  has to be in the same file as |\begin{document}|. This is due to employed preamble gobbling method, which relies on scanning for delimited macro arguments and which doesn't work across the file boundaries.
+
+\DocInput{\jobname.dtx}
+
+\end{document}
+%</documentation>
+%
+% \end{comment}
+%
+% \StopEventually{}
+% 
+% \section{Implementation}
+% 
+% \iffalse
+%<*package>
+% \fi
+% 
+% Initial boilerplate code.
+% 
+%    \begin{macrocode}
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{docmute}[2012/03/22 v1.4 Input stand-alone documents]
+%    \end{macrocode}
+%    
+% Macro used for comparison to see if we already reached 
+% |\begin{document}|.
+% 
+%    \begin{macrocode}
+\def\docmute@docenv{document}
+%    \end{macrocode}
+%    
+% The main macro of this package. Grab everything before the 
+% |\begin| command and check what argument was passed to it.
+% 
+%    \begin{macrocode}
+\long\def\docmute@gobblepreamble#1\begin#2{% 
+  \def\docmute@thisenv{#2}% 
+%    \end{macrocode}
+%    
+% \noindent If |\begin{document}| was reached we can stop 
+% gobbling, otherwise we continue with tail recursive call. 
+% 
+%    \begin{macrocode}
+  \ifx\docmute@thisenv\docmute@docenv
+    \begin{document}%
+  \else
+    \expandafter\docmute@gobblepreamble
+  \fi
+}
+%    \end{macrocode}
+%    
+% Save the original definitions of |\document| and 
+% |\enddocument|
+% 
+%    \begin{macrocode}
+\let\docmute@document=\document
+\let\docmute@enddocument=\enddocument
+%    \end{macrocode}
+%    
+% Define the |\docmute| command.
+% 
+%    \begin{macrocode}
+\let\docmute=\docmute@gobblepreamble
+%    \end{macrocode}
+%    
+% Redefine the |\documentclass| command and |document| 
+% environment at the beginning of the document. 
+% |\AtBeginDocument| happens to early to be useful for that, 
+% so we need to append directly to the |\document|.
+% 
+%    \begin{macrocode}
+\def\document{% 
+  \docmute@document
+  \newcount\docmute@nestinglevel
+  \docmute@nestinglevel=0\relax
+  \let\documentclass=\docmute
+  \renewenvironment{document}{%
+%    \end{macrocode}
+%    
+% Avoid grouping coming from the environment, keep track
+% of document nesting level and take care of excess spaces.
+%    
+%    \begin{macrocode}
+    \endgroup
+    \advance \docmute@nestinglevel 1\relax
+    \ignorespaces
+  }{%
+%    \end{macrocode}
+%    
+% At the top level execute the original |\enddocument|. 
+%    
+%    \begin{macrocode}
+    \ifnum\docmute@nestinglevel=0
+      \expandafter\docmute@enddocument
+%    \end{macrocode}
+%
+% Otherwise, decrement nesting level, match the grouping 
+% from |\end|, set ignore blanks switch to true, redefine 
+% |\@currenvir|  to |document| to keep the check at 
+% |\end{document}| happy and finally |\endinput|. 
+%    
+%    \begin{macrocode}
+    \else
+      \advance \docmute@nestinglevel -1\relax
+      \begingroup
+      \@ignoretrue
+      \def\@currenvir{document}%
+      \endinput
+    \fi
+  }%
+  \ignorespaces
+}
+%    \end{macrocode}
+%    
+% Handle options.
+% 
+%    \begin{macrocode}
+\DeclareOption{nested}{}% for backwards compatibility only
+\ProcessOptions
+%    \end{macrocode} 
+% \iffalse
+%</package>
+% \fi
+% 
+% \Finale
+

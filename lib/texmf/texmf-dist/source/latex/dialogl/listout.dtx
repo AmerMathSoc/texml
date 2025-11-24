@@ -1,0 +1,5061 @@
+%%% ====================================================================
+%%%  @TeX-file{
+%%%     filename        = "listout.dtx",
+%%%     version         = "1.99a",
+%%%     date            = "2013/01/24",
+%%%     author          = "Michael Downes",
+%%%     copyright       = "This file is part of the dialogl package, released
+%%%                        under the LPPL; see dialogl.ins for details."
+%%%     keywords        = "tex, verbatim",
+%%%     abstract        = "The purpose of this macro file is to print
+%%%       verbatim listings of arbitrary text files, fitting as much
+%%%       text per sheet of paper as possible. The default settings
+%%%       are for US letter size paper 8.5 x 11 inches, two `pages'
+%%%       per sheet, landscape mode, but extensive customization
+%%%       facilities are provided. To conserve even more paper, you
+%%%       should take advantage of any two-sided capabilities your
+%%%       printer may happen to have.",
+%%%  }
+%%% ====================================================================
+%
+% \iffalse
+%<*driver>
+\documentstyle[doc,dialogl-doc]{article}
+\title{Verbatim file printing: {\tt listout.tex}}
+\author{Michael Downes}
+\def\PrintMacroName#1{}
+\setlength{\MacroTopsep}{\MacrocodeTopsep}
+\setlength{\MacroIndent}{0pt}
+\def\MacroFont{\Vbtmfont}% doc.sty uses \MacroFont
+\DontCheckModules
+\multicoldefaultlayout
+\begin{document}
+\maketitle
+\begin{multicols}{2}
+\hDocInput{listout.dtx}
+\end{multicols}
+\ifdim\textwidth>\textheight
+\typeout{^^JWarning: remember to print using LANDSCAPE orientation^^J}
+\fi
+\end{document}
+%</driver>
+%\fi
+%
+%^^A Actual code lines are broken up to be 50 characters or less in
+%^^A order to fit within narrow column widths in two-column style.
+%
+% \section*{Introduction}
+%
+%    The tool \fn{listout.tex} has two purposes:
+%
+%    (1)~Verbatim printing of text files such as
+%    e-\unpenalty mail, \tex/ log files, \tex/ macro files, or other
+%    programming source code or, in general, any \ascii/ text, with
+%    certain nice features that most printers and printer drivers
+%    lack: reasonably good, and somewhat customizable, handling of tab
+%    characters or other nonprinting characters; highly customizable
+%    handling of overlong lines; absolute control over margins, number
+%    of columns, intercolumn space, and line spacing; optional line
+%    numbering; customizable running heads and running feet; not to
+%    mention a few other things.
+%
+%    (2)~To serve as a proving ground for ideas and functions from
+%    \fn{dialog.sty} and \fn{menus.sty}. \fn{Listout.tex} uses
+%    \fn{menus.sty} to present an elaborate menu system for changing
+%    options (like font size, line spacing, or how many spaces should
+%    be printed for a tab character).
+%
+%    \fn{Listout} was originally written for \plaintex/. It seems to
+%    work with \latex/ as well in the limited tests that I have done.
+%
+%^^A Use of \latex/ would require among other
+%^^A things the following adjustments: Use \cs{c@page} instead of
+%^^A \cs{pageno}; (nfss2) load math fonts and do other
+%^^A \begin{document} processing.
+%
+%    \fn{Listout} is a part of a package that goes by the name of
+%    {\bf dialogl}, which also includes the aforementioned
+%    \fn{dialog.sty} and \fn{menus.sty}. The {\bf dialogl} package is
+%    available on the Internet by anonymous ftp from {\sc ctan}
+%    (Comprehensive \tex/ Archive Network), \eg., \fn{ftp.shsu.edu}
+%    (USA), or \fn{ftp.dante.de} (Europe).
+%
+%    For maximum portability, \fn{listout} uses in its menus only
+%    lowest-common-denominator ordinary printable \ascii/ characters
+%    in the range 32\ndash 126.
+%
+%    Normal usage:
+%
+%^^V tex listout
+%
+%    You will be prompted for the names of the files to be printed. But
+%    first, you will be offered a chance to enter the \fn{listout} menu
+%    system, which allows you to change options interactively at
+%    run-time. (If you want to save a set of option settings for later
+%    re-use, see selection \qc{\E} in the main menu.)
+%
+%    \subsection*{Notation}
+%
+%    Double-hat notation such as \verb'^^J' is used in this article
+%    for control characters, as in \texbook/. A couple of
+%    abbreviations from \fn{grabhedr.sty} are used frequently in the
+%    macro code: \cw{xp@} = \cw{expandafter}, and \cw{nx@} =
+%    \cw{noexpand}. Standard abbreviations from \fn{plain.tex} such as
+%    \cw{z@} or \cw{toks@} are used without special comment.
+%
+%    In the beginning \fn{listout.tex} was written without any private
+%    control sequences. Eventually avoiding the use of private control
+%    sequences became too inconvenient so I abandoned that restriction.
+%    If it were redone from scratch I would privatize many of the
+%    control sequences defined here to better support the future
+%    possibility of using \fn{listout.tex} within arbitrary documents
+%    where name conflicts might arise.
+%
+% \section{Preliminaries}
+%    We begin by loading \fn{menus.sty}. As a matter of fact we won't
+%    really input the file: The following few lines are for information
+%    only, they will replaced by the contents of \fn{menus.sty} (and the
+%    subordinate files \fn{dialog.sty} and \fn{grabhedr.sty} during the
+%    generation of the executable file by docstrip. The reason is mainly
+%    to make it possible to have a single version of \fn{listout.tex}
+%    that runs under plain \tex/, \latex/ 2.09, and \latex/2e, but also
+%    (a little bit) to avoid the speed cost of searching for input files
+%    at run-time.
+%    \begin{macrocode}
+%<*ignore>
+\inputfwh{menus.sty}
+\fileversiondate{listout.tex}{1.4r}{1994/12/02}
+\ProvidesFile{listout.tex}[1994/11/10 v1.4r]
+%</ignore>
+%    \end{macrocode}
+%
+%    \mjd{Check if more catcodes must be added here:}
+%    \begin{macrocode}
+\localcatcodes{\@{11}\~{13}\"{12}\:{12}}
+%    \end{macrocode}
+%
+% \section{Miscellaneous utility functions}
+%
+%    The file \fn{dialog.sty} (called by \fn{menus.sty}) defines
+%    \cw{actively}, \cw{afterfi}, \cw{controlchars}, and
+%    \cw{otherchars}.
+%
+% \begin{macro}{\xmeaning}
+%    \cw{xmeaning} is a useful tool to convert the contents of a macro
+%    to all category 12 characters. This is applied to filenames when
+%    printing them to prevent problems from special characters such as
+%    \qc{\$} or \qc{\_} that might occur in a file name.
+%
+%    The argument \qarg{1} should be a macro.
+%    \begin{macrocode}
+\def\xmeaning#1{\xp@\xmeaningtrim\meaning#1}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\xmeaningtrim}
+%    \begin{macrocode}
+\def\xmeaningtrim#1->{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\TRUE}
+% \begin{macro}{\FALSE}
+%    \cw{TRUE} and \cw{FALSE} are Boolean constants. After
+%    \cw{let}\cw{sometest}\qc{\=}\cw{TRUE}, the variable \cw{sometest}
+%    can be used with \cw{if}.
+%    \begin{macrocode}
+\def\TRUE{TT}
+\def\FALSE{TF}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\@empty}
+% \begin{macro}{\@iden}
+%    Borrow a couple of things from \latex/.
+%    \begin{macrocode}
+\def\@empty{}
+\def\@iden#1{#1}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Date and time}
+%
+%    Some macros to help construct various date options.
+% \begin{macro}{\datesepchar}
+%    \begin{macrocode}
+\def\datesepchar{ }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\keepleadingzeros}
+%    \begin{macrocode}
+\let\keepleadingzeros\FALSE
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\twodigits}
+%    \cw{twodigits} adds a leading zero to a number if the number is
+%    less than 10. The \cw{expandafter} and \cw{ident} are to stop the
+%    scanning of \cw{number} so that something like
+%    \cw{twodigits}\verb'{35}' will not gobble a following space. (When
+%    the argument of \cw{twodigits} is a count register or similar
+%    complete integer according to \tex/'s scanning rules, this
+%    precaution is superfluous.)
+%    \begin{macrocode}
+\def\twodigits#1{\ifnum#1<10 0\fi
+  \xp@\@iden\xp@{\number#1}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\themonth}
+% \begin{macro}{\theday}
+%    \cw{themonth}, \cw{theday}, and similar macros must be
+%    reinitialized after the \fn{default.los} file is read, in case
+%    the value of \cw{keepleadingzeros} changes.
+%    \begin{macrocode}
+\edef\themonth{\number\month}
+\edef\theday{\number\day}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\theyear}
+% \begin{macro}{\yearmodC}
+%    \begin{macrocode}
+\edef\theyear{\number\year}
+\edef\yearmodC{\xp@\@gobbletwo\number\year}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\Jan}\begin{macro}{\Feb}\begin{macro}{\Mar}
+% \begin{macro}{\Apr}\begin{macro}{\May}\begin{macro}{\Jun}
+% \begin{macro}{\Jul}\begin{macro}{\Aug}\begin{macro}{\Sep}
+% \begin{macro}{\Oct}\begin{macro}{\Nov}\begin{macro}{\Dec}
+%    Month names. The default names are in English because that's this
+%    author's native language. Month names for other languages are not
+%    currently provided, perhaps in some future version. However
+%    alternate names can be gotten by hand editing the \fn{.los} file
+%    (`listout option settings') to change the definitions of
+%    \cw{Jan}, \cw{Feb}, etc. \begin{macrocode}
+\def\Jan{January}   \def\Feb{February}
+\def\Mar{March}     \def\Apr{April}
+\def\May{May}       \def\Jun{June}
+\def\Jul{July}      \def\Aug{August}
+\def\Sep{September} \def\Oct{October}
+\def\Nov{November}  \def\Dec{December}
+%    \end{macrocode}
+% \end{macro}\end{macro}\end{macro}\end{macro}\end{macro}\end{macro}
+% \end{macro}\end{macro}\end{macro}\end{macro}\end{macro}\end{macro}
+%
+% \begin{macro}{\datesetup}
+%    Define \cw{monthname}, \cw{themon}, \cw{theMON} using the
+%    value of \cw{month}.
+%    \begin{macrocode}
+\def\datesetup{%
+  \edef\themonthname{%
+    \ifcase\month ?% case 0---THIS CAN'T HAPPEN
+    \or\Jan\or\Feb\or\Mar\or\Apr\or\May\or\Jun
+    \or\Jul\or\Aug\or\Sep\or\Oct\or\Nov\or\Dec
+    \else ?\fi}%
+%    \end{macrocode}
+%    Construct three-letter abbreviations.
+%    \begin{macrocode}
+  \def\do##1##2##3##4\od{##1##2##3}%
+  \edef\themon{\xp@\do\themonthname\od}%
+  \let\theMON\themon \changecase\uppercase\theMON
+  \if\keepleadingzeros
+    \edef\themonth{\twodigits\month}%
+    \edef\theday{\twodigits\day}%
+  \else
+    \edef\themonth{\number\month}%
+    \edef\theday{\number\day}%
+  \fi
+}
+\datesetup
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dateA}
+%    Date form A: 1992-09-09. The hyphen can be changed to some other
+%    character by modifying \cw{datesepchar}.
+%    \begin{macrocode}
+\def\dateA{%
+  \theyear\datesepchar\themonth\datesepchar\theday}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dateB}
+%    Date form B: 92-09-09
+%    \begin{macrocode}
+\def\dateB{%
+  \yearmodC\datesepchar\themonth\datesepchar\theday}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dateC}
+%    Date form C: 09-09-92. This one is ambiguous. Since the author is
+%    United-Statesian, let's go with the U.S. convention of month
+%    first.
+%    \begin{macrocode}
+\def\dateC{%
+  \themonth\datesepchar\theday\datesepchar\yearmodC}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dateD}
+%    Date form D: 09-09-1992
+%    \begin{macrocode}
+\def\dateD{%
+  \themonth\datesepchar\theday\datesepchar\theyear}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dateE}
+%    Date form E: 09-Sep-92
+%    \begin{macrocode}
+\def\dateE{%
+  \theday\datesepchar\themon\datesepchar\yearmodC}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dateF}
+%    Date form F: 09-Sep-1992
+%    \begin{macrocode}
+\def\dateF{%
+  \theday\datesepchar\themon\datesepchar\theyear}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dateG}
+%    Date form G: 09-SEP-92
+%    \begin{macrocode}
+\def\dateG{%
+  \theday\datesepchar\theMON\datesepchar\yearmodC}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dateH}
+%    Date form H: 09-SEP-1992
+%    \begin{macrocode}
+\def\dateH{%
+  \theday\datesepchar\theMON\datesepchar\theyear}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dateI}
+%    Date form I: September 9, 1992 (\cw{datesepchar} not used)
+%    \begin{macrocode}
+\def\dateI{%
+  \themonthname\space\number\day, \theyear}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dateJ}
+%    Date form J: 9 September 1992 (assuming \cw{datesepchar} set to
+%    space).
+%    \begin{macrocode}
+\def\dateJ{%
+  \theday\datesepchar\themonthname\datesepchar\theyear}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\todaysdate}
+%    \cw{todaysdate} is assigned with \cw{def} rather than \cw{let} to
+%    facilitate writing out the information to an \fn{.los} file.
+%    \begin{macrocode}
+\def\todaysdate{\dateJ}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\thehour}
+%    Create \cw{thehour} holding two-digit number 00\ndash 23, number of
+%    hours from \cw{time}.
+%    \begin{macrocode}
+\count@=\time \divide\count@ 60
+\edef\thehour{\twodigits\count@}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\theminute}
+%    Create \cw{theminute} holding two-digit number 00\ndash 59, number
+%    of minutes from \cw{time} after subtracting $60*\cw{thehour}$.
+%    \begin{macrocode}
+\multiply\count@ -60 \advance\count@\time
+\edef\theminute{\twodigits\count@}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\ampmpunct}
+%    \begin{macrocode}
+\def\ampmpunct{.}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\ampm}
+% \begin{macro}{\thehourmodtwelve}
+%    Define \cw{ampm} to be \verb"a" or \verb"p" (or
+%    \verb"noon"\meta{gobble} or \verb"midnight"\meta{gobble}), and
+%    define \cw{thehourmodtwelve} suitably. Notice that, unlike
+%    \cw{thehour}, \cw{thehourmodtwelve} omits a leading zero.
+%    \begin{macrocode}
+\count@=\thehour\relax
+\ifnum\count@>11 \def\ampm{p}%
+  \ifnum\count@>12
+%    \end{macrocode}
+%    Convert hours in the range 13\ndash 23 to the range 1\ndash 11.
+%    \begin{macrocode}
+    \begingroup \advance\count@ -12
+      \aftergroup\edef\aftergroup\thehourmodtwelve
+      \aftergroup{\xp@
+    \endgroup \number\count@}%
+  \else
+    \edef\thehourmodtwelve{12}%
+  \fi
+\else
+  \def\ampm{a}%
+%    \end{macrocode}
+%    Hour 0 needs to be translated to 12:?? a.m.
+%    \begin{macrocode}
+  \ifnum\count@=0 \count@=12 \fi
+  \edef\thehourmodtwelve{\number\count@}%
+\fi
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\AMPM}
+%    Note that \cw{AMPM} should not be written to the \fn{.los} file:
+%    it needs to be recomputed at run-time using the current value of
+%    \cw{time}. The function \cw{changecase} is from \fn{dialog.sty}.
+%    \begin{macrocode}
+\let\AMPM\ampm \changecase\uppercase\AMPM
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\midnoon}
+%    If the current time is midnight or noon, \cw{midnoon} prints the
+%    appropriate word and gobbles the `a.m.' or `p.m.' string.
+%    \begin{macrocode}
+\def\midnoon#1{\ifnum\time=0 midnight\else
+  \ifnum\time=720 noon\else#1\fi\fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\timesepchar}
+%    \begin{macrocode}
+\def\timesepchar{:}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\timeA}
+%    Time form A: 1947
+%    \begin{macrocode}
+\def\timeA{\thehour\theminute}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\timeB}
+%    Time form B: 19:47
+%    \begin{macrocode}
+\def\timeB{\thehour\timesepchar\theminute}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\timeC}
+%    Time form C: 7:47 pm
+%    \begin{macrocode}
+\def\timeC{\thehourmodtwelve\timesepchar\theminute
+  \space\midnoon{\ampm m}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\timeD}
+%    Time form D: 7:47 p.m.
+%    \begin{macrocode}
+\def\timeD{\thehourmodtwelve\timesepchar\theminute
+  \space\midnoon{\ampm\ampmpunct m\ampmpunct}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\timeE}
+%    Time form E: 7:47 PM
+%    \begin{macrocode}
+\def\timeE{\thehourmodtwelve\timesepchar\theminute
+  \space\midnoon{\AMPM M}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\timeF}
+%    Time form F: 7:47 P.M.
+%    \begin{macrocode}
+\def\timeF{\thehourmodtwelve\timesepchar\theminute
+  \space\midnoon{\AMPM\ampmpunct M\ampmpunct}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\nowtime}
+%    \cw{nowtime} is assigned with \cw{def} for the same reason as
+%    \cw{todaysdate}.
+%    \begin{macrocode}
+\def\nowtime{\timeB}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Output routine}
+%
+% \begin{macro}{\curcol}
+% \begin{macro}{\totalcols}
+%    \cw{curcol} is a counter to keep track of the current column
+%    number; \cw{totalcols} is a variable that indicates how many
+%    columns are desired.
+%    \begin{macrocode}
+\chardef\curcol=1
+\chardef\totalcols=2
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\firstpageno}
+% \begin{macro}{\lastpageno}
+%    For multi-column output, a `page' number is associated to each
+%    column. At the time when a running head is attached to a column,
+%    the current `page' number is always \cw{lastpageno}.
+%    \begin{macrocode}
+\countdef\firstpageno=1
+\countdef\lastpageno=2
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\prevcolsbox}
+%    When the number of columns $n$ is greater than 1, columns $1$,
+%    $\ldots$, $n-1$ are accumulated in \cw{prevcolsbox} before being
+%    shipped out.
+%    \begin{macrocode}
+\newbox\prevcolsbox
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\paht}
+% \begin{macro}{\pawd}
+%    Paper height and width.
+%    \begin{macrocode}
+\newdimen\paht \newdimen\pawd
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\fullwd}
+%    The `full width' is the width of all the $n$ columns plus $(n-1)
+%    * \btext{intercolumn}\linebreak[0]\btext{space}$. Normally it is
+%    computed at run time from paper size, number of columns and
+%    intercolumn space.
+%    \begin{macrocode}
+\newdimen\fullwd
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\colwd}
+%    Column width is computed from number of columns, paper size,
+%    margins, and intercolumn space, unless it is explicitly set to a
+%    given width by the user, in which case \cw{fullwd} is computed from
+%    number of columns, column width, and intercolumn space, and a
+%    warning is given if \cw{fullwd} plus the margins exceeds paper
+%    width. In other words, in the system of equations
+% \xdef\restorearraycolsep{\arraycolsep \the\arraycolsep\relax}%
+% \arraycolsep1pt\relax
+% \begin{eqnarray}
+%    \cw{rightmargin} &=& \cw{leftmargin}\label{rl}\\
+%    \cw{fullwd} &=& \cw{paperwd} - \cw{leftmargin}\nonumber\\
+%                     &&{} - \cw{rightmargin}\\
+%    \cw{colwd} &=& \frac{\cw{fullwd}
+%                     + \cw{intercolspace}}{\cw{totalcols}}\nonumber\\
+%                    &&{} - \cw{intercolspace}
+% \end{eqnarray}
+% \restorearraycolsep
+%    the variables on the left-hand side in each equation are the
+%    dependent variables. If the user sets the right margin
+%    explicitly, we delete equation (\ref{rl}) from the system; or if
+%    the user sets column width explicitly, we change the status of
+%    the \cw{colwd} variable from dependent to independent, which may
+%    be thought of as switching to the equations
+% \xdef\restorearraycolsep{\arraycolsep \the\arraycolsep\relax}%
+% \arraycolsep0pt\relax
+% \begin{eqnarray}
+%    \cw{fullwd} &=& ((\cw{colwd} +\cw{intercolspace})\nonumber\\
+%                 && {}\times \cw{totalcols})\nonumber\\
+%                 && {}- \cw{intercolspace}\\
+%    \cw{rightmargin} &=& \cw{paperwd} - \cw{leftmargin}\nonumber\\
+%                      && {}- \cw{fullwd}
+% \end{eqnarray}
+% \restorearraycolsep
+%
+%    \begin{macrocode}
+\newdimen\colwd
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dependentcolwd}
+%    \begin{macrocode}
+\let\dependentcolwd\TRUE
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\leftmargin}
+% \begin{macro}{\rightmargin}
+%    \begin{macrocode}
+\newdimen\leftmargin
+\newdimen\rightmargin
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\dependentrightmargin}
+%    \begin{macrocode}
+\let\dependentrightmargin\TRUE
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\computerfc}
+% \mjd{Maybe change this and related names to computeRFC (caps)?}
+%    Function to find \cw{rightmargin}, \cw{fullwd}, and \cw{colwidth}.
+%    \begin{macrocode}
+\def\computerfc{\relax \rightmargin=\leftmargin
+  \computefc }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\computefc}
+%
+%    Find \cw{fullwd} and \cw{colwd} but leave \cw{rightmargin} as is.
+%    \begin{macrocode}
+\def\computefc{\fullwd=\pawd
+  \advance\fullwd-\leftmargin
+  \advance\fullwd-\rightmargin
+  \colwd\fullwd
+  \advance\colwd \intercolspace
+  \divide\colwd \totalcols
+  \advance\colwd -\intercolspace
+%    \end{macrocode}
+%    \cw{columnwidth} is the version of \cw{colwd} reported to the user.
+%    If it is set explicitly, the original form is retained, otherwise a
+%    width value given by the user as `5cm' would be reported as
+%    `142.26378pt'. But here we are computing the column width, so
+%    we do not try to make the raw points value more presentable.
+%    \begin{macrocode}
+  \edef\columnwidth{\the\colwd}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\computefr}
+%
+%    Find \cw{fullwd} and \cw{rightmargin} from a specified column
+%    width.
+%    \begin{macrocode}
+\def\computefr{\fullwd\colwd
+  \advance\fullwd \intercolspace
+  \multiply\fullwd \totalcols
+  \advance\fullwd -\intercolspace
+  \rightmargin\pawd
+  \advance\rightmargin-\leftmargin
+  \advance\rightmargin-\fullwd
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\colht}
+%    Unless explicitly set to a given value by the user, bottom margin
+%    and column height are computed from paper size and top margin,
+%    starting with bottom margin = top margin and then rounding the
+%    column height to an integral number of lines (with the usual
+%    adjustment for \cw{topskip}).
+%    \begin{macrocode}
+\newdimen\colht
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\intercolspace}
+% \begin{macro}{\overrun}
+%    \begin{macrocode}
+\newdimen\intercolspace \newdimen\overrun
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\runheadht}
+% \begin{macro}{\runfootht}
+%    \cw{runheadht} is the height of the running head, including space
+%    below it. \cw{runfootht} is similar.
+%    \begin{macrocode}
+\newdimen\runheadht \newdimen\runfootht
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\bottommargin}
+% \begin{macro}{\topmargin}
+%    \begin{macrocode}
+\newdimen\bottommargin \newdimen\topmargin
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\computebc}
+%    \begin{macrocode}
+\def\computebc{\bottommargin=\topmargin \computec}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\computec}
+% \mjd{Maybe this should be named computeHB (height/bottom)}
+%    This function is called if the user sets a new top or bottom
+%    margin, because in that case we need to recompute \cw{colht} to
+%    compensate.
+%    \begin{macrocode}
+\def\computec{%
+%    \end{macrocode}
+%    Find $\cw{colht} = \cw{paperht} - \cw{topmargin} -
+%    \cw{bottommargin}$, rounded off to nearest multiple of the line
+%    spacing.
+%    \begin{macrocode}
+  \colht\paht \advance\colht -\topmargin
+  \advance\colht -\bottommargin
+  \advance\colht -\runheadht
+  \advance\colht -\runfootht
+  \roundcolht
+%    \end{macrocode}
+%    Adjust \cw{bottommargin} to fit with the new \cw{colht}.
+%    \begin{macrocode}
+  \bottommargin\paht
+  \advance\bottommargin -\topmargin
+  \advance\bottommargin -\colht
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\roundcolht}
+%    \cw{roundcolht} rounds \cw{colht} to the nearest integer multiple
+%    of the line spacing.
+%    \begin{macrocode}
+\def\roundcolht{%
+  \advance\colht .5\baselineskip
+  \divide\colht\baselineskip
+  \edef\columnheight{\number\colht\space lines}%
+  \multiply\colht\baselineskip
+%    \end{macrocode}
+%    Compensate for \cw{topskip}:
+%    \begin{macrocode}
+  \advance\colht\topskip
+  \advance\colht -\baselineskip
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dependentcolht}
+% \begin{macro}{\dependentbottommargin}
+%    \begin{macrocode}
+\let\dependentcolht\TRUE
+\let\dependentbottommargin\TRUE
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\computeb}
+%    The function \cw{computeb} is called to recompute \cw{colht} and
+%    \cw{bottommargin} if the user gives an explicit value for
+%    \cw{colht}.
+%    \begin{macrocode}
+\def\computeb{%
+%    \end{macrocode}
+%    Round \cw{colht} off to nearest multiple of the line spacing.
+%    \begin{macrocode}
+  \roundcolht
+%    \end{macrocode}
+%    Adjust \cw{bottommargin} to fit with the new \cw{colht}.
+%    \begin{macrocode}
+  \bottommargin\paht
+  \advance\bottommargin -\topmargin
+  \advance\bottommargin -\colht
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\pageno}
+%    If \latex/ is being used, \cw{pageno} will be undefined; we then
+%    provide a suitable definition.
+%    \begin{macrocode}
+\ifx\UndEFiNed\pageno \countdef\pageno=0 \fi
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\pagenumber}
+%    We retain \cw{pageno} as the number of shipouts (\ie., sheets
+%    of paper, if printing normally). The logical `page' number within
+%    the file being printed, at the time \cw{pagenumber} is called, is
+%    always \cw{lastpageno}.
+%    \begin{macrocode}
+\def\pagenumber{[\number\pageno]\thinspace{%
+  \csname\pagenumberfont
+    \pagenumberfontsize\endcsname
+  \number\lastpageno}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\landscape}
+%    Switch for portrait versus landscape.
+%    \begin{macrocode}
+\let\landscape=\TRUE
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\pagenumbermessage}
+%    A message to show at run-time how the pages are being put
+%    together. In the simplest case, when there is only one text
+%    column per sheet of paper, this message would be silly, so we
+%    wrap it in a condition.
+%    \begin{macrocode}
+\def\pagenumbermessage{%
+  \ifnum\totalcols>\@ne
+    \message{%
+Printing `pages' \the\firstpageno--\the\lastpageno
+\space on \if\landscape landscape \fi sheet
+\the\pageno}%
+%    \end{macrocode}
+%    Here I wanted to add the following line, but nay, let it be
+%    omitted to support the unlikely, but not totally unreasonable,
+%    possibility that different files in the same run might have
+%    different number of columns per page.
+%    \begin{macrocode}
+%  \else \gdef\pagenumbermessage{}%
+  \fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\Ncols}
+%
+%    \begin{macrocode}
+\def\Ncols{\relax
+  \ifnum\curcol=\totalcols
+    \pagenumbermessage
+    \shipout\hbox to\fullwd{%
+      \unhbox\prevcolsbox\curcolbox}%
+%    \end{macrocode}
+%    \cw{pageno} is the number of the actual sheet of paper on which
+%    we are currently printing.
+%    \begin{macrocode}
+    \global\advance\pageno\@ne
+    \global\chardef\curcol \z@
+    \ifnum\totalcols>\@ne
+      \global\advance\lastpageno \@ne
+      \global\firstpageno\lastpageno
+    \fi
+  \else
+    \global\setbox\prevcolsbox\hbox{%
+      \unhbox\prevcolsbox\curcolbox
+      \hskip\intercolspace plus1fil\relax}%
+    \ifnum\totalcols>\@ne
+      \global\advance\lastpageno \@ne
+    \fi
+  \fi
+%    \end{macrocode}
+%    Maximum number of columns = 20. The preliminary \cw{edef}
+%    step is necessary because \cw{mathchardef} makes \cw{curcol} =
+%    \cw{relax} before scanning the number on the right-hand side of
+%    the assignment, so that it would choke the \cw{ifcase}.
+%    \begin{macrocode}
+  \edef\next{\global\mathchardef\curcol=
+    \ifcase\curcol
+      1\or 2\or 3\or 4\or 5\or 6\or 7\or 8\or 9\or
+      10\or 11\or 12\or 13\or 14\or 15\or 16\or
+      17\or 18\or 19\or 20%
+    \else "7FFF\fi\relax
+  }%
+  \next
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\runhead}
+% \begin{macro}{\runfoot}
+%    We use \cw{runhead} and \cw{runfoot} instead of \cw{headline} and
+%    \cw{footline}, to reduce the possibility of conflict if this
+%    utility is used in conjunction with some other output routine.
+%    (Future possibility, not yet implemented: allow calling of this
+%    utility from within \latex/ or another macro package with its own
+%    output routine.[mjd,20-Sep-1993])
+%    \begin{macrocode}
+\newtoks\runhead \newtoks\runfoot
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\loheadline}
+%    The test at the beginning here is to avoid problems when the
+%    headline is wider than the column width; in that case only print
+%    one headline over all the columns instead of a headline for each
+%    column. If \qarg{1} = \cw{colwd}, it means that the headline fits
+%    within \cw{colwd}: print a headline for each column; otherwise
+%    print a headline only if \cw{curcol} = 1, and let it overlap over
+%    all the columns.
+%    \begin{macrocode}
+\def\loheadline#1{\relax
+  \if\ifdim#1=\colwd T\else
+     \ifnum\curcol=\@ne T\else F\fi\fi T%
+    \vbox to\runheadht{\rlap{\hbox to#1{%
+      \csname\runheadfont\runheadfontsize\endcsname
+      \the\runhead}}\vss}%
+    \nointerlineskip
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\lofootline}
+%    As for the headline, we print a single footline across all
+%    columns if the footline width is greater than \cw{colwd}.
+%    \begin{macrocode}
+\def\lofootline#1{\relax
+  \if \ifdim#1=\colwd T\else
+      \ifnum\curcol=1 T\else F\fi\fi T%
+    \nointerlineskip
+%    \end{macrocode}
+%    The \cw{vfil} pushes the footline to the bottom of the vbox; the
+%    \cw{vfilneg}\cw{vss} at the end is just a compact way of writing
+%    \cw{vskip} {\tt 0pt minus1fil}, meaning let the footline hang out
+%    the bottom of the box if necessary, without giving an overfull
+%    vbox message.
+%    \begin{macrocode}
+    \vbox to\runfootht{\vfil\rlap{\hbox to#1{%
+      \csname\runheadfont\runheadfontsize\endcsname
+      \the\runfoot}}\kern-\prevdepth
+      \vfilneg\vss}%
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\setupheadlineandfootline}
+%    Define how headline and footline are applied. If the running head
+%    or running foot is too wide to fit within \cw{colwd}, then
+%    \cw{hfwd} (headline/footline width) is defined to be \cw{fullwd}.
+%    Cf.\ the comments for \cw{loheadline}.
+%    \begin{macrocode}
+\def\setupheadlineandfootline{%
+  \gdef\hfwd{\colwd}%
+  \if\runheads
+    \setbox\z@\hbox{%
+      \csname\runheadfont\runheadfontsize\endcsname
+      \the\runhead}%
+    \ifdim\wd\z@>\colwd \gdef\hfwd{\fullwd}\fi
+  \fi
+  \if\runfeet
+    \setbox\z@\hbox{%
+      \csname\runfootfont\runfootfontsize\endcsname
+      \the\runfoot}%
+    \ifdim\wd\z@>\colwd \gdef\hfwd{\fullwd}\fi
+  \fi
+  \if\runheads
+    \if\runfeet
+      \gdef\curcolbox{\vtop{\loheadline\hfwd
+        \vbox to\vsize{\unvbox255 \vss}%
+        \lofootline\hfwd}}%
+    \else
+      \gdef\curcolbox{%
+        \vtop{\loheadline\hfwd \vtop{\unvbox255 }}}%
+    \fi
+  \else
+    \if\runfeet
+      \gdef\curcolbox{\vtop{\null\nointerlineskip
+        \vbox to\vsize{\unvbox255 \vss}%
+        \lofootline\hfwd}}%
+    \else
+%    \end{macrocode}
+%    Print \cw{null} box for the headline rather than nothing, so that
+%    the \cw{vtop} in \cw{curcolbox} will work.
+%    \begin{macrocode}
+      \gdef\curcolbox{%
+        \vtop{\null\unvbox255 }}%
+    \fi
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Tab handling}
+%
+%    Well, at first I was only going to make tabs expand to a fixed
+%    number of spaces regardless of where they happened to fall in the
+%    line. This would work fine for tabs that fall at the beginning of a
+%    line. But there are certain other reasonable possibilities in
+%    program source code, e.g. assembly-language style comments that
+%    start in column 40 or so, or tables of information.
+%    The alignment in such cases can be preserved by setting a
+%    box at the beginning of each line and then, when a tab comes
+%    along, measuring the width of the line so far to figure out how
+%    many characters it contains. Of course this is impossible unless
+%    the font being used is monospace. But given that, and
+%    given a specified width in characters of each tab, it's possible to
+%    find the distance remaining to the next tab stop.
+%
+% \begin{macro}{\tableaderbox}
+%    Box used with \cw{leaders} to represent tab characters.
+%    \begin{macrocode}
+\newbox\tableaderbox
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\spacespertab}
+%    The most common convention for printing tabs is eight spaces.
+%    Some people may prefer printing fewer.
+%    \begin{macrocode}
+\chardef\spacespertab=8
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tabwidth}
+%    \cw{tabwidth} is the width to be used for tab characters. Usually
+%    a multiple of (monospaced-font) character width and
+%    \cw{spacespertab}.
+%    \begin{macrocode}
+\newdimen\tabwidth
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\printtaba}
+%    The function \cw{printtaba} is called when we are in the middle
+%    of typesetting an \cw{hbox} to \cw{hsize} (cf
+%    \cw{newunnumberedline}).
+%    \begin{macrocode}
+\def\printtaba{%
+%    \end{macrocode}
+%    Finish the hbox. The \cw{hfil} is just to prevent an underfull
+%    hbox message, it will be removed next. Using \cw{hfil} to supress
+%    the message seems to be better than using \cw{hbadness}, because
+%    the current box is being set to \cw{hsize} instead of natural
+%    size so it will have to be reboxed anyway (therefore the
+%    \cw{unskip} step costs little); and if \cw{hbadness} were set to
+%    10000 then overfull messages would also be suppressed, which is
+%    unnecessary and even slightly undesirable.
+%    \begin{macrocode}
+	  \hfil\egroup
+  \setbox\z@\hbox{\unhbox\z@ \unskip}%
+%    \end{macrocode}
+%    Compute \cw{dimen@}, the distance remaining to the next tab stop
+%    (the next integer multiple of \cw{tabwidth} that is greater than
+%    the width of box 0).
+%    \begin{macrocode}
+  \dimen@\wd\z@ \divide\dimen@\tabwidth
+  \multiply\dimen@\tabwidth
+  \advance\dimen@\tabwidth
+  \advance\dimen@ -\wd\z@
+%    \end{macrocode}
+%    Restart the line, adding leaders to the appropriate width.
+%    \begin{macrocode}
+  \setbox\z@\hbox to \hsize\bgroup \unhbox\z@
+    \spacebreak\hbox to\dimen@{%
+      \leaders\copy\tableaderbox\hfil}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\newfileprinttab}
+%    Print a message when a tab is encountered in the current file.
+%    But after the first tab, don't send any more messages, until a
+%    new file is started.
+%    \begin{macrocode}
+\def\newfileprinttab{\printtaba
+  \message{%
+Say, this file contains a tab character}%
+  \global\let\printtab\printtaba}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\printtab}
+%    \begin{macrocode}
+\let\printtab=\newfileprinttab
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\charwidth}
+%    Variable to hold the width of one character in the current font.
+%    (Monospace font assumed.)
+%    \begin{macrocode}
+\newdimen\charwidth
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\inittabs}
+%    \cw{inittabs} assumes that the proper font has already been
+%    selected.
+%    \begin{macrocode}
+\def\inittabs{%
+  \setbox\z@\hbox{m}\charwidth\wd\z@
+  \tabwidth\spacespertab\charwidth
+  \ifcase\tabselect % case 0: blank tabs option.
+    \setbox\tableaderbox\hbox to\charwidth{}%
+  \or % case 1: dots option.
+    \setbox\tableaderbox\hbox to.2em{%
+        \hskip\z@ plus2\p@ minus3\p@
+        \mathhexbox 201% \cdot character
+        \kern.1em }%
+  \or % case 2: dashed option.
+%    \end{macrocode}
+%    The plus and minus for the first hskip are to avoid underfull
+%    hbox messages from rounding errors in summing the em dimensions.
+%    \begin{macrocode}
+    \setbox\tableaderbox\hbox to.3em{%
+        \hskip-.1em plus2sp minus2sp%
+        \vrule width.25em height.25em\kern.15em }%
+  \or % case 3: hrule option.
+    \setbox\tableaderbox\hbox{%
+      \vrule width\charwidth height2\p@ depth-1.5\p@}%
+  \else % case 4: tiny TAB option.
+%    \end{macrocode}
+%    The font used for the small letters is always 5pt roman\mdash no
+%    user choice here.
+%    \begin{macrocode}
+    \setbox\tableaderbox\hbox to.5em{\hss
+        \vbox to6\p@{%
+          \offinterlineskip\csname roman5\endcsname
+          \hbox to7\p@{T\hss}\vss
+            \hbox to7\p@{\hss\kern-.1em A\hss}\vss
+          \hbox to7\p@{\hss B}\kern-2\p@}%
+        \hss}%
+  \fi
+  \let\printtab\newfileprinttab
+ }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\tabstyle}
+%    \begin{macrocode}
+\def\tabstyle{\ifcase\tabselect blank space\or
+  dots\or dashed lines\or horizontal rules\else
+  tiny TABs\fi}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Printing non-printable characters}
+%    The `invisible' control characters \ascii/ 0\ndash 31 and 127 need
+%    special handling if they occur in the text being printed. For
+%    \ascii/ 9 and 13, tab and carriage return, there is a generally
+%    accepted way to print them, but for the others there are no
+%    standards. So the chosen method here is to print a boxed letter:
+%    boxed A for \ctrl{A}, boxed B for \ctrl{B}, and so forth. One
+%    other exception seems to be convenient: \ctrl{L} (form feed) is
+%    defined to act as a `newpage' command (`newcolumn' if
+%    \cw{totalcols} is greater than 1).
+%
+%    For characters 128\ndash 255 there are generally accepted ways to
+%    print them. The trouble is, there are too many different
+%    generally accepted ways: the Macintosh way, the IBM PC codepage
+%    ways (several different codepages), the DC font encoding way, the
+%    DEC multinational character set way, the KOI-8 way, and many many
+%    others. And most of these ways would require their own font, as
+%    they include characters not found in the \fn{cmtt} character set.
+%    Therefore I do not attempt here to do anything very useful with
+%    characters $>$ 127, but only set them up to print a boxed
+%    question mark and a warning about `unspecified character'.
+%    If you're interested in helping me expand the capabilities of
+%    \fn{listout} in this area, particularly regarding the font
+%    complications, let me know.
+%
+% \begin{macro}{\charboxsidekern}
+% \begin{macro}{\charboxstrut}
+%    \cw{charboxstrut} is initialized in \cw{listout} after the font
+%    is set.
+%    \begin{macrocode}
+\newdimen\charboxsidekern
+\charboxsidekern=.3pt
+\newbox\charboxstrut
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\characterbox}
+%    Function to print a box around a given character.
+%    \begin{macrocode}
+\def\characterbox#1{%
+%    \end{macrocode}
+%    The width of the hbox is set to preserve alignment of characters
+%    across lines if we have a normal tt font with the width of all
+%    characters  = .5\units{em}. In order for the enclosed character
+%    to be slightly more readable, we allow the vertical rules to
+%    partly overlap outside the .5\units{em} space instead of lapping
+%    them entirely inward.
+%    \begin{macrocode}
+  \hbox to.5em{\hss
+    \dimen@.22\p@ \dimen@ii -.11\p@
+    \vrule width\dimen@ \kern\dimen@ii
+    \vbox{\hrule height\dimen@
+      \kern\charboxsidekern
+      \hbox{\kern\charboxsidekern
+        #1\kern\charboxsidekern
+%    \end{macrocode}
+%    A vertical strut is inserted to ensure a certain minimum height
+%    of the box even if say the enclosed character has practically no
+%    height (\eg. underscore).
+%    \begin{macrocode}
+        \copy\charboxstrut}%
+      \dimen4 \prevdepth
+      \advance\dimen4 \charboxsidekern
+      \advance\dimen@ \dimen4
+      \hrule depth\dimen@ height -\dimen4
+    }%
+    \kern\dimen@ii\vrule width\dimen@\hss}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\controlchara}
+%    Define the control characters \ascii/ 0\ndash 31 and 127 to print a
+%    warning and a boxed letter. \ctrl{I}, \ctrl{L}, \ctrl{M} (tab,
+%    formfeed, carriage return) will receive overriding definitions
+%    later.
+%    \begin{macrocode}
+\def\controlchara#1{%
+  \message{Warning:
+Invisible control character, printing boxed letter}%
+  \characterbox{#1}%
+  \gdef\controlchar##1{%
+    \message{@}\characterbox{##1}}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\controlchar}
+%    \begin{macrocode}
+\def\controlchar{\controlchara}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\controlcharassignments}
+%    \begin{macrocode}
+\newtoks\controlcharassignments
+%    \end{macrocode}
+% \end{macro}
+%
+%    Start a group to localize the changes to lccodes, \cw{do}, etc.
+%    \begin{macrocode}
+\begingroup
+%    \end{macrocode}
+%    For \eg. \ctrl{A} we want to issue a warning message and print a
+%    boxed capital A character. To get the cap A from the control
+%    character \ctrl{A} which \cw{controlchars} provides, we turn it
+%    into a number and add 64, then use the result with \cw{lccode} to
+%    get a category-12 character inside the definition being
+%    constructed.
+%    \begin{macrocode}
+\def\do#1{\count@=`#1 \next \do}
+\def\next{\lccode`\~=\count@ \advance\count@ 64
+  \ifnum\count@>127 \advance\count@ -128 \fi
+  \lccode`\.=\count@
+  \lowercase{\let~\relax
+    \global\controlcharassignments\xp@{%
+    \the\controlcharassignments
+    \def~{\controlchar{.}}}}%
+}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\xp@\do\controlchars{a \@gobbletwo}
+\endgroup
+%    \end{macrocode}
+%
+% \begin{macro}{\unknownchar}
+% \begin{macro}{\unknownchara}
+%
+%    Define characters in the range \ascii/ 128\ndash 255 to print as a
+%    boxed question mark, with a warning. Those who have DC fonts or
+%    other fonts with 256 characters instead of 128 might want to change
+%    this behavior, but the default is chosen so as not to cause trouble
+%    for those who are currently handicapped with 128-character fonts
+%    (including myself \ldots). There is also the problem that in an
+%    arbitrary file being printed, the original intended interpretation
+%    of characters above \ascii/ 127 may vary widely, and more often
+%    than not, perhaps, will not correspond properly to the characters
+%    in the high 128 positions of the currently selected font. For
+%    example, it's not clear how useful it would be to print out a file
+%    coded for Russian characters in the high 128 with a font that uses
+%    the DC character set.
+%
+%    \begin{macrocode}
+\def\unknownchara{%
+  \xmesj{Warning: Unspecified character
+    (system-dependent interpretation);\
+    printing question mark instead}%
+  \characterbox{?}%
+  \gdef\unknownchar{\message{?}\characterbox{?}}%
+}
+%
+\def\unknownchar{\unknownchara}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\eightbitaction}
+%    \begin{macrocode}
+\def\eightbitaction{B}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\highASCIIassignments}
+% \begin{macro}{\highBSCIIassignments}
+%    \begin{macrocode}
+\newtoks\highASCIIassignments
+\newtoks\highBSCIIassignments
+%
+\highASCIIassignments{%
+  \def\do{\catcode\count@=12 \advance\count@\@ne
+    \ifnum\count@>\@cclv \expandafter\@gobble\fi\do}%
+  \count@=128 \do}
+%
+\begingroup
+\def\do{%
+  \global\catcode\count@\active
+  \lccode`\~\count@
+  \lowercase{\global\highBSCIIassignments
+    \xp@{\the\highBSCIIassignments
+      \def~{\unknownchar}}}%
+  \ifnum\count@<255\relax
+    \advance\count@ 1\relax
+    \xp@\do % tail recursion
+  \fi}
+%
+\count@=128\relax \do \endgroup
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{File name titles}
+%
+% \begin{macro}{\thisfilename}
+%    Variable to hold the name of the current file being printed. To
+%    be determined at run-time.
+%    \begin{macrocode}
+\def\thisfilename{??}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\printtitles}
+%    If \cw{printtitles} is true then the name of each file is printed
+%    at the beginning of each file as a centered title, with some
+%    space above and below.
+%    \begin{macrocode}
+\let\printtitles=\TRUE
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@dogobble}
+%    Auxiliary function to help in ending a recursive \cs{do}
+%    operation.
+%    \begin{macrocode}
+\def\@dogobble#1\do{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\nonttfont}
+%    If \cw{titlefont} is not a tt font, then \qc{\_} will not print
+%    properly; to get around this we print the title in math mode with
+%    \cw{textfont}1 = \cw{titlefont}, just so that we can use
+%    \cw{mathcode}"8000 to make the underscore pseudo-active. This is
+%    convenient because all characters of \cw{thisfilename} were
+%    converted to category 12 by \cw{xmeaning}, and mathcode "8000
+%    allows us to use any underscore characters already present
+%    instead of replacing them by active characters.  The alternative
+%    would be to pick apart \cw{thisfilename} looking for \qc{\_}
+%    characters and replace them by active \qc{\_} or by \cs{\_}; but
+%    that seems like more work. For certain other characters (less
+%    likely to occur in file names) there is the same problem.
+%    \begin{macrocode}
+\def\nonttfont#1{%
+%    \end{macrocode}
+%    Reset mathcodes of all nonalphanumeric visible characters, since
+%    some of them (\eg., period) have mathcodes that point to
+%    unexpected font positions. Yes, this is overkill, but it's
+%    simpler to program and more likely to be robust against unknown
+%    future changes in font layouts.
+%    \begin{macrocode}
+  \def\do##1{\mathcode`##1`##1 \do}%
+  \xp@\do\otherchars{.`.\relax \@dogobble}%
+%    \end{macrocode}
+%    Furthermore, the characters \qc{\<} \qc{\>} \verb*" " (space)
+%    \qc{\_} \qc{\{} \qc{\|} \qc{\}} \qc{\~} do not have adequate
+%    representatives in their \ascii/ positions in normal \tex/ text
+%    fonts (other than \fn{cmtt}). So we mathcode them to pull some
+%    reasonable approximations out of \cw{textfont2} (\fn{cmsy10}),
+%    except for underscore, which we mathcode to \verb/"8000/ (active)
+%    and define to produce a horizontal rule, and space, which we
+%    leave alone.
+%    \begin{macrocode}
+  \mathcode`\<"268 \mathcode`\>"269
+  \mathcode`\\"26E \mathcode`\_"8000
+  \mathcode`\{"266 \mathcode`\|"26A
+  \mathcode`\}"267 \mathcode`\~"218
+%    \end{macrocode}
+%    Finally, we make the double-quote character active so that it
+%    will produce a double-prime symbol rather than a directional
+%    close-quotes character, which would be ambiguous with two single
+%    apostrophes.
+%    \begin{macrocode}
+  \mathcode`\""8000
+%    \end{macrocode}
+%    Change the definition of active \qc{\_} to produce a thicker and
+%    wider rule.
+%    \begin{macrocode}
+  \actively\def\_{%
+    \leavevmode\kern.06em\vbox{%
+      \hrule width.4em height.06em}}%
+%    \end{macrocode}
+%    Define active \qc{\"} character to produce double-prime.
+%    \begin{macrocode}
+  \actively\def\"{^{\prime\prime}}%
+  \textfont\z@
+    \csname\titlefont\titlefontsize\endcsname
+%    \end{macrocode}
+%    On general principles we initialize \cw{everymath} and
+%    \cw{mathsurround} to make sure they don't do anything abnormal.
+%    \begin{macrocode}
+    \everymath{}\mathsurround\z@
+  $\fam\z@#1$%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%    The list of system types and associated directory separator
+%    characters is determined arbitrarily as the systems that I happen
+%    to have experience with. If you want to see your favorite system
+%    added to the list write to me at the e-mail address given above
+%    \ldots
+%
+% \begin{macro}{\DOSdirsepchar}
+%    \begin{macrocode}
+\escapechar=-1
+\edef\DOSdirsepchar{\string\\}
+\escapechar=`\\
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\Macintoshdirsepchar}
+%    \begin{macrocode}
+\def\Macintoshdirsepchar{:}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\Unixdirsepchar}
+%    \begin{macrocode}
+\def\Unixdirsepchar{/}
+\xp@\def\csname VAX/VMSdirsepchar\endcsname{]}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\chopname}
+%
+%    The function \cw{chopname} chops up a filename looking for the
+%    characters that separate directory components from filename
+%    components; this is in order to add an \cw{allowbreak} between
+%    directory and filename if an explicit directory is included in
+%    the given file name, so that when printing the file name in a
+%    title, it will break into two lines if there isn't enough room
+%    for the whole thing to fit on one line.
+%
+%    \cw{chopname} is intended to be called only after \cw{xmeaning} has
+%    been applied to convert all constituent characters of \qarg{1} to
+%    category 12.
+%
+%    Test cases:
+%
+%^^V \def\systemtype{Unix}
+%^^V \def\test{goo/bar/flab/rtex}
+%^^V \chopname\test \show\test
+%^^V \def\test{rtex}
+%^^V \chopname\test \show\test
+%^^V
+%^^V \def\systemtype{VAX/VMS}
+%^^V \def\test{goo:[bar.flab]rtex}
+%^^V \chopname\test\show\test
+%^^V \def\test{rtex}
+%^^V \chopname\test\show\test
+%
+%    \begin{macrocode}
+\def\chopname#1{%
+  \edef\dirsepchar{%
+    \csname\systemtype dirsepchar\endcsname}%
+  \edef\@tempa{%
+    \def\nx@\do####1\dirsepchar}%
+  \@tempa
+%    \end{macrocode}
+%    What we get here from \cw{@tempa} is something like
+%    the following line.
+%    \begin{macrocode}
+% \def\do##1/%
+  ##2{%
+    \toks@\xp@{\next@}%
+    \ifx\end##2% then just add ##1 at the end
+      \edef\next@{\the\toks@##1}%
+    \else
+      \edef\next@{\the\toks@##1%
+        \dirsepchar\nx@\allowbreak}%
+      \afterfi\do##2%
+    \fi
+  }%
+  \edef\@tempa{\toks@{}\def\nx@\next@{}%
+    \nx@\do#1\dirsepchar\nx@\end}%
+  \@tempa
+  \let#1\next@
+%    \end{macrocode}
+%    And finally, if \cw{dirprefix} is not empty, add it.
+%    \begin{macrocode}
+  \ifx\@empty\dirprefix
+  \else
+    \edef#1{\xmeaning\dirprefix\allowbreak#1}%
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\printtitle}
+%    Function to typeset the title of the current file.
+%    \begin{macrocode}
+\def\printtitle{%
+%    \end{macrocode}
+%    This \cw{bigskip} will be discarded following \tex/'s normal rules
+%    if each file starts on a new page or column.
+%    \begin{macrocode}
+  \bigskip
+  \centerline{%
+    \csname\titlefont\titlefontsize\endcsname
+%    \end{macrocode}
+%    Add an \cw{allowbreak} between directory and filename if an
+%    explicit directory is included in the given file name.
+%    \begin{macrocode}
+    \chopname\thisfilename
+%    \end{macrocode}
+%    If the interword stretch of \cw{titlefont} is 0, then it is
+%    [almost surely] a tt font. But otherwise, special handling is
+%    required in order to make sure that the characters
+%    \verb/_ < > \ { | } ~/ print OK.
+%    \begin{macrocode}
+    \ifdim\fontdimen3\font=\z@
+      \csname\titlecase\endcsname
+        \xp@{\thisfilename}%
+    \else
+      \csname\titlecase\endcsname
+        \xp@{\xp@
+        \nonttfont\xp@{\thisfilename}}%
+    \fi
+  }% end \centerline
+%    \end{macrocode}
+%    If new file doesn't start a new column, use a smaller space below
+%    the title than would otherwise be used.
+%    \begin{macrocode}
+  \if S\newfileoption \smallskip
+  \else\bigskip\fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\newfileoption}
+%    Variable that selects the desired action at the beginning of a
+%    new file.
+%    \begin{macrocode}
+\def\newfileoption{P}
+%    \end{macrocode}
+% \end{macro}
+%
+%    \mjd{Is \cw{eject} defined in LaTeX?}
+% \begin{macro}{\newfileS}
+%    Option S (space): Tack on the next file immediately after the
+%    previous one, without even ending the current column (unless
+%    there are only a couple of lines of space left on it). Assumes
+%    that \cw{printtitle} will add some vertical space.
+%    \begin{macrocode}
+\def\newfileS{%
+  \dimen@\pagegoal \advance\dimen@-\pagetotal
+  \ifdim\dimen@<3\baselineskip
+  \xp@\eject\fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\newfileC}
+%    Option C: Finish the current column.
+%    \begin{macrocode}
+\def\newfileC{\vfil\eject}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\newfileP}
+%    Option P: Force a new page (= sheet of paper).
+%    \begin{macrocode}
+\def\newfileP{%
+  \vfil\eject
+  \loop
+%    \end{macrocode}
+%    Repeat until \cs{curcol} resets to 1.
+%    \begin{macrocode}
+  \ifnum\curcol>\@ne
+    \hbox to\colwd{%
+          \vrule width\z@ depth\vsize\hfil}%
+    \eject
+  \repeat
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\newfileR}
+%    Option R: Force right-hand column (\cw{totalcols} = 2 assumed).
+%    \begin{macrocode}
+\def\newfileR{\vfil\eject
+  \ifnum\curcol=\@ne
+    \hbox to\colwd{%
+      \vrule width\z@ depth\vsize\hfil}%
+  \xp@\eject
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Line numbering}
+%
+% \begin{macro}{\linenumberfreq}
+% \begin{macro}{\linecount}
+% \begin{macro}{\linesubcount}
+%    \begin{macrocode}
+\newcount\linenumberfreq \linenumberfreq=1
+\newcount\linecount
+\newcount\linesubcount
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\printlinenumber}
+%
+%    \begin{macrocode}
+\def\printlinenumber{\llap{%
+  \global\advance\linecount\@ne
+  \global\advance\linesubcount\@ne
+  \ifnum\linesubcount=\linenumberfreq
+    \lnfnt \the\linecount\space
+    \global\linesubcount\z@
+  \fi
+}}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\spacebreak}
+%    \begin{macrocode}
+\def\spacebreak{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\markedbreak}
+%    \begin{macrocode}
+\def\markedbreak{\penalty\z@}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\noextralinebreaks}
+%    \begin{macrocode}
+\let\noextralinebreaks=\TRUE
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\newunnumberedline}
+%    \begin{macrocode}
+\def\newunnumberedline{\hskip\rightskip \egroup
+  \box\z@ \controlLbreak
+  \setbox\z@\hbox to\hsize\bgroup}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\newnumberedline}
+%    \begin{macrocode}
+\def\newnumberedline{%
+  \newunnumberedline\printlinenumber}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\unnumberedbreakingline}
+%    \begin{macrocode}
+\def\unnumberedbreakingline{\relax
+%    \end{macrocode}
+%    \cw{noindent} \cw{unhbox}0 \cw{endgraf} produces only \cw{parskip}
+%    if box 0 is empty, when what we really want is a full baselineskip
+%    (a blank line) because box 0 empty means two consecutive \ctrl{M}
+%    characters; so we check if box0 is empty by looking at
+%    \cw{lastpenalty} to see if it is the same as the penalty that we
+%    added at the beginning and if so throw in a \cw{null} to make sure
+%    the line won't disappear.
+%    \begin{macrocode}
+  \ifnum\lastpenalty=\@ne \null\fi
+  \hskip\rightskip\egroup
+  \hfuzz \p@
+  \noindent\unhbox\z@ %
+%    \end{macrocode}
+%    Notice that the normal \tex/ action at end of paragraph will
+%    remove the \cw{hskip} that was added before the \cw{egroup} of the
+%    \cw{setbox} operation. We also employ a hangindent of 1em to give
+%    some indication of line breaks, if they occur.
+%    \begin{macrocode}
+  {\hangindent1em
+  \parfillskip\z@ plus1fil \endgraf}%
+%    \end{macrocode}
+%    We need to prevent overfull rules from being added inside at the
+%    end of the \cw{hbox}, because there's no way to break off the rule
+%    from the end of the horizontal list once it gets in there.
+%    \begin{macrocode}
+  \hfuzz\maxdimen
+  \controlLbreak
+  \setbox\z@\hbox to\hsize\bgroup \penalty\@ne
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\numberedbreakingline}
+%
+%    \begin{macrocode}
+\def\numberedbreakingline{%
+  \unnumberedbreakingline\printlinenumber}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@sptoken}
+%
+%    \begin{macrocode}
+\lowercase{\let\@sptoken= } %
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\CR}
+%    Action performed at end of line. Can vary according to whether
+%    line numbers are wanted and whether overlong lines are allowed to
+%    break.
+%    \begin{macrocode}
+\let\CR\newunnumberedline
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\CRSPsetup}
+%
+%    Setup for carriage returns and spaces. We need to prevent spaces
+%    from disappearing at the beginning of a line, and also optionally
+%    prevent line breaks.
+%
+%    \begin{macrocode}
+\def\CRSPsetup{%
+  \setupbreakingchars
+  \if\noextralinebreaks
+    \overrun\rightmargin
+%    \end{macrocode}
+%    NOTE: the space after the \qc{\=} is mandatory because of the way
+%    \cw{@sptoken} is defined:
+%    \begin{macrocode}
+    \actively\let\ = \@sptoken\relax
+    \if\linenumbers
+      \let\CR\newnumberedline
+    \else
+      \let\CR\newunnumberedline
+    \fi
+  \else
+    \actively\edef\ {\spacebreak\space}%
+    \if\linenumbers
+      \let\CR\numberedbreakingline
+    \else
+      \let\CR\unnumberedbreakingline
+    \fi
+  \fi
+  \actively\let\^^M\CR
+  \rightskip\z@ plus\hsize minus\overrun
+%    \end{macrocode}
+%    Parfillskip not needed, \cw{rightskip} suffices.
+%    \begin{macrocode}
+  \parfillskip\z@skip
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Main printing function}
+%
+% \begin{macro}{\listout}
+%    The \cw{listout} function takes a file name argument, the name of
+%    a file to be printed verbatim.
+%    \begin{macrocode}
+\def\listout#1{\endgraf
+  \begingroup
+%    \end{macrocode}
+%    Setup that may not need to be done for each file. If
+%    \cw{interactive} is \cw{TRUE}, this is reset to no-op since it's
+%    not possible for the user to change any settings between files.
+%    \begin{macrocode}
+  \listoutsetup
+%    \end{macrocode}
+%    Convert \qarg{1} to all category 12 characters using \cw{meaning}.
+%    This prevents problems when we print the file name if it contains
+%    things like \qc{\$} or \qc{\_} characters.
+%    \begin{macrocode}
+  \gdef\thisfilename{#1}%
+  \xdef\thisfilename{\xmeaning\thisfilename}%
+  \if\printtitles \printtitle \fi
+%    \end{macrocode}
+%    Setup up needing to be redone for each file, or that only applies
+%    to the body of the file, not to the title.
+%    \begin{macrocode}
+  \listoutmoresetup
+  \CRSPsetup
+  \hfuzz\maxdimen
+  \setbox\z@\hbox to\hsize\bgroup \penalty\@ne
+  \input#1 \hfil\egroup
+%    \end{macrocode}
+%    Ignore the final contents of box 0 since they are just the (null)
+%    material between the file-ending \qc{\^^M} and the above
+%    \cs{egroup}.
+%
+%    Reset \cw{hfuzz} to normal in case temporary value of
+%    \cw{maxdimen} persists somehow.
+%    \begin{macrocode}
+  \hfuzz\p@
+%    \end{macrocode}
+%    Add a penalty to force \cw{pagetotal} to be updated with the
+%    height of the preceding line.
+%    \begin{macrocode}
+  \penalty0 %
+  \csname newfile\newfileoption\endcsname
+%    \end{macrocode}
+%    Ensure that everything gets shipped out even if this is the last
+%    file in a noninteractive use of \fn{listout.tex} (where control may
+%    return after the \cw{endgroup} to a different output routine).
+%    This is a complicated question. The \cw{patchoutput} possibility
+%    to make this work from inside a larger macro package is commented
+%    out until such time as it can be done right.[mjd,21-Sep-1993]
+%    \begin{macrocode}
+  \ifvoid\prevcolsbox
+  \else
+    \savelistoutimage
+%{\tracingonline=1 \showboxbreadth=\maxdimen
+% \showboxdepth=9 \showbox\prevcolsbox}%
+%    \afterfi\patchoutput
+  \fi
+  \endgroup }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\patchedoutputroutine}
+%
+%    \begin{macrocode}
+%\let\patchedoutputroutine\FALSE
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\patchoutput}
+%
+%    \begin{macrocode}
+%\def\patchoutput#1{% #1 to remove the \endgroup
+%  \endgroup
+%  \relax\if\patchedoutputroutine
+%  \else
+%    \global\let\patchedoutputroutine\TRUE
+%    \edef\next{%
+%      \output{%
+%        \box\prevcolsbox
+%        \global\holdinginserts\the\holdinginserts\relax
+%        \unvbox255 \relax
+%        \global\let\nx@\patchedoutputroutine\nx@\FALSE
+%%    Restore the previous output routine. Interestingly,
+%%    \cw{the}\cw{output} returns an extra pair of braces
+%%    (as hinted at in the \tex/book); so the extra step
+%%    with \cw{toks@} here is slightly better than simply
+%%    \cw{global}\cw{output}{\cw{the}\cw{output}}.
+%        \toks@{\the\output}%
+%        \global\nx@\xp@\output\nx@\the\toks@
+%      }%
+%%\showthe\output
+%    }%
+%    \global\holdinginserts1
+%  \fi
+%  \next}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\savelistoutimage}
+%    For \cw{listoutimage} we only need to save those parameters that
+%    are used when shipping out a page.
+%    \begin{macrocode}
+\def\savelistoutimage{%
+  \xdef\listoutimage{%
+    \let\nx@\landscape%
+      \if\landscape\nx@\TRUE
+      \else\nx@\FALSE\fi
+    \pawd\the\pawd \paht\the\paht
+    \topmargin\the\topmargin
+    \bottommargin\the\bottommargin
+    \leftmargin\the\leftmargin
+    \rightmargin\the\rightmargin
+    \normalbaselineskip\the\normalbaselineskip
+    \normalbaselines
+    \mathchardef\curcol\number\curcol\relax
+    \chardef\totalcols\number\totalcols\relax
+    \colwd\the\colwd \colht\the\colht
+    \fullwd\the\fullwd
+    \intercolspace\the\intercolspace
+    \overrun\the\overrun
+    \def\nx@\todaysdate{\todaysdate}%
+    \def\nx@\nowtime{\nowtime}%
+    \def\nx@\pagenumberfont{\pagenumberfont}%
+    \def\nx@\pagenumberfontsize{%
+      \pagenumberfontsize}
+    \pageno\the\pageno
+    \lastpageno\the\lastpageno
+    \firstpageno\the\firstpageno
+    \def\nx@\hfwd{\hfwd}%
+    \def\nx@\thisfilename{\thisfilename}%
+    \let\nx@\runheads%
+      \if\runheads\nx@\TRUE
+      \else\nx@\FALSE\fi
+    \runhead{\the\runhead}%
+    \def\nx@\runheadfont{\runheadfont}%
+    \def\nx@\runheadfontsize{%
+      \runheadfontsize}%
+    \runheadht\the\runheadht
+    \let\nx@\runfeet%
+      \if\runfeet\nx@\TRUE
+      \else\nx@\FALSE\fi
+    \runfoot{\the\runfoot}%
+    \def\nx@\runfootfont{\runfootfont}%
+    \def\nx@\runfootfontsize{%
+      \runfootfontsize}%
+    \runfootht\the\runfootht
+    \hoffset\the\hoffset \voffset\the\voffset
+    \relax
+  }%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\reportlayout}
+%    Some of the line breaks in the following code are merely to
+%    facilitate printing the documentation in narrow columns.
+%    \begin{macrocode}
+\fxmesj\reportlayout{
+Using paper size &\the&\pawd x &\the&\paht%
+ (&\paperwidth x &\paperheight),
+&\number&\totalcols columns, intercolumnspace%
+ = &\the&\intercolspace,
+column width = &\the&\colwd, column height%
+ = &\the&\colht,
+top margin = &\the&\topmargin, left margin%
+ = &\the&\leftmargin.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\listoutsetup}
+%
+%    \begin{macrocode}
+\def\listoutsetup{%
+  \output{\Ncols}%
+  \loadfonts
+  \csname\mainfont\mainfontsize\endcsname
+%    \end{macrocode}
+%    Preexpand line number font for faster execution, since it is
+%    repeated on every line if line numbering is turned on.
+%    \begin{macrocode}
+  \xp@\let\xp@\lnfnt
+     \csname\linenumberfont
+       \linenumberfontsize\endcsname
+  \normalbaselines
+  \if\dependentcolht
+    \if\dependentbottommargin \computebc
+    \else \computec\fi
+  \else
+    \computeb
+  \fi
+  \vsize\colht
+  \parskip \z@\relax
+  \if\dependentcolwd
+    \if\dependentrightmargin \computerfc
+    \else \computefc \fi
+  \else
+    \computefr
+  \fi
+  \hsize\colwd
+  \parindent\z@
+%    \end{macrocode}
+%    Reduce the size of \cw{overfullrule} so that if a too-long line
+%    overprints, there is a better chance to read what lies underneath
+%    at the end. But we still get visual identification of overlong
+%    lines.
+%    \begin{macrocode}
+  \ifdim\overfullrule>\z@ \overfullrule 2\p@\fi
+  \setupheadlineandfootline
+  \datesetup
+  \voffset\m@ne truein \hoffset\voffset
+  \advance\voffset\topmargin \advance\hoffset\leftmargin
+  \setbox\charboxstrut\hbox{%
+    \vrule height.5emwidth\z@}%
+  \inittabs
+%    \end{macrocode}
+%    If extra line breaks are allowed, we want to avoid page breaks in
+%    the middle of something that was originally one line. Setting
+%    \cw{clubpenalty} and \cw{widowpenalty} to these values means that a
+%    line will have to break into four lines or more before a page
+%    break will be allowed, and always the first two and last two line
+%    pieces will remain together. But we don't prohibit page breaks
+%    within a broken line entirely (\cw{interlinepenalty} = 10000)
+%    because that might be undesirable in extreme cases.
+%    \begin{macrocode}
+  \clubpenalty\@M \widowpenalty\@M
+  \count@12\relax
+  \def\do##1{\catcode`##1\count@ \do}%
+  \xp@\do\otherchars{a11 \@gobbletwo}%
+  \count@\active
+  \xp@\do\controlchars{a11 \@gobbletwo}%
+  \the\controlcharassignments
+  \global\let\controlchar\controlchara
+  \if L\controlLaction
+    \actively\let\^^L\linespaceL
+  \else
+    \if N\controlLaction
+      \actively\let\^^L\ejectL
+    \fi
+  \fi
+  \the\csname high\eightbitaction SCIIassignments\endcsname
+  \global\let\unknownchar\unknownchara
+%    \end{macrocode}
+%    Standard disablement of \verb/?`/ and \verb/!`/ ligatures found in
+%    \fn{cmtt} fonts:
+%    \begin{macrocode}
+  \actively\def\`{\kern\z@`}%
+  \hfuzz\p@
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\linespaceL}
+%    \begin{macrocode}
+\def\linespaceL{\message{Found a ^L character}\CR}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\ejectL}
+%    \begin{macrocode}
+\def\ejectL{%
+  \message{Found a ^L character}%
+  \gdef\controlLbreak{\eject}\CR\global\let\controlLbreak\relax
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\controlLbreak}
+%    \begin{macrocode}
+\let\controlLbreak\relax
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\controlLaction}
+%    \begin{macrocode}
+%    Define form-feed to do a `newcolumn' operation. Remove outerness
+%    at the same time. Possible actions for \cw{controlLaction} are B,
+%    L, N: print boxed character, print one-line space, or start new
+%    column/page.
+%    \begin{macrocode}
+\def\controlLaction{N}
+\actively\let\^^L=\ejectL
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\listoutmoresetup}
+%    \begin{macrocode}
+\def\listoutmoresetup{%
+  \global\linecount\z@ \global\linesubcount\z@
+  \ifnum\totalcols>\@ne
+    \global\firstpageno\@ne
+    \global\lastpageno\@ne
+  \fi
+  \relax
+  \frenchspacing
+%    \end{macrocode}
+%    Define tab to be visible.
+%    \begin{macrocode}
+  \global\let\printtab\newfileprinttab
+  \actively\def\^^I{\printtab}%
+  \langnohyphens
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\DVImesj}
+%    \cw{DVImesj} remains null unless the test at the
+%    entry point for the menu system to see if \fn{listout} is being
+%    run interactively returns true.
+%    \begin{macrocode}
+\def\DVImesj{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\landscapereminder}
+%    Here once again a couple of extra line breaks will be observed in
+%    the printed documentation, introduced to avoid margin overrun in
+%    narrow-column printing.
+%    \begin{macrocode}
+\fxmesj\landscapereminder{%
+********************************************%
+***********************
+*     REMINDER: print in LANDSCAPE mode     %
+                      *
+********************************************%
+***********************}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\listoutfinish}
+%
+%    \begin{macrocode}
+\def\listoutfinish{%
+%    \end{macrocode}
+%    If part of the last file is pending in \cw{prevcolsbox}, we need
+%    to make sure we print it here.
+%    \begin{macrocode}
+  \ifvoid\prevcolsbox
+  \else
+    \wlog{Clearing out previous file}%
+    \begingroup
+%    \end{macrocode}
+%    Reset parameters that were turned off by the \cw{endgroup} in
+%    \cw{listout}.
+%    \begin{macrocode}
+    \listoutimage \output{\Ncols}%
+%    \end{macrocode}
+%    Change newfile action to `new page', then run it, so that we fill
+%    out the page with blank columns if necessary.
+%    \begin{macrocode}
+    \def\newfileoption{P}%
+    \hbox to\colwd{}%
+    \csname newfile\newfileoption\endcsname
+%    \end{macrocode}
+%    Message about the name of the DVI file
+%    \begin{macrocode}
+    \DVImesj
+%    \end{macrocode}
+%    If \cw{landscape} switch is true, reminder to use the `landscape'
+%    switch of the DVI driver.
+%    \begin{macrocode}
+    \if\landscape
+%    \end{macrocode}
+%    For those drivers that can handle it (\fn{dvips}, \ldots ?), this
+%    \cw{special} command is convenient to have in every job.
+%    \begin{macrocode}
+%     \cw{special}{landscape}%
+      \landscapereminder
+    \fi
+    \endgroup
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Fonts}
+% \begin{macro}{\xfont}
+%    \begin{macrocode}
+\def\xfont#1={%
+  \xp@\font\csname#1\endcsname=}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\ftypewriter}\begin{macro}{\fbold}
+% \begin{macro}{\froman}\begin{macro}{\fitalic}
+% \begin{macro}{\fsansserif}
+%    \begin{macrocode}
+\def\ftypewriter{cmtt}
+\def\fbold{cmbx}
+\def\froman{cmr}
+\def\fitalic{cmti}
+\def\fsansserif{cmss}
+%    \end{macrocode}
+% \end{macro}\end{macro}\end{macro}\end{macro}\end{macro}
+%
+% \begin{macro}{\loadfont}
+%    Load the given font. Args \qarg{1} and \qarg{2} are the
+%    descriptive name and the type size, respectively.
+%    \begin{macrocode}
+\def\loadfont#1#2{%
+  \relax\ifnum#2>100 \loadscaledfont{#1}{#2}%
+  \else
+    \global\xfont#1#2=\csname f#1\endcsname
+    \ifnum#2=14 10 scaled\magstep2
+    \else\ifnum#2=12 10 scaled\magstep1
+    \else\ifnum#2=11 10 scaled\magstephalf
+    \else#2\fi\fi\fi
+    \relax
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\loadscaledfont}
+%    \begin{macrocode}
+\def\loadscaledfont#1#2{\global\xfont#1#2=#1 scaled #2\relax}
+%    \end{macrocode}
+% \end{macro}
+%
+%    Default font is cmtt8. Note that cmtt7 and cmtt6 are not
+%    standardly available to all users.
+%
+%    \begin{macrocode}
+\loadfont{typewriter}{8} % for main text
+\loadfont{bold}{10} % for titles
+\loadfont{roman}{5} % for line numbers
+\loadfont{roman}{6} % for running heads
+%    \end{macrocode}
+%
+% \begin{macro}{\mainfont}
+% \begin{macro}{\mainfontsize}
+%    \begin{macrocode}
+\def\mainfont{typewriter}
+\def\mainfontsize{8}
+\csname\mainfont\mainfontsize\endcsname
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\titlefont}
+% \begin{macro}{\titlefontsize}
+%    \begin{macrocode}
+\def\titlefont{bold}
+\def\titlefontsize{10}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\linenumberfont}
+% \begin{macro}{\linenumberfontsize}
+%    \begin{macrocode}
+\def\linenumberfont{typewriter}
+\def\linenumberfontsize{8}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\pagenumberfont}
+% \begin{macro}{\pagenumberfontsize}
+%    \begin{macrocode}
+\def\pagenumberfont{bold}
+\def\pagenumberfontsize{7}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\runheadfont}
+% \begin{macro}{\runheadfontsize}
+%    \begin{macrocode}
+\def\runheadfont{roman}
+\def\runheadfontsize{7}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\runfootfont}
+% \begin{macro}{\runfootfontsize}
+%    \begin{macrocode}
+\def\runfootfont{roman}
+\def\runfootfontsize{7}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\loadfonts}
+%    \cw{loadfonts} is called just before the start of typesetting, to
+%    ensure that any needed fonts will be loaded. In fact, for maximum
+%    flexibility, it is called at the beginning of each file that is
+%    printed, so that if you use this utility in non-interactive mode
+%    with a sequence of \cw{listout} commands you could conceivably
+%    change fonts between files.
+%
+%    \begin{macrocode}
+\def\loadfonts{\relax
+  \xp@\ifx\csname\mainfont\mainfontsize\endcsname\relax
+    \loadfont\mainfont\mainfontsize
+  \fi
+  \xp@\ifx\csname\pagenumberfont
+        \pagenumberfontsize\endcsname\relax
+    \loadfont\pagenumberfont\pagenumberfontsize
+  \fi
+  \if\printtitles
+    \xp@\ifx\csname\titlefont
+          \titlefontsize\endcsname\relax
+      \loadfont\titlefont\titlefontsize
+    \fi
+  \fi
+  \if\linenumbers
+    \xp@\ifx\csname\linenumberfont
+          \linenumberfontsize\endcsname\relax
+      \loadfont\linenumberfont\linenumberfontsize
+    \fi
+  \fi
+  \if\runheads
+    \xp@\ifx\csname\runheadfont
+          \runheadfontsize\endcsname\relax
+      \loadfont\runheadfont\runheadfontsize
+    \fi
+  \fi
+  \if\runfeet
+    \xp@\ifx\csname\runfootfont
+          \runfootfontsize\endcsname\relax
+      \loadfont\runfootfont\runfootfontsize
+    \fi
+  \fi
+}
+%    \end{macrocode}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Miscellaneous}
+%
+%    Trace memory statistics to see how close to typical limits we are
+%    coming.
+%
+%    \begin{macrocode}
+\tracingstats=1
+%    \end{macrocode}
+%
+%    Language with no hyphenation patterns, to inhibit hyphenation.
+%    \begin{macrocode}
+\ifx\undefined\language
+  \def\langnohyphens{\hyphenchar\font\m@ne}
+\else
+  \xp@\ifx\csname newlanguage\endcsname\relax
+    \def\langnohyphens{\language\@cclv}
+  \else
+    \csname newlanguage\endcsname
+      \nohyphenslanguage
+    \def\langnohyphens{%
+      \language\nohyphenslanguage}%
+  \fi
+\fi
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\setupbreakingchars}
+%    Function to make the characters specified by \cw{breakingchars}
+%    active. The break penalty goes after the character.
+%    \begin{macrocode}
+\def\setupbreakingchars{%
+  \ifx\breakingchars\@empty
+    \ifx\spacebreak\@empty
+      \let\noextralinebreaks\TRUE
+    \else
+      \let\noextralinebreaks\FALSE
+    \fi
+  \else
+    \let\noextralinebreaks\FALSE
+    \def\do##1{\ifx\end##1\else
+      \xp@\actively\xp@
+      \def\csname##1\endcsname{##1\markedbreak}%
+      \xp@\do\fi}%
+    \xp@\do\breakingchars\end
+    \let\spacebreak\markedbreak
+  \fi
+%    \end{macrocode}
+%    No line breaks allowed after hyphens.
+%    \begin{macrocode}
+  \exhyphenpenalty\@M
+}
+%    \end{macrocode}
+%
+% \begin{macro}{\iwlos}
+%    Function to write a line to the \fn{.los} file. The argument
+%    \qarg{1} may vary in order to achieve special effects.
+%    \begin{macrocode}
+\def\iwlos#1{\immediate\write#1}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\storexmesj\losfirstline{%
+\% &\losname.los &\todaysdate &\nowtime
+\% Option settings for listout.tex.}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\addmonth}
+%    An auxiliary function to add month names to \cw{toks2}.
+%    \begin{macrocode}
+\def\addmonth#1{%
+  \toks4 \xp@{#1}%
+  \edef\next{\the\toks2
+    \string\def\string#1{\the\toks4 }}%
+  \toks2 \xp@{\next}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+\begingroup
+\endlinechar13 \catcode\endlinechar13
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\logoptionsettings}
+%    \begin{macrocode}
+\gdef\logoptionsettings#1{\begingroup%
+  \newlinechar13\relax\actively\let\^^M\relax%
+  \toks2 {}%
+  \addmonth\Jan \addmonth\Feb \addmonth\Mar%
+  \toks2 \xp@{\the\toks2\relax
+  }%
+  \addmonth\Apr \addmonth\May \addmonth\Jun%
+  \toks2 \xp@{\the\toks2\relax
+  }%
+  \addmonth\Jul \addmonth\Aug \addmonth\Sep%
+  \toks2 \xp@{\the\toks2\relax
+  }%
+  \addmonth\Oct \addmonth\Nov \addmonth\Dec%
+  \iwlos{#1}{%
+    \losfirstline
+    \the\toks2\relax
+  }%
+  \iwlos{#1}{%
+    \string\let\string\landscape=%
+      \if\landscape\string\TRUE
+      \else\string\FALSE\fi
+    \string\pawd=\the\pawd
+    \string\def\string\paperwidth{\paperwidth}
+    \string\paht=\the\paht
+    \string\def\string\paperheight{\paperheight}
+    \string\topmargin=\the\topmargin
+    \string\bottommargin=\the\bottommargin
+    \string\leftmargin=\the\leftmargin
+    \string\rightmargin=\the\rightmargin
+    \string\normalbaselineskip=%
+      \the\normalbaselineskip\string\relax
+    \string\def\string\mainfontsize{\mainfontsize}
+    \string\def\string\mainfont{\mainfont}
+    \string\chardef\string\totalcols=%
+      \number\totalcols\string\relax
+    \string\colwd=\the\colwd
+    \string\def\string\columnwidth{\columnwidth}
+    \string\let\string\dependentcolwd=%
+      \if\dependentcolwd\string\TRUE
+      \else\string\FALSE\fi
+    \string\let\string\dependentrightmargin=%
+      \if\dependentrightmargin\string\TRUE
+      \else\string\FALSE\fi
+    \string\colht=\the\colht
+    \string\def\string\columnheight{\columnheight}
+    \string\let\string\dependentcolht=%
+      \if\dependentcolht\string\TRUE
+      \else\string\FALSE\fi
+    \string\let\string\dependentbottommargin=%
+      \if\dependentbottommargin\string\TRUE
+      \else\string\FALSE\fi
+    \string\intercolspace=\the\intercolspace
+    \string\overrun=\the\overrun
+    \string\fullwd=\the\fullwd
+  }%
+  \iwlos{#1}{%
+    \string\def\string\newfileoption{%
+      \newfileoption}
+    \string\let\string\printtitles=%
+      \if\printtitles\string\TRUE
+      \else\string\FALSE\fi
+    \string\def\string\titlefont{\titlefont}
+    \string\def\string\titlefontsize{%
+      \titlefontsize}
+    \string\def\string\titlecase{\titlecase}
+    \string\def\string\datesepchar{\datesepchar}
+    \string\def\string\todaysdate{%
+      \xp@\string\todaysdate}
+    \string\def\string\nowtime{%
+      \xp@\string\nowtime}
+    \string\def\string\timesepchar{\timesepchar}
+    \string\def\string\ampmpunct{\ampmpunct}
+    \string\let\string\keepleadingzeros=%
+      \if\keepleadingzeros\string\TRUE
+      \else\string\FALSE\fi
+    \string\def\string\linenumberfontsize{%
+      \linenumberfontsize}
+    \string\def\string\linenumberfont{%
+      \linenumberfont}
+    \string\let\string\linenumbers=%
+      \if\linenumbers\string\TRUE
+      \else\string\FALSE\fi
+    \string\linenumberfreq=%
+      \number\linenumberfreq\string\relax
+    \string\def\string\pagenumberfont{%
+      \pagenumberfont}
+    \string\def\string\pagenumberfontsize{%
+      \pagenumberfontsize}
+    \string\let\string\runheads=%
+      \if\runheads\string\TRUE
+      \else\string\FALSE\fi
+    \string\runhead={\the\runhead}
+    \string\def\string\runheadfont{\runheadfont}
+    \string\def\string\runheadfontsize{%
+      \runheadfontsize}
+    \string\runheadht=\the\runheadht
+    \string\let\string\runfeet=%
+      \if\runfeet\string\TRUE\else\string\FALSE\fi
+    \string\runfoot={\the\runfoot}
+    \string\def\string\runfootfont{\runfootfont}
+    \string\def\string\runfootfontsize{%
+      \runfootfontsize}
+    \string\runfootht=\the\runfootht
+    \string\def\string\spacebreak{\spacebreak}
+    \string\def\string\breakingchars{%
+      \breakingchars}
+    \string\let\string\noextralinebreaks=%
+      \if\noextralinebreaks\string\TRUE
+      \else\string\FALSE\fi
+    \string\def\string\controlLaction{\controlLaction}
+    \string\def\string\eightbitaction{\eightbitaction}
+    \string\def\string\systemtype{\systemtype}
+    \string\def\string\losdir{\losdir}
+%    \end{macrocode}
+%    \cw{storemesj} is use here instead of \cw{def}, to prevent
+%    potential problems from, \eg.,
+%
+%^^V \def\dirprefix{c:\test\}
+%
+%    \noindent with {\sc PC DOS} directory name ending with a backslash.
+%    \begin{macrocode}
+    \string\storemesj\string\dirprefix{\dirprefix}
+    \string\chardef\string\spacespertab=%
+      \number\spacespertab\string\relax
+    \string\chardef\string\tabselect=%
+      \number\tabselect\string\relax
+}\endgroup}%
+\endgroup% percent to avoid catcode 12 endlinechar
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Default option settings}
+%    These defaults will be used only if \fn{default.los} cannot
+%    be loaded for some reason.
+%
+%    \begin{macrocode}
+% Option settings for listout.tex, 1994/11/4 15:45
+\def\Jan{January}\def\Feb{February}\def\Mar{March}\relax
+\def\Apr{April}\def\May{May}\def\Jun{June}\relax
+\def\Jul{July}\def\Aug{August}\def\Sep{September}\relax
+\def\Oct{October}\def\Nov{November}\def\Dec{December}\relax
+\let\landscape=\TRUE
+\pawd=794.96999pt
+\def\paperwidth{11in}
+\paht=614.295pt
+\def\paperheight{8.5in}
+\topmargin=18.06749pt
+\bottommargin=19.22751pt
+\leftmargin=21.68121pt
+\rightmargin=21.68121pt
+\normalbaselineskip=10.0pt\relax
+\def\mainfontsize{10}
+\def\mainfont{typewriter}
+\chardef\totalcols=2\relax
+\colwd=369.38373pt
+\def\columnwidth{369.38373pt}
+\let\dependentcolwd=\TRUE
+\let\dependentrightmargin=\TRUE
+\colht=577.0pt
+\def\columnheight{64 lines}
+\let\dependentcolht=\TRUE
+\let\dependentbottommargin=\TRUE
+\intercolspace=12.0pt
+\overrun=21.68121pt
+\fullwd=751.60756pt
+\def\newfileoption{P}
+\let\printtitles=\TRUE
+\def\titlefont{bold}
+\def\titlefontsize{10}
+\def\titlecase{none}
+\def\datesepchar{/}
+\def\todaysdate{\dateA}
+\def\nowtime{\timeB}
+\def\timesepchar{:}
+\def\ampmpunct{.}
+\let\keepleadingzeros=\TRUE
+\def\linenumberfontsize{5}
+\def\linenumberfont{roman}
+\let\linenumbers=\FALSE
+\linenumberfreq=1\relax
+\def\pagenumberfont{bold}
+\def\pagenumberfontsize{7}
+\let\runheads=\TRUE
+\runhead={\todaysdate \space \nowtime \space \hfil
+  \thisfilename \space \hfil \pagenumber }
+\def\runheadfont{roman}
+\def\runheadfontsize{7}
+\runheadht=24.0pt
+\let\runfeet=\FALSE
+\runfoot={}
+\def\runfootfont{roman}
+\def\runfootfontsize{6}
+\runfootht=24.0pt
+\def\spacebreak{\penalty \z@ }
+\def\breakingchars{}
+\let\noextralinebreaks=\FALSE
+\def\controlLaction{N}
+\def\systemtype{DOS}
+\def\losdir{}
+\storemesj\dirprefix{}
+\chardef\spacespertab=8\relax
+\chardef\tabselect=1\relax
+%    \end{macrocode}
+%
+%    Read in the option settings file.
+%
+%    In order to make do in narrow column width, we print a doctored
+%    version of the following source code, with a few extra line
+%    breaks thrown in. The comment at the end of the \cw{input} line,
+%    seen here on two lines, is really all on one line in the source.
+%
+%^^V \immediate\write16{%
+%^^V Reading option settings from `default.los' . . .}
+%^^V \input default.los % try entering "nul" if
+%^^V                    % file not found
+%
+%    \iffalse
+%    \begin{macrocode}
+\def\losname{default}
+\edef\losfile{\losdir\losname.los }
+\openin15=\losfile \relax
+\ifeof15 \closein15 \expandafter\@gobbletwo
+\else
+\immediate\write16{Reading option settings from `\losname.los' . . .}
+\closein15 \fi
+\input\losfile % try entering "nul" if file not found
+\datesetup
+%    \end{macrocode}
+%    \fi
+%
+%    Now transfer \cw{normalbaselineskip} value to \cw{baselineskip}.
+%    \begin{macrocode}
+\normalbaselines
+%    \end{macrocode}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Test for interactive mode}
+%    If interactive mode is detected, then the possibility of entering
+%    the menu system will be offered to the user. Otherwise we will
+%    skip all the loading of the menu system, to save time and main
+%    memory.
+%
+%    If \cw{interactive} is undefined {\em and\/} \cw{jobname} does
+%    not equal \verb"listout", then we set the \cw{interactive} switch
+%    to \cw{FALSE}. Otherwise we set it to \cw{TRUE}.
+%    \begin{macrocode}
+\ifx\undefined\interactive
+%    \end{macrocode}
+%    If \cw{interactive} was not predefined, then check to see if
+%    jobname = \verb"listout". In that case assume \cw{interactive}
+%    mode is wanted.
+%    \begin{macrocode}
+  \def\next{listout}%
+%    \end{macrocode}
+%    Convert the letters inside \cw{next} to category 12, for
+%    comparison to \cw{jobname}.
+%    \begin{macrocode}
+  \edef\next{\xmeaning\next}%
+  \edef\jobname{\jobname}%
+  \ifx\next\jobname
+    \let\interactive\TRUE
+  \else
+    \let\interactive\FALSE
+  \fi
+\else
+  \let\interactive\TRUE
+\fi
+%    \end{macrocode}
+%
+%    Note that the following \cw{fi} must be on the same line as the
+%    \cw{endinput}.
+%    \begin{macrocode}
+\if\interactive
+\else \restorecatcodes \endinput \fi
+%    \end{macrocode}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \newpage
+% \section{Final preparations}
+%
+% \begin{macro}{\printfiles}
+%    If the menu system is not needed, we want to skip all the loading
+%    of it. So we define a function \cw{printfiles} which can be
+%    executed either before or after loading the menu
+%    system. If the user doesn't choose to enter the menu system, then
+%    executing \cw{printfiles} will carry the current \tex/ run to
+%    completion and the remainder of \fn{listout.tex}, comprising all
+%    the menu system, will be ignored. Otherwise \cw{printfiles} will be
+%    called later, after leaving the menu system.
+%    \begin{macrocode}
+\def\printfiles{%\reportlayout
+  \mesj{OK, let's print some files.}%
+  \begingroup
+%    \end{macrocode}
+%    Execute and clear \cw{listoutsetup} to avoid unnecessary
+%    repetition in multiple-file runs.
+%    \begin{macrocode}
+  \listoutsetup \let\listoutsetup\relax
+%    \end{macrocode}
+%    Prompt for file names and print files until the user enters an
+%    empty file name.
+%    \begin{macrocode}
+  \fileloop
+  \endgroup
+  \listoutfinish
+%    \end{macrocode}
+%    Execute \latex/ \cw{@@end} first; if it is not defined, then \tex/
+%    will proceed to execute the other \cw{end}. This enables
+%    the \fn{listout} utility to work both with \latex/ and plain \tex/.
+%    \begin{macrocode}
+  \csname \string @\string @end\endcsname
+  \end
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\numberoffiles}
+%    Keep track of the number of files printed so that an
+%    informational message can be sent at the end of the run.
+%    \begin{macrocode}
+\newcount\numberoffiles
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\fileloop}
+%
+%    \begin{macrocode}
+\def\fileloop{%
+  \promptmesj{!File name? (<return> to stop): }%
+  \readline{}\reply
+  \ifx\reply\@empty
+  \else
+    \global\advance\numberoffiles 1 \relax
+  \afterfi
+    \xp@\listout\xp@{\reply}%
+    \fileloop
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\DVImesj}
+%    If \cw{jobname} = \fn{listout} then the final star in the middle
+%    line will line up properly.
+%    \begin{macrocode}
+\fxmesj\DVImesj{%
+*******************************************************************
+*     DVI file name is \jobname.dvi                                *
+*******************************************************************}
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+\mesj{
+:---------------------------------------------------------------------
+:  This is listout.tex: a tool for printing out `verbatim' listings of
+:  text files with reasonably robust, and customizable, handling of
+:  overlong lines, tab characters and other special characters, number
+:  of columns, font size/line spacing, et cetera.
+:---------------------------------------------------------------------
+:  For additional information (e.g., about noninteractive use), or to
+:  change option settings, enter
+:    m   or   M
+:  to enter the listout.tex menu system. Otherwise just press the
+:  <return> key to continue:
+:}
+\message{:?: }
+%    \end{macrocode}
+%
+%    Don't put up the full menu unless it's requested. Use
+%    \cw{expandafter} to throw the \cw{printfiles} command beyond the
+%    \cw{fi}, since it will end the job.
+%    \begin{macrocode}
+\readChar{X}\reply
+\if M\reply \else\xp@\printfiles\fi
+%    \end{macrocode}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%    \begin{macrocode}
+\message{Starting up the listout.tex menu system . . .}
+%    \end{macrocode}
+%
+% \section{Menu system startup}
+%    Some of the following definitions merely reiterate defaults from
+%    \fn{menus.sty}, for the record.
+% \begin{macro}{\menuprefix}
+%    \begin{macrocode}
+\storexmesj\menuprefix{
+======================================================================
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menusuffix}
+%    \begin{macrocode}
+\storexmesj\menusuffix{
+         Q  Quit         X  Exit        ?  Help
+======================================================================
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\inmenuA}
+% \begin{macro}{\inmenuB}
+%    \begin{macrocode}
+\storexmesj\inmenuA{
+}
+\storexmesj\inmenuB{
+}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\menuhelpmesj}
+%
+%    Add more to the standard help message defined by \fn{menus.sty}.
+%
+%    \begin{macrocode}
+\fxmesj\menuhelpmesj{%
+======================================================================
+--- <return> means the carriage return, or `Enter', key.
+--- When selecting items from a menu with letter labels, you can enter
+your choice in lowercase or uppercase.
+--- A prompt that asks for `TeX units' requires in response a
+measurement using the units recognized by TeX, for example
+
+      cm  mm  in  pt  pc  dd  cc
+
+--- A response of Q will usually send you back to the previous menu.
+--- A response of X will get you entirely out of the menu system.
+======================================================================
+To continue, press the <return> key . . .}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\confirm}
+%
+%    \begin{macrocode}
+\def\confirm#1{\xmesj{\
+* #1}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mainmenu}
+%
+%    \begin{macrocode}
+\fmenu\mainmenu{
+                    MAIN  MENU
+}{
+A  Action for new files            L  Line numbers
+B  Breaking lines                  M  Margins
+C  Column width/height             N  Number of columns
+D  Date/time form                  O  Orientation
+E  Expectoration                   P  Paper size
+F  Font, line spacing              R  Running heads/feet
+G  General information             S  System info
+H  Heading/title for each file     T  Tab treatment
+I  Info about current settings     V  Various other things
+}{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moption}
+%    The command \cw{moption} without any menu-letter suffixes is the
+%    main menu presentation function.
+%    \begin{macrocode}
+\def\moption{\mainmenu \readChar{Q}\reply
+  \let\prevmenu\@empty \let\curmenu\@empty \optionexec\reply}
+%    \end{macrocode}
+% \end{macro}
+%
+% \write16{Page \thepage: full menu printout begins here; you might}
+% \write16{want to omit these pages when printing, to save paper.}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option A}
+%
+% \begin{macro}{\menuA}
+%    Submenu for selecting various new file actions.
+%    \begin{macrocode}
+\fmenu\menuA#1{
+The various actions possible at the beginning of a new file are:
+}{
+S  Space (one line of blank space, but not a new column,
+     at the beginning of each new file)
+C  New column
+P  New page
+R  New page and right-hand column
+}{
+These options are mutually exclusive. The currently selected option
+is #1. See also option H in the main menu.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionA}
+%    \begin{macrocode}
+\def\moptionA{\menuA{\newfileoption}%
+  \readChar{Q}\reply \optionexec\reply}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionAS}
+%    \begin{macrocode}
+\def\moptionAS{\def\newfileoption{S}%
+  \confirm{%
+  Each file will start immediately after the preceding file, with\
+* some intervening blank space.}%
+  \popoptions\moptionQ}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionAC}
+%    \begin{macrocode}
+\def\moptionAC{\def\newfileoption{C}%
+  \confirm{%
+  Each file will start at the top of the next column.}%
+  \popoptions\moptionQ}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionAP}
+%    \begin{macrocode}
+\def\moptionAP{\def\newfileoption{P}%
+  \confirm{%
+  Each file will start on a new page.}%
+  \popoptions\moptionQ}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionAR}
+%
+%    \begin{macrocode}
+\def\moptionAR{\def\newfileoption{R}%
+  \confirm{%
+  Each file will start on a new page, in the right-hand column.}
+  \popoptions\moptionQ}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option B}
+%
+% \begin{macro}{\menuBtest}
+%    Line breaking.
+%    \begin{macrocode}
+\def\menuBtest{%
+  \ifx\spacebreak\@empty
+    \ifx\breakingchars\@empty
+Long lines will not be broken.%
+    \else
+Extra line breaks will be allowed after the characters\
+\
+\ \ \ \ \ \breakingchars\
+      \ifdim\overrun=\z@
+      \else\
+(with overrun of \the\overrun\space allowed).%
+      \fi
+    \fi
+  \else
+    \ifx\breakingchars\@empty
+Extra line breaks will be allowed at spaces.%
+    \else
+Extra line breaks will be allowed at spaces and\
+after the characters\
+\
+\ \ \ \ \ \breakingchars\
+    \fi
+    \ifdim\overrun=\z@
+    \else\
+(with overrun of \the\overrun\space allowed).%
+    \fi
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuB}
+%    \begin{macrocode}
+\fxmenu\menuB{
+Files being printed sometimes contain unusually long lines.
+You can choose the action that will be taken for overlong lines:
+}{
+N  No line breaking allowed
+S  Allow breaks at spaces only
+C  Allow line breaks at other characters
+O  Change the overrun amount
+}{
+Current setting: &\menuBtest
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionB}
+%    \begin{macrocode}
+\def\moptionB{\lettermenu{B}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionBS}
+%    \begin{macrocode}
+\def\moptionBS{%
+  \let\spacebreak\markedbreak \let\breakingchars\@empty
+  \overrun\rightmargin \let\noextralinebreaks\FALSE
+  \confirm{\menuBtest}\popoptions\moptionQ
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionBN}
+%    \begin{macrocode}
+\def\moptionBN{%
+  \let\spacebreak\@empty \let\breakingchars\@empty
+  \overrun=\rightmargin
+  \confirm{\menuBtest}\popoptions\moptionQ
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionBO}
+%    \begin{macrocode}
+\def\moptionBO{%
+  \promptmesj{Desired overrun value [TeX units] ? }%
+  \readline{Q}\reply
+  \if\xoptiontest\reply
+  \else
+    \checkdimen\reply\dimen@
+    \ifdim\dimen@=-\maxdimen
+    \else
+      \overrun\reply\relax
+      \confirm{New overrun value = \the\overrun.}%
+      \def\reply{Q}%
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionBC}
+%    One reason for automatically adding the space character to the
+%    list of breaking chars is that otherwise we would have to caution
+%    the user against typing the space at the end of the line when
+%    responding to the prompt; since \tex/ removes character 32 at the
+%    end of a line, we have no way of finding out whether one was
+%    typed there or not.
+%    \begin{macrocode}
+\def\moptionBC{%
+  \xmesj{%
+Enter a list of characters. Line breaks will be allowed after any\
+character in the list.\
+Note: if this list is nonempty breaks will be allowed at spaces,\
+even if you didn't include a space in the list.}%
+  \readline{}\breakingchars
+  \ifx\@empty\breakingchars
+  \else \let\spacebreak\markedbreak\fi
+  \let\noextralinebreaks\FALSE
+  \overrun=\rightmargin
+  \confirm{\menuBtest}%
+  \popoptions\moptionQ
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option C}
+%
+% \begin{macro}{\menuC}
+%    \cw{columnwidth} is the value as originally given, including the
+%    original units; may be a dimension variable or a character
+%    string. The corresponding internal variable is \cw{colwd}. If we
+%    did not maintain \cw{columnwidth} separately from \cw{colwd}, we
+%    could not later echo the original units on-screen to the user,
+%    since that information is lost in the act of storing the width in
+%    \cw{colwd}. Similarly for \cw{columnheight}.
+%    \begin{macrocode}
+\fxmenu\menuC{
+Column width is normally computed automatically, from the specified
+paper width, number of columns, margins, and intercolumn space.
+However, if you provide an explicit value for column width it will
+be used and the right margin will be adjusted as necessary.
+Similarly, column height is computed automatically from the
+paper height and the top and bottom margins, unless you provide an
+explicit value.
+}{
+W  Change column width
+H  Change column height
+I  Change intercolumn space
+}{
+Current column width: &\columnwidth.
+Current column height: &\columnheight.
+Current intercolumn space: &\the&\intercolspace.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionC}
+%    \begin{macrocode}
+\def\moptionC{\lettermenu C}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionCW}
+%    \begin{macrocode}
+\def\moptionCW{%
+  \xmesj{%
+For width in characters, enter just a number; otherwise enter a\
+measurement using standard TeX units. To revert to automatic computing\
+of the column width, give an empty reply (i.e., just press <return>).}%
+  \message{Column width: }%
+  \readline{}\reply
+  \ifx\reply\@empty
+    \let\dependentcolwd\TRUE
+    \if\dependentrightmargin \computerfc \else \computefc \fi
+    \def\reply{A}% report new value through \moptionCWA
+  \fi
+  \if\xoptiontest\reply
+  \else
+    \checkdimen\reply\dimen@
+    \ifdim\dimen@=-\maxdimen
+      \checkinteger\reply\count@
+      \ifnum\count@=-\maxdimen
+      \else
+%    \end{macrocode}
+%    A misspelled unit name, \eg. {\tt im} instead of {\tt in}, will
+%    lead to this branch; maybe we should try to check whether the
+%    answer contained letters after the digits and if so attempt an
+%    explanation about possibly misspelled unit name. On the other
+%    hand maybe that's too much work.
+%    \begin{macrocode}
+        \colwd.5em \multiply\colwd\count@\relax
+        \edef\columnwidth{\the\count@\space characters}%
+        \let\dependentcolwd\FALSE
+        \def\reply{A}%
+      \fi
+    \else
+      \colwd\dimen@ \let\columnwidth\reply \let\dependentcolwd\FALSE
+      \def\reply{B}%
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionCWA}
+%    \begin{macrocode}
+\def\moptionCWA{%
+  \confirm{Column width set to \columnwidth.}%
+  \popoptions\moptionQ}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionCWB}
+%    \begin{macrocode}
+\def\moptionCWB{%
+  \confirm{Column width set to \columnwidth\space (= \the\colwd)}%
+  \popoptions\moptionQ}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionCH}
+%    \begin{macrocode}
+\def\moptionCH{%
+  \xmesj{%
+For height in lines, enter just a number; otherwise enter a\
+measurement using standard TeX units. To revert to automatic computing\
+of the column height, give an empty reply (i.e., just press <return>).}%
+  \message{Column height: }%
+  \readline{}\reply
+  \ifx\reply\@empty
+    \let\dependentcolht\TRUE
+    \if\dependentbottommargin \computebc \else \computec \fi
+    \def\reply{A}% report new value through \moptionCWA
+  \fi
+  \if\xoptiontest\reply
+  \else
+    \checkdimen\reply\dimen@
+    \ifdim\dimen@=-\maxdimen
+      \checkinteger\reply\count@
+      \ifnum\count@=-\maxdimen
+      \else
+        \let\dependentcolht\FALSE
+        \colht\baselineskip \multiply\colht\count@
+        \advance\colht -\baselineskip \advance\colht\topskip
+        \computeb
+        \edef\columnheight{\the\count@\space lines}%
+        \def\reply{A}%
+      \fi
+    \else
+      \colht\dimen@ \let\columnheight\reply
+      \let\dependentcolht\FALSE \computeb
+      \def\reply{B}%
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionCHA}
+%    \begin{macrocode}
+\def\moptionCHA{%
+  \confirm{Column height set to \columnheight.\
+* (Bottom margin adjusted to \the\bottommargin.)}%
+  \popoptions\moptionQ}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionCHB}
+%
+%    \begin{macrocode}
+\def\moptionCHB{%
+  \confirm{Column height set to \columnheight\space (= \the\colht)\
+* (Bottom margin adjusted to \the\bottommargin.)}%
+  \popoptions\moptionQ}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionCI}
+%    \begin{macrocode}
+\def\moptionCI{%
+  \promptmesj{Enter desired intercolumn space [TeX units]: }%
+  \readline{Q}\reply
+  \ifx\optiontest\reply
+  \else
+    \checkdimen\reply\dimen@
+    \ifdim\dimen@=-\maxdimen
+    \else
+      \intercolspace=\dimen@
+      \confirm{%
+Intercolumn space set to \reply\space (= \the\intercolspace).}%
+      \if\linenumbers\ifdim\intercolspace<12\p@
+      \confirm{\
+* Warning: small intercolumn space, might not be big enough\
+* for line numbers to fit ...}%
+      \fi\fi
+      \def\reply{Q}%
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option D}
+%
+% \begin{macro}{\menuD}
+%    \begin{macrocode}
+\fxmenu\menuD{}{
+D  Change date format
+S  Change separator character
+Z  &\if&\keepleadingzeros\.Omit&\else\.Add&\fi %
+leading zeros in the day and month
+T  Change time format
+}{
+Current date and time format is `&\todaysdate &\nowtime'.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionD}
+%
+%    \begin{macrocode}
+\def\moptionD{\lettermenu D}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuDD}
+%
+%    \begin{macrocode}
+\fxmenu\menuDD{
+Date options:
+}{
+A  &\dateA
+B  &\dateB
+C  &\dateC
+D  &\dateD
+E  &\dateE
+F  &\dateF
+G  &\dateG
+H  &\dateH
+I  &\dateI
+J  &\dateJ
+}{
+Current date format is &\todaysdate.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionDD}
+%
+%    Valid responses to this menu are \qc{\A}--\qc{\J}, \qc{\Q},
+%    \qc{\X}, or \qc{\?}. Rather than define submenus \cw{moptionDDA},
+%    \cw{moptionDDB}, \ldots, we use \tex/'s \verb'`'\meta{character}
+%    feature to convert the character in \cw{reply} to a number, so
+%    that a simple numeric test can be used to see if the reply is in
+%    range.
+%
+%    \begin{macrocode}
+\def\moptionDD{\menuDD \readChar{Q}\reply
+  \count@=\xp@`\reply\relax
+%    \end{macrocode}
+%    A = 65 \ascii/, J = 74 \ascii/
+%    \begin{macrocode}
+  \ifnum\count@>64 \ifnum\count@<75
+%    \end{macrocode}
+%    We use \cw{def} rather than \cw{let} here so that we can record
+%    the current date format in the \fn{.los} file with
+%    \cw{expandafter}\cw{string} (see \cw{logoptionsettings}).
+%    Otherwise we would probably have to use a separate variable just
+%    to keep track of the date format letter.
+%    \begin{macrocode}
+    \xp@\def\xp@\todaysdate\xp@{\csname date\reply\endcsname}%
+    \confirm{New date form: \todaysdate}%
+    \def\reply{Q}%
+  \fi\fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionDS}
+%    \begin{macrocode}
+\def\moptionDS{\promptmesj{!%
+Current separator character between the parts of a date is
+`\datesepchar'.!%
+New separator: }%
+  \readchar{}\reply
+  \if Q\reply
+    \confirm{Date separator char unchanged.}%
+  \else
+    \if ?\reply
+    \else
+      \if X\reply
+        \confirm{Date separator char unchanged.}%
+      \else
+        \let\datesepchar\reply
+        \confirm{New date format: \todaysdate.}%
+        \def\reply{Q}%
+      \fi
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionDZ}
+%\mjd{Maybe date-time-reset doesn't need to do \themonth,\theday?}
+%    \begin{macrocode}
+\def\moptionDZ{%
+  \if\keepleadingzeros
+    \let\keepleadingzeros\FALSE
+    \edef\themonth{\number\month}\edef\theday{\number\day}%
+  \else
+    \let\keepleadingzeros\TRUE
+    \edef\themonth{\twodigits\month}\edef\theday{\twodigits\day}%
+  \fi
+  \confirm{Leading zeros will
+    \if\keepleadingzeros NOT \else \fi
+    be omitted in day and month numbers}%
+  \def\reply{Q}\optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuDT}
+%    \begin{macrocode}
+\fxmenu\menuDT{
+Time format options:
+}{
+A  &\timeA (HoursMinutes, 24-hour cycle)
+B  &\timeB (Hours:Minutes, 24-hour cycle)
+C  &\timeC (12-hour cycle)
+D  &\timeD
+E  &\timeE
+F  &\timeF
+}{
+Current time format is &\nowtime.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionDT}
+%    If the user's reply to the time menu is one of the valid letters
+%    (A\ndash F), we define \cw{nowtime} to be \cw{timeX}, where {\tt
+%    X} represents the reply letter.
+%    \begin{macrocode}
+\def\moptionDT{\menuDT \readChar{Q}\reply
+  \if A\if B\reply A\else\if C\reply A\else\if D\reply A\else
+       \if E\reply A\else\if F\reply A\else\reply\fi\fi\fi\fi\fi
+    \xp@\def\xp@\nowtime\xp@{\csname time\reply\endcsname}%
+    \def\reply{Z}%
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionDTZ}
+%    \begin{macrocode}
+\def\moptionDTZ{\confirm{New time format: \nowtime}%
+  \popoptions\moptionQ}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option E}
+%
+% \begin{macro}{\menuE}
+%    \begin{macrocode}
+\fmenu\menuE{
+This option allows you to save all the current option settings in a
+file for later reuse. If you use the file name `default.los' the saved
+settings will be used as defaults for future runs. Or you can use
+different file names to have multiple saved sets of option settings.
+}{
+S  Save settings
+L  Load saved settings from file
+D  Specify a default directory/folder for .los files
+}{
+The last option allows you to specify a location if you want to
+keep listout.tex and all its .los files in a particular directory or
+folder. This works best if the given location is one searched
+automatically by TeX (e.g., by being included in the `TeX inputs path').
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionE}
+%    \begin{macrocode}
+\def\moptionE{\lettermenu{E}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\losname}
+% \begin{macro}{\losdir}
+%    \begin{macrocode}
+\def\losname{default}
+\def\losdir{}
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+
+% \begin{macro}{\lossorrymessage}
+%    \begin{macrocode}
+\def\lossorrymessage{\message{%
+? Could not create `\losdir\losname.los';
+maybe there was a system problem.}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\currentdir}
+%    Default for \cw{currentdir} is empty, to avoid creating problems
+%    for less-knowledgeable users.
+%    \begin{macrocode}
+\def\currentdir{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionES}
+%    \begin{macrocode}
+\def\moptionES{\xmesj{\
+Enter the desired file name. The default name (if you just press the\
+<return> key) is `default'. A file extension `.los' will be added\
+automatically:}%
+  \readline{default}\reply
+  \edef\losname{\reply}%
+  \def\next##1.los##2##3\next{\ifx\relax##2\else
+    \def\losname{##1}\fi}
+  \xp@\next\losname.los\relax\next
+  \confirm{%
+File name: `\losname.los' ---OK? If not, enter n or N to cancel:}%
+  \readChar{Y}\reply
+  \if Y\reply
+    \edef\losfirstline{\xp@\@gobble\string
+\% Option settings for listout.tex, \todaysdate\space\nowtime}%
+    \immediate\openout15=\losdir\losname.los \relax
+    \logoptionsettings{15}%
+    \immediate\closeout15 \relax
+%    \end{macrocode}
+%    Check to make sure the file was created.
+%    \begin{macrocode}
+    \openin15=\losdir\losname.los \relax
+    \ifeof15 \lossorrymessage
+%    \end{macrocode}
+%    If \fn{xxxxx.los} exists and is nonempty, it's still not certain
+%    that we have not opened some other file named \fn{xxxxx.los}, such
+%    as a default version located somewhere else in the tex-inputs
+%    search path. We check this possibility by looking at the first
+%    line, which has embedded the date and time of the \tex/ run that
+%    produced the file.
+%    \begin{macrocode}
+    \else \testlocation \fi
+    \closein15 \relax
+  \fi
+  \popoptions\moptionQ
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\testlocation}
+%    \begin{macrocode}
+\def\testlocation{%
+  \begingroup
+    \catcode`\%=12 \catcode`\\=12 \catcode\endlinechar=9
+    \read15 to\next
+    \ifx\next\losfirstline
+      \confirm{%
+New `\losname.los' file successfully created}%
+%    \end{macrocode}
+%    There is one other possibility left to be checked: if the current
+%    directory is excluded from the tex-inputs search path  (\eg.,
+%    under Unix typically `\qc{\.}' must be explicitly included in the
+%    search path to always have the current directory searched) then
+%    it is possible that the option settings file will be created OK
+%    but will not be accessible to \fn{listout.tex} through \cw{input}.
+%    \begin{macrocode}
+      \ifx\losdir\@empty
+        \testinputtable
+      \else
+        \message{%
+(in location `\losdir')}%
+      \fi
+    \else
+      \lossorrymessage
+    \fi
+  \endgroup
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\testinputtable}
+%    This function tests if the \fn{.los} file written to the default
+%    directory is inputtable. The method is to make the percent
+%    character temporarily active (there is a
+%    \cw{begingroup}\ldots\cw{endgroup} pair enclosing the
+%    \cw{testinputtable} call) and define it to read the first line of
+%    the \fn{.los} file, compare it to the expected string, and issue
+%    a warning message if it doesn't match.
+%    \begin{macrocode}
+\def\testinputtable{%
+  \actively\def\%##1@{%
+    \edef\next{\xp@\@gobble\string\%##1}%
+    \ifx\next\losfirstline
+    \else
+      \message{%
+... but guess what: it seems to be inaccessible for \nx@\input by TeX%
+      }%
+    \fi
+    \endinput}%
+  \endlinechar`\@ \relax
+  \input\losname.los \relax
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionEL}
+%    \begin{macrocode}
+\def\moptionEL{\xmesj{\
+Enter the name of the desired option file:}%
+  \readline{}\reply
+  \ifx\@empty\reply
+  \else
+    \def\next##1.los##2##3\next{\ifx\relax##2\else
+      \def\reply{##1}\fi}
+    \xp@\next\reply.los\relax\next
+    \xmesj{\
+Attempting to load \reply.los . . .}%
+    \input\reply.los\space\relax
+  \fi
+  \def\reply{Q}\optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionED}
+%    \begin{macrocode}
+\def\moptionED{\xmesj{\
+Current location name is `\losdir'.\
+Enter a new location name (directory or folder or whatever, depending\
+on your system). For Unix or DOS, make sure you include the final\
+slash. (For DOS, use slashes instead of backslashes.) Just press\
+<return> if you want to leave the current location unchanged:}%
+  \readline{}\reply
+  \ifx\@empty\reply
+  \else
+    \let\losdir\reply
+    \confirm{Location name is now: `\losdir'}%
+  \fi
+  \def\reply{Q}\optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option F}
+%
+% \begin{macro}{\menuF}
+%    \begin{macrocode}
+\fxmenu\menuF{}{
+F  Change font
+S  Change font size
+L  Change line spacing
+T  Test font availability
+N  Add new font
+}{
+Current settings: &\mainfont &\mainfontsize / &\the&\baselineskip.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionF}
+%
+%    \begin{macrocode}
+\def\moptionF{\lettermenu F}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\genfontmenu}
+%
+%    \begin{macrocode}
+\fxmenu\genfontmenu{
+&\firstpart
+Font choices:
+}{
+R  Roman
+B  Bold
+I  Italic
+T  Typewriter
+S  Sans serif
+}{
+Current choice is `&\fonttoget'.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\getfont}
+%    \cw{getfont} is a higher-level function to call \cw{genfontmenu}.
+%    The arguments required by \cw{getfont} are \qarg{1} font style
+%    control sequence, \ie. something like \cw{linenumberfont} whose
+%    definition is `bold' or `italic' or `typewriter'; \qarg{2} text to
+%    add above the basic list of font choices, \qarg{3} font description
+%    such as `Main' or `Line number'.
+%    \begin{macrocode}
+\def\getfont#1#2#3{%
+  \let\fonttoget#1\def\firstpart{#2}%
+  \genfontmenu \readChar{Q}\reply
+  \edef\next{\if R\reply roman%
+             \else\if B\reply bold%
+             \else\if I\reply italic%
+             \else\if S\reply sansserif%
+             \else\if T\reply typewriter%
+             \fi\fi\fi\fi\fi}%
+  \ifx\next\@empty
+  \else
+    \let#1\next \def\reply{Q}%
+    \confirm{#3 font is now `#1'.}%
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionFF}
+%
+%    \begin{macrocode}
+\def\moptionFF{\getfont\mainfont{%
+Note: Font style `typewriter' is recommended for printing computer\
+program code verbatim because the character set of most non-typewriter\
+fonts lacks certain characters such as { } | \string~ and \\ .}%
+{Main}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\wholepointsizes}
+%
+%    \begin{macrocode}
+\fmesj\wholepointsizes{
+Note: Currently only whole point sizes are supported; the fractional
+part in a fractional point size will be ignored. If a font/size
+combination is not available on your system there will be an error
+message later on when we try to load the font.
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\getfontsize}
+%
+%    \begin{macrocode}
+\def\getfontsize#1#2{\wholepointsizes
+  \mesj{Current #2 font size is #1.}%
+  \promptmesj{Desired font size? }%
+  \readline{Q}\reply
+  \if\xoptiontest\reply
+  \else
+    \checkinteger\reply\count@
+    \ifnum\count@>\z@
+      \edef#1{\the\count@}%
+      \confirm{New font size for #2: #1}%
+      \def\reply{Q}%
+%    \end{macrocode}
+%    No \cw{else} branch here: If $\cw{count@}=0$, leave \cw{reply}
+%    unchanged. This will lead to a `don't understand' message and a
+%    repeat of the same menu.
+%    \begin{macrocode}
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionFS}
+%    \begin{macrocode}
+\def\moptionFS{\getfontsize\mainfontsize{main text}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionFL}
+%    \begin{macrocode}
+\def\moptionFL{\promptmesj{Desired line spacing [TeX units] ? }%
+  \readline{Q}\reply
+  \if\xoptiontest\reply
+  \else
+    \checkdimen\reply\dimen@
+    \ifdim\dimen@>\z@
+      \normalbaselineskip\dimen@\relax \normalbaselines
+      \confirm{New line spacing: \the\normalbaselineskip}%
+      \def\reply{Q}%
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuFT}
+%    \begin{macrocode}
+\fxmenu\menuFT{
+Font to test load?
+}{
+M  main font
+T  title font
+L  line number font
+P  page number font
+H  running head font
+F  running foot font
+A  all of the above
+}{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionFT}
+%    \begin{macrocode}
+\def\moptionFT{\menuFT
+  \readChar{Q}\reply
+  \if M\reply
+    \testload\mainfont\mainfontsize
+    \def\reply{Q}%
+  \else\if T\reply
+    \testload\titlefont\titlefontsize
+    \def\reply{Q}%
+  \else\if L\reply
+    \testload\linenumberfont\linenumberfontsize
+    \def\reply{Q}%
+  \else\if P\reply
+    \testload\pagenumberfont\pagenumberfontsize
+    \def\reply{Q}%
+  \else\if H\reply
+    \testload\runheadfont\runheadfontsize
+    \def\reply{Q}%
+  \else\if F\reply
+    \testload\runfootfont\runfootfontsize
+    \def\reply{Q}%
+  \else\if A\reply
+    \testload\mainfont\mainfontsize
+    \testload\pagenumberfont\pagenumberfontsize
+    \testload\titlefont\titlefontsize
+    \testload\linenumberfont\linenumberfontsize
+    \testload\runheadfont\runheadfontsize
+    \testload\runfootfont\runfootfontsize
+    \def\reply{Q}%
+  \fi\fi\fi\fi\fi\fi\fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\testload}
+%    \begin{macrocode}
+\def\testload#1#2{\loadfont#1#2\relax
+  \xp@\ifx\csname#1#2\endcsname\nullfont
+    \confirm{Unsuccessful font load...}%
+  \else
+    \confirm{Font successfully loaded.}%
+  \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuFN}
+%    \begin{macrocode}
+\fxmesj\menuFN{
+To use a custom font you must give two pieces of information: the
+name of the font metrics file (.tfm file), not including the .tfm
+extension, and a magnification (using TeX's standard notation: 1000 =
+100\%, 1200 = 120\%, ...).
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionFN}
+%    \begin{macrocode}
+\def\moptionFN{\menuFN
+  \promptmesj{OK, first give the font name: }%
+  \readline{Q}\reply
+  \if\xoptiontest\reply
+  \else
+    \let\mainfont\reply
+    \def\reply{Q}%
+    \promptmesj{Font magnification? [default=1000]: }%
+    \readline{1000}\reply
+    \if\xoptiontest\reply
+    \else
+      \checkinteger\reply\count@
+      \ifnum\count@>100 %
+        \let\mainfontsize\reply
+        \def\reply{Q}%
+      \fi
+    \fi
+    \xmesj{\
+Attempting to load new font `\mainfont\ scaled \mainfontsize'; if you\
+get an error message, press RETURN to continue, and try again.\
+    }%
+  \testload\mainfont\mainfontsize
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option G}
+%
+% \begin{macro}{\menuGa}
+% \begin{macro}{\menuGb}
+%    \begin{macrocode}
+\fmesj\menuGa{
+:  General information on a couple of subjects:
+:
+:  ---Non-interactive usage: Create a driver file containing
+:
+:   \input listout
+:   %    Change options here, if desired
+:   \listout{first.file}
+:   \listout{second.file}
+:   ...
+:   \listoutfinish
+:   \end
+:
+:  The \listoutfinish command is required to support the possibility
+:  where multiple files are printed running together without intervening
+:  page breaks. To find out how to change options, look at the file
+:  default.los.
+:
+:  Press <return> to continue . . .}
+%
+\fmesj\menuGb{
+:  ---Treatment of control characters and eight-bit characters: The
+:  default behavior is to assume no knowledge about the meaning of
+:  characters in the range 0--31 and 127--255, because depending on the
+:  source, the intended meaning of one of these characters in a given
+:  file can vary widely. And the default main font (cmtt) can't handle
+:  characters above 127 anyway. In order to preserve vertical alignment
+:  when printing with a monospace font (the usual case) control
+:  characters aren't printed as multicharacter sequences (e.g. ^^F), but
+:  as boxed letters. The first control character encountered in a file
+:  will generate a warning/explanatory message on screen. Similarly,
+:  characters above ASCII 126 are printed simply as boxed question
+:  marks. This behavior can be overridden by changing the main font to a
+:  256-character font and choosing the 8-bit option in the V menu.
+:
+:  Press <return> to continue . . .}
+
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\moptionG}
+%    \begin{macrocode}
+\def\moptionG{\menuGa\readline{}\reply\menuGb\readline{}\reply \moptionQ}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option H}
+%
+% \begin{macro}{\menuH}
+%    \begin{macrocode}
+\fxmenu\menuH{}{
+T  Turn filename titles&\if&\printtitles off&\else on&\fi
+F  Change font of titles
+S  Change font size
+C  Change capitalization
+}{
+Current settings: %
+&\titlefont &\titlefontsize, capitalization = &\titlecase.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionH}
+%    \begin{macrocode}
+\def\moptionH{\lettermenu H}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionHT}
+%    \begin{macrocode}
+\def\moptionHT{%
+  \if\printtitles \let\printtitles\FALSE
+  \else \let\printtitles\TRUE \fi
+  \confirm{%
+The name of each file \if\printtitles WILL \else will NOT \fi
+be printed as a title at the\
+* beginning of the file.
+}%
+  \if\printtitles\else\popoptions\fi
+  \moptionQ
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionHF}
+%
+%    \begin{macrocode}
+\def\moptionHF{\getfont\titlefont{}{Title}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionHS}
+%
+%    \begin{macrocode}
+\def\moptionHS{\getfontsize\titlefontsize{titles}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuHC}
+%    \begin{macrocode}
+\fxmenu\menuHC{
+Title capitalization choices:
+}{
+N  None
+L  Lowercase
+U  Uppercase
+}{
+Current choice is &\titlecase.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionHC}
+%
+%    \begin{macrocode}
+\def\moptionHC{\menuHC \readChar{Q}\reply
+  \if L\reply
+    \def\titlecase{lowercase}%
+    \confirm{Capitalization is now: lowercase.}%
+    \def\reply{Q}%
+  \else\if U\reply
+    \def\titlecase{uppercase}%
+    \confirm{Capitalization is now: uppercase.}%
+    \def\reply{Q}%
+  \else\if N\reply
+    \def\titlecase{none}%
+    \confirm{Capitalization is now: none.}%
+    \def\reply{Q}%
+  \fi\fi\fi
+  \optionexec\reply}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option I}
+%
+% \begin{macro}{\menuIa}
+%    \begin{macrocode}
+\fxmesj\menuIa{
+Current option settings:
+Orientation: &\if&\landscape landscape&\else portrait&\fi
+Paper size: &\paperwidth x &\paperheight (&\the\pawd x &\the\paht)
+Margins: Top &\the\topmargin, bottom &\the\bottommargin,
+  left &\the\leftmargin, right &\the\rightmargin
+&\number\totalcols columns, column width = &\columnwidth (&\the\colwd),
+Column height: &\columnheight (&\the\colht)
+Intercolumn space: &\the\intercolspace
+Full width of text area: &\the\fullwd
+Main font: &\mainfont &\mainfontsize
+Linespacing: &\the\normalbaselineskip
+Each new file starts%
+&\if\.S&\newfileoption%
+ immediately after the previous file.
+&\else&\if\.C&\newfileoption%
+ at the top of a new column.
+&\else&\if\.P&\newfileoption%
+ on a new page.
+&\else&\if\.R&\newfileoption%
+ on the right-hand-side of a new page.
+&\else ??? unknown.
+&\fi&\fi&\fi&\fi%
+File names are &\if&\printtitles&\else\.not&\fi%
+  printed as titles at the beginning of each file.
+&\if&\printtitles%
+File name font: &\titlefont &\titlefontsize
+File name capitalization: &\titlecase
+&\fi%
+Date and time print in the form &\todaysdate and &\nowtime.
+Line numbers are turned%
+&\if&\linenumbers ON, font &\linenumberfont &\linenumberfontsize,
+  every &\number\linenumberfreq line%
+&\ifnum&\linenumberfreq=1 &\else s&\fi
+&\else OFF&\fi
+Press <return> to continue: }
+% \end{macro}
+%
+% \begin{macro}{\menuIb}
+%    \begin{macrocode}
+\fxmesj\menuIb{
+Page number font: &\pagenumberfont&\pagenumberfontsize
+Running heads are turned &\if&\runheads ON:
+  &\the\runhead,
+  font &\runheadfont &\runheadfontsize,
+  runhead takes up &\the\runheadht from column height.
+&\else OFF &\fi
+Running feet are turned &\if&\runfeet ON:
+  &\the\runfoot,
+  font &\runfootfont &\runfootfontsize,
+  runfoot takes up &\the\runfootht from column height.
+&\else OFF &\fi
+Tabs are printed &\number\spacespertab characters wide, %
+in style `&\tabstyle'.
+&\if&\noextralinebreaks%
+Line breaks are preserved exactly as in the original file.
+&\else%
+Extra line breaks are allowed at spaces and/or other characters.
+Text is allowed to overrun right margin by &\the\overrun.
+&\fi%
+Control-L is defined to &\if\.N&\controlLaction%
+end the current column.
+&\else print as &\if\.L&\controlLaction%
+a one-line vertical space.
+&\else%
+a boxed L.
+&\fi&\fi%
+System type is set to &\systemtype.
+Directory for .los files: &\losdir
+Directory prefix for file name titles: &\dirprefix
+Press <return> to continue: }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionI}
+%    \begin{macrocode}
+\def\moptionI{\menuIa \readline{}\reply \menuIb
+  \readChar{Q}\reply \optionexec\reply}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option L}
+%
+% \begin{macro}{\menuL}
+%    \begin{macrocode}
+\fxmenu\menuL{}{
+T  Turn line numbers&\if&\linenumbers off&\else on&\fi
+F  Change font of line numbers
+S  Change font size of line numbers
+N  Change numbering frequency
+}{&\if&\linenumbers
+Current settings: &\linenumberfont &\linenumberfontsize, %
+numbering every&\ifnum&\linenumberfreq=1 line%
+&\else &\the&\linenumberfreq lines&\fi.%
+&\fi%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionL}
+%
+%    \begin{macrocode}
+\def\moptionL{\lettermenu L}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionLT}
+%    When line numbering is toggled off, pop back up to the main menu.
+%    But when line numbering is turned on, redisplay menu L in case
+%    the user wants next to change the font or numbering frequency.
+%    Also check \cw{leftmargin} (and \cw{intercolspace}, if
+%    $\cw{totalcols}>1$) to see if they seem likely to provide enough
+%    room.
+%    \begin{macrocode}
+\def\moptionLT{%
+  \if\linenumbers
+    \let\linenumbers\FALSE
+  \else
+    \let\linenumbers\TRUE
+  \fi
+  \confirm{Line numbers are switched \if\linenumbers on\else off\fi.}%
+%    \end{macrocode}
+%    This \cw{if} statement must be near the bogglitude record for \tex/
+%    conditionals.
+%    \begin{macrocode}
+  \if\if\linenumbers\ifdim\leftmargin<12\p@ T
+       \else\ifnum\totalcols>\@ne
+          \ifdim\intercolspace<12\p@ T\else F\fi
+        \else F\fi\fi\else F\fi T%
+      \confirm{\
+* You might want to check the left margin and/or intercolspace\
+* to make sure there's enough room for the line numbers.}%
+  \else\popoptions\fi
+  \moptionQ
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionLF}
+%
+%    \begin{macrocode}
+\def\moptionLF{\getfont\linenumberfont{}{Line number}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionLS}
+%
+%    \begin{macrocode}
+\def\moptionLS{\getfontsize\linenumberfontsize{line numbers}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionLN}
+%
+%    \begin{macrocode}
+\def\moptionLN{%
+  \xmesj{%
+Current line numbering frequency is every
+\ifnum\linenumberfreq=1 line%
+\else\ \number\linenumberfreq\ lines\fi.\
+New line numbering frequency? (1 = every line, 2 = every 2 lines,\
+and so forth):}%
+  \readline{Q}\reply
+  \if\xoptiontest\reply
+  \else
+    \checkinteger\reply\count@
+    \ifnum\count@>\z@
+      \linenumberfreq=\count@
+      \confirm{New line numbering frequency: \the\linenumberfreq}%
+      \def\reply{Q}%
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option M}
+%
+% \begin{macro}{\menuM}
+%    \begin{macrocode}
+\fxmenu\menuM{
+Current margin settings: top &\the&\topmargin, left &\the&\leftmargin,
+bottom &\the&\bottommargin, right &\the&\rightmargin.
+}{
+L  Change left margin
+T  Change top margin
+B  Change bottom margin
+R  Change right margin
+}{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionM}
+%
+%    \begin{macrocode}
+\def\moptionM{\lettermenu M}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuMB}
+%    \begin{macrocode}
+\fxmesj\menuMB#1{
+Current bottom margin is #1.
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+If you specify a new bottom margin, column height will be recomputed to
+come as close as possible to the desired value (nearest integer multiple
+of line spacing), taking the currently specified paper height and top
+margin into consideration. To revert to automatic computing of bottom
+margin, give an empty reply (i.e., just press the <return> key).
+Otherwise enter a measurement using TeX units:}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionMB}
+%
+%    \begin{macrocode}
+\def\moptionMB{\menuMB{\the\bottommargin}%
+  \readline{}\reply
+  \ifx\@empty\reply
+    \let\dependentbottommargin\TRUE
+    \if\dependentcolht
+      \computebc
+%    \end{macrocode}
+%    Otherwise \cw{bottommargin} should already have the correct value,
+%    no extra computation needed.
+%    \begin{macrocode}
+    \fi
+    \def\reply{Q}%
+  \else
+    \if\xoptiontest\reply
+    \else
+      \checkdimen\reply\dimen@
+      \ifdim\dimen@=-\maxdimen % not a valid dimension
+      \else
+        \bottommargin\dimen@
+        \computec
+        \confirm{New column height: \the\colht\
+* New bottom margin: \the\bottommargin}%
+        \def\reply{Q}%
+      \fi
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuML}
+%
+%    \begin{macrocode}
+\fxmesj\menuML#1{
+Current left margin is #1 (measured from the left edge of the
+paper to the left edge of the text).
+<return> to keep the current value, or enter a new value:}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionML}
+%
+%    \begin{macrocode}
+\def\moptionML{\menuML{\the\leftmargin}%
+  \readline{Q}\reply
+  \if\xoptiontest\reply
+  \else
+    \checkdimen\reply\dimen@
+    \ifdim\dimen@=-\maxdimen
+    \else
+      \leftmargin\dimen@
+      \confirm{New left margin: \the\leftmargin}%
+      \if\linenumbers\ifdim\leftmargin<12\p@
+      \confirm{\
+* Warning: small left margin, might not be big enough for line\
+* numbers to fit ...}%
+      \fi\fi
+      \def\reply{Q}%
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuMR}
+%
+%    \begin{macrocode}
+\fxmesj\menuMR#1{
+Current right margin is #1 (measured from the right edge of the
+paper to the right edge of the text). To revert to automatic
+computation of the right margin, give an empty reply; or enter a new
+value using TeX units (or enter Q or X or ? to quit/exit/get-help).
+New right margin:}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionMR}
+%
+%    \begin{macrocode}
+\def\moptionMR{\menuMR{\the\rightmargin}%
+  \readline{}\reply
+  \ifx\@empty\reply
+    \let\dependentrightmargin\TRUE
+    \rightmargin=\leftmargin
+    \confirm{New right margin: \the\rightmargin}%
+    \def\reply{Q}%
+  \fi
+  \if\xoptiontest\reply
+  \else
+    \checkdimen\reply\dimen@
+    \ifdim\dimen@=-\maxdimen
+    \else
+      \rightmargin\dimen@
+      \confirm{New right margin: \the\rightmargin}%
+      \let\dependentrightmargin\FALSE
+      \def\reply{Q}%
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuMT}
+%
+%    \begin{macrocode}
+\fxmesj\menuMT#1{
+Current top margin is #1 (measured from the top edge of the
+paper to the top of the running head or the text).
+<return> to keep the current value, or enter a new value:}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionMT}
+%
+%    \begin{macrocode}
+\def\moptionMT{\menuMT{\the\topmargin}%
+  \readline{Q}\reply
+  \if\xoptiontest\reply
+  \else
+    \checkdimen\reply\dimen@
+    \ifdim\dimen@=-\maxdimen
+    \else
+      \topmargin\dimen@
+      \confirm{New top margin: \the\topmargin}%
+      \def\reply{Q}%
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option N}
+%
+% \begin{macro}{\menuN}
+%    \begin{macrocode}
+\fxmesj\menuN#1{
+Number of columns: #1.
+<return> to keep the current value, or enter a new value
+(a number greater than 0):}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionN}
+%    \begin{macrocode}
+\def\moptionN{\menuN{\number\totalcols}%
+  \readline{Q}\reply
+  \if\xoptiontest\reply
+  \else
+    \checkinteger\reply\count@
+    \ifnum\count@=-\maxdimen
+    \else
+      \if\ifnum\count@>\z@
+         \ifnum\count@<\sixt@@n T\else F\fi\else F\fi T%
+        \chardef\totalcols=\count@
+        \if\dependentcolwd
+          \if\dependentrightmargin \computerfc \else \computefc \fi
+        \else
+          \computefr
+        \fi
+        \confirm{%
+  Number of columns: \number\totalcols\space
+  (column width: \the\colwd, %
+\ifnum\totalcols>\@ne intercolumn space: \the\intercolspace,\
+* \fi total width: \the\fullwd)}
+        \def\reply{Q}%
+      \else
+        \ifnum\count@>20
+%    \end{macrocode}
+%    The \cw{specialhelp} function defines its first argument (in this
+%    case, \cw{reply}) to be \qc{\?} and locally redefines
+%    \cw{menuhelpmesj} to substitute the given text.
+%    \begin{macrocode}
+          \specialhelp\reply
+            {Maximum number of columns is 20, sorry...}%
+        \else
+          \specialhelp\reply
+            {Number of columns must be greater than 0}%
+        \fi
+      \fi
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option O}
+%
+% \begin{macro}{\menuO}
+%    \begin{macrocode}
+\fxmenu\menuO{
+Current orientation: &\if&\landscape\.landscape.&\else\.portrait&\fi
+}{
+P  Switch to portrait orientation
+L  Switch to landscape orientation
+}{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionO}
+%
+%    \begin{macrocode}
+\def\moptionO{\menuO \readChar{Q}\reply
+  \if P\reply
+    \if\landscape \let\landscape\FALSE
+      \dimen@\paht \paht\pawd \pawd\dimen@
+    \fi
+    \confirm{Orientation is now: portrait}%
+    \def\reply{Q}%
+  \else
+    \if L\reply
+      \if\landscape \else \let\landscape\TRUE
+        \dimen@\paht \paht\pawd \pawd\dimen@
+      \fi
+      \confirm{Orientation is now: landscape}%
+      \def\reply{Q}%
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option P}
+%
+% \begin{macro}{\menuP}
+%    \begin{macrocode}
+\fxmenu\menuP{
+Current paper size: &\paperwidth x &\paperheight
+}{
+W  Change paper width
+H  Change paper height
+U  U.S. letter size paper: 8.5in x 11in
+A  A4 paper: 21cm x 29.7cm
+}{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionP}
+%
+%    \begin{macrocode}
+\def\moptionP{\lettermenu P}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionPW}
+%
+%    \begin{macrocode}
+\def\moptionPW{\promptmesj{New paper width: }%
+  \readline{Q}\reply
+  \if\xoptiontest\reply
+  \else
+    \checkdimen\reply\dimen@
+    \ifdim\dimen@=-\maxdimen
+    \else
+      \ifdim\dimen@>1cm
+        \let\paperwidth\reply
+        \pawd\dimen@
+        \confirm{New paper width: \paperwidth\space(\the\pawd)}%
+        \def\reply{Q}%
+      \else
+        \specialhelp\reply{%
+Sorry, I can't believe you really want a width of \reply!}%
+      \fi
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionPH}
+%
+%    \begin{macrocode}
+\def\moptionPH{\promptmesj{New paper height: }%
+  \readline{Q}\reply
+  \if\xoptiontest\reply
+  \else
+    \checkdimen\reply\dimen@
+    \ifdim\dimen@=-\maxdimen
+    \else
+      \ifdim\dimen@>1cm
+        \let\paperheight\reply
+        \paht\dimen@
+        \confirm{New paper height: \paperheight\space(\the\paht)}%
+        \def\reply{Q}%
+      \else
+        \specialhelp\reply{%
+Sorry, I can't believe you really want a height of \reply!}%
+      \fi
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionPU}
+%
+%    \begin{macrocode}
+\def\moptionPU{%
+  \if\landscape
+    \paht=8.5truein \pawd=11truein
+    \def\paperheight{8.5in}\def\paperwidth{11in}%
+  \else
+    \paht=11truein \pawd=8.5truein
+    \def\paperheight{11in}\def\paperwidth{8.5in}%
+  \fi
+  \confirm{New paper width: \paperwidth\space(\the\pawd)\
+* New paper height: \paperheight\space(\the\paht)%
+\if\landscape\
+(landscape)\fi}%
+  \moptionQ
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionPA}
+%
+%    \begin{macrocode}
+\def\moptionPA{%
+  \if\landscape
+    \paht=21cm \pawd=29.7cm
+    \def\paperheight{21cm}\def\paperwidth{29.7cm}%
+  \else
+    \paht=29.7cm \pawd=21cm
+    \def\paperheight{29.7cm}\def\paperwidth{21cm}%
+  \fi
+  \confirm{New paper width: \paperwidth\space(\the\pawd)\
+* New paper height: \paperheight\space(\the\paht)%
+  \if\landscape\
+  (landscape)\fi}%
+  \moptionQ
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option R}
+%
+% \begin{macro}{\menuR}
+%    \begin{macrocode}
+\fxmenu\menuR{
+Running heads are turned &\if&\runheads\.on.
+Running head contents:
+&\the&\runhead
+&\else\.off.
+&\fi%
+Running feet are turned &\if&\runfeet\.on.
+Running foot contents:
+&\the&\runfoot
+&\else\.off.
+&\fi%
+}{
+H  Change running heads
+F  Change running feet
+}{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionR}
+%
+%    \begin{macrocode}
+\def\moptionR{\lettermenu R}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuRH}
+%
+%    \begin{macrocode}
+\fmenu\menuRHorF#1{}{
+C  Change running #1 contents
+F  Change running #1 font
+S  Change running #1 font size
+}{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionRH}
+%
+%    \begin{macrocode}
+\def\moptionRH{\menuRHorF{head}\readChar{Q}\reply \optionexec\reply}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuRHC}
+%
+%    \begin{macrocode}
+\fxmesj\menuRHC{
+Current running head contents:
+&\the&\runhead
+Enter new running head contents (to turn off running heads,
+just press <return>):}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionRHC}
+%
+%    Since the user response here can be arbitrary text, we need to do
+%    some manual checking for the \qc{\?} \qc{\X} and \qc{\Q}
+%    possibilities with \cw{xoptiontest} instead of calling
+%    \cw{optionexec}.
+%    \begin{macrocode}
+\def\moptionRHC{\menuRHC
+  \xreadline{}\reply
+  \if\xoptiontest\reply
+  \else
+    \global\runhead\xp@{\reply}%
+    \ifx\reply\@empty
+      \global\let\runheads\FALSE
+    \else
+      \global\let\runheads\TRUE
+      \confirm{New running head:\
+               \the\runhead}%
+    \fi
+    \def\reply{Q}%
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionRHF}
+%
+%    \begin{macrocode}
+\def\moptionRHF{\getfont\runheadfont{}{Running head}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionRHS}
+%    \begin{macrocode}
+\def\moptionRHS{\getfontsize\runheadfontsize{running heads}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionRF}
+%    \begin{macrocode}
+\def\moptionRF{\menuRHorF{foot}\readChar{Q}\reply \optionexec\reply}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuRFC}
+%    \begin{macrocode}
+\fxmesj\menuRFC{
+Current running foot contents:
+&\the&\runfoot
+Enter new running foot contents (to turn off running feet,
+just press <return>):}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionRFC}
+%
+%    Since the user response here can be arbitrary text, we need to do
+%    some manual checking for the \qc{\?} \qc{\X} and \qc{\Q}
+%    possibilities instead of calling \cw{optionexec}.
+%    \begin{macrocode}
+\def\moptionRFC{\menuRFC
+  \xreadline{}\reply
+  \if\xoptiontest\reply
+  \else
+    \global\runfoot\xp@{\reply}%
+    \ifx\reply\@empty
+      \global\let\runfeet\FALSE
+    \else
+      \global\let\runfeet\TRUE
+      \confirm{New running foot:\
+               \the\runfoot}%
+    \fi
+    \def\reply{Q}%
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionRFF}
+%
+%    \begin{macrocode}
+\def\moptionRFF{\getfont\runfootfont{}{Running foot}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionRFS}
+%
+%    \begin{macrocode}
+\def\moptionRFS{\getfontsize\runfootfontsize{running feet}}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option S}
+%
+% \begin{macro}{\menuS}
+%    \begin{macrocode}
+\fxmenu\menuS{
+System information. Current system type is &\systemtype;
+directory prefix to be used for all files printed in this run is
+&\ifx&\@empty&\dirprefix\.null.&\else
+&\dirprefix&\fi
+}{
+S  Change system type
+D  Change directory prefix
+}{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionS}
+%    \begin{macrocode}
+\def\moptionS{\lettermenu{S}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuSS}
+%    \begin{macrocode}
+\fxmenu\menuSS{
+System type options:
+}{
+D  DOS
+M  Macintosh
+U  Unix
+V  VAX/VMS
+O  Other
+}{
+Currently this information is only used to help in printing directory
+names that may occur in the titles printed at the beginning of each
+file. Current system type is &\systemtype.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionSS}
+%    \begin{macrocode}
+\def\moptionSS{\menuSS
+  \readChar{Q}\reply
+  \if D\reply \def\systemtype{DOS}\def\currentdir{./}\def\reply{Q}%
+  \else\if M\reply
+    \def\systemtype{Macintosh}\def\currentdir{}\def\reply{Q}%
+  \else\if U\reply
+    \def\systemtype{Unix}\def\currentdir{./}\def\reply{Q}%
+  \else\if V\reply
+    \def\systemtype{VAX/VMS}%
+    \edef\currentdir{sys\string $disk:[]}\def\reply{Q}%
+  \else \def\systemtype{other}\def\currentdir{}\def\reply{Q}%
+  \fi\fi\fi\fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuSD}
+%    Directory prefix to be added in front of each filename title,
+%    when printing multiple files. \tex/ version 3.x does not provide
+%    a way to get at any part of a filename except \cw{jobname}.
+%    Therefore in order for a directory name to be printed, it has to
+%    be entered by the user somewhere along the line.
+%    \begin{macrocode}
+\fxmesj\menuSD{
+Current directory/folder prefix for all file names is
+&\ifx&\@empty&\dirprefix\.null.&\else
+  `&\dirprefix'
+&\fi
+Enter the new directory prefix below.
+(Enter Q to quit without changing the prefix.)}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionSD}
+%
+%    \begin{macrocode}
+\def\moptionSD{%
+  \menuSD
+  \readline{}\reply
+  \let\next\reply \changecase\uppercase\next
+  \if\xoptiontest\next
+    \let\reply\next
+  \else
+    \let\dirprefix\reply
+    \ifx\dirprefix\@empty
+      \confirm{Directory prefix is now null.}%
+    \else
+      \confirm{New directory name:\
+        \dirprefix\
+      }%
+    \fi
+    \def\reply{Q}%
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option T}
+%
+% \begin{macro}{\menuT}
+%    \begin{macrocode}
+\fxmenu\menuT{
+Currently tabs will print as &\tabstyle.
+The horizontal extent of each tab will be %
+&\number&\spacespertab spaces.
+}{
+T  Change tab representation
+N  Change the number of spaces per tab
+}{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionT}
+%
+%    \begin{macrocode}
+\def\moptionT{\lettermenu T}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuTT}
+%
+%    \begin{macrocode}
+\fmenu\menuTT#1{
+Tab representation choices:
+}{
+B  Blank space
+.  Dots
+-  Dashed line
+H  Hrulefill
+T  Tiny`TAB's fill
+}{
+These are better understood by trying them out than by having them
+explained in words. Current tab style is `#1'.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\reportnewtabstyle}
+%
+%    \begin{macrocode}
+\def\reportnewtabstyle#1{%
+  \chardef\tabselect=#1 \relax
+  \confirm{Tab style is now `\tabstyle'}%
+  \def\reply{Q}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionTT}
+%
+%    \begin{macrocode}
+\def\moptionTT{\menuTT\tabstyle
+  \readChar{Q}\reply
+  \if B\reply
+    \reportnewtabstyle{0}%
+  \else\if .\reply
+    \reportnewtabstyle{1}%
+  \else\if -\reply
+    \reportnewtabstyle{2}%
+  \else\if H\reply
+    \reportnewtabstyle{3}%
+  \else\if T\reply
+    \reportnewtabstyle{4}%
+  \fi\fi\fi\fi\fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionTN}
+%    \begin{macrocode}
+\def\moptionTN{%
+  \promptmesj{Enter the desired number of spaces per tab: }%
+  \readline{Q}\reply
+  \if\xoptiontest\reply
+  \else
+    \checkinteger\reply\count@
+    \ifnum\count@=-\maxdimen
+    \else
+      \ifnum\count@<256
+        \chardef\spacespertab=\count@
+        \confirm{%
+  The number of spaces per tab is now \number\spacespertab.}%
+        \def\reply{Q}%
+      \else
+        \mesj{Sorry, spaces per tab cannot be more than 255.}%
+        \def\reply{}%  repeat the prompt
+      \fi
+    \fi
+  \fi
+  \optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Option V}
+%
+% \begin{macro}{\menuV}
+%    \begin{macrocode}
+\fmenu\menuV{}{
+  8  Treatment of 8-bit characters
+  L  Treatment of Control-L characters
+}{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionV}
+%    \begin{macrocode}
+\def\moptionV{\lettermenu{V}}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuVL}
+%    \begin{macrocode}
+\fxmenu\menuVL{
+Three choices are offered for the treatment of Control-L characters:
+}{
+  B  Print a boxed L (same treatment as other control characters)
+  L  Print one line of space
+  N  End current text column, start a new column
+}{
+Current setting is &\controlLaction.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionVL}
+%    \begin{macrocode}
+\def\moptionVL{\menuVL
+  \readChar{Q}\reply
+  \if B\reply
+    \let\controlLaction\reply
+    \confirm{Control-L characters will print as boxed L's}%
+  \else\if L\reply
+    \let\controlLaction\reply
+    \confirm{Control-L characters will print as a one-line space}%
+  \else\if N\reply
+    \let\controlLaction\reply
+    \confirm{%
+Control-L characters will perform a `formfeed' [new column] action}%
+  \fi\fi\fi
+  \def\reply{Q}\optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\menuV8}
+%    \begin{macrocode}
+\expandafter\fxmenu\csname menuV8\endcsname{
+Two choices are offered for the treatment of 8-bit characters, that
+is, characters in the range 128--255:
+}{
+  A  Print according to the current font
+  B  Print a boxed question mark
+}{
+Current setting is &\eightbitaction.
+For option A, you must be careful to also select a font that is capable
+of printing 8-bit characters (see option F in the main menu); otherwise,
+8-bit characters will disappear silently from the printed output with
+nothing more than a warning in the TeX log.
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\moptionV8}
+%    \begin{macrocode}
+\expandafter\def\csname moptionV8\endcsname{%
+  \csname menuV8\endcsname
+  \readchar{Q}\reply
+  \if A\reply \def\eightbitaction{A}%
+  \else\if B\reply \def\eightbitaction{B}%
+  \fi\fi
+  \def\reply{Q}\optionexec\reply
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%    Here perhaps I should clear out the memory used by the menus
+%    since it is no longer needed. But so far I haven't had any pages
+%    complex enough to exceed 64K main mem even after loading full
+%    \fn{listout.tex} with the menu system. [mjd,25-Sep-1993]
+%    \begin{macrocode}
+\moption
+\printfiles
+%    \end{macrocode}
+%
+%    And a final \cw{endinput} to make docstrip skip the garbage below,
+%    otherwise docstrip would choke on \ctrl{B} saying it's an invalid
+%    character.
+%    \begin{macrocode}
+\endinput
+%    \end{macrocode}
+%
+%^^A Undefine FORMFEED (control-L) and DEL (control-?) so they will
+%^^A not cause the macrocode environment to choke.
+%
+%\catcode`\^^L=12 \catcode`\^^?=12
+%%
+\begin{macrocode}
+Test of special characters (if listout.tex is used to print itself).
+%
+The NUL character is missing (Control-@) because apparently Unix Emacs
+can't or won't preserve the character when saving the file. Put it
+back in with your editor if you can. Control-J and Control-M are
+printed at the end of their lines to avoid commenting out any
+following characters (depending on the native file format of the
+user's operating system). Control-Z is printed at the end of the file
+to avoid premature file termination if the operating system is DOS.
+The tab character (control-I) should show up as a dotted line 8
+characters wide under the default settings of \spacespertab and
+\tabstyle. And the formfeed character (control-L) should cause a page
+break.
+%
+Control-@: ,
+Control-A: , Control-B; , Control-C: ,
+Control-D: , Control-E: , Control-F: ,
+Control-G: , Control-H: ,
+	Control-I: 	, Control-J:
+, Control-K: , Control-L: , Control-M:
+, Control-N: , Control-O: , Control-P: , Control-Q: ,
+Control-R: , Control-S: , Control-T: , Control-U: ,
+Control-V: , Control-W: , Control-X: , Control-Y: ,
+Control-Z: (printed at end of file, below)
+Control-[: , Control-\: , Control-]: , Control-^: ,
+Control-_: , Control-?: .
+ASCII 128: €, ASCII 131: ƒ, ASCII 137: ‰, ASCII 139: ‹,
+ASCII 149: •, ASCII 151: —, ASCII 157: , ASCII 163: £,
+ASCII 167: §, ASCII 173: ­, ASCII 179: ³, ASCII 181: µ,
+ASCII 191: ¿, ASCII 193: Á, ASCII 197: Å, ASCII 199: Ç,
+ASCII 211: Ó, ASCII 223: ß, ASCII 227: ã, ASCII 229: å,
+ASCII 233: é, ASCII 239: ï, ASCII 241: ñ, ASCII 251: û,
+ASCII 255: ÿ.
+%
+Control-Z: .
+%    \end{macrocode}

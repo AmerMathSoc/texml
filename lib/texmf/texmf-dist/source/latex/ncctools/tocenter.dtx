@@ -1,0 +1,315 @@
+% \iffalse
+%%
+%% File: tocenter.dtx Copyright (C) 2002--2004 by Alexander I. Rozhenko
+%%
+%<package>\NeedsTeXFormat{LaTeX2e}
+%<package>\ProvidesPackage{tocenter}
+%<package>         [2004/12/09 v1.1 Centering Page Layout (NCC)]
+%
+% \changes{v1.0}{2002/01/31}{This version was uploaded to CTAN}
+% \changes{v1.1}{2004/12/09}{Documentation was prepared}
+%
+%<*driver>
+\let\makeindex\relax
+\documentclass{ltxdoc}
+\usepackage{tocenter}
+\GetFileInfo{tocenter.sty}
+\begin{document}
+\title{The \textsf{tocenter} package\thanks{This file
+        has version number \fileversion, last
+        revised \filedate.}}
+\author{Alexander I. Rozhenko\\rozhenko@oapmg.sscc.ru}
+\date{\filedate}
+\maketitle
+\DocInput{tocenter.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% The package provides commands
+% customizing the layout parameters of a documents.
+%
+% \section{User Interface}
+%
+% \DescribeMacro{\ToCenter}
+% The |\ToCenter|\oarg{hfm}\marg{text-width}\marg{text-height} command
+% calculates margins in such a way to center the specified text area
+% together with header/footer/marginals areas on a sheet of paper.
+% The optional \meta{hfm} parameter specifies what additional areas take into
+% account while centering. It is a combination of three letters |h| (headers),
+% |f| (footers), and |m| (marginal notes). If this parameters is omitted,
+% additional areas are ignored while calculations. For example,
+% the following command
+% \begin{quote}
+% |\ToCenter[h]{\textwidth}{\textheight}|
+% \end{quote}
+% centers the text+header area on the page. The text height and wight
+% are not changed here. This command is useful in books without marginal
+% notes.
+%
+% \DescribeMacro{\FromMargins}
+% The |\FromMargins|\oarg{hfm}\marg{left}\marg{right}\marg{top}\marg{bottom}
+% command calculates the page layout parameters in the MS Word-like style.
+% It sets page margins to the values specified in the last four
+% parameters and calculates the width and
+% height of the text area in such a way to satisfy the requirements.
+% For example, the command
+% \begin{quote}
+% |\FromMargins[hf]{20mm}{10mm}{25mm}{15mm}|
+% \end{quote}
+% calculates the text area dimensions and margins in such a way to
+% provide 20~mm distance from the left edge of the page, 10~mm
+% distance from the right edge, 25~mm distance from the top edge, and
+% 15~mm distance from the bottom edge in assumption that header and
+% footer are in use.
+%
+% If twoside mode is turned on, the left and right margins specified
+% in the |\FromMargins| command are considered for odd pages.
+% For even pages, their values are swapped.
+%
+% If |m|-letter is specified in the optional parameter, the margins are
+% determined depending on two-side and two-column switches. In two-column mode,
+% marginal notes are posed on both sides of paper, but in one-column mode
+% the marginal notes are posed on the outer side of a page in two-side mode
+% and to the right of the text area in one-side mode. All these specifics
+% is taken into account while calculations of text margins.
+% The reverse margin mode is also supported.
+%
+% \DescribeMacro{\ToCenter*}
+% \DescribeMacro{\FromMargins*}
+% The star-forms of these commands
+% \begin{quote}
+% |\ToCenter*|\marg{text-width}\marg{text-height}\\
+% |\FromMargins*|\marg{left}\marg{right}\marg{top}\marg{bottom}
+% \end{quote}
+% are intended for positioning of simple documents without headers,
+% footers, marginal notes, cross-references, and table of contents.
+% Additionally, the empty page style is set and the writing to aux-file
+% is suppressed.
+%
+% \textit{All mentioned commands are allowed in the preamble only.}
+% \StopEventually{}
+%
+% \section{The Implementation}
+%
+% \begin{macro}{\NCC@pos}
+% The |\NCC@pos|\marg{hfm} command parses the \meta{hfm} parameter
+% and prepares |\NCC@h|\marg{register}, |\NCC@f|\marg{register},
+% and |\NCC@m|\marg{register} commands to adjust values of skip
+% registers. The |\NCC@pos| command is also useful in the |cropmark| package.
+%    \begin{macrocode}
+%<*package>
+\def\NCC@pos#1{%
+  \let\NCC@h\@gobble \let\NCC@f\@gobble \let\NCC@m\@gobble
+  \@tfor\@tempa:=#1\do{%
+%    \end{macrocode}
+% If |h|-letter appears, the |\NCC@h| hook will adjust the value of register
+% on the header height and separation:
+%    \begin{macrocode}
+    \if h\@tempa
+      \def\NCC@h##1{\advance##1\headsep \advance##1\headheight}%
+     \else
+%    \end{macrocode}
+% If |f|-letter appears, the |\NCC@f| hook will adjust the value of register
+% on the footer skip distance:
+%    \begin{macrocode}
+      \if f\@tempa
+        \def\NCC@f##1{\advance##1\footskip}%
+       \else
+%    \end{macrocode}
+% If |m|-letter appears, the |\NCC@m| hook will adjust the value of register
+% on the width and separation of marginal paragraphs:
+%    \begin{macrocode}
+        \if m\@tempa
+          \def\NCC@m##1{\advance##1\marginparwidth
+            \advance##1\marginparsep}%
+        \fi
+      \fi
+    \fi
+  }%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\ToCenter}
+% The star-form of this command differs in the omitted
+% optional parameter, empty page style, and suppressed
+% writing to external files:
+%    \begin{macrocode}
+\newcommand{\ToCenter}{%
+  \@ifstar{\pagestyle{empty}\nofiles\NCC@center[]}{\NCC@center}%
+}
+\@onlypreamble\ToCenter
+%    \end{macrocode}
+% At the first, we parse the \meta{hfm} parameter:
+%    \begin{macrocode}
+\newcommand*{\NCC@center}[3][]{\NCC@pos{#1}%
+%    \end{macrocode}
+% Start calculations from horizontal margins and width:
+% set text width and calculate in |\@tempdima| the
+% whole width of area to be centered.
+%    \begin{macrocode}
+  \setlength\textwidth{#2}%
+  \@tempdima\textwidth \NCC@m\@tempdima
+%    \end{macrocode}
+% In two-column mode, margins appear on both sides of text.
+% We must add the width of marginal area again to |\@tempdima|:
+%    \begin{macrocode}
+  \if@twocolumn
+    \NCC@m\@tempdima
+%    \end{macrocode}
+% In two-column mode, we set the odd and even side margins to
+% \begin{quote}
+% |\NCC@m{(\paperwidth-\@tempdima)/2}|:
+% \end{quote}
+%    \begin{macrocode}
+    \@tempdimb\paperwidth
+    \advance\@tempdimb -\@tempdima
+    \@tempdima .5\@tempdimb \NCC@m\@tempdima
+    \oddsidemargin\@tempdima
+    \evensidemargin\@tempdima
+%    \end{macrocode}
+% In one-column mode with reverse margins, we set
+% \begin{quote}
+% |\evensidemargin:=(\paperwidth-\@tempdima)/2|\\
+% |\oddsidemargin:=\NCC@m{(\paperwidth-\@tempdima)/2}|
+% \end{quote}
+% and, with normal margins, we set
+% \begin{quote}
+% |\oddsidemargin:=(\paperwidth-\@tempdima)/2|\\
+% |\evensidemargin:=\NCC@m{(\paperwidth-\@tempdima)/2}|
+% \end{quote}
+%    \begin{macrocode}
+  \else
+    \@tempdimb\paperwidth
+    \advance\@tempdimb -\@tempdima \@tempdima .5\@tempdimb
+    \if@reversemargin
+      \evensidemargin\@tempdima
+      \NCC@m\@tempdima
+      \oddsidemargin\@tempdima
+    \else
+      \oddsidemargin\@tempdima
+      \NCC@m\@tempdima
+      \evensidemargin\@tempdima
+    \fi
+  \fi
+%    \end{macrocode}
+% Now we calculate the vertical layout parameters.
+% Again, in the |\@tempdima| we calculate the full
+% height of useful areas and set the top margin to
+% \begin{quote}
+% |(\paperwidth-\@tempdima)/2|
+% \end{quote}
+% if headers are in use.
+%    \begin{macrocode}
+  \setlength\textheight{#3}%
+  \@tempdima\textheight \NCC@h\@tempdima \NCC@f\@tempdima
+  \@tempdimb\paperheight
+  \advance\@tempdimb -\@tempdima
+  \topmargin .5\@tempdimb
+%    \end{macrocode}
+% Otherwise, we decrease the value of top margin on the height
+% and separation of header:
+%    \begin{macrocode}
+  \ifx\NCC@h\@gobble
+    \advance\topmargin -\headsep
+    \advance\topmargin -\headheight
+  \fi
+%    \end{macrocode}
+% Do final correction of all margins: decrease their values
+% on 1~inch. This compensates the default adjustment applied by
+% dvi drivers.
+%    \begin{macrocode}
+  \advance \oddsidemargin  -1in
+  \advance \evensidemargin -1in
+  \advance \topmargin      -1in
+}
+\@onlypreamble\NCC@center
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\FromMargins}
+% Finally, we implement the |\FromMargins| command.
+%    \begin{macrocode}
+\newcommand{\FromMargins}{%
+  \@ifstar{\pagestyle{empty}\nofiles\NCC@margin[]}{\NCC@margin}%
+}
+\@onlypreamble\FromMargins
+%    \end{macrocode}
+% Again, start from parsing the \meta{hfm} parameter:
+%    \begin{macrocode}
+\newcommand*{\NCC@margin}[5][]{\NCC@pos{#1}%
+%    \end{macrocode}
+% Calculate horizontal parameters at first.
+% In two-side mode, the left margin is equal to the
+% |\oddsidemargin| and the right margin is equal to the
+% |\evensidemargin|. In one-side mode, the
+% |\oddsidemargin| is calculated in the same manner
+% and the |\evensidemargin| is useless. So, we need
+% not distinguish one-side and two-side modes here
+% and do all things as for two-side mode.
+%    \begin{macrocode}
+  \setlength\oddsidemargin{#2}%
+  \setlength\evensidemargin{#3}%
+%    \end{macrocode}
+% Calculate in |\@tempdima| the amount of space occupied
+% by horizontal margins and marginal notes.
+%    \begin{macrocode}
+  \@tempdima\oddsidemargin \advance\@tempdima\evensidemargin
+  \NCC@m\@tempdima
+%    \end{macrocode}
+% In two-column mode, marginal notes should be counted twice
+% and the values of odd and even margins must be adjusted
+% on the marginal width.
+%    \begin{macrocode}
+  \if@twocolumn
+    \NCC@m\@tempdima
+    \textwidth\paperwidth
+    \advance\textwidth -\@tempdima
+    \NCC@m\oddsidemargin \NCC@m\evensidemargin
+%    \end{macrocode}
+% In one-column mode, we must adjust only one margin
+% depending on placement of marginal notes.
+%    \begin{macrocode}
+  \else
+    \textwidth\paperwidth
+    \advance\textwidth -\@tempdima
+    \if@reversemargin
+      \NCC@m\oddsidemargin
+    \else
+      \NCC@m\evensidemargin
+    \fi
+  \fi
+%    \end{macrocode}
+% Now we calculate the vertical layout parameters.
+% We set the |\@tempdima| to the sum of
+% top margin, bottom margin, header, and footer.
+%    \begin{macrocode}
+  \setlength\topmargin{#4}%
+  \setlength\@tempdima{#5}\advance\@tempdima\topmargin
+  \NCC@h\@tempdima \NCC@f\@tempdima
+%    \end{macrocode}
+% The rest of page is the text height:
+%    \begin{macrocode}
+  \textheight\paperheight
+  \advance\textheight -\@tempdima
+%    \end{macrocode}
+% We must decrease the |\topmargin| on the header separation
+% and height if headers are useless.
+%    \begin{macrocode}
+  \ifx\NCC@h\@gobble
+    \advance\topmargin -\headsep
+    \advance\topmargin -\headheight
+  \fi
+%    \end{macrocode}
+% Do final correction of all margins:
+%    \begin{macrocode}
+  \advance \oddsidemargin  -1in
+  \advance \evensidemargin -1in
+  \advance \topmargin      -1in
+}
+\@onlypreamble\NCC@margin
+%</package>
+%    \end{macrocode}
+% \end{macro}
+\endinput

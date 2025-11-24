@@ -1,0 +1,215 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% xsavebox.sty
+%
+% Copyright 2016--\today, Alexander Grahn
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Provides commands for saving and repeating any content (typeset text, external
+% and inline [TikZ/PGF, PSTricks] graphics) similar to standard LaTeX's
+% \savebox, \sbox, \usebox commands and the `lrbox' environment, but without
+% code replication for smaller PDF output size
+%
+%  content saving:
+%
+%    (starred `*' variants allow for colour injection [pdflatex/lualatex only])
+%
+%    \xsavebox{<name>}[<width>][<position>]{...}
+%    \xsavebox*{<name>}[<width>][<position>]{...}
+%
+%    \xsbox{<name>}{...}
+%
+%    \begin{xlrbox}{<name>}...\end{xlrbox}
+%    \begin{xlrbox*}{<name>}...\end{xlrbox*}
+%
+%  content insertion:
+%
+%    \xusebox{<name>}
+%    \the<name> %short form of \xusebox{<name>} for <name> composed of [a-zA-Z]
+%
+% Supports all known engines and backends including
+% pdflatex, latex+dvips+ps2pdf, xelatex, latex+dvipdfmx, lualatex.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://mirrors.ctan.org/help/Catalogue/licenses.lppl.html
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+%
+% The Current Maintainer of this work is A. Grahn.
+
+\RequirePackage{xparse}
+\RequirePackage{pdfbase} %everything with `pbs_' prefix
+\RequirePackage{l3keys2e}
+
+\def\g@xsb@version@tl{0.2}
+\def\g@xsb@date@tl{2016/03/07}
+\ProvidesExplPackage{xsavebox}{\g@xsb@date@tl}{\g@xsb@version@tl}
+{saveboxes for repeating content without code replication}
+
+\msg_set:nnnn{xsavebox}{support~outdated}{
+  Support~package~`#1'~too~old.
+}{
+  Please~install~an~up~to~date~version~of~`#1'.\\
+  Loading~xsavebox~will~abort!
+}
+\@ifpackagelater{pdfbase}{2016/03/07}{}{
+  \msg_error:nnn{xsavebox}{support~outdated}{pdfbase.sty}
+  \tex_endinput:D
+}
+
+%package options
+
+%unknown package option error message
+\msg_set:nnnn{xsavebox}{unknown~package~option}{Unknown~package~option~`#1'.}{
+  Package option~'#1'~is~unknown;\\
+  perhaps~it~is~spelled~incorrectly.
+}
+
+\tl_gset:Nn\g_xsb_margin_tl{3pt}
+\keys_define:nn{xsavebox}{
+  margin .code:n = {
+    \setlength\l_tmpa_dim{#1}
+    \tl_gset:Nx\g_xsb_margin_tl{\dim_use:N\l_tmpa_dim}
+  },
+
+  unknown .code:n = {
+    \msg_error:nnx{xsavebox}{unknown~package~option}{\l_keys_key_tl}
+  }
+}
+
+\ProcessKeysOptions{xsavebox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% content insertion (referencing, actually)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\DeclareDocumentCommand\xusebox{m}{\tl_use:c{the#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% saving content
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\DeclareDocumentCommand\xsavebox{smO{\width}O{c}m}{
+  \group_begin:
+  \IfBooleanTF{#1}{
+    %later colour injection possible (pdfTeX, LuaTeX)
+    \hbox_set:Nn\l_xsb_raw_box{\color@begingroup#5\color@endgroup} %raw
+    \hbox_set:Nn\l_xsb_box{ %content re-aligned
+      \makebox[#3][#4]{\color@begingroup#5\color@endgroup}
+    }
+  }{
+    %the LaTeX way (no colour injection)
+    \sbox\l_xsb_raw_box{#5} %raw content
+    \savebox\l_xsb_box[#3][#4]{#5} %re-aligned
+  }
+  %process one of \l_xsb_raw_box or \l_xsb_box
+  \dim_compare:nTF{\box_wd:N\l_xsb_raw_box>\box_wd:N\l_xsb_box}{
+    \str_if_eq_x:nnTF{#4}{s}{
+      %sqeezing content correctly
+      \IfBooleanTF{#1}{
+        %for colour injection
+        \hbox_set:Nn\l_xsb_box{
+          \makebox[\box_wd:N\l_xsb_raw_box][l]{
+            \makebox[#3][s]{\color@begingroup#5\color@endgroup}
+          }
+        }
+      }{
+        %no colour injection
+        \savebox\l_xsb_box[\box_wd:N\l_xsb_raw_box][l]{
+          \makebox[#3][s]{#5}
+        }
+      }
+      \xsb_process_box:nnnN{#2}{#3}{#4}\l_xsb_box
+    }{
+      \xsb_process_box:nnnN{#2}{#3}{#4}\l_xsb_raw_box
+    }
+  }{
+    \xsb_process_box:nnnN{#2}{\width}{c}\l_xsb_box
+  }
+  \group_end:
+}
+
+\DeclareDocumentCommand\xsbox{mm}{\xsavebox{#1}{#2}}
+
+\DeclareDocumentEnvironment{xlrbox}{m}{
+  \xsb_xlrbox:
+}{
+  \xsb_endxlrbox:n{#1}
+}
+
+\DeclareDocumentEnvironment{xlrbox*}{m}{
+  \xsb_xlrbox_star:
+}{
+  \xsb_endxlrbox_star:n{#1}
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cs_new_nopar:Nn\xsb_xlrbox:{
+  \group_begin:
+  \hbox_set:Nn\l_xsb_box\bgroup\bgroup
+  \ignorespaces
+}
+
+\cs_new_nopar:Nn\xsb_endxlrbox:n{
+  \unskip
+  \egroup\egroup
+  \sbox\l_xsb_box{\hbox_unpack_clear:N\l_xsb_box}
+  \xsb_process_box:nnnN{#1}{\width}{c}\l_xsb_box
+  \group_end:
+}
+
+\cs_new_nopar:Nn\xsb_xlrbox_star:{
+  \group_begin:
+  \hbox_set:Nn\l_xsb_box\bgroup\color@begingroup
+  \ignorespaces
+}
+
+\cs_new_nopar:Nn\xsb_endxlrbox_star:n{
+  \unskip
+  \color@endgroup\egroup
+  \xsb_process_box:nnnN{#1}{\width}{c}\l_xsb_box
+  \group_end:
+}
+
+\cs_new_nopar:Nn\xsb_process_box:nnnN{
+  %measure natural dimensions
+  \cs_set_nopar:Npn\width {\box_wd:N#4}
+  \cs_set_nopar:Npn\height{\box_ht:N#4}
+  \cs_set_nopar:Npn\depth {\box_dp:N#4}
+  \cs_set_nopar:Npn\totalheight{\dimexpr\height+\depth\relax}
+  \tl_set:Nx\l_xsb_wd_tl{\dim_use:N\width}
+  \tl_set:Nx\l_xsb_ht_tl{\dim_use:N\height}
+  \tl_set:Nx\l_xsb_dp_tl{\dim_use:N\depth}
+  %evaluate width argument (allowing for calc-type expressions)
+  \setlength\l_tmpa_dim{#2}
+  \tl_set:Nx\l_xsb_new_wd_tl{\dim_use:N\l_tmpa_dim}
+  %temporarily (for distilling) push the box bounds somewhat; glyphs tend to
+  %be bigger than their bounding boxes
+  \hbox_set_to_wd:Nnn#4{\width+\g_xsb_margin_tl+\g_xsb_margin_tl}{
+    \hss\hbox_unpack_clear:N#4\hss
+  }
+  \box_set_ht:Nn#4{\height+\g_xsb_margin_tl}
+  \box_set_dp:Nn#4{\depth+\g_xsb_margin_tl}
+  %distill box to Form XObject
+  \pbs_pdfxform:nnn{1}{0}{#4}
+  %define command for inserting the m-boxed XObject reference
+  \tl_gset:cx{the#1}{
+    \exp_not:N\makebox[\l_xsb_new_wd_tl][#3]{
+      \exp_not:N\hbox_to_wd:nn{\l_xsb_wd_tl}{
+        \exp_not:N\vrule~width~\c_zero_dim~height~\l_xsb_ht_tl~
+          depth~\l_xsb_dp_tl
+        \exp_not:N\skip_horizontal:n{-\g_xsb_margin_tl}
+        \exp_not:N\pbs_pdfrefxform:n{\pbs_pdflastxform:}\hss
+      }
+    }
+  }
+}
+
+\box_new:N\l_xsb_box     %for saving the re-aligned content
+\box_new:N\l_xsb_raw_box %for saving the raw content

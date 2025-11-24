@@ -1,0 +1,2059 @@
+%%%
+%% This is file `esami.sty',
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% esami.sty package,             2015-02-25            %%
+%% Copyright (C) 2008-2015  G. Messineo e S. Vassallo   %%
+%%                                                      %%
+%% This program can be redistributed and/or modified    %%
+%% under the terms of the LaTeX Project Public License  %%
+%% Distributed from CTAN archives in directory          %%
+%% macros/latex/base/lppl.txt; either version 1 of the  %%
+%% License, or (at your option) any later version.      %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%% CHANGELOG %%%%%%%
+% Version 1.0
+% First release to CTAN
+%Version 1.1 2013/12/09
+%Inserted the dependance on the package \texttt{environ} to remove some errors in the \LaTeX\ compilation.
+%Removed the dependance on the package \texttt{icomma} in the italian localization file es-italian.lng because
+%of the introduction of new features in the package \texttt{babel} for the Italian langaguage (macro \texttt{IntelligentComma}).
+% Version 2.0
+% 2015/02/25
+%Eliminated the dependance on \pkgname{pstricks}. Modified the use of \emph{fill-in} questions.
+%Inserted the possibility to extract %more than one variant from a file. Now it is possible to view the solutions in tests.
+%Modified the visualization of decimal places in command  \cmd{\FPsv}. Modified the definition of \cmd{\FPval} to allow the use of decimal places.
+%Modified the algorithm of choice of a variant of an exercise, now completely deterministic.
+% Added the command \cmd{\Acapo}. Added the serbian localization (latin alphabet).
+%The compilation produces a new file with the list of the chosen exercises.
+
+\NeedsTeXFormat{LaTeX2e} \ProvidesPackage{esami}
+    [2015/02/25 v2.0 An Exam Construction Package]
+
+% +=============================+
+% |         THE OPTIONS         |
+% +=============================+
+%\usepackage{etex}
+\newif\ifes@language \es@languagefalse
+\DeclareOption{italian}{\InputIfFileExists{es-\CurrentOption.lng}%
+   { \es@languagetrue \typeout{esami: Verrà usata la lingua italiana}}%
+   {\typeout{esami: Il file es-\CurrentOption.lng non esiste.}}}
+\DeclareOption{UKenglish}{\InputIfFileExists{es-\CurrentOption.lng}%
+   {\typeout{esami: English Language will be used} \es@languagetrue}%
+   {\typeout{esami: The file es-\CurrentOption.lng does not exists.}}}
+\DeclareOption{USenglish}{\InputIfFileExists{es-\CurrentOption.lng}%
+   {\typeout{esami: English Language will be used} \es@languagetrue}%
+   { \typeout{esami: The file es-\CurrentOption.lng does not exists.}}}
+\DeclareOption{english}{\InputIfFileExists{es-UK\CurrentOption.lng}%
+   { \typeout{esami: English Language will be used}\es@languagetrue}%
+   { \typeout{esami: The file es-\CurrentOption.lng does not exists.}}}
+\DeclareOption{french}{\InputIfFileExists{es-\CurrentOption.lng}%
+   { \typeout{esami: La langue française sera utilisée}\es@languagetrue}
+   { \typeout{esami: The file es-\CurrentOption.lng does not exists.}}}
+\DeclareOption{spanish}{\InputIfFileExists{es-\CurrentOption.lng}%
+   { \typeout{esami:Se utilizará el idioma español}\es@languagetrue}
+   { \typeout{esami: The file es-\CurrentOption.lng does not exists.}}}
+\DeclareOption{german}{\InputIfFileExists{es-\CurrentOption.lng}%
+   { \typeout{esami:Deutsch als Sprache soll angewandt werden}\es@languagetrue}
+   { \typeout{esami: The file es-\CurrentOption.lng does not exists.}}}
+\DeclareOption{greek}{\InputIfFileExists{es-\CurrentOption.lng}%
+   { \typeout{esami:Greek language will be used}\es@languagetrue}
+   { \typeout{esami: The file es-\CurrentOption.lng does not exists.}}}
+
+
+\newif\ifes@twocolumns
+\es@twocolumnsfalse
+\DeclareOption{twocolumns}{\es@twocolumnstrue}%%% for tests on 2 columns
+\DeclareOption{sansserif}{\renewcommand{\familydefault}{\sfdefault}}%%% sans serif font
+\DeclareOption{solutionsonly}{\es@solutionsonlytrue \es@solutionstrue}%%% only solutions (false by default)
+\newif\ifes@solutionsonly \es@solutionsonlyfalse
+\DeclareOption{allowrandomize}{\es@randomizeChoicestrue}%%% MCQ with shuffled answers (default)
+\DeclareOption{norandomize}{\es@randomizeChoicesfalse}%%% MCQ not shuffled
+\newif\ifes@randomizeChoices \es@randomizeChoicestrue
+\newif\ifes@fissa \es@fissatrue
+\newif\ifes@shuffleQuestions \es@shuffleQuestionstrue%%% the exercises are shuffled by default
+\DeclareOption{shuffle}{\es@fissatrue \es@shuffleQuestionstrue}
+\DeclareOption{shufflerandom}{\es@shuffleQuestionstrue \es@fissafalse}%% the exercises are randomly shuffled
+\DeclareOption{noshuffle}{\es@shuffleQuestionsfalse}
+%%% 2013-06-03 eliminata opzione
+\newif\ifes@fillin \es@fillinfalse
+\DeclareOption{fillb}{\es@fillintrue}
+\newif\ifes@pointsonright \es@pointsonrightfalse%%% the box with the points on the right side (from eqexam)
+\DeclareOption{pointsonright}{\es@pointsonrighttrue \AtEndOfPackage{\PointsOnRight}}
+\newif\ifes@solutions \es@solutionsfalse
+\DeclareOption{solutions}{\es@solutionstrue
+\AtEndDocument{
+\immediate\closeout\loe
+\immediate\closeout\parametri
+\immediate\closeout\sols
+%%%%% 2013-06-03                                                            %
+\stringasol} %%%%
+}%%% for solutions
+\DeclareOption{nosolutions}{\es@solutionsfalse}%%% no solutions (default)
+\newif\ifes@noquizsolutions \es@noquizsolutionstrue % NEW  2014
+\DeclareOption{noquizsolutions}{\es@noquizsolutionstrue}
+\DeclareOption{quizsolutions}{\es@noquizsolutionsfalse}
+\DeclareOption*{\InputIfFileExists{esami-\CurrentOption.cfg}{}%%% reads a configuration file
+    {\PackageError{esami}{\es@cfgerrormessageshort}
+   {\es@cfgerrormessagelong}
+   }}
+\newif\ifes@autopst \es@autopstfalse%%% Do I need auto-pst?
+\newif\ifes@pst \es@pstfalse%%% Do I need pstricks? %%% NEW for tikz 2014.3.3
+\DeclareOption{autopstoff}{\es@psttrue \es@autopstfalse}%%% autopstpdf inactive (default) %
+\DeclareOption{autopston}{\es@psttrue  \es@autopsttrue }%%%% autopstpdf active %%% NEW for tikz 2014.3.3
+\newif\ifes@prova \es@provafalse
+\DeclareOption{prova}{\es@solutionstrue \es@provatrue \es@randomizeChoicesfalse \es@noquizsolutionsfalse}%%% for the file "totale-versioni"
+\DeclareOption{correzione}{\es@correzionetrue \es@solutionsfalse}%%% to print all the exercises with solutions only
+\newif\ifes@correzione \es@correzionefalse
+\newif\ifes@param \es@paramfalse%%% to print the parametric version in "totale-versioni"
+\newif\ifes@test \es@testfalse%%% for tests
+
+%========================================================%
+%      Parametric version                                %
+%========================================================%
+
+\newwrite\parametri
+
+\DeclareOption{param}{\es@paramtrue \AtBeginDocument{\newwrite\params}}
+
+\ProcessOptions\relax
+
+% +=============================+
+% |        PACKAGES             |
+% +=============================+
+
+\usepackage{graphicx}
+\usepackage{enumerate}
+\usepackage{fp}
+\usepackage{currfile}
+\usepackage{array}
+\usepackage{environ}
+\usepackage{ifthen}
+\usepackage{xargs}
+\usepackage{multicol}
+\usepackage{amssymb}
+
+
+\ifes@pst
+\usepackage{pstricks,pstricks-add}
+\ifes@autopst
+\usepackage[crop=off,dvips={}]{auto-pst-pdf}
+   \else
+\usepackage[off]{auto-pst-pdf}
+    \fi
+    \else
+    \@ifpackageloaded{xcolor}{}{\usepackage{xcolor}}
+\fi
+\input random
+
+%========================================================%
+%         Error Messages                                 %
+%========================================================%
+
+\def\testversioni{\ifthenelse{\not\equal{\numcompiti}{} }  {\relax} %
+    { \immediate\write16{\es@numcompitierror}
+  {\endlinechar=-1 \global\read16 to\numcompiti}}}
+  \ifthenelse{\equal{\jobname}{\detokenize{master}}}{%%
+    {%
+    \PackageError{esami} %
+        {\es@mastererror}
+        {}}}
+        \ifthenelse{\equal{\jobname}{\detokenize{master-sol}}}{%%
+    {%
+    \PackageError{esami} %
+        {\es@mastererror}
+        {}}}
+
+\ifes@language \else \InputIfFileExists{es-italian.lng}%
+   { \typeout{esami: No language chosen: Italian language will be used.}}{NO LANGUAGE!!!}\fi
+%========================================================%
+%          DIMENSIONS                                    %
+%========================================================%
+
+% We want the page full of text
+
+\setlength\topmargin{-90pt}
+\setlength\textheight\paperheight
+\addtolength\textheight{-80pt}
+\setlength\textwidth\paperwidth
+\addtolength\textwidth{-70pt}
+\setlength\oddsidemargin{-60pt}
+\setlength\footskip{28pt}
+\setlength\marginparwidth{0pt}
+\setlength\marginparsep{0pt}
+
+\newskip\aboveanswersSkip%%% the space between question and answers
+\newlength\es@tmplength
+\newdimen\es@tmpdima{}
+\newsavebox{\es@tmpbox}{}
+\newbox{\es@pointbox}
+\newlength{\es@pointboxtotalheight}%%% the height of the point box
+\newsavebox{\workareasb}
+\newlength\mylabelsep
+
+%========================================================%
+%                exercise                                %
+%========================================================%
+
+\newcommand{\priorexskip}[1]{\def\es@priorexskip{\vspace{#1}}}%%% space above and below the text of the exercise
+\let\es@postexerciseHook\relax
+\newcommand{\esexerskip}[1]{\def\es@exerskip{\vskip#1}}
+
+%========================================================%
+%               test                                     %
+%========================================================%
+
+\def\rowsep#1{\gdef\@rowsep{[#1]}\gdef\@rowskip{#1}}
+    \rowsep{\rowsep@default}
+\def\rowsepDefault#1{\def\rowsep@default{#1}}
+
+%========================================================%
+%                 risposta                               %
+%========================================================%
+
+\newlength{\es@rig}%%%% lines in "risposta"
+
+%========================================================%
+%            SPACES                                      %
+%========================================================%
+
+\setlength{\parindent}{0pt}
+\def\solutionsAfterSkip{\par\bigskip}
+\priorexskip{\medskipamount}
+\esexerskip{\medskipamount}
+\let\afterlabelhskip=\space
+\def\Acapo{\par}
+%========================================================%
+%               test                                     %
+%========================================================%
+
+\rowsepDefault{4pt}
+\addtolength{\tabcolsep}{2pt} \addtolength{\arraycolsep}{2pt}
+\def\sq@priorhook{\medskip\noindent}
+\setlength\aboveanswersSkip{6pt}
+
+% +=============================+
+% |        COUNTERS             |
+% +=============================+
+
+\newcount\tmp@cnt%%% temporary counter
+\newcount\tmp@a%%% temporary counter
+\newcount\rnd@cnta%%% temporary counter in selectrandomly
+\newcount\tmp@cntb%%% temporary counter in \estrai
+\newcount\rnd@cnts%%% temporary counter in RandS
+\newcount\rnd@cnt%%% temporary counter in \FPsetpar
+\newcount\end@al%%% temporary counter in \estraialfa
+\newcount\beg@al%%% temporary counter in \estraialfa
+\newcounter{nomefile}%%% counter for year-month-day
+\newcount\tmp@quest %%% the number of the exercise
+\newcount\@probselN %%% in \selectrandomlyn
+\newcount\@shfctr \newcount\@shfA \newcount\@shfB %%% In "\shuffle"
+\newcount\icount  %%% contatore per mischiare esercizi
+\newcount\io
+\newcount\inizio
+\inizio=1
+%%%%
+\newcounter{vers}%%% the number of the version
+\setcounter{vers}{0}
+\newcounter{n@par}%%% it counts the number of parameters
+\newcount\loopCnt%%% the number of attempts in \FPsetpar
+\newcounter{fp@contatore}%%% used in \FPsetpar
+\newcount\old@randomii%%% used to change seed shuffling exercise
+\newcount\old@randomi%%% used to change seed in \FPsetpar
+\newcount\old@random%%% used to change seed in \selectrandomly %%%NUOVO
+\newcount\sh@max%%% used to choose the exercises
+\newcount\@probN%%% number of exercises in \selectrandomly
+\newcount\j@m%%% temporary counter in \newproblem
+\newcount\i@sh
+\newcount\j@sh
+\newcounter{shuf@lop}
+\newcounter{temp@cnt}
+\newcounter{questionno}%%% the number of the question in test
+\newcount\@esquestiondepth \@esquestiondepth=0
+\newcounter{esquestionnoi}
+\renewcommand{\theesquestionnoi}{\arabic{esquestionnoi}}
+\newcounter{esquestionnoii}
+\renewcommand{\theesquestionnoii}{\alph{esquestionnoii}}
+\newcounter{esquestionnoiii}
+\renewcommand{\theesquestionnoiii}{\roman{esquestionnoiii}}
+
+\def\es@primo{1237}
+
+%========================================================%
+%                  test                                  %
+%========================================================%
+
+\newcounter{sq@quizno} \setcounter{sq@quizno}{0}%%% the number of the answer in a MCQ
+\renewcommand\thesq@quizno{\alph{sq@quizno}}
+\def\@shortquizCnt{0}
+\newcount\es@tabColCnt%%% The number of columns of answers in MCQ
+
+%========================================================%
+%             esercizio                                  %
+%========================================================%
+
+\newcounter{ex@no}%%% The number of the exercise
+\setcounter{ex@no}{0}
+\@addtoreset{ex@no}{section}
+\newcounter{ex@partno}%%% The parts of an exercise
+\renewcommand\theex@partno{\alph{ex@partno}}
+
+%========================================================%
+%             risposta                                   %
+%========================================================%
+
+\newcounter{risp@righe}%%% the number of lines in a long answer (environment "risposta")
+
+%========================================================%
+%           matching                                     %
+%========================================================%
+
+\newcounter{match@plu}
+\newcounter{match@plo}
+\newcounter{match@q}
+
+%========================================================%
+%          aebrandom                                     %
+%========================================================%
+
+\newcount\aeb@numChoices
+\newcount\aeb@ranChoice
+
+% +=============================+
+% |        LABELS               |
+% +=============================+
+
+%========================================================%
+%          questions                                     %
+%========================================================%
+
+\newcommand{\labelesquestionnoi}{\bfseries\theesquestionnoi.}
+\newcommand{\labelesquestionnoii}{\bfseries(\theesquestionnoii)}
+\newcommand{\labelesquestionnoiii}{\bfseries(\theesquestionnoiii)}
+
+%========================================================%
+%          test                                          %
+%========================================================%
+
+\newcommand\sq@label{}
+\newcommand\sqlabel{\sq@label}
+\def\linkContentFormat{\alph{sq@quizno}}
+\def\linkContentWrapper{(\hfil\linkContentFormat\hfil)}
+
+%========================================================%
+%         exercise                                       %
+%========================================================%
+
+\newcommand\exlabel{\es@exercisename}
+\newcommand\exlabelsol{\exlabel}
+\newcommand\exlabelformat{{\scshape\exlabel\ \theex@no.}}
+\newcommand\exlabelformatwp{{\scshape\exlabel\ \theex@no.}}
+\newcommand{\exsolafter}{\es@exsolafterDefault}
+\newcommand{\es@exsolafterDefault}{\textit{\es@solutionname}: }
+\newcommand{\esexlisttabheader}
+{(\hfil\theex@partno\hfil)%
+}
+\newcommand{\ex@header}
+{\hbox{\if\exerstar*\exlabelformatwp\else%
+        \exlabelformat\fi}%
+}
+
+% +=============================+
+% |        COMMANDS             |
+% +=============================+
+
+%========================================================%
+%           Maths                                        %
+%========================================================%
+
+\ifes@param
+\newcommand{\FPsv}[2][0]{(#2)}%%% \FPsv shows oparations
+\newcommandx{\FPval}[3][2=0]{\expandafter\def\csname#1\endcsname{(#1)}
+\immediate\write\params{%%% writes on a file
+                \string\textbf\string{\string\noindent\space \es@parametermessagea{#1}{#3}
+                \string}\string\newline}}
+\else
+\newcommand{\FPsv}[2][0]{\FPeval{\fp@tmpa}{clip(round(#2:#1))}\numprint{\fp@tmpa}}%%% It does operations with #1 decimals and with the "param" option it shows operations
+\newcommandx{\FPval}[3][2=0]{\FPeval{#1}{clip(round(#3:#2))}}%% it works like \FPsv with the option param, like \FPeval otherwise
+\fi
+%========================================================%
+%               fractions                                %
+%========================================================%
+
+\newcommand{\@sempli}[2]{%%%% simplification (private command)
+    \FPeval\segnofrac{round(#1:0)*round(#2:0)}
+    \FPeval\fp@tmp{round(abs(#1):0)}\FPset\fp@n{\fp@tmp}%
+    \FPeval\fp@tmp{round(abs(#2):0)}%
+    \FPifzero{\fp@tmp}\PackageError{esami}{\es@zerodenerror{#1}{#2}}\fi
+    \FPset\fp@d{\fp@tmp}%
+    \FPeval\fp@num{max(\fp@n,\fp@d)}\FPeval\fp@den{min(\fp@n,\fp@d)}\FPset\fp@resto{\fp@den}\whiledo{\fp@resto>0}%
+    {\FPset\fp@restoold{\fp@resto}\FPeval\fp@resto{round((\fp@num-trunc((\fp@num)/\fp@den:0)*(\fp@den)):0)}%
+    \FPset\fp@num{\fp@den}\FPset\fp@den{\fp@resto}}\FPeval\fp@num{round((\fp@n/\fp@restoold):0)}\FPeval\fp@den{round((\fp@d/\fp@restoold):0)}%
+    \FPifneg\segnofrac{-}\else{}\fi\ifthenelse{\fp@den=1}{\ifthenelse{\fp@num=1}{1}{\fp@num}}{\frac{\fp@num}{\fp@den}}%
+    }
+
+\newcommand{\sempli}[2]{%%% simplification (user command)
+    \FPeval\fp@tmp{round(abs(#1):0)}%
+        \FPifzero{\fp@tmp}\PackageError{esami}{\es@zeronumerrorshort{#1}{#2}}
+        {\es@zeronumerrorlong{#1}{#2}}\fi
+    \FPeval\fp@temp{round(abs(#2):0)}%
+        \FPifeq{\fp@tmp}{\fp@temp}\PackageWarning{esami}{\es@fraconewarn{#1}{#2}}\fi
+    \@sempli{#1}{#2}%
+    }
+
+\newcommand{\semplix}[2]{%%% simplification (coefficients)
+    \FPeval\fp@tmp{round(abs(#1):0)}%
+        \FPifzero{\fp@tmp}\PackageError{esami}{\es@zeronumerrorshort{#1}{#2}}
+        {\es@zeronumerrorlong{#1}{#2}}\fi
+    \FPeval\t@mpa{round(#1:0)}\FPeval\t@mpb{round(#2:0)}%
+    \ifthenelse{\t@mpa=\t@mpb}{}%
+    {\ifthenelse{\t@mpa=-\t@mpb}{-}%
+    {\@sempli{#1}{#2}}%
+    }
+    }
+
+\newcommand{\sempliz}[2]{%%% simplifications (zero)
+    \FPeval\t@mpa{round(#1:0)}%
+    \ifthenelse{\t@mpa=0}{0}%
+    {\@sempli{#1}{#2}}%
+    }
+
+\newcommand{\esempli}[2]{%%% simplification (exponents)
+    \FPeval\fp@tmp{round(abs(#1):0)}%
+       \FPifzero{\fp@tmp}\PackageError{esami}{\es@zeronumerrorshort{#1}{#2}}
+       {\es@zeronumerrorlong{#1}{#2}}\fi
+    \FPeval\t@mpa{round(#1:0)}\FPeval\t@mpb{round(#2:0)}%
+    \ifthenelse{\t@mpa=\t@mpb}{}%
+    {\ifthenelse{\t@mpa=-\t@mpb}{-1}%
+    {\@sempli{#1}{#2}}%
+    }
+    }
+
+%========================================================%
+%                Radicals (simplification)               %
+%========================================================%
+
+\newcommand\simpsqrt[2]{
+    \FPset\tmp@sqi{2}%
+    \FPset\sq@factor{1}%
+    \FPset\tmp@factor{1}%
+    \FPeval\sq@segno{round(#2:0)}%
+    \FPeval\sq@rad{round(abs(#2):0)}%
+    \FPeval\sq@ind{round(#1:0)}%
+    \FPeval\tmp@sqpw{round(\tmp@sqi^(\sq@ind):0)}%
+    \FPeval\tmp@sqj{round(\sq@rad+1:0)}%
+    \ifthenelse{\equal\sq@rad{0}}{0}{%
+    \whiledo{\tmp@sqpw<\tmp@sqj}{\FPeval\tmp@rad{\sq@rad/\tmp@sqpw}%
+    \FPeval\sq@resto{round((\sq@rad-trunc((\sq@rad)/\tmp@sqpw:0)*(\tmp@sqpw)):0)}%
+    \ifthenelse{\equal{\sq@resto}{0}}{\FPset\tmp@factor{\sq@factor}\FPeval\sq@factor{round(\tmp@factor*\tmp@sqi:0)}\FPeval\sq@rad{round(\tmp@rad:0)}%
+    \FPset\tmp@sqi{1}}{}\FPset\tmp@sqii{\tmp@sqi}\FPeval\tmp@sqi{round(\tmp@sqii+1:0)}\FPeval\tmp@sqpw{round(\tmp@sqi^(\sq@ind):0)}}%
+    \ifthenelse{\isodd{\sq@ind}}{%
+    \ifthenelse{\equal{\sq@factor}{1}} {\ifthenelse{\equal{\sq@rad}{1}}{\ifthenelse{\sq@segno<0}{-1}{1}}
+    {\ifthenelse{\sq@segno<0}{-\sqrt[\sq@ind]{\sq@rad}}{\sqrt[\sq@ind]{\sq@rad}}}}%
+    {\ifthenelse{\equal{\sq@rad}{1}}{\ifthenelse{\sq@segno<0}{-\sq@factor}{\sq@factor} }
+    {\ifthenelse{\sq@segno<0}{-\sq@factor\sqrt[\sq@ind]{\sq@rad}}{\sq@factor\sqrt[\sq@ind]{\sq@rad} }}}}%
+    {\ifthenelse{\sq@segno<0}{\PackageError{esami}{\es@radicalerror}}{\ifthenelse{\equal{\sq@factor}{1}} {\ifthenelse{\equal{\sq@rad}{1}}{1}
+    {\ifthenelse{\sq@ind=2}{\sqrt{\sq@rad}}{\sqrt[\sq@ind]{\sq@rad}}} }%
+    {\ifthenelse{\equal{\sq@rad}{1}}{\sq@factor}{\ifthenelse{\sq@ind=2}{\sq@factor\sqrt{\sq@rad}}{\sq@factor\sqrt[\sq@ind]{\sq@rad}}} }}}}%
+    }
+
+%========================================================%
+%          Commands adapted from exerquiz                %
+%========================================================%
+
+\providecommand\PBS[1]{\let\temp=\\#1\let\\=\temp}
+\def\es@lw@l{\es@l@l\ }
+\def\es@l@l{\normalsize\normalfont(d)}
+\newcommand\PTs{\def\es@star{x}\@PTs}
+\def\@PTs#1{%
+    \gdef\es@PTs{#1}\ifx\es@PTs\@empty\gdef\es@PTs{1}\fi
+    \global\let\esPTs=\es@PTs\global\let\es@PTs=\@empty
+    \if\es@star*\else\PTs@Hook\fi
+}
+\def\es@PTs{0}
+\newcommand\PTsHook[1]{\def\PTs@Hook{#1}}%%% hooks for \PTs
+\let\qMark@Hook\@empty
+\newcommand{\post@questionsHook}{}
+\newcommand{\punti}{}
+
+%========================================================%
+%           Commands adapted from eqexam                 %
+%========================================================%
+
+%%%%% Points in a box on the right %%%%%%
+
+\ifes@pointsonright
+\def\examenddef
+{%
+\bgroup
+\raisebox{-30pt}[0pt][0pt]{%
+    \hspace*{-\parindent} %
+    {\es@rightmarginbox
+    }} %
+\egroup}
+\else
+\def\examenddef{}
+\fi
+
+\def\PointsOnRight{%
+    \let\marginpoints=\es@rightmarginbox}
+\newcommand\marginpointsboxtext{\small \emph{\punti\ifthenelse{\equal{\punti}{1}}{ \es@pointname}{ \es@pointsname}}}
+\def\es@rightmarginbox{%
+    \makebox[0pt][l]{%
+        \setlength\tabcolsep{0pt}%
+        \hspace*{\textwidth}\hspace*{\marginparsep}%
+        \raisebox{-.5\height}[0pt][0pt]{%
+            \parbox{40pt}{%
+                \tabcolsep=0pt\relax
+                \begin{tabular}{|c|}\hline
+                   \vrule height20pt width0pt\hfill\\\hline
+                   \makebox[40pt]{%
+                        \marginpointsboxtext}\\\hline%
+                \end{tabular}%
+            }%
+        }\hfil
+    }%
+}
+\setbox\es@pointbox=\hbox{%
+    \parbox{35pt}{%
+        \tabcolsep=0pt\relax
+        \begin{tabular}{|c|}\hline
+            \vrule height15pt width0pt\\
+            \hline
+            \makebox[40pt]{%
+                \marginpointsboxtext}\\
+                \hline
+        \end{tabular}%
+    }%
+}
+
+%%%%%%% Fill in %%%%%%
+%%%% NEW  fillin 2013-06-03
+\newcommand\fillinproblem{\es@fillintrue%
+\ifes@solutions
+\immediate\openout\parametri=qf\nome q\romannumeral\tmp@quest e\thevers.parametri.tex
+\fi
+}
+\ifes@solutions
+\def\fill@ans@color#1{\bfseries\color{red}{#1}}%%% with solutions answers are in red by default
+    \else
+\def\fill@ans@color#1{\phantom{#1}}%%% without solutions option -> no answers
+    \fi
+\newcommand{\fillin}[3][u]{%%% #1= the box (u=underlined, e=empty, b= boxed) #2= space for the answer, #3= the correct answer
+\space
+    \ifx#1u\let\fillin@Fmt=\underbar%%% by default underlined space
+    \else\ifx#1e\let\fillin@Fmt=\relax%%% empty space
+    \else\ifx#1b\let\fillin@Fmt=\fbox%%% box
+    \fi\fi\fi
+     \fillin@Fmt{\parbox[b][.8\height][b]{#2}{%
+            \strut\hfil\fill@ans@color{#3}\hfil}%
+           \ifes@test
+           \ifes@prova
+           \else
+\ifes@solutions%%% to write the string of solutions
+\immediate\write\sols{\string\item\space\string\makeatletter\space\string\input\string{qf\nome q\romannumeral\tmp@quest e\thevers.parametri\string}\string\makeatother}
+\immediate\write\sols{\unexpanded{#3}}
+\immediate\write\loe{\es@exercisename\space\theesquestionnoi:\space \probchosen}
+\fi
+\fi
+\fi
+ }
+ }
+
+%%%%% Other commands %%%%%%
+
+\newcommand\stepvers{\stepcounter{vers}\ifes@solutions
+\immediate\write\sols{\string\begin{minipage}{.33\string\textwidth}
+{\string\large\string\textbf{\es@solutionname\ \versionname\ n. \thevers}}}
+\immediate\write\loe{\versionname\space n. \thevers}\fi}
+\newcommand\closevers{\newpage\setcounter{page}{1}\setcounter{ex@no}{0}\ifes@solutions\immediate\write\sols{\string\end{minipage}
+   \string\vspace{5ex}}
+   \immediate\write\loe{\space}
+   \immediate\write\loe{\space}
+   \fi}
+
+\def\mydate#1/#2/#3\@empty{\setcounter{nomefile}{\two@digits{#1}\two@digits{#2}\two@digits{#3}}}%%% it gives to the counter "nomefile" a value determined by the date
+\PTsHook{\emph{(\esPTs\ \ifthenelse{\equal{\esPTs}{\detokenize{1}}}{\es@pointname}{\es@pointsname})}}%%% The name of the points
+\newcommand{\proofingsymbol}[1]{\def\@proofingsymbol{{#1}\hspace{-.3em}\es@segnala}}%%% this defines the symbol for the exact answer in MCQ and the label for the string of solutions
+\proofingsymbol{$\blacktriangleright$}%%% the proofing symbol that can be changed in document
+\newenvironment{gobbleenv}{\Collect@Body \@gobble}{}%%% this environment eats its content
+
+\AtBeginDocument{%%% the date and the date component of the seed and some code for solutions
+    \def\longdate{\expandafter\es@longdate\@date\@empty}
+    \def\shortdate{\expandafter\es@shortdate\@date\@empty}
+    \expandafter\mydate\@date\@empty
+    \ifes@prova
+    \else
+\ifes@solutions
+\newwrite\sols
+\immediate\openout\sols=\jobname.sol.tex
+\newwrite\loe
+\immediate\openout\loe=\jobname.loe
+    \fi
+    \fi}
+\newcommand\es@segnala{%%% this command gives the reference of the exact answer in the string of solutions
+    \if\es@listType1\addtocounter{sq@quizno}{-1}\refstepcounter{sq@quizno}\fi
+\ifes@prova \else \label{\probchosen} \immediate\write\sols{ \string\item\string\ref{\probchosen}}
+\immediate\write\loe{\es@exercisename\space\theesquestionnoi:\space \probchosen} \fi
+    }
+\newcommand{\prior@questionsHook}{}
+
+%========================================================%
+%            definitions of Fpsetpar                     %
+%========================================================%
+\def\maxLoopLimit{10}%
+\ifes@param
+\newcommandx{\FPsetpar}[5][1=\seme,5={}]{%%% the parameters are not assigned
+                \expandafter\def\csname#2\endcsname{#2}%%% in the parametric version, the parameter appears with its name and not with its value
+              \immediate\write\params{%%% writes on a file
+                \string\textbf\string{\string\noindent\space \es@parametermessage{#2}{#3}{#4}
+                \space \ifx#5\@empty\else $#2\neq #5$.\fi\space \es@seedmessage{#1}
+                \string}\string\newline}}
+                \else
+\newcommandx{\FPsetpar}[5][1=\seme,5={}]{%
+\ifnum#3>#4\PackageError{esami}{\es@fpsetparerrshort{#2}}{\es@fpsetparerrlong{#2}}\fi%% NEW 2015
+\@ifundefined{nome}{\setcounter{fp@contatore}{-2}}{
+\@ifundefined{base\nome}{\setcounter{fp@contatore}{-2}}{\setcounter{fp@contatore}{-\csname base\nome \endcsname}}}
+\FPval{randomico}{\thevers+\then@par+\thequestionno+#1}
+\old@randomi=\number\randomi%%% it saves the old seed
+\stepcounter{n@par}%
+\setcounter{fp@contatore}{-\value{vers}}%
+\randomi=\randomico%
+\addtocounter{fp@contatore}{-#3}%
+\whiledo{\value{fp@contatore}<\value{questionno}}{\nextrandom\stepcounter{fp@contatore}}%
+\setrannum{\tmp@a}{#3}{#4}%
+\def\rand@ne{#5}%%% checks the parameter (adapted from rangen)
+\ifx\rand@ne\@empty\else\loopCnt=0\relax%
+\@whilenum\loopCnt<\maxLoopLimit\do{%
+\rnd@cnt=1\relax%
+\@for\ne@@tmp:=\rand@ne\do{%
+\ifnum\tmp@a=\ne@@tmp\relax%
+\multiply\rnd@cnt0\relax%
+\else%
+\multiply\rnd@cnt1\relax%
+\fi%
+}%
+\ifnum\rnd@cnt=1\relax%%% all conditions are satisfied
+\loopCnt=\maxLoopLimit%
+\else%
+\advance\loopCnt1\relax%
+\ifnum\loopCnt=\maxLoopLimit%
+\PackageError{esami}{\es@fpsetparerrorshort}{\es@fpsetparerrorshort}%
+\else%
+\setrannum{\tmp@a}{#3}{#4}%
+\fi%
+\fi%
+}%
+\fi%
+\FPeval{#2}{round(\number\tmp@a:0)}%
+\ifes@fillin%
+\immediate\write\parametri{\string\FPeval\string{#2\string}\string{round(\number\tmp@a:0)\string}}%
+\fi%
+\randomi=\number\old@randomi%%% restores the seed
+}%
+\fi
+%%%%%% Alternative definitions of \FPsetpar with different randomization process (we left them for archive purposes) %%%%
+
+%\newcommandx{\FPsetpar}[5][1=\seme,5={}]{%
+%\stepcounter{n@par}
+%\FPeval\diff{round(#4-#3+1:0)}
+%\pdfsetrandomseed #1
+%\setcounter{fp@contatore}{-\value{vers}}%
+%\tmp@cnt=\pdfuniformdeviate \diff
+%\FPeval\tmp@seed{round(#1+\then@par:0)}
+%\pdfsetrandomseed \tmp@seed %%% aggiunta 2010.04.19
+%\addtocounter{fp@contatore}{-#3}
+%\FPeval\tmp@seed{round(tmp@seed+\thevers:0)}
+%\pdfsetrandomseed \tmp@seed%%% aggiunta 2010.04.19
+%\whiledo{\value{fp@contatore}<\value{questionno}}
+%{\tmp@cnt=\pdfuniformdeviate \diff \stepcounter{fp@contatore}}
+%\FPeval{fp@tmp}{round((1-1/\diff)*\number\tmp@cnt+#3:0)}
+% \def\rand@ne{#5}
+%    \ifx\rand@ne\@empty\else\loopCnt=0\relax
+%           \@whilenum\loopCnt<\maxLoopLimit\do{%
+%                \rnd@cnt=1\relax
+%                \@for\ne@@tmp:=\rand@ne\do{%
+%                    \ifnum\fp@tmp=\ne@@tmp\relax
+%                        \multiply\rnd@cnt0\relax
+%                    \else
+%                       \multiply\rnd@cnt1\relax
+%                    \fi
+%                }
+%                \ifnum\rnd@cnt=1\relax
+%                    \loopCnt=\maxLoopLimit
+%                \else
+%                    \advance\loopCnt1\relax
+%                    \ifnum\loopCnt=\maxLoopLimit
+%                        \PackageWarning{esami}{Non sono state soddisfatte tutte le condizioni
+%                            dopo \maxLoopLimit\space tentativi}
+%                    \else
+%                        \tmp@cnt=\pdfuniformdeviate \diff
+%                    \FPeval{fp@tmp}{round((1-1/\diff)*\number\tmp@cnt+#3:0)}
+%                    \fi
+%                \fi
+%            }%
+%        \fi
+%\FPeval{#2}{round((1-1/\diff)*\number\tmp@cnt+#3:0)}}
+%
+%\newcommand{\FPsetpar}[4][\seme]{%
+%\gdef\#2min{#3}
+%  \gdef\#2max{#4}
+%\old@randomi=\number\randomi
+%\stepcounter{n@par}
+%\setcounter{fp@contatore}{-\value{vers}}
+%\setrannum{\tmp@cnt}{#3}{#4}
+%\randomi=#1
+%\advance\randomi\value{n@par}
+%\addtocounter{fp@contatore}{-#3}
+%\advance\randomi\value{vers}
+%\whiledo{\value{fp@contatore}<\value{questionno}}{\nextrandom\stepcounter{fp@contatore}}%{\nextrandom\setrannum{\tmp@cnt}{#3}{#4} \stepcounter{fp@contatore}}
+%\setrannum{\tmp@cnt}{#3}{#4}
+%%\def\s@ss{#2}
+%\FPeval{#2}{round(\number\tmp@cnt:0)}
+%\ifes@fillin
+%          \expandafter\immediate\write\parametri{\string\FPeval\string{#2\string}\string{round(\number\tmp@cnt:0)\string}}
+% \fi
+% \randomi=\number\old@randomi
+%}
+%
+%\newcommand{\FPsetpar}[4][\seme]{%
+%\setcounter{fp@contatore}{-\value{vers}}
+%\FPeval\dud{round(#1:0)}
+%\FPseed=\dud
+%\whiledo{\value{fp@contatore}<\value{questionno}}{
+%\FPrandom\tmp@cnt
+%\FPeval{#2}{trunc((#4+1-#3)*tmp@cnt+#3:0)}
+%\stepcounter{fp@contatore}
+%}
+%}
+
+%%%% Command for random sign (taken from rangen)  %%%%%
+\newcommand{\RandS}{%
+\setrannum{\rnd@cnts}{0}{1}
+\ifnum\number\rnd@cnts>0
++
+\else
+-
+\fi}%
+
+%%% Modified commands for parametric version in "totale-versioni"
+\ifes@param
+\renewcommand{\simpsqrt}[2]{\sqrt[#1]{(#2)}}%%% \simpsqrt shows operations
+\renewcommand{\sempli}[2]{%%% all simplifications become \frac
+    \ifthenelse{\equal{#2}{1}}{(#1)}{\frac{#1}{#2}}}
+    \renewcommand{\semplix}[2]{%
+    \ifthenelse{\equal{#2}{1}}{(#1)}{\frac{#1}{#2}}}
+    \renewcommand{\sempliz}[2]{%
+    \ifthenelse{\equal{#2}{1}}{(#1)}{\frac{#1}{#2}}}
+    \renewcommand{\esempli}[2]{%
+    \ifthenelse{\equal{#2}{1}}{(#1)}{\frac{#1}{#2}}}
+   \PTsHook{\emph{(\esPTs\ \ifthenelse{\equal{\esPTs}{\detokenize{1}}}{\es@pointname}{\es@pointsname})} %
+   \ifes@test
+     \immediate\closeout\params
+     \fi
+     }
+\fi
+
+% +===================================+
+% | OTHER ENVIRONMENTS AND EXERCISES  |
+% +===================================+
+
+%========================================================%
+%        Tabella                                         %
+%========================================================%
+
+\newcolumntype{$}{>{\global\let\currentrowstyle\relax}}
+\newcolumntype{^}{>{\currentrowstyle}}
+\newcommand{\rowstyle}[1]{\gdef\currentrowstyle{#1}#1\ignorespaces}
+\ifes@solutions
+\colorlet{tab@ans@color}{red}
+\newcolumntype{C}[1]{>{\color{tab@ans@color}}#1}%%% the column of the solutions is red (option solution)
+\else
+\def\cancella#1\finqui{\phantom{#1}}
+\newcolumntype{C}[1]{>{\cancella}#1<{\finqui}}%%% the column of the solutions is empty (exam)
+\fi
+\newenvironment{tabella}[3][2]{\bigskip%%% open answers in columns #1=n. of visible columns (+1 invisible), #2={r,c,l} alignment of visible columns,  #3={r,c,l} alignment of invisible column
+\renewcommand\arraystretch{2}
+\begin{tabular}{$#2*{#1}{|^C#3}}  }{
+\end{tabular} \renewcommand\arraystretch{1}}
+
+%========================================================%
+%         Risposta                                       %
+%========================================================%
+
+\ifes@solutions
+\newenvironment{risposta}[2][l]{\relax}{}
+\else
+\newenvironment{risposta}[2][b]{% #1={b,l} box or lines, #2= heigth of box or number of lines
+\setlength{\es@rig}{#2cm minus 12pt}
+    \ifx#1b  \fbox{\parbox[b][\es@rig]{\textwidth}{\vfill\hfill }}
+    \else
+        \ifx#1l \setcounter{risp@righe}{-#2}\stepcounter{risp@righe}
+{\whiledo{\therisp@righe < #2}
+{ \par \vspace{.2cm} \dotfill \stepcounter{risp@righe}}}\else \fi\fi}
+{}
+\fi
+
+%========================================================%
+%       matching (from an idea of examdesign)            %
+%========================================================%
+
+\newcommand{\pair}[2]{%%% pairing of items
+\stepcounter{match@q}
+\expandafter\gdef\csname match@qst\thematch@q\endcsname{#1}
+\expandafter\gdef\csname match@ans\thematch@q\endcsname{#2}
+\expandafter\edef\csname match@num\thematch@q\endcsname{\thematch@q}
+}
+\ifes@solutions
+\def\match@ans@color#1{\bfseries\color{red}{#1}}%%% visible solutions in red (solutions)
+\else
+\def\match@ans@color#1{\phantom{#1}}%%% invisible solutions (exam)
+\fi
+\newcommand{\matching}{%%% it generates the 2 columns
+\@getitemsr \@getitemsl
+\vspace{5mm}
+\setcounter{match@q}{0}
+}
+\def\@getitemsl{%%% left column and shuffle of items
+\i@sh=\thematch@q
+\loop
+\expandafter\let \csname flag\number\i@sh\endcsname a%
+\advance\i@sh by-1
+\ifnum\i@sh > 0 \repeat
+\i@sh=\thematch@q
+\loop
+\setrannum{\j@sh}{1}{\thematch@q}
+\expandafter\ifx \csname flag\number\j@sh\endcsname a%
+\expandafter\let \csname flag\number\j@sh\endcsname b%%% Sets the flag.
+\expandafter\edef\csname match@qsti\number\i@sh\endcsname{\noexpand\csname match@qstii\number\j@sh\endcsname}
+\setcounter{match@plu}{\thematch@q}
+\addtocounter{match@plu}{-\csname match@numii\number\j@sh\endcsname}
+\addtocounter{match@plu}{1}
+\setcounter{match@plo}{\thematch@q}
+\addtocounter{match@plo}{- \number\i@sh}
+\addtocounter{match@plo}{1}
+\expandafter\edef\csname match@numi\number\i@sh\endcsname{(\Alph{match@plu})}
+\vspace{2ex}
+
+\begin{tabular}{p{.05\textwidth}p{.40\textwidth}p{.01\textwidth}p{.40\textwidth}}
+\underbar{\makebox[.5cm]{\match@ans@color{\csname match@numi\number\i@sh\endcsname}}}  & \csname match@qsti\number\i@sh\endcsname&&(\Alph{match@plo})\hspace{3mm}\csname match@ansi\number\i@sh\endcsname%\tabularnewline
+\end{tabular}
+      \advance\i@sh by-1
+      \ifnum\i@sh > 0 \fi
+    \fi
+    \ifnum\i@sh > 0
+\repeat
+}
+\def\@getitemsr{%%% right column and shuffle of tems
+\i@sh=\thematch@q
+\loop
+\expandafter\let \csname flago\number\i@sh\endcsname c%
+\advance\i@sh by-1
+\ifnum\i@sh > 0 \repeat
+\i@sh=\thematch@q
+\loop
+\setrannum{\j@sh}{1}{\thematch@q}
+\expandafter\ifx \csname flago\number\j@sh\endcsname c%
+\expandafter\let \csname flago\number\j@sh\endcsname d%
+\expandafter\edef\csname match@qstii\number\i@sh\expandafter\endcsname{\noexpand\csname match@qst\number\j@sh\endcsname}
+\expandafter\edef\csname match@ansi\number\i@sh\expandafter\endcsname{\noexpand\csname match@ans\number\j@sh\endcsname}
+\expandafter\edef\csname match@numii\number\i@sh\endcsname{\csname match@num\number\i@sh\endcsname}
+\advance\i@sh by-1
+\ifnum\i@sh > 0 \fi
+\fi
+\ifnum\i@sh > 0
+\repeat
+}
+
+%========================================================%
+%     Commands adapted from probsoln                     %
+%========================================================%
+
+%%%%%% \newproblem  %%%%%%%%%%%%%
+
+\newif\iffirstpass
+\ifes@prova
+\newcommand{\newproblem}[1]{%%% \newproblem for the file "totale-versioni"
+\advance\tmp@quest by1
+\iffirstpass
+\global\advance\@probN by 1
+\else
+\let\nome\currfilebase
+\global\def\problabel{e:\thevers-file:\nome}
+\global\def\probnumber{q:\romannumeral\tmp@quest}
+    \ifes@fillin
+    \immediate\openout\parametri=qf\nome q\number\j@n e\thevers.parametri.tex
+    \fi
+\expandafter\global\expandafter\newcommand\csname \probnumber \endcsname{#1}
+ \fi
+}
+\else
+    \ifes@correzione
+    \newcommand{\newproblem}[1]{%%% \newproblem for the "correzione" option
+\advance\tmp@quest by1
+    \iffirstpass
+    \global\advance\@probN by 1
+    \else
+   \let\nome\currfilebase
+   \global\def\problabel{e:\thevers-file:\nome}
+\global\def\probnumber{q:\romannumeral\tmp@quest}
+    \ifes@fillin
+    \immediate\openout\parametri=qf\nome q\romannumeral\tmp@quest e\thevers.parametri.tex
+    \fi
+\expandafter\global\expandafter\newcommand\csname @prob-\problabel-\probnumber \endcsname{\unexpanded{#1}}
+    \expandafter\global\expandafter\newcommand\csname @probi-\problabel-\probnumber \endcsname{#1}
+    \fi
+    }
+    \else
+\newcommand{\newproblem}[1]{%%% \newproblem for the exam
+\advance\tmp@quest by1
+\iffirstpass
+\global\advance\@probN by 1
+\else
+\let\nome\currfilebase
+\global\def\problabel{e:\thevers-file:\nome}
+\global\def\probnumber{q:\romannumeral\tmp@quest}
+\ifes@fillin
+\ifes@solutions%%% to write the string of solutions
+\immediate\openout\parametri=qf\nome q\romannumeral\tmp@quest e\thevers.parametri.tex
+\fi
+\fi
+
+\expandafter\global\expandafter\newcommand\csname @prob-\problabel-\probnumber \endcsname{\unexpanded{#1}}
+\expandafter\global\expandafter\newcommand\csname @probi-\problabel-\probnumber\endcsname{#1}%%% it assigns a unique name to exercise
+\fi
+}
+\fi
+\fi
+
+%%%% NEW  fillin 2013-06-03
+\newcommand{\newfillinproblem}[1]{ \newproblem{\fillinproblem #1}}
+
+%%%%%%%% \selectrandomly %%%%%%%
+
+\newcommand{\selectrandomly}[1]{%
+\global\@probN=0\relax
+\firstpasstrue
+\tmp@quest=0
+\input{#1}%%%%%
+\firstpassfalse%%% now prints the question
+\tmp@quest=0
+\input{#1}
+\@ifundefined{base\nome}{\old@random=\number\randomi %%% 2015/01/16
+\setrannum{\rnd@cnta}{1}{\@probN}
+\randomi=\number\old@random
+\expandafter\global\expandafter\edef\csname base\nome \endcsname{\number\rnd@cnta}
+}{}
+\FPeval\restotrentasei{round(\thevers+\thenomefile+1+base\nome-trunc((\thevers+\thenomefile+base\nome)/36:0)*36:0)}
+\ifcase\@probN\or
+\def\j@n{1}%%% just one variant
+\or%%% 2 variants
+\ifthenelse{\isodd{\thevers}}{\def\j@n{1}}{\def\j@n{2}}
+\or%%% 3 variants
+\def\j@n{\ifcase\restotrentasei\or 3\or 2\or 1\or 2\or 1\or 3\or 1\or 3\or 2\or 3\or 1\or 2\or 1\or 2\or 3\or 2\or 3\or 1\or 3\or 2\or 1\or 2\or 1\or 3\or 1\or 3\or 2\or 3\or 1\or 2\or 1\or 2\or 3\or 2\or 3\or 1\fi}%
+\or%%% 4 variants
+\def\j@n{\ifcase\restotrentasei\or 3\or 4\or 1\or 2\or 1\or 2\or 3\or 4\or 3\or 1\or 4\or 2\or 4\or 2\or 3\or 1\or 2\or 3\or 1\or 4\or 1\or 4\or 2\or 3\or 3\or 2\or 1\or 4\or 2\or 3\or 4\or 1\or 4\or 3\or 2\or 1\fi}%
+\or%%% 5 variants
+\def\j@n{\ifcase\restotrentasei\or 5\or 1\or 2\or 3\or 4\or 5\or 2\or 3\or 5\or 1\or 4\or 3\or 1\or 4\or 2\or 5\or 4\or 2\or 3\or 5\or 1\or 5\or 1\or 4\or 2\or 3\or 1\or 3\or 5\or 4\or 2\or 3\or 4\or 5\or 2\or 1\fi}%
+\or%%% 6 variants
+\def\j@n{\ifcase\restotrentasei\or 2\or 5\or 1\or 3\or 4\or 2\or 6\or 1\or 3\or 6\or 5\or 4\or 2\or 3\or 2\or 5\or 4\or 1\or 6\or 1\or 4\or 3\or 2\or 6\or 5\or 4\or 6\or 2\or 5\or 1\or 3\or 6\or 3\or 5\or 1\or 4\fi}%
+\or%%% 7 variants
+\def\j@n{\ifcase\restotrentasei\or 2\or 4\or 1\or 5\or 3\or 6\or 7\or 4\or 1\or 5\or 7\or 6\or 2\or 3\or 7\or 2\or 4\or 6\or 5\or 3\or 1\or 3\or 4\or 7\or 2\or 6\or 1\or 5\or 4\or 5\or 6\or 7\or 3\or 2\or 1\or 5\fi}%
+\or%%% 8 variants
+\def\j@n{\ifcase\restotrentasei\or 2\or 8\or 6\or 7\or 4\or 3\or 1\or 5\or 8\or 5\or 1\or 3\or 7\or 6\or 4\or 2\or 7\or 1\or 8\or 6\or 3\or 2\or 5\or 4\or 1\or 3\or 7\or 5\or 6\or 4\or 2\or 8\or 4\or 3\or 1\or 5\fi}%
+\else
+\FPeval\j@n{round(\thevers*\es@primo+base\nome+1-trunc((\thevers*\es@primo+base\nome)/\number\@probN:0)*\number\@probN:0)}
+\fi
+\def\probchosen{\problabel-q:\romannumeral\j@n}
+\ifes@test
+\begin{minipage}{.95\linewidth}\csname @probi-\problabel-q:\romannumeral\j@n \endcsname \vspace{5mm}\end{minipage}
+\Acapo
+\else
+\csname @probi-\problabel-q:\romannumeral\j@n \endcsname \vspace{5mm}
+\Acapo
+\fi
+    \ifes@fillin
+     \immediate\closeout\parametri
+     \fi
+}
+
+%%%% \selectallproblems %%%%%
+
+\newcommand{\selectallproblems}[2][]{%% %%% it selects all problems for "totale-versioni", with the option "random" the problems are in random order
+\global\@probN=0\relax
+\firstpasstrue
+\tmp@quest=0
+\input{#2}%
+\firstpassfalse
+\tmp@quest=0
+\input{#2}%
+\ifthenelse{\equal{#1}{random}}{\i@sh=0
+\loop
+\advance\i@sh by1
+\expandafter\edef\csname ftmp\romannumeral\i@sh \endcsname {\romannumeral\i@sh}
+\ifnum\i@sh <\number\tmp@quest
+\repeat
+\shuffle{ftmp}{\tmp@quest}}{}
+\global\j@m=1\relax
+\whiledo{\j@m < \@probN \TE@or \j@m = \@probN}{
+    \ifes@prova
+        \ifes@param%
+ \immediate\openout\params=params %%% the file in which the parameters are written
+        \fi
+         \def\probchosen{\problabel-q:\romannumeral\j@m}
+\csname q:\romannumeral\j@m \endcsname%
+    \else
+     \def\probchosen{\problabel-q:\romannumeral\j@m}
+    \ifthenelse{\equal{#1}{random}}{
+    \csname @probi-\problabel-q:\csname ftmp\romannumeral\j@m\endcsname \endcsname
+    }{
+\csname @probi-\problabel-q:\romannumeral\j@m \endcsname
+ }%
+    \fi
+\par\vspace{2mm}
+    \ifes@param%
+\input{params}
+    \fi
+\global\advance\j@m by 1\relax
+}}
+
+%%%%%%%%%%%% NEW 2013-06-05
+%%% working with datasets of exercises (you can choose more than one exercise from a file)
+
+\newif\ifes@db %% to work with datasets
+\es@dbfalse
+
+\newwrite\dbtemp
+\newenvironment{esdb}[1]{
+\gdef\dbname{#1}
+\immediate\openout\dbtemp=\dbname.tex
+\es@dbtrue%
+}{
+\immediate\closeout\dbtemp
+\esercizidb{\dbname}
+\es@dbfalse%
+}
+
+\newcommand{\selectrandomlyn}[2]{
+\global\@probN=0\relax
+\firstpasstrue
+\tmp@quest=0
+\input{#2}%
+\ifthenelse{\equal{#1}{all}}{\@probselN=\number\tmp@quest}{
+\ifnum\tmp@quest<#1 \relax
+   \PackageWarning{esami}{\es@selectnwarn{#1}{#2}}
+    \@probselN=\number\tmp@quest %
+ \else
+ \@probselN=#1
+ \fi}
+ \i@sh=0
+\loop
+\advance\i@sh by1
+\expandafter\edef\csname ftmp\romannumeral\i@sh \endcsname {\romannumeral\i@sh}
+\ifnum\i@sh <\number\tmp@quest
+\repeat
+\shuffle{ftmp}{\tmp@quest}
+\firstpassfalse%
+\tmp@quest=0
+\input{#2}
+ \i@sh=0
+\loop
+\advance\i@sh by1
+\global\def\probnumber{q:\csname ftmp\romannumeral\i@sh\endcsname}
+\expandafter\immediate\write\dbtemp\expandafter{\string\defitem\string{%
+\string\gdef\string\problabel{\problabel}\space
+\string\gdef\string\probnumber{\probnumber}\space
+\string}}
+\ifnum\i@sh <\number\@probselN
+\repeat
+}
+
+\def\defitem{%
+  \advance\icount by1
+  %%% IT defines a macro called "\prbl n" where "n" is the number of the item.
+  \expandafter\def \csname prbl\romannumeral\icount \endcsname
+}
+
+
+%\def\@getitems#1#2#3{\rand@getitems{#2}{#3}[#1]}%
+
+\newcommand{\esercizidb}[1]{
+ \icount=0
+\input{#1.tex}%
+\i@sh=0
+\loop
+\advance\i@sh by1
+\expandafter\edef\csname ftemp\romannumeral\i@sh \endcsname {\romannumeral\i@sh}
+\ifnum\i@sh <\number\icount
+\repeat
+\shuffle{ftemp}{\icount}
+\setcounter{n@par}{1}
+\io=\icount
+\loop
+\ifes@test
+\begin{minipage}{.95\linewidth}
+\fi
+\ifes@shuffleQuestions
+\csname prbl\csname ftemp\romannumeral\io\endcsname\endcsname
+\else
+\csname prbl\romannumeral\io \endcsname
+\fi
+\def\probchosen{\problabel-\probnumber}
+\csname @probi-\problabel-\probnumber \endcsname
+\ifes@test
+ \vspace{5mm}\end{minipage}
+ \Acapo
+\vspace{4mm}
+ \fi
+       \advance\io by-1
+    \ifnum\io > 0 \repeat
+ \par}
+
+
+
+% +=============================+
+% |        ENVIRONMENTS         |
+% +=============================+
+
+%========================================================%
+%    TEST                                                %
+%========================================================%
+
+%%%%% Test %%%%%
+
+        \newenvironment{test}[1][]{%%%  test for MCQ, ecc.
+        \es@testtrue
+                    \renewcommand{\punti}{#1}
+            \examenddef\begin{shortquiz}
+            \ifes@twocolumns
+            \begin{multicols}{2}
+            \fi
+            }{
+             \ifes@twocolumns
+            \end{multicols}
+            \fi
+            \end{shortquiz}
+}
+
+%%%%%  questions (the environment in which you put the MCQ) %%%%%%
+
+\newenvironment{questions}
+{%
+\stepcounter{questionno}
+    \ifnum\@esquestiondepth>\tw@\@toodeep\else\advance\@esquestiondepth\@ne\fi
+    \def\@quesctr{esquestionno\romannumeral\the\@esquestiondepth}%
+    \begin{list}{\qMark@Hook\prior@questionsHook\gdef\esPTs{1}%
+    \makebox[\labelwidth][r]{\normalfont\bfseries\csname label\@quesctr\endcsname}%
+        \post@questionsHook}%
+    {\usecounter{\@quesctr}%
+    \settowidth{\labelwidth}{\normalfont\bfseries00.\ }%
+    \setlength{\topsep}{3pt}\setlength{\parsep}{0pt}%
+    \setlength{\itemindent}{0pt}\setlength{\itemsep}{3pt}%
+    \setlength{\leftmargin}{\labelwidth}%
+    \settowidth{\labelsep}{\ }}
+    \ifes@prova
+    \else
+    \ifes@solutions
+    \immediate\write\sols{\string\begin{enumerate}}
+    \fi
+    \fi%
+}{\end{list}
+\ifes@prova
+\else
+\ifes@solutions
+\immediate\write\sols{\string\par\string\end{enumerate}\string\vspace{3ex}}
+\fi
+\fi
+}
+
+%%%%%%% shortquiz (where to put the environment questions) %%%%
+
+\newenvironment{shortquiz}
+{\es@testtrue%
+    \goodbreak
+    \@shortquiz
+}{
+\setcounter{sq@quizno}{0}%
+        \par\aftershortquizskip}
+\def\@shortquiz{
+      \let\@Ans\Ans@sq@l
+  \setcounter{questionno}{0}%
+  \let\answers\answers@sq
+  \let\endanswers\endanswers@sq
+  \let\solution\solution@sq
+  \let\endsolution\endsolution@sq
+    \sq@priorhook\sqlabel\space
+   \ignorespaces
+}
+\def\aftershortquizskip{\medskip}
+\def\answers@sq{\stepcounter{questionno}%
+    \answers@@sq
+    }
+\def\answers@@sq#1{%
+    \gdef\aeb@numCols{#1}%
+\ifx#11\gdef\es@listType{1}\expandafter\answers@sq@list\else
+   \gdef\es@listType{0}\expandafter\answers@@sq@tabular\fi{#1}%
+}
+\newcommand\Ans@list[2][0]{\gdef\es@pPTs{#1}%
+    \xdef\Ans@choice{#2}\item\relax\if\es@listType1%
+    \addtocounter{sq@quizno}{-1}\refstepcounter{sq@quizno}\fi}
+\newenvironment{answers@sq@list}[1]
+{%
+        \let\endanswers=\endanswers@sq@list
+    \vskip\aboveanswersSkip
+    \begin{list}{\strut\@Ans}
+    {%
+            \settowidth{\labelwidth}{\es@lw@l}%
+        \setlength{\parsep}{0pt}\setlength{\itemindent}{0pt}%
+        \setlength{\topsep}{0pt}\setlength{\partopsep}{0pt}%
+        \setlength{\listparindent}{\parindent}%
+        \setlength{\leftmargin}{\labelwidth}%
+        \setlength{\labelsep}{\mylabelsep}%
+        \def\Ans{\Ans@list}%
+    }%
+}%
+{\end{list}\setcounter{sq@quizno}{0}}
+\newcommand\Ans@tabular[2][0]{\gdef\es@pPTs{#1}%
+    \xdef\Ans@choice{#2}\leavevmode\@Ans
+}
+\def\answers@@sq@tabular#1{%
+    \vskip\aboveanswersSkip\noindent\tabcolsep=0pt
+    \es@tmpdima=\linewidth \divide \es@tmpdima by#1 %
+    \def\Ans{\Ans@tabular}%
+    \begin{tabular}{*{#1}{p{\es@tmpdima}}}}%
+\def\endanswers@sq{\end{tabular}\setcounter{sq@quizno}{0}}%
+\def\Ans@sq@l{%
+    \leavevmode\if\es@listType1\stepcounter{sq@quizno}%
+    \else\refstepcounter{sq@quizno}\fi\PBS\raggedright
+    \settowidth{\es@tmplength}{\es@l@l}\sbox{\es@tmpbox}{\es@lw@l}%
+    \es@tmpdima=\wd\es@tmpbox
+    \def\link@@Content{\linkContentWrapper}%
+    \hangindent=\es@tmplength\hangafter=1\relax
+        {\makebox[\es@tmpdima]{\link@@Content}}%
+    \Ans@proofing{\es@tmpdima}%
+\ \ignorespaces}
+\def\Ans@proofing#1{%
+    \ifes@solutions\if\Ans@choice1\relax
+        \llap{\@proofingsymbol\,\hskip#1\relax}%
+    \fi\fi
+}
+\newcommand\answers@q
+{%
+    \setdefault@Ans
+    \stepcounter{questionno}%
+    \answers@@q
+}
+\def\answers@@q#1%
+{%
+    \gdef\aeb@numCols{#1}%
+    \ifx#11\gdef\es@listType{1}\expandafter\answers@q@list\else
+    \gdef\es@listType{0}\expandafter\answers@q@tabular\fi{#1}%
+}
+\newenvironment{answers@q@list}%[1]
+{%
+    \let\endanswers=\endanswers@q@list
+    \vskip\aboveanswersSkip
+    \begin{list}{\strut\@Ans}%\
+    {%
+        \setlength{\parsep}{0pt}\setlength{\itemindent}{0pt}%
+        \setlength{\listparindent}{\parindent}
+        \setlength{\leftmargin}{\labelwidth}%
+        \setlength{\labelsep}{0pt}
+        \def\Ans{\Ans@list}%
+        }%
+}{\end{list}\setcounter{sq@quizno}{0}%
+    \setdefault@Ans
+}
+\def\answers@q@tabular#1{%
+    \vskip\aboveanswersSkip\noindent\tabcolsep=0pt
+    \es@tmpdima=\linewidth \advance\es@tmpdima-\leftskip
+        \divide\es@tmpdima by#1
+    \def\Ans{\Ans@tabular}%
+    \let\endanswers=\endanswers@q@tabular
+    \begin{tabular}{*{#1}{p{\es@tmpdima}}}%
+}
+\def\endanswers@q@tabular
+{%
+    \end{tabular}\setcounter{sq@quizno}{0}%
+    \setdefault@Ans
+}
+
+\define@key{bchoice}{nCols}{\def\bChoiceNumCols{#1}}
+\@for\i:=1,2,3,4,5,6,7,8,9,10 \do{\edef\temp@expand@def{%
+    \noexpand\define@key{bchoice}{\i}[\i]{%
+        \noexpand\def\noexpand\bChoiceNumCols{\i}}%
+    }\temp@expand@def
+}
+\def\bChoiceNumCols{\aeb@numCols}
+\define@key{bchoice}{random}[true]{%
+    \csname if#1\endcsname\es@randomizeChoicestrue
+        \else\es@randomizeChoicesfalse\fi
+}
+\def\bChoices{\@ifnextchar[{\@ansChoices}{\@ansChoices[\aeb@numCols]}}
+\def\@ansChoices[#1]%
+{%
+    \setkeys{bchoice}{#1}%
+    \global\es@tabColCnt=0
+    \ifnum\aeb@numCols=1 % list mode
+        \def\es@next{\@layoutListAns}%
+    \else % tabular mode
+         \def\es@next{\@layoutTabularAns{\bChoiceNumCols}}%
+    \fi
+    \es@next
+}
+\let\eChoices\relax
+\def\@layoutListAns{\@ifnextchar\Ans{\@getListAns}%
+    {\@lookforendansChoices{\@layoutListAns}}%
+}
+\long\def\@getListAns\Ans#1\eAns{%
+    \Ans#1\vspace{\@rowskip}%
+    \@layoutListAns
+}
+\long\def\@lookforendansChoices#1{%
+    \@ifnextchar\eChoices{\rowsep{\rowsep@default}%
+        \expandafter\@findendans\@gobble}{\expandafter#1\@gobble}%
+}
+\def\@layoutTabularAns#1{%
+    \let\es@tabSep=\@empty
+    \xdef\numShortCols{#1}%
+    \ifnum#1>\aeb@numCols \xdef\numShortCols{\aeb@numCols}\fi
+    \@@layoutTabularAns
+}
+\def\@@layoutTabularAns{%
+    \@ifnextchar\Ans{\@getTabAns}%
+        {\@lookforendansChoices{\@@layoutTabularAns}}%
+}
+\long\def\@getTabAns\Ans#1\eAns{%
+    \global\advance\es@tabColCnt1
+    \let\@save@tabSep=\es@tabSep
+    \ifnum\es@tabColCnt=\numShortCols
+        \global\es@tabColCnt=0
+            \xdef\es@tabSep{\noexpand\\\noalign{\kern\@rowskip\relax}}%
+    \else
+        \gdef\es@tabSep{&}%
+    \fi
+    \@ifnextchar\eChoices{\@save@tabSep\Ans#1\rowsep{\rowsep@default}
+        \expandafter\@findendans\@gobble}%
+        {\@save@tabSep\Ans#1\@@layoutTabularAns}%
+}
+\def\@findendans{\@ifnextchar\end{}{\expandafter\@findendans\@gobble}}
+
+\ifes@noquizsolutions %%%% NEW 2014 solutions for test
+\def\solution@sq{\gobbleenv}
+\def\endsolution@sq{\endgobbleenv}
+\else
+\def\solution@sq{
+    \par\smallskip\noindent
+    \textit{\es@solutionname}:\
+}
+
+\def\endsolution@sq
+{}
+\fi
+%========================================================%
+%   EXERCISE AND SIMILAR                                 %
+%========================================================%
+
+%%%% Exercise (adapted from exerquiz) %%%%
+
+\newenvironment{exercise}
+{\es@testfalse%%% you can't use it in test
+    \par\es@priorexskip\noindent
+    \def\es@argi{ex@no}
+    \if\es@exerstarEnv*\def\exerstar{*}\else\def\exerstar{x}\fi
+     \if\exerstar*%
+\def\exerstar{*}\fi
+\@exercise
+}{\es@postexerciseHook\par\global\es@exerciseheadingtrue\es@exerskip}
+\newif\ifes@exerciseheading \es@exerciseheadingtrue
+\def\@exercise
+{%
+    \if\es@argi0\else\refstepcounter{\es@argi}\fi
+    \if\exerstar*% exercise with parts
+    \else
+               \ifes@solutions
+                     \else
+               \gdef\es@writeexheader{%
+                    \set@display@protect
+                    \set@typeset@protect
+                    }
+               \fi
+    \fi
+    \ifvmode\ifdim\lastskip>\z@
+        \vskip-\lastskip
+    \fi\fi
+    \if\exerstar*%
+        \let\solution=\solnexer@woparts
+        \let\endsolution=\endsolnexer@woparts
+        \let\parts=\exercise@parts
+        \let\endparts\endexercise@parts
+    \else
+        \let\solution=\solnexer@woparts
+        \let\endsolution=\endsolnexer@woparts
+        \let\parts=\relax
+        \let\endparts=\relax
+    \fi
+    \ifes@exerciseheading
+\ex@header
+    \afterlabelhskip\ignorespaces
+    \fi
+}
+\long\def\setsolnspace#1{%
+    \def\newsolnspace{#1}%
+    \let\solnhspace\newsolnspace
+}
+\let\solnhspace\space
+\def\solnexer@woparts{\def\bLeaveVspace{x}%
+    \def\next{\@ifnextchar[{\solnexer@@woparts}%
+        {\solnexer@@woparts[\null]}}%
+    \next}
+\let\esPriorVspace\@gobble
+\def\solnexer@@woparts[#1]{%
+    \ifx#1\null
+    \else
+        \gdef\sameVspace{#1}%
+        \ifes@solutions\else
+                \let\bLeaveVspace=\@empty
+                \def\leavevspace{%
+                     \par\esPriorVspace{#1}%
+                        {\nobreak\parbox[b][#1][t]{\linewidth}{\vfill}}%
+                }%
+        \fi
+    \fi
+    \solnexer@@@woparts
+}
+\def\solutionsafterSkip{\smallskip}
+\def\solnexer@@@woparts
+{%
+     \ifx\bLeaveVspace\@empty\leavevspace\fi
+                   \def\es@next{%
+            \ifes@solutions
+                \ifx\exsolafter\@empty\else
+                \par\solutionsafterSkip
+                \noindent\exsolafter\space\ignorespaces\fi
+            \else
+               \global\es@solutionsfalse\expandafter\gobbleenv
+            \fi
+        }%
+   \es@next}
+\def\endsolnexerhook{}
+\def\endsolnexerhookaux{}
+\def\endsolnexer@woparts
+{%
+        \ifes@solutions
+        \else
+          \endgobbleenv
+                \endsolnexerhookaux
+        \fi
+\endsolnexerhook}
+\let\es@exerstarEnv\relax
+\newenvironment{exercise*}{\def\es@exerstarEnv{*}\exercise}
+{\endexercise}
+\def\exercise@parts{\@@par\ifdim\parskip>\z@\vskip-\parskip\fi
+  \let\endparts=\endexercise@parts@list\exercise@parts@list%}
+  }
+\def\es@extralabelsep{0pt}
+\newenvironment{exercise@parts@list}
+{\settowidth{\es@tmplength}{\normalfont(d)}%
+\begin{list}{\normalfont
+    \makebox[\es@tmplength]{\esexlisttabheader}%
+}{%
+    \usecounter{ex@partno}%
+    \setlength{\topsep}{3pt}%
+    \setlength{\partopsep}{0pt plus 1pt minus 1pt}%
+    \setlength{\parsep}{0pt}\setlength{\itemindent}{0pt}%
+    \setlength{\listparindent}{\parindent}%
+    \settowidth{\labelsep}{\normalfont\ }%
+    \addtolength{\labelsep}{\es@extralabelsep}%
+    \settowidth{\labelwidth}{\normalfont(d)}%
+    \setlength{\leftmargin}{\labelwidth}%
+    \addtolength{\leftmargin}{\labelsep}%
+     }%
+}{\end{list}}
+
+
+%%%%% Problem %%%%%%%%
+
+\newenvironment{problem}[1][]{%%% it's like exercise, but with points
+\es@testfalse
+\renewcommand{\punti}{#1}
+\ifes@solutionsonly\else\examenddef\fi
+\begin{exercise}
+\ifes@prova
+\else
+\ifes@solutions
+\immediate\write\loe{\es@exercisename\space \theex@no:\space \probchosen}
+\fi
+\fi
+}
+{
+\end{exercise}
+\ifes@param
+\immediate\closeout\params
+\fi}
+
+\newenvironment{problem*}[1][]{\es@testfalse
+\renewcommand{\punti}{#1}
+\ifes@solutionsonly\else\examenddef\fi
+\begin{exercise*}
+\ifes@prova
+\else
+\ifes@solutions
+\immediate\write\loe{\es@exercisename\space \theex@no:\space \probchosen}
+\fi
+\fi
+}
+{
+\end{exercise*}
+\ifes@param
+\immediate\closeout\params
+\fi }
+
+%%%%%%%% Domanda %%%%%%%%
+%%%%  (it can be used to hide the text of the exercise and print only the solution) %%%
+
+\ifes@solutionsonly
+    \newenvironment{domanda}{\gobbleenv}{\endgobbleenv}%
+    \else
+    \newenvironment{domanda}{}{}
+    \fi
+
+%%%%%%%%%%%%%  workarea (adapted from exerquiz) %%%%%
+
+\newenvironment{workarea}[2][\linewidth]%%% #1=width #2=heigth
+{%
+    \edef\workareadepth{#2}%
+    \begin{lrbox}{\workareasb}\setlength{\es@tmplength}{#1}
+    \begin{minipage}[b][\workareadepth][t]{\es@tmplength}\vspace*{3pt}%
+}
+{%
+    \end{minipage}\end{lrbox}%
+    \par\ifes@solutions%
+    \else
+    \vspace{-\baselineskip}
+            \noindent\strut\smash{\usebox{\workareasb}}%
+   \fi
+}
+
+%==========================================%
+%      Format                              %
+%==========================================%
+
+%%% Sections %%%
+
+\renewcommand\section{\setcounter{ex@no}{0}
+\@startsection
+{section}{1}{0mm}
+{-\baselineskip}
+{0.5\baselineskip}
+{\sffamily\Large\centering}}
+
+%%% Subsections  %%%
+
+\renewcommand\subsection{
+\@startsection
+{subsection}{1}{0mm}
+{-\baselineskip}
+{1\baselineskip}
+{\sffamily\centering}}
+
+% +===================================+
+% |  PERMUTATIONS, SHUFFLE, ECC.      |
+% +===================================+
+
+%========================================================%
+%     Permutations                                       %
+%========================================================%
+
+%% These values are used in pseudorandom permutations: they must be calculated for any version
+
+\newcommand{\permuta}{
+\FPeval\restosei{round(\thevers+\thenomefile+1-trunc((\thevers+\thenomefile)/6:0)*6:0)}%%% for 2 or 3 exercises permutations
+\FPeval\restoventiquattro{round(\thevers+\thenomefile+1-trunc((\thevers+\thenomefile)/24:0)*24:0)}%%%% for 4 exercises permutations
+\FPeval\restotrenta{round(\thevers+\thenomefile+1-trunc((\thevers+\thenomefile)/30:0)*30:0)} %%%% for 5,6,7,8 exercises permutations
+}
+
+%%%  pseudorandom versions (permutations of 1 esercise!!)
+\def\sceglii#1#2{\expandafter\def\csname #2i\endcsname{#1}}
+\def\prendii#1#2{\sceglii{#1}{#2}}
+%%%  pseudorandom versions (permutations of 2 esercises)
+\def\scegliii#1#2#3{\expandafter\def\csname #3i\endcsname{#1}\expandafter\def\csname #3ii\endcsname{#2}}
+\def\prendiii#1#2#3{\ifthenelse{\isodd{\thevers}}{\scegliii{#2}{#1}{#3}}{\scegliii{#1}{#2}{#3}}}
+%%%  pseudorandom versions (permutations of 3 esercises)
+\def\scegliiii#1#2#3#4{\expandafter\def\csname #4i\endcsname{#1}\expandafter\def\csname #4ii\endcsname{#2}%
+\expandafter\def\csname #4iii\endcsname{#3}}
+\def\prendiiii#1#2#3#4{\ifcase\restosei\or%
+\scegliiii{#3}{#2}{#1}{#4}\or%
+\scegliiii{#2}{#1}{#3}{#4}\or%
+\scegliiii{#1}{#3}{#2}{#4}\or%
+\scegliiii{#3}{#1}{#2}{#4}\or%
+\scegliiii{#1}{#2}{#3}{#4}\or%
+\scegliiii{#2}{#3}{#1}{#4}
+\fi}
+%%%  pseudorandom versions (permutations of 4 esercises)
+\def\scegliiv#1#2#3#4#5{\expandafter\def\csname #5i\endcsname{#1}\expandafter\def\csname #5ii\endcsname{#2}%%
+\expandafter\def\csname #5iii\endcsname{#3}\expandafter\def\csname #5iv\endcsname{#4}}
+\def\prendiiv#1#2#3#4#5{\ifcase\restoventiquattro\or%
+\scegliiv{#3}{#4}{#1}{#2}{#5}\or%
+\scegliiv{#1}{#2}{#3}{#4}{#5}\or%
+\scegliiv{#3}{#1}{#4}{#2}{#5}\or%
+\scegliiv{#4}{#2}{#3}{#1}{#5}\or%
+\scegliiv{#2}{#3}{#1}{#4}{#5}\or%
+\scegliiv{#1}{#4}{#2}{#3}{#5}\or%
+\scegliiv{#2}{#3}{#4}{#1}{#5}\or%
+\scegliiv{#3}{#2}{#1}{#4}{#5}\or%
+\scegliiv{#2}{#1}{#3}{#4}{#5}\or%
+\scegliiv{#3}{#4}{#2}{#1}{#5}\or%
+\scegliiv{#4}{#1}{#3}{#2}{#5}\or%
+\scegliiv{#1}{#2}{#4}{#3}{#5}\or%
+\scegliiv{#4}{#3}{#1}{#2}{#5}\or%
+\scegliiv{#3}{#1}{#2}{#4}{#5}\or%
+\scegliiv{#2}{#1}{#4}{#3}{#5}\or%
+\scegliiv{#4}{#3}{#2}{#1}{#5}\or%
+\scegliiv{#2}{#4}{#1}{#3}{#5}\or%
+\scegliiv{#1}{#3}{#2}{#4}{#5}\or%
+\scegliiv{#2}{#4}{#3}{#1}{#5}\or%
+\scegliiv{#4}{#1}{#2}{#3}{#5}\or%
+\scegliiv{#1}{#4}{#3}{#2}{#5}\or%
+\scegliiv{#3}{#2}{#4}{#1}{#5}\or%
+\scegliiv{#4}{#2}{#1}{#3}{#5}\or%
+\scegliiv{#1}{#3}{#4}{#2}{#5}\fi}
+%%%  pseudorandom versions (permutations of 5 esercises)
+\def\scegliv#1#2#3#4#5#6{\expandafter\def\csname #6i\endcsname{#1}\expandafter\def\csname #6ii\endcsname{#2}%%
+\expandafter\def\csname #6iii\endcsname{#3}\expandafter\def\csname #6iv\endcsname{#4}\expandafter\def\csname #6v\endcsname{#5}}
+\def\prendiv#1#2#3#4#5#6{\ifcase\restotrenta\or
+\scegliv{#1}{#5}{#3}{#2}{#4}{#6}\or%
+\scegliv{#2}{#3}{#5}{#1}{#4}{#6}\or%
+\scegliv{#3}{#1}{#4}{#5}{#2}{#6}\or%
+\scegliv{#4}{#2}{#3}{#5}{#1}{#6}\or%
+\scegliv{#5}{#1}{#2}{#4}{#3}{#6}\or%
+\scegliv{#2}{#5}{#1}{#3}{#4}{#6}\or%
+\scegliv{#1}{#3}{#5}{#4}{#2}{#6}\or%
+\scegliv{#3}{#4}{#1}{#2}{#5}{#6}\or%
+\scegliv{#4}{#5}{#1}{#3}{#2}{#6}\or%
+\scegliv{#5}{#3}{#4}{#1}{#2}{#6}\or%
+\scegliv{#4}{#1}{#5}{#3}{#2}{#6}\or%
+\scegliv{#1}{#4}{#3}{#2}{#5}{#6}\or%
+\scegliv{#2}{#5}{#1}{#4}{#3}{#6}\or%
+\scegliv{#5}{#2}{#4}{#1}{#3}{#6}\or%
+\scegliv{#4}{#5}{#3}{#1}{#2}{#6}\or%
+\scegliv{#3}{#4}{#2}{#5}{#1}{#6}\or%
+\scegliv{#3}{#1}{#4}{#2}{#5}{#6}\or%
+\scegliv{#1}{#5}{#2}{#3}{#4}{#6}\or%
+\scegliv{#5}{#4}{#3}{#2}{#1}{#6}\or%
+\scegliv{#1}{#4}{#5}{#3}{#2}{#6}\or%
+\scegliv{#5}{#3}{#1}{#4}{#2}{#6}\or%
+\scegliv{#1}{#2}{#4}{#3}{#5}{#6}\or%
+\scegliv{#3}{#2}{#4}{#1}{#5}{#6}\or%
+\scegliv{#4}{#2}{#1}{#3}{#5}{#6}\or%
+\scegliv{#2}{#3}{#5}{#4}{#1}{#6}\or%
+\scegliv{#3}{#1}{#2}{#5}{#4}{#6}\or%
+\scegliv{#5}{#2}{#4}{#3}{#1}{#6}\or%
+\scegliv{#2}{#4}{#3}{#1}{#5}{#6}\or%
+\scegliv{#4}{#3}{#2}{#5}{#1}{#6}\or%
+\scegliv{#2}{#1}{#5}{#4}{#3}{#6}\fi}
+%%%  pseudorandom versions (permutations of 6 esercises)
+\def\sceglivi#1#2#3#4#5#6#7{\expandafter\def\csname #7i\endcsname{#1}\expandafter\def\csname #7ii\endcsname{#2}%%
+\expandafter\def\csname #7iii\endcsname{#3}\expandafter\def\csname #7iv\endcsname{#4}\expandafter\def\csname #7v\endcsname{#5}%%
+\expandafter\def\csname #7vi\endcsname{#6}}
+\def\prendivi#1#2#3#4#5#6#7{\ifcase\restotrenta\or%
+\sceglivi{#6}{#2}{#1}{#4}{#5}{#3}{#7}\or%
+\sceglivi{#2}{#6}{#4}{#3}{#5}{#1}{#7}\or%
+\sceglivi{#3}{#4}{#5}{#6}{#1}{#2}{#7}\or%
+\sceglivi{#1}{#3}{#6}{#4}{#2}{#5}{#7}\or%
+\sceglivi{#4}{#2}{#3}{#1}{#6}{#5}{#7}\or%
+\sceglivi{#3}{#1}{#4}{#5}{#6}{#2}{#7}\or%
+\sceglivi{#1}{#6}{#2}{#4}{#5}{#3}{#7}\or%
+\sceglivi{#2}{#5}{#4}{#1}{#3}{#6}{#7}\or%
+\sceglivi{#3}{#1}{#6}{#2}{#4}{#5}{#7}\or%
+\sceglivi{#2}{#1}{#3}{#5}{#4}{#6}{#7}\or%
+\sceglivi{#5}{#1}{#3}{#4}{#2}{#6}{#7}\or%
+\sceglivi{#1}{#3}{#6}{#5}{#4}{#2}{#7}\or%
+\sceglivi{#3}{#2}{#5}{#4}{#1}{#6}{#7}\or%
+\sceglivi{#1}{#4}{#3}{#2}{#6}{#5}{#7}\or%
+\sceglivi{#4}{#6}{#2}{#5}{#1}{#3}{#7}\or%
+\sceglivi{#6}{#3}{#5}{#1}{#4}{#2}{#7}\or%
+\sceglivi{#3}{#5}{#6}{#4}{#2}{#1}{#7}\or%
+\sceglivi{#4}{#1}{#2}{#6}{#3}{#5}{#7}\or%
+\sceglivi{#1}{#6}{#5}{#4}{#2}{#3}{#7}\or%
+\sceglivi{#5}{#4}{#6}{#3}{#1}{#2}{#7}\or%
+\sceglivi{#6}{#1}{#5}{#3}{#2}{#4}{#7}\or%
+\sceglivi{#6}{#1}{#5}{#4}{#3}{#2}{#7}\or%
+\sceglivi{#5}{#1}{#4}{#3}{#2}{#6}{#7}\or%
+\sceglivi{#2}{#3}{#4}{#6}{#5}{#1}{#7}\or%
+\sceglivi{#4}{#2}{#6}{#1}{#3}{#5}{#7}\or%
+\sceglivi{#3}{#4}{#6}{#5}{#1}{#2}{#7}\or%
+\sceglivi{#1}{#3}{#2}{#6}{#4}{#5}{#7}\or%
+\sceglivi{#4}{#3}{#1}{#5}{#6}{#2}{#7}\or%
+\sceglivi{#5}{#6}{#1}{#3}{#2}{#4}{#7}\or%
+\sceglivi{#2}{#6}{#3}{#4}{#5}{#1}{#7}\fi}
+%%%  pseudorandom versions (permutations of 7 esercises)
+\def\sceglivii#1#2#3#4#5#6#7#8{\expandafter\def\csname #8i\endcsname{#1}\expandafter\def\csname #8ii\endcsname{#2}%%
+\expandafter\def\csname #8iii\endcsname{#3}\expandafter\def\csname #8iv\endcsname{#4}\expandafter\def\csname #8v\endcsname{#5}%%
+\expandafter\def\csname #8vi\endcsname{#6}\expandafter\def\csname #8vii\endcsname{#7}}
+\def\prendivii#1#2#3#4#5#6#7#8{\ifcase\restotrenta\or%
+\sceglivii{#5}{#7}{#1}{#4}{#6}{#3}{#2}{#8}\or%
+\sceglivii{#1}{#5}{#2}{#6}{#7}{#4}{#3}{#8}\or%
+\sceglivii{#6}{#3}{#4}{#2}{#1}{#5}{#7}{#8}\or%
+\sceglivii{#1}{#2}{#7}{#5}{#3}{#4}{#6}{#8}\or%
+\sceglivii{#5}{#6}{#4}{#1}{#7}{#3}{#2}{#8}\or%
+\sceglivii{#6}{#4}{#1}{#5}{#3}{#2}{#7}{#8}\or%
+\sceglivii{#4}{#1}{#5}{#7}{#6}{#2}{#3}{#8}\or%
+\sceglivii{#7}{#2}{#4}{#6}{#5}{#3}{#1}{#8}\or%
+\sceglivii{#3}{#4}{#7}{#2}{#6}{#1}{#5}{#8}\or%
+\sceglivii{#4}{#5}{#6}{#7}{#3}{#2}{#1}{#8}\or%
+\sceglivii{#3}{#6}{#7}{#4}{#1}{#2}{#5}{#8}\or%
+\sceglivii{#5}{#7}{#4}{#3}{#2}{#1}{#6}{#8}\or%
+\sceglivii{#1}{#2}{#6}{#7}{#5}{#3}{#4}{#8}\or%
+\sceglivii{#6}{#1}{#4}{#3}{#7}{#2}{#5}{#8}\or%
+\sceglivii{#3}{#4}{#5}{#1}{#6}{#7}{#2}{#8}\or%
+\sceglivii{#5}{#1}{#4}{#3}{#2}{#6}{#7}{#8}\or%
+\sceglivii{#7}{#6}{#1}{#4}{#3}{#5}{#2}{#8}\or%
+\sceglivii{#2}{#4}{#7}{#3}{#5}{#1}{#6}{#8}\or%
+\sceglivii{#6}{#5}{#2}{#1}{#3}{#7}{#4}{#8}\or%
+\sceglivii{#7}{#3}{#6}{#5}{#2}{#4}{#1}{#8}\or%
+\sceglivii{#4}{#2}{#3}{#6}{#5}{#7}{#1}{#8}\or%
+\sceglivii{#1}{#3}{#4}{#2}{#7}{#6}{#5}{#8}\or%
+\sceglivii{#4}{#5}{#6}{#3}{#1}{#7}{#2}{#8}\or%
+\sceglivii{#5}{#6}{#1}{#2}{#3}{#4}{#7}{#8}\or%
+\sceglivii{#1}{#3}{#5}{#4}{#2}{#7}{#6}{#8}\or%
+\sceglivii{#2}{#7}{#3}{#5}{#6}{#1}{#4}{#8}\or%
+\sceglivii{#1}{#6}{#4}{#2}{#7}{#5}{#3}{#8}\or%
+\sceglivii{#7}{#5}{#2}{#4}{#1}{#3}{#6}{#8}\or%
+\sceglivii{#2}{#7}{#3}{#1}{#6}{#5}{#4}{#8}\or%
+\sceglivii{#3}{#5}{#1}{#6}{#2}{#4}{#7}{#8}\fi}
+%%%  pseudorandom versions (permutations of 8 esercises)
+\def\scegliviii#1#2#3#4#5#6#7#8#9{\expandafter\def\csname #9i\endcsname{#1}\expandafter\def\csname #9ii\endcsname{#2}%%
+\expandafter\def\csname #9iii\endcsname{#3}\expandafter\def\csname #9iv\endcsname{#4}\expandafter\def\csname #9v\endcsname{#5}%%
+\expandafter\def\csname #9vi\endcsname{#6}\expandafter\def\csname #9vii\endcsname{#7}\expandafter\def\csname #9viii\endcsname{#8}}
+\def\prendiviii#1#2#3#4#5#6#7#8#9{\ifcase\restotrenta\or%
+\scegliviii{#2}{#8}{#6}{#7}{#4}{#3}{#1}{#5}{#9}\or%
+\scegliviii{#8}{#5}{#1}{#3}{#7}{#6}{#4}{#2}{#9}\or%
+\scegliviii{#7}{#1}{#8}{#6}{#3}{#2}{#5}{#4}{#9}\or%
+\scegliviii{#1}{#3}{#7}{#5}{#6}{#4}{#2}{#8}{#9}\or%
+\scegliviii{#4}{#1}{#2}{#3}{#5}{#7}{#8}{#6}{#9}\or%
+\scegliviii{#3}{#8}{#7}{#1}{#6}{#4}{#5}{#2}{#9}\or%
+\scegliviii{#5}{#3}{#8}{#6}{#1}{#7}{#2}{#4}{#9}\or%
+\scegliviii{#8}{#6}{#3}{#4}{#7}{#2}{#5}{#1}{#9}\or%
+\scegliviii{#6}{#3}{#8}{#7}{#5}{#1}{#4}{#2}{#9}\or%
+\scegliviii{#3}{#2}{#7}{#5}{#4}{#6}{#1}{#8}{#9}\or%
+\scegliviii{#4}{#3}{#6}{#7}{#8}{#1}{#2}{#5}{#9}\or%
+\scegliviii{#3}{#7}{#5}{#2}{#4}{#8}{#6}{#1}{#9}\or%
+\scegliviii{#7}{#2}{#4}{#8}{#5}{#6}{#1}{#3}{#9}\or%
+\scegliviii{#1}{#7}{#2}{#3}{#4}{#5}{#6}{#8}{#9}\or%
+\scegliviii{#7}{#1}{#8}{#5}{#2}{#4}{#3}{#6}{#9}\or%
+\scegliviii{#1}{#5}{#3}{#4}{#8}{#2}{#6}{#7}{#9}\or%
+\scegliviii{#5}{#1}{#8}{#3}{#4}{#6}{#7}{#2}{#9}\or%
+\scegliviii{#4}{#7}{#2}{#5}{#1}{#8}{#6}{#3}{#9}\or%
+\scegliviii{#5}{#3}{#1}{#6}{#2}{#4}{#8}{#7}{#9}\or%
+\scegliviii{#1}{#2}{#7}{#3}{#4}{#8}{#5}{#6}{#9}\or%
+\scegliviii{#1}{#8}{#6}{#4}{#5}{#2}{#3}{#7}{#9}\or%
+\scegliviii{#3}{#1}{#8}{#5}{#4}{#7}{#6}{#2}{#9}\or%
+\scegliviii{#6}{#5}{#4}{#1}{#3}{#2}{#7}{#8}{#9}\or%
+\scegliviii{#5}{#4}{#3}{#2}{#6}{#7}{#8}{#1}{#9}\or%
+\scegliviii{#1}{#6}{#2}{#8}{#3}{#5}{#7}{#4}{#9}\or%
+\scegliviii{#5}{#8}{#3}{#4}{#7}{#6}{#1}{#2}{#9}\or%
+\scegliviii{#2}{#7}{#8}{#1}{#4}{#3}{#5}{#6}{#9}\or%
+\scegliviii{#4}{#8}{#7}{#3}{#2}{#1}{#6}{#5}{#9}\or%
+\scegliviii{#7}{#4}{#2}{#5}{#1}{#6}{#8}{#3}{#9}\or%
+\scegliviii{#2}{#3}{#7}{#1}{#6}{#5}{#4}{#8}{#9}\fi}
+
+%========================================================%
+%        Shuffle                                         %
+%========================================================%
+
+\newcommand\shuf@ch{}%%% the exercise list
+\renewcommand{\theshuf@lop}{\roman{shuf@lop}}%
+\newcommand\shuf@ifch[3]{%  #2=the input item
+\ifthenelse{\not\equal{\shuf@ch}{#1}}{\stepcounter{shuf@lop}\expandafter\edef\csname #2\theshuf@lop\endcsname{#3}}{}%
+}
+\newcommand\es@item[2]{%%% #1=the list #2=name of the input item
+  \edef\es@Lista{\zap@space#1 \@empty}%
+    \@for\shuf@ch:=\es@Lista\do{%
+    \shuf@ifch{}{#2}{\shuf@ch}%
+}
+}
+\newcommand{\sh@chex}[2]{%%% #1=the list #2=name of the input item
+\setcounter{shuf@lop}{0}%
+\renewcommand{\theshuf@lop}{\roman{shuf@lop}}%
+\es@item{#1}{#2}%
+\renewcommand{\theshuf@lop}{\arabic{shuf@lop}}%
+}
+
+%%% the command \es@randestrai choices in the list #2 leaving out #1 elements. #3=name input file, #4=name output file, #5=total number of file
+\newcommand{\es@randestrai}[5][0]{\sh@max=#1\sh@chex{#2}{#3}\rand@getitems{#5}{#4}[#3]}%
+\newcommand{\randes@trai}[3][0]{%%% it extracts objects from the list #2 leaving out #1 elements. The objects will be named #3i, #3ii, ecc.
+\es@randestrai[#1]{#2}{tmp@in}{#3}{\theshuf@lop}
+}
+%%% \randestrai is the user command to randomly extract objects from the list #2 leaving out #1 elements.
+%%% \randestraialfa extracts #1 random objects from the list #2 preserving order and naming them #3i,#3ii, ecc.
+
+\ifes@param%%% for parametric version
+\newcommand{\randestrai}[3][0]{
+\randes@trai[#1]{#2}{tmp@out}
+ \tmp@cntb=\value{shuf@lop}
+  \advance\tmp@cntb by -#1
+  \loop
+   \expandafter\edef\csname #3\romannumeral\tmp@cntb\endcsname{#3\romannumeral\tmp@cntb}%
+    \advance\tmp@cntb by-1
+    \ifnum\tmp@cntb>0
+   \repeat
+\immediate\write\params{\es@EstraiMessage{#2}{#3}}%%% writes to a file
+                 \immediate\closeout\params
+}
+\newcommand{\estraialfa}[3]{
+\beg@al=#1
+\loop
+\expandafter\edef\csname #3\romannumeral\beg@al \endcsname{(#3\romannumeral\beg@al)}
+\advance\beg@al by-1
+\ifnum\beg@al>0
+\repeat
+\immediate\write\params{\es@EstraiMessage{#2}{#3}}%%% writes to a file
+}
+\else
+\newcommand{\randestrai}[3][0]{
+\randes@trai[#1]{#2}{tmp@out}
+ \tmp@cntb=\value{shuf@lop}
+  \advance\tmp@cntb by -#1
+  \loop
+   \expandafter\edef\csname #3\romannumeral\tmp@cntb\endcsname{\csname tmp@out\romannumeral\tmp@cntb\endcsname}%
+    \advance\tmp@cntb by-1
+    \ifnum\tmp@cntb>0
+   \repeat
+    }%
+ \newcommand{\estraialfa}[3]{\sh@chex{#2}{al@f}%
+\end@al=\value{shuf@lop}%
+\beg@al=#1%
+\loop%
+\advance\beg@al by-1%
+\FPsetpar{tmpalf}{\beg@al}{\end@al}[\beg@al]%
+\advance\beg@al by1 %
+\expandafter\edef\csname #3\romannumeral\beg@al \endcsname{\csname al@f\romannumeral\tmpalf \endcsname}%
+\advance\beg@al by-1%
+\end@al=\tmpalf%
+\advance\end@al by-1%
+\ifnum\beg@al>0%
+\repeat%
+}
+\fi
+
+%%% the command \es@estrai choices in list #2 leaving out #1 elements. #3=name input file, #4=name output file, #5=counter name
+\newcommand{\es@estrai}[5][0]{\sh@max=#1\sh@chex{#2}{#3}\@getitems{#3}{#5}{#4}}
+
+\newcommand{\es@trai}[3][0]{%%% it extracts objects from the list #2 leaving out #1 elements. The objects will be named #3i, #3ii, ecc.
+\es@estrai[#1]{#2}{tmp@in}{#3}{\theshuf@lop}
+}
+%%% \estrai is the user command to extract objects from the list #2 leaving out #1 elements.
+%%% \estraialfa extracts #1 random objects from the list #2 preserving order and naming them #3i,#3ii, ecc.
+
+\ifes@param%%% for parametric version
+\newcommand{\estrai}[3][0]{
+\es@trai[#1]{#2}{tmp@out}
+ \tmp@cntb=\value{shuf@lop}
+  \advance\tmp@cntb by -#1
+  \loop
+   \expandafter\edef\csname #3\romannumeral\tmp@cntb\endcsname{#3\romannumeral\tmp@cntb}%
+    \advance\tmp@cntb by-1
+    \ifnum\tmp@cntb>0
+   \repeat
+\immediate\write\params{\es@EstraiMessage{#2}{#3}}%%% writes to a file
+                 \immediate\closeout\params
+}
+\else
+\newcommand{\estrai}[3][0]{
+\es@trai[#1]{#2}{tmp@out}
+ \tmp@cntb=\value{shuf@lop}
+  \advance\tmp@cntb by -#1
+  \loop
+   \expandafter\edef\csname #3\romannumeral\tmp@cntb\endcsname{\csname tmp@out\romannumeral\tmp@cntb\endcsname}%
+    \advance\tmp@cntb by-1
+    \ifnum\tmp@cntb>0
+   \repeat
+    }%
+\fi
+
+%%% \esestrai is the user command to extract exercises  from the list #2 leaving out #1 elements.
+
+\newcommand{\estraies}[2][0]{\randes@trai[#1]{#2}{tmp@out}
+  \tmp@cnt=\value{shuf@lop}
+  \advance\tmp@cnt by -#1
+  \loop
+    \selectrandomly{\cartella/\csname tmp@out\romannumeral\tmp@cnt\endcsname}
+    \advance\tmp@cnt by-1
+    \ifnum\tmp@cnt>0
+    \repeat}%
+
+%%% \esercizi is the command that selects and shuffles the exercises from the list #1
+
+\newcommand{\esercizi}[1]{\sh@max=0\sh@chex{#1}{exe}\sh@mixex}
+
+\newcommandx{\rand@getitems}[3][3=item]{%%% randomly shuffles #1  elements named #2i, #2ii, ecc. and renames them #3i, #3ii, ecc.
+  \i@sh=#1
+  \loop%
+    \expandafter\let \csname flag\number\i@sh\endcsname a%
+    \advance\i@sh by-1%
+    \ifnum\i@sh > 0 \repeat%
+  \i@sh=#1
+  \loop%
+    \setrannum{\j@sh}{1}{#1}%
+    \expandafter\ifx \csname flag\number\j@sh\endcsname a%
+      \expandafter\let \csname flag\number\j@sh\endcsname b
+      \FPeval\n@tmp{round(#1-\number\i@sh+1:0)}%
+     \expandafter\edef\csname #2\romannumeral\n@tmp\endcsname{\csname #3\romannumeral\j@sh\endcsname}%
+                   \advance\i@sh by-1%
+    \fi%
+    \ifnum\i@sh>0 \repeat
+}
+\ifes@fissa%%% with n<8 exercises the shuffle is pseudorandom and it's random otherwise
+\def\@getitems#1#2#3{
+\ifcase#2\or\prendii{\csname #1i\endcsname}{#3}%
+\or\prendiii{\csname #1i\endcsname}{\csname #1ii\endcsname}{#3}%
+\or\prendiiii{\csname #1i\endcsname}{\csname #1ii\endcsname}{\csname #1iii\endcsname}{#3}%
+\or\prendiiv{\csname #1i\endcsname}{\csname #1ii\endcsname}{\csname #1iii\endcsname}{\csname #1iv\endcsname}{#3}%
+\or\prendiv{\csname #1i\endcsname}{\csname #1ii\endcsname}{\csname #1iii\endcsname}{\csname #1iv\endcsname}{\csname #1v\endcsname}{#3}%
+\or\prendivi{\csname #1i\endcsname}{\csname #1ii\endcsname}{\csname #1iii\endcsname}{\csname #1iv\endcsname}{\csname #1v\endcsname}{\csname #1vi\endcsname}{#3}%
+\or\prendivii{\csname #1i\endcsname}{\csname #1ii\endcsname}{\csname #1iii\endcsname}{\csname #1iv\endcsname}{\csname #1v\endcsname}{\csname #1vi\endcsname}{\csname #1vii\endcsname}{#3}%
+\or\prendiviii{\csname #1i\endcsname}{\csname #1ii\endcsname}{\csname #1iii\endcsname}{\csname #1iv\endcsname}{\csname #1v\endcsname}{\csname #1vi\endcsname}{\csname #1vii\endcsname}{\csname #1viii\endcsname}{#3}%
+\else
+\old@randomii=\number\randomi
+\nextrandom
+\rand@getitems{#2}{#3}[#1]%
+\randomi\number\old@randomii
+\fi%
+}%
+\else
+\def\@getitems#1#2#3{%%% random shuffle
+\rand@getitems{#2}{#3}[#1]%
+}
+\fi
+\def\cartella{\currfiledir}
+\ifthenelse{\equal{\cartella}{}}{\def\cartella{.}}{}
+\ifes@shuffleQuestions
+\newcommand{\sh@mixex}{%%% shuffled exercises
+\@getitems{exe}{\theshuf@lop}{file}%
+  \tmp@cnt=\value{shuf@lop}
+  \loop
+    \selectrandomly{\cartella/\csname file\romannumeral\tmp@cnt\endcsname}
+    \advance\tmp@cnt by-1
+    \ifnum\tmp@cnt>0
+    \repeat
+}%
+\else
+\newcommand{\sh@mixex}{%%% the exercises are not shuffled
+  \tmp@cnt=1%
+  \loop%
+    \selectrandomly{\cartella/\csname exe\romannumeral\tmp@cnt\endcsname}
+        \ifnum\tmp@cnt<\value{shuf@lop}
+\advance\tmp@cnt by1
+    \repeat
+}
+\fi
+
+%%%% new 2013-06-05
+%%% another shuffling macro
+\newcommand{\shuffle}[3][]{% %%% this command has been adapted from probsoln
+  \@shfctr=1\relax
+  \whiledo{\@shfctr < 101}%
+  {%
+    \setrannum{\@shfA}{1}{#3}\setrannum{\@shfB}{1}{#3}
+    \ifnum\@shfA=\@shfB
+    \else
+      \edef\@@tmpA{\csname#2\romannumeral\@shfA\endcsname}%
+      \let\@tmpA=\@@tmpA
+      \edef\@@tmpB{\csname#2\romannumeral\@shfB\endcsname}%
+      \let\@tmpB=\@@tmpB
+      \expandafter\xdef\csname#2\romannumeral\@shfA\endcsname{\@tmpB}%
+      \expandafter\xdef\csname#2\romannumeral\@shfB\endcsname{\@tmpA}%
+    \fi
+    \advance\@shfctr by 1\relax
+    \ifthenelse{\equal{#1}{}}{}{
+  \@shfA=0%
+  \loop
+  \advance\@shfA by1
+  \expandafter\xdef\csname#1\romannumeral\@shfA\endcsname{\csname#2\romannumeral\@shfA\endcsname}
+  \ifnum\@shfA<#3 \repeat
+}
+  }%
+}
+
+%========================================================%
+%     Random (adapted from aebrandom)                    %
+%========================================================%
+
+\ifes@randomizeChoices
+\def\@ansChoices[#1]%
+{%
+    \ifes@randomizeChoices
+        \setkeys{bchoice}{#1,random=true}%
+    \else
+        \setkeys{bchoice}{#1}%
+    \fi
+    \global\es@tabColCnt=0
+    \ifes@randomizeChoices\expandafter\@@bChoices
+    \else\expandafter\@@ansChoices\fi
+}
+\def\@@ansChoices{%
+    \ifnum\aeb@numCols=1% % list mode
+        \def\es@next{\@layoutListAns}%
+    \else% % tabular mode
+        \edef\es@next{\noexpand\@layoutTabularAns{\bChoiceNumCols}}%
+    \fi
+    \es@next
+}
+\newtoks\aeb@hold\aeb@hold={}
+\def\@@bChoices{\gdef\@temphold{}\gdef\@tempholdrandom{}%
+    \gdef\@tempholdfreeze{}\aeb@searchfortoken{\@getAns}%
+}
+\def\aeb@searchfortoken#1{%
+    \@ifnextchar\Ans{\advance\aeb@numChoices1\relax#1}
+        {\@ifnextchar\eFreeze{\expandafter\@getFreezeAns\@gobble}
+        {\@ifnextchar\par{\def\@@temp{\aeb@searchfortoken{#1}}%
+        \expandafter\@@temp\@gobble}{\@eChoices}}}%
+}
+\long\def\@getAns\Ans#1\eAns{%
+    \g@addto@macro\@temphold{{\Ans#1\eAns}}%
+    \aeb@searchfortoken{\@getAns}%
+}
+\def\@getFreezeAns{\aeb@searchfortoken{\@@getFreezeAns}}
+\long\def\@@getFreezeAns\Ans#1\eAns{%
+    \g@addto@macro\@tempholdfreeze{\Ans#1\eAns}%
+    \aeb@searchfortoken{\@@getFreezeAns}%
+}
+\long\def\@eChoices#1\eChoices{%
+    \aeb@randomizeChoices{\the\aeb@numChoices}%
+}
+\def\aeb@randomizeChoices#1{%
+    \setrannum{\aeb@ranChoice}{1}{#1}
+    \count0=0 \aeb@hold=\expandafter{\@temphold}\def\@temphold{}%
+    \expandafter\@tfor\expandafter
+        \@temp\expandafter:\expandafter=\the\aeb@hold \do {%
+        \advance\count0by1
+        \ifnum\count0=\aeb@ranChoice
+            \aeb@hold=\expandafter\expandafter\expandafter
+                {\expandafter\@tempholdrandom\@temp}%
+            \edef\@tempholdrandom{\the\aeb@hold}%
+        \else
+            \aeb@hold=\expandafter\expandafter\expandafter
+                {\expandafter\@temphold\expandafter{\@temp}}%
+            \edef\@temphold{\the\aeb@hold}%
+        \fi
+    }%
+    \aeb@numChoices=#1
+    \advance\aeb@numChoices-1
+    \ifnum\aeb@numChoices=0\relax\def\@next{\aeb@finishedRandomizing}\else
+    \def\@next{\aeb@randomizeChoices{\the\aeb@numChoices}}\fi
+    \@next
+}
+\def\aeb@finishedRandomizing{%
+    \aeb@hold=\expandafter\expandafter\expandafter
+        {\expandafter\@tempholdrandom\@tempholdfreeze}%
+    \gdef\@temphold{}\gdef\@tempholdrandom{}\gdef\@tempholdfreeze{}%
+    \edef\finished@Randomizing{%
+    \noexpand\@@ansChoices
+    \the\aeb@hold
+    \noexpand\eChoices}%
+    \finished@Randomizing
+}
+\fi
+\endinput

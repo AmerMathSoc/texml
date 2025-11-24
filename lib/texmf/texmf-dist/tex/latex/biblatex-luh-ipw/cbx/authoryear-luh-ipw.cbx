@@ -1,0 +1,309 @@
+% authoryear-luh-ipol.cbx, Oliver Heins (oheins@sopos.org) 2012--2013
+
+\ProvidesFile{authoryear-luh-ipol.cbx}[2013/11/18 v0.3 biblatex citation style for use with biblatex 2.x]
+
+
+\RequireCitationStyle{authoryear-icomp}
+\RequireCitationStyle{standard-luh-ipw}
+
+
+\newtoggle{cbx:cquote}
+\DeclareBibliographyOption{cquote}[true]{%
+  \settoggle{cbx:cquote}{#1}%
+  \ifstrequal{#1}{true}
+  {\luh@info{option cquote: patching package\MessageBreak
+             csquotes (experimental)}}%
+  {}}
+
+\ExecuteBibliographyOptions{cquote=false}
+
+\newif\ifluh@csquotes@loaded@
+
+\@ifpackageloaded{csquotes} % Ist csquotes geladen?
+  {\luh@csquotes@loaded@true}
+  {\luh@csquotes@loaded@false}
+
+\AtEndPreamble{%
+\iftoggle{cbx:cquote}{%
+
+  \ifluh@csquotes@loaded@ % Mindestens v5.1d
+    \@ifpackagelater{csquotes}{2011/10/22}
+    {}
+    {\PackageError{biblatex-luh-ipw}
+       {Outdated 'csquotes' package}
+       {Upgrade to csquotes v5.1d (2011/10/22) or later.\MessageBreak
+        I found: '\csuse{ver@csquotes.sty}'.\MessageBreak
+        This is a fatal error. I'm aborting now.}%
+    \endinput}%
+  \fi
+  
+  \@ifpackageloaded{csquotes}{% csquotes ist geladen -- und neu genug
+    \luh@info{csquotes loaded}%
+  
+    \let\luh@textcquote@orig\textcquote
+    \let\luh@blockcquote@orig\blockcquote
+  
+    \newif\ifluh@blockcquotecmd@
+  
+    \newcommand{\luh@textcquote}{%
+      \luh@blockcquotecmd@false
+      \let\luh@next\luh@textcquote@orig\luh@scancquote}%
+  
+    \newcommand{\luh@blockcquote}{%
+      \luh@blockcquotecmd@true
+      \let\luh@next\luh@blockcquote@orig\luh@scancquote}%
+  
+    \newcommand{\luh@scancquote}{%
+      \luh@scancite}%
+  
+    % scancite: [<pre>][<post>]{<key>}[<punct>]
+    % scantext: {<text>}
+  
+    \newtoks\luh@citet
+  
+    \def\luh@scancite{%
+      \@ifnextchar[%]
+      {\luh@scancite@i}
+      {\luh@scancite@ii[][]}}%
+  
+    \long\def\luh@scancite@i[#1]{%
+      \@ifnextchar[%]
+      {\luh@scancite@ii[#1]}
+      {\luh@scancite@ii[][#1]}}%
+  
+    \long\def\luh@scancite@ii[#1][#2]#3{%
+      \@ifnextchar[%]
+      {\luh@scancite@iii{#1}{#2}{#3}}
+      {\luh@scancite@iii{#1}{#2}{#3}[]}}%
+    
+    \long\def\luh@scancite@iii#1#2#3[#4]{%
+      \luh@citet={[#1][#2]{#3}[#4]}%
+      \luh@scantext}%
+  
+    \def\luh@defargs[#1][#2]#3[#4]{%
+      \edef\luh@prenote{#1}%
+      \edef\luh@postnote{#2}%
+      \edef\luh@citekey{#3}%
+      \edef\luh@punct{#4}}%
+    
+    \newif\ifluh@capitalizeCite@
+    \newif\ifluh@testsepunct@
+    \newif\ifluh@sepunct@
+  
+    \newtoks\luh@text
+    \long\def\luh@scantext#1{%
+      \luh@lastchar{#1}% finde den letzten Buchstaben des Textes
+      % Testbedingungen: <prenote>: empty
+      %                  <punct>: empty oder SentPunct
+      %                  <text>: endet mit SentPunct
+      {\luh@debug{\the\luh@citet}}%
+      \expandafter\luh@defargs\the\luh@citet
+      \luh@blockquote@false
+      \let\luh@actual@mkxquote\mktextquote% Standard: scanne mktextquote
+      \ifluh@blockcquotecmd@% jedoch: wird gerade blockcquote benutzt?
+        % schaue, ob inline oder outer gesetzt wird
+        \luh@bquote@i{\luh@prenote}{\luh@postnote}{\luh@citekey}{}{#1}%
+      \fi
+      \ifluh@blockquote@% wenn outer gesetzt wird, scanne mkblockquote
+        \let\luh@actual@mkxquote\mkblockquote
+      \fi
+      \luh@capitalizeCite@true
+      \luh@testsepunct@false
+      \ifx\luh@prenote\@empty
+        \luh@testsepunct@true
+      \else\luh@capitalizeCite@false\fi
+      \ifluh@testsepunct@
+        \expandafter\expandafter\expandafter\luh@mktextquote\expandafter{\meaning\luh@actual@mkxquote}%
+        \expandafter\expandafter\expandafter\luh@scanpunctinquotes\expandafter{\the\luh@mktextquote}%
+        \luh@sepunct@false
+        \ifluh@fourinquotes@
+          \luh@testinnerpunct
+        \fi
+        \luh@testpunct
+        \ifluh@sepunct@\luh@debug{GROSS}%
+        \else\luh@debug{klein}\fi
+      \fi
+      \expandafter\luh@next\the\luh@citet{#1}}%
+  
+    \long\def\luh@testpunct{%
+      \let\luh@tempc\luh@tempb% Das letzte Zeichen
+      \expandafter\luh@testpunct@i{\luh@sepunct}}%
+  
+    \def\luh@testinnerpunct{%
+      \let\luh@tempc\luh@punct% Der gesetzte innerpunct
+      \expandafter\luh@testpunct@i{\luh@sepunct}}%
+  
+    \def\luh@testpunct@i#1{%
+      \@for\luh@sign:=#1\do{\luh@debug{\luh@sign}%
+        \ifx\luh@tempc\luh@sign \luh@sepunct@true\fi}}%
+  
+    % Schreibe das letzte Zeichen nach \luh@tempb
+    \long\def\luh@lastchar#1{\luh@lastchar@i#1\luh@end}%
+  
+    \long\def\luh@lastchar@i#1{%
+      \ifx#1\luh@end \let\luhatnext=\relax
+      \else 
+        \let\luhatnext=\luh@lastchar@i 
+        \luh@text={#1}%
+        \edef\luh@tempb{\the\luh@text}%
+      \fi
+      \luhatnext}%
+  
+    % Einiges an foo-Zauber, um festzustellen, ob mktextquote
+    % bzw. mkblockquote evtl. ein Satzendezeichen setzen.  
+    \newif\luh@isinquotes
+  
+    \newif\ifluh@sixfound@
+    \newif\ifluh@fourinquotes@
+    \newif\ifluh@hyphenfound@
+    \def\luh@scanpunctinquotes#1{%
+      \luh@sixfound@false
+      \luh@fourinquotes@false
+      \luh@hyphenfound@false
+      \luh@debug{#1}%
+      \luh@scanpunctinquotes@i#1\printbibliography
+      \ifluh@fourinquotes@ \luh@debug{Drinnen}\else\luh@debug{Draussen}\fi}%
+  
+    \def\luh@six{6}%
+    \def\luh@four{4}%
+    \def\luh@hyphen{-}%
+    \def\luh@scanpunctinquotes@i#1{%
+      \edef\luh@number{#1}%
+      \luh@debug{#1}%
+      \ifx#1\printbibliography \let\luh@next@i\relax
+      \else 
+        \let\luh@next@i\luh@scanpunctinquotes@i
+        \ifluh@hyphenfound@
+          \ifx\luh@number\luh@six \luh@sixfound@true \luh@debug{6 found}\fi
+          \ifx\luh@number\luh@four
+            \luh@debug{4 found}%
+            \ifluh@sixfound@ \else \luh@fourinquotes@true \fi
+          \fi
+        \fi
+        \ifx\luh@number\luh@hyphen \luh@hyphenfound@true \fi
+       \fi
+       \luh@next@i}%
+  
+     \newtoks\luh@mktextquote
+  
+     \def\luh@scanpunct{%
+       \expandafter\expandafter\expandafter\luh@mktextquote\expandafter{\meaning\luh@actual@mkxquote}%
+       \expandafter\expandafter\expandafter\luh@scanpunctinquotes\expandafter{\the\luh@mktextquote}%
+     }%
+  
+    % Kommando \DeclareSentenceEndPunct (Liste der Satzendezeichen)
+    % (Die Liste muss in eine kommaseparierte gewandelt werden, deshalb
+    % der ganze Zauber)
+    \newrobustcmd*{\DeclareSentenceEndPunct}[1]{%
+      \ifblank{#1}
+      {\def\luh@sepunct{}}
+      {\luh@addsepunct{#1}}}%
+  
+    \long\def\luh@addsepunct#1{%
+      \let\luh@sepunct\relax%
+      \expandafter\luh@addsepunct@i#1\@end}%
+  
+    \def\luh@addsepunct@i#1{%
+      \ifx#1\@end\let\luh@next=\relax%
+      \else%
+        \ifx\luh@sepunct\relax
+          \edef\luh@sepunct{#1}%
+        \else
+          \edef\luh@sepunct{\luh@sepunct,#1}%
+        \fi
+        \let\luh@next\luh@addsepunct@i%
+      \fi%
+      \luh@next}%
+  
+    \DeclareSentenceEndPunct{.!?}%
+  
+    \let\textcquote\luh@textcquote
+    \let\blockcquote\luh@blockcquote
+  
+    \newcommand{\luh@parencite}{%
+      \ifluh@sepunct@\let\luh@citecmd\Parencite
+      \else\let\luh@citecmd\parencite\fi
+      \luh@citecmd}%
+  
+    \SetCiteCommand{\luh@parencite}%
+  
+    %%%% 
+    \newif\ifluh@blockquote@\luh@blockquote@false
+    \long\def\luh@bquote@i#1#2#3#4#5#6{%
+      \begingroup
+      \blockquote@prehook
+      \togglefalse{csq@tempsw}%
+      \setbox\@tempboxa=\vbox{%
+        \csuse{csq@bcount@\csq@thresholdtype}%
+        \parindent\z@
+        \blockquote@parsehook
+        #1#6#5#2\endgraf\expandafter}\expandafter
+      \@tempcnta\number\prevgraf\relax
+      \iftoggle{csq@tempsw}
+        {\luh@debug{%
+            \@backslashchar blockquote has \number\@tempcnta\space
+            \csq@thresholdtype\space and manual breaks.\MessageBreak
+            Setting as display}}
+        {\ifnumgreater\@tempcnta\csq@tshold
+          {\toggletrue{csq@tempsw}}
+          {}%
+          \luh@debug{%
+         \@backslashchar blockquote has \number\@tempcnta\space
+         \csq@thresholdtype. Threshold is \number\csq@tshold.\MessageBreak
+         Setting \iftoggle{csq@tempsw}{as display}{inline}}}%
+     \blockquote@posthook
+     \iftoggle{csq@tempsw}
+       {\aftergroup\@firstoftwo}
+       {\aftergroup\@secondoftwo}%
+     \endgroup
+     \luh@blockquote@true\luh@blockquote@false}%
+  
+% Das ist die originale Definition des obigen Makros aus 
+% csquotes.sty,v 5.1d 2011/10/22 19:17:39 lehman stable
+% Diese wird mit der aktuellen verglichen, und ggf. eine Fehlermeldung
+% ausgegeben, da bei Aenderung u. U. falsch berechnet wird.
+\long\def\luh@csq@bquote@i#1#2#3#4#5#6{%
+  \begingroup
+  \blockquote@prehook
+  \togglefalse{csq@tempsw}%
+  \setbox\@tempboxa=\vbox{%
+    \csuse{csq@bcount@\csq@thresholdtype}%
+    \parindent\z@
+    \blockquote@parsehook
+    #1#6#5#2\endgraf\expandafter}\expandafter
+  \@tempcnta\number\prevgraf\relax
+  \iftoggle{csq@tempsw}
+    {\csq@debug{%
+       \@backslashchar blockquote has \number\@tempcnta\space
+       \csq@thresholdtype\space and manual breaks.\MessageBreak
+       Setting as display}}
+    {\ifnumgreater\@tempcnta\csq@tshold
+       {\toggletrue{csq@tempsw}}
+       {}%
+     \csq@debug{%
+       \@backslashchar blockquote has \number\@tempcnta\space
+       \csq@thresholdtype. Threshold is \number\csq@tshold.\MessageBreak
+       Setting \iftoggle{csq@tempsw}{as display}{inline}}}%
+  \blockquote@posthook
+  \iftoggle{csq@tempsw}
+    {\aftergroup\@firstoftwo}
+    {\aftergroup\@secondoftwo}%
+  \endgroup
+  \csq@bquote@iii\csq@bquote@ii{#1}{#2}{#3}{#4}{#5}{#6}}%
+
+    \ifx\csq@bquote@i\luh@csq@bquote@i
+      %% alles ist gut, keine Aenderung
+    \else\luh@warning{% Uhhh ohhh :(
+      Package csquotes has changed, and \MessageBreak
+      biblatex-luh-ipw is not yet aware\MessageBreak
+      of the changes.  Sadly, this might\MessageBreak
+      break biblatex-luh-ipw.  Please\MessageBreak
+      drop me (oheins@sopos.org) a mail,\MessageBreak
+      if this message keeps beeing thrown\MessageBreak
+      out for longer than a week or so.^^J}%
+    \fi
+  }
+  {\luh@warning{Package csquotes not loaded. \MessageBreak 
+      Not defining additional macros^^J}}}}
+
+\endinput

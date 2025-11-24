@@ -1,0 +1,1723 @@
+% \iffalse meta-comment
+%
+%% File: regexpatch.dtx (C) Copyright 2012-2016 Enrico Gregorio
+%%
+%% It may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License (LPPL), either version 1.3c of this
+%% license or (at your option) any later version.  The latest version
+%% of this license is in the file
+%%
+%%    http://www.latex-project.org/lppl.txt
+%%
+%% This file is part of the "regexpatch bundle" (The Work in LPPL)
+%% and all files in that bundle must be distributed together.
+%% 
+%% The released version of this bundle is available from CTAN.
+%%
+%
+%<*driver|package>
+\RequirePackage{expl3}
+%</driver|package>
+%<*driver>
+\expandafter\def\csname ver@thumbpdf.sty\endcsname{}
+\documentclass[a4paper,full]{l3doc}
+\usepackage{bookmark}
+\newcommand{\sv}{[\texttt{*}]}
+%</driver>
+%<*driver|package>
+\GetIdInfo$Id: regexpatch.dtx 0.2b 2016-05-15 12:00:00Z Enrico $
+          {Extending etoolbox patching commands}
+%</driver|package>
+%<*driver>
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \title{^^A
+%   The \textsf{regexpatch} package^^A
+%     \thanks{This file describes version \ExplFileVersion,
+%     last revised \ExplFileDate.}^^A
+%  \\ {\normalsize Replacing \textsf{etoolbox} patching
+%   commands}^^A
+% }
+%
+% \author{^^A
+%  Enrico Gregorio\thanks
+%    {^^A
+%      E-mail:
+%        Enrico DOT Gregorio AT univr DOT it^^A
+%    }^^A
+% }
+%
+% \date{Released \ExplFileDate}
+%
+% \maketitle
+%
+% \changes{v0.2b}{2016/05/15}{Fix for removed function}
+% \changes{v0.2a}{2015/05/20}{Fixed silly mistake}
+% \changes{v0.2}{2013/03/28}{Polished code and documentation}
+% \changes{v0.2}{2013/03/28}{Additional biblatex related macros}
+% \changes{v0.1c}{2013/03/25}{Replaced obsolete command 
+%   \texttt{\protect\string\protect\prg_case_str:onn}}
+% \changes{v0.1c}{2013/03/25}{Replaced \texttt{\protect\string\protect\msg_term:x}
+%    with \texttt{\protect\string\protect\msg_term:n}}
+% \changes{v0.1b}{2012/07/24}{Fixed bugs in the `bibmacro' functions}
+% \changes{v0.1a}{2012/06/07}{Fixed bugs in success/failure code}
+% \changes{v0.1}{2012-04-15}{First public release}
+% \begin{documentation}
+%
+% \begin{quotation}\small
+% \begin{center}\bfseries\large
+% Important preliminary notice
+% \end{center}
+% \medskip
+%
+% This is an experimental version and it might cease to work if the
+% commands in the package \pkg{l3regex} are modified. When that
+% \LaTeX3 package will be declared stable, this package will replace
+% \pkg{xpatch} and calling |\usepackage{regexpatch}| will load the
+% main package. Use at own risk.
+% \end{quotation}
+%
+% \section{Introduction}
+%
+% The well known \pkg{etoolbox} package provides a bunch of functions
+% for patching existing commands; in particular |\patchcmd|,
+% |\pretocmd| and |\apptocmd| that do a wonderful job, but suffer from
+% a limitation: if some package has defined
+%\begin{verbatim}
+% \newcommand{\xyz}[1][x]{-#1!}
+%\end{verbatim}
+% where |\xyz| has an optional argument, then |\patchcmd| and siblings
+% cannot be used to modify the workings of |\xyz|. The same happens
+% when a command has been defined with |\DeclareRobustCommand|.
+%
+% The reason for this is \TeX{}nical or, better, \LaTeX{}nical. When
+% \LaTeX{} performs the above definition, the expansion of |\xyz| will
+% be
+%\begin{verbatim}
+% \@protected@testopt \xyz \\xyz {x}
+%\end{verbatim}
+% where |\@protected@testopt| is a macro that essentially checks
+% whether we are in a ``protected'' context, so that expansion should
+% not be performed all the way (in moving arguments or write
+% operations), or not; in the former case it issues a protected
+% version of |\xyz|, while in the latter case it expands the macro
+% |\\xyz| that is a \emph{single} command (yes, with a backslash in
+% its name) which contains the real definition; a way to access this
+% definition is to issue the command
+%\begin{verbatim}
+% \expandafter\show\csname\string\xyz\endcsname
+%\end{verbatim}
+% which will print in the log file the message
+%\begin{verbatim}
+% > \\xyz=\long macro:
+% [#1]->-#1!.
+%\end{verbatim}
+% As usual, after |->| we see the definition. In order to use
+% |\patchcmd| to change the exclamation mark into a hyphen one must do
+%\begin{verbatim}
+% \expandafter\patchcmd\csname\string\xyz\endcsname{!}{-}{}{}
+%\end{verbatim}
+% (see the documentation of \pkg{etoolbox} for details about the
+% arguments).
+%
+% A similar situation happens if |\xyz| has been defined by
+%\begin{verbatim}
+% \DeclareRobustCommand{\xyz}{something}
+%\end{verbatim}
+% A |\show\xyz| instruction would show the cryptic
+%\begin{verbatim}
+% > \xyz=macro:
+% ->\protect \xyz  .
+%\end{verbatim}
+% and only a close look reveals the clever trick used by the \LaTeX{}
+% team: the |\protect| is not applied to |\xyz|, but to the macro
+% \verb*?\xyz ? which has a space at the end of its name! And this
+% macro is the one that contains the real definition. Indeed,
+%\begin{verbatim}
+% \expandafter\show\csname xyz\space\endcsname
+%\end{verbatim}
+% produces the message
+%\begin{verbatim}
+% > \xyz =\long macro:
+% ->something.
+%\end{verbatim}
+% In this case, in order to apply |\patchcmd| we must say
+%\begin{verbatim}
+% \expandafter\patchcmd\csname xyz\space\endcsname{s}{S}{}{}
+%\end{verbatim}
+% If the macro with |\DeclareRobustCommand| is defined to have an
+% optional argument, say
+%\begin{verbatim}
+% \DeclareRobustCommand{\xyz}[1][x]{-#1!}
+%\end{verbatim}
+% one has to combine the two tricks:
+%\begin{verbatim}
+% \expandafter\patchcmd\csname\string\xyz\space\endcsname{!}{-}{}{}
+%\end{verbatim}
+% It's hard and error prone to remember all of these tricks, so this
+% package comes to the rescue.
+%
+% The package is now completely independent of \pkg{etoolbox}. It
+% doesn't feature commands analogous to |\preto| and |\appto| that, in
+% the author's opinion, are a bit dangerous, since somebody might
+% apply them to commands defined with |\DeclareRobustCommand| or
+% |\newrobustcmd|, with the obvious problems.
+%
+% The \pkg{regexpatch} package uses many features of the \LaTeX3
+% experimental packages, in particular of \pkg{l3regex}. This has a
+% clear advantage: we can have a *-variant of |\xpatchcmd| that does a
+% ``replace~all'' which can avoid multiple uses of |\patchcmd| on the
+% same macro. Moreover there's a very powerful |\regexpatchcmd|
+% function that uses regular expression syntax for search and replace
+% which can even patch commands defined under different category code
+% setup.
+%
+% For example, let's see how the \LaTeX{} kernel defines |\strip@pt|:
+%\begin{verbatim}
+% \begingroup
+%   \catcode`P=12
+%   \catcode`T=12
+%   \lowercase{
+%     \def\x{\def\rem@pt##1.##2PT{##1\ifnum##2>\z@.##2\fi}}}
+%   \expandafter\endgroup\x
+% \def\strip@pt{\expandafter\rem@pt\the}
+%\end{verbatim}
+% The same result can be obtained by
+%\begin{verbatim}
+% \begingroup\def\defrem@pt{\endgroup
+%   \def\rem@pt##1.##2pt{##1\ifnum##2>\z@.##2\fi}}
+% \regexpatchcmd{\defrem@pt}{pt}{\cOp\cOt}{}{}
+% \defrem@pt
+% \def\strip@pt{\expandafter\rem@pt\the}
+%\end{verbatim}
+% Perhaps not so striking, but the pattern seems to be more intuitive;
+% however the package supplies also a function for patching the
+% parameter text of a macro:
+%\begin{verbatim}
+% \def\rem@pt#1.#2pt{#1\ifnum#2>\z@.#2\fi}
+% \xpatchparametertext{\rem@pt}{pt}{\cO p \cO t}{}{}
+%\end{verbatim}
+% Of course, reading the manual of \pkg{l3regex} is necessary for
+% being able to exploit the full power of |\regexpatchcmd| or
+% |\xpatchparametertext|; in this case, `|\cO p|' (the space in between
+% is optional) specifies a character `|p|' with category code `other'.
+% Actually neither the |\cO| escape is necessary, as all letters in a
+% replacement text in the context of regular expressions has category
+% code 12 by default, but clarity is often to be preferred to
+% efficiency.
+%
+%
+% \section{Important notices}
+% 
+% If the command to be patched contains `|@|-commands' in its
+% replacement text, \emph{always} ensure that the patching code is
+% enclosed between |\makeatletter| and |\makeatother|; this is
+% different from what \pkg{etoolbox} requires. It's recommended to
+% turn on |\tracingxpatches| when testing a patch, to get maximum
+% information.
+%
+% Some people like to add informative messages to the \meta{failure}
+% code in the patching commands. Usually I'm lazy and don't do it;
+% when testing I find it better to trace the patchings or add |\ddt|
+% to the \meta{failure} code. Adding warnings to the \meta{success}
+% code is annoying for the user.
+%
+%
+% \section{Acknowledgment}
+%
+% This package would not exist without the \pkg{l3regex} package
+% and Bruno Le Floch. Some parts of \pkg{l3regex} were added just
+% because I asked for them while developing the present package.
+% Thanks also to Joseph Wright and all the \LaTeX3 team.
+%
+%
+% \section{Commands}
+%
+% The main commands introduced by this package are
+% \begin{itemize}
+% \item |\xpretocmd|
+% \item |\xapptocmd|
+% \item |\xpatchcmd|
+% \item |\regexpatchcmd|
+% \end{itemize}
+% which have the same syntax as the similar commands provided by
+% \pkg{etoolbox} and apply to all kind of commands defined by
+% \begin{itemize}
+% \item the \LaTeX{} kernel macros |\newcommand|, |\renewcommand|,
+% |\providecommand|, but also |\newenvironment| and
+% |\renewenvironment|;
+% \item the \LaTeX{} kernel macro for defining robust commands
+% |\DeclareRobustCommand|;
+% \item the \pkg{etoolbox} macros |\newrobustcmd|, |\renewrobustcmd|,
+% |\providerobustcmd|.
+% \end{itemize}
+% Notice that patching the definition of the environment |foo|
+% requires patching |\foo| or |\endfoo|.
+%
+% These commands will act as the original ones if the macro to patch
+% is not robust or with optional arguments.
+%
+% There is also added functionality that \pkg{etoolbox} doesn't
+% provide (at least easily for the first command):
+% \begin{itemize}
+% \item |\xpatchoptarg|
+% \item |\xpatchparametertext|
+% \item |\checkifpatchable|
+% \end{itemize}
+%
+% Moreover the package defines
+% \begin{itemize}
+% \item |\xpretobibmacro|
+% \item |\xapptobibmacro|
+% \item |\xpatchbibmacro|
+% \item |\regexpatchbibmacro|
+% \end{itemize}
+% that can be used to patch commands defined with \pkg{biblatex}'s
+% |\newbibmacro|. Say that we have
+%\begin{verbatim}
+% \newbibmacro{foo.bar}[2]{#1 and #2}
+%\end{verbatim}
+% Then, to change |and| into |und|, we can now say
+%\begin{verbatim}
+% \xpatchbibmacro{foo.bar}{and}{und}{}{}
+%\end{verbatim}
+% \medskip
+% \begin{lrbox}{0}
+% \begin{minipage}{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}
+% \footnotesize^^A
+% Patching these macros with \pkg{etoolbox} requires
+% resorting to the \emph{very} cryptic
+%\begin{verbatim}
+% \expandafter\patchcmd\csname abx@macro@\detokenize{foo.bar}\endcsname
+%   {and}{und}{}{}
+%\end{verbatim}
+% that would become an astonishing
+%\begin{verbatim}
+% \expandafter\patchcmd\csname\expandafter\string\csname 
+%   abx@macro@\detokenize{foo.bar}\endcsname\endcsname
+%   {and}{und}{}{}
+%\end{verbatim}
+% if the original definition had been with an optional argument, say
+%\begin{verbatim}
+% \newbibmacro{foo.bar}[2][x]{#1 and #2}
+%\end{verbatim}
+% \end{minipage}
+% \end{lrbox}
+% \noindent\fbox{\usebox{0}}
+%
+% \medskip
+%
+% For \pkg{biblatex} users there are also
+% \begin{itemize}
+% \item |\xpretobibdriver|
+% \item |\xapptobibdriver|
+% \item |\xpatchbibdriver|
+% \item |\regexpatchbibdriver|
+% \end{itemize}
+% for patching commands defined with |\DeclareBibliographyDriver|. One
+% could use, for patching the driver |foo|,
+%\begin{verbatim}
+% \makeatletter
+% \patchcmd{\blx@bbx@foo}{X}{Y}{success}{failure}
+% \preto{\blx@bbx@foo}{P}
+% \appto{\blx@bbx@foo}{A}
+% \makeatother
+%\end{verbatim}
+% but having a lighter interface can be handy. Since our macros use
+% |\pretocmd| and |\apptocmd| for consistency, remember to always use
+% the |{success}| and |{failure}| arguments also with
+% |\xpretobibdriver| and |\xapptobibdriver|.
+%
+% Under the same philosophy, one can use the macros
+% \begin{itemize}
+% \item |\xpatchfieldformat|,\\ |\xpretofieldformat|,\\ |\xapptofieldformat|,
+% \item |\xpatchnameformat|,\\ |\xpretonameformat|,\\ |\xapptonameformat|,
+% \item |\xpatchlistformat|,\\ |\xpretonameformat|,\\ |\xapptonameformat|,
+% \item |\xpatchindexfieldformat|,\\ |\xpretoindexfieldformat|,\\ |\xapptoindexfieldformat|,
+% \item |\xpatchindexnameformat|,\\ |\xpretoindexnameformat|,\\ |\xapptoindexnameformat|,
+% \item |\xpatchindexlistformat|,\\ |\xpretoindexlistformat|,\\ |\xapptoindexlistformat|,
+% \end{itemize}
+% for the \pkg{biblatex} internal macro defined respectively with
+% \begin{flushleft}
+% |\DeclareFieldFormat|,
+% |\DeclareNameFormat|,
+% |\DeclareListFormat|,\\
+% |\DeclareIndexFieldFormat|,
+% |\DeclareIndexNameFormat|,
+% |\DeclareIndexListFormat|.
+% \end{flushleft}
+% All the eighteen |\x...format| commands take a first optional argument, with
+% default value |*|, see later on.
+%
+% Finally, the package defines the commands
+% \begin{itemize}
+% \item |\xshowcmd|
+% \item |\xshowbibmacro|
+% \item |\xshowbibdriver|
+% \item |\xshowfieldformat|
+% \item |\xshownameformat|
+% \item |\xshowlistformat|
+% \item |\xshowindexfieldformat|
+% \item |\xshowindexnameformat|
+% \item |\xshowindexlistformat|
+% \item |\tracingxpatches|
+% \end{itemize}
+% The first three are the analog of |\show| to see the ``real''
+% definition of a macro, be it defined with optional arguments or as a
+% robust command; the |bib| ones are for the corresponding
+% \pkg{biblatex} macros. The last one takes an optional argument for
+% activating and deactivating the tracing system. So
+%\begin{verbatim}
+% \tracingxpatches
+%\end{verbatim}
+% will activate it (it's equivalent to |\tracingxpatches[1]|), while
+%\begin{verbatim}
+% \tracingxpatches[0]
+%\end{verbatim}
+% will stop issuing messages.
+%
+%
+% \section{Syntax}
+%
+% Here is the formal syntax of the commands.
+%
+% \medskip
+% {\small\noindent
+% |\xpatchcmd|\marg{command}\marg{search}\marg{replace}^^A
+%   \marg{success}\marg{failure}\\
+% |\xpretocmd|\marg{command}\marg{prepend}^^A
+%   \marg{success}\marg{failure}\\
+% |\xapptocmd|\marg{command}\marg{append}^^A
+%   \marg{success}\marg{failure}\\[\medskipamount]
+% |\xpatchbibmacro|\marg{name}\marg{search}\marg{replace}^^A
+%   \marg{success}\marg{failure}\\
+% |\xpretobibmacro|\marg{name}\marg{prepend}^^A
+%   \marg{success}\marg{failure}\\
+% |\xapptobibmacro|\marg{name}\marg{append}^^A
+%   \marg{success}\marg{failure}\\[\medskipamount]
+% |\xpatchbibdriver|\marg{name}\marg{search}\marg{replace}^^A
+%   \marg{success}\marg{failure}\\
+% |\xpretobibdriver|\marg{name}\marg{prepend}^^A
+%   \marg{success}\marg{failure}\\
+% |\xapptobibdriver|\marg{name}\marg{append}^^A
+%   \marg{success}\marg{failure}\\[\medskipamount]
+% |\xpatchfieldformat|\oarg{entrytype}\marg{name}\marg{search}\marg{replace}^^A
+%   \marg{success}\marg{failure}\\
+% |\xpretofieldformat|\oarg{entrytype}\marg{name}\marg{prepend}^^A
+%   \marg{success}\marg{failure}\\
+% |\xapptofieldformat|\oarg{entrytype}\marg{name}\marg{append}^^A
+%   \marg{success}\marg{failure}\\[\medskipamount]
+% |\xpatchnameformat|\oarg{entrytype}\marg{name}\marg{search}\marg{replace}^^A
+%   \marg{success}\marg{failure}\\
+% |\xpretonameformat|\oarg{entrytype}\marg{name}\marg{prepend}^^A
+%   \marg{success}\marg{failure}\\
+% |\xapptonameformat|\oarg{entrytype}\marg{name}\marg{append}^^A
+%   \marg{success}\marg{failure}\\[\medskipamount]
+% |\xpatchlistformat|\oarg{entrytype}\marg{name}\marg{search}\marg{replace}^^A
+%   \marg{success}\marg{failure}\\
+% |\xpretolistformat|\oarg{entrytype}\marg{name}\marg{prepend}^^A
+%   \marg{success}\marg{failure}\\
+% |\xapptolistformat|\oarg{entrytype}\marg{name}\marg{append}^^A
+%   \marg{success}\marg{failure}\\[\medskipamount]
+% |\xpatchindexfieldformat|\oarg{entrytype}\marg{name}\marg{search}\marg{replace}^^A
+%   \marg{success}\marg{failure}\\
+% |\xpretoindexfieldformat|\oarg{entrytype}\marg{name}\marg{prepend}^^A
+%   \marg{success}\marg{failure}\\
+% |\xapptoindexfieldformat|\oarg{entrytype}\marg{name}\marg{append}^^A
+%   \marg{success}\marg{failure}\\[\medskipamount]
+% |\xpatchindexnameformat|\oarg{entrytype}\marg{name}\marg{search}\marg{replace}^^A
+%   \marg{success}\marg{failure}\\
+% |\xpretoindexnameformat|\oarg{entrytype}\marg{name}\marg{prepend}^^A
+%   \marg{success}\marg{failure}\\
+% |\xapptoindexnameformat|\oarg{entrytype}\marg{name}\marg{append}^^A
+%   \marg{success}\marg{failure}\\[\medskipamount]
+% |\xpatchindexlistformat|\oarg{entrytype}\marg{name}\marg{search}\marg{replace}^^A
+%   \marg{success}\marg{failure}\\
+% |\xpretoindexlistformat|\oarg{entrytype}\marg{name}\marg{prepend}^^A
+%   \marg{success}\marg{failure}\\
+% |\xapptoindexlistformat|\oarg{entrytype}\marg{name}\marg{append}^^A
+%   \marg{success}\marg{failure}\\[\medskipamount]
+% |\xshowcmd|\sv\marg{command}\\
+% |\xshowbibname|\marg{name}\\
+% |\xshowbibdriver|\marg{name}\\[\medskipamount]
+% |\xpatchoptarg|\marg{name}\marg{replace}\\
+% |\xpatchparametertext|\marg{name}\marg{search}\marg{replace}^^A
+%   \marg{success}\marg{failure}\\
+% |\checkifpatchable|\marg{name}\\
+% |\tracingxpatches|\oarg{number}
+%
+% }
+%
+% \medskip
+%
+% \begingroup\emergencystretch=.5\textwidth
+% Here \meta{command} is the command's name (with the backslash),
+% while \meta{name} is the string that appears as the argument to
+% |\newbibmacro|, |\DeclareBibliographyDriver|, |\DeclareFieldFormat|,
+% |\DeclareNameFormat|, |\DeclareListFormat|, |\DeclareIndexFieldFormat|,
+% |\DeclareIndexNameFormat| or |\DeclareIndexListFormat| respectively;
+% \meta{search}, \meta{replace}, \meta{prepend} and \meta{append} are
+% the list of tokens that are to be used for the specific tasks;
+% \meta{success} and \meta{failure} are token lists to be executed if
+% the patching succeeds or fails respectively. I find it useful to use
+% |\ddt| as \meta{failure}, so that \TeX{} will stop for the undefined
+% control sequence when the patching fails.\par\endgroup
+%
+% All the |\x...format| macros have an optional argument that by
+% default is |*|.
+%
+% In the commands whose name contains the string |regex|, both
+% \meta{search} and \meta{replace} are understood to represent regular
+% expressions. Check with the documentation of \pkg{l3regex} for
+% details.
+%
+% The *-variants of the |patch| type commands means that the
+% replacement is performed on \emph{all} matches. With
+% |\xshowcmd*\foo| one gets all information on |\foo|, as if the
+% tracing system were activated, including the default optional
+% argument, if existent. So it's best to use it before trying
+% |\xpatchoptarg| (and all the other commands, of course).
+%
+% A curiosity about optional arguments: if one defines
+%\begin{verbatim}
+% \newcommand{\foo}[1][{bar}]{-#1-}
+%\end{verbatim}
+% then the braces around |bar| are stripped off. So with
+%\begin{verbatim}
+% \newcommand{\foo}[1][{\itshape bar}]{-#1-}
+%\end{verbatim}
+% all text following the call of |\foo| without an optional argument
+% would be set in italics; one needs \emph{two} sets of braces, in
+% this case. However,
+%\begin{verbatim}
+% \xpatchoptarg{\foo}{{\itshape bar}}
+%\end{verbatim}
+% would \emph{not} strip the braces.
+%
+% It's important to remember that patching commands that have |@| in
+% their name must \emph{always} be performed between |\makeatletter|
+% and |\makeatother|.
+% 
+% \section{Examples}
+%
+% From \texttt{http://tex.stackexchange.com/a/42894}: the series
+% of successive patches for changing the three occurrences of
+% |\mathcode| in |\@addligto| into |\Umathcodenum| can become
+%\begin{verbatim}
+% \xpatchcmd*{\@addligto}{\mathcode}{\Umathcodenum}{}{}
+%\end{verbatim}
+% while the code
+%\begin{verbatim}
+% \expandafter\patchcmd\csname mathligsoff \endcsname
+%   {\mathcode}{\Umathcodenum}{}{}
+%\end{verbatim}
+% needed without \pkg{regexpatch} can become
+%\begin{verbatim}
+% \xpatchcmd\mathligsoff{\mathcode}{\Umathcodenum}{}{}
+%\end{verbatim}
+%
+% Another one: changing the space reserved for the theorem number in
+% the `List of theorems' provided by \pkg{ntheorem} could be obtained
+% with \pkg{etoolbox}'s |\patchcmd| by
+%\begin{verbatim}
+% \patchcmd{\thm@@thmline}{2.3em}{5em}{}{}
+% \patchcmd{\thm@@thmline@name}{2.3em}{5em}{}{}
+% \patchcmd{\thm@@thmline@noname}{2.3em}{5em}{}{}
+%\end{verbatim}
+% if the |hyperref| option is not used, but a long series of patches
+% would be needed with the option, as |2.3em| appears three times in
+% each macro. With \pkg{regexpatch} one can do independently of the
+% option:
+%\begin{verbatim}
+% \xpatchcmd*{\thm@@thmline}{2.3em}{5em}{}{}
+% \xpatchcmd*{\thm@@thmline@name}{2.3em}{5em}{}{}
+% \xpatchcmd*{\thm@@thmline@noname}{2.3em}{5em}{}{}
+%\end{verbatim}
+%
+% A user asked how to patch the |rubric| environment in the `CurVe'
+% class in order to avoid the repetition of the rubric's title on
+% continuation pages. The environment is based on |longtable| and the
+% task is to remove the |\endhead| material, which is delimited by
+% |\endfirsthead| and |\endhead|. Instead of
+%\begin{verbatim}
+% \patchcmd{\rubric}
+%   {\endfirsthead\@rubrichead{#1\@continuedname}\\*[\rubricspace]\endhead}
+%   {\endfirsthead}{}{}
+%\end{verbatim}
+% one can more simply exploit regular expressions:
+%\begin{verbatim}
+% \makeatletter % the replacement text has @-commands
+% \regexpatchcmd{\rubric}
+%   { \c{endfirsthead} .* \c{endhead} }
+%   { \c{endfirsthead} }{}{}
+% \makeatother
+%\end{verbatim}
+%
+% Assume you want to insert a patch in the argument of a command; with
+% the traditional method this is possible provided the patch text
+% doesn't contain |#|. Here's an example
+%\begin{verbatim}
+% \makeatletter
+% \usepackage{etoolbox} % for \ifdef
+% \ifdef{\H@old@part}
+%   {
+%    \regexpatchcmd{\H@old@part}
+%      {$} % regex representing the end
+%      {\c{gdef}\c{cont@name@part}\cB\{\cP\#2\cE\}} % replacement
+%      {}{}%
+%   }
+%   {
+%    \regexpatchcmd{\@part}
+%     {$}
+%     {\c{gdef}\c{cont@name@part}\cB\{\cP\#2\cE\}}
+%     {}{}%
+%   }
+% \makeatother
+%\end{verbatim}
+% We want to add |\gdef\cont@name@part{#2}| at the end of the
+% replacement text, distinguishing when \pkg{hyperref} is loaded or
+% not. So we patch the command by doing just what's requested. The
+% example is a bit contrived, as using |\ifdefined| instead of the
+% argument form wrapper would allow the traditional |\apptocmd|.
+% However, other applications may be foreseen.
+%
+% A problem raised on |comp.text.tex| in 2008 was to extract the
+% number from the name of the file being typeset; the name was of the
+% form |lecture15.tex| and the question was how to define a macro
+% |\lecturenumber| that acted on |\jobname| to do its work. The
+% obvious
+%\begin{verbatim}
+% \def\lecturenumber{\expandafter\extractnumber\jobname;}
+% \def\extractnumber lecture#1;{#1}
+%\end{verbatim}
+% doesn't work because the characters produced by |\jobname| all have
+% category code 12 (spaces have 10, as usual). A nifty solution was
+% provided by David Kastrup:
+%\begin{verbatim}
+% \begingroup
+% \escapechar=-1
+% \expandafter\endgroup
+% \expandafter\def\expandafter\extractnumber\string\lecture#1;{#1}
+%\end{verbatim}
+% Now with |\xpatchparametertext| one can do
+%\begin{verbatim}
+% \def\lecturenumber{\expandafter\extractnumber\jobname;}
+% \def\extractnumber lecture#1;{#1}
+% \xpatchparametertext\extractnumber{lecture}{lecture}{}{}
+%\end{verbatim}
+% recalling that the substitution performed by \pkg{l3regex} uses
+% category code 12 characters by default. The command can be
+% generalized to accept any (fixed) prefix:
+%\begin{verbatim}
+% \def\setupfilenumber#1{%
+%   \def\filenumber{\expandafter\extractnumber\jobname;}%
+%   \def\extractnumber#1##1;{##1}%
+%   \xpatchparametertext\extractnumber{#1}{#1}{}{}}
+% \setupfilenumber{lecture}
+%\end{verbatim}
+% where the prefix is passed to |\setupfilenumber| and the macro to
+% use is |\filenumber|.
+%
+% A proper \LaTeX3 definition might be
+%\begin{verbatim}
+% \NewDocumentCommand{\setupfilenumber}{ m }
+%   {
+%    \group_begin:
+%    \cs_set:Npx \filenumber_aux:
+%      {
+%       \group_end:
+%       \cs_set:Npn \exp_not:N \filenumber_extract:w
+%         \tl_to_str:n { #1 } ####1 ; { ####1 }
+%      }
+%    \filenumber_aux:
+%   }
+% \NewDocumentCommand{\filenumber} {}
+%   {
+%    \exp_after:wN \filenumber_extract:w \c_job_name_tl ;
+%   }
+%\end{verbatim}
+%
+% \end{documentation}
+%
+% \begin{implementation}
+%
+% \section{The implementation of \pkg{regexpatch}}
+%
+% \iffalse
+%<*package>
+% \fi
+%
+% The usual starting stuff.
+%    \begin{macrocode}
+\ProvidesExplPackage
+  {\ExplFileName}{\ExplFileDate}{\ExplFileVersion}{\ExplFileDescription}
+\@ifpackagelater { expl3 } { 2012/01/19 }
+  { }
+  {
+    \PackageError { regexpatch } { Support~package~l3kernel~too~old. }
+      {
+        Please~install~an~up~to~date~version~of~l3kernel~
+        using~your~TeX~package~manager~or~from~CTAN.\\ \\
+        Loading~regexpatch~will~abort!
+      }
+    \tex_endinput:D
+  }
+\RequirePackage{xparse,l3regex}
+%    \end{macrocode}
+%
+% \subsection{Variables}
+%
+% We define a bunch of variables: some booleans and token lists. The
+% first tells us when the macro to patch has been defined by
+% |\DeclareRobustCommand|, the second if it has an optional argument,
+% the third if it's patchable, that is it can be reconstructed from
+% its decomposition under the current category code regime. The last
+% boolean is used for the tracing system: if true, messages about
+% patching are issued.
+%    \begin{macrocode}
+\bool_new:N \l_xpatch_protect_bool
+\bool_new:N \l_xpatch_optional_bool
+\bool_new:N \l_xpatch_patchable_bool
+\bool_new:N \l_xpatch_tracing_bool
+%    \end{macrocode}
+% The token list variables contain various items regarding the macro
+% to patch: the name, the first level replacement text (we distinguish
+% it from the `real' replacement text), the prefixes, the argument
+% spec and the `real' replacement text.
+%    \begin{macrocode}
+\tl_new:N \l_xpatch_name_tl
+\tl_new:N \l_xpatch_repl_tl
+\tl_new:N \l_xpatch_prefix_tl
+\tl_new:N \l_xpatch_arg_tl
+\tl_new:N \l_xpatch_replacement_tl
+\tl_new:N \l_xpatch_type_tl % for debugging messages
+%    \end{macrocode}
+% A variant for checking a regex match so that we can give the second
+% argument as a token list.
+%    \begin{macrocode}
+\cs_generate_variant:Nn \regex_match:nnT {nV}
+%    \end{macrocode}
+%
+% \subsection{Functions}
+%
+% The function |\xpatch_main_check:N| is responsible for telling us
+% what kind of macro we're patching. Only one of the first four tests
+% can be true; if none is, the macro is not `special' and can be
+% patched without doing anything particular to get its
+% `real~name'. The check consists in matching with a suitable regex
+% at the start of the replacement text (which is in detokenized
+% form). If the macro passes one of the first two tests, it can still
+% have an optional argument, so a supplementary test is needed.
+%
+% Some technical remarks. Suppose we have the following definitions:
+%\begin{verbatim}
+% \DeclareRobustCommand{\xaa}[1]{xaa (DeclareRobustCommand-noopt)}
+% \DeclareRobustCommand{\xab}[1][x]{xab (DeclareRobustCommand-opt)}
+% \newcommand{\xac}[1][]{xac (newcommand-opt)}
+% \newrobustcmd\xad[1][]{xad (newrobustcmd-opt)}
+% \DeclareRobustCommand{\1}[1]{1 (DeclareRobustCommand-noopt)}
+% \DeclareRobustCommand{\2}[1][]{2 (DeclareRobustCommand-opt)}
+% \newcommand{\3}[1][]{3 (newcommand-opt)}
+% \newrobustcmd\4[1][]{4 (newrobustcmd-opt)}
+%\end{verbatim}
+% Then the first level expansions are, respectively,
+%\begin{verbatim*}
+%+\protect \xaa  +
+%+\protect \xab  +
+%+\@protected@testopt \xac \\xac {}+
+%+\@testopt \\xad {}+
+%+\x@protect \1\protect \1  +
+%+\x@protect \2\protect \2  +
+%+\@protected@testopt \3\\3 {}+
+%+\@testopt \\4 {}+
+%\end{verbatim*}
+% where the |+| is used to delimit the expansions and show the
+% spaces. Remember that |\show| always adds a space after a control
+% word, but not after a control symbol such as |\1|. However, in lines
+% 5~and~6, \verb*?\1 ? is not a control symbol any more. So we have to
+% take care of |\protect|, |\x@protect|, |\@protected@testopt| and
+% |\@testopt|. But it's not simply sufficient to check for the
+% presence of such a token at the start of the replacement text, or
+% we'll be confused by macros such as |\linebreak|, whose replacement
+% text starts with |\@testopt|. So we'll check also for the presence
+% of the subsequent tokens, that depend on the macro's name. If the
+% macro is recognized to have an optional argument, its default value
+% is stored in |\tl_xpatch_repl_tl| (that we wouldn't use any more) to
+% be shown by |\xshowcmd*| or when the tracing system is active: we
+% throw away everything except what's contained between the final pair
+% of braces.
+%    \begin{macrocode}
+\cs_new_protected:Npn \xpatch_main_check:N #1
+  {
+   \bool_set_false:N \l_xpatch_protect_bool
+   \bool_set_false:N \l_xpatch_optional_bool
+   \tl_set:Nx \l_xpatch_name_tl { \cs_to_str:N #1  }
+   \tl_set:Nx \l_xpatch_repl_tl { \token_get_replacement_spec:N #1 }
+   \tl_clear:N \l_xpatch_type_tl
+   \regex_match:nVT % \DeclareRobustCommand<control word>
+     {^\\protect\ \\\u{l_xpatch_name_tl}\ \ }
+     \l_xpatch_repl_tl
+     {
+      \bool_set_true:N \l_xpatch_protect_bool
+      \tl_put_right:Nx \l_xpatch_name_tl { \c_space_tl }
+      \tl_set:Nn \l_xpatch_type_tl { DRCw }
+     }
+   \regex_match:nVT % \DeclareRobustCommand<control symbol>
+     {^\\x@protect\ \\\u{l_xpatch_name_tl}\\}
+     \l_xpatch_repl_tl
+     {
+      \bool_set_true:N \l_xpatch_protect_bool
+      \tl_put_right:Nx \l_xpatch_name_tl { \c_space_tl }
+      \tl_set:Nn \l_xpatch_type_tl { DRCs }
+     }
+   \regex_match:nVT % \newcommand<control word> with opt arg
+     {^\\@protected@testopt\ \\\u{l_xpatch_name_tl}\ \\\\}
+     \l_xpatch_repl_tl
+     {
+      \bool_set_true:N \l_xpatch_optional_bool
+      \tl_put_left:Nx \l_xpatch_name_tl { \c_backslash_str }
+      \tl_set:Nn \l_xpatch_type_tl { ncw+o }
+     }
+   \regex_match:nVT % \newcommand<control symbol> with opt arg
+     {^\\@protected@testopt\ \\\u{l_xpatch_name_tl}\\\\}
+     \l_xpatch_repl_tl
+     {
+      \bool_set_true:N \l_xpatch_optional_bool
+      \tl_put_left:Nx \l_xpatch_name_tl { \c_backslash_str }
+      \tl_set:Nn \l_xpatch_type_tl { ncs+o }
+     }
+   \regex_match:nVT % \newrobustcmd<any cs> with opt arg
+     {^\\@testopt\ \\\\\u{l_xpatch_name_tl}}
+     \l_xpatch_repl_tl
+     {
+      \bool_set_true:N \l_xpatch_optional_bool
+      \tl_put_left:Nx \l_xpatch_name_tl { \c_backslash_str }
+      \tl_set:Nn \l_xpatch_type_tl { nrc+o }
+     }
+   \bool_if:NT \l_xpatch_protect_bool
+     {
+      \tl_set:Nx \l_xpatch_repl_tl
+        { \exp_after:wN \token_get_replacement_spec:N
+            \cs:w \l_xpatch_name_tl \cs_end: }
+      \regex_match:nVT % \DeclareRobustCommand<any cs> with opt arg
+        {^\\@protected@testopt\ \\\u{l_xpatch_name_tl}\ \\\\}
+        \l_xpatch_repl_tl
+        {
+         \bool_set_true:N \l_xpatch_optional_bool
+         \tl_put_left:Nx \l_xpatch_name_tl { \c_backslash_str }
+         \tl_put_right:Nn \l_xpatch_type_tl { +o }
+        }
+     }
+   \bool_if:NT \l_xpatch_optional_bool
+     {
+      \regex_replace_once:nnN { .*? \{ (.*) \} \Z } { \1 }
+        \l_xpatch_repl_tl
+     }
+  }
+%    \end{macrocode}
+% We use the information gathered with |\xpatch_main_check:N| to
+% perform the patch; the macro to patch is |#2|, the function to
+% execute is |#1|; in case the macro's name is misspelled, the
+% following arguments will be ignored because they have already been
+% absorbed. The main function is |\xpatch_main_four:NNnnnn|, where the
+% |four| refers to the number of braced arguments for the |patch| and
+% |regexpatch| type macros; we define also a |three| function for
+% |preto| and |appto| macros, and a |zero| function for the |show|
+% macros. We also define the variants taking a name as their second
+% argument.
+%    \begin{macrocode}
+\cs_new_protected:Npn \xpatch_main_four:NNnnnn #1 #2 #3 #4 #5 #6
+  {
+   \cs_if_exist:NTF #2
+     {
+      \xpatch_main_check:N #2
+      \bool_if:NT \l_xpatch_tracing_bool
+        { \xpatch_message_cstype:N #2 }
+      \exp_after:wN #1 \cs:w \l_xpatch_name_tl \cs_end: {#3}{#4}{#5}{#6}
+     }
+     {
+      \msg_term:n
+        {
+         xpatch~message \\
+        `\token_to_str:N #2'~is~undefined;~
+        I'll~ignore~the~request.
+        }
+     }
+  }
+\cs_new_protected:Npn \xpatch_main_three:NNnnn #1 #2 #3 #4 #5
+ {
+  \xpatch_main_four:NNnnnn #1 #2 { #3 } { #4 } { #5 } { }
+ }
+\cs_new_protected:Npn \xpatch_main_zero:NN #1 #2
+ {
+  \xpatch_main_four:NNnnnn #1 #2 { } { } { } { }
+ }
+\cs_generate_variant:Nn \xpatch_main_zero:NN {Nc}
+\cs_generate_variant:Nn \xpatch_main_three:NNnnn {Nc}
+\cs_generate_variant:Nn \xpatch_main_four:NNnnnn {Nc}
+%    \end{macrocode}
+%
+% Now we define the patching functions. We get all the parts in which
+% a macro can be split: prefixes, parameter text and replacement text;
+% the name is already available.  The token lists |\l_xpatch_X_tl|
+% will contain the prefix or parameter text or replacement text of
+% |#1| first in `detokenized' and then in `tokenized' form.
+%    \begin{macrocode}
+\cs_new_protected:Npn \xpatch_get_all:N #1
+  {
+   \tl_set:Nf \l_xpatch_prefix_tl { \token_get_prefix_spec:N #1 }
+   \tl_set_rescan:Nnx \l_xpatch_prefix_tl { } \l_xpatch_prefix_tl
+   \tl_set:Nf \l_xpatch_arg_tl { \token_get_arg_spec:N #1 }
+   \tl_set_rescan:Nnx \l_xpatch_arg_tl { } \l_xpatch_arg_tl
+   \tl_set:Nf \l_xpatch_replacement_tl { \token_get_replacement_spec:N #1 }
+   \tl_set_rescan:Nnx \l_xpatch_replacement_tl { } \l_xpatch_replacement_tl
+  }
+%    \end{macrocode}
+% After possible modifications to the replacement text, we can call
+% |\xpatch_rebuild:N| to redo the definition of |#1|; we can also use
+% it for checking if |#1| is patchable. Of course we need to use
+% |\tex_def:D| at this point. Apologies to the developers of \LaTeX3
+% that recommend never using |:D| functions.
+%    \begin{macrocode}
+\cs_new_protected:Npn \xpatch_rebuild:N #1
+  {
+   \use:x
+     {
+      \exp_not:V \l_xpatch_prefix_tl
+      \tex_def:D % unavoidable
+      \exp_not:N #1
+      \exp_not:V \l_xpatch_arg_tl
+      { \exp_not:V \l_xpatch_replacement_tl }
+     }
+  }
+%    \end{macrocode}
+% To check if |#1| is patchable, we rebuild it as |\xpatch_tmpa:w| and
+% look whether |#1| and |\xpatch_tmpa:w| are the same. This is always
+% the first thing to do, so we put |\xpatch_get_all:N| here; |#1| is
+% the macro to patch.
+%    \begin{macrocode}
+\cs_new_protected:Npn \xpatch_check_patchable:N #1
+  {
+   \cs_if_exist:NTF #1
+     {
+      \xpatch_get_all:N #1
+      \xpatch_rebuild:N \xpatch_tmpa:w
+      \cs_if_eq:NNTF #1 \xpatch_tmpa:w
+        {
+         \bool_set_true:N \l_xpatch_patchable_bool
+         \xpatch_message:n
+           {
+            Macro `\token_to_str:N #1'~is~patchable
+           }
+        }
+        {
+         \bool_set_false:N \l_xpatch_patchable_bool
+         \xpatch_message:n
+           {
+            Macro `\token_to_str:N #1'~is~NOT~patchable\\
+            (Check~if~it~contains~`@'~commands)
+           }
+        }
+     }
+     {
+      \bool_set_false:N \l_xpatch_patchable_bool
+      \xpatch_message:n
+        {
+         Macro `\token_to_str:N #1'~doesn't~exist.
+        }
+     }
+  }
+%    \end{macrocode}
+%
+% Defining the internal versions of |\xpretocmd| and |\xapptocmd| is
+% easy: we check if the command is patchable and, if so, we prepend or append
+% the second argument to the replacement text and rebuild the
+% macro, then we execute the \meta{success} code. If the patch isn't
+% possible we just execute the \meta{failure} code.
+%    \begin{macrocode}
+\cs_new_protected:Npn \xpatch_pretocmd:Nnnn #1 #2 #3 #4
+  {
+   \xpatch_check_patchable:N #1
+   \bool_if:NTF \l_xpatch_patchable_bool
+      {
+       \tl_put_left:Nn \l_xpatch_replacement_tl { #2 }
+       \xpatch_rebuild:N #1
+       #3
+      }
+      {
+       #4
+      }
+  }
+\cs_new_protected:Npn \xpatch_apptocmd:Nnnn #1 #2 #3 #4
+  {
+   \xpatch_check_patchable:N #1
+   \bool_if:NTF \l_xpatch_patchable_bool
+      {
+       \tl_put_right:Nn \l_xpatch_replacement_tl { #2 }
+       \xpatch_rebuild:N #1
+       #3
+      }
+      {
+       #4
+      }
+  }
+%    \end{macrocode}
+%
+% Substituting tokens in the replacement text is a bit harder, but not
+% conceptually different. First the internal version of
+% |\regexpatchcmd(*)|: check if |#1| is patchable, do the replacement
+% if possible; beware that characters in the replacement string are of
+% category 12 by default. We use |\regex_replace_all:nnNTF| and
+% |\regex_replace_once:nnNTF| in order to pass correctly the success
+% or failure arguments.
+% \changes{v0.1a}{2012/06/07}{Fixed bugs in success/failure code with regex...nnNTF}
+%    \begin{macrocode}
+\cs_new_protected:Npn \xpatch_regexpatchcmd_all:Nnnnn #1 #2 #3 #4 #5
+  {
+   \xpatch_check_patchable:N #1
+   \bool_if:NTF \l_xpatch_patchable_bool
+      {
+       \regex_replace_all:nnNTF { #2 } { #3 } \l_xpatch_replacement_tl
+        { \xpatch_rebuild:N #1 #4 }
+        { #5 }
+      }
+      {
+       #5
+      }
+  }
+\cs_new_protected:Npn \xpatch_regexpatchcmd_once:Nnnnn #1 #2 #3 #4 #5
+  {
+   \xpatch_check_patchable:N #1
+   \bool_if:NTF \l_xpatch_patchable_bool
+      {
+       \regex_replace_once:nnNTF { #2 } { #3 } \l_xpatch_replacement_tl
+        { \xpatch_rebuild:N #1 #4 }
+        { #5 }
+      }
+      {
+       #5
+      }
+  }
+%    \end{macrocode}
+%
+% Thanks to the features of \pkg{l3regex}, we can also implement
+% directly the analog of |\patchcmd|, but also with a `replace all'
+% version.
+%    \begin{macrocode}
+\cs_new_protected:Npn \xpatch_patchcmd_once:Nnnnn #1 #2 #3 #4 #5
+  {
+   \xpatch_check_patchable:N #1
+   \bool_if:NTF \l_xpatch_patchable_bool
+      {
+       \tl_set:Nn \l_tmpa_tl { #2 }
+       \tl_set:Nn \l_tmpb_tl { #3 }
+       \regex_replace_once:nnNTF
+         { \u{l_tmpa_tl} }
+         { \u{l_tmpb_tl} }
+         \l_xpatch_replacement_tl
+         { \xpatch_rebuild:N #1 #4 }
+         { #5 }
+      }
+      {
+       #5
+      }
+  }
+\cs_new_protected:Npn \xpatch_patchcmd_all:Nnnnn #1 #2 #3 #4 #5
+  {
+   \xpatch_check_patchable:N #1
+   \bool_if:NTF \l_xpatch_patchable_bool
+      {
+       \tl_set:Nn \l_tmpa_tl { #2 }
+       \tl_set:Nn \l_tmpb_tl { #3 }
+       \regex_replace_all:nnNTF
+         { \u{l_tmpa_tl} }
+         { \u{l_tmpb_tl} }
+         \l_xpatch_replacement_tl
+         { \xpatch_rebuild:N #1 #4 }
+         { #5 }
+      }
+      {
+       #5
+      }
+  }
+%    \end{macrocode}
+%
+% Now the tracing system.
+%    \begin{macrocode}
+\cs_new_protected:Npn \xpatch_message:n #1
+  {
+   \bool_if:NT \l_xpatch_tracing_bool
+     {
+      \msg_term:n { xpatch~message \\ #1 }
+     }
+  }
+\cs_new:Npn \xpatch_message_cstype:N #1
+  {
+   \str_case:onF { \l_xpatch_type_tl }
+     {
+      { DRCw }   {
+                  \xpatch_message:n
+                    {
+                     `\token_to_str:N #1'~is~a~control~word~defined~
+                     with~\token_to_str:N \DeclareRobustCommand
+                    }
+                 }
+      { DRCw+o } {
+                  \xpatch_message:n
+                    {
+                     `\token_to_str:N #1'~is~a~control~word~defined~
+                     with~`\token_to_str:N \DeclareRobustCommand'~
+                     and~a~default~optional~argument~`\l_xpatch_repl_tl'
+                    }
+                 }
+      { DRCs }   {
+                  \xpatch_message:n
+                    {
+                     `\token_to_str:N #1'~is~a~control~symbol~defined~
+                     with~`\token_to_str:N \DeclareRobustCommand'
+                    }
+                 }
+      { DRCs+o } {
+                  \xpatch_message:n
+                    {
+                     `\token_to_str:N #1'~is~a~control~symbol~defined~
+                     with~`\token_to_str:N \DeclareRobustCommand'~
+                     and~a~default~optional~argument~`\l_xpatch_repl_tl'
+                    }
+                 }
+      { ncw+o }  {
+                  \xpatch_message:n
+                    {
+                     `\token_to_str:N #1'~is~a~control~word~defined~
+                     with~`\token_to_str:N \newcommand'~
+                     and~a~default~optional~argument~`\l_xpatch_repl_tl'
+                    }
+                 }
+      { ncs+o }  {
+                  \xpatch_message:n
+                    {
+                     `\token_to_str:N #1'~is~a~control~symbol~defined~
+                     with~`\token_to_str:N \newcommand'~
+                     and~a~default~optional~argument~`\l_xpatch_repl_tl'
+                    }
+                 }
+      { nrc+o }  {
+                  \xpatch_message:n
+                    {
+                     `\token_to_str:N #1'~is~a~control~sequence~defined~
+                     with~`\token_to_str:N \newrobustcmd'~
+                     and~a~default~optional~argument~`\l_xpatch_repl_tl'
+                    }
+                 }
+      }
+      {
+       \xpatch_message:n
+         {
+          `\token_to_str:N #1'~is~not~especially~defined
+         }
+      }
+  }
+%    \end{macrocode}
+%
+% \subsection{The user level functions}
+%
+% Here are the functions for patching usual macros; the *-variants for
+% |\xpatchcmd| and |\regexpatchcmd| do a `replace all'. All arguments
+% are declared `long' with |+m| because we may need |\par| in them.
+% \changes{v0.1a}{2012/06/07}{Fixed bug in success/failure code (missing final \texttt{n})}
+%    \begin{macrocode}
+\NewDocumentCommand{\xshowcmd} { s +m }
+ {
+  \IfBooleanT{#1}
+   {
+    \group_begin:
+    \bool_set_true:N \l_xpatch_tracing_bool
+   }
+  \xpatch_main_zero:NN \cs_show:N #2
+  \IfBooleanT{#1}
+   {
+    \group_end:
+   }
+ }
+\NewDocumentCommand{\xpretocmd}{ +m +m +m +m }
+ { \xpatch_main_three:NNnnn \xpatch_pretocmd:Nnnn #1 {#2} {#3} {#4} }
+\NewDocumentCommand{\xapptocmd}{ +m +m +m +m }
+ { \xpatch_main_three:NNnnn \xpatch_apptocmd:Nnnn #1 {#2} {#3} {#4} }
+\NewDocumentCommand{\regexpatchcmd}{ s +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   { \xpatch_main_four:NNnnnn \xpatch_regexpatchcmd_all:Nnnnn #2 {#3}{#4}{#5}{#6} }
+   { \xpatch_main_four:NNnnnn \xpatch_regexpatchcmd_once:Nnnnn #2 {#3}{#4}{#5}{#6} }
+ }
+\NewDocumentCommand{\xpatchcmd}{ s +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   { \xpatch_main_four:NNnnnn \xpatch_patchcmd_all:Nnnnn #2 {#3}{#4}{#5}{#6} }
+   { \xpatch_main_four:NNnnnn \xpatch_patchcmd_once:Nnnnn #2 {#3}{#4}{#5}{#6} }
+ }
+%    \end{macrocode}
+%
+% The functions for patching \pkg{biblatex} related macros that are
+% given by name and we'll use the already defined variants.
+%    \begin{macrocode}
+\NewDocumentCommand{\xshowbibmacro} { s +m }
+ {
+  \IfBooleanT{#1}
+   {
+    \group_begin:
+    \bool_set_true:N \l_xpatch_tracing_bool
+   }
+  \xpatch_main_zero:Nc \cs_show:N { abx@macro@ \tl_to_str:n {#2} }
+  \IfBooleanT{#1}
+   {
+    \group_end:
+   }
+ }
+\NewDocumentCommand{\xpretobibmacro} { +m +m +m +m }
+ {
+  \xpatch_main_three:Ncnnn \xpatch_pretocmd:Nnnn
+   { abx@macro@ \tl_to_str:n {#1} } {#2}{#3}{#4}
+ }
+\NewDocumentCommand{\xapptobibmacro} { +m +m +m +m }
+ {
+  \xpatch_main_three:Ncnnn \xpatch_apptocmd:Nnnn
+   { abx@macro@ \tl_to_str:n {#1} } {#2}{#3}{#4}
+ }
+\NewDocumentCommand{\xpatchbibmacro} { s +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_all:Nnnnn 
+     { abx@macro@ \tl_to_str:n {#2} } {#3}{#4}{#5}{#6}
+   }
+   {
+    \xpatch_main:Ncnnnn \xpatch_patchcmd_once:Nnnnn
+     { abx@macro@ \tl_to_str:n {#2} } {#3}{#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\regexpatchbibmacro} { s +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_all:Nnnnn
+     { abx@macro@ \tl_to_str:n {#2} } {#3}{#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_once:Nnnnn 
+     { abx@macro@ \tl_to_str:n {#2} } {#3}{#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xshowbibdriver} { s +m }
+ {
+  \IfBooleanT{#1}
+   {
+    \group_begin:
+    \bool_set_true:N \l_xpatch_tracing_bool
+   }
+  \xpatch_main_zero:Nc \cs_show:N { blx@bbx@#2 }
+  \IfBooleanT{#1}
+   {
+    \group_end:
+   }
+ }
+\NewDocumentCommand{\xpretobibdriver} { +m +m +m +m }
+ { \exp_args:Nc \xpatch_pretocmd:Nnnn {blx@bbx@#1} {#2}{#3}{#4} }
+\NewDocumentCommand{\xapptobibdriver} { +m +m +m +m }
+ { \exp_args:Nc \xpatch_apptocmd:Nnnn {blx@bbx@#1} {#2}{#3}{#4} }
+\NewDocumentCommand{\xpatchbibdriver} { s +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   { \exp_args:Nc \xpatch_patchcmd_all:Nnnnn {blx@bbx@#2} {#3}{#4}{#5}{#6} }
+   { \exp_args:Nc \xpatch_patchcmd_once:Nnnnn {blx@bbx@#2} {#3}{#4}{#5}{#6} }
+ }
+\NewDocumentCommand{\regexpatchbibdriver} { s +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   { \exp_args:Nc \xpatch_regexpatchcmd_all:Nnnnn {blx@bbx@#2} {#3}{#4}{#5}{#6} }
+   { \exp_args:Nc \xpatch_regexpatchcmd_once:Nnnnn {blx@bbx@#2} {#3}{#4}{#5}{#6} }
+ }
+%    \end{macrocode}
+% \changes{v0.2a}{2015/05/20}{Fixed silly mistake}
+% Other \pkg{biblatex} related macros, added by request of the
+% maintainers.
+% \changes{v0.2}{2013/03/28}{Additional biblatex related macros}
+%    \begin{macrocode}
+\NewDocumentCommand{\xshowfieldformat} { s O{*} +m }
+ {
+  \IfBooleanT{#1}
+   {
+    \group_begin:
+    \bool_set_true:N \l_xpatch_tracing_bool
+   }
+  \xpatch_main_zero:Nc \cs_show:N { abx@ffd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} }
+  \IfBooleanT{#1}
+   {
+    \group_end:
+   }
+ }
+\NewDocumentCommand{\xpretofieldformat} { s O{*} +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_three:Ncnnn \xpatch_pretocmd_all:Nnnn 
+     { abx@ffd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_three:Ncnnn \xpatch_pretocmd_once:Nnnn
+     { abx@ffd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xapptofieldformat} { s O{*} +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_three:Ncnnn \xpatch_apptocmd_all:Nnnn 
+     { abx@ffd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_three:Ncnnn \xpatch_apptocmd_once:Nnnn
+     { abx@ffd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xpatchfieldformat} { s O{*} +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_all:Nnnnn 
+     { abx@ffd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_once:Nnnnn
+     { abx@ffd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+ }
+\NewDocumentCommand{\regexpatchfieldformat} { s O{*} +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_all:Nnnnn 
+     { abx@ffd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_once:Nnnnn
+     { abx@ffd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+ }
+
+\NewDocumentCommand{\xshownameformat} { s O{*} +m }
+ {
+  \IfBooleanT{#1}
+   {
+    \group_begin:
+    \bool_set_true:N \l_xpatch_tracing_bool
+   }
+  \xpatch_main_zero:Nc \cs_show:N { abx@nfd@ \tl_to_str:n {#1} @ \tl_to_str:n {#2} }
+  \IfBooleanT{#1}
+   {
+    \group_end:
+   }
+ }
+\NewDocumentCommand{\xpretonameformat} { s O{*} +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_three:Ncnnn \xpatch_pretocmd_all:Nnnn 
+     { abx@nfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_three:Ncnnn \xpatch_pretocmd_once:Nnnn
+     { abx@nfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xapptonameformat} { s O{*} +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+   \xpatch_main_three:Ncnnn \xpatch_apptocmd_all:Nnnn 
+     { abx@nfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_three:Ncnnn \xpatch_apptocmd_once:Nnnn
+     { abx@nfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xpatchnameformat} { s O{*} +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_all:Nnnnn 
+     { abx@nfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_once:Nnnnn
+     { abx@nfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+ }
+\NewDocumentCommand{\regexpatchnameformat} { s O{*} +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_all:Nnnnn 
+     { abx@nfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_once:Nnnnn
+     { abx@nfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+ }
+
+\NewDocumentCommand{\xshowlistformat} { s O{*} +m }
+ {
+  \IfBooleanT{#1}
+   {
+    \group_begin:
+    \bool_set_true:N \l_xpatch_tracing_bool
+   }
+  \xpatch_main_zero:Nc \cs_show:N { abx@lfd@ \tl_to_str:n {#1} @ \tl_to_str:n {#2} }
+  \IfBooleanT{#1}
+   {
+    \group_end:
+   }
+ }
+\NewDocumentCommand{\xpretolistformat} { s O{*} +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_three:Ncnnn \xpatch_pretocmd_all:Nnnn 
+     { abx@lfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_three:Ncnnn \xpatch_pretocmd_once:Nnnn
+     { abx@lfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xapptolistformat} { s O{*} +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_three:Ncnnn \xpatch_apptocmd_all:Nnnn 
+     { abx@lfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_three:Ncnnn \xpatch_apptocmd_once:Nnnn
+     { abx@lfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xpatchlistformat} { s O{*} +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_all:Nnnnn 
+     { abx@lfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_once:Nnnnn
+     { abx@lfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+ }
+\NewDocumentCommand{\regexpatchlistformat} { s O{*} +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_all:Nnnnn 
+     { abx@lfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_once:Nnnnn
+     { abx@lfd@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+ }
+
+\NewDocumentCommand{\xshowindexfieldformat} { s O{*} +m }
+ {
+  \IfBooleanT{#1}
+   {
+    \group_begin:
+    \bool_set_true:N \l_xpatch_tracing_bool
+   }
+  \xpatch_main_zero:Nc \cs_show:N { abx@fid@ \tl_to_str:n {#1} @ \tl_to_str:n {#2} }
+  \IfBooleanT{#1}
+   {
+    \group_end:
+   }
+ }
+\NewDocumentCommand{\xpretoindexfieldformat} { s O{*} +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_three:Ncnnn \xpatch_pretocmd_all:Nnnn 
+     { abx@fid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_three:Ncnnn \xpatch_pretocmd_once:Nnnn
+     { abx@fid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xapptoindexfieldformat} { s O{*} +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_three:Ncnnn \xpatch_apptocmd_all:Nnnn 
+     { abx@fid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_three:Ncnnn \xpatch_apptocmd_once:Nnnn
+     { abx@fid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xpatchindexfieldformat} { s O{*} +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_all:Nnnnn 
+     { abx@fid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_once:Nnnnn
+     { abx@fid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+ }
+\NewDocumentCommand{\regexpatchindexfieldformat} { s O{*} +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_all:Nnnnn 
+     { abx@fid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_once:Nnnnn
+     { abx@fid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+ }
+
+\NewDocumentCommand{\xshowindexnameformat} { s O{*} +m }
+ {
+  \IfBooleanT{#1}
+   {
+    \group_begin:
+    \bool_set_true:N \l_xpatch_tracing_bool
+   }
+  \xpatch_main_zero:Nc \cs_show:N { abx@nid@ \tl_to_str:n {#1} @ \tl_to_str:n {#2} }
+  \IfBooleanT{#1}
+   {
+    \group_end:
+   }
+ }
+\NewDocumentCommand{\xpretoindexnameformat} { s O{*} +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_three:Ncnnn \xpatch_pretocmd_all:Nnnn 
+     { abx@nid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_three:Ncnnn \xpatch_pretocmd_once:Nnnn
+     { abx@nid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xapptoindexnameformat} { s O{*} +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_three:Ncnnn \xpatch_apptocmd_all:Nnnn 
+     { abx@nid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_three:Ncnnn \xpatch_apptocmd_once:Nnnn
+     { abx@nid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xpatchindexnameformat} { s O{*} +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_all:Nnnnn 
+     { abx@nid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_once:Nnnnn
+     { abx@nid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+ }
+\NewDocumentCommand{\regexpatchindexnameformat} { s O{*} +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_all:Nnnnn 
+     { abx@nid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_once:Nnnnn
+     { abx@nid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+ }
+
+\NewDocumentCommand{\xshowindexlistformat} { s O{*} +m }
+ {
+  \IfBooleanT{#1}
+   {
+    \group_begin:
+    \bool_set_true:N \l_xpatch_tracing_bool
+   }
+  \xpatch_main_zero:Nc \cs_show:N { abx@lid@ \tl_to_str:n {#1} @ \tl_to_str:n {#2} }
+  \IfBooleanT{#1}
+   {
+    \group_end:
+   }
+ }
+\NewDocumentCommand{\xpretoindexlistformat} { s O{*} +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_three:Ncnnn \xpatch_pretocmd_all:Nnnn 
+     { abx@lid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_three:Ncnnn \xpatch_pretocmd_once:Nnnn
+     { abx@lid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xapptoindexlistformat} { s O{*} +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_three:Ncnnn \xpatch_apptocmd_all:Nnnn 
+     { abx@lid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+   {
+    \xpatch_main_three:Ncnnn \xpatch_apptocmd_once:Nnnn
+     { abx@lid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}
+   }
+ }
+\NewDocumentCommand{\xpatchindexlistformat} { s O{*} +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_all:Nnnnn 
+     { abx@lid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_patchcmd_once:Nnnnn
+     { abx@lid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+ }
+\NewDocumentCommand{\regexpatchindexlistformat} { s O{*} +m +m +m +m +m }
+ {
+  \IfBooleanTF{#1}
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_all:Nnnnn 
+     { abx@lid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+   {
+    \xpatch_main_four:Ncnnnn \xpatch_regexpatchcmd_once:Nnnnn
+     { abx@lid@ \tl_to_str:n {#2} @ \tl_to_str:n {#3} } {#4}{#5}{#6}{#7}
+   }
+ }
+%    \end{macrocode}
+% A macro to check if the macro is patchable. It just prints a message
+% on the terminal and in the log file.
+%    \begin{macrocode}
+\NewDocumentCommand{\checkpatchable}{ +m }
+ {
+  \group_begin:
+  \bool_set_true:N \l_xpatch_tracing_bool
+  \xpatch_check_patchable:N #1
+  \group_end:
+ }
+%    \end{macrocode}
+% The last user level command: a macro for changing the optional
+% argument in a macro that has one.
+%    \begin{macrocode}
+\cs_generate_variant:Nn \xpatch_get_all:N {c}
+\cs_generate_variant:Nn \xpatch_rebuild:N {c}
+\NewDocumentCommand{\xpatchoptarg}{ +m +m }
+ {
+  \xpatch_main_check:N #1
+  \bool_if:NTF \l_xpatch_optional_bool
+   {
+%    \end{macrocode}
+% We have a macro with optional argument; so we strip off
+% the first backslash from the name and proceed.
+%    \begin{macrocode}
+    \tl_set:Nx \l_xpatch_name_tl { \tl_tail:V \l_xpatch_name_tl }
+%    \end{macrocode}
+% Gather the prefix (it is |\protected| when |#1| has been defined
+% with |\newrobustcmd|).
+%    \begin{macrocode}
+    \tl_set:Nf \l_xpatch_prefix_tl { \token_get_prefix_spec:N #1 }
+    \tl_clear:N \l_xpatch_prefix_tl
+    \tl_set_rescan:Nnx \l_xpatch_prefix_tl { } \l_xpatch_prefix_tl
+%    \end{macrocode}
+% Get the replacement text in tokenized form: the control sequences
+% have spaces in their names, so we can't rely on
+% |\token_get_replacement_spec:N| because the spaces would be lost.
+%    \begin{macrocode}
+    \tl_set_eq:Nc \l_xpatch_replacement_tl { \l_xpatch_name_tl }
+%    \end{macrocode}
+% Now we have to change the last item in the token list: we just store
+% the new optional argument in a token list variable and do a regex
+% substitution, based on the fact that the replacement text consists
+% of control sequences, an open brace, the optional argument and a
+% closed brace, so we anchor at the end of the token list.
+%    \begin{macrocode}
+    \tl_set:Nn \l_tmpa_tl { { #2 } }
+    \regex_replace_once:nnN { \cB. .* \cE. \Z} { \u{l_tmpa_tl} }
+     \l_xpatch_replacement_tl
+%    \end{macrocode}
+% Now we rebuild the control sequence.
+%    \begin{macrocode}
+    \xpatch_rebuild:c { \l_xpatch_name_tl }
+   }
+%    \end{macrocode}
+% If the macro hasn't an optional argument we issue a message.
+%    \begin{macrocode}
+   {
+    \group_begin:
+    \bool_set_true:N \l_xpatch_tracing_bool
+    \xpatch_message:n 
+     {
+      Macro~`\token_to_str:N #1'~ has~no~optional~argument~
+      or~it~has~been~defined~with~`xparse'~and~operating~
+      on~such~commands~is~(still)~not~supported
+     }
+    \group_end:
+   }
+ }
+%    \end{macrocode}
+% Just one more thing: enabling or disabling the tracing system.
+%    \begin{macrocode}
+\NewDocumentCommand{\tracingxpatches}{ O{1} }
+ {
+  \int_compare:nTF { #1 > 0 }
+   { \bool_set_true:N \l_xpatch_tracing_bool }
+   { \bool_set_false:N \l_xpatch_tracing_bool }
+ }
+%    \end{macrocode}
+% One more thing: patching the parameter text!
+%    \begin{macrocode}
+\NewDocumentCommand{\xpatchparametertext}{ +m +m +m +m +m }
+ {
+  \xpatch_check_patchable:N #1
+  \bool_if:NTF \l_xpatch_patchable_bool
+   {
+    \regex_replace_once:nnN { #2 } { #3 } \l_xpatch_arg_tl
+    \xpatch_rebuild:N #1
+    #4
+   }
+   {
+    #5
+   }
+ }
+%    \end{macrocode}
+%
+% \iffalse
+%</package>
+% \fi
+% \end{implementation}
+%
+% \PrintIndex
+% \PrintChanges

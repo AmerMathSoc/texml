@@ -1,0 +1,145 @@
+%% Copyright (C) 2014 Christian Dietrich <stettberger@dokucode.de>
+%% -------------------------------------------------------
+%% 
+%% This package may be distributed and/or modified under the conditions
+%% of the LaTeX Project Public License, either version 1.3c of this
+%% license or (at your option) any later version.  The latest version of
+%% this license is in
+%% 
+%%    http://www.latex-project.org/lppl.txt
+%% 
+%% and version 1.3c or later is part of all distributions of LaTeX
+%% version 2008/05/04 or later.
+%
+% This library can be used to draw graphics through IO ports
+%
+
+\newcount\avr@draw@x
+\newcount\avr@draw@y
+\newcount\avr@draw@maxx
+\newcount\avr@draw@maxy
+
+\def\avr@draw@init{%
+  \avr@draw@maxx = 0%
+  \avr@draw@maxy = 0%
+}
+
+
+% TWAR
+\newcount\avr@draw@argc
+\csdef{avr@io@000010@set}#1{%
+  \avr@bin@tocount{#1}{\avr@accA}%
+  \avr@log{DRAW CMD: \the\avr@accA}%
+  \avr@draw@command{\the\avr@accA}%
+  \avr@draw@argc = 0\relax%
+}
+
+\csdef{avr@io@000011@set}#1{%
+  \avr@bin@tocount{#1}{\avr@accA}%
+  \avr@debug{AVR DRAW PUSH: \the\avr@accA}%
+  \csxdef{avr@draw@stack@\the\avr@draw@argc}{\the\avr@accA}%
+  \advance\avr@draw@argc by 1\relax%
+}
+
+\def\avr@draw@stack#1{\csuse{avr@draw@stack@#1}}
+
+
+\def\avr@draw@command#1{%
+  \ifcsdef{avr@draw@command@#1}{%
+    \csuse{avr@draw@command@#1}%
+  }{%
+    \avr@error{AVR DRAW: Unkown Command #1}%
+  }%
+}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Draw Commands
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\csdef{avr@draw@command@0}{} % NOP
+
+%  Set Color
+\def\avr@draw@color{0,0,0}
+\csdef{avr@draw@command@1}{%
+  \ifnum \avr@draw@argc < 3%
+    \avr@debug{DRAW: Set Draw COLOR, Not enough arguments}%
+  \fi%
+  \xdef\avr@draw@color{\avr@draw@stack{0},\avr@draw@stack{1},\avr@draw@stack{2}}%
+}
+
+% Small Rectangle
+\csdef{avr@draw@command@2}{%
+  \ifnum \avr@draw@argc < 2%
+    \avr@debug{DRAW: Dot, Not enough arguments (2 required)}%
+  \fi%
+  \edef\@@X{\avr@draw@stack{0}}%
+  \edef\@@Y{\avr@draw@stack{1}}%
+  \ifnum \@@X  > \avr@draw@maxx%
+     \avr@draw@maxx=\@@X%
+  \fi%
+  \ifnum \@@Y  > \avr@draw@maxy%
+     \avr@draw@maxy=\@@Y%
+  \fi%
+  \csxdef{avr@draw@\@@X @\@@Y}{\avr@draw@color}%
+}
+
+
+\newcommand{\avrdrawiter}[1]{%
+  \avr@draw@x=0%
+  \def\avr@iter@yloop{%
+    \avr@draw@x=0%
+    \ifnum \avr@draw@y > \avr@draw@maxy%
+       \let\avr@iter@yloop=\relax%
+    \else%
+       \let\avr@iter@xloop@rec=\avr@iter@xloop%
+       \avr@iter@xloop\relax%
+       \advance \avr@draw@y by 1\relax%
+    \fi%
+    \avr@iter@yloop%
+  }%
+  \def\avr@iter@xloop{%
+    \ifnum \avr@draw@x > \avr@draw@maxx%
+       \let\avr@iter@xloop@rec=\relax%
+    \else%
+       \ifcsdef{avr@draw@\the\avr@draw@x @\the\avr@draw@y}{%
+         #1 {\the\avr@draw@x}{\the\avr@draw@y}{\csuse{avr@draw@\the\avr@draw@x @\the\avr@draw@y}}%
+        }{% Dot not defined
+        }%
+       \advance \avr@draw@x by 1\relax%
+    \fi%
+    \avr@iter@xloop@rec%
+  }%
+  \avr@iter@yloop%
+}
+
+\newcommand{\avrdrawSize}[2]{%
+  \avr@count@tmpa=\avr@draw@maxx%
+  \advance \avr@count@tmpa by 1\relax%
+  \edef#1{\the\avr@count@tmpa}%
+  \avr@count@tmpa=\avr@draw@maxy%
+  \advance \avr@count@tmpa by 1\relax%
+  \edef#2{\the\avr@count@tmpa}%
+}
+
+\newwrite\avr@file%
+
+\newcommand{\avrdrawppm}[1]{%
+  % Dump to .ppm file
+  \immediate\openout\avr@file=#1%
+  \immediate\write\avr@file{P3}%
+  \avrdrawSize{\x}{\y}%
+  \immediate\write\avr@file{\x \space \y \space 255}%
+  \def\removecomma##1,##2,##3,{##1 ##2 ##3}%
+  \newcommand{\avr@draw@ppm}[3]{%
+    \edef\@tempa{##3}%
+    \edef\@tempa{\expandafter \removecomma \@tempa,}%
+    \expandafter\immediate\expandafter\write\expandafter\avr@file\expandafter{\@tempa}%
+  }%
+  \avrdrawiter{\avr@draw@ppm}%
+  \immediate\closeout\avr@file%
+}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "avr.tex"
+%%% End: 

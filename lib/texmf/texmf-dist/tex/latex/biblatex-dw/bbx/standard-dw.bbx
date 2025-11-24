@@ -1,0 +1,1841 @@
+% standard-dw.bbx, Dominik Waßenhoven 2013
+
+\ProvidesFile{standard-dw.bbx}[2013/09/22 v1.6a biblatex bibliography style]
+
+\@ifpackagelater{biblatex}{2011/11/13}
+  {}
+  {\PackageError{biblatex-dw}
+    {Outdated 'biblatex' package\MessageBreak
+     Upgrade to biblatex v1.7 (2011/11/13) or later.\MessageBreak
+     I found: '\csuse{ver@biblatex.sty}'.\MessageBreak
+     This is a fatal error. I'm aborting now}%
+     \endinput}
+
+\RequireBibliographyStyle{standard}
+
+\DeclareLanguageMapping{english}{english-dw}
+\DeclareLanguageMapping{german}{german-dw}
+
+\newbool{bbx:acronym}
+\newbool{bbx:journumafteryear}
+\newbool{bbx:journumdate}
+\newbool{bbx:seriesafteryear}
+\newbool{bbx:seriesinparens}
+\newbool{bbx:shorthandacro}
+\newbool{bbx:shorthandinbib}
+\newbool{bbx:shorthandinbibpunct}% Kontrolle, ob shorthandinbib ausgegeben wurde
+\newbool{bbx:shorthandwidthbool}
+\newbool{bbx:shortjournal}
+\newbool{bbx:terselos}
+\newbool{bbx:xref}% soll xref überhaupt verwendet werden?
+\newbool{xrefidem}
+
+\newtoggle{listofshorthands}% sind wir in der List of Shorthands?
+
+% Schalter zum ein-/ausblenden bestimmter Felder
+\newbool{bbx:pagetotal}
+
+% Längen für Shorthand
+\newlength{\bbx@shorthandwidth}
+\newlength{\shorthandsep}
+
+% Hilfsbefehl für @review
+\newcommand*{\bbx@reviewparent}
+
+\DeclareEntryOption{acronym}[true]{%
+  \csuse{bool#1}{bbx:acronym}}
+
+\DeclareBibliographyOption{acronyms}[true]{%
+  \csuse{bool#1}{bbx:shorthandacro}}
+\DeclareBibliographyOption{shorthandinbib}[true]{%
+  \csuse{bool#1}{bbx:shorthandinbib}}
+\DeclareBibliographyOption{shorthandwidth}{%
+  \setlength{\bbx@shorthandwidth}{#1}
+  \setlength{\shorthandsep}{3pt plus 0.5pt minus 0.5pt}
+  \renewcommand{\shorthandpunct}{\addcolon}
+  \csuse{booltrue}{bbx:shorthandwidthbool}}
+\DeclareBibliographyOption{shortjournal}[true]{%
+  \csuse{bool#1}{bbx:shortjournal}}
+\DeclareBibliographyOption{terselos}[true]{%
+  \csuse{bool#1}{bbx:terselos}}
+\DeclareBibliographyOption{xref}[true]{%
+  \csuse{bool#1}{bbx:xref}}
+
+% Optionen zum ein-/ausblenden bestimmter Felder
+\DeclareBibliographyOption{pagetotal}[true]{%
+  \csuse{bool#1}{bbx:pagetotal}}
+
+% journalnumber=standard|afteryear|date
+\newcommand{\bbx@option@journalnumber}{}
+\DeclareBibliographyOption{journalnumber}{%
+  \renewcommand{\bbx@option@journalnumber}{#1}}
+% zu Ehren von Bernhard Tempel
+\newbool{bbx:bernhard}
+\DeclareBibliographyOption{bernhard}[true]{%
+  \csuse{bool#1}{bbx:bernhard}}
+
+% Option series=standard|afteryear
+\newcommand{\bbx@option@series}{}
+\DeclareBibliographyOption{series}{%
+  \renewcommand{\bbx@option@series}{#1}}
+\AtBeginDocument{%
+  \ifdefstring{\bbx@option@series}{afteryear}
+    {\global\booltrue{bbx:seriesafteryear}}
+    {\global\boolfalse{bbx:seriesafteryear}}}
+
+% Option seriesformat=standard|parens
+\newcommand{\bbx@option@seriesformat}{}
+\DeclareBibliographyOption{seriesformat}{%
+  \renewcommand{\bbx@option@seriesformat}{#1}}
+\AtBeginDocument{%
+  \ifdefstring{\bbx@option@seriesformat}{parens}
+    {\global\booltrue{bbx:seriesinparens}}
+    {\global\boolfalse{bbx:seriesinparens}}}
+
+\ExecuteBibliographyOptions{
+  doi=false,
+  eprint=false,
+  isbn=false,
+  journalnumber=standard,
+  pagetotal=false,
+  series=standard,
+  seriesformat=parens,
+  shorthandinbib=false,
+  terselos=true,
+  xref=false
+}
+
+\AtBeginDocument{%
+  \ifbool{bbx:xref}
+    {\ExecuteBibliographyOptions{mincrossrefs=1}}
+    {}}
+
+\DeclareBibliographyAlias{idemreference}{idemcollection}
+\DeclareBibliographyAlias{xrefreference}{xrefcollection}
+\DeclareBibliographyAlias{xrefidemreference}{xrefidemcollection}
+
+%% Zeichen bei Zeitschriften:
+%% -> vor 'volume' (z.B. 'Jg. ')
+\newcommand*{\jourvolstring}{\addspace} 
+%% -> zwischen 'volume' und 'number'
+%%   (nur mit journumafteryear=true)
+\newcommand*{\jourvolnumsep}{\adddot}
+%% -> vor 'number' (z.B. ', Nr. ')
+\newcommand*{\journumstring}{%
+  \addcomma\space%
+  \bibstring{number}%
+  \addnbspace}
+    
+%% Zeichen bei Reihen:
+%% -> vor 'series' (z.B. '= ')
+\newcommand*{\seriespunct}{} 
+%% -> vor 'number' (z.B. ', Bd. ')
+\newcommand*{\sernumstring}{\addspace}
+
+%% Reihe in Klammern (Option seriesformat)
+\renewbibmacro*{series+number}{%
+ \iffieldundef{series}%
+   {}
+   {\ifbool{bbx:seriesinparens}
+    {\printtext[parens]{%
+      \seriespunct%
+      \printfield{series}%
+      \setunit*{\sernumstring}%
+      \printfield{number}}%
+     \newunit}
+    {\setunit{\newunitpunct\seriespunct}%
+     \printfield{series}%
+     \setunit*{\sernumstring}%
+     \printfield{number}%
+     \newunit}}}
+
+%% Kürzere Ausgabe der List of Shorthands
+\newbibmacro*{terselos}{%
+  \ifbool{bbx:terselos}
+    {\ifnameundef{labelname}
+      {}
+      {\ifnameundef{author}
+         {\printnames{editor}%
+          \usebibmacro{editorstringpunct}%
+          \usebibmacro{editorstrg}}
+         {\printnames{author}}%
+       \setunit{\labelnamepunct}}%
+    \iffieldundef{booktitle}
+      {\usebibmacro{maintitle+title-terselos}}
+      {\printfield{title}%
+       \newunit\newblock
+       \usebibmacro{in:}%
+       \usebibmacro{maintitle+booktitle-terselos}}%
+    \finentry}
+    {\usedriver
+      {\DeclareNameAlias{sortname}{default}}
+      {\thefield{entrytype}}%
+    \finentry}}
+  
+\newbibmacro*{maintitle+title-terselos}{%
+  \iffieldsequal{maintitle}{title}
+    {\clearfield{maintitle}%
+     \clearfield{mainsubtitle}%
+     \clearfield{maintitleaddon}}
+    {\iffieldundef{maintitle}
+       {}
+       {\printfield{maintitle}%
+      	\newunit\newblock
+        \iffieldundef{volume}
+      	  {}
+          {\iffieldundef{volumes}
+            {}
+            {\printfield{volumes}%
+             \setunit{\addcomma\space}}%
+           \printfield{volume}%
+           \printfield{part}%
+           \setunit{\addcolon\space}}}}%
+        \printfield{title}%
+        \newunit}
+
+\newbibmacro*{maintitle+booktitle-terselos}{%
+  \iffieldundef{maintitle}
+    {}
+    {\printfield{maintitle}%
+     \newunit\newblock
+     \iffieldundef{volume}
+       {}
+       {\printfield{volume}%
+        \printfield{part}%
+        \setunit{\addcolon\space}}}%
+  \printfield{booktitle}%
+  \newunit}
+  
+\DeclareBibliographyDriver{shorthands}{%
+  \toggletrue{listofshorthands}%
+  \usebibmacro{terselos}}
+
+%% Zeichensetzung nach dem Shorthand-Label
+\newcommand{\shorthandpunct}{}
+
+%% List of Shorthands: Länge der Labels einstellbar
+\AtBeginDocument{%
+\ifbool{bbx:shorthandwidthbool}
+  {\defbibenvironment{shorthands}
+    {\list
+       {\printfield[shorthandwidth]{shorthand}%
+        \printtext{\shorthandpunct}}
+       {\setlength{\labelwidth}{\bbx@shorthandwidth}%
+        \setlength{\leftmargin}{\labelwidth}%
+        \setlength{\labelsep}{\shorthandsep}%
+        \addtolength{\leftmargin}{\labelsep}%
+        \setlength{\itemsep}{\bibitemsep}%
+        \setlength{\parsep}{\bibparsep}%
+        \renewcommand*{\makelabel}[1]{##1\hss}}}
+    {\endlist}
+    {\item}}
+  {\defbibenvironment{shorthands}
+    {\list
+       {\printfield[shorthandwidth]{shorthand}}
+       {\setlength{\labelwidth}{\shorthandwidth}%
+        \setlength{\leftmargin}{\labelwidth}%
+        \setlength{\labelsep}{\biblabelsep}%
+        \addtolength{\leftmargin}{\labelsep}%
+        \setlength{\itemsep}{\bibitemsep}%
+        \setlength{\parsep}{\bibparsep}%
+        \renewcommand*{\makelabel}[1]{##1\hss}}}
+    {\endlist}
+    {\item}}}
+
+%% Option »shorthandinbib«:
+%% Shorthands in der Bibliographie ausgeben
+%% außerdem für Option »xref«:
+%% Autoren in Liste schreiben für späteren Test xrefnamecheck
+% \newcommand*{\@xrefauthornames}
+\DeclareFieldFormat{shorthandinbib}{\mkbibbrackets{#1}}
+\newcommand*{\shorthandinbibpunct}{\addspace}
+\renewbibmacro*{begentry}{%
+  \ifboolexpr{
+    bool {bbx:shorthandinbib}
+    and not
+    ( test {\ifcitation}
+      or
+      togl {listofshorthands} )
+  }
+    {\iffieldundef{shorthand}
+      {}
+      {\printfield[shorthandinbib]{shorthand}%
+       \nopunct\shorthandinbibpunct}}
+    {}}
+ 
+%% bei useeditor=true oder usetranslator=true
+\newbibmacro*{useeditor+others}{%
+  \ifboolexpr{
+    test \ifuseeditor
+    and
+    not test {\ifnameundef{editor}}
+  }
+    {\usebibmacro{useeditor}}
+    {\ifboolexpr{
+       test \ifusetranslator
+       and
+       not test {\ifnameundef{translator}}
+     }
+       {\usebibmacro{usetranslator}}
+       {}}}
+       
+\newbibmacro*{useeditor}{%
+  \ifnamesequal{author}{editor}
+    {\ifbool{bbx:edbyidem}
+      {\midsentence*\bibstring[\mkidem]{idem\thefield{gender}}%
+       \addspace}%
+      {\printnames[byeditor]{editor}%
+       \usebibmacro{editorstringpunct}%
+       \savefield{namehash}{\bbx@lasthash}}}%
+    {\printnames[byeditor]{editor}%
+     \usebibmacro{editorstringpunct}%
+     \savefield{namehash}{\bbx@lasthash}}%
+   \usebibmacro{editorstrg}%
+   \clearname{editor}%
+   \setunit{\labelnamepunct}\newblock}
+
+\newbibmacro*{usetranslator}{%
+  \ifnamesequal{author}{translator}
+    {\ifbool{bbx:edbyidem}
+      {\midsentence*\bibstring[\mkidem]{idem\thefield{gender}}%
+       \addspace}%
+      {\printnames[byeditor]{translator}%
+       \usebibmacro{editorstringpunct}%
+       \savefield{namehash}{\bbx@lasthash}}}%
+    {\printnames[byeditor]{translator}%
+     \usebibmacro{editorstringpunct}%
+     \savefield{namehash}{\bbx@lasthash}}%
+   \usebibmacro{translatorstrg}%
+   \clearname{translator}%
+   \setunit{\labelnamepunct}\newblock}
+
+%% Wenn 'volumes' und 'volume' angegeben sind,
+%% 'volumes' immer vor 'volume' ausgeben
+\newbibmacro*{volumes+volume+part}{%
+  \iffieldundef{maintitle}
+    {\iffieldundef{volumes}
+      {}
+      {\printfield{volumes}%
+       \newunit}%
+    \iffieldundef{volume}
+      {}
+      {\printfield{volume}%
+       \printfield{part}%
+       \setunit{\addcolon\space}}}
+    {\iffieldundef{volume}% Wenn es einen maintitle gibt, 
+                          % aber kein 'volume'-Feld, wurde
+                          % 'volumes' noch nicht ausgegeben!
+      {\printfield{volumes}}
+      {}}}
+
+\renewbibmacro*{maintitle+title}{%
+  \iffieldsequal{maintitle}{title}
+    {\clearfield{maintitle}%
+     \clearfield{mainsubtitle}%
+     \clearfield{maintitleaddon}}
+    {\iffieldundef{maintitle}
+       {}
+       {\usebibmacro{maintitle}%
+      	\newunit\newblock
+        \iffieldundef{volume}
+      	  {}
+          {\iffieldundef{volumes}
+            {}
+            {\printfield{volumes}%
+             \setunit{\addcomma\space}}%
+           \printfield{volume}%
+           \printfield{part}%
+           \setunit{\addcolon\space}}}}%
+        \usebibmacro{title}%
+        \newunit}
+
+%% Test, ob 'volume' vorhanden ist (bei xref parent)
+\newbibmacro*{xrefvolumecheck}{%
+  \ifbool{bbx:xref}
+    {\iffieldundef{volume}
+      {\xifinlistcs{\strfield{entrykey}}{novolume@xrefparent}
+        {}% schon in Liste vorhanden, dann passiert nichts
+        {\listcsxadd{novolume@xrefparent}{\thefield{entrykey}}}}%
+      {}}
+    {}}
+
+%% Test, ob 'citedas=true' gesetzt ist (bei xref parent)
+\newbibmacro*{xrefcitedascheck}{%
+  \ifbool{bbx:xref}
+    {\ifbool{cbx:citedas}
+      {\xifinlistcs{\strfield{entrykey}}{citedas@xrefparent}
+        {}% schon in Liste vorhanden, dann passiert nichts
+        {\listcsxadd{citedas@xrefparent}{\thefield{entrykey}}}}%
+      {}}
+    {}}
+
+%% Tests werden bei 'xref=true' in @book, @collection,
+%% @proceedings und @reference ausgeführt
+\AtDataInput[book]{%
+  \usebibmacro{xrefvolumecheck}%
+  \usebibmacro{xrefcitedascheck}}
+\AtDataInput[collection]{%
+  \usebibmacro{xrefvolumecheck}%
+  \usebibmacro{xrefcitedascheck}}
+\AtDataInput[proceedings]{%
+  \usebibmacro{xrefvolumecheck}%
+  \usebibmacro{xrefcitedascheck}}
+\AtDataInput[reference]{%
+  \usebibmacro{xrefvolumecheck}%
+  \usebibmacro{xrefcitedascheck}}
+
+%% 'volume' bei xref-child ausgeben, falls
+%% in xref-parent nicht definiert 
+\newbibmacro*{xrefvolume}{%
+  \xifinlistcs{\strfield{xref}}{novolume@xrefparent}
+    {\newunit
+     \printfield{volume}%
+     \iffieldxref{year}% wenn 'year' bei child und parent gleich
+       {}
+       {\setunit{\addcomma\space}%
+        \iflistxref{location}% wenn 'location' bei child und parent gleich
+         {}
+         {\printlist{location}%
+          \setunit*{\addspace}}%  
+        \usebibmacro{date}}}
+    {}}%
+
+% bei @inreference: booktitle, vol. (year)
+\newbibmacro*{xrefvolume:inreference}{%
+  \xifinlistcs{\strfield{xref}}{novolume@xrefparent}
+    {\iffieldundef{volume}
+      {}
+      {\ifbibliography
+        {\setunit{\addspace}}
+        {\xifinlistcs{\strfield{xref}}{citedas@xrefparent}
+          {\ifbool{cbx:xrefparent:firstcite}
+            {\newunit
+             \printtext{\bibstring{volume}\addspace}}
+            {\setunit{\addspace}}}
+          {\newunit
+           \printtext{\bibstring{volume}\addspace}}}%
+       \printfield{volume}%
+       \iffieldxref{year}% wenn 'year' bei child und parent gleich
+         {}
+         {\setunit{\addspace}%
+          \printfield[parens]{year}}}}
+    {}}
+
+%% 'volume' und 'year' ausgeben bei @inreference
+\newbibmacro*{volumes+volume+part+year}{%
+  \iffieldundef{maintitle}
+    {\iffieldundef{volumes}
+      {}
+      {\printfield{volumes}%
+       \newunit}%
+    \iffieldundef{volume}
+      {}
+      {\setunit{\addspace}%
+       \printfield{volume}%
+       \printfield{part}}%
+    \iffieldundef{year}
+      {}
+      {\setunit{\addspace}%
+       \printfield[parens]{year}%
+       \setunit{\addspace}}}
+    {\iffieldundef{volume}% Wenn es einen maintitle gibt, 
+                          % aber kein 'volume'-Feld, wurde
+                          % 'volumes' noch nicht ausgegeben!
+      {\printfield{volumes}}
+      {}}}
+    
+%% Option 'shortjournal=true|false'
+\renewbibmacro*{journal}{%
+  \ifbool{bbx:shortjournal}
+    {\iffieldundef{shortjournal}
+      {\usebibmacro{journal:normal}}
+      {\printfield{shortjournal}}}
+    {\usebibmacro{journal:normal}}}
+
+\newbibmacro*{journal:normal}{% vollständige, 'normale' Ausgabe eines Zeitschriftentitels
+  \iffieldundef{journaltitle}
+    {}
+    {\printtext[journaltitle]{%
+       \printfield[titlecase]{journaltitle}%
+       \setunit{\subtitlepunct}%
+       \printfield[titlecase]{journalsubtitle}}}}
+
+%% Option 'journalnumber=standard|afteryear|date' 
+\AtBeginDocument{%
+  \ifbool{bbx:bernhard}% Bernhard geht vor (c;
+    {\global\boolfalse{bbx:journumafteryear}%
+     \global\booltrue{bbx:journumdate}}
+    {\ifdefstring{\bbx@option@journalnumber}{afteryear}
+      {\global\booltrue{bbx:journumafteryear}%
+       \global\boolfalse{bbx:journumdate}}
+      {\ifdefstring{\bbx@option@journalnumber}{date}
+        {\global\boolfalse{bbx:journumafteryear}%
+         \global\booltrue{bbx:journumdate}}
+        {\global\boolfalse{bbx:journumafteryear}
+         \global\boolfalse{bbx:journumdate}}}}}
+
+\renewbibmacro*{journal+issuetitle}{%
+  \usebibmacro{useeditor+others}%
+  \usebibmacro{journal}%
+  \setunit*{\addspace}%
+  \iffieldundef{series}
+    {}
+    {\newunit
+     \printfield{series}%
+     \setunit{\addspace}}%
+  \iffieldundef{volume}
+    {}
+    {\setunit{\jourvolstring}%
+     \printfield{volume}}%
+  % ab hier Unterscheidung nach standard|afteryear|date
+  \ifbool{bbx:journumdate}
+    {\usebibmacro{journal+issuetitle+date}}
+    {\ifbool{bbx:journumafteryear}
+      {\usebibmacro{journal+issuetitle+afteryear}}
+      {\usebibmacro{journal+issuetitle+standard}}}}
+
+% journalnumber=standard 
+\newbibmacro*{journal+issuetitle+standard}{%
+  \iffieldundef{volume}
+    {\iffieldundef{number}
+      {}
+      {\blxdw@warning{%
+        Field 'number' set, but 'volume' is empty
+        \MessageBreak at entry '\abx@field@entrykey'.
+        The output might not \MessageBreak be correct}}}
+    {\setunit{\jourvolnumsep}%
+     \printfield{number}}%
+  \setunit{\addcomma\space}%
+  \printfield{eid}%
+  \setunit{\addspace}%
+  \iffieldundef{volume}
+    {\iffieldundef{month}
+      {}
+      {\setunit{\addcomma\space}}%
+     \usebibmacro{issue+date}}
+    {\printtext[parens]{\usebibmacro{issue+date}}}%
+  \newunit\newblock
+  \usebibmacro{issue}%
+  \newunit
+  \usebibmacro{byeditor+others}%
+  \newunit}
+
+% journalnumber=afteryear 
+\newbibmacro*{journal+issuetitle+afteryear}{%
+  \setunit{\addcomma\space}%
+  \printfield{eid}%
+  \setunit{\addspace}%
+  \iffieldundef{volume}
+    {\iffieldundef{month}
+      {}
+      {\setunit{\addcomma\space}}%
+     \usebibmacro{issue+date}%
+     \iffieldundef{number}
+      {}
+      {\setunit*{\addcomma\space\journumstring}%
+       \printfield{number}}}%
+    {\printtext[parens]{\usebibmacro{issue+date}}%
+     \iffieldundef{number}
+       {}
+       {\setunit*{\journumstring}%
+        \printfield{number}}}%
+  \newunit\newblock
+  \usebibmacro{issue}%
+  \newunit
+  \usebibmacro{ifuse:byeditor+others}%
+  \newunit}
+
+% journalnumber=date 
+\newbibmacro*{journal+issuetitle+date}{%
+  \setunit{\addcomma\space}%
+  \printfield{eid}%
+  \setunit{\addspace}%
+  \usebibmacro{issue+date+number}%
+  \newunit\newblock
+  \usebibmacro{issue}%
+  \newunit
+  \usebibmacro{ifuse:byeditor+others}%
+  \newunit}
+
+\renewbibmacro*{issue+date}{% Klammern entfernt
+  \iffieldundef{issue}
+    {\printdate}
+    {\printfield{issue}%
+     \setunit{\addspace}%
+     \printfield{year}}%
+  \newunit}
+
+\newbibmacro*{issue+date+number}{%
+  \iffieldundef{number}
+    {\iffieldundef{issue}%
+      {\iffieldundef{month}
+        {\printtext[parens]{\printdate}}
+        {\setunit{\addcomma\space}%
+         \printdate}}%
+	    {\iffieldundef{month}% mit definiertem Feld issue
+	      {\printtext[parens]{\printdate}%
+          \setunit{\addspace}%
+          \printfield{issue}}%
+         {\setunit{\addcomma\space}%
+          \printdate}}}%
+    {\iffieldundef{issue}% mit definiertem Feld number
+      {\iffieldundef{month}
+        {\setunit{\addspace}%
+         \printtext[parens]{\printdate}%
+         \setunit{\addspace}%
+         \printfield{number}}
+        {\iffieldundef{day}
+          {\setunit{\addcomma\space\journumstring}%
+           \printfield{number}%
+           \setunit{\addcomma\space}%
+           \printdate}%
+          {\setunit{\addcomma\space\journumstring}%
+           \printfield{number}%
+           \setunit{\addcomma\space}%
+           \printdate}}}%
+	    {\iffieldundef{month}% mit definiertem Feld issue
+	      {\printtext[parens]{\printdate}%
+         \setunit{\addspace}%
+         \printfield{number}%
+         \setunit{\addspace}%
+         \printtext[parens]{\printfield{issue}}}%
+        {\iffieldundef{day}%
+          {\setunit{\addspace\journumstring}%
+           \printfield{number}%
+           \setunit{\addcomma\space}%
+           \printdate
+           \setunit{\addcomma\space}%
+           \printfield{issue}}%
+          {\setunit{\addcomma\space\journumstring}%
+           \printfield{number}%
+           \setunit{\addcomma\space}%
+           \printdate%
+           \setunit{\addcomma\space}%
+           \printfield{issue}}}}}%
+  \newunit}
+
+%% pageref: space statt \newunit, da sonst Komma vor Klammer steht
+\renewbibmacro*{pageref}{%
+  \iflistundef{pageref}
+    {}
+    {\setunit{\addspace}%
+     \printtext[parens]{%
+       \ifnumgreater{\value{pageref}}{1}
+         {\bibstring{backrefpages}\ppspace}
+	 {\bibstring{backrefpage}\ppspace}%
+       \printlist[pageref][-\value{listtotal}]{pageref}}}}
+
+\renewbibmacro*{note+pages}{%
+  \printfield{note}%
+  \ifbool{cbx:rpcited}
+    {}
+    {\setunit{\bibpagespunct}%
+     \printfield{pages}}%
+  \newunit}
+       
+%%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% 
+%%%%% Bibmacros für Code, der im Bibliography   %%%%% 
+%%%%% Driver aufgerufen wird, wenn KEIN xref    %%%%% 
+%%%%% vorhanden ist.                            %%%%% 
+%%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% 
+\newbibmacro{noxref:inbook}{%
+  \usebibmacro{bybookauthor}%
+  \setunit{\labelnamepunct}\newblock%
+  \usebibmacro{maintitle+booktitle}%
+  \newunit
+  \usebibmacro{byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{edition}%
+  \usebibmacro{volumes+volume+part}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit\newblock
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}}%
+
+\newbibmacro{noxref:incollection}{%
+  \usebibmacro{useeditor+others}%
+  \usebibmacro{maintitle+booktitle}%
+  \newunit
+  \usebibmacro{ifuse:byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{edition}%
+  \usebibmacro{volumes+volume+part}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit\newblock
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}}
+
+\newbibmacro{noxref:inproceedings}{%
+  \usebibmacro{useeditor+others}%
+  \usebibmacro{maintitle+booktitle}%
+  \newunit\newblock
+  \usebibmacro{event+venue+date}%
+  \newunit\newblock
+  \usebibmacro{ifuse:byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{volumes+volume+part}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \printlist{organization}%
+  \newunit
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit\newblock
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}}%		 
+       
+\newbibmacro{noxref:inreference}{%
+  \usebibmacro{useeditor+others}%
+  \usebibmacro{maintitle+booktitle}%
+  \newunit
+  \usebibmacro{ifuse:byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{edition}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{volumes+volume+part+year}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit\newblock
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}}
+
+%%%%% %%%%% %%%%% %%%%% %%%%% %%%%% 
+%%%%% Bibliography Driver     %%%%%
+%%%%% %%%%% %%%%% %%%%% %%%%% %%%%% 
+\DeclareBibliographyDriver{article}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{bytranslator+others}%
+  \newunit\newblock
+  \printfield{version}%
+  \newunit\newblock
+  \usebibmacro{in:}%
+  \usebibmacro{journal+issuetitle}%
+  \newunit\newblock
+  \usebibmacro{byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{note+pages}%
+  \newunit\newblock
+  \iftoggle{bbx:isbn}
+    {\printfield{issn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+  
+\DeclareBibliographyDriver{book}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/editor+others/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{maintitle+title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{edition}%
+  \usebibmacro{volumes+volume+part}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{booklet}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/editor+others/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{byeditor+others}%
+  \newunit\newblock
+  \printfield{howpublished}%
+  \newunit\newblock
+  \printfield{type}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{location+date}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+    
+\DeclareBibliographyDriver{collection}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{editor+others/translator+others}%
+     \setunit*{\labelnamepunct}}%  
+  \usebibmacro{maintitle+title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{edition}%
+  \usebibmacro{volumes+volume+part}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\newbool{xref:inbook}%
+\DeclareBibliographyDriver{inbook}{%
+  \booltrue{xref:inbook}% the child is an inbook
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit\newblock
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{in:}%
+  \usebibmacro{authauthxrefcheck}%
+  \ifbool{cbx:authauthxref}
+    {\booltrue{xrefidem}}
+    {\boolfalse{xrefidem}}%
+  \ifbool{bbx:xref}
+  	{\iffieldundef{xref}%
+      {% Code, wenn kein xref vorhanden
+  		 \usebibmacro{noxref:inbook}}%
+  	  {\printtext{\bbx@xref{\thefield{xref}}}% xref
+       \usebibmacro{xrefvolume}%
+       \usebibmacro{pages}}}%
+    {\usebibmacro{noxref:inbook}}% bei xref=false
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{incollection}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{in:}%
+  \usebibmacro{authedxrefcheck}%
+  \ifbool{cbx:authedxref}
+    {\booltrue{xrefidem}}
+    {\boolfalse{xrefidem}}%
+  \ifbool{bbx:xref}
+    {\iffieldundef{xref}
+  	  {% Code, wenn kein xref vorhanden
+       \usebibmacro{noxref:incollection}}
+  	  {\printtext{\bbx@xref{\thefield{xref}}}% xref
+       \usebibmacro{xrefvolume}%
+       \usebibmacro{pages}}}%
+    {\usebibmacro{noxref:incollection}}% bei xref=false
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{inproceedings}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{in:}%
+  \ifboolexpr{
+    test \ifuseeditor
+    or
+    test \ifusetranslator
+  }
+    {\ifnamexref{labelname}%
+	    {\booltrue{xrefidem}}%
+	    {\boolfalse{xrefidem}}}
+    {\usebibmacro{authedxrefcheck}%
+     \ifbool{cbx:authedxref}
+      {\booltrue{xrefidem}}
+      {\boolfalse{xrefidem}}}%
+	\ifbool{bbx:xref}
+  	{\iffieldundef{xref}%
+  	  {% Code, wenn kein xref vorhanden
+  		  \usebibmacro{noxref:inproceedings}}%
+  	  {\printtext{\bbx@xref{\thefield{xref}}}% xref
+       \usebibmacro{xrefvolume}%
+  	   \usebibmacro{pages}}}%
+    {\usebibmacro{noxref:inproceedings}}% bei xref=false
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{inreference}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{in:}%
+  \ifboolexpr{
+    test \ifuseeditor
+    or
+    test \ifusetranslator
+  }
+    {\ifnamexref{labelname}%
+	    {\booltrue{xrefidem}}%
+	    {\boolfalse{xrefidem}}}
+    {\usebibmacro{authedxrefcheck}%
+     \ifbool{cbx:authedxref}
+      {\booltrue{xrefidem}}
+      {\boolfalse{xrefidem}}}%
+  \ifbool{bbx:xref}
+    {\iffieldundef{xref}%
+  	  {% Code, wenn kein xref vorhanden
+       \usebibmacro{noxref:inreference}}%
+  	  {\ifentryseen{\thefield{xref}}
+        {\boolfalse{cbx:xrefparent:firstcite}}% parent wurde schon zitiert
+        {\booltrue{cbx:xrefparent:firstcite}}% parent wurde noch nicht zitiert
+       \printtext{\bbx@xref{\thefield{xref}}}% xref
+       \usebibmacro{xrefvolume:inreference}%
+       \usebibmacro{pages}}}%
+    {\usebibmacro{noxref:inreference}}% bei xref=false
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{manual}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/editor+others/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{byeditor}%
+  \newunit\newblock
+  \usebibmacro{edition}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{type}%
+  \newunit
+  \printfield{version}%
+  \newunit
+  \printfield{note}%
+  \newunit\newblock
+  \printlist{organization}%
+  \newunit
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{misc}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/editor+others/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{byeditor}%
+  \newunit\newblock
+  \printfield{howpublished}%
+  \newunit\newblock
+  \printfield{type}%
+  \newunit
+  \printfield{version}%
+  \newunit
+  \printfield{note}%
+  \newunit\newblock
+  \printlist{organization}%
+  \newunit\newblock
+  \printlist{location}%
+  \newunit\newblock
+  \usebibmacro{date}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{online}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/editor+others/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \usebibmacro{byeditor}%
+  \newunit\newblock
+  \printfield{version}%
+  \newunit
+  \printfield{note}%
+  \newunit\newblock
+  \printlist{organization}%
+  \newunit\newblock
+  \usebibmacro{date}%
+  \newunit\newblock
+  \iftoggle{bbx:eprint}
+    {\usebibmacro{eprint}}
+    {}%
+  \usebibmacro{url+urldate}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{patent}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \printfield{type}%
+  \setunit*{\addspace}%
+  \printfield{number}%
+  \iflistundef{location}
+    {}
+    {\setunit*{\addspace}%
+     \printtext[parens]{%
+       \printlist[][-\value{listtotal}]{location}}}%
+  \newunit\newblock
+  \usebibmacro{byholder}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{date}%
+  \newunit\newblock
+  \iftoggle{bbx:url}
+    {\usebibmacro{url+urldate}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{periodical}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{editor+others/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title+issuetitle}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byeditor}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \iftoggle{bbx:isbn}
+    {\printfield{issn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{proceedings}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{editor+others/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{maintitle+title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{event+venue+date}%
+  \newunit\newblock
+  \usebibmacro{byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{volumes+volume+part}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \printlist{organization}%
+  \newunit
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{report}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \printfield{type}%
+  \setunit*{\addspace}%
+  \printfield{number}%
+  \newunit\newblock
+  \printfield{version}%
+  \newunit
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{institution+location+date}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \iftoggle{bbx:isbn}
+    {\printfield{isrn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{review}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+	\iffieldundef{xref}
+	  {% Code, wenn kein xref vorhanden
+      \usebibmacro{title}%
+      \newunit
+      \printlist{language}%
+      \newunit\newblock
+      \usebibmacro{byauthor}%
+      \newunit\newblock
+      \usebibmacro{bytranslator+others}%
+      \newunit\newblock
+      \printfield{version}}
+	  {% Code, wenn xref vorhanden
+      \savefield{xref}{\bbx@reviewparent}%
+      \printtext[review]{\bbx@review{\thefield{xref}}}}%
+  \newunit\newblock
+  \usebibmacro{in:}%
+  \usebibmacro{journal+issuetitle}%
+  \newunit\newblock
+  \usebibmacro{byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{note+pages}%
+  \newunit\newblock
+  \iftoggle{bbx:isbn}
+    {\printfield{issn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{thesis}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \printfield{type}%
+  \newunit
+  \usebibmacro{institution+location+date}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{unpublished}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifbool{cbx:idemfull}
+    {}
+    {\usebibmacro{author/translator+others}%
+     \ifnameundef{labelname}
+       {}
+       {\setunit{\labelnamepunct}\newblock}}%
+  \usebibmacro{title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \printfield{howpublished}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{date}%
+  \newunit\newblock
+  \iftoggle{bbx:url}
+    {\usebibmacro{url+urldate}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+%%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%%
+%%%%% Die folgenden 'xref'-BibliographyDriver sind    %%%%% 
+%%%%% nötig, damit bei Erstzitaten mit xref die       %%%%% 
+%%%%% Option useeditor=true beachtet wird.            %%%%% 
+%%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%%
+
+\DeclareBibliographyDriver{xrefbook}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifboolexpr{
+    test \ifuseauthor or test \ifuseeditor or test \ifusetranslator}
+    {\usebibmacro{author/editor+others/translator+others}%
+     \setunit{\labelnamepunct}\newblock}
+    {}%
+  \usebibmacro{maintitle+title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \ifbool{xref:inbook}% child is an @inbook entry
+    {\usebibmacro{byeditor+others}}
+    {\usebibmacro{ifuse:byeditor+others}}%
+  \newunit\newblock
+  \usebibmacro{edition}%
+  \usebibmacro{volumes+volume+part}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{xrefcollection}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifboolexpr{
+    test \ifuseeditor or test \ifusetranslator}
+    {\usebibmacro{editor+others/translator+others}%
+     \setunit{\labelnamepunct}\newblock}
+    {}%
+  \usebibmacro{maintitle+title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{ifuse:byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{edition}%
+  \usebibmacro{volumes+volume+part}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{xrefproceedings}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \ifboolexpr{
+    test \ifuseeditor or test \ifusetranslator}
+    {\usebibmacro{editor+others/translator+others}%
+     \setunit{\labelnamepunct}\newblock}
+    {}%
+  \usebibmacro{maintitle+title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{event+venue+date}%
+  \newunit\newblock
+  \usebibmacro{ifuse:byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{volumes+volume+part}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \printlist{organization}%
+  \newunit
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+%%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%%
+%%%%% Die folgenden 'xrefidem'-BibliographyDriver     %%%%% 
+%%%%% sind nötig damit bei Erstzitaten mit demselben  %%%%% 
+%%%%% Autor und xref ein Vollzitat erfolgen kann,     %%%%% 
+%%%%% ohne den Autor des referenzierten Werkes (der   %%%%% 
+%%%%% durch 'idem' ersetzt wird) auszugeben.          %%%%% 
+%%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%%
+
+\DeclareBibliographyDriver{xrefidembook}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \printtext{\bibstring[\mkidem]{idem\thefield{gender}}}%
+  \setunit{\nametitledelim}%
+  \usebibmacro{maintitle+title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{byauthor}%
+  \newunit\newblock
+  \ifbool{xref:inbook}% child is an @inbook entry
+    {\usebibmacro{byeditor+others}}
+    {\usebibmacro{ifuse:byeditor+others}}%
+  \newunit\newblock
+  \usebibmacro{edition}%
+  \usebibmacro{volumes+volume+part}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{xrefidemcollection}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \usebibmacro{ifuse:xrefidem}%
+  \usebibmacro{maintitle+title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{ifuse:byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{edition}%
+  \usebibmacro{volumes+volume+part}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+\DeclareBibliographyDriver{xrefidemproceedings}{%
+  \usebibmacro{bibindex}%
+  \usebibmacro{begentry}%
+  \usebibmacro{ifuse:xrefidem}%
+  \usebibmacro{maintitle+title}%
+  \newunit
+  \printlist{language}%
+  \newunit\newblock
+  \usebibmacro{event+venue+date}%
+  \newunit\newblock
+  \usebibmacro{ifuse:byeditor+others}%
+  \newunit\newblock
+  \usebibmacro{volumes+volume+part}%
+  \setunit{\addspace}%
+  \ifbool{bbx:seriesafteryear}
+    {}
+    {\usebibmacro{series+number}}%
+  \newunit\newblock
+  \printfield{note}%
+  \newunit\newblock
+  \printlist{organization}%
+  \newunit
+  \usebibmacro{publisher+location+date}%
+  \ifbool{bbx:seriesafteryear}
+    {\setunit{\addspace}%
+     \usebibmacro{series+number}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{chapter+pages}%
+  \newunit
+  \ifbool{bbx:pagetotal}
+    {\printfield{pagetotal}%
+     \newunit\newblock}
+    {}%
+  \iftoggle{bbx:isbn}
+    {\printfield{isbn}}
+    {}%
+  \newunit\newblock
+  \usebibmacro{doi+eprint+url}%
+  \newunit\newblock
+  \usebibmacro{addendum+pubstate}%
+  \newunit\newblock
+  \usebibmacro{pageref}%
+  \usebibmacro{finentry}}
+
+%%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% 
+%%%%%    Warnungen und Fehlermeldungen    %%%%%
+%%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% %%%%% 
+\protected\def\blxdw@error#1{%
+  \begingroup
+  \blx@safe@actives
+  \PackageError{biblatex-dw}{#1}%
+  \endgroup}
+  
+\protected\def\blxdw@warning#1{%
+  \begingroup
+  \blx@safe@actives
+  \PackageWarning{biblatex-dw}{#1\blxdw@noline}%
+  \endgroup}
+\protected\def\blxdw@warning@noline#1{%
+  \begingroup
+  \blx@safe@actives
+  \PackageWarning{biblatex-dw}{#1\@gobble}%
+  \endgroup}
+\protected\def\blxdw@warning@entry#1{%
+  \ifundef\abx@field@entrykey
+    {\blxdw@warning{#1}}
+    {\blxdw@warning{#1\MessageBreak at entry '\abx@field@entrykey'}}}
+\let\blxdw@noline\@gobble
+
+\AtBeginDocument{%
+  \ifdefstring{\bbx@origfieldsformat}{punct}
+    {}
+    {\ifdefstring{\bbx@origfieldsformat}{parens}
+      {}
+      {\ifdefstring{\bbx@origfieldsformat}{brackets}
+        {}
+        {\blxdw@warning@noline{%
+           Unknown value for option 'origfieldsformat'.\MessageBreak
+           Option 'origfieldsformat=punct' used instead}}}}%
+  \ifdefstring{\bbx@option@journalnumber}{standard}
+    {}
+    {\ifdefstring{\bbx@option@journalnumber}{afteryear}
+      {}
+      {\ifdefstring{\bbx@option@journalnumber}{date}
+        {}
+        {\blxdw@warning@noline{%
+           Unknown value for option 'journalnumber'.\MessageBreak
+           Option 'journalnumber=standard' used instead}}}}%
+  \iftoggle{blx@useeditor}
+    {\ifbool{cbx:omiteditor}
+      {\blxdw@warning@noline{%
+         Option 'omiteditor' cannot be used\MessageBreak
+         together with option 'useeditor=true'.\MessageBreak
+         Thus, 'omiteditor' is ignored}}
+      {}}%
+    {}%
+  \ifdefstring{\bbx@option@series}{standard}
+    {}
+    {\ifdefstring{\bbx@option@series}{afteryear}
+      {}
+      {\blxdw@warning@noline{%
+         Unknown value for option 'series'.\MessageBreak
+         Option 'series=standard' used instead}}}%
+  \ifdefstring{\bbx@option@seriesformat}{standard}
+    {}
+    {\ifdefstring{\bbx@option@seriesformat}{parens}
+      {}
+      {\blxdw@warning@noline{%
+         Unknown value for option 'seriesformat'.\MessageBreak
+         Option 'seriesformat=standard' used instead}}}%
+}
+
+\endinput

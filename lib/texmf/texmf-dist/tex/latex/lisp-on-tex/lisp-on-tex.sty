@@ -1,0 +1,918 @@
+%%
+%% This is file `lisp-on-tex.sty'.
+%%
+%%  License: Modified BSD - see LICENSE file
+%%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{lisp-on-tex}[2015/06/22 v2.0]
+
+\RequirePackage{xkeyval}
+\newcount\@lisp@gc@style
+\def\@lisp@opt@gc{}
+% I use bad magic numbers...
+\DeclareOptionX{noGC}{\@lisp@gc@style0\relax}
+\DeclareOptionX{markGC}{\@lisp@gc@style1\relax}
+\DeclareOptionX{GCopt}[]{\def\@lisp@opt@gc{#1}}
+\ExecuteOptionsX{noGC}
+\ProcessOptionsX
+
+
+% lisp's global environment and some macros for it
+\def\@lisp@globalenv{}
+
+% Bind a variable (#1) to a value (#2) on global environment.
+% This macro also define [@lisp@env@#1] to #2.
+\def\@lisp@env@add@global#1#2{%
+  \begingroup
+    \toks0{#1{#2}}%
+    \toks2\expandafter{\@lisp@globalenv}%
+    \xdef\@lisp@globalenv{\the\toks0 \the\toks2}%
+  \endgroup
+  \expandafter\gdef\csname @lisp@env@\string#1\endcsname{#2}}
+% for backword compability...
+\def\addassoc#1#2#3{\@lisp@env@add@global#2{#3}}
+
+
+% Set a control sequence (#1) to the value of a variable (#2)
+% on a local environment (#3) and global environment.
+% If #2 is unbound, it set #1 to an exception object.
+\def\@lisp@env@get@value#1#2#3{%
+  \def\@lisp@env@tmpmacro##1#2##2##3\@lisp@env@tail{%
+    \gdef#1{##2}}%
+  % I use a sentinel \@lisp@env@get@value@dummy.
+  \@lisp@env@tmpmacro#1#3#2{\@lisp@env@get@value@dummy}%
+    \@lisp@env@tail
+  % #2 is not bound on #3, so I try to get the value 
+  % from global environment.
+  \def\@@next#1#2{}%
+  \ifx#1\@lisp@env@get@value@dummy
+    \let\@@next\@lisp@env@get@value@global\fi
+  \@@next#1#2%
+  % not found
+  \def\@@next#1#2{}%    
+  \ifx#1\relax\let\@@next\@lisp@env@get@value@notfound\fi
+  \@@next#1#2}
+\def\@lisp@env@get@value@dummy{\@lisp@env@get@value@dummy}
+\def\@lisp@env@get@value@global#1#2{%
+  \expandafter\global\expandafter\let\expandafter#1%
+      \csname @lisp@env@\string#2\endcsname}
+\def\@lisp@env@get@value@notfound#1#2{%
+  \gdef#1{\@tlabel@exception{{-1}{\@tlabel@string{unbound variable #2}}}}}
+
+% ENTRY point of LISP on TeX. It takes a LISP program (#1)
+% and evaluate the program. 
+\def\lispinterp#1{\@lispread\@lisp@read@eval@loop#1\@end@lispread}
+\def\@lisp@read@eval@loop#1#2{%
+  \ifx#1\@tlabel@exception% read error
+    \let\@@next\@lisp@read@eval@loop@reader@error
+  \else
+    \let\@@next\@lisp@read@eval@loop@normal
+  \fi\@@next#1{#2}}
+\def\@lisp@read@eval@loop@normal#1#2{%
+  \def\@lisp@tmp@global@i{#1{#2}}%
+  \lispeval\@lisp@tmp@global@i\@lisp@tmp@global@i
+  \expandafter\@lisp@read@eval@loop@normal@\@lisp@tmp@global@i}
+\def\@lisp@read@eval@loop@normal@#1#2{%
+  \ifx#1\@tlabel@exception
+    \let\@@next\@lisp@read@eval@loop@catch@error
+  \else
+    \let\@@next\@lisp@read@eval@loop@normal@@
+  \fi
+  \@@next#1{#2}}
+\def\@lisp@read@eval@loop@normal@@#1#2{\@lispread\@lisp@read@eval@loop}
+
+\def\@lisp@read@eval@loop@catch@error\@tlabel@exception#1{%
+  \@lisp@read@eval@loop@print@err#1}
+\def\@lisp@read@eval@loop@print@err#1#2{% 
+% #1 -> error handler id, #2 -> error message
+  \@lisp@read@eval@loop@print@err@#2}
+\def\@lisp@read@eval@loop@print@err@#1#2{%
+  \toks0{#2}\errmessage{LISP on TeX ERROR: \the\toks0}%
+  \@lisp@read@eval@loop@gobble@remain}
+\def\@lisp@read@eval@loop@gobble@remain#1\@end@lispread{}
+%FIXME: Now, the reader cannot tell consuming all input from imcomplete
+% input.
+\def\@lisp@read@eval@loop@reader@error\@tlabel@exception#1{}
+
+
+
+% CONS CAR CDR
+% get CAR of a CONS cell (#2{#3}) and set it to a control sequence
+% (#1). If the argument is not a CONS cell, it raise an exception.
+\def\@lisp@perform@car#1#2#3{%
+  \ifx#2\@tlabel@cons
+    \let\@@next\@lisp@perform@car@normal
+  \else
+    \let\@@next\@lisp@perform@car@type@error
+  \fi
+  \@@next#1{#3}}
+\def\@lisp@perform@car@normal#1#2{\@lisp@perform@car@normal@#1#2}
+\def\@lisp@perform@car@normal@#1#2#3{\global\let#1#2}
+\def\@lisp@perform@car@type@error#1#2{%
+  \gdef#1{\@tlabel@exception{{-1}%
+    {\@tlabel@string{Argument of car must be a CONS cell.}}}}}
+% get CDR of a CONS cell (#2{#3}) and set it to a control sequence
+% (#1). If the argument is not a CONS cell, it raise an exception.
+\def\@lisp@perform@cdr#1#2#3{%
+  \ifx#2\@tlabel@cons
+    \let\@@next\@lisp@perform@cdr@normal
+  \else
+    \let\@@next\@lisp@perform@cdr@type@error
+  \fi
+  \@@next#1{#3}}
+\def\@lisp@perform@cdr@normal#1#2{\@lisp@perform@cdr@normal@#1#2}
+\def\@lisp@perform@cdr@normal@#1#2#3{\global\let#1#3}
+\def\@lisp@perform@cdr@type@error#1#2{%
+  \gdef#1{\@tlabel@exception{{-1}%
+    {\@tlabel@string{Argument of cdr must be a CONS cell.}}}}}
+% create a CONS cell whose CAR is #2{#3} and CDR is #4{#5}.
+% It set a control sequence (#1) to the created cell.
+\def\@lisp@perform@cons#1#2#3#4#5{%
+  \@lisp@perform@cons@local#1#2{#3}#4{#5}%
+  \global\let#1#1}
+\def\@lisp@perform@cons@local#1#2#3#4#5{%
+  \@lisp@gc@save@objects@local{#2{#3}#4{#5}}% pin arguments
+  \@lisp@gc@alloc\@lisp@tmp@local@i
+  \expandafter\@lisp@gc@save@memory@local\expandafter{\@lisp@tmp@local@i}% pin CAR
+  \@lisp@gc@alloc\@lisp@tmp@local@ii
+  \expandafter\gdef\@lisp@tmp@local@i{#2{#3}}%
+  \expandafter\gdef\@lisp@tmp@local@ii{#4{#5}}%
+  \expandafter\@lisp@perform@cons@\expandafter#1%
+    \@lisp@tmp@local@i\@lisp@tmp@local@ii}
+\def\@lisp@perform@cons@#1#2#3{%
+  \expandafter\@lisp@perform@cons@@\expandafter#1%
+    \expandafter#2#3}
+\def\@lisp@perform@cons@@#1#2#3{\def#1{\@tlabel@cons{#2#3}}}
+
+
+% all primitive types of LISP on TeX. 
+\def\@defined@datatype{%
+  symbol,string,int,bool,dimen,skip,cons,nil,%
+  func,closure,macro,envfunc,mutable,%
+  exception,continuation}
+% all special forms of LISP on TeX
+\def\@defined@specialform{%
+  lambda,quote,define,if,defmacro,begin,%
+  mdefine,setb,@let,@mlet,macroexpand,callocc}
+\edef\@defined@lisp@on@tex{\@defined@datatype,\@defined@specialform}
+% all additional types of LISP on TeX
+\def\@defined@additional@type{}
+
+
+%%%%%MEMO
+% \@tlabel@xxx -> \@eval@xxx\@apply@xxx\@@apply@xxx
+% \@dummy => ;
+% \@eval@xxx#1#2#3 : #1 = cont, #2 = env, #3 = reg
+%%%%%
+\def\@@select@eval#1#2#3{#1}
+\def\@@select@apply#1#2#3{#2}
+\def\@@select@@apply#1#2#3{#3}
+
+\def\@type@define@filed#1{\expandafter\@@type@define@filed\expandafter#1}
+\def\@@type@define@filed#1#2{\expandafter\@@@type@define@filed
+  \expandafter#1\expandafter#2}
+\def\@@@type@define@filed#1#2#3{\expandafter\@@@@type@define@field
+  \expandafter#1\expandafter#2\expandafter#3}
+\def\@@@@type@define@field#1#2#3#4{%
+  \def#1##1##2##3{\gdef##3{#4{##1}}}%
+  \def#2{\errmessage{LISP on TeX [internal apply]: cannot apply}}%
+  \def#3{\errmessage{LISP on TeX [function --- apply]: cannot apply}}%
+  \def#4{#1#2#3}}
+
+\@for\@lisp@on@tex@type:=\@defined@lisp@on@tex\do{%
+  \expandafter\@type@define@filed%
+  \csname @eval@\@lisp@on@tex@type\endcsname%
+  \csname @apply@\@lisp@on@tex@type\endcsname%
+  \csname @@apply@\@lisp@on@tex@type\endcsname%
+  \csname @tlabel@\@lisp@on@tex@type\endcsname}
+
+
+
+% write buffer. LISP on TeX's evaluator 
+\gdef\@temp@write@buffer{}
+\def\@add@to@write@buffer#1#2{%
+ \expandafter\gdef\expandafter#1\expandafter{#1#2}}
+
+\def\lispeval#1#2{% #1 : \cs -> S-exp, #2 : target register
+    \gdef\@temp@write@buffer{}%
+    \@lisp@eval@save@envfalse
+    \expandafter\@eval#1{}#2%
+    \@temp@write@buffer}
+
+\newif\if@lisp@eval@save@env
+\def\@eval#1#2#3#4{%
+  \begingroup
+    % pin target S-exp object.
+    \if@lisp@eval@save@env
+      \@lisp@eval@save@envfalse
+      \expandafter\@lisp@gc@save@env@local
+    \else
+      \expandafter\@gobble
+    \fi{#3}%
+    \@lisp@gc@save@objects@local{#1{#2}}%
+    \expandafter\@@select@eval#1{#2}{#3}#4%
+  \endgroup}
+
+
+\def\@eval@symbol#1#2#3{% #1 symbol #2 current env #3 dist
+  \@lisp@env@get@value#3#1{#2}%    
+  \expandafter\@eval@symbol@expand@mutable#3#3}
+\def\@eval@symbol@expand@mutable#1#2#3{%
+  \ifx#1\@tlabel@mutable\global\let#3#2\fi}
+
+\def\@@eval@get@typelabel#1#2{#1}
+\def\@eval@envcs#1#2#3#4{\expandafter\@@eval@envcs\expandafter{#1}#2{#3}#4}
+\def\@@eval@envcs#1#2#3#4{\@eval#2{#3}{#1}#4}
+
+\def\@eval@cons#1#2#3{\@@eval@cons#1{#2}#3}
+\def\@@eval@cons#1#2#3#4{%
+  \expandafter\@eval#1{#3}\@temp@i
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@@eval@get@typelabel\@temp@i\@tlabel@exception
+    \let\@@next\@@eval@cons@exception\else\let\@@next\@@eval@cons@normal\fi
+  \@@next{#2}{#3}{#4}}
+\def\@@eval@cons@normal#1#2#3{%
+  \expandafter\@lisp@gc@save@objects@local\expandafter{\@temp@i}% pin evaluated value of CAR
+  \def\@temp@ii{}% init
+  \expandafter\@flatten@args#1\@temp@ii % args are already pined, maybe...
+  %error-check of argument form
+  \ifx\@temp@ii\@@flatten@error@symbol
+    \let\@@next\@@eval@cons@args@error
+  \else
+    \let\@@next\@@eval@cons@apply
+  \fi
+  \@@next{#2}{#3}}
+\def\@@select@apply@pre{\expandafter\@@select@apply}
+\def\@@eval@cons@exception#1#2#3{\global\let#3\@temp@i}
+\def\@@eval@cons@apply#1#2{%
+  \expandafter\expandafter\expandafter\@@select@apply@pre
+     \expandafter\@temp@i\@temp@ii\@{#1}#2}
+\def\@@eval@cons@args@error#1#2{%
+  \gdef#2{\@tlabel@exception{%
+    {-1}{\@tlabel@string{Eval Improper List}}}}}
+
+\def\@flatten@args#1#2#3{%
+  \ifx#1\@tlabel@cons
+    \let\@flatten@next\@@flatten@next
+  \else\ifx#1\@tlabel@nil
+    \let\@flatten@next\@@flatten@fin
+  \else
+    \let\@flatten@next\@@flatten@error
+  \fi\fi
+  \@flatten@next#2#3}
+\def\@@flatten@next#1#2#3{%
+  \expandafter\expandafter\expandafter\def
+  \expandafter\expandafter\expandafter#3%
+  \expandafter\expandafter\expandafter{\expandafter#3#1}%
+  \expandafter\@flatten@args#2#3}
+\def\@@flatten@fin#1{}
+\def\@@flatten@error#1#2{\def#2{error}}
+\def\@@flatten@error@symbol{error}
+
+\def\@apply@lambda#1#2#3#4#5\@#6#7{%
+  \def\@lambda@args{}% init
+  \@create@bind#2{#3}\@lambda@args % convert arg list into internal form
+  \expandafter\@create@closure\@lambda@args\@{#6}#4{#5}#7}
+\def\@create@closure#1\@#2#3#4#5{\gdef#5{\@tlabel@closure{{#1}{#2}#3{#4}}}}
+
+\def\@create@bind#1#2#3{%
+  \ifx#1\@tlabel@symbol
+    \let\@create@bind@next\@@create@listarg
+  \else\ifx#1\@tlabel@cons
+    \let\@create@bind@next\@@create@normalarg
+  \else\ifx#1\@tlabel@nil
+    \let\@create@bind@next\@@create@finarg
+  \fi\fi\fi
+  \@create@bind@next#2#3}
+\def\@@create@listarg#1#2{\expandafter\def\expandafter#2\expandafter{#2:#1}}
+\def\@@create@normalarg#1#2#3{%
+  \expandafter\@@create@bind@symbol#1#3%
+  \expandafter\@create@bind#2#3}
+\def\@@create@bind@symbol\@tlabel@symbol#1#2{\expandafter\def\expandafter#2\expandafter{#2#1}}
+\def\@@create@finarg#1{\expandafter\def\expandafter#1\expandafter{#1:\@@unused}}
+\def\@@unused{\@@unused}
+
+\def\@apply@quote#1#2#3\@#4#5{\gdef#5{#2{#3}}}
+
+% application of define, defineM, defmacro.
+% #1 empty, #2{#3} 1st argument, #4{#5} 2nd argument,
+% #6 env, #7 cs
+\def\@apply@define#1#2#3#4#5\@#6#7{%
+  \let\@lisp@define@normal\@apply@define@normal
+  \@apply@define@{#1}#2{#3}#4{#5}\@{#6}#7}
+\def\@apply@mdefine#1#2#3#4#5\@#6#7{%
+  \let\@lisp@define@normal\@apply@mdefine@normal
+  \@apply@define@{#1}#2{#3}#4{#5}\@{#6}#7}
+\def\@apply@defmacro#1#2#3#4#5\@#6#7{%
+  \let\@lisp@define@normal\@apply@defmacro@normal
+  \@apply@define@{#1}#2{#3}#4{#5}\@{#6}#7}
+% type check
+\def\@apply@define@#1#2#3#4#5\@#6#7{%
+  \ifx#2\@tlabel@symbol % normal style
+    \let\@@next\@apply@define@@
+  \else\ifx#2\@tlabel@cons % function definition
+    \let\@@next\@apply@define@func
+  \else
+    \let\@@next\@apply@define@error
+  \fi\fi
+  \@@next{#1}#2{#3}#4{#5}\@{#6}#7}
+% \define's normal form
+\def\@apply@define@normal#1#2{%
+  \expandafter\@lisp@env@add@global\expandafter#1\expandafter{#2}%
+  \gdef#2{\@tlabel@nil{}}}
+% \defineM's normal form
+\def\@apply@mdefine@normal#1#2{%
+  \@lisp@gc@save@objects@local{#2}% pin the evaluated value
+  \@lisp@gc@alloc\@lisp@tmp@local@i
+  \expandafter\global\expandafter\let\@lisp@tmp@local@i#2%
+  \expandafter\@apply@mdefine@normal@\@lisp@tmp@local@i#1%
+  \gdef#2{\@tlabel@nil{}}}
+\def\@apply@mdefine@normal@#1#2{%
+  \@lisp@env@add@global#2{\@tlabel@mutable{#1}}}
+% \defmacro's normal form
+\def\@apply@defmacro@normal#1#2{%
+  \expandafter\@apply@defmacro@next\expandafter#1#2%
+  \gdef#2{\@tlabel@nil{}}}
+%TODO: error handling
+\def\@apply@defmacro@next#1\@tlabel@closure#2{%
+  \@lisp@env@add@global#1{\@tlabel@macro{#2}}}
+% normal form
+\def\@apply@define@@#1\@tlabel@symbol#2#3#4\@#5#6{%
+  \@eval#3{#4}{#5}#6% define does NOT use local environment
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@@eval@get@typelabel#6\@tlabel@exception
+    \let\@@next\@apply@define@exception
+    \else\let\@@next\@lisp@define@normal\fi
+  \@@next{#2}{#6}}
+% function form
+\def\@apply@define@func#1\@tlabel@cons#2#3#4\@#5#6{%
+  \@apply@define@func@#2#3{#4}\@{#5}#6}
+\def\@apply@define@func@#1#2#3#4\@#5#6{%
+  \expandafter\expandafter\expandafter\ifx
+     \expandafter\@@eval@get@typelabel#1\@tlabel@symbol
+    \let\@@next\@apply@define@func@@
+  \else
+    \let\@@next\@apply@define@error
+  \fi
+  \@@next#1#2#3{#4}\@{#5}#6}
+\def\@apply@define@func@@#1#2#3#4\@#5#6{% notice: no tmp token remain the closure  
+  \def\@lisp@tmp@local@i{#3{#4}}% closure body
+  \def\@lisp@tmp@local@ii{\@tlabel@nil{}}%
+  \def\@lisp@tmp@local@iii{\@tlabel@cons{\@lisp@tmp@local@i\@lisp@tmp@local@ii}}%
+  \expandafter\def\expandafter\@lisp@tmp@local@iv\expandafter{#2}% formal arguments
+  \def\@lisp@tmp@local@v{\@tlabel@cons{\@lisp@tmp@local@iv\@lisp@tmp@local@iii}}%
+  \def\@lisp@tmp@local@vi{\@tlabel@lambda{}}% \lambda
+  \expandafter\@apply@define@@\expandafter{\expandafter}#1\@tlabel@cons{\@lisp@tmp@local@vi\@lisp@tmp@local@v}\@{#5}#6}
+% type error
+\def\@apply@define@error#1\@#2#3{%
+  \gdef#3{\@tlabel@exception{{-1}
+    {\@tlabel@string{The 1st argument of \define or \defineM must be a symbol or valid list.}}}}}
+% catch exception at evaluation
+\def\@apply@define@exception#1#2{}
+
+\def\@apply@setb#1#2#3#4#5\@#6#7{%
+  \ifx\@tlabel@symbol#2%
+    \let\@@next\@apply@setb@normal
+  \else
+    \let\@@next\@apply@setb@argtype@symbol@error
+  \fi
+  \@@next#3#4{#5}{#6}#7}
+\def\@apply@setb@normal#1#2#3#4#5{%
+  \@lisp@env@get@value#5#1{#4}%
+  \expandafter\expandafter\expandafter\ifx
+     \expandafter\@@eval@get@typelabel#5\@tlabel@exception
+   \let\@@next\@apply@setb@raise@exception
+  \else\expandafter\expandafter\expandafter\ifx
+     \expandafter\@@eval@get@typelabel#5\@tlabel@mutable
+   \let\@@next\@apply@setb@normal@
+  \else
+   \let\@@next\@apply@setb@argtype@mutable@error
+  \fi\fi
+  \@@next#1#2{#3}{#4}#5}
+\def\@apply@setb@normal@#1#2#3#4#5{%
+  % the environment and the value is already pinned, maybe...
+  \let\@lisp@tmp@local@i#5%
+  \@eval#2{#3}{#4}#5%
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@@eval@get@typelabel#5\@tlabel@exception
+    \let\@@next\@apply@setb@raise@exception
+  \else
+    \let\@@next\@apply@setb@normal@@
+  \fi
+  \@@next#1#2{#3}{#4}#5}
+\def\@apply@setb@normal@@#1#2#3#4#5{%
+  \expandafter\@apply@setb@final\@lisp@tmp@local@i#5}
+\def\@apply@setb@final\@tlabel@mutable#1#2{%
+  \global\let#1#2%
+  \gdef#2{\@tlabel@nil{}}}
+
+\def\@apply@setb@argtype@symbol@error#1#2#3#4#5{%
+  \gdef#5{\@tlabel@exception{{-1}%
+    {\@tlabel@string{The 1st argument of \setB must be a symbol}}}}}
+\def\@apply@setb@raise@exception#1#2#3#4#5{}
+\def\@apply@setb@argtype@mutable@error#1#2#3#4#5{%
+  \gdef#5{\@tlabel@exception{{-1}%
+    {\@tlabel@string{The symbol #1 is not defined as a 'mutable'. %
+     Use \defineM, \letM, or \letrec.}}}}}
+
+%TODO: error handling
+\def\@apply@@let#1\@tlabel@symbol#2#3#4#5#6\@#7#8{%
+  \@eval#3{#4}{#7}#8%
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@@eval@get@typelabel#8\@tlabel@exception
+    \let\@@next\@apply@@let@exception
+    \else\let\@@next\@apply@@let@normal\fi
+  \@@next{#2}{#5}{#6}{#7}{#8}}
+\def\@apply@@let@normal#1#2#3#4#5{%
+  \expandafter\def\expandafter\@temp@env\expandafter{\expandafter#1\expandafter{#5}#4}%
+  \begingroup
+    \toks0\expandafter{\@temp@env}%
+    \toks1{#2{#3}#5}%
+    \toks2\expandafter{#5}%
+    \xdef\@@tco{%
+      \begingroup
+      \noexpand\@lisp@eval@save@envtrue
+      \noexpand\@lisp@gc@save@objects@local{\the\toks2}% pin appended value
+      \noexpand\@@eval@envcs{\the\toks0}\the\toks1
+      \endgroup}%
+  \endgroup  
+  \aftergroup\@@tco}
+\def\@apply@@let@exception#1#2#3#4#5{} % #5 is already set the value of exception
+
+%TODO: error handling
+\def\@apply@@mlet#1\@tlabel@symbol#2#3#4#5#6\@#7#8{%
+  \@eval#3{#4}{#7}#8%
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@@eval@get@typelabel#8\@tlabel@exception
+    \let\@@next\@apply@@let@exception
+    \else\let\@@next\@apply@@mlet@normal\fi
+  \@@next{#2}{#5}{#6}{#7}{#8}}
+
+\def\@apply@@mlet@normal#1#2#3#4#5{%
+  \expandafter\@lisp@gc@save@objects@local\expandafter{#5}% pin target value
+  \@lisp@gc@alloc\@lisp@tmp@local@i
+  \expandafter\global\expandafter\let\@lisp@tmp@local@i#5%
+  \expandafter\@apply@@mlet@normal@\@lisp@tmp@local@i#1{#4}%
+  \begingroup
+    \toks0\expandafter{\@lisp@tmp@local@ii}%
+    \toks1{#2{#3}#5}%
+    \toks2\expandafter{\@lisp@tmp@local@i}%
+    \xdef\@@tco{%
+      \begingroup
+      \noexpand\@lisp@eval@save@envtrue
+      \noexpand\@lisp@gc@save@memory@local{\the\toks2}% pin the appended value
+      \noexpand\@@eval@envcs{\the\toks0}\the\toks1
+      \endgroup}%
+  \endgroup
+  \aftergroup\@@tco}
+\def\@apply@@mlet@normal@#1#2#3{%
+  \def\@lisp@tmp@local@ii{#2{\@tlabel@mutable{#1}}#3}}
+
+
+\def\@apply@if#1#2#3#4#5#6#7\@#8#9{%
+  \@eval#2{#3}{#8}#9%
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@@eval@get@typelabel#9\@tlabel@exception
+    \let\@@next\@apply@if@exception
+    \else\let\@@next\@apply@if@normal\fi
+  \@@next{#4}{#5}{#6}{#7}{#8}{#9}}
+\def\@apply@if@normal#1#2#3#4#5#6{%
+  \expandafter\@apply@if@next#6#1{#2}#3{#4}{#5}#6%
+  \aftergroup\@@tco}
+\def\@apply@if@exception#1#2#3#4#5#6{}
+
+% #1{#2} -> condition, #3{#4} -> then, #5{#6} -> else, #7 -> env, #8 ->cs
+\def\@apply@if@next#1#2#3#4#5#6#7#8{%
+  \ifx#1\@tlabel@bool
+    \ifx#2t%
+      \let\@@next\@apply@if@next@t
+    \else\ifx#2f%
+      \let\@@next\@apply@if@next@f
+    \else
+      \let\@@next\@apply@if@next@invalid
+    \fi\fi
+  \else
+   \let\@@next\@apply@if@next@type@error
+  \fi
+  \@@next#3{#4}#5{#6}{#7}#8}
+\def\@apply@if@next@t#1#2#3#4#5#6{\gdef\@@tco{\@eval#1{#2}{#5}#6}}
+\def\@apply@if@next@f#1#2#3#4#5#6{\gdef\@@tco{\@eval#3{#4}{#5}#6}}
+\def\@apply@if@next@invalid#1#2#3#4#5#6{%
+  \gdef\@@tco{\gdef#6{\@tlabel@exception{%
+    {-1}{\@tlabel@string{Fatal. Invalid Boolean}}}}}}
+\def\@apply@if@next@type@error#1#2#3#4#5#6{%
+  \gdef\@@tco{\gdef#6{\@tlabel@exception{%
+    {-1}{\@tlabel@string{The condition must be a bool.}}}}}}
+
+%% use general
+\def\@apply@eval@args#1#2#3#4{%
+  \let\@@next@pre\@apply@eval@args@pre@default
+  \ifx#3\relax
+    \let\@@next\@@next@fin
+  \else
+    \let\@@next@pre\@apply@eval@args@pre@i
+  \fi\@@next@pre{#1}{#2}{#3}{#4}\@@next#1{#2}}
+\def\@apply@eval@args@pre@default#1#2#3#4{}
+\def\@apply@eval@args@pre@i#1#2#3#4{%
+  \let\@@save#1%
+  \@eval#3{#4}{#2}#1%
+  \expandafter\@lisp@gc@save@objects@local\expandafter{#1}% pin evaluated value 
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@@eval@get@typelabel#1\@tlabel@exception
+      \let\@@next\@apply@eval@args@exception
+    \else\let\@@next\@apply@eval@args@normal\fi
+  \@@next{#1}}
+\def\@apply@eval@args@normal#1{%
+  \expandafter\expandafter\expandafter\def
+  \expandafter\expandafter\expandafter#1\expandafter\expandafter\expandafter{%
+  \expandafter\@@save#1}%
+  \let\@@next\@apply@eval@args}
+\def\@apply@eval@args@exception#1{\let\@@next\@apply@eval@args@ignore}
+
+\def\@@next@fin#1#2{}
+\def\@apply@eval@args@ignore#1#2#3\relax#4{}
+
+\def\@apply@get@args@head@typelabel#1#2\relax{#1}
+
+\def\@apply@func#1#2\@#3#4{%
+  \def\@temp@i{}%
+  \def\@@dummy@temp@i{}%
+  \@lisp@gc@save@objects@local{\@tlabel@func{#1}}% pin function
+  \@apply@eval@args\@temp@i{#3}#2\relax\relax
+  \ifx\@@dummy@temp@i\@temp@i%
+    \def\@@test@temp@i{\@tlabel@dummy{}}%
+  \else
+    \let\@@test@temp@i\@temp@i
+  \fi
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@apply@get@args@head@typelabel\@@test@temp@i\relax\@tlabel@exception
+      \let\@@next\@apply@func@exception
+    \else
+      \let\@@next\@apply@func@normal
+    \fi
+    \@@next{#1}{#3}{#4}}
+\def\@apply@func@normal#1#2#3{%
+  \expandafter\@apply@func@next\expandafter{\@temp@i}{#1}{#2}#3}
+\def\@apply@func@next#1#2#3#4{\@@apply@func{#2}#1\@{#3}#4}
+\def\@apply@func@exception#1#2#3{%
+  \expandafter\gdef\expandafter#3\expandafter{\@temp@i}}
+
+\def\@@apply@func#1#2\@#3#4{%
+  \gdef\@@tco{%
+    % pin arguments because this stack will be fold.
+    \begingroup
+    \@lisp@gc@save@objects@local{#2}%
+    #1#4#2\relax\relax
+    \endgroup}\aftergroup\@@tco}
+
+\def\@apply@envfunc#1#2\@#3#4{%
+  \def\@temp@i{}%
+  \def\@@dummy@temp@i{}%
+  \@lisp@gc@save@objects@local{\@tlabel@envfunc{#1}}% pin function
+  \@apply@eval@args\@temp@i{#3}#2\relax\relax
+  \ifx\@temp@i\@@dummy@temp@i%
+    \def\@@test@temp@i{\@tlabel@dummy{}}%
+  \else
+    \let\@@test@temp@i\@temp@i
+  \fi
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@apply@get@args@head@typelabel\@@test@temp@i\relax\@tlabel@exception
+      \let\@@next\@apply@func@exception
+    \else
+      \let\@@next\@apply@envfunc@normal
+    \fi
+    \@@next{#1}{#3}{#4}}
+\def\@apply@envfunc@normal#1#2#3{%
+  \expandafter\@apply@envfunc@next\expandafter{\@temp@i}{#1}{#2}#3}
+\def\@apply@envfunc@next#1#2#3#4{\@@apply@envfunc{#2}#1\@{#3}#4}
+
+\def\@@apply@envfunc#1#2\@#3#4{%
+  \gdef\@@tco{%
+    \begingroup
+    \@lisp@gc@save@objects@local{#2}%
+    \@lisp@eval@save@envtrue%
+    #1#4{#3}#2\relax\relax
+    \endgroup}\aftergroup\@@tco}
+
+
+\def\@apply@closure#1#2\@#3#4{%
+  \def\@temp@i{}%
+  \def\@@dummy@temp@i{}%
+  \@lisp@gc@save@objects@local{\@tlabel@closure{#1}}% pin closure
+  \@lisp@gc@save@objects@local{#2}% pin arguments
+  \@apply@eval@args\@temp@i{#3}#2\relax\relax
+  \ifx\@temp@i\@@dummy@temp@i%
+    \def\@@test@temp@i{\@tlabel@dummy{}}%
+  \else
+    \let\@@test@temp@i\@temp@i
+  \fi
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@apply@get@args@head@typelabel\@@test@temp@i\relax\@tlabel@exception
+      \let\@@next\@apply@func@exception
+    \else
+      \let\@@next\@apply@closure@normal
+    \fi
+    \@@next{#1}{#3}{#4}}
+\def\@apply@closure@normal#1#2#3{%
+  \expandafter\@apply@closure@next\expandafter{\@temp@i}{#1}{#2}#3}
+\def\@apply@closure@next#1#2#3#4{\@@apply@closure{#2}#1\@{#3}#4}
+
+\def\@@apply@closure#1#2\@#3#4{\@@apply@closure@next#1#2\@#4}
+\def\@@apply@closure@next#1#2#3#4#5\@#6{%
+  \def\@temp@env{}%
+  \@lisp@gc@save@objects@local{#5}% pin arguments
+  \@@apply@create@env\@temp@env#1#5\relax\relax
+  \begingroup
+    \toks0\expandafter{\@temp@env#2}%
+    \toks1{#3{#4}#6}%
+    \xdef\@@tco{%
+      \noexpand\@lisp@eval@save@envtrue
+      \noexpand\@@eval@envcs{\the\toks0}\the\toks1}%
+  \endgroup
+  \aftergroup\@@tco}
+
+% create an environment using in evaluation of closure's body.
+% It set a control sequence (#1) to the created environment locally.
+% #2 is formal arguments and #3 is rest argument. If there is
+% no rest argument, #3 is \@@unused. If an error occurs, it set
+% #1 to \relax by \let.
+\def\@@apply@create@env#1#2:#3{%
+  \def#1{}% initialize
+  \@@apply@create@env@#1{#2}{#3}}
+\def\@@apply@create@env@#1#2#3{%
+  \ifx!#2!% If #2 is empty
+    \ifx#3\@@unused
+      \let\@@next\@@apply@create@env@bind@fin
+    \else
+      \let\@@next\@@apply@create@env@bind@rest
+    \fi
+  \else
+    \let\@@next\@@apply@create@env@bind@one
+  \fi
+  \@@next#1#2|{#3}}
+% end of environment creation. If there are some
+% remaining arguments, it cause error.
+\def\@@apply@create@env@bind@fin#1|#2#3#4{%
+  \ifx#3\relax\else
+    \let#1\relax
+    \def\@@apply@create@env@error@message{Too more arguments}%
+  \fi}
+% bind a formal argument. #5{#6} is an real argument
+% of closure/macro call. If there is no unbound argument, 
+% #5 and #6 are \relax (see caller).
+\def\@@apply@create@env@bind@one#1#2#3|#4#5#6{%
+  \ifx#5\relax
+    \let\@@next\@@apply@create@env@bind@one@error
+  \else
+    \let\@@next\@@apply@create@env@bind@one@
+  \fi
+  \@@next#1#2{#3}{#4}{#5{#6}}}
+\def\@@apply@create@env@bind@one@#1#2#3#4#5{%
+  \expandafter\def\expandafter#1\expandafter{#1#2{#5}}%
+  \@@apply@create@env@#1{#3}{#4}}
+\def\@@apply@create@env@bind@one@error#1#2#3#4#5{%
+  \def\@@apply@create@env@error@message{Too few arguments}%
+  \let#1\relax}
+% bind a rest argument (#2).
+\def\@@apply@create@env@bind@rest#1|#2{%
+  \def\@lisp@tmp@local@i{#1#2}%
+  \def\@lisp@tmp@local@ii{}%
+  \@@apply@create@env@bind@rest@}
+% get all remaining arguments and create a list.
+% it set the result to \@lisp@tmp@local@iii
+\def\@@apply@create@env@bind@rest@#1#2{%
+  \ifx#1\relax
+    \let\@@next\@@apply@create@env@bind@rest@create@cell
+  \else
+    \let\@@next\@@apply@create@env@bind@rest@reverse
+  \fi
+  \@@next#1{#2}}
+% reverse the arguments' order and set it to \@lisp@tmp@local@ii
+\def\@@apply@create@env@bind@rest@reverse#1#2{%
+  \toks0{#1{#2}}%
+  \toks2\expandafter{\@lisp@tmp@local@ii}%
+  \edef\@lisp@tmp@local@ii{\the\toks0 \the\toks2}%
+  \@@apply@create@env@bind@rest@}
+% create a list 
+\def\@@apply@create@env@bind@rest@create@cell#1#2{% #1 and #2 is dummy
+ \def\@lisp@tmp@local@iii{\@tlabel@nil{}}%
+ \ifx\@lisp@tmp@local@ii\@empty%if there is no argument
+   \let\@@next\@@apply@create@env@bind@rest@create@cell@fin
+ \else
+   \let\@@next\@@apply@create@env@bind@rest@create@cell@alloc
+ \fi
+ \expandafter\@@next\@lisp@tmp@local@ii\relax\relax}
+\def\@@apply@create@env@bind@rest@create@cell@fin{%
+  \expandafter\@@apply@create@env@bind@rest@create@cell@fin@\@lisp@tmp@local@i}
+\def\@@apply@create@env@bind@rest@create@cell@fin@#1#2{%
+  \expandafter\@@apply@create@env@bind@rest@create@cell@fin@@
+    \expandafter{\@lisp@tmp@local@iii}#1#2}
+\def\@@apply@create@env@bind@rest@create@cell@fin@@#1#2#3{%
+  \expandafter\def\expandafter#2\expandafter{#2#3{#1}}}
+\def\@@apply@create@env@bind@rest@create@cell@alloc#1#2#3#4{%
+  \@lisp@gc@alloc\@lisp@tmp@local@iv % CAR
+  \expandafter\gdef\@lisp@tmp@local@iv{#1{#2}}%
+  \@lisp@gc@alloc\@lisp@tmp@local@v % CDR
+  \expandafter\global\expandafter\let\@lisp@tmp@local@v\@lisp@tmp@local@iii
+  \toks0\expandafter{\@lisp@tmp@local@iv}%
+  \toks2\expandafter{\@lisp@tmp@local@v}%
+  \edef\@lisp@tmp@local@iii{\noexpand\@tlabel@cons{\the\toks0 \the\toks2}}%
+  \ifx#3\relax
+    \let\@@next\@@apply@create@env@bind@rest@create@cell@fin
+  \else
+    \let\@@next\@@apply@create@env@bind@rest@create@cell@alloc
+  \fi
+  \@@next#3{#4}}
+
+% koko, @apply to @@apply wo irekaeru beki?
+\def\@@apply@macro#1#2\@#3#4{\@@apply@macro@next#1#2\@{#3}#4}
+\def\@@apply@macro@next#1#2#3#4#5\@#6#7{%
+  \def\@temp@env{}%
+  \@lisp@gc@save@objects@local{#5}% pin arguments
+  \@@apply@create@env\@temp@env#1#5\relax\relax
+  \begingroup
+    \toks0\expandafter{\@temp@env#2}%
+    \toks1{#3{#4}#7}%
+    \toks2{#7{#6}#7}%
+    \xdef\@@tco{%
+      \noexpand\@@eval@envcs{\the\toks0}\the\toks1
+      \noexpand\expandafter\noexpand\@eval\the\toks2}%
+  \endgroup
+  \aftergroup\@@tco}
+\let\@apply@macro\@@apply@macro
+
+\def\@apply@macroexpand#1#2#3\@#4#5{% cont, args, \@ env, reg
+  \let\@@apply@macro@next\@@apply@macro@next@expand@only
+  \@lisp@eval@save@envtrue
+  \@eval#2{#3}{#4}#5%
+  \expandafter\@lisp@gc@save@objects@local\expandafter{#5}% pin tmp result
+  \expandafter\@eval#5{#4}#5}
+\def\@@apply@macro@next@expand@only#1#2#3#4#5\@#6#7{%
+  \def\@temp@env{}%
+  \@lisp@gc@save@objects@local{#5}% pin args
+  \@@apply@create@env\@temp@env#1#5\relax\relax
+  \begingroup
+    \toks0\expandafter{\@temp@env#2}%
+    \toks1{#3{#4}#7}%
+    \toks2\expandafter{#7{#6}#7}%
+    \xdef\@@tco{%
+       \begingroup
+       \noexpand\@lisp@eval@save@envtrue
+       \noexpand\@@eval@envcs{\the\toks0}\the\toks1
+       \noexpand\@lisp@eval@save@envtrue
+       \noexpand\@eval@if@macro\the\toks2
+       \endgroup}%
+  \endgroup
+  \aftergroup\@@tco}
+\def\@eval@if@macro#1#2#3#4{%
+  \ifx#1\@tlabel@cons\@eval@if@macro@#2{#3}#4\fi}
+\def\@eval@if@macro@#1#2#3#4{%
+  \expandafter\@eval#1{#3}\@temp@i
+  \expandafter\@eval@if@macro@@\@temp@i#1#2{#3}#4}
+\def\@eval@if@macro@@#1#2#3#4#5#6{%
+  \ifx#1\@tlabel@macro\@eval\@tlabel@cons{#3#4}{#5}#6\else\gdef#6{\@tlabel@cons{#3#4}}\fi}
+
+
+\def\@apply@begin#1#2\@#3#4{%
+  \@apply@begin@next#4{#3}#2\relax\relax}
+\def\@apply@begin@next#1#2#3#4#5#6{%
+  \@lisp@gc@save@env@local{#2}% pin environment
+  \ifx#5\relax
+    \let\@@next\@apply@begin@final
+  \else
+    \let\@@next\@apply@begin@cont
+  \fi\@@next{#1}{#2}{#3}{#4}{#5}{#6}}
+\def\@apply@begin@final#1#2#3#4#5#6{%
+  \gdef\@@tco{%
+    \@lisp@eval@save@envtrue
+    \@eval#3{#4}{#2}#1}%
+  \aftergroup\@@tco}
+\def\@apply@begin@cont#1#2#3#4#5#6{%
+  \@eval#3{#4}{#2}#1%
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@@eval@get@typelabel#1\@tlabel@exception
+    \let\@@next\@apply@begin@exception
+  \else
+    \let\@@next\@apply@begin@normal
+  \fi
+    \@@next{#1}{#2}{#5}{#6}}
+\def\@apply@begin@normal#1#2#3#4{%
+  \@apply@begin@next#1{#2}#3{#4}}
+\def\@apply@begin@exception#1#2#3#4{}
+
+\newcount\c@lisp@continuation@label
+\def\@apply@callocc#1#2#3\@#4#5{%
+  \advance\c@lisp@continuation@label 1
+  \@lisp@gc@save@env@local{#4}%
+  \@eval#2{#3}{#4}#5%
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@@eval@get@typelabel#5\@tlabel@exception
+    \let\@@next\@apply@callocc@exception
+  \else
+    \let\@@next\@apply@callocc@normal
+  \fi
+  \@@next{#1}{#2}{#3}{#4}{#5}}
+\def\@apply@callocc@exception#1#2#3#4#5{}
+\def\@apply@callocc@normal#1#2#3#4#5{%
+  \toks0\expandafter{#5}%
+  \edef\@@next{\noexpand\begingroup
+    \noexpand\expandafter\noexpand\@@select@apply\the\toks0
+    \noexpand\@tlabel@continuation{\the\c@lisp@continuation@label}}%
+  \@@next\@{#4}#5\endgroup
+  \expandafter\@apply@callocc@check#5#5}
+\def\@apply@callocc@check#1#2#3{%
+  \ifx#1\@tlabel@exception
+    \let\@@next\@apply@callocc@check@contlabel
+  \else
+    \let\@@next\@apply@callocc@gobble
+  \fi
+  \@@next#2\@#3}
+\def\@apply@callocc@gobble#1\@#2{}
+\def\@apply@callocc@check@contlabel#1#2\@#3{%
+  \ifnum#1=\c@lisp@continuation@label
+    \let\@@next\@apply@callocc@hook
+  \else
+    \let\@@next\@apply@callocc@gobble@after@check
+  \fi
+  \@@next#3{#2}}
+\def\@apply@callocc@gobble@after@check#1#2{}
+\def\@apply@callocc@hook#1#2{\gdef#1{#2}}
+
+\def\@apply@continuation#1#2#3\@#4#5{%
+  \@lisp@gc@save@env@local{#4}%
+  \@eval#2{#3}{#4}#5%
+  \expandafter\expandafter\expandafter\ifx
+    \expandafter\@@eval@get@typelabel#5\@tlabel@exception
+    \let\@@next\@apply@continuation@exception
+  \else
+    \let\@@next\@apply@continuation@normal
+  \fi
+  \@@next{#1}{#2}{#3}{#4}{#5}}
+\def\@apply@continuation@normal#1#2#3#4#5{%
+  \toks0\expandafter{#5}%
+  \xdef#5{\noexpand\@tlabel@exception{{#1}{\the\toks0}}}}
+
+% check #function's arguments
+%#1 #args(*, +, or n), #2 function body
+%#3 reg, #4 args 
+\newcount\@lisp@func@heck@args@count
+\def\@lisp@func@check@args#1#2#3#4\relax{%
+  \@lisp@func@heck@args@count0
+  \@lisp@func@check@args@#4\relax\relax
+  \def\@@next@true{#2#3#4\relax}%
+  \def\@@next@few{\gdef#3{%
+          \@tlabel@exception{{-1}%
+            {\@tlabel@string{too few arguments}}}}}%
+  \def\@@next@many{\gdef#3{%
+          \@tlabel@exception{{-1}%
+            {\@tlabel@string{too many arguments}}}}}%
+  \ifx#1*%
+    \let\@@next\@@next@true
+  \else\ifx#1+%
+    \ifnum\@lisp@func@heck@args@count>0
+      \let\@@next\@@next@true
+    \else
+      \let\@@next\@@next@few
+    \fi
+  \else
+    \ifnum\@lisp@func@heck@args@count=#1
+      \let\@@next\@@next@true
+    \else\ifnum\@lisp@func@heck@args@count>#1
+      \let\@@next\@@next@many
+    \else
+      \let\@@next\@@next@few
+    \fi\fi
+  \fi\fi
+  \@@next}
+\def\@lisp@func@check@args@#1#2{%
+  \ifx#1\relax
+    \let\@@next\relax
+  \else
+    \advance\@lisp@func@heck@args@count1
+    \let\@@next\@lisp@func@check@args@
+  \fi
+  \@@next}
+
+% select GC engine
+\ifcase\@lisp@gc@style
+  \expandafter\RequirePackage\expandafter[\@lisp@opt@gc]{lisp-simple-alloc} \or
+  \expandafter\RequirePackage\expandafter[\@lisp@opt@gc]{lisp-gc} \fi
+\@lisp@gc@init
+
+% reader
+\RequirePackage{lisp-read}
+
+%arithmetical functions
+\RequirePackage{lisp-arith}
+
+%string manipulation
+\RequirePackage{lisp-string}
+
+% connection to TeX world
+\RequirePackage{lisp-latexutil}
+
+% other primitive functions
+\RequirePackage{lisp-prim}
+
+% functions defined by LISP codes 
+\RequirePackage{lisp-util}

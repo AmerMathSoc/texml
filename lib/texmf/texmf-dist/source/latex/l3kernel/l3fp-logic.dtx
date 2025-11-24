@@ -1,0 +1,535 @@
+% \iffalse meta-comment
+%
+%% File: l3fp-logic.dtx Copyright (C) 2011-2014 The LaTeX3 Project
+%%
+%% It may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License (LPPL), either version 1.3c of this
+%% license or (at your option) any later version.  The latest version
+%% of this license is in the file
+%%
+%%    http://www.latex-project.org/lppl.txt
+%%
+%% This file is part of the "l3kernel bundle" (The Work in LPPL)
+%% and all files in that bundle must be distributed together.
+%%
+%% The released version of this bundle is available from CTAN.
+%%
+%% -----------------------------------------------------------------------
+%%
+%% The development version of the bundle can be found at
+%%
+%%    http://www.latex-project.org/svnroot/experimental/trunk/
+%%
+%% for those people who are interested.
+%%
+%%%%%%%%%%%
+%% NOTE: %%
+%%%%%%%%%%%
+%%
+%%   Snapshots taken from the repository represent work in progress and may
+%%   not work or may contain conflicting material!  We therefore ask
+%%   people _not_ to put them into distributions, archives, etc. without
+%%   prior consultation with the LaTeX Project Team.
+%%
+%% -----------------------------------------------------------------------
+%%
+%
+%<*driver>
+\documentclass[full]{l3doc}
+\GetIdInfo$Id: l3fp-logic.dtx 5893 2015-08-26 16:16:52Z mittelba $
+  {L3 Floating-point conditionals}
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \title{The \textsf{l3fp-logic} package\thanks{This file
+%         has version number \ExplFileVersion, last
+%         revised \ExplFileDate.}\\
+% Floating point conditionals}
+% \author{^^A
+%  The \LaTeX3 Project\thanks
+%    {^^A
+%      E-mail:
+%        \href{mailto:latex-team@latex-project.org}
+%          {latex-team@latex-project.org}^^A
+%    }^^A
+% }
+% \date{Released \ExplFileDate}
+%
+% \maketitle
+%
+% \begin{documentation}
+%
+% \end{documentation}
+%
+% \begin{implementation}
+%
+% \section{\pkg{l3fp-logic} Implementation}
+%
+%    \begin{macrocode}
+%<*initex|package>
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%<@@=fp>
+%    \end{macrocode}
+%
+% \subsection{Syntax of internal functions}
+%
+% \begin{itemize}
+%   \item \cs{@@_compare_npos:nwnw} \Arg{expo_1} \meta{body_1} |;|
+%     \Arg{expo_2} \meta{body_2} |;|
+%   \item \cs{@@_minmax_o:Nw} \meta{sign} \meta{floating point array}
+%   \item \cs{@@_not_o:w} |?| \meta{floating point array} (with one floating point number only)
+%   \item \cs{@@_&_o:ww} \meta{floating point} \meta{floating point}
+%   \item \cs{@@_|_o:ww} \meta{floating point} \meta{floating point}
+%   \item \cs{@@_ternary:NwwN}, \cs{@@_ternary_auxi:NwwN},
+%     \cs{@@_ternary_auxii:NwwN} have to be understood.
+% \end{itemize}
+%
+% \subsection{Existence test}
+%
+% \begin{macro}[pTF]{\fp_if_exist:N, \fp_if_exist:c}
+%   Copies of the \texttt{cs} functions defined in \pkg{l3basics}.
+%    \begin{macrocode}
+\prg_new_eq_conditional:NNn \fp_if_exist:N \cs_if_exist:N { TF , T , F , p }
+\prg_new_eq_conditional:NNn \fp_if_exist:c \cs_if_exist:c { TF , T , F , p }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Comparison}
+%
+% \begin{macro}[pTF, EXP]{\fp_compare:n}
+% \begin{macro}[aux, EXP]{\@@_compare_return:w}
+%   Within floating point expressions, comparison operators are treated
+%   as operations, so we evaluate |#1|, then compare with $0$.
+%    \begin{macrocode}
+\prg_new_conditional:Npnn \fp_compare:n #1 { p , T , F , TF }
+  {
+    \exp_after:wN \@@_compare_return:w
+    \exp:w \exp_end_continue_f:w \@@_parse:n {#1}
+  }
+\cs_new:Npn \@@_compare_return:w \s_@@ \@@_chk:w #1#2;
+  {
+    \if_meaning:w 0 #1
+      \prg_return_false:
+    \else:
+      \prg_return_true:
+    \fi:
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}[pTF, EXP]{\fp_compare:nNn}
+% \begin{macro}[aux, EXP]{\@@_compare_aux:wn}
+%   Evaluate |#1| and |#3|, using an auxiliary to expand both, and feed
+%   the two floating point numbers swapped to \cs{@@_compare_back:ww},
+%   defined below.  Compare the result with |`#2-`=|, which is $-1$ for
+%   |<|, $0$ for |=|, $1$ for |>| and $2$ for |?|.
+%    \begin{macrocode}
+\prg_new_conditional:Npnn \fp_compare:nNn #1#2#3 { p , T , F , TF }
+  {
+    \if_int_compare:w
+        \exp_after:wN \@@_compare_aux:wn
+          \exp:w \exp_end_continue_f:w \@@_parse:n {#1} {#3}
+        = \__int_eval:w `#2 - `= \__int_eval_end:
+      \prg_return_true:
+    \else:
+      \prg_return_false:
+    \fi:
+  }
+\cs_new:Npn \@@_compare_aux:wn #1; #2
+  {
+    \exp_after:wN \@@_compare_back:ww
+      \exp:w \exp_end_continue_f:w \@@_parse:n {#2} #1;
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}[aux, EXP]{\@@_compare_back:ww, \@@_compare_nan:w}
+%   \begin{quote}
+%     \cs{@@_compare_back:ww} \meta{y} |;| \meta{x} |;|
+%   \end{quote}
+%   Expands (in the same way as \cs{int_eval:n}) to $-1$ if $x<y$, $0$
+%   if $x=y$, $1$ if $x>y$, and $2$ otherwise (denoted as $x?y$).  If
+%   either operand is \texttt{nan}, stop the comparison with
+%   \cs{@@_compare_nan:w} returning $2$.  If $x$ is negative, swap the
+%   outputs $1$ and $-1$ (\emph{i.e.}, $>$ and $<$); we can henceforth
+%   assume that $x\geq 0$.  If $y\geq 0$, and they have the same type,
+%   either they are normal and we compare them with
+%   \cs{@@_compare_npos:nwnw}, or they are equal.  If $y\geq 0$, but of
+%   a different type, the highest type is a larger number.  Finally, if
+%   $y\leq 0$, then $x>y$, unless both are zero.
+%    \begin{macrocode}
+\cs_new:Npn \@@_compare_back:ww
+    \s_@@ \@@_chk:w #1 #2 #3;
+    \s_@@ \@@_chk:w #4 #5 #6;
+  {
+    \__int_value:w
+      \if_meaning:w 3 #1 \exp_after:wN \@@_compare_nan:w \fi:
+      \if_meaning:w 3 #4 \exp_after:wN \@@_compare_nan:w \fi:
+      \if_meaning:w 2 #5 - \fi:
+      \if_meaning:w #2 #5
+        \if_meaning:w #1 #4
+          \if_meaning:w 1 #1
+            \@@_compare_npos:nwnw #6; #3;
+          \else:
+            0
+          \fi:
+        \else:
+          \if_int_compare:w #4 < #1 - \fi: 1
+        \fi:
+      \else:
+        \if_int_compare:w #1#4 = \c_zero
+          0
+        \else:
+          1
+        \fi:
+      \fi:
+    \exp_stop_f:
+  }
+\cs_new:Npn \@@_compare_nan:w #1 \exp_stop_f: { \c_two }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int, EXP]{\@@_compare_npos:nwnw}
+% \begin{macro}[aux, EXP]{\@@_compare_significand:nnnnnnnn}
+%   \begin{quote}
+%     \cs{@@_compare_npos:nwnw}
+%       \Arg{expo_1} \meta{body_1} |;|
+%       \Arg{expo_2} \meta{body_2} |;|
+%   \end{quote}
+%   Within an \cs{__int_value:w} \ldots{} \cs{exp_stop_f:} construction,
+%   this expands to $0$ if the two numbers are equal, $-1$ if the first
+%   is smaller, and $1$ if the first is bigger.  First compare the
+%   exponents: the larger one denotes the larger number.  If they are
+%   equal, we must compare significands.  If both the first $8$ digits and
+%   the next $8$ digits coincide, the numbers are equal.  If only the
+%   first $8$ digits coincide, the next $8$ decide.  Otherwise, the
+%   first $8$ digits are compared.
+%    \begin{macrocode}
+\cs_new:Npn \@@_compare_npos:nwnw #1#2; #3#4;
+  {
+    \if_int_compare:w #1 = #3 \exp_stop_f:
+      \@@_compare_significand:nnnnnnnn #2 #4
+    \else:
+      \if_int_compare:w #1 < #3 - \fi: 1
+    \fi:
+  }
+\cs_new:Npn \@@_compare_significand:nnnnnnnn #1#2#3#4#5#6#7#8
+  {
+    \if_int_compare:w #1#2 = #5#6 \exp_stop_f:
+      \if_int_compare:w #3#4 = #7#8 \exp_stop_f:
+        0
+      \else:
+        \if_int_compare:w #3#4 < #7#8 - \fi: 1
+      \fi:
+    \else:
+      \if_int_compare:w #1#2 < #5#6 - \fi: 1
+    \fi:
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \subsection{Floating point expression loops}
+%
+% \begin{macro}[rEXP]
+%   {
+%     \fp_do_until:nn, \fp_do_while:nn,
+%     \fp_until_do:nn, \fp_while_do:nn
+%   }
+%   These are quite easy given the above functions. The |do_until| and
+%   |do_while| versions execute the body, then test.  The |until_do| and
+%   |while_do| do it the other way round.
+%    \begin{macrocode}
+\cs_new:Npn \fp_do_until:nn #1#2
+  {
+    #2
+    \fp_compare:nF {#1}
+      { \fp_do_until:nn {#1} {#2} }
+  }
+\cs_new:Npn \fp_do_while:nn #1#2
+  {
+    #2
+    \fp_compare:nT {#1}
+      { \fp_do_while:nn {#1} {#2} }
+  }
+\cs_new:Npn \fp_until_do:nn #1#2
+  {
+    \fp_compare:nF {#1}
+      {
+        #2
+        \fp_until_do:nn {#1} {#2}
+      }
+  }
+\cs_new:Npn \fp_while_do:nn #1#2
+  {
+    \fp_compare:nT {#1}
+      {
+        #2
+        \fp_while_do:nn {#1} {#2}
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[rEXP]
+%   {
+%     \fp_do_until:nNnn, \fp_do_while:nNnn,
+%     \fp_until_do:nNnn, \fp_while_do:nNnn
+%   }
+%   As above but not using the |nNn| syntax.
+%    \begin{macrocode}
+\cs_new:Npn \fp_do_until:nNnn #1#2#3#4
+  {
+    #4
+    \fp_compare:nNnF {#1} #2 {#3}
+      { \fp_do_until:nNnn {#1} #2 {#3} {#4} }
+  }
+\cs_new:Npn \fp_do_while:nNnn #1#2#3#4
+  {
+    #4
+    \fp_compare:nNnT {#1} #2 {#3}
+      { \fp_do_while:nNnn {#1} #2 {#3} {#4} }
+  }
+\cs_new:Npn \fp_until_do:nNnn #1#2#3#4
+  {
+    \fp_compare:nNnF {#1} #2 {#3}
+      {
+        #4
+        \fp_until_do:nNnn {#1} #2 {#3} {#4}
+      }
+  }
+\cs_new:Npn \fp_while_do:nNnn #1#2#3#4
+  {
+    \fp_compare:nNnT {#1} #2 {#3}
+      {
+        #4
+        \fp_while_do:nNnn {#1} #2 {#3} {#4}
+      }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Extrema}
+%
+% \begin{macro}[int, EXP]{\@@_minmax_o:Nw}
+%   The argument~|#1| is $2$~to find the maximum of an array~|#2| of
+%   floating point numbers, and $0$~to find the minimum.  We read
+%   numbers sequentially, keeping track of the largest (smallest) number
+%   found so far.  If numbers are equal (for instance~$\pm0$), the first
+%   is kept.  We append $-\infty$ ($\infty$), for the case of an empty
+%   array, currently impossible.  Since no number is smaller (larger)
+%   than that, it will never alter the maximum (minimum).  The weird
+%   fp-like trailing marker breaks the loop correctly: see the precise
+%   definition of \cs{@@_minmax_loop:Nww}.
+%    \begin{macrocode}
+\cs_new:Npn \@@_minmax_o:Nw #1#2 @
+  {
+    \if_meaning:w 0 #1
+      \exp_after:wN \@@_minmax_loop:Nww \exp_after:wN \c_one
+    \else:
+      \exp_after:wN \@@_minmax_loop:Nww \exp_after:wN \c_minus_one
+    \fi:
+    #2
+    \s_@@ \@@_chk:w 2 #1 \s_@@_exact ;
+    \s_@@ \@@_chk:w { 3 \@@_minmax_break_o:w } ;
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux, EXP]{\@@_minmax_loop:Nww}
+%   The first argument is $-1$ or $1$ to denote the case where the
+%   currently largest (smallest) number found (first floating point
+%   argument) should be replaced by the new number (second floating
+%   point argument).  If the new number is \texttt{nan}, keep that as
+%   the extremum, unless that extremum is already a \texttt{nan}.
+%   Otherwise, compare the two numbers.  If the new number is larger (in
+%   the case of |max|) or smaller (in the case of |min|), the test
+%   yields \texttt{true}, and we keep the second number as a new
+%   maximum; otherwise we keep the first number.  Then loop.
+%    \begin{macrocode}
+\cs_new:Npn \@@_minmax_loop:Nww
+    #1 \s_@@ \@@_chk:w #2#3; \s_@@ \@@_chk:w #4#5;
+  {
+    \if_meaning:w 3 #4
+      \if_meaning:w 3 #2
+        \@@_minmax_auxi:ww
+      \else:
+        \@@_minmax_auxii:ww
+      \fi:
+    \else:
+      \if_int_compare:w
+          \@@_compare_back:ww
+            \s_@@ \@@_chk:w #4#5;
+            \s_@@ \@@_chk:w #2#3;
+          = #1
+        \@@_minmax_auxii:ww
+      \else:
+        \@@_minmax_auxi:ww
+      \fi:
+    \fi:
+    \@@_minmax_loop:Nww #1
+      \s_@@ \@@_chk:w #2#3;
+      \s_@@ \@@_chk:w #4#5;
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux, EXP]{\@@_minmax_auxi:ww, \@@_minmax_auxii:ww}
+%   Keep the first/second number, and remove the other.
+%    \begin{macrocode}
+\cs_new:Npn \@@_minmax_auxi:ww  #1 \fi: \fi: #2 \s_@@ #3 ; \s_@@ #4;
+  { \fi: \fi: #2 \s_@@ #3 ; }
+\cs_new:Npn \@@_minmax_auxii:ww #1 \fi: \fi: #2 \s_@@ #3 ;
+  { \fi: \fi: #2 }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[aux, EXP]{\@@_minmax_break_o:w}
+%   This function is called from within an \cs{if_meaning:w} test.  Skip
+%   to the end of the tests, close the current test with \cs{fi:}, clean
+%   up, and return the appropriate number with one post-expansion.
+%    \begin{macrocode}
+\cs_new:Npn \@@_minmax_break_o:w #1 \fi: \fi: #2 \s_@@ #3; #4;
+  { \fi: \@@_exp_after_o:w \s_@@ #3; }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Boolean operations}
+%
+% \begin{macro}[int, EXP]{\@@_not_o:w}
+%   Return \texttt{true} or \texttt{false}, with two expansions, one to
+%   exit the conditional, and one to please \pkg{l3fp-parse}.  The first
+%   argument is provided by \pkg{l3fp-parse} and is ignored.
+%    \begin{macrocode}
+\cs_new:cpn { @@_not_o:w } #1 \s_@@ \@@_chk:w #2#3; @
+  {
+    \if_meaning:w 0 #2
+      \exp_after:wN \exp_after:wN \exp_after:wN \c_one_fp
+    \else:
+      \exp_after:wN \exp_after:wN \exp_after:wN \c_zero_fp
+    \fi:
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int, EXP]+\@@_&_o:ww+
+% \begin{macro}[int, EXP]+\@@_|_o:ww+
+% \begin{macro}[aux, EXP]{\@@_and_return:wNw}
+%   For \texttt{and}, if the first number is zero, return it (with the
+%   same sign).  Otherwise, return the second one.  For \texttt{or}, the
+%   logic is reversed: if the first number is non-zero, return it,
+%   otherwise return the second number: we achieve that by hi-jacking
+%   \cs{@@_\&_o:ww}, inserting an extra argument, \cs{else:}, before
+%   \cs{s_@@}.  In all cases, expand after the floating point number.
+%    \begin{macrocode}
+\group_begin:
+  \char_set_catcode_letter:N &
+  \char_set_catcode_letter:N |
+  \cs_new:Npn \@@_&_o:ww #1 \s_@@ \@@_chk:w #2#3;
+    {
+      \if_meaning:w 0 #2 #1
+        \@@_and_return:wNw \s_@@ \@@_chk:w #2#3;
+      \fi:
+      \@@_exp_after_o:w
+    }
+  \cs_new_nopar:Npn \@@_|_o:ww { \@@_&_o:ww \else: }
+\group_end:
+\cs_new:Npn \@@_and_return:wNw #1; \fi: #2#3; { \fi: #2 #1; }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+% \end{macro}
+%
+% \subsection{Ternary operator}
+%
+%^^A todo: understand and optimize.
+% \begin{macro}[int, EXP]
+%   {\@@_ternary:NwwN, \@@_ternary_auxi:NwwN, \@@_ternary_auxii:NwwN}
+% \begin{macro}[aux, EXP]
+%   {
+%     \@@_ternary_loop_break:w, \@@_ternary_loop:Nw,
+%     \@@_ternary_map_break:, \@@_ternary_break_point:n
+%   }
+%   The first function receives the test and the true branch of the |?:|
+%   ternary operator.  It returns the true branch, unless the test
+%   branch is zero.  In that case, the function returns a very specific
+%   \texttt{nan}.  The second function receives the output of the first
+%   function, and the false branch.  It returns the previous input,
+%   unless that is the special \texttt{nan}, in which case we return the
+%   false branch.
+%    \begin{macrocode}
+\cs_new:Npn \@@_ternary:NwwN #1 #2@ #3@ #4
+  {
+    \if_meaning:w \@@_parse_infix_::N #4
+      \@@_ternary_loop:Nw
+        #2
+        \s_@@ \@@_chk:w { \@@_ternary_loop_break:w } ;
+      \@@_ternary_break_point:n { \exp_after:wN \@@_ternary_auxi:NwwN }
+      \exp_after:wN #1
+      \exp:w \exp_end_continue_f:w
+      \@@_exp_after_array_f:w #3 \s_@@_stop
+      \exp_after:wN @
+      \exp:w
+        \@@_parse_operand:Nw \c_two
+        \@@_parse_expand:w
+    \else:
+      \__msg_kernel_expandable_error:nnnn
+        { kernel } { fp-missing } { : } { ~for~?: }
+      \exp_after:wN \@@_parse_continue:NwN
+      \exp_after:wN #1
+      \exp:w \exp_end_continue_f:w
+      \@@_exp_after_array_f:w #3 \s_@@_stop
+      \exp_after:wN #4
+      \exp_after:wN #1
+    \fi:
+  }
+\cs_new:Npn \@@_ternary_loop_break:w
+    #1 \fi: #2 \@@_ternary_break_point:n #3
+  {
+    \c_zero = \c_zero \fi:
+    \exp_after:wN \@@_ternary_auxii:NwwN
+  }
+\cs_new:Npn \@@_ternary_loop:Nw \s_@@ \@@_chk:w #1#2;
+  {
+    \if_int_compare:w #1 > \c_zero
+      \exp_after:wN \@@_ternary_map_break:
+    \fi:
+    \@@_ternary_loop:Nw
+  }
+\cs_new:Npn \@@_ternary_map_break: #1 \@@_ternary_break_point:n #2 {#2}
+\cs_new:Npn \@@_ternary_auxi:NwwN #1#2@#3@#4
+  {
+    \exp_after:wN \@@_parse_continue:NwN
+    \exp_after:wN #1
+    \exp:w \exp_end_continue_f:w
+    \@@_exp_after_array_f:w #2 \s_@@_stop
+    #4 #1
+  }
+\cs_new:Npn \@@_ternary_auxii:NwwN #1#2@#3@#4
+  {
+    \exp_after:wN \@@_parse_continue:NwN
+    \exp_after:wN #1
+    \exp:w \exp_end_continue_f:w
+    \@@_exp_after_array_f:w #3 \s_@@_stop
+    #4 #1
+  }
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+%    \begin{macrocode}
+%</initex|package>
+%    \end{macrocode}
+%
+% \end{implementation}
+%
+% \PrintChanges
+%
+% \PrintIndex

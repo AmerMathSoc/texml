@@ -1,0 +1,666 @@
+%
+% bxeepic.sty
+%
+
+%% package declarations
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{bxeepic}[2013/04/28 v0.2]
+
+%% preparation
+\def\bxpz@ee@pkgname{bxeepic}
+\def\bxpz@ee@error{\PackageError\bxpz@ee@pkgname}
+\def\bxpz@ee@warn{\PackageWarning\bxpz@ee@pkgname}
+% (errors)
+\def\bxpz@warn@peald#1{\bxpz@ee@warn
+  {Option '#1' ignored (pict2e already loaded)}}
+\def\bxpz@warn@wnpnt{\bxpz@ee@warn
+  {Poly-line commands need at least two vertices.}}
+\def\bxpz@warn@wnstr{\bxpz@ee@warn
+  {Blank lines due to too low stretch value.}}
+% (globals)
+\newif\ifbxpz@injoin
+\newif\ifbxpz@dashset
+\newif\ifbxpz@eepic@dotl
+\newif\ifbxpz@uselbl
+\newif\ifbxpz@first
+\chardef\bxpz@boxa=8
+
+%% public parameters
+%%<*> \dashlinestretch
+\def\dashlinestretch{0}
+%%<*> \drawlinestretch
+\def\drawlinestretch{0}
+%%<*> \maxovaldiam
+\newdimen\maxovaldiam \maxovaldiam=40pt
+%%<*> \epictopgridlabelsep
+\def\epictopgridlabelsep{2mm}
+%%<*> \epicbottomgridlabelsep
+\def\epicbottomgridlabelsep{2\unitlength}
+%%<*> \epicsidegridlabelsep
+\def\epicsidegridlabelsep{\spacewidth}
+%% other initial settings
+\AtEndOfPackage{%
+  \drawlines
+  \eepicdottedlines
+  \def\bxpz@tmpa{20pt}%
+  %\ifx\maxovalrad\bxpz@tmpa \def\maxovalrad{.5\maxovaldiam}\fi
+}
+
+%% internal parameters
+\def\bxpz@dashlen@drawline{10pt}
+\def\bxpz@setdash@phase{0}
+\def\bxpz@dflt@linecap{0}
+\def\bxpz@dflt@linejoin{0}
+
+%% dvipdfmx option
+\IfFileExists{p2e-dvipdfmx.def}{}{%else
+  % if pict2e lacks of proper support of dvipdfmx
+  \@ifpackageloaded{pict2e}{}{%else
+    \DeclareOption{dvipdfmx}{%
+      \PassOptionsToPackage{dvipdfm}{pict2e}%
+      \def\bxpz@begin@picture@hook{\let\pdfliteral\bxpz@pdfliteral}%
+      \def\bxpz@pdfliteral##1{\special{pdf:literal ##1}}%
+      \let\bxpz@org@@picture\@picture
+      \def\@picture{\bxpz@begin@picture@hook \bxpz@org@@picture}%
+    }%
+  }%
+}
+%% option handling
+\newif\ifbxpz@safe
+\DeclareOption{safe}{\bxpz@safetrue}
+\DeclareOption{nosafe}{\bxpz@safefalse}
+% other options are passed to pict2e
+\@ifpackageloaded{pict2e}{%
+  \DeclareOption*{\bxpz@warn@peald\CurrentOption}%
+}{%else
+  \DeclareOption*{\PassOptionsToPackage{\CurrentOption}{pict2e}}%
+}%
+\ExecuteOptions{nosafe}
+\ProcessOptions*
+
+% load pict2e if not done
+\@ifpackageloaded{pict2e}{}{\RequirePackage{pict2e}}
+
+% pretend that epic & eepic are already loaded
+\@namedef{ver@epic.sty}{2100/01/01}
+\@namedef{ver@eepic.sty}{2100/01/01}
+
+%%------ mode-dependent stuffs
+
+%% exits unless in right mode
+\ifnum\pIIe@mode<\@ne
+  \endinput\expandafter\fi
+
+%% 
+\ifcase\pIIe@mode\relax
+  \or
+  \def\bxpz@setdash@op{setdash}
+  \or
+  \def\bxpz@setdash@op{d}
+\fi
+\def\bxpz@beginarray@op{[}
+\def\bxpz@endarray@op{]}
+
+%%------ Poly-line commands
+
+%% \bxpz@asdraw / \bxpz@asjoin / \bxpz@asmode
+\def\bxpz@asdraw{\chardef\bxpz@lm@invoke\z@}
+\def\bxpz@asjoin{\chardef\bxpz@lm@invoke\@ne}
+\def\bxpz@asmode{\chardef\bxpz@lm@invoke\tw@}
+
+%%<*> \drawline/\dottedline/\dashline
+% \dottedline[CHAR]{DOTGAP}(X1,Y1)...(XN,YN)
+% \dashline[STRETCH]{DASHLEN}[DOTGAP](X1,Y1)...(XN,YN)
+%   * DOTGAP is ignored
+% \drawline[STRETCH](X1,Y1)...(XN,YN)
+%   * switches to \dashline in case of negative STRETCH
+\def\drawline{\bxpz@asdraw\bxpz@drawl@a}
+\def\dottedline{\bxpz@asdraw\bxpz@dotl@a}
+\def\dashline{\bxpz@asdraw\bxpz@dashl@a}
+\def\bxpz@drawl@a{\@testopt\bxpz@drawl@b\drawlinestretch}
+\def\bxpz@drawl@b[#1]{%
+  \ifnum#1<\z@ \def\bxpz@nxt{\bxpz@path{\bxpz@dp@drawl@x{#1}}}%
+  \else \let\bxpz@nxt\bxpz@drawl@c
+  \fi \bxpz@nxt}
+\def\bxpz@drawl@c{\bxpz@path{\bxpz@dp@drawl}}
+\def\bxpz@dashl@a{\@testopt\bxpz@dashl@b\dashlinestretch}
+\def\bxpz@dashl@b[#1]#2{\@testopt{\bxpz@dashl@c{#1}{#2}}{}}
+\def\bxpz@dashl@c#1#2[#3]{\bxpz@path{\bxpz@dp@dashl{#1}{#2}}}
+\def\bxpz@dotl@a{\@testopt\bxpz@dotl@b{}}
+\def\bxpz@dotl@b[#1]#2{\bxpz@path{\bxpz@dp@dotl{#1}{#2}}}
+%\def\path{\bxpz@asdraw\bxpz@path{}}
+%% \bxpz@path{<dash-pattern>}
+\def\bxpz@path#1{%
+  #1\ifcase\bxpz@lm@invoke
+    \expandafter\bxpz@polyline
+    \or \expandafter\bxpz@join@start
+    \or \expandafter\bxpz@dash@mode
+  \fi}
+
+%% \bxpz@polyline
+% Same as \polyline in pict2e, except that \bxpz@stroke@graph is
+% used instead of \pIIe@strokeGraph.
+\def\bxpz@polyline(#1,#2){%
+  \@killglue
+  \pIIe@moveto{#1\unitlength}{#2\unitlength}%
+  \@ifnextchar\lp@r{\bxpz@polyline@a}%
+   {\ifnum\bxpz@lm@invoke=\z@ \bxpz@warn@wnpnt \fi \ignorespaces}}
+\def\bxpz@polyline@a(#1,#2){%
+  \pIIe@lineto{#1\unitlength}{#2\unitlength}%
+  \@ifnextchar\lp@r{\bxpz@polyline@a}{\bxpz@stroke@graph\ignorespaces}}
+
+%%<*> drawjoin / dottedjoin / dashjoin environment
+% \begin{dottedjoin}[CHAR]{DOTGAP}...\end{dottedjoin}
+% \begin{dashjoin}[STRETCH]{DASHLEN}[DOTGAP]...\end{dashjoin}
+% \begin{drawjoin}[STRETCH]...\end{drawjoin}
+\def\drawjoin{\bxpz@asjoin\bxpz@drawl@a}
+\def\dottedjoin{\bxpz@asjoin\bxpz@dotl@a}
+\def\dashjoin{\bxpz@asjoin\bxpz@dashl@a}
+\def\bxpz@endjoin{\bxpz@join@end\aftergroup\bxpz@join@finale}
+\let\enddrawjoin\bxpz@endjoin
+\let\enddottedjoin\bxpz@endjoin
+\let\enddashjoin\bxpz@endjoin
+
+%%<*> \jput(X,Y){something}
+\def\jput(#1,#2){%
+  \ifbxpz@injoin
+    \xdef\bxpz@g@join@last{(#1,#2)}%
+    \xdef\bxpz@g@join@path{\bxpz@g@join@path\bxpz@g@join@last}%
+  \fi \put(#1,#2)}
+\let\bxpz@g@join@last\relax
+\let\bxpz@g@join@path\@empty
+
+%% \bxpz@join@start
+\def\bxpz@join@start{%
+  \bxpz@renew@join \let\bxpz@dp@join\bxpz@dp
+  \edef\bxpz@wholewidth@join{\the\@wholewidth}%
+  \bxpz@dp@clear \bxpz@injointrue \ignorespaces}
+
+%% \bxpz@join@end
+\def\bxpz@join@end{\bxpz@renew@join}
+
+%% \bxpz@join@finale
+\def\bxpz@join@finale{%
+  \ifbxpz@injoin\else
+    \global\let\bxpz@g@join@last\relax
+    \global\let\bxpz@g@join@path\@empty
+  \fi \ignorespaces}
+
+%%<*> \flushjoin
+\def\flushjoin{%
+  \bxpz@flush@join \global\let\bxpz@g@join@last\relax}
+%% \bxpz@renew@join
+\def\bxpz@renew@join{%
+  \bxpz@flush@join
+  \ifx\bxpz@g@join@last\relax\else
+    \global\let\bxpz@g@join@path\bxpz@g@join@last \fi}
+\def\bxpz@flush@join{%
+  \ifx\bxpz@g@join@path\@empty\else
+    \bgroup \bxpz@asjoin
+      \@wholewidth=\bxpz@wholewidth@join \let\bxpz@dp\bxpz@dp@join
+      \expandafter\bxpz@polyline\bxpz@g@join@path
+    \egroup \global\let\bxpz@g@join@path\@empty
+  \fi}
+
+%%<*> \drawlines / \dottedlines / \dashlines
+\def\drawlines{\bxpz@asmode\bxpz@drawl@a}
+\def\dottedlines{\bxpz@asmode\bxpz@dotl@a}
+\def\dashlines{\bxpz@asmode\bxpz@dashl@a}
+
+%% \bxpz@dash@mode
+\def\bxpz@dash@mode{%
+  \let\bxpz@dp@mode\bxpz@dp \bxpz@dp@clear \ignorespaces}
+
+%%<*>\path(X1,Y1)..(Xn,Yn)
+\def\path{\bxpz@asdraw \bxpz@polyline}
+
+%%------ Dash-pattern generator
+
+% A dash-pattern generator defines \bxpz@dp to be
+% {<PS dash array>}{<dash flag>}
+% where <dash flag> means: 0 = normal; 1 = ordinary dotted line,
+% line-width adjustment is needed; 2 = character dotted line.
+
+%% \bxpz@dp@drawl
+\def\bxpz@dp@drawl{\let\bxpz@dp\bxpz@dp@drawl@val}
+%% \bxpz@dp@dotl{<IGNORED>}{<dot-gap>}
+\def\bxpz@dp@dotl#1#2{\bxpz@dp@start
+  \bxpz@addto@dp@nums{\@wholewidth}{#2\unitlength}%
+  \gdef\bxpz@g@dpflag{1}\bxpz@dp@end}
+%% \bxpz@dp@drawl@x{<stretch>}
+% For \drawline with negative stretch.
+\def\bxpz@dp@drawl@x#1{\bxpz@dp@dashl@sub{%
+  \@tempcnta=#1\relax\multiply\@tempcnta\tw@
+  \@tempdima=\bxpz@dashlen@drawline}}
+%% \bxpz@dp@dashl{<stretch>}{<dash-length>}
+\def\bxpz@dp@dashl#1#2{\bxpz@dp@dashl@sub{%
+  \@tempcnta=#1\relax\advance\@tempcnta-100 
+  \@tempdima=#2\unitlength}}
+% \bxpz@dp@dashl@sub
+% Here dash gap length is calculated so that 'ink ratio' in resulted
+% lines equals the value derived from the given stretch value.
+% ink ratio:     (blank)0.0    0.5     1.0(solid)
+% \drawline stretch:   -100 .. -50 ..    0
+% \dashline stretch:   -100 ..   0 ..  100
+\def\bxpz@dp@dashl@sub#1{\bxpz@dp@start
+  #1% here \@tempcnta is adjusted in range -200..0
+  \ifnum\@tempcnta<\z@
+    \ifnum\@tempcnta>-200 %
+      \@tempdimb=-\@tempcnta\@tempdima
+      \advance\@tempcnta200 \divide\@tempdimb\@tempcnta
+      \bxpz@addto@dp@nums{\@tempdima}{\@tempdimb}%
+    \else % 'blank' lines
+      \bxpz@warn@wnstr \bxpz@addto@dp@nums{\z@}{1000pt}%
+    \fi
+  \fi % if \@tempcnta >=0 then do nothing (solid lines)
+  \bxpz@dp@end}
+% some internal stuffs
+\def\bxpz@dp@start{%
+  \bgroup \global\let\bxpz@g@dp\@empty \gdef\bxpz@g@dpflag{0}}
+\def\bxpz@dp@end{
+  \egroup \edef\bxpz@dp{{\bxpz@g@dpflag}{\bxpz@g@dp}}}
+\def\bxpz@dp@drawl@val{{}{0}}
+\def\bxpz@addto@dp@nums#1#2{%
+  \bgroup \@tempdima#1\relax \@tempdimb#2\relax
+    \xdef\bxpz@g@dp{%
+     \bxpz@g@dp\strip@pt\@tempdima\space\strip@pt\@tempdimb\space}%
+  \egroup}
+\def\bxpz@dp@clear{\let\bxpz@dp\relax}
+
+%%------ Strokes with dash-pattern in effect
+
+%% pict2e original \pIIe@strokeGraph
+\def\bxpz@pIIe@strokeGraph{\begingroup \@tempswafalse\pIIe@drawGraph}
+
+% \bxpz@stroke@graph
+\def\bxpz@stroke@graph{\begingroup \bxpz@draw@graph}
+\def\bxpz@draw@graph{%
+  \ifx\bxpz@dp\relax \let\bxpz@dp\bxpz@dp@mode \fi
+  \ifx\bxpz@dp\bxpz@dp@drawl@val \let\bxpz@setdash\@empty
+  \else
+    \ifbxpz@eepic@dotl \roundcap \fi
+    \bxpz@set@dp\bxpz@dp
+    \ifnum \bxpz@dpflag=\@ne \bxpz@adj@linewidth \fi
+    \xdef\bxpz@setdash{\bxpz@beginarray@op\space\bxpz@dpary
+      \bxpz@endarray@op\space\bxpz@setdash@phase\space
+      \bxpz@setdash@op\space}%
+  \fi
+  \edef\x{\pIIe@debug@comment\space\pIIe@scale@PTtoBP}%
+  \edef\x{\x\space\bxpz@setdash\strip@pt\@wholewidth\space
+    \pIIe@setlinewidth@op}%
+  \edef\y{\pIIe@stroke@op}%
+  \expandafter\pIIe@code\expandafter{%
+   \expandafter\x\the\pIIe@GRAPH\space\y}%
+  \global\pIIe@GRAPH{}\xdef\pIIe@CPx{}\xdef\pIIe@CPy{}%
+  \endgroup
+  \let\bxpz@dp\relax}
+
+%% \bxpz@set@dp\DP
+\def\bxpz@set@dp#1{\expandafter\bxpz@set@dp@a#1}
+\def\bxpz@set@dp@a#1#2{%
+  \def\bxpz@dpary{#2}\def\bxpz@dpflag{#1}}
+
+\def\bxpz@adj@linewidth{%
+  \ifdim\@wholewidth<0.2pt \@wholewidth=2\@wholewidth
+  \else\ifdim\@wholewidth<1pt
+    \@wholewidth=0.75\@wholewidth \advance\@wholewidth0.25pt
+  \fi\fi}
+
+%%------ Circles & ovals
+
+% pict2e's original \@arc command
+\let\bxpz@pIIe@arc\@arc
+
+%% \@arc{<diam>}{<s_angle>}{<e_angle>}
+% If the arguments obey the format shown above then passes them
+% to \bxpz@eepic@arc; otherwise passes them to \bxpz@pIIe@arc.
+\def\@arc{\@ifnextchar[{\@arc}{\bxpz@arc@a}}
+\def\bxpz@arc@a#1{%
+  \def\bxpz@argi{#1}\futurelet\bxpz@tok\bxpz@arc@b}
+\def\bxpz@arc@b{%
+  \ifx\bxpz@tok\bgroup \expandafter\bxpz@arc@c
+  \else \bxpz@pIIe@arc\bxpz@argi \fi}
+\def\bxpz@arc@c#1{%
+  \def\bxpz@doargii{\bxpz@do{#1}}\futurelet\bxpz@tok\bxpz@arc@d}
+\def\bxpz@arc@d{%
+  \ifx\bxpz@tok\bgroup \expandafter\bxpz@arc@f
+  \else \expandafter\bxpz@arc@e \fi}
+\def\bxpz@arc@e{%
+  \bxpz@pIIe@arc\bxpz@argi \let\bxpz@do\@empty\bxpz@doargii}
+\def\bxpz@arc@f{%
+  \def\bxpz@do##1{\bxpz@eepic@arc\bxpz@argi{##1}}\bxpz@doargii}
+
+%% \bxpz@eepic@arc{<diam>}{<s_angle>}{<e_angle>}
+\def\bxpz@eepic@arc#1#2#3{%
+  \bgroup
+    \@tempdima=#2\p@ \@tempdimb=#3\p@ \bxpz@conv@arc@param
+    \@tempdimc=#1\unitlength \divide\@tempdimc\tw@
+    \xdef\bxpz@g@tmpa{%
+      {\the\@tempdimc}{\strip@pt\@tempdima}{\strip@pt\@tempdimb}}%
+  \egroup
+  \if@tempswa
+    \def\bxpz@do{\pIIe@arc{\z@}{\z@}}%
+    \pIIe@moveto\z@\z@ \expandafter\bxpz@do\bxpz@g@tmpa
+    \pIIe@closepath\pIIe@fillGraph
+  \else
+    \def\bxpz@do{\pIIe@arc[1]{\z@}{\z@}}%
+    \expandafter\bxpz@do\bxpz@g@tmpa \pIIe@strokeGraph
+  \fi}
+
+%% \bxpz@conv@arc@param
+% Converts tpic degree arguments (s, e) to pict2e ones (S, E); values
+% of (\@tempdima, \@tempdimb) are changed from (s, e) to (S, E).
+% Let (S', E') = -(180/pi)(s, e); then:
+% * if e - s >= 2pi (ie. S' - 360 >= E') then (S, E) = (0, 360)
+%   so that a whole circle is drawn;
+% * otherwise, adjust S' and E' to values in range [0, 360), and then
+%   if S' < E' then decrement E' by 360, since in tpic an arc is
+%   always drawn in clockwise direction and thus S' >= E' must hold.
+% Note: After scaling by 180/pi, degree values are rounded to multiples
+% of 2^(-10). This rounding eliminates errors in the case of 'common
+% angles' such as 15deg, while generally it enlarges the maximum possible
+% error by factor about two.
+\def\bxpz@conv@arc@param{%
+%\typeout{BEFORE:\the\@tempdima/\the\@tempdimb}%
+  \bxpz@conv@arc@param@a\@tempdima \bxpz@conv@arc@param@a\@tempdimb
+  \@tempdimc\@tempdima \dimen@360\p@ \advance\@tempdimc-\dimen@
+  \ifdim \@tempdimb>\@tempdimc
+    \bxpz@conv@arc@param@b\@tempdima \bxpz@conv@arc@param@b\@tempdimb
+    \ifdim \@tempdima<\@tempdimb \advance\@tempdimb-\dimen@ \fi
+  \else \@tempdima\z@ \@tempdimb\dimen@ \fi
+%\typeout{AFTER : \the\@tempdima/\the\@tempdimb}%
+}
+\def\bxpz@conv@arc@param@a#1{%
+  #1=57.29577951#1\advance#132sp \divide#164\multiply#1-64\relax}
+\def\bxpz@conv@arc@param@b#1{%
+  \@whiledim#1>\z@ \do{\advance#1-\dimen@}%
+  \@whiledim#1<\z@ \do{\advance#1\dimen@}}%
+
+%%<*> \ellipse[*]{<x_diam>}{<y_diam>}
+\def\ellipse{%
+  \@ifstar{\begingroup\@tempswatrue\bxpz@ellipse}%
+   {\begingroup\@tempswafalse\bxpz@ellipse}}
+\def\bxpz@ellipse#1#2{%
+    \@tempdima=#1\unitlength\@tempdimb=#2\unitlength
+    \ifdim\@tempdima<\z@ \@tempdima\z@ \fi
+    \ifdim\@tempdimb<\z@ \@tempdimb\z@ \fi
+    \divide\@tempdima\tw@ \divide\@tempdimb\tw@
+    \bxpz@ellipse@a
+    \if@tempswa \pIIe@fillGraph \else \pIIe@strokeGraph \fi
+  \endgroup}
+\def\bxpz@ellipse@a{%
+  \buttcap \@ovxx\@tempdima \@ovyy\@tempdimb
+  \@ovdx=0.55228475\@ovxx \@ovdy=0.55228475\@ovyy
+  \pIIe@moveto\@ovxx\z@
+  \pIIe@curveto\@ovxx\@ovdy\@ovdx\@ovyy\z@\@ovyy
+  \pIIe@curveto{-\@ovdx}\@ovyy{-\@ovxx}\@ovdy{-\@ovxx}\z@
+  \pIIe@curveto{-\@ovxx}{-\@ovdy}{-\@ovdx}{-\@ovyy}\z@{-\@ovyy}%
+  \pIIe@curveto\@ovdx{-\@ovyy}\@ovxx{-\@ovdy}\@ovxx\z@
+  \pIIe@closepath}
+
+
+%%------ Chaikin spline curves
+
+%%<*> \spline
+% Same as \polyline in pict2e, except that \bxpz@stroke@graph is
+% used instead of \pIIe@strokeGraph.
+\def\spline{\bxpz@firsttrue\bxpz@spline@a}
+\def\bxpz@spline@a(#1,#2){%
+  \@killglue \@xdim=#1\unitlength \@ydim=#2\unitlength
+  \pIIe@moveto\@xdim\@ydim
+  \@ifnextchar\lp@r{\bxpz@spline@b}%
+   {\ifnum \bxpz@warn@wnpnt \ignorespaces}}
+\def\bxpz@spline@b(#1,#2){%
+  % M1:previous midpoint   (\@ovdx,\@ovdy)
+  % P1:previous point      (\@xdim,\@ydim)
+  % M2:current midpoint    (\@ovxx,\@ovyy)
+  % P2:current point       (\@tempdima,\@tempdimb)
+  \@tempdima=#1\unitlength\@tempdimb=#2\unitlength
+  \@ovxx\@tempdima \advance\@ovxx\@xdim \divide\@ovxx\tw@
+  \@ovyy\@tempdimb \advance\@ovyy\@ydim \divide\@ovyy\tw@
+  \ifbxpz@first
+    \pIIe@lineto\@ovxx\@ovyy \bxpz@firstfalse
+  \else\bgroup
+    % quadratic Bezier curve M1--P1--M2
+    \pIIe@bezier@QtoC\@ovdx\@xdim\@ovdx
+    \pIIe@bezier@QtoC\@ovdy\@ydim\@ovdy
+    \pIIe@bezier@QtoC\@ovxx\@xdim\@xdim
+    \pIIe@bezier@QtoC\@ovyy\@ydim\@ydim
+    \pIIe@curveto\@ovdx\@ovdy\@xdim\@ydim\@ovxx\@ovyy
+  \egroup\fi
+  \@ovdx\@ovxx \@ovdy\@ovyy
+  \@xdim\@tempdima \@ydim\@tempdimb
+  \@ifnextchar\lp@r{\bxpz@spline@b}{\bxpz@spline@c}}
+\def\bxpz@spline@c{%
+  \pIIe@lineto\@xdim\@ydim
+  \bxpz@stroke@graph\ignorespaces}
+
+
+%%------ Functions not dependent on special features
+
+%%<*> \allinesthickness
+% In pict2e \linethickness setting applies to all kinds of lines.
+% For better compatibility with eepic, \allinesthickness changes
+% (without much aim) the LaTeX "line fonts".
+\def\allinethickness{\bxpz@thicklinefont \linethickness}
+\def\bxpz@thicklinefont{\let\@linefnt\tenlnw\let\@circlefnt\tencircw}
+
+%%<*> \Thicklines
+% Sets line-width to 1.5 times the width of \thicklines.
+\def\Thicklines{\bxpz@thicklinefont \@wholewidth\fontdimen8\tenlnw
+  \linethickness{1.5\@wholewidth}}
+
+%%<*> \picsquare
+% Not of much use.
+\def\picsquare{%
+  \hskip-\@halfwidth
+  \vrule\@width\@wholewidth\@height\@halfwidth\@depth\@halfwidth\relax}
+
+%%<*> \multiputlist
+% \multiputlist(X,Y)(DX,DY)[tbrl]{ITEM,...}
+\def\multiputlist(#1,#2)(#3,#4){%
+  \@xdim=#1\unitlength \@ydim=#2\unitlength \@killglue
+  \@ifnextchar[{\bxpz@multiputlist@a{#3}{#4}}%
+    {\bxpz@multiputlist@a{#3}{#4}[]}}
+\def\bxpz@multiputlist@a#1#2[#3]#4{%
+  \@for\bxpz@x:={#4}\do{%
+    \raise\@ydim\hb@xt@\z@{\kern\@xdim
+      \@imakepicbox(0,0)[#3]\bxpz@x \hss}%
+    \advance\@xdim#1\unitlength \advance\@ydim#2\unitlength}%
+  \ignorespaces}
+
+%%<*> \matrixput
+% \matrixput(X,Y)(DX1,DY1){N1}(DX2,DY2){N2}{ITEM}
+\def\matrixput(#1,#2)(#3,#4)#5(#6,#7)#8#9{%
+  \bgroup \@xdim\z@ \@ydim\z@
+    \setbox\bxpz@boxa\hbox{%
+      \@multicnt=#8\relax
+      \@whilenum\@multicnt>\z@\do{%
+        \raise\@ydim\hb@xt@\z@{\kern\@xdim #9\hss}%
+        \advance\@xdim#6\unitlength \advance\@ydim#7\unitlength
+        \advance\@multicnt\m@ne}}%
+    \@xdim=#1\unitlength \@ydim=#2\unitlength \@killglue
+    \@multicnt=#5\relax
+    \@whilenum\@multicnt>\z@\do{%
+      \raise\@ydim\hb@xt@\z@{\kern\@xdim \copy\bxpz@boxa\hss}%
+      \advance\@xdim#3\unitlength \advance\@ydim#4\unitlength
+      \advance\@multicnt\m@ne}%
+  \egroup \ignorespaces}
+
+%%<*> \grid
+% \grid(W,H)(DW,DH)[X0,Y0]
+\def\grid(#1,#2)(#3,#4){%
+  \@ovxx=#1\unitlength \@ovyy=#2\unitlength 
+  \edef\bxpz@gridx{#3}\edef\bxpz@gridy{#4}%
+  \@ifnextchar[{\bxpz@grid@a}{\bxpz@grid@a[,]}}
+\def\bxpz@grid@a[#1,#2]{%
+  \@killglue \let\spacewidth\@ovri
+  \setbox\bxpz@boxa\hbox{\space}\@ovri=\wd\bxpz@boxa
+  \@tempdimc=\z@ \@ovdx=\bxpz@gridx\unitlength
+  \ifx @#1@\bxpz@uselblfalse
+  \else \@tempdima=#1\p@ \bxpz@uselbltrue \fi
+  \@tempdimb\@ovxx \advance\@tempdimb.5\@ovdx \divide\@tempdimb\@ovdx
+  \@tempcnta\@tempdimb \advance\@tempcnta\@ne
+  \@whilenum\@tempcnta>\z@ \do{%
+    \hb@xt@\z@{\kern\@tempdimc \kern-\@halfwidth
+      \vrule\@height\@ovyy\@width\@wholewidth \hss}%
+    \ifbxpz@uselbl \bxpz@makelbl
+      \setbox\bxpz@boxa\hb@xt@\z@{\hss\copy\bxpz@boxa\hss}%
+      \hb@xt@\z@{\kern\@tempdimc
+        \vtop{\kern\epicbottomgridlabelsep\copy\bxpz@boxa}\hss}%
+      \raise\@ovyy\hb@xt@\z@{\kern\@tempdimc
+        \vbox{\copy\bxpz@boxa\kern\epictopgridlabelsep}\hss}%
+    \fi
+    \advance\@tempdima\bxpz@gridx\p@ \advance\@tempdimc\@ovdx
+    \advance\@tempcnta\m@ne}%
+  \@tempdimc=\z@ \@ovdy=\bxpz@gridy\unitlength 
+  \ifx @#2@\bxpz@uselblfalse
+  \else \@tempdima=#2\p@ \bxpz@uselbltrue \fi
+  \@tempdimb\@ovyy \advance\@tempdimb.5\@ovdy \divide\@tempdimb\@ovdy
+  \@tempcnta\@tempdimb \advance\@tempcnta\@ne
+  \@whilenum\@tempcnta>\z@ \do{%
+    \raise\@tempdimc\hb@xt@\z@{%
+      \vrule\@height\@halfwidth\@depth\@halfwidth\@width\@ovxx \hss}%
+    \ifbxpz@uselbl \bxpz@makelbl
+      \setbox\bxpz@boxa\vbox to\z@{\vss\copy\bxpz@boxa\vss}%
+      \raise\@tempdimc\hb@xt@\z@{%
+        \hss\copy\bxpz@boxa\kern\epicsidegridlabelsep}%
+      \raise\@tempdimc\hb@xt@\z@{\kern\@ovxx
+        \kern\epicsidegridlabelsep\copy\bxpz@boxa\hss}%
+    \fi
+    \advance\@tempdima\bxpz@gridy\p@ \advance\@tempdimc\@ovdy
+    \advance\@tempcnta\m@ne}%
+  \let\spacewidth\@undefined
+  \ignorespaces}
+\def\bxpz@makelbl{%
+  \edef\bxpz@tmpa{\noexpand\bxGridLabelForm{\strip@pt\@tempdima}}%
+  \setbox\bxpz@boxa\hbox{\bxpz@tmpa}}
+
+%<+> \bxGridLabelForm{<real>}
+% It must output the formatted string for value <real>. which is
+% given as numerals (e.g. 72 or 10.333333).
+% The default implementation uses decimal strings of the value
+% rounded to integers.
+\def\bxGridLabelForm#1{\@tempdima#1\p@ \advance\@tempdima.5\p@
+  \expandafter\bxpz@gridlabelform@a\the\@tempdima\@nil}
+\def\bxpz@gridlabelform@a#1.#2\@nil{#1}
+
+%%<*> \putfile{<filename>}{<general_text>}
+\def\putfile#1#2{%
+  \def\bxpz@body{#2}%
+  \let\bxpz@dofile\bxpz@putfile@a \let\bxpz@dofile@skipped\relax
+  \bxpz@dofile@ifexists{#1}}
+\let\bxpz@fhread\@inputcheck
+\def\bxpz@putfile@a#1{%
+  \openin\bxpz@fhread=#1\relax \let\bxpz@tmpa\relax
+  \ifeof\bxpz@fhread\else \expandafter\bxpz@putfile@b \fi
+  \closein\bxpz@fhread \ignorespaces}
+\def\bxpz@putfile@b{%
+  \read\bxpz@fhread to\bxpz@line
+  \ifx\bxpz@line\bxpz@line@par \let\bxpz@line\@empty \fi
+  \edef\bxpz@line{\bxpz@line\space\space}%
+  \expandafter\bxpz@putfile@c\bxpz@line
+  \ifeof\bxpz@fhread\else \expandafter\bxpz@putfile@b \fi}
+\def\bxpz@putfile@c#1 {%
+  \ifx @#1@\relax \else
+    \ifx\bxpz@tmpa\relax \def\bxpz@tmpa{#1}%
+    \else \put(\bxpz@tmpa,#1){\bxpz@body}
+          \let\bxpz@tmpa\relax
+    \fi \expandafter\bxpz@putfile@c
+  \fi}
+\def\bxpz@line@par{\par}
+
+%% \bxpz@dofile@ifexists
+\newif\ifbxpz@dofile@ok
+\def\bxpz@InputIfFileExists#1#2{%
+  \IfFileExists{#1}{\bxpz@dofile@ifex@a\bxpz@dofile{#1}}}
+\let\bxpz@ltx@InputIfFileExists\InputIfFileExists
+\def\bxpz@dofile@ifexists#1{%
+  \let\InputIfFileExists\bxpz@InputIfFileExists
+  \bxpz@dofile@okfalse \@iinput{#1}%
+  \ifbxpz@dofile@ok\else
+    \bxpz@dofile@ifex@a \bxpz@dofile@skipped \fi}
+\def\bxpz@dofile@ifex@a{\bxpz@dofile@oktrue
+  \let\InputIfFileExists\bxpz@ltx@InputIfFileExists}
+
+%%------
+\ifbxpz@safe        %----<*safe>
+
+%%<*> \[no]eepicdottedlines
+% No-op in safe mode.
+\let\eepicdottedlines\relax
+\let\noeepicdottedlines\relax
+
+\else               %----<*!safe>
+
+%%<*> \[no]eepicdottedlines
+\let\eepicdottedlines\bxpz@eepic@dotltrue
+\let\noeepicdottedlines\bxpz@eepic@dotlfalse
+
+%% \bxpz@redefine@linestyle\LSCMD{<attr>}{<val>}
+\def\bxpz@redefine@linestyle#1#2#3{%
+  \expandafter\bxpz@redefine@linestyle@a
+   \csname bxpz@raw@\expandafter\@gobble\string#1\expandafter\endcsname
+   \csname bxpz@#2\expandafter\endcsname
+   \csname bxpz@LS/#2/#3\expandafter\endcsname
+   \csname bxpz@SLS/#2\endcsname #1{#2}{#3}}
+\def\bxpz@redefine@linestyle@a#1#2#3#4#5#6#7{%
+  % \[bxpz@raw@LSCMD]\[bxpz@<attr>]\[bxpz@LS/<attr>/<val>]
+  % \[bxpz@SLS/<attr>]\LSCMD{<attr>}{<val>}
+  \let#1#5\let#3#5\def#5{\def#2{#7}#3\aftergroup#4}%
+  \def#4{\csname bxpz@LS/#6/#2\endcsname}}
+% redefine linestyle commands
+\bxpz@redefine@linestyle\buttcap{lcap}{0}
+\bxpz@redefine@linestyle\roundcap{lcap}{1}
+\bxpz@redefine@linestyle\squarecap{lcap}{2}
+\bxpz@redefine@linestyle\miterjoin{ljoin}{0}
+\bxpz@redefine@linestyle\roundjoin{ljoin}{1}
+\bxpz@redefine@linestyle\beveljoin{ljoin}{2}
+
+% default values of states
+\let\bxpz@lcap\bxpz@dflt@linecap
+\let\bxpz@ljoin\bxpz@dflt@linejoin
+
+%% patch to \pIIe@circle
+% \buttcap moved one-level outside.
+\def\pIIe@circle#1{%
+  \buttcap
+  \begingroup
+  \pIIe@qcircle[1]\z@{#1}\pIIe@qcircle  \@ne{#1}%
+  \pIIe@qcircle  \tw@{#1}\pIIe@qcircle\thr@@{#1}%
+  \endgroup}
+
+
+\fi                 %----</safe>
+\endinput
+%%------
+%
+% List of epic features not contained in pict2e
+%
+%\multiputlist(X,Y)(DX,DY)[tbrl]{ITEM,...}
+%\matrixput(X,Y)(DX1,DY1){N1}(DX2,DY2){N2}{ITEM}
+%\grid(W,H)(DW,DH)[X0,Y0]
+%\dottedline[CHAR]{DOTGAP}(X1,Y1)...(XN,YN)
+%\dashline[STRETCH]{DASHLEN}[DOTGAP](X1,Y1)...(XN,YN)
+%\drawline[STRETCH](X1,Y1)...(XN,YN)
+%\jput(X,Y){ITEM}
+%\begin{dottedjoin}[C]{G} ... \end{dottedjoin}
+%\begin{dashjoin}[S]{D}[G] ... \end{dashjoin}
+%\begin{drawjoin}[S] ... \end{drawjoin}
+%\picsquare
+%\putfile{FILE}
+%\dashlinestretch
+%\drawlinestretch
+%
+% List of eepic features not contained in pict2e
+%
+%\maxovaldimen (for \oval)
+%\allinethickness
+%\Thicklines
+%\path(X1,Y1)..(Xn,Yn)
+%\spline(X1,Y1)..(Xn,Yn)
+%\ellipse[*]{XDIAM}{YDIAM}
+%\arc{DIAM}{SANG}{EANG}    *angle in radian, +ve = clockwise
+%\filltype{FILL} / \blacken / \whiten / \shade
+%
+%% EOF

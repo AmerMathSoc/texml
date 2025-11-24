@@ -1,0 +1,1429 @@
+%%% ====================================================================
+%%%  @LaTeX-style-file{
+%%%     filename        = "dialogl.dtx",
+%%%     version         = "1.99a",
+%%%     date            = "2013/01/24",
+%%%     author          = "Michael Downes",
+%%%     copyright       = "This file is part of the dialogl package, released
+%%%                        under the LPPL; see dialogl.ins for details."
+%%%     keywords        = "TeX, dialog",
+%%%     supported       = "no",
+%%%     abstract        = "This file provides macros for writing
+%%%       messages and menus on screen, and reading user responses. It
+%%%       can be used with LaTeX as a documentstyle option, or in
+%%%       other forms of TeX by a standard \input statement.",
+%%%  }
+%%% ====================================================================
+%
+% \iffalse
+%<*driver>
+\input{dia-driv.tex}
+%</driver>
+% \fi
+%
+% \section{History}
+%    This file, \fn{dialog.sty}, was born out of a utility called
+%    \fn{listout.tex} that I wrote for my personal use. The purpose of
+%    \fn{listout.tex} was to facilitate printing out plain text
+%    files\Dash electronic mail, program source files in various
+%    programming languages, and, foremost, \tex/ macro files and log
+%    files. An important part of my \tex/ programming practice is to
+%    print out a macro file on paper and read it through, marking
+%    corrections along the way, then use the marked copy as a script
+%    for editing the file. (For one thing, this allows me to analyze
+%    and mark corrections while riding the bus to work, or
+%    sitting out in the back yard to supervise the kids.) The output I
+%    normally desired was two `pages' per sheet of U.S. letter-size
+%    paper printed landscape, in order to conserve paper.
+%
+%    Once created, \fn{listout.tex} quickly became my favorite means
+%    of printing out plain text files, not to mention an indispensable
+%    tool in my debugging toolbox: I turn on \cw{tracingmacros} and
+%    \cw{tracingcommands}, then print out the resulting log file so
+%    that I can see several hundred lines of the log at once (by
+%    spreading out two or three pages on my desk with 100+ lines per
+%    page); then I trace through, cross things out, label other
+%    things, draw arrows, and so forth.
+%
+%    I soon added a filename prompting loop to make it convenient to
+%    print multiple files in a single run. In the process of
+%    perfecting this simple prompting routine\Dash over two or three
+%    years\Dash and adding the ability to optionally specify things like
+%    number of columns at run time, eventually I wrote so much
+%    dialog-related macro code that it became clear this code should
+%    be moved out of \fn{listout.tex} into its own module. The result
+%    was \fn{dialog.sty}.
+%
+%    Before getting into the macro definitions and technical
+%    commentary, here are descriptions from the user's
+%    perspective of the functions defined in this file.
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Message-sending functions}
+%
+%\begin{usage}
+%\mesj{<text>}
+%\end{usage}
+%    Sends the message verbatim: category 12 for all special
+%    characters except braces, tab characters, and carriage returns:
+%
+%^^V { } ^^I ^^M
+%
+%    Naturally, the catcode changes are effective only if \cw{mesj} is
+%    used directly, not inside a macro argument or definition
+%    replacement text.
+%
+%    Multiple spaces in the argument of \cw{mesj} print as multiple
+%    spaces on screen. A tab character produces always eight spaces;
+%    `smart' handling of tabs is more complicated than I would care to
+%    attempt.
+%
+%    Line breaks in the argument of \cw{mesj} will produce line breaks
+%    on screen. That is, you don't need to enter a special sequence
+%    such as \ctrl{J}\qc{\%} to get line breaks. See the technical
+%    commentary for \cw{mesjsetup} for details. Even though curly
+%    braces are left with their normal catcodes, they can be printed
+%    in a message without any problem, if they occur in balanced
+%    pairs. If not, the message should be sent using \cw{xmesj}
+%    instead of \cw{mesj}.
+%
+%    Because of its careful handling of the message text, \cw{mesj} is
+%    extremely easy to use. The only thing you have to worry about is
+%    having properly matched braces. Beyond that, you simply type
+%    everything exactly as you want it to appear on screen.
+%
+%\begin{usage}
+%\xmesj{<text>}
+%\end{usage}
+%    This is like \cw{mesj} but expands embedded control sequences
+%    instead of printing them verbatim. All special characters have
+%    category 12 except backslash, percent, braces, tab, return, and
+%    ampersand:
+%
+%^^V \ % { } ^^I ^^M &
+%
+%    The first four have normal \tex/ catcodes to make it possible to
+%    use most normal \tex/ commands, and comments, in the message
+%    text. \ctrl{I} and \ctrl{M} are catcode 13 and behave as
+%    described for \cw{mesj}. The \qc{\&} is a special convenience, an
+%    abbreviation for \cw{noexpand}, to use for controlling expansion
+%    inside the message text.
+%
+%    Doubled backslash \cs{\\} in the argument will produce a single
+%    category 12 backslash character\Dash thus, \verb'\\xxx' can be used
+%    instead of \cw{string}\cw{xxx} or \cw{noexpand}\cw{xxx} (notice
+%    that this works even for outer things like \cw{bye} or
+%    \cw{newif}). Similarly \cs{\%}, \cs{\{}, \cs{\}} and \cs{\&}
+%    produce the corresponding single characters.
+%
+%    Category 12 space means that you cannot write something like
+%
+%^^V \ifvmode h\else v\fi rule
+%
+%    in the argument of \cw{xmesj} without getting a space after the
+%    \cw{ifvmode}, \cw{else}, and \cw{fi}.%^^A
+%^^A
+%\footnote{Well, actually, you could replace each space by
+%\qc{\%}\meta{newline} to get rid of it. But that makes the message
+%text harder to read for the programmer.}
+%^^A
+%    Since occasionally this may be troublesome, \cs{\.} is defined
+%    inside the argument of \cw{xmesj} to be a `control word
+%    terminator': If the expansion of \cw{foo} is \verb'abc', then
+%    \verb'\foo\.xyz' produces \verb'abcxyz' on screen (as opposed to
+%    \verb'\foo xyz' which would produce \verb'abc xyz'). Thus the
+%    above conditional could be written as
+%
+%^^V \ifvmode\.h\else\.v\fi\.rule
+%
+%    Even though the catcode changes done by \cw{xmesj} setup have no
+%    effect if \cw{xmesj} is used inside an argument or definition
+%    replacement text, I find it convenient occasionally to use
+%    \cw{xmesj} in those contexts, in order to get other aspects of the
+%    \cw{xmesj} setup. For instance, if you need to embed a message
+%    that contains a percent sign inside a definition, you can write
+%
+%^^V \def\foo{...
+%^^V   \xmesj{... this is a percent
+%^^V     sign: \% (sans backslash) ...}
+%^^V ...}
+%
+%    To further support such uses of \cw{xmesj}, the following changes
+%    are also done by \cw{xmesj} setup: the backslash-space control
+%    symbol {\tt\bslash\char32} is made equivalent to \cw{space};
+%    \cs{\^^J} and \cs{\^^M} are defined to produce a \cw{newlinechar};
+%    and active tilde \qc{\~} will produce a category-12 tilde.
+%
+%    Among other things, this setup makes it easier to obtain
+%    newlines and multiple spaces in an embedded message. For example,
+%    in the following definition the message will have a line break on
+%    screen for each backslash at the end of a line, and the third
+%    line will be indented four spaces.
+%
+%^^V \def\bar{...
+%^^V   \xmesj{First line\
+%^^V     Second line\
+%^^V     \ \ \ \ Indented line\
+%^^V     Last line}%
+%^^V ...}
+%
+%    The alternative of defining a separate message function
+%    \cw{barfoo} with \cw{f[x]mesj} and calling \cw{barfoo} inside of
+%    \cw{bar} would allow more natural entry of the newlines and the
+%    multiple spaces, but would be slightly more expensive in string
+%    pool and hash table usage.
+%
+%\begin{usage}
+%\promptmesj{<text>}
+%\promptxmesj{<text>}
+%\end{usage}
+%    These are like \cw{mesj}, \cw{xmesj} but use \cw{message} rather
+%    than \cw{immediate}\cw{write}\verb'16' internally, thus if the
+%    following operation is a \cw{read}, the user will see the cursor
+%    on screen at the end of the last line, as may be desired when
+%    prompting for a short reply, rather than at the beginning of the
+%    next line. The character \qc{\!} is preempted internally for
+%    newlinechar, for these two functions only,
+%    which means that it cannot be actually printed in
+%    the message text. Use of a visible character such as \qc{\!},
+%    rather than the normal \cw{newlinechar} \ctrl{J}, is necessary
+%    for robustness because of the fact that the \cw{message}
+%    primitive was unable to use an `invisible' character (outside the
+%    range 32--126) for newlines up until \tex/ version 3.1415, which
+%    some users do not yet have (at the time of this writing\Dash July
+%    1994).
+%
+%\begin{usage}
+%\storemesj\foo{<text>}
+%\storexmesj\foo{<text>}
+%\end{usage}
+%    These functions are similar to \cw{mesj}, \cw{xmesj} but store the
+%    given text in the control sequence \cw{foo} instead of immediately
+%    sending the message. Standard \tex/ parameter syntax can be used
+%    to make \cw{foo} a function with arguments, e.g. after
+%
+%^^V \storemesj\foo#1{...#1...}
+%
+%    then you can later write
+%
+%^^V \message{\foo{\the\hsize}}
+%
+%    and get the current value of \cw{hsize} into the middle of the
+%    message text. Consequently also in the x-version \cw{storexmesj} a
+%    category-12 \qc{\#} character can be obtained with \cs{\#}.
+%
+%\begin{usage}
+%\fmesj\foobar#1#2...{...#1...#2...}
+%\end{usage}
+%    Defines \cw{foobar} as a function that will take the given
+%    arguments, sow them into the message text \verb"{...}", and send
+%    the message. In the message text all special characters are
+%    category 12 except for braces, \qc{\#}, tab, and carriage return.
+%
+%    If an unmatched brace or a \qc{\#} must be printed in the message
+%    text \cw{fxmesj} must be used instead. (\arg{#} could be used to
+%    insert a single category-6 \qc{\#} token into the message text, and
+%    \tex/ would print it without an error, but both \cw{message} and
+%    \cw{write} would print it as two \arg{#} characters, even though
+%    it's only a single token internally.)
+%
+%\begin{usage}
+%\fxmesj\foobar#1#2...{...#1...#2...}
+%\end{usage}
+%    Combination of \cw{xmesj} and \cw{fmesj}. Defines \cw{foobar} like
+%    \cw{fmesj}, but with full expansion of the replacement text and
+%    with normal category codes for backslash, percent, braces, and hash
+%    \qc{\#}. The control symbols \cs{\\} \cs{\%} \cs{\{} \cs{\}}
+%    \cs{\&} and \cs{\.} can be used as in \cw{xmesj}, with also \cs{\#}
+%    for printing a \qc{\#} character of category 12.
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Reading functions}
+%
+%\begin{usage}
+%\readline{<default>}\answer
+%\end{usage}
+%    This reads a line of input from the user into the macro
+%    \cw{answer}. (The macro name can be anything chosen by the
+%    programmer, not just \cw{answer}.) Before reading, all special
+%    characters are deactivated, so that the primitive \cw{read} will
+%    not choke if the user happens to enter something like \cw{newif}
+%    or {\sc control-l} or \qc{\}}. Depending on the operating
+%    system, certain characters\Dash e.g., {\sc control-c}, {\sc
+%    control-z}, {\sc control-d}, {\sc control-h}\Dash might have
+%    special effects instead of being entered into the replacement
+%    text of \cw{answer}, regardless of the catcode changes. To
+%    take the most obvious example, under most
+%    operating systems, typing {\sc control-h} (the Rubout or
+%    Backward-Delete key) will delete the previous character from the
+%    user's response, instead of entering an \ascii/ character 8
+%    into \cw{answer}.
+%
+%    There is one significant exception from the catcode changes that
+%    are done for \cw{readline}: spaces and tabs retain their normal
+%    catcode of 10, so that multiple spaces in an answer will be
+%    reduced to a single space, and macros with normal space-delimited
+%    arguments will work when applied to the answer. (I can't think of
+%    any likely scenario where category 12 for spaces would be
+%    useful.) Also, the catcode of \ctrl{M} is set to 9 (ignore) so
+%    that an empty line\Dash meaning that the user just pressed the
+%    carriage return/enter key\Dash will result in an empty \cw{answer}.
+%    If the answer is empty, the given default string will be
+%    substituted. The default string can be empty.
+%
+%\begin{usage}
+%\xreadline{<default>}\answer
+%\end{usage}
+%    Like \cw{readline} but the answer is read as executable tokens;
+%    the usual catcodes of the \tex/ special characters remain in
+%    effect while reading the answer. A few common outer things
+%    (\cw{bye}, \cs{\+}, \cw{newif}, \ctrl{L}, among others) are
+%    neutralized before the \cw{read} is done, but the user can still
+%    cause problems by entering some other outer control sequence or
+%    unbalanced braces. I doubt there's any bulletproof solution, if
+%    the tokens are to remain executable, short of the usual last
+%    resort: reading the answer using \cw{readline}, writing it to a
+%    file, then inputting the file.
+%
+%\begin{usage}
+%\readchar{<default>}\answer
+%\end{usage}
+%    This is like \cw{readline} but it reduces the answer to its first
+%    character. \meta{default} is either a single character or empty.
+%
+%\begin{usage}
+%\readChar{<default>}\answer
+%\end{usage}
+%    This is like \cw{readchar} and also uppercases the answer.
+%
+%\begin{usage}
+%\changecase\uppercase\answer
+%\end{usage}
+%    The function \cw{changecase} redefines its second argument, which
+%    must be a macro, to contain the same text as before, but
+%    uppercased or lowercased according to the first argument. Thus
+%    \cw{readChar}\verb'{Q}'\cw{answer} is equivalent to
+%
+%^^V \readchar{q}\answer
+%^^V \changecase\uppercase\answer
+%
+%    It might sometimes be desirable to force lower case before using
+%    a file name given by the user, for example.
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Checking functions}
+%
+%\begin{usage}
+%\checkinteger\reply\tempcount
+%\end{usage}
+%    To read in and check an answer that is supposed to be an integer,
+%    use \cw{readline}{}\cw{reply} and then apply \cw{checkinteger} to
+%    the \cw{reply}, supplying a count register, not necessarily named
+%    \cw{tempcount}, wherein \cw{checkinteger} will leave the validated
+%    integer. If \cw{reply} does not contain a valid integer the
+%    returned value will be \verb'-'\cw{maxdimen}.
+%
+%    At the present time only decimal digits are handled;
+%    some valid \tex/ numbers such as \verb'"AB', \verb'`\@',
+%    \cw{number}\cw{prevgraf}, or a count register name, will not be
+%    recognized by \cw{checkinteger}. There seems to be no bulletproof
+%    way to allow these possibilities.
+%
+%    Tests that hide \cw{checkinteger} under the hood, such as a
+%    \cw{nonnegativeinteger} test, are not provided because as often as
+%    not the number being prompted for will have to be tested to see if
+%    it falls inside a more specific range, such as 0\dash 255 for an
+%    8-bit number or 1\dash 31 for a date, and it seems common sense to
+%    omit overhead if it would usually be redundant. It's easy enough to
+%    define such a test for yourself, if you want one.
+%
+%\begin{usage}
+%\checkdimen\reply\tempdim
+%\end{usage}
+%    Analog of \cw{checkinteger} for dimension values. If \cw{reply}
+%    does not contain a valid dimension the value returned in
+%    \cw{tempdim} will be \verb'-'\cw{maxdimen}.
+%
+%    Only explicit dimensions with decimal digits, optional decimal
+%    point and more decimal digits, followed by explicit units
+%    \verb'pt' \verb'cm' \verb'in' or whatever are checked for; some
+%    valid \tex/ dimensions such as \cw{parindent},
+%    \verb'.3'\cw{baselineskip}, or \cw{fontdimen}\verb'5'\cw{font}
+%    will not be recognized by \cw{checkdimen}.
+%
+% \subsection*{What good is all this?}
+%    What good is all this stuff, practically speaking?\Dash you may
+%    ask. Well, a typical application might be something like: At the
+%    beginning of a document, prompt interactively to find out if the
+%    user wants to print on A4 or US letter-size paper, or change the
+%    top or left margin. Such a query could be done like this:
+%
+%^^V \promptxmesj{
+%^^V Do you want to print on A4 or US letter paper?
+%^^V Enter u or U for US letter, anything else for A4: }
+%^^V \readChar{A}\reply % default = A4
+%^^V \if U\reply \textheight=11in \textwidth=8.5in
+%^^V \else \textheight=297mm \textwidth=210mm \fi
+%^^V %    Subtract space for 1-inch margins
+%^^V \addtolength{\textheight}{-2in}
+%^^V \addtolength{\textwidth}{-2in}
+%^^V
+%^^V \promptxmesj{
+%^^V Left margin setting? [Return = keep current value,
+%^^V \the\oddsidemargin]: }
+%^^V \readline{\the\oddsidemargin}\reply
+%^^V \checkdimen\reply{\dimen0}
+%^^V \ifdim\dimen0>-\maxdimen
+%^^V   \setlength\oddsidemargin{\dimen0}%
+%^^V   \xmesj{OK, using new left margin of %
+%^^V \the\oddsidemargin.}
+%^^V \else
+%^^V   \xmesj{Sorry, I don't understand %
+%^^V that reply: `\reply'.\
+%^^V Using default value: \the\oddsidemargin.}
+%^^V \fi
+%
+%    Although \latex/'s \cw{typeout} and \cw{typein} functions can
+%    be used for this same task, they are rather more awkward, and
+%    checking the margin value for validity would be quite difficult.
+%
+% \StopEventually{}
+%
+% \section{Implementation}
+%    Standard package identification:
+%    \begin{macrocode}
+%<*2e>
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{dialog}[1994/11/08 v0.9y]
+%</2e>
+%    \end{macrocode}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Preliminaries}
+%
+%    \begin{macrocode}
+%<*2e>
+\RequirePackage{grabhedr}
+%</2e>
+%    \end{macrocode}
+%
+%    If \fn{grabhedr.sty} is not already loaded, load it now. The
+%    \cw{trap.input} function is explained in \fn{grabhedr.doc}.
+%    \begin{macrocode}
+%<*209>
+\csname trap.input\endcsname
+\input grabhedr.sty \relax
+\fileversiondate{dialog.sty}{0.9y}{1994/11/08}%
+%</209>
+%    \end{macrocode}
+%
+%    The functions \cw{localcatcodes} and \cw{restore\-catcodes} are
+%    defined in \fn{grabhedr.sty}. We use them to save and restore
+%    catcodes of any special characters needed in this file whose
+%    current catcodes might not be what we want them to be. Saving and
+%    restoring catcode of at-sign \qc{\@} makes this file work equally
+%    well as a \latex/ documentstyle option or as a simple input file in
+%    other contexts. The double quote character \qc{\"} might be active
+%    for German and other languages. Saving and restoring tilde \qc{\~},
+%    hash \qc{\#}, caret \qc{\^}, and left quote \qc{\`} catcodes is
+%    normally redundant but reduces the number of assumptions we must
+%    rely on. (The following catcodes are assumed: \qc{\\} 0, \qc{\{} 1,
+%    \qc{\}} 2, \qc{\%} 14, {\tt a}\dash {\tt z} {\tt A}\dash {\tt Z}
+%    11, {\tt 0}\dash {\tt 9} \qc{\.} \qc{\-} 12. Also note that
+%    \cw{endlinechar} is assumed to have a non-null value.)
+%    \begin{macrocode}
+%% The line break is significant here:
+\localcatcodes{\@{11}\ {10}\
+{5}\~{13}\"{12}\#{6}\^{7}\`{12}}
+%    \end{macrocode}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Definitions}
+%
+% \begin{macro}{\otherchars}
+%
+%    For deactivating characters with special catcodes during
+%    \cw{readline} we use, instead of \cw{dospecials}, a more
+%    bulletproof (albeit slower) combination of \cw{otherchars},
+%    \cw{controlchars}, and \cw{highchars} that covers all characters in
+%    the range 0\dash 255 except letters and digits. Handling the
+%    characters above 127 triples the overhead done for each read
+%    operation or message definition but seems mandatory for maximum
+%    robustness.^^A
+%^^A%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \footnote{If you are using \fn{dialog.sty} functions on a slow
+% computer, you might want to try setting \cw{highchars} = empty to
+% see if that helps the speed.}
+%^^A%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%    \cw{otherchars} includes the thirty-three nonalphanumeric visible
+%    characters (counting space as visible). It is intended as an
+%    executable list like \cw{dospecials} but, as an exercise in
+%    memory conservation, it is constructed without the \cw{do}s. For
+%    the usual application of changing catcodes, the list can still be
+%    executed nicely as shown below. Also, if we arrange to
+%    make sure that each character token gets category 12, it's not
+%    necessary to use control symbols such as \cs{\%} in place of
+%    those few special characters that would otherwise be difficult to
+%    place inside of a definition. This avoids a problem that would
+%    otherwise arise if we included \cs{\+} in the list and tried to
+%    process the list with a typical definition of \cs{do}: \cs{\+} is
+%    `outer' in plain \tex/ and would cause an error message when
+%    \cw{do} attempted to read it as an argument. (As a matter of fact
+%    the catcode changes below show a different way around that
+%    problem, but a list of category-12 character tokens is a fun
+%    thing to have around anyway.)
+%
+%    \begin{macrocode}
+\begingroup
+%    \end{macrocode}
+%    First we start a group to localize \cw{catcode} changes. Then we
+%    change all relevant catcodes to 12 except for backslash, open
+%    brace, and close brace, which can be handled by judicious
+%    application of \cw{escapechar}, \cw{string}, \cw{edef}, and
+%    \cw{xdef}. By defining \cw{do} in a slightly backward way, so that
+%    it doesn't take an argument, we don't need to worry about the
+%    presence of \cs{\+} in the list of control symbols. Notice the
+%    absence of \cs{\`} from the list of control symbols; it was already
+%    catcoded to 12 in the \cw{localcatcodes} declaration at the
+%    beginning of this file\Dash otherwise it would be troublesome to
+%    make the definition of \cw{do} bulletproof (consider the
+%    possibilities that \qc{\`} might have catcode 0, 5, 9, or 14).
+%
+%    \begin{macrocode}
+\def\do{12 \catcode`}
+\catcode`\~\do\!\do\@\do\#\do\$\do\^\do\&
+\do\*\do\(\do\)\do\-\do\_\do\=\do\[\do\]
+\do\;\do\:\do\'\do\"\do\<\do\>\do\,\do\.
+\do\/\do\?\do\|12\relax
+%    \end{macrocode}
+%    To handle backslash and braces, we define \cs{\\},
+%    \cs{\{}, and \cs{\}} to produce the corresponding category-12
+%    character tokens. Setting \cw{escapechar} to $-1$ means that
+%    \cw{string} will omit the leading backslash that it would
+%    otherwise produce when applied to a control sequence.
+%    \begin{macrocode}
+\escapechar -1
+\edef\\{\string\\}
+\edef\{{\string\{}\edef\}{\string\}}
+%    \end{macrocode}
+%    Space and percent are done last. Then, with almost all the
+%    special characters now category 12, it's rather easy to define
+%    \cw{otherchars}.
+%    \begin{macrocode}
+\catcode`\ =12\catcode`\%=12
+\xdef\otherchars
+{ !"#$%&'()*+,-./:;<=>?[\\]^_`\{|\}~}
+\endgroup %              ^     ^  ^
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\controlchars}
+%
+%    \cw{controlchars} is another list for the control characters
+%    \ascii/ 0\dash 31 and 127. The construction of this list is similar
+%    to the construction of \cw{otherchars}. We need to turn off
+%    \cw{endlinechar} because the catcode of \ctrl{M} is going to be
+%    changed. The \ctrl{L} inside the \cw{gdef} is not a problem (as it
+%    might have been, due to the usual outerness of \ctrl{L}) because
+%    the catcode is changed from 13 to 12 before that point.
+%
+%    \begin{macrocode}
+\begingroup
+\endlinechar = -1
+\def\do{12 \catcode`}
+\catcode`\^^@\do\^^A\do\^^B\do\^^C
+\do\^^D\do\^^E\do\^^F\do\^^G\do\^^H\do\^^I
+\do\^^J\do\^^K\do\^^L\do\^^M\do\^^N\do\^^O
+\do\^^P\do\^^Q\do\^^R\do\^^S\do\^^T\do\^^U
+\do\^^V\do\^^W\do\^^X\do\^^Y\do\^^Z\do\^^[
+\do\^^\\do\^^]\do\^^^\do\^^_\do\^^? 12\relax
+%
+\gdef\controlchars{^^@^^A^^B^^C^^D^^E^^F^^G
+  ^^H^^I^^J^^K^^L^^M^^N^^O^^P^^Q^^R^^S^^T
+  ^^U^^V^^W^^X^^Y^^Z^^[^^\^^]^^^^^_^^?}
+\endgroup
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\highchars}
+%    And finally, the list \cw{highchars} contains characters
+%    128\dash 255, the ones that have the eighth bit set.
+%
+%    \begin{macrocode}
+\begingroup
+\def\do{12 \catcode`}
+\catcode`\^^80\do\^^81\do\^^82\do\^^83\do\^^84
+\do\^^85\do\^^86\do\^^87\do\^^88\do\^^89\do\^^8a
+\do\^^8b\do\^^8c\do\^^8d\do\^^8e\do\^^8f
+\do\^^90\do\^^91\do\^^92\do\^^93\do\^^94\do\^^95
+%    \end{macrocode}
+%\verbdots\iffalse
+\do\^^96\do\^^97\do\^^98\do\^^99\do\^^9a\do\^^9b
+\do\^^9c\do\^^9d\do\^^9e\do\^^9f
+\do\^^a0\do\^^a1\do\^^a2\do\^^a3\do\^^a4\do\^^a5
+\do\^^a6\do\^^a7\do\^^a8\do\^^a9\do\^^aa\do\^^ab
+\do\^^ac\do\^^ad\do\^^ae\do\^^af
+\do\^^b0\do\^^b1\do\^^b2\do\^^b3\do\^^b4\do\^^b5
+\do\^^b6\do\^^b7\do\^^b8\do\^^b9\do\^^ba\do\^^bb
+\do\^^bc\do\^^bd\do\^^be\do\^^bf
+\do\^^c0\do\^^c1\do\^^c2\do\^^c3\do\^^c4\do\^^c5
+\do\^^c6\do\^^c7\do\^^c8\do\^^c9\do\^^ca\do\^^cb
+\do\^^cc\do\^^cd\do\^^ce\do\^^cf
+\do\^^d0\do\^^d1\do\^^d2\do\^^d3\do\^^d4\do\^^d5
+\do\^^d6\do\^^d7\do\^^d8\do\^^d9\do\^^da\do\^^db
+\do\^^dc\do\^^dd\do\^^de\do\^^df
+\do\^^e0\do\^^e1\do\^^e2\do\^^e3\do\^^e4\do\^^e5
+\do\^^e6\do\^^e7\do\^^e8\do\^^e9\do\^^ea\do\^^eb
+\do\^^ec\do\^^ed\do\^^ee\do\^^ef
+\do\^^f0\do\^^f1\do\^^f2\do\^^f3\do\^^f4\do\^^f5
+\do\^^f6\do\^^f7\do\^^f8\do\^^f9\do\^^fa\do\^^fb
+%\fi
+%    \begin{macrocode}
+\do\^^fc\do\^^fd\do\^^fe\do\^^ff 12\relax
+%
+\gdef\highchars{%
+^^80^^81^^82^^83^^84^^85^^86^^87^^88%
+^^89^^8a^^8b^^8c^^8d^^8e^^8f%
+^^90^^91^^92^^93^^94^^95^^96^^97^^98%
+%    \end{macrocode}
+%\verbdots\iffalse
+^^99^^9a^^9b^^9c^^9d^^9e^^9f%
+^^a0^^a1^^a2^^a3^^a4^^a5^^a6^^a7^^a8%
+^^a9^^aa^^ab^^ac^^ad^^ae^^af%
+^^b0^^b1^^b2^^b3^^b4^^b5^^b6^^b7^^b8%
+^^b9^^ba^^bb^^bc^^bd^^be^^bf%
+^^c0^^c1^^c2^^c3^^c4^^c5^^c6^^c7^^c8%
+^^c9^^ca^^cb^^cc^^cd^^ce^^cf%
+^^d0^^d1^^d2^^d3^^d4^^d5^^d6^^d7^^d8%
+^^d9^^da^^db^^dc^^dd^^de^^df%
+^^e0^^e1^^e2^^e3^^e4^^e5^^e6^^e7^^e8%
+^^e9^^ea^^eb^^ec^^ed^^ee^^ef%
+^^f0^^f1^^f2^^f3^^f4^^f5^^f6^^f7^^f8%
+%\fi
+%    \begin{macrocode}
+^^f9^^fa^^fb^^fc^^fd^^fe^^ff}
+\endgroup
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\actively}
+%
+%    The function \cw{actively} makes a given character active and
+%    carries out the assignment given as the first argument. The
+%    assignment can be embedded in the replacement text of a macro
+%    definition without requiring any special setup to produce an active
+%    character in the replacement text. The argument should be a control
+%    symbol, e.g. \cw{@} or \cs{\#} or \cs{\^^M}, rather than a single
+%    character. (Except that \qc{\+} is safer than \cs{\+} in
+%    \plaintex/.) If the assignment is a definition (\cw{def},
+%    \cw{edef}, \cw{gdef}, \cw{xdef}) it is allowed to take arguments in
+%    the normal \tex/ way. Prefixes such as \cw{global}, \cw{long}, or
+%    \cw{outer} must go inside the first argument rather than before
+%    \cw{actively}.
+%
+%    Usage:
+%\begin{usage}
+%\actively\def\?{<replacement text>}
+%\actively\def\%#1#2{<replacement text>}
+%\actively{\global\let}\^^@=\space
+%\end{usage}
+%    One place where this function can be put to good use is in
+%    making \ctrl{M} active in order to get special action at the end
+%    of each line of input. The usual way of going about this would be
+%    to write
+%
+%^^V \def\par{something}\obeylines
+%
+%    \noindent which is a puzzling construction to the \tex/ novice
+%    who doesn't know what \cw{obeylines} does with \cw{par}. The same
+%    effect could be gotten a little more transparently with
+%
+%^^V \actively\def\^^M{something}
+%
+%    In the definition of \cw{actively} we use the unique properties
+%    of \cw{lowercase} to create an active character with the right
+%    character code, overlapping with a \cw{begingroup} \cw{endgroup}
+%    structure that localizes the necessary lc-code change.
+%    \begin{macrocode}
+\def\actively#1#2{\catcode`#2\active
+  \begingroup \lccode`\~=`#2\relax
+  \lowercase{\endgroup#1~}}
+%    \end{macrocode}
+% \end{macro}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \begin{macro}{\mesjsetup}
+%
+%    The \cw{mesjsetup} function starts a group to localize catcode
+%    changes. The group will be closed eventually by a separate
+%    function that does the actual sending or stores the message text
+%    for later retrieval.
+%
+%    We want to change the catcode of each character in the three
+%    lists \cw{otherchars}, \cw{controlchars}, and \cw{highchars} to
+%    12. After giving \cw{do} a recursive definition, we apply it to
+%    each of the three lists, adding a suitable element at the end of
+%    the list to make the recursion stop there. This allows
+%    leaving out the \cw{do} tokens from the character lists, without
+%    incurring the cost of an if test at each recursion step.
+%    \begin{macrocode}
+\def\mesjsetup{\begingroup \count@=12
+  \def\do##1{\catcode`##1\count@ \do}%
+%    \end{macrocode}
+%    The abbreviation \cw{xp@} = \cw{expandafter} is from
+%    \fn{grabhedr.sty}.
+%    \begin{macrocode}
+  \xp@\do\otherchars{a11 \@gobbletwo}%
+  \xp@\do\controlchars{a11 \@gobbletwo}%
+  \xp@\do\highchars{a11 \@gobbletwo}%
+%    \end{macrocode}
+%    Make the tab character produce eight spaces:
+%    \begin{macrocode}
+  \actively\edef\^^I{ \space\space\space
+    \space\space\space\space}%
+%    \end{macrocode}
+%    The convenient treatment of newlines in the argument of \cw{mesj}
+%    (every line break produces a line break on screen) is achieved by
+%    making the \ctrl{M} character active and defining it to produce a
+%    category-12 \ctrl{J} character. Although for \cw{mesj} it would
+%    have sufficed to make \ctrl{M} category 12 and locally set
+%    \cw{newlinechar} = \ctrl{M} while sending the message, it turns out
+%    to be useful for other functions to have the \ctrl{M} character
+%    active, so that it can be remapped to an arbitrary function for
+%    handling new lines (e.g., perhaps adding extra spaces at the
+%    beginning of each line). And if \cw{mesj} treats \ctrl{M} the same,
+%    we can arrange for it to share the setup routines needed for the
+%    other functions.
+%    \begin{macrocode}
+  \endlinechar=`\^^M\actively\let\^^M=\relax
+  \catcode`\{=1 \catcode`\}=2 }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\sendmesj}
+%
+%    In \cw{sendmesj} we go to a little extra trouble to make sure
+%    \ctrl{M} produces a newline character, no matter what the value of
+%    \cw{newlinechar} might be in the surrounding environment. The
+%    impending \cw{endgroup} will restore \cw{newlinechar} to its
+%    previous value. One reason for using \ctrl{J} (instead of, say,
+%    \ctrl{M} directly) is to allow e.g. \cw{mesj}\verb'{xxx^^Jxxxx}' to
+%    be written inside a definition, as is sometimes convenient. This
+%    would be difficult with \ctrl{M} instead of \ctrl{J} because of
+%    catcodes.
+%
+%    \begin{macrocode}
+\def\sendmesj{\newlinechar`\^^J%
+  \actively\def\^^M{^^J}%
+  \immediate\write\sixt@@n{\mesjtext}\endgroup}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\mesj}
+%
+%    Given the support functions defined above, the definition of
+%    \cw{mesj} is easy: Use \cw{mesjsetup} to clear all special
+%    catcodes, then set up \cw{sendmesj} to be triggered by the next
+%    assignment, then read the following balanced-braces group into
+%    \cw{mesjtext}. As soon as the definition is completed, \tex/ will
+%    execute \cw{sendmesj}, which will send the text and close the
+%    group that was started in \cw{mesjsetup} to localize the catcode
+%    changes.
+%
+%    \begin{macrocode}
+\def\mesj{\mesjsetup \afterassignment\sendmesj
+  \def\mesjtext}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\sendprompt}
+%
+%    The \cw{sendprompt} function is just like \cw{sendmesj} except
+%    that it uses \cw{message} instead of \cw{write}, as might be
+%    desired when prompting for user input, so that the on-screen
+%    cursor stays on the same line as the prompt instead of hopping
+%    down to the beginning of the next line. In order for newlines to
+%    work with \cw{message} we must use a visible character instead of
+%    \ctrl{J}. When everyone has \tex/ version 3.1415 or later this
+%    will no longer be true. The choice of \qc{\!} might be construed
+%    (if you wish) as editorial comment that \qc{\!} should not be
+%    shouted at the user in a prompt.
+%
+%    \begin{macrocode}
+\def\sendprompt{%
+  \newlinechar`\!\relax \actively\def\^^M{!}%
+  \message{\mesjtext}\endgroup}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\promptmesj}
+%
+%    This function is like \cw{mesj} but uses \cw{sendprompt} instead of
+%    \cw{sendmesj}.
+%
+%    \begin{macrocode}
+\def\promptmesj{\mesjsetup
+  \afterassignment\sendprompt \def\mesjtext}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\storemesj}
+%
+%    Arg \arg{1} of \cw{storemesj} is the control sequence under which
+%    the message text is to be stored.
+%    \begin{macrocode}
+\def\storemesj#1{\mesjsetup
+  \catcode`\#=6 % to allow arguments if needed
+  \afterassignment\endgroup
+  \long\gdef#1}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\fmesj}
+%
+%    While \cw{storemesj}\cw{foo}\verb"{...}" is more or less the
+%    same as \cw{def}\cw{foo}\verb"{...}" with special catcode
+%    changes, \cw{fmesj}\cw{foo}\verb"{...}" corresponds to
+%    \cw{def}\cw{foo}\qc{\{}\cw{mesj}\verb"{...}}", that is, after
+%    \cw{fmesj}\cw{foo} the function \cw{foo} can be executed directly
+%    to send the message. Thus \cw{storemesj} is typically used for
+%    storing pieces of messages, while \cw{fmesj} is used for storing
+%    entire messages.
+%
+%    To read the parameter text \arg{2}, we use the peculiar
+%    \verb'#{' feature of \tex/ to read everything up to the opening
+%    brace.
+%    \begin{macrocode}
+\def\fmesj#1#2#{\mesjsetup
+  \catcode`\#=6 % restore to normal
+%    \end{macrocode}
+%    The parameter text \arg{2} must be stored in a token register
+%    rather than a macro to avoid problems with \qc{\#} characters.
+%    The \cw{long} prefix is just to admit the (unlikely) possibility
+%    of using \cw{fmesj} to define something such as an error message
+%    saying `You can't use \arg{1} here' where one of the
+%    possibilities for \arg{1} is \cw{string}\cw{par}.
+%    \begin{macrocode}
+  \toks@{\long\gdef#1#2}%
+%    \end{macrocode}
+%    Define \cw{@tempa} to put together the first two arguments and
+%    [pseudo]argument \arg{3} and make the definition of \arg{1}.
+%    \begin{macrocode}
+  \def\@tempa{%
+    \edef\@tempa{%
+      \the\toks@{%
+%    \end{macrocode}
+%    The abbreviation \cw{nx@} = \cw{noexpand} is from
+%    \fn{grabhedr.sty}.
+%    \begin{macrocode}
+      \begingroup\def\nx@\mesjtext{\the\toks2 }%
+        \nx@\sendmesj}%
+    }%
+    \@tempa
+    \endgroup % Turn off the \mesjsetup catcodes
+  }%
+  \afterassignment\@tempa
+  \toks2=}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\xmesjsetup}
+%
+%    \cw{xmesjsetup} is like \cw{mesjsetup} except it prepares to allow
+%    control sequence tokens and normal comments in the message text.
+%    For \tex/nicians' convenience certain other features are
+%    thrown in.
+%
+%    Here, unlike the setup for \cw{xreadline}, I don't bother to
+%    remove the outerness of \cw{bye}, \cw{newif}, etc., because I
+%    presume the arguments of \cw{xmesj}, \cw{fxmesj},
+%    \cw{storexmesj}, \cw{fxmenu}, etc.\ are more likely to be written
+%    by a \tex/nician than by an average end user, whereas
+%    \cw{xreadline} is designed to handle arbitrary input from
+%    arbitrary users.
+%
+%    \begin{macrocode}
+\def\xmesjsetup{\mesjsetup
+%    \end{macrocode}
+%    Throw in pseudo braces just in case we are inside an \cw{halign}
+%    with \cs{\\} let equal to \cw{cr} at the time when \cw{xmesjsetup}
+%    is called. (As might happen in \amstex/.)
+%    \begin{macrocode}
+  \iffalse{\fi
+  \catcode`\\=0 \catcode`\%=14
+%    \end{macrocode}
+%    Define {\def~{\spacefactor1500 \space}%
+%    \cs{\%}~\cs{\\}~\cs{\{}~\cs{\}}~\cs{\&}} to produce the
+%    corresponding single characters, category 12. The \cw{lowercase}
+%    trick here allows these definitions to be nonglobal.
+%    \begin{macrocode}
+  \begingroup \lccode`\0=`\\\lccode`\1=`\{%
+  \lccode`\2=`\}\lccode`\3=`\%%
+  \lowercase{\endgroup \def\\{0}\def\{{1}%
+    \def\}{2}\def\%{3}}%
+  \iffalse}\fi
+  \edef\&{\string &}%
+%    \end{macrocode}
+%    Let \qc{\&} \qc{\=} \cw{noexpand} for expansion control inside the
+%    argument text; let active \ctrl{M} \qc{\=} \cw{relax} so that
+%    newlines will remain inert during the expansion.
+%    \begin{macrocode}
+  \actively\let\&=\noexpand
+  \actively\let\^^M=\relax
+%    \end{macrocode}
+%    Define \cs{\.} to be a noop, for terminating a control word when
+%    it is followed by letters and no space is wanted.
+%    \begin{macrocode}
+  \def\.{}%
+%    \end{macrocode}
+%    Support for use of \cw{xmesj} inside a definition replacement
+%    text or macro argument: control-space
+%    \verb*"\ " = \cw{space}, tilde \qc{\~} prints as itself,
+%    \cs{\^^M} (i.e., a lone backslash at the end of a line) will
+%    produce a newline, also \cs{\^^J}, while finally \cw{par} \qc{\=}
+%    blank line translates to two newlines.
+%    \begin{macrocode}
+  \def\ { }\edef~{\string ~}%
+%    \end{macrocode}
+%    Define \cs{\^^M} to produce an active \ctrl{M} character, which (we
+%    hope) will be suitably defined to produce a newline or whatever.
+%    \begin{macrocode}
+  \begingroup \lccode`\~=`\^^M%
+    \lowercase{\endgroup \def\^^M{~}}%
+  \let\^^J\^^M \def\par{\^^M\^^M}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\xmesj}
+%
+%    \cw{xmesj} uses \cw{xmesjsetup} and \cw{edef}.
+%    \begin{macrocode}
+\def\xmesj{\xmesjsetup \afterassignment\sendmesj
+  \edef\mesjtext}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\promptxmesj}
+%
+%    \cw{promptxmesj} is analogous to \cw{promptmesj}, but with
+%    expansion.
+%    \begin{macrocode}
+\def\promptxmesj{\xmesjsetup
+  \afterassignment\sendprompt \edef\mesjtext}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\storexmesj}
+%
+%    And \cw{storexmesj} is like \cw{storemesj}, with expansion. Since
+%    we allow arguments for the function being defined, we also must
+%    define \cs{\#} to produce a single category-12 \qc{\#} character so
+%    that there will be a way to print \qc{\#} in the message text.
+%    \begin{macrocode}
+\def\storexmesj#1#2#{\xmesjsetup
+  \catcode`\#=6 % to allow arguments if needed
+  \edef\#{\string##}%
+  \afterassignment\endgroup
+  \long\xdef#1#2}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\fxmesj}
+%
+%    And \cw{fxmesj} is the expansive analog of \cw{fmesj}.
+%    \begin{macrocode}
+\def\fxmesj#1#2#{\xmesjsetup
+  \catcode`\#=6 % restore to normal
+  \edef\#{\string##}%
+  \toks@{\long\xdef#1#2}%
+  \def\@tempa{%
+    \edef\@tempa{%
+      \the\toks@{\begingroup
+      \def\nx@\nx@\nx@\mesjtext{\the\toks\tw@}%
+      \nx@\nx@\nx@\sendmesj}}%
+    \@tempa % execute the constructed xdef
+    \endgroup % restore normal catcodes
+  }%
+  \afterassignment\@tempa
+  \toks\tw@=}
+%    \end{macrocode}
+% \end{macro}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Reading functions}
+%
+% \begin{macro}{\readline}
+%    The \cw{readline} function gets one line of input from the user.
+%    Arguments are: \arg{1} default to be used if the user response is
+%    empty (i.e., if the user just pressed the return/enter key),
+%    \arg{2} macro to receive the input.
+%
+%    \begin{macrocode}
+\def\readline#1#2{%
+  \begingroup \count@ 12 %
+  \def\do##1{\catcode`##1\count@ \do}%
+  \xp@\do\otherchars{a11 \@gobbletwo}%
+  \xp@\do\controlchars{a11 \@gobbletwo}%
+  \xp@\do\highchars{a11 \@gobbletwo}%
+%    \end{macrocode}
+%    Make spaces and tabs normal instead of category 12.
+%    \begin{macrocode}
+  \catcode`\ =10 \catcode`\^^I=10 %
+  \catcode`\^^M=9 % ignore
+%    \end{macrocode}
+%    Reset end-of-line char to normal, just in case.
+%    \begin{macrocode}
+  \endlinechar`\^^M
+%    \end{macrocode}
+%    We go to a little trouble to avoid \cw{gdef}-ing \arg{2}, in order
+%    to prevent save stack buildup if the user of \cw{readline} carries
+%    on unaware doing local redefinitions of \arg{2} after the initial
+%    read.
+%    \begin{macrocode}
+  \read\m@ne to#2%
+  \edef#2{\def\nx@#2{#2}}%
+  \xp@\endgroup #2%
+  \ifx\@empty#2\def#2{#1}\fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\xreadline}
+%
+%    \cw{xreadline} is like \cw{readline} except that it leaves almost
+%    all catcodes unchanged so that the return value is executable
+%    tokens instead of strictly character tokens of category 11 or 12.
+%    \begin{macrocode}
+\def\xreadline#1#2{%
+  \begingroup
+%    \end{macrocode}
+%    Render some outer control sequences innocuous.
+%    \begin{macrocode}
+    \xp@\let\csname bye\endcsname\relax
+    \xp@\let\csname newif\endcsname\relax
+    \xp@\let\csname newcount\endcsname\relax
+    \xp@\let\csname newdimen\endcsname\relax
+    \xp@\let\csname newskip\endcsname\relax
+    \xp@\let\csname newmuskip\endcsname\relax
+    \xp@\let\csname newtoks\endcsname\relax
+    \xp@\let\csname newbox\endcsname\relax
+    \xp@\let\csname newinsert\endcsname\relax
+    \xp@\let\csname +\endcsname\relax
+    \actively\let\^^L\relax
+  \catcode`\^^M=9 % ignore
+  \endlinechar`\^^M% reset to normal
+  \read\m@ne to#2%
+  \toks@\xp@{#2}%
+  \edef\@tempa{\def\nx@#2{\the\toks@}}%
+  \xp@\endgroup \@tempa
+  \ifx\@empty#2\def#2{#1}\fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\readchar}
+%
+%    \cw{readchar} reduces the user response to a single character.
+%    \begin{macrocode}
+\def\readchar#1#2{%
+  \readline{#1}#2%
+%    \end{macrocode}
+%    If the user's response and the default response are both empty,
+%    we need something after \arg{1} to keep \cw{@car} from running
+%    away, so we add an empty pair of braces.
+%    \begin{macrocode}
+  \edef#2{\xp@\@car#2#1{}\@nil}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\readChar}
+%
+%    \cw{readChar} reduces the user response to a single uppercase
+%    character. (This is useful to simplify testing the response
+%    later with \cw{if}.)
+%
+%    \begin{macrocode}
+\def\readChar#1#2{%
+  \readline{#1}#2%
+  \changecase\uppercase#2%
+%    \end{macrocode}
+%    Reduce \arg{2} to its first character, or the first character of
+%    \arg{1}, if \arg{2} is empty. The extra braces \verb'{}' are to
+%    prevent a runaway argument error from \cw{@car} if \arg{2} and
+%    \arg{1} are both empty.
+%    \begin{macrocode}
+  \edef#2{\xp@\@car #2#1{}\@nil}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\changecase}
+%    The function \cw{changecase} uppercases or lowercases the
+%    replacement text of its second argument, which
+%    must be a macro. The first argument should be \cw{uppercase} or
+%    \cw{lowercase}.
+%    \begin{macrocode}
+\def\changecase#1#2{\@casetoks\xp@{#2}%
+  \edef#2{#1{\def\nx@#2{\the\@casetoks}}}#2}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@casetoks}
+%    We allocate a token register just for the use of \cw{changecase}
+%    because it might be used at a low level internally where we don't
+%    want to interfere with other uses of the scratch token registers
+%    0\dash 9.
+%    \begin{macrocode}
+\newtoks\@casetoks
+%    \end{macrocode}
+% \end{macro}
+%
+%    A common task in reading user input is to verify, when an answer
+%    of a certain kind was requested, that the response has indeed the
+%    desired form\Dash for example, if a nonnegative integer is required
+%    for subsequent processing, it behooves us to verify that we have
+%    a nonnegative integer in hand before doing anything that might
+%    lead to inconvenient error messages. However, it's not easy to
+%    decide how best to handle such verification. One possibility
+%    might be to have a function
+%
+%^^V \readnonnegativeinteger\foo
+%
+%    to do all the work of going out and fetching a number from the
+%    user and leaving it in the macro \cw{foo}. Another possibility
+%    would be to read the response using \cw{readline} and then apply
+%    a separate function that can be used in combination with \cw{if},
+%    for example
+%
+%^^V   \readline{}\reply
+%^^V   \if\validnumber\reply ... \else ... \fi
+%
+%    For maximum flexibility, a slightly lower-level approach is
+%    chosen here. The target syntax is
+%
+%^^V   \readline{}\reply
+%^^V   \checkinteger\reply\tempcount
+%
+%    where \cw{tempcount} will be set to \verb'-'\cw{maxdimen} if
+%    \cw{reply} does {\em not\/} contain a valid integer. (Negative
+%    integers are allowed, as long as they are greater than
+%    \verb'-'\cw{maxdimen}.)  Then the function that calls
+%    \cw{checkinteger} is free to make additional checks on the range
+%    of the reply and give error messages tailored to the
+%    circumstances. And the handling of an empty \cw{reply} can be
+%    arbitrarily customized, something that would tend to be
+%    inconvenient for the first method mentioned.
+%
+%    The first and second approaches can be built on top of the third
+%    if desired, e.g.\ (for the second approach)
+%
+%^^V \def\validnumber#1{TT\fi
+%^^V   \checkinteger#1\tempcount%
+%^^V   \ifnum\tempcount>-\maxdimen }
+%
+%    The curious \verb'TT\fi'\verbdots\cw{ifnum} construction is from
+%    \TeXhax{} 1989, no.~20 and no.~38 (a suggestion of D. E. Knuth in
+%    reply to a query by S. von Bechtolsheim).
+%
+% \begin{macro}{\checkinteger}
+%
+%    The arguments of \cw{checkinteger}'s are: \arg{2}, a count register
+%    to hold the result; \arg{1}, a macro holding zero or more arbitrary
+%    characters of category 11 or 12.
+%
+%    \begin{macrocode}
+\def\checkinteger#1#2{\let\scansign@\@empty
+  \def\scanresult@{#2}%
+  \xp@\scanint#1x\endscan}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\scanint}
+%
+%    To validate a number, the function \cw{scanint} must first scan
+%    away leading \qc{\+} or \qc{\-} signs (keeping track in
+%    \cw{scansign@}), then look at the first token after that: if it's
+%    a digit, fine, scan that digit and any succeeding digits into the
+%    given count register (\cw{scanresult@}), ending with \cw{endscan}
+%    to get rid of any following garbage tokens that might just
+%    possibly show up.
+%
+%    Typical usage of \cw{scanint} includes initializing \cw{scansign@}
+%    to empty, as in the definition of \cw{checkinteger}.
+%\begin{usage}
+%\let\scansign@\@empty
+%\def\scanresult@{\tempcount}%
+%\xp@\scanint\reply x\endscan
+%\end{usage}
+%    Assumption: \cw{reply} is either empty or contains only category
+%    11 or 12 characters (which it will if you used \cw{readline}!). If
+%    a separate check is done earlier to trap the case where \cw{reply}
+%    is empty\Dash for example, by using a nonempty default for
+%    \cw{readline}\Dash then the \verb'x' before \cw{endscan} is
+%    superfluous.
+%
+%    Arg \arg{1} = next character from the string being tested.
+%    The test whether \arg{1} is a decimal digit is similar in spirit
+%    to the test \verb'\if!#1!' to see if an argument is empty
+%    (\TB, Appendix~D, p.~376).
+%    \begin{macrocode}
+\def\scanint#1{%
+  \ifodd 0#11 %
+%    \end{macrocode}
+%    Is \arg{1} a decimal digit? If so read all digits into
+%    \cw{scanresult@} with the sign prefix.
+%    \begin{macrocode}
+    \def\@tempa{\afterassignment\endscan
+      \scanresult@=\scansign@#1}%
+  \else
+    \if -#1\relax
+%    \end{macrocode}
+%    Here we flipflop the sign; watch closely.
+%    \begin{macrocode}
+      \edef\scansign@{%
+        \ifx\@empty\scansign@ -\fi}%
+      \def\@tempa{\scanint}%
+    \else
+%    \end{macrocode}
+%    A plus sign can just be ignored.
+%    \begin{macrocode}
+      \if +#1\relax
+        \def\@tempa{\scanint}%
+      \else % not a valid number
+        \def\@tempa{%
+          \scanresult@=-\maxdimen\endscan}%
+  \fi\fi\fi
+  \@tempa
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\endscan}
+%    The \cw{endscan} function just gobbles any remaining garbage. It
+%    uses its own name as the argument delimiter.
+%    \begin{macrocode}
+\def\endscan#1\endscan{}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\dimenfirstpart}
+% \begin{macro}{\dimentoks}
+%    \cw{dimenfirstpart}, a count register, receives the digits, if
+%    any, preceding the decimal point. \cw{dimentoks}, a token
+%    register, receives any digits after the decimal point.
+%    \begin{macrocode}
+\newcount\dimenfirstpart
+\newtoks\dimentoks
+%    \end{macrocode}
+% \end{macro}
+% \end{macro}
+%
+% \begin{macro}{\scandimen}
+%
+%    \cw{scandimen} is similar to \cw{scanint} but has to call some
+%    auxiliary functions to scan the various subcomponents of a
+%    dimension (leading digits, decimal point, fractional part, and
+%    units, with optional {\tt true}, in addition to the sign). The
+%    minimum requirements of \tex/'s syntax for dimensions are a digit
+%    or decimal point \qc{\+} the units; all the other components are
+%    optional (\TB, Exercise~10.3, p.~58).
+%
+%    When scanning for the digits of a fractional part, we can't throw
+%    away leading zeros; therefore we don't read the fractional part
+%    into a count register as we did for the digits before the decimal
+%    point; instead we read the digits one by one and store them in
+%    \cw{dimentoks}.
+%
+%    The function that calls \cw{scandimen} should initialize
+%    \cw{scansign@} to \cw{@empty}, \cw{dimenfirstpart} to \cw{z@},
+%    \cw{dimentoks} to empty \verb'{}', and \cw{dimentrue@} to
+%    \cw{@empty}.
+%
+%    Test values: {\tt 0pt}, {\tt 1.1in}, {\tt -2cm}, {\tt .3mm}, {\tt
+%    0.4dd}, {\tt 5.cc}, {\tt.10000000009pc}, \cw{hsize}, {\tt em}.
+%
+%    \begin{macrocode}
+\def\scandimen#1{%
+  \ifodd 0#11
+    \def\@tempa{\def\@tempa{\scandimenb}%
+      \afterassignment\@tempa
+      \dimenfirstpart#1}%
+  \else
+%    \end{macrocode}
+%
+%    The following test resolves to true if \arg{1} is either a period
+%    or a comma (both recognized by \tex/ as decimal point
+%    characters).
+%
+%    \begin{macrocode}
+    \if \if,#1.\else#1\fi.%
+      \def\@tempa{\scandimenc}%
+    \else
+      \if -#1% then flipflop the sign
+        \edef\scansign@{%
+          \ifx\@empty\scansign@ -\fi}%
+        \def\@tempa{\scandimen}%
+      \else
+        \if +#1% then ignore it
+          \def\@tempa{\scandimen}%
+        \else % not a valid dimen
+          \def\@tempa{%
+            \scanresult@=-\maxdimen\endscan}%
+  \fi\fi\fi\fi
+  \@tempa
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\scandimenb}
+%
+%    Scan for an optional decimal point.
+%
+%    \begin{macrocode}
+\def\scandimenb#1{%
+  \if \if,#1.\else#1\fi.%
+    \def\@tempa{\scandimenc}%
+  \else
+%    \end{macrocode}
+%    If the decimal point is absent, we need to put back \arg{2} and
+%    rescan it to see if it is the first letter of the units.
+%    \begin{macrocode}
+    \def\@tempa{\scanunitsa#1}%
+  \fi
+  \@tempa
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\scandimenc}
+%
+%    Scan for the fractional part: digits after the decimal point.
+%
+%    \begin{macrocode}
+\def\scandimenc#1{%
+%    \end{macrocode}
+%    If \arg{1} is a digit, add it to \cw{dimentoks}.
+%    \begin{macrocode}
+  \ifodd 0#11 \dimentoks\xp@{%
+      \the\dimentoks#1}%
+    \def\@tempa{\scandimenc}%
+  \else
+%    \end{macrocode}
+%    Otherwise rescan \arg{1}, presumably the first letter of the
+%    units.
+%    \begin{macrocode}
+  \def\@tempa{\scanunitsa#1}%
+  \fi
+  \@tempa
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\scanunitsa}
+%
+%    \begin{macrocode}
+\def\scanunitsa#1\endscan{%
+%    \end{macrocode}
+%    Check for \verb'true' qualifier.
+%    \begin{macrocode}
+  \def\@tempa##1true##2##3\@tempa{##2}%
+%    \end{macrocode}
+%
+%    The peculiar nature of \cw{lowercase} is evident here as we are
+%    able to apply it to only the test part of the conditional without
+%    running into brace-matching problems. (Compare the braces in this
+%    example to something like \cw{message}\qc{\{}\cw{iffalse}
+%    \verb"A}"\cw{else} \verb"B}"\cw{fi}.)
+%
+%    \begin{macrocode}
+  \lowercase{%
+    \xp@\ifx\xp@\end
+    \@tempa#1true\end\@tempa
+  }%
+%    \end{macrocode}
+%    No \verb'true' was found:
+%    \begin{macrocode}
+    \let\dimentrue@\@empty
+    \def\@tempa{\scanunitsb#1\endscan}%
+  \else
+    \def\dimentrue@{true}%
+    \def\@tempa##1true##2\@tempa{%
+      \def\@tempa{##1}%
+      \ifx\@tempa\@empty
+        \def\@tempa{\scanunitsb##2\endscan}%
+      \else
+        \def\@tempa{\scanunitsb xx\endscan}%
+      \fi}%
+    \@tempa#1\@tempa
+  \fi
+  \@tempa
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\scanunitsb}
+%
+%    Scan for the name of the units and complete the assignment of the
+%    scanned value to \cw{scanresult@}. Notice that, because of the way
+%    \cw{scanunitsb} picks up \arg{1} and \arg{2} as macro arguments,
+%    \verb"p t" is allowed as a variation of \verb"pt". Eliminating
+%    this permissiveness doesn't seem worth the speed penalty
+%    that would be incurred in \cw{scanunitsb}.
+%
+%    The method for detecting a valid units string is to define the
+%    scratch function \cw{@tempa} to apply \tex/'s parameter-matching
+%    abilities to a special string that will yield a boolean value
+%    of true if and only if the given string is a valid \tex/ unit.
+%    \begin{macrocode}
+\def\scanunitsb#1#2{%
+  \def\@tempa##1#1#2##2##3\@nil{##2}%
+  \def\@tempb##1{T\@tempa
+    pcTptTcmTccTemTexTinTmmTddTspT##1F\@nil}%
+%    \end{macrocode}
+%    Force lowercase just in case the units were entered with
+%    uppercase letters (accepted by \tex/, so we had better accept
+%    uppercase also).
+%    \begin{macrocode}
+  \lowercase{%
+  \if\@tempb{#1#2}%
+  }%
+   \scanresult@=\scansign@
+     \number\dimenfirstpart.\the\dimentoks
+     \dimentrue@#1#2\relax
+  \else
+    \scanresult@=-\maxdimen
+  \fi
+%    \end{macrocode}
+%    Call \cw{endscan} to gobble garbage tokens, if any.
+%    \begin{macrocode}
+  \endscan
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\checkdimen}
+%
+%    Argument \arg{2} must be a dimen register; \arg{1} is expected to
+%    be a macro holding zero or more arbitrary characters of category 11
+%    or 12.
+%    \begin{macrocode}
+\def\checkdimen#1#2{%
+  \let\scansign@\@empty \def\scanresult@{#2}%
+  \let\dimentrue@\@empty
+  \dimenfirstpart\z@ \dimentoks{}%
+  \xp@\scandimen#1xx\endscan
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%    Finish up.
+%    \begin{macrocode}
+\restorecatcodes
+\endinput
+%    \end{macrocode}
+%
+% \CheckSum{858}
+% \Finale

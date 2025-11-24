@@ -1,0 +1,121 @@
+# Generate a font with glyphs which have vertical glyph representations (but
+# don't include the vertical glyph representations itself). This is used by
+# the perl script `makefdx.pl' to create an FDX file as used by the CJK
+# package for LaTeX.
+#
+# The font is created in the current directory.
+#
+# $1: The master font (e.g., `bsmi00lp.ttf').
+# $2: The name of the target font (e.g., `bsmilpvr').
+
+# Copyright (C) 1994-2007  Werner Lemberg <wl@gnu.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program in doc/COPYING; if not, write to the Free
+# Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+# MA 02110-1301 USA
+
+if (Strtol($version) < 20071105)
+  Print("Can't use FontForge version before 2007-11-05.  Aborting.";
+  Quit(1);
+endif;
+
+if ($argc != 3)
+  Print("usage: [fontforge -script] ", $0, " master-font fontname");
+  Quit(1);
+endif;
+
+Print("Loading ", $1, "...");
+Open($1);
+
+fontname = $2;
+fullname = $fullname + " vertical reference";
+copyright = $copyright \
+            + Chr(10) + Chr(10) \
+            + "Vertical glyph reference font version " \
+            + Strftime("%F", 1, "C") \
+            + ".";
+SetFontNames(fontname, "", fullname, "", copyright, "");
+
+lookups = GetLookups("GSUB");
+
+i = 0;
+result = -1;
+while (i < SizeOf(lookups))
+  if (Strstr(lookups[i], "'vert'") >= 0)
+    result = i;
+  endif;
+  i++;
+endloop;
+
+if (result == -1)
+  Print("This font doesn't contain a GSUB table with a `vert' feature.");
+  Quit(1);
+endif;
+
+subtables = GetLookupSubtables(lookups[result]);
+
+i = 0;
+result = -1;
+while (i < SizeOf(subtables))
+  if (Strstr(subtables[i], "'vert'") >= 0)
+    result = i;
+  endif;
+  i++;
+endloop;
+
+SelectByPosSub(subtables[result], 1);
+
+SelectInvert();
+DetachAndRemoveGlyphs();
+
+Print("Ensure third order curves...");
+SetFontOrder(3);
+
+Print("Scaling to PostScript units...");
+ScaleToEm(900, 100);
+
+num_chars = CharCnt();
+count = 0;
+delta = 100;
+
+while (count + delta < num_chars)
+  Print(count, "/", num_chars - 1, ":");
+  Select(count, count + delta);
+
+  Print("  Add extrema...");
+  AddExtrema();
+
+  Print("  Simplifying outlines...");
+  Simplify(0, 2);
+
+  count += delta;
+endloop;
+
+Print(count, "/", num_chars - 1, ":");
+Select(count, num_chars - 1);
+
+Print("  Add extrema...");
+AddExtrema();
+
+Print("  Simplifying outlines...");
+Simplify(0, 2);
+
+Reencode("original");
+
+# generate AFM and TFM files, no PS hints, and rounded PS coordinates
+Print("Generating font...");
+Generate($2 + ".pfb", "", \
+         0x1 | 0x100 | 0x10000 | 0x80000 | 0x200000);
+
+Quit(0);

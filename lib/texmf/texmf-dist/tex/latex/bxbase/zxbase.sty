@@ -1,0 +1,151 @@
+%
+% zxbase.sty
+%
+%%%% package declaration
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{zxbase}[2009/11/16]
+\RequirePackage{ifxetex}
+\RequireXeTeX
+
+%%%% preparations
+\RequirePackage{bxbase}
+\def\zx@pkgname{zxbase}
+\def\zx@error{\PackageError\zx@pkgname}
+\def\zx@warn{\PackageWarningNoLine\zx@pkgname}
+
+%%------ generic family detection
+
+%%%% constants \zxSpecFamily, \zxRMFamily, etc.
+% These values can be considered as fixed, so you can say i.e.
+% "\ifnum\zxGFFlag<\zxSFFamily <non-sans> \else <sans> \fi"
+\chardef\zxSpecFamily=0
+\chardef\zxRMFamily=1
+\chardef\zxSFFamily=2
+\chardef\zxTTFamily=3
+
+%%%% \zx@set@genfamflag
+% A patch to be inserted to \selectfont. This makes \selectfont
+% set a right \zx..Family constant to \zxGFFlag.
+\def\zx@set@genfamflag{%
+  \zx@set@gff@get\zx@curfam\f@family
+  \let\zxGFFlag\zxSpecFamily
+  \zx@set@gff@match\ttdefault\zxTTFamily
+  \zx@set@gff@match\sfdefault\zxSFFamily
+  \zx@set@gff@match\rmdefault\zxRMFamily}
+\def\zx@set@gff@get#1#2{%
+  \expandafter\let\expandafter#1\csname
+    zf@family@fontname#2\endcsname
+  \ifx#1\relax \edef#1{#2}\fi}
+\def\zx@set@gff@match#1#2{%
+  \zx@set@gff@get\zx@genfam#1%
+  \ifx\zx@genfam\zx@curfam \let\zxGFFlag#2\fi}
+
+%%%% \zxBDHookGenFamFlag
+\def\zxBDHookGenFamFlag{\zx@bdhook@genfamflag@do}
+\@onlypreamble\zx@bdhook@genfamflag@do
+\def\zx@bdhook@genfamflag@do{%
+  \expandafter\zx@bdhook@genfamflag@a\csname selectfont \endcsname
+  \let\zx@bdhook@genfamflag@do\relax}
+\@onlypreamble\zx@bdhook@genfamflag@a
+\def\zx@bdhook@genfamflag@a#1{%
+  \expandafter\def\expandafter#1\expandafter{%
+    \expandafter\zx@set@genfamflag#1}}
+
+%%------ Forging pTeX direction primitives
+
+\def\zxBDHookForgepTeXDir{\zx@bdhook@forgeptexdir@do}
+\@onlypreamble\zx@bdhook@forgeptexdir@do
+\def\zx@bdhook@forgeptexdir@do{%
+  \zx@letconstif{ydir}{true}\zx@letconstif{tdir}{false}%
+  \ifx\yoko\@undefined \let\yoko\relax \fi
+  \ifx\tate\@undefined \let\tate\relax \fi
+}
+\def\zx@letconstif#1#2{%
+  \ifcsname if#1\endcsname\else
+    \expandafter\let\csname if#1\expandafter\endcsname
+    \csname if#2\endcsname \fi}
+
+%%------ Forcing to read pLaTeX packages
+
+\newif\ifzxPPInUTFEight
+\newif\ifzx@jisenc
+\def\zx@err@ukenc#1{\zx@error{File '#1' is in unknown encoding}%
+{The file must be encoded in ISO-2022-JP or UTF-8.}}
+
+%%%% \zxRequirepLaTeXPackage
+\@onlypreamble\zxRequirepLaTeXPackage
+\def\zxRequirepLaTeXPackage#1{%
+  \ifzxPPInUTFEight \zx@jisencfalse
+  \else \zx@checkjisorutfeight{#1.\@pkgextension}%
+    \ifcase\zx@joru \zx@err@ukenc{#1.\@pkgextension}\or
+      \zx@jisenctrue \else \zx@jisencfalse \fi
+  \fi
+  \let\NeedsTeXFormat\zx@mute@NeedsTeXFormat
+  \ifzx@jisenc \XeTeXdefaultencoding ISO-2022-JP\relax \fi
+  \RequirePackage{#1}%
+  \ifzx@jisenc \XeTeXdefaultencoding auto\relax \fi
+  \let\NeedsTeXFormat\zx@org@NeedsTeXFormat
+}
+
+%%%% \zx@mute@NeedsTeXFormat
+\def\zx@mute@NeedsTeXFormat#1{\@ifnextchar[{\zx@mute@ntf@a}{\relax}}
+\def\zx@mute@ntf@a[#1]{\relax}
+\let\zx@org@NeedsTeXFormat\NeedsTeXFormat
+
+%%%% \zx@checkjisorutfeight{<file>}
+% Decides whether <file> is encoded in JIS or UTF-8 and sets to \zx@joru.
+%  0:binary; 1:JIS; 2:UTF-8; 3:US-ASCII
+\def\zx@checkjisorutfeight#1{%
+  \begingroup
+  \XeTeXdefaultencoding bytes\relax
+  \let\zx@c@ctl=f\def\zx@found@ctl{\let\zx@c@ctl=t}%
+  \let\zx@c@esc=f\def\zx@found@esc{\let\zx@c@esc=t}%
+  \let\zx@c@high=f\def\zx@found@high{\let\zx@c@high=t}%
+  \zx@make@activelet{0}{32}\zx@found@ctl
+  \zx@make@ignorable{32}{127}%
+  \zx@make@activelet{127}{128}\zx@found@ctl
+  \zx@make@activelet{128}{256}\zx@found@high
+  \zx@make@activelet{27}{28}\zx@found@esc
+  \catcode13=5 \catcode32=10 \catcode9=10 \catcode`\~=9
+  \@@input"#1"\relax
+  \if t\zx@c@ctl \global\chardef\zx@g@joru0
+  \else\if t\zx@c@esc \global\chardef\zx@g@joru1
+  \else\if t\zx@c@high \global\chardef\zx@g@joru2
+  \else \global\chardef\zx@g@joru3 \fi\fi\fi
+  \XeTeXdefaultencoding auto\relax
+  \endgroup
+  \let\zx@joru\zx@g@joru}
+\def\zx@make@activelet#1#2#3{%
+  \catcode`\~=\active \let\zx@tmpx=#3\relax
+  \@tempcnta#1\relax\loop
+    \catcode\@tempcnta\active \lccode`\~=\@tempcnta
+    \lowercase{\let~\zx@tmpx}%
+  \advance\@tempcnta\@ne \ifnum\@tempcnta<#2 \repeat}
+\def\zx@make@ignorable#1#2{%
+  \@tempcnta#1\relax\loop \catcode\@tempcnta9
+  \advance\@tempcnta\@ne \ifnum\@tempcnta<#2 \repeat}
+
+%%<*> \platexpackagesinunicode
+\@onlypreamble\platexpackagesinunicode
+\let\platexpackagesinunicode\zxPPInUTFEight
+
+%%------ trashed stuff
+
+%\def\zxRemoveFSSuffix#1{%
+%  \edef\zx@tmpx{#1}\bxOkfalse
+%  \let\bxRes\@empty \let\zx@chunk\@gobble
+%  \expandafter\zx@rem@fssfx@a\zx@tmpx(@\@nil}
+%\def\zx@rem@fssfx@a#1(#2#3\@nil{%
+%  \ifx @#2\edef\bxRes{\bxRes\zx@chunk\@empty}%
+%        \def\zx@nxt{\zx@rem@fssfx@b#1@)@\@nil}%
+%  \else \edef\bxRes{\bxRes\zx@chunk(}\def\zx@chunk{#1}%
+%        \def\zx@nxt{\zx@rem@fssfx@a#2#3\@nil}%
+%  \fi \zx@nxt}
+%\def\zx@rem@fssfx@b#1)@#2\@nil{%
+%  \ifx\bxRes\@empty\else
+%    \ifx @#2@\else \bxAssign\@tempcnta0#1\relax \fi \fi
+%  \ifbxOk\else \let\bxRes\zx@tmpx \fi}
+
+%%------ all done
+\endinput
+%% EOF

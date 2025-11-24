@@ -1,0 +1,210 @@
+%%
+%% This is file `fifo-stack.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% fifo-stack.dtx  (with options: `package')
+%% 
+%% Copyright (C) 2014 Stephen Gaito (PerceptiSys Ltd)
+%% 
+%% This work may be distributed and/or modified under the conditions of the LaTeX
+%% Project Public License, either version  1.3  of  this license or (at your
+%% option) any later version.
+%% 
+%% The latest version of this license is in http://www.latex-project.org/lppl.txt
+%% and  version 1.3 or later is part of all distributions of LaTeX version
+%% 2005/12/01 or later.
+%% 
+%% This work has the LPPL maintenance status `maintained'.
+%% 
+%% The Current Maintainer of this work is Stephen Gaito.
+%% 
+%% The released source can be found at:
+%% https://github.com/diSimplex/latexFifoStack/tree/master/texStyle
+%% 
+%% The development source can be found at:
+%% https://github.com/stephengaito/latexFifoStack/tree/master/texStyle
+%% 
+%% This work consists of the files fifo-stack.dtx, and fifo-stack.ins.
+%% 
+%% The command:
+%%   pdflatex fifo-stack.ins
+%% followed by:
+%%   pdflatex fifo-stack.dtx
+%% will produce the derived files: fifo-stack.sty, fifo-stack-test.tex,
+%% and fifo-stack.pdf.
+%% 
+%% The command:
+%%   pdflatex fifo-stack-test.tex
+%% will regression test the fifo-stack package. Output will be found in
+%% fifo-stack-test.lgout. If pdflatex completes with no errors, then all
+%% regression tests passed.
+%% 
+\ProvidesPackage{fifo-stack}[2014/03/24 v1.0 Multi-FIFO/stack system]
+\RequirePackage{ifthen}
+\newcount\tmp@fifo@stack@top
+\newcount\tmp@fifo@stack@bottom
+\newcount\tmp@fifo@stack@size
+\global\def\fifo@stack@pointer#1{%
+  \ifnum#1<0
+    @\expandafter\romannumeral\numexpr -1*#1 \relax
+  \else
+    \expandafter\romannumeral\numexpr #1+1 \relax
+  \fi
+}
+\newcommand\FSCreate[2]{%
+  \expandafter\gdef\csname #1@fifo@stack@count@top\endcsname{0}%
+  \expandafter\gdef\csname #1@fifo@stack@count@bottom\endcsname{1}%
+  \expandafter\gdef\csname #1@fifo@stack@count@size\endcsname{0}%
+  \expandafter\do@fifo@stack@top@macro%
+    \csname #1@fifo@stack@count@top\endcsname{#1}{#2}%
+  \expandafter\do@fifo@stack@bottom@macro%
+    \csname #1@fifo@stack@count@bottom\endcsname{#1}{#2}%
+}
+\newcommand\do@fifo@stack@top@macro[3]{%
+  \expandafter\newcommand\expandafter*%
+  \csname fifo@stack@top@#2\endcsname{%
+    \expandafter\ifx\csname #2@\fifo@stack@pointer#1\endcsname\relax
+      #3%
+    \else
+      \csname #2@\fifo@stack@pointer#1\endcsname
+    \fi
+  }%
+}
+\newcommand\do@fifo@stack@bottom@macro[3]{%
+  \expandafter\newcommand\expandafter*%
+  \csname fifo@stack@bottom@#2\endcsname{%
+    \expandafter\ifx\csname #2@\fifo@stack@pointer#1\endcsname\relax
+      #3%
+    \else
+      \csname #2@\fifo@stack@pointer#1\endcsname
+    \fi
+  }%
+}
+\newcommand{\FSClear}[1]{%
+  \whiledo{0 < \FSSize{#1}}{\FSPop{#1}}
+}
+
+\newcommand{\FSDestroy}[1]{%
+  \FSClear{#1}
+  \expandafter\global\expandafter\let
+    \csname #1@fifo@stack@count@top\endcsname=
+      \fifo@stack@never@defined\relax
+  \expandafter\global\expandafter\let
+    \csname #1@fifo@stack@count@bottom\endcsname=
+      \fifo@stack@never@defined\relax
+  \expandafter\global\expandafter\let
+    \csname #1@fifo@stack@count@size\endcsname=
+      \fifo@stack@never@defined\relax
+  \expandafter\global\expandafter\let
+    \csname fifo@stack@top@#1\endcsname=
+      \fifo@stack@never@defined\relax
+  \expandafter\global\expandafter\let
+    \csname fifo@stack@bottom@#1\endcsname=
+      \fifo@stack@never@defined\relax
+}
+\newcommand\FSTop[1]{%
+  \ifx\csname #1@fifo@stack@count@top\endcsname\relax
+    \PackageError{fifo-stack}{Undefined FIFO/stack #1}%
+      {You should first create the FIFO/stack with \FSCreate}%
+  \else
+    \csname fifo@stack@top@#1\endcsname
+  \fi
+}
+\newcommand\FSPush[2]{%
+  \ifx\csname #1@fifo@stack@count@top\endcsname\relax
+    \PackageError{fifo-stack}{Undefined FIFO/stack #1}%
+      {You should first create the FIFO/stack with \FSCreate}%
+  \else
+    \edef\fifo@stack@newtop{#2}%
+    \tmp@fifo@stack@top\csname #1@fifo@stack@count@top\endcsname\relax
+    \global\advance\tmp@fifo@stack@top by 1\relax
+    \expandafter\xdef\csname #1@fifo@stack@count@top\endcsname
+      {\the\tmp@fifo@stack@top}%
+    \tmp@fifo@stack@size\csname #1@fifo@stack@count@size\endcsname\relax
+    \global\advance\tmp@fifo@stack@size by 1\relax
+    \expandafter\xdef\csname #1@fifo@stack@count@size\endcsname
+      {\the\tmp@fifo@stack@size}%
+    \expandafter\xdef\csname #1@\fifo@stack@pointer\tmp@fifo@stack@top\endcsname
+      {\fifo@stack@newtop}%
+  \fi
+}
+\newcommand\FSPop[1]{%
+  \ifx\csname #1@fifo@stack@count@top\endcsname\relax
+    \PackageError{fifo-stack}{Undefined FIFO/stack #1}%
+      {You should first create the FIFO/stack with \FSCreate}%
+  \else
+    \tmp@fifo@stack@top\csname #1@fifo@stack@count@top\endcsname\relax
+    \tmp@fifo@stack@bottom\csname #1@fifo@stack@count@bottom\endcsname\relax
+    \ifnum\tmp@fifo@stack@top<\tmp@fifo@stack@bottom\relax\else
+      \expandafter\global\expandafter\let
+        \csname #1@\fifo@stack@pointer\tmp@fifo@stack@top\endcsname=
+          \fifo@stack@never@defined\relax
+      \advance\tmp@fifo@stack@top by -1\relax
+      \expandafter\xdef\csname #1@fifo@stack@count@top\endcsname
+        {\the\tmp@fifo@stack@top}%
+      \tmp@fifo@stack@size\csname #1@fifo@stack@count@size\endcsname\relax
+      \global\advance\tmp@fifo@stack@size by -1\relax
+      \expandafter\xdef\csname #1@fifo@stack@count@size\endcsname
+        {\the\tmp@fifo@stack@size}%
+    \fi
+  \fi
+}
+\newcommand\FSShowTop[1]{%
+  {\edef\fifo@stack@top{\FSTop{#1}}%
+   \typeout{The top of #1: \fifo@stack@top}}}
+\newcommand\FSBottom[1]{%
+  \ifx\csname #1@fifo@stack@count@bottom\endcsname\relax
+    \PackageError{fifo-stack}{Undefined FIFO/stack #1}%
+      {You should first create the FIFO/stack with \FSCreate}%
+  \else
+    \csname fifo@stack@bottom@#1\endcsname
+  \fi
+}
+\newcommand\FSUnshift[2]{%
+  \ifx\csname #1@fifo@stack@count@bottom\endcsname\relax
+    \PackageError{fifo-stack}{Undefined FIFO/stack #1}%
+      {You should first create the FIFO/stack with \FSCreate}%
+  \else
+    \edef\fifo@stack@newBottom{#2}%
+    \tmp@fifo@stack@bottom\csname #1@fifo@stack@count@bottom\endcsname\relax
+    \global\advance\tmp@fifo@stack@bottom by -1\relax
+    \expandafter\xdef\csname #1@fifo@stack@count@bottom\endcsname
+      {\the\tmp@fifo@stack@bottom}%
+    \tmp@fifo@stack@size\csname #1@fifo@stack@count@size\endcsname\relax
+    \global\advance\tmp@fifo@stack@size by 1\relax
+    \expandafter\xdef\csname #1@fifo@stack@count@size\endcsname
+      {\the\tmp@fifo@stack@size}%
+    \expandafter\xdef\csname #1@\fifo@stack@pointer\tmp@fifo@stack@bottom\endcsname
+      {\fifo@stack@newBottom}%
+  \fi
+}
+\newcommand\FSShift[1]{%
+  \ifx\csname #1@fifo@stack@count@bottom\endcsname\relax
+    \PackageError{fifo-stack}{Undefined FIFO/stack #1}%
+      {You should first create the FIFO/stack with \FSCreate}%
+  \else
+    \tmp@fifo@stack@top\csname #1@fifo@stack@count@top\endcsname\relax
+    \tmp@fifo@stack@bottom\csname #1@fifo@stack@count@bottom\endcsname\relax
+    \ifnum\tmp@fifo@stack@top<\tmp@fifo@stack@bottom\relax\else
+      \expandafter\global\expandafter\let
+        \csname #1@\fifo@stack@pointer\tmp@fifo@stack@bottom\endcsname=
+          \fifo@stack@never@defined\relax
+      \advance\tmp@fifo@stack@bottom by 1\relax
+      \expandafter\xdef\csname #1@fifo@stack@count@bottom\endcsname
+        {\the\tmp@fifo@stack@bottom}%
+      \tmp@fifo@stack@size\csname #1@fifo@stack@count@size\endcsname\relax
+      \global\advance\tmp@fifo@stack@size by -1\relax
+      \expandafter\xdef\csname #1@fifo@stack@count@size\endcsname
+        {\the\tmp@fifo@stack@size}%
+    \fi
+  \fi
+}
+\newcommand\FSShowBottom[1]{%
+  {\edef\fifo@stack@bottom{\FSBottom{#1}}%
+   \typeout{The bottom of #1: \fifo@stack@bottom}}}
+\newcommand\FSSize[1]{\csname #1@fifo@stack@count@size\endcsname}
+\endinput
+%%
+%% End of file `fifo-stack.sty'.

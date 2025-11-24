@@ -1,0 +1,190 @@
+%% ----------------------------------------------------------------
+%% smartunits --- A latex package that implements automatic conversions
+%%                between certain metric and Imperial units.
+%% E-mail: andrew.mathas@gmail.com
+%% Released under the LaTeX Project Public License v1.3c or later
+%% See http://www.latex-project.org/lppl.txt
+%% ----------------------------------------------------------------
+
+% http://tex.stackexchange.com/questions/241169/is-it-possible-in-latex-to-print-all-numbers-between-imperial-and-metric/241179#241179
+\NeedsTeXFormat{LaTeX2e}
+\def\smart@version{Version 1.2 -- 2016/02/05}
+\ProvidesPackage{smartunits}[2016/02/05 \smart@version\space- Smart conversion between metric and Imperial units]
+\RequirePackage{siunitx,pgfmath,pgfkeys}
+
+% a global pgfkeyssetvalue from Martin Scharrer's answer to http://tex.stackexchange.com/questions/15204
+\newcommand{\pgfkeysgsetvalue}[2]{\pgfkeys@temptoks{#2}\expandafter\xdef\csname pgfk@#1\endcsname{\the\pgfkeys@temptoks}}
+
+% a shorthand for extracting key values from /SmartUnit
+\newcommand\smart@val[1]{\pgfkeysvalueof{/SmartUnit/#1}}
+
+% the pgfkey family for smart units
+\pgfkeys{/SmartUnit/.is family,/SmartUnit,%
+    %%%% /SmartUnit/unit <convert> keys are implicitly initialised through the
+    %%%% following. As a bonus this allows us to use \pgfkeysifdefined below.
+    .unknown/.code={\pgfkeyssetvalue{\pgfkeyscurrentpath/\pgfkeyscurrentname}{#1}},%
+    %%%% /SmartUnit/convert is used to determine which "smart unit" to print
+    %%%% printunit --> output --> injects the code to print the current <convert>
+    printunit/.code={\pgfkeysifdefined{/SmartUnit/convert}{\pgfkeys{/SmartUnit/output/\smart@val{format}}}{}},%
+    output/metric/.code={\pgfkeys{/SmartUnit/\smart@val{convert}/metric}},%
+    output/imperial/.code={\pgfkeys{/SmartUnit/\smart@val{convert}/imperial}},%
+    output/metric imperial/.code={\pgfkeys{/SmartUnit/\smart@val{convert}/metric}\space(\pgfkeys{/SmartUnit/\smart@val{convert}/imperial})},%
+    output/imperial metric/.code={\pgfkeys{/SmartUnit/\smart@val{convert}/imperial}\space(\pgfkeys{/SmartUnit/\smart@val{convert}/metric})},%
+    %%%% global flags for controlling when metric and imperial units are printed
+    format/.initial=metric,%
+    metric/.code={\pgfkeysgsetvalue{/SmartUnit/format}{metric}},%
+    imperial/.code={\pgfkeysgsetvalue{/SmartUnit/format}{imperial}},%
+    metric imperial/.code={\pgfkeysgsetvalue{/SmartUnit/format}{metric imperial}},%
+    imperial metric/.code={\pgfkeysgsetvalue{/SmartUnit/format}{imperial metric}},%
+    %%%% allow for both UK and US Imperial units
+    system/.initial=usa,% for purely demographic reasons
+    usa/.style={system=usa},%
+    uk/.style={system=uk},%
+    %%% for local changes to the siunitx precision
+    figures/.code={\sisetup{round-mode=figures, round-precision=#1}},
+    places/.code={\sisetup{round-mode=places, round-precision=#1}},
+    %%%%%%%%%%%%%%%%%%%% conversion routines %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Generic case: #1 = (#2+#3)*#4 + #5 where #6 is the name of the unit
+    conversion/.code n args={6}{%{#1= to, #2= from, #3=pre-offset, #4=multiplier, #5=post-offset, #6= symbol}
+        \pgfkeysifdefined{/SmartUnit/unit #1}{\SI{\smart@val{unit #1}}{#6}}{\pgfmathparse{(\smart@val{unit #2}+#3)*#4+#5}\SI{\pgfmathresult}{#6}}%
+    },%
+    %%%% convert=distance:  km <-> miles %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    km/.style={convert=distance, unit km=#1},%
+    mi/.style={convert=distance, unit miles=#1},%
+    miles/.style={convert=distance, unit miles=#1},%
+    distance/metric/.style={/SmartUnit/conversion={km}{miles}{0}{1.609344}{0}{\km}},%
+    distance/imperial/.style={/SmartUnit/conversion={miles}{km}{0}{0.62137119}{0}{\text{mi}}},%
+    %%%% convert=volume l <-> US gallons %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    gal/.style={convert=volume, unit gal=#1},%
+    gal/uk/.initial=0.21996925,%  1L = 0.21996925 gal (UK)
+    gal/usa/.initial=0.26417205,% 1L = 0.26417205 gal (USA)
+    gallons/.style={convert=volume, unit gal=#1},%
+    l/.style={convert=volume, unit L=#1, volume/symbol=l},%
+    L/.style={convert=volume, unit L=#1, volume/symbol=L},%
+    L/uk/.initial=4.54609,%       1 gal (UK) = 4.54609 L
+    L/usa/.initial=3.7854118,%    1 gal (USA) = 3.7854118 L
+    volume/symbol/.initial=l,% default symbol for litres
+    volume/metric/.style={/SmartUnit/conversion={L}{gal}{0}{\smart@val{L/\smart@val{system}}}{0}{\smart@val{volume/symbol}}},%
+    volume/imperial/.style={/SmartUnit/conversion={gal}{L}{0}{\smart@val{gal/\smart@val{system}}}{0}{\text{gal}}},%
+    %%%% convert=weight: kg <-> lbs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    kg/.style={convert=weight, unit kg=#1},%       1 lbs = 0.45359237 kg
+    lbs/.style={convert=weight, unit pound=#1},%   1kg = 2.2046226 lbs (USA)
+    pound/.style={convert=weight, unit pound=#1},% 1kg = 2.2046226 lbs (USA)
+    weight/metric/.style={/SmartUnit/conversion={kg}{pound}{0}{0.45359237}{0}{\kg}},%
+    weight/imperial/.style={/SmartUnit/conversion={pound}{kg}{0}{2.2046226}{0}{\text{lbs}}},%
+    %%%% convert=temperature: C <-> F %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    celsius/.style={convert=temperature, unit celsius=#1},%
+    C/.style={convert=temperature, unit celsius=#1},%
+    fahrenheit/.style={convert=temperature, unit fahrenheit=#1},%
+    F/.style={convert=temperature, unit fahrenheit=#1},%
+    temperature/metric/.style={/SmartUnit/conversion={celsius}{fahrenheit}{-32}{5/9}{0}{\degreeCelsius}},%
+    temperature/imperial/.style={/SmartUnit/conversion={fahrenheit}{celsius}{0}{9/5}{32}{\si{\degree}\text{F}}},%
+    %%%% convert=length:  cm <-> feet and inches %%%%%%%%%%%%%%%%%%%%%%%%%
+    cm/.style={convert=length, unit cm=#1},%
+    inches/.style={convert=length, unit inches=#1},%
+    feet/.style={convert=length, unit feet=#1},%
+    length/metric/.code={% called via /SmartUnit/printunit -> /SmartUnit/output with convert=length
+        \pgfkeysifdefined{/SmartUnit/unit cm}{\def\pgfmathresult{\smart@val{unit cm}}}%
+            {\pgfkeysifdefined{/SmartUnit/unit inches}{\pgfmathsetmacro{\smart@tmp}{2.54*\smart@val{unit inches}}}{\def\smart@tmp{0}}%
+             \pgfkeysifdefined{/SmartUnit/unit feet}{\pgfmathparse{\smart@tmp+30.84*\smart@val{unit feet}}}{\let\pgfmathresult\smart@tmp}%
+            }%
+            \SI{\pgfmathresult}{\cm}%
+    },
+    %%%% slightly tricker as we have to convert centimeters to feet and inches
+    length/imperial/.code={% called via /SmartUnit/printunit -> /SmartUnit/output with convert=length
+        \pgfkeysifdefined{/SmartUnit/unit inches}{\pgfkeysifdefined{/SmartUnit/unit feet}{\SI{\smart@val{unit feet}}{\arcminute}\enspace\SI{\smart@val{unit inches}}{\arcsecond}}%
+              {\enspace\SI{\smart@val{unit inches}}{\arcsecond}}%
+            }%
+            {\pgfkeysifdefined{/SmartUnit/unit feet}{\SI{\smart@val{unit feet}}{\arcminute}}%
+               {\pgfmathsetmacro{\smart@tmp}{0.39370079*\smart@val{unit cm}}% centimeters -> inches
+                \pgfmathparse{greater(\smart@tmp,11)}%
+                \ifnum\pgfmathresult=1%
+                   \pgfmathparse{int(\smart@tmp/12)}\SI[round-mode=places,round-precision=0]{\pgfmathresult}{\arcminute}%
+                   \pgfmathparse{\smart@tmp-12*\pgfmathresult}\enspace\SI{\pgfmathresult}{\arcsecond}%
+                \else%
+                   \SI{\smart@tmp}{\arcsecond}%
+                \fi%
+               }%
+            }%
+    },%
+    %%%% convert=time: 24-hour times versus 12-hour time %%%%%%%%%%%%%%%%%%%%%%%%%
+    am/.style={convert=time, unit am=1},%
+    pm/.style={convert=time, unit pm=1},%
+    hours/.style={convert=time, unit hours=#1},%
+    minutes/.style={convert=time, unit minutes=#1},%
+    seconds/.style={convert=time, unit seconds=#1},%
+    time/metric/.code={%
+        \pgfkeysifdefined{/SmartUnit/unit pm}{\pgfmathparse{\smart@val{unit hours}+12}\num{\pgfmathresult}}{\num{\smart@val{unit hours}}}:\num[minimum-integer-digits=2]{\smart@val{unit minutes}}%
+        \pgfkeysifdefined{/SmartUnit/unit seconds}{:\num[minimum-integer-digits=2]{\smart@val{unit seconds}}}{}%
+    },%
+    time/imperial/.code={% extra cases here to for AM/PM when hours=12 <->
+        \pgfkeysifdefined{/SmartUnit/unit am}{\def\smart@tmp{AM}\num{\smart@val{unit hours}}}%
+            {\pgfkeysifdefined{/SmartUnit/unit pm}{\def\smart@tmp{PM}\num{\smart@val{unit hours}}}%
+                 {\pgfmathparse{greater(\smart@val{unit hours}+\smart@val{unit minutes}/60,12)}%
+                  \ifnum\pgfmathresult=1\def\smart@tmp{PM}\pgfmathparse{\smart@val{unit hours}==12?12:\smart@val{unit hours}-12}\num{\pgfmathresult}%
+                  \else\pgfmathparse{\smart@val{unit hours}==0?12:\smart@val{unit hours}}\num{\pgfmathresult}\def\smart@tmp{AM}%
+                  \fi%
+                 }%
+             }%
+             :\num[minimum-integer-digits=2]{\smart@val{unit minutes}}%
+             \pgfkeysifdefined{/SmartUnit/unit seconds}{\pgfmathparse{greater(\smart@val{unit hours}+\smart@val{unit seconds}/60,12)}\ifnum\pgfmathresult=1\def\smart@tmp{PM}\fi%
+                 :\num[minimum-integer-digits=2]{\smart@val{unit seconds}}}{}%
+             \enspace{\text{\smart@tmp}}%
+    },%
+}
+
+\newcommand\SmartUnit[1]{%
+    \bgroup%=> all pgfkeys changes are local to \SmartUnit => no need to reset
+        \pgfkeys{/SmartUnit,#1}% Pass the keys to /SmartUnit
+        \pgfkeys{/SmartUnit,printunit}% Calculate units and print
+    \egroup%
+}
+
+\newcommand\SmartUnitSettings[1]{\pgfkeys{/SmartUnit,#1}}
+
+\endinput
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHANGE LOG
+%%
+%% Version 1.2
+%%    - corrections to the documentation and in particular to the incorrect conversion
+%%      of 20 C to Fahrenheit as reported by Barbara Beeton
+%%    - added shorthands C and F for temperature conversions
+%%    - fixed bug that resulted in incorrect unit being printed for inches in length
+%%      conversions with no feet and forced feet to always be printed as integers
+%%
+%% Version 1.1
+%%    - initial release to ctan
+%%
+%% Version 1.0
+%%    - initial version based on tex.stackexchange.com question
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Copyright (C) 2016 by Andrew Mathas <andrew.mathas@gmail.com>
+%%
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License (LPPL), either
+%% version 1.3c of this license or (at your option) any later
+%% version.  The latest version of this license is in the file:
+%%
+%% http://www.latex-project.org/lppl.txt
+%%
+%% This work is "maintained" (as per LPPL maintenance status) by
+%% Andrew Mathas.
+%%
+%% This work consists of the files:
+%%       smartunits.sty
+%%       smartunits.tex
+%%       smartunits.pdf
+%%       README.md
+%%
+%% Copyright (c) 2016 Andrew Mathas <andrew.mathas@gmail.com>
+%% end of smartunits.sty
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% End of file `smartunits.sty'.
+%%

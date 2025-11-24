@@ -1,0 +1,180 @@
+% --------------------------------------------------------------------------
+%
+% the CHEMMACROS package -- module: `lang'
+%
+% --------------------------------------------------------------------------
+% Clemens Niederberger
+% --------------------------------------------------------------------------
+% https://github.org/cgnieder/chemmacros/
+% contact@mychemistry.eu
+% --------------------------------------------------------------------------
+% If you have any ideas, questions, suggestions or bugs to report, please
+% feel free to contact me.
+% --------------------------------------------------------------------------
+% Copyright 2011-2016 Clemens Niederberger
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+%
+% The Current Maintainer of this work is Clemens Niederberger.
+% --------------------------------------------------------------------------
+\ChemModule{lang}{2016/05/31 language settings for chemmacros}
+
+\RequirePackage{translations}
+
+\msg_new:nnn {chemmacros} {language-not-defined}
+  {
+    You~ chose~ the~ language~ `#1'~ which~ is~ not~ defined~ by~ chemmacros.~
+    `english'~ is~ used~ instead.~ If~ you~ just~ mistyped~ try~ again!~
+    Otherwise~ contact~ the~ author~ and~ he'll~ probably~ add~ your~ language.
+  }
+
+% --------------------------------------------------------------------------
+% language settings:
+\bool_new:N      \l__chemmacros_language_auto_bool
+\bool_set_true:N \l__chemmacros_language_auto_bool
+% this token list will hold the chosen language for chemmacros; since the
+% language is either chosen automatically or by option it is only available at
+% begin document
+\tl_new:N  \l_chemmacros_language_tl
+\tl_set:Nn \l_chemmacros_language_tl {english}
+\tl_new:N  \l__chemmacros_current_language_tl
+
+\tl_const:Nx \c__chemmacros_keyword_prefix_tl
+  { \chemmacros_if_compatiblity:nnT {>} {5.6} {chem-keyword-} }
+
+\prop_new:N \g_chemmacros_translations_prop
+
+% translate the key #1
+\cs_new:Npn \chemmacros_translate:n #1
+  {
+    \bool_if:NTF \l__chemmacros_language_auto_bool
+      { \GetTranslation { \c__chemmacros_keyword_prefix_tl #1 } }
+      {
+        \GetTranslationFor
+          {\l_chemmacros_language_tl}
+          { \c__chemmacros_keyword_prefix_tl #1 }
+      }
+  }
+
+\DeclareExpandableDocumentCommand \ChemTranslate {m}
+  { \chemmacros_translate:n {#1} }
+
+\chemmacros_define_global_keys:n
+  {
+    language .value_required:n = true ,
+    language .code:n =
+      \tl_if_eq:nnTF {#1} {auto}
+        { \bool_set_true:N \l__chemmacros_language_auto_bool }
+        {
+          \bool_set_false:N \l__chemmacros_language_auto_bool
+          \tl_set:Nn \l__chemmacros_current_language_tl {#1}
+        } ,
+    language .initial:n = auto
+  }
+
+\ChemCompatibilityTo{5.2}
+\chemmacros_define_global_keys:n
+  {
+    german   .meta:n = { language = german } ,
+    ngerman  .meta:n = { language = ngerman }
+  }
+\EndChemCompatibility
+
+\AtBeginDocument{
+  \bool_if:NTF \l__chemmacros_language_auto_bool
+    {
+      \tl_set:Nx \l_chemmacros_language_tl
+        { \@trnslt@language{\@trnslt@current@language} }
+    }
+    {
+      \tl_set_eq:NN
+        \l_chemmacros_language_tl
+        \l__chemmacros_current_language_tl
+    }   
+}
+
+% --------------------------------------------------------------------------
+% \ChemCompatibilityFrom{5.6}
+\cs_new_protected:Npn \__chemmacros_declare_translation:nw #1#2=#3\q_stop
+  {
+    \tl_set:Nx \l__chemmacros_tmpa_tl { \tl_trim_spaces:n {#2} }
+    \tl_set:Nx \l__chemmacros_tmpb_tl { \tl_trim_spaces:n {#3} }
+    \use:x
+      {
+        \chemmacros_declare_translation:nnn
+          { \exp_not:n {#1} }
+          { \exp_not:V \l__chemmacros_tmpa_tl }
+          { \exp_not:V \l__chemmacros_tmpb_tl }
+      }
+  }
+
+% #1: key
+% #2: lang
+% #3: translation
+\cs_new_protected:Npn \chemmacros_declare_translation:nnn #1#2#3
+  {
+    % TODO: this should be \declaretranslation
+    \@trnslt@declare@translation
+      { \c__chemmacros_keyword_prefix_tl #1 }
+      {#2}
+      {#3}
+    \prop_gput:Nnn \g_chemmacros_translations_prop {#1(#2)} {#3}
+  }
+\cs_generate_variant:Nn \chemmacros_declare_translation:nnn {V}
+
+% #1: key
+% #2: csv list: { <lang1> = <translation1> , <lang2> = <translation2> }
+\cs_new_protected:Npn \chemmacros_declare_translations:nn #1#2
+  {
+    \clist_map_inline:nn {#2}
+      { \__chemmacros_declare_translation:nw {#1} ##1 \q_stop }
+  }
+
+\NewDocumentCommand \DeclareChemTranslations {mm}
+  { \chemmacros_declare_translations:nn {#1} {#2} }
+\@onlypreamble \DeclareChemTranslations
+  
+\NewDocumentCommand \DeclareChemTranslation {mmm}
+  { \chemmacros_declare_translation:nnn {#1} {#2} {#3} }
+\@onlypreamble \DeclareChemTranslation
+% \EndChemCompatibility
+
+\cs_new:Npn \__chemmacros_parse_translate_list_entry:nnn #1#2#3 {}
+
+\cs_new_protected:Npn \__chemacros_parse_translate_list_entry:www #1(#2)\q_mark#3\q_stop
+  { \__chemmacros_parse_translate_list_entry:nnn {#1} {#2} {#3} }
+
+\cs_new_protected:Npn \chemmacros_for_all_translations_do:n #1
+  {
+    \cs_set:Npn \__chemmacros_parse_translate_list_entry:nnn ##1##2##3 {#1}
+    \prop_map_inline:Nn \g_chemmacros_translations_prop
+      { \__chemacros_parse_translate_list_entry:www ##1 \q_mark ##2 \q_stop }
+  }
+
+\ChemCompatibilityFrom{5.7}
+\NewDocumentCommand \ForAllChemTranslationsDo {+m}
+  { \chemmacros_for_all_translations_do:n {#1} }
+\EndChemCompatibility
+
+% --------------------------------------------------------------------------
+\tex_endinput:D
+
+2015/11/17 - remove options `german' and `ngerman', starting with v5.3
+2016/02/03 - adapt to changes in `acid-base' module
+2016/04/27 - additions/changes to reaction and scheme translations
+           - \chemmacros_declare_translation:nnn and
+             \chemmacros_declare_translations:nn
+           - \DeclareChemTranslation and \DeclareChemTranslations
+           - moved translations from lang module to the corresponding modules
+             they belong to
+2016/05/31 - add prefix string to translation keywords
+           - add logging of translation keywords
+           - \ForAllChemTranslationsDo

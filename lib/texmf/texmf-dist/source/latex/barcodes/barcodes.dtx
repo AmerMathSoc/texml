@@ -1,0 +1,2590 @@
+% \iffalse meta-comment
+%
+% This is part of the barcode package.
+% You should run 
+%     tex barcodes.ins
+% instead of reading/running this file.
+% Among other things, you will then get a documentation.
+% I guess you need some, or you wouldn't look here.
+% \fi
+%
+%% \CharacterTable
+%%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
+%%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
+%%   Digits        \0\1\2\3\4\5\6\7\8\9
+%%   Exclamation   \!     Double quote  \"     Hash (number) \#
+%%   Dollar        \$     Percent       \%     Ampersand     \&
+%%   Acute accent  \'     Left paren    \(     Right paren   \)
+%%   Asterisk      \*     Plus          \+     Comma         \,
+%%   Minus         \-     Point         \.     Solidus       \/
+%%   Colon         \:     Semicolon     \;     Less than     \<
+%%   Equals        \=     Greater than  \>     Question mark \?
+%%   Commercial at \@     Left bracket  \[     Backslash     \\
+%%   Right bracket \]     Circumflex    \^     Underscore    \_
+%%   Grave accent  \`     Left brace    \{     Vertical bar  \|
+%%   Right brace   \}     Tilde         \~}
+%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % EAN documentation starts here                %%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%<*eandoc>
+\documentclass{article}
+\begin{document}
+\author{Peter Willadt}
+\title{EAN Barcodes by \TeX{} an Metafont}
+\date{1998-01-24}
+\maketitle
+\begin{abstract}
+This article documents the use of the font {\tt wlean.mf}. With the font,
+there also comes an auxiliary Perl file for preprocessing TeX source. 
+Its use is also documented here.
+\end{abstract}
+
+\section{Legal Restrictions and Introduction}
+
+All the files in this package are subject to the \LaTeX\ Project Public
+License. Also I got a special wish: If you find this package useful,
+support TUG or your local \TeX\ user group.
+
+The complete contents of this package is
+described in the file {\tt README}. That file also contains some
+information about the use of the other barcode fonts that are
+contained. For more information about these other files you may want
+to read an article that has appeared in the december, 1997 issue of
+{\em TUGboat}. Please see also the remarks in the section {\em
+Address} later in this file. 
+
+\section{About {\sc ean}}
+
+In stores, {\sc upc} and {\sc ean} codes are widely used for automatic
+identification, pricing etc. {\sc ean} consist of either eight or
+thirteen digits. Twelve digit {\sc upc} codes are like thirteen digit
+{\sc ean} with the first digit equal to zero. {\sc ean} specifications
+do not only
+require bars, also the encoded number has to be written in plain text,
+in case a reader is defective or the code is too hard to read. {\sc
+ean} is a high-density code, and so it is highly vulnerable.
+
+\subsection{Coding} 
+
+The last digit of an {\sc ean} is a weighted mod 10 checksum. Digits
+are alternatingly multiplied by 1 or 3. The so calculated sum over all
+digits has to be divisible by ten without any remainder.
+
+There are three different {\sc ean} character sets labeled A, B, and
+C. Eight digit {\sc ean} codes use character sets A and C, {\sc ean}
+codes with thirteen digits use all three character sets---see below.
+
+\begin{verse}
+{\sc ean} with eight digits consists of:\\
+a sidebar\\
+the first four digits (coded in character set A),\\
+the middle separator,\\
+the other four digits (coded in character set C)\\
+another sidebar.
+\end{verse}
+
+The first half of an {\sc ean} code with thirteen digits is coded in
+the character sets A and B, the second half in character set C. The
+coding of the very first digit is hidden in the varying use of the
+character sets A and B. A C programmer might use the following table
+and algorithm to decide which character set to use for digits 2--7:
+
+\begin{verbatim}
+static UBYTE abtab[10][6]={
+  {0,0,0,0,0,0}, /* 0 */
+  {0,0,1,0,1,1}, /* 1 */
+  {0,0,1,1,0,1}, /* 2 */
+  {0,0,1,1,1,0}, /* 3 */
+  {0,1,0,0,1,1}, /* 4 */
+  {0,1,1,0,0,1}, /* 5 */
+  {0,1,1,1,0,0}, /* 6 */
+  {0,1,0,1,0,1}, /* 7 */
+  {0,1,0,1,1,0}, /* 8 */
+  {0,1,1,0,1,0}  /* 9 */
+};
+
+char eancode[18];
+char eansource[14]="4025700001030";
+
+eancode[0]=eansource[0];
+eancode[1]=' ';
+eancode[2]='+';
+for(i=1;i<7;i++)
+  eancode[i+2]='A'+eansource[i]-'0'
+               +abtab[eansource[0]-'0'][i-1]*('a'-'A');
+/* then the middle separator, digits 7--13,
+ * and the final + sign */
+\end{verbatim}
+
+
+A zero means to use character set A and a one means to use character
+set B for the respective digit. The printed code of an {\sc ean} 13
+consist of the following elements, from left to right:
+
+\begin{verse}
+The first digit in human-readable form\\
+an {\sc ean} sidebar\\
+six digits in character sets A or B\\
+the {\sc ean} middle separator\\
+six digits in character set C\\
+another {\sc ean} sidebar
+\end{verse}
+
+Magazines or codes with pricing have a so called extension following
+the main code with some fixed distance. This extension consists of one
+sidebar and two or five digits. As I have no full {\sc ean}
+documentation at hand at the time of this writing, I am sorry that I
+am not able to tell you more about this.
+
+The {\sc ean} digits themselves obey to the following rules: Each
+digit takes seven units of space. Some of the seven elements are
+white, others are black. Digits from character set A always are white
+at the left edge and black at the right, and they always have an odd numer
+of black elements. Digits from character set B are quit similiar, but
+they have an even number of black elements. Digits from Character set C
+always start with a black element and have an even number of
+black elements. The rightmost element in character set C is always white.
+The sidebars are three elements wide, the middle separator takes five
+elements. 
+
+\subsection{What {\sc ean} numbers may I use?}
+
+For inhouse use, you may use any 13-digit {\sc ean} that starts with a
+2. If you want to have your products sold elsewhere, you have to buy a
+set of {\sc ean} numbers from the organisation in your country that
+holds these numbers. For germany, this organisation is the {\em
+Zentrale f\"ur Coorganisation} in Cologne. Almost any country has a
+similiar organisation. 
+
+The first digit or sometimes the first two digits code the country of
+origin, the next five to six digits code the manufacturer, the eigth
+to twelfth digits are for free use by the manufacturer. The
+thirteenth digit is, as explained above, a checksum. {\sc ean} do not
+contain any qualifiers, so if you get an {\sc ean} from somewhere, you
+may find out about the country of origin and about the manufacturer of
+the product, but if you want to know more, you have to contact the
+manufacturer. 
+
+\section{Using {\tt wlean.mf}}
+
+{\tt wlean.mf} is rather raw. It  contains all three {\sc ean}
+character sets within one single font, but at different places.
+The character sets A, B, C, and the digits are
+featured through the following characters:
+
+\begin{verse}
+0 to 9 yield the digits from 0 to 9\\
+A to J yield the codes from character set A\\
+a to j yield the codes from character set B\\
+K to T yield the codes from character set C\\
++ makes the left and right sidebar and\\
+- makes the middle sign
+\end{verse}
+
+So, to code the number {\tt 2099993098253}, you have to write\\
+\verb*|{\eanfont2 +AJjjJd-KTSMPN+}|. The space is necessary to separate
+the leading 2 from the barcode.
+
+{\tt wlean.mf} does not use true {\sc ocr} digits, as it should. As
+the digits will not be used for {\sc ocr}, I do not consider this as
+a serious restriction. If you really need {\sc ocr} digits, there is
+an {\sc ocr} font on {\sc ctan}. And in {\em TUGboat}, there has been
+a publication about {\sc ean}, where \TeX{} draws the bars and
+the {\sc ocr} font prints the digits, see [1]. 
+
+{\tt wlean.mf} uses the normal {\sc ean} dimensions. If you would like
+lower bars---in contradiction to the {\sc ean} rules---you have to edit
+the source. The rules also make recommendations about the scaling. To
+be fully compatible, this font may be scaled 0.8, 0.9, 1, 1.2, 1.4,
+1.5, 1.7, 1.85, or 2 times the original size. With a 300 dpi printer,
+I do not recommend using sizes$<1.0$.
+
+\subsection{Installation}
+
+The installation itself is pretty mundane, like with any plain font.
+Just copy {\tt wlean.mf} to a location where Metafont can find
+it. Then invoke Metafont to create a {\sc tfm} file. Move this {\sc
+tfm} file where \TeX{} can find it. Type in the example at the end of
+this file and run it through \TeX{}. Then call Metafont again to
+produce a font suitable for your printer or previewer and move this
+font to an appropriate location. You may also want to edit {\tt
+codean.pl} to run on your shell. For this purpose you have to read
+your system's documentation or the documentation that comes with Perl.
+
+\subsection{Making readable output}
+
+Don't make {\sc ean} too small. With a 300 dpi printer, you should not
+use this font with magnification$<1$; {\tt scaled 1200} will be okay.
+If you want to do mass production, go to somebody with a barcode
+reader and check your output, {\em before} you loose money. You also
+should consider changes in the blackness that may be caused by
+production printing devices. And, of course, you should only use
+colours that can be used with barcode reading devices. Especially, do
+not use red and watch for much contrast between the colour you print
+and the colour of the paper.
+
+\subsection{Coding the numbers}
+
+You will perhaps not want to write something as ugly and error-prone
+as \verb*|{\eanfont2 +AJjjJd-KTSMPN+}| manually. So you have to use a
+preprocessor\footnote{See bcfaq.tex for \TeX{} code to go without
+preprocessing. It is very fine.}. With {\tt wlean.mf} there comes a
+tiny Perl program ({\tt codean.pl}) that does preprocessing within
+your \TeX{} sources\footnote{codean.pl in the meantime also handles
+code 128. See bcfaq.tex}.
+
+The \TeX{} file to be filtered may contain any number of lines
+that have one of the following commands starting at the leftmost position.
+
+\begin{itemize}
+\item \verb|\ean{|{\em12 or 13 digit number}\verb|}|
+The number will be coded as {\sc ean}. If it is only 12 digits long, the
+checksum will be calculated, too.
+
+\item \verb|\embed{|{\em12 or 13 digit number}\verb|}|
+The number is used as a base for embedding article numbers \&c.\
+within an {\sc ean}.
+
+\item \verb|\eean{|{\em number with at most 11 digits}\verb|}| 
+This number is to be embedded within an {\sc ean}.
+
+\item \verb|\isbn{|{\em valid ISBN}\verb|}| An {\sc isbn} to
+make an embedded {\sc ean} of.
+\end{itemize}
+
+Let's look at an example: You want the {\sc isbn} {\tt0-201-13448-9}
+to be embedded. So you write \verb|\isbn{0201134489}|, but you might
+also use the embedding method and write
+\verb|\embed{9780000000000}| and, somewhere later in the file,
+\verb|\eean{020113448}|. In this latter case you have to omit the last digit,
+as {\sc isbn} loose their check digit in favour of the {\sc ean} check digit.
+Anyway you do it, you get your command replaced by
+\verb|\EAN{|{\em13-digit-number-coded-strange}\verb|}| in the output
+file.
+ 
+But embedding is especially useful if you also write the program that
+reads the barcodes. This program might then extract your article
+number from an {\sc ean} starting with {\tt20}, eg.
+
+What you have to do is, of course, to use stub definitions for the
+three macros mentioned above---as they shall never actually be
+typeset---and to use a valid definition for \verb|\EAN|. Then you run
+your \TeX{} source through {\tt codean.pl}. This program takes as
+first parameter the name of your original file and as second parameter
+the name of your destination file. If you omit the parameters, you will
+be asked for them.
+
+You may of course also peek the source of {\tt codean.pl} to see how
+{\sc ean} checksums are calculated, and so on.
+
+\subsection{Example}
+
+Here is a full example.
+Use this \TeX{} source:
+
+\begin{verbatim}
+\font\eanfont=WLEAN
+\def\ean#1{\message{Call codean.pl}}
+\def\eean#1{\message{Call codean.pl}}
+\def\isbn#1{\message{Call codean.pl}}
+\def\embed#1{}
+\def\EAN#1{\vbox{\vskip10pt\eanfont#1\vskip10pt}}
+ Now, something to do:
+\ean{4025700001030} % or, without checksum:
+\ean{402570000103}
+\embed{2500000000000}
+\eean{123}
+\isbn{0201134489}
+\end{verbatim}
+
+
+
+Having run your file through {\tt codean.pl}, the lines after the percent
+sign look like this:
+
+\begin{verbatim}
+ Now, something to do:
+\EAN{4 +AcFHaa-KKLKNK+} % or, without checksum: %(4025700001030)
+\EAN{4 +AcFHaa-KKLKNK+} %(402570000103)
+\embed{2500000000000}
+\EAN{2 +FAaaAa-KKLMNT+} % embedded(123)
+\EAN{9 +HiaCaB-LNOOSN+} % ISBN(0201134489)
+\end{verbatim}
+
+
+Running this file through \TeX{}, you get {\sc dvi} output containig
+{\sc ean} barcodes. Perhaps you wonder why there is not even a
+single {\sc ean} contained within this documentation. The reason is
+quite simple: You should be able to read the docs {\em before} you
+have installed the font. But now is the right time to try the example
+on your own. Better yet, you may code an {\sc ean} where you have
+taken the number from something like your favourite candy and then,
+having printed it, you may compare the bars. This is a nice way to
+spend your evenings. I actually started deciphering {\sc ean} codes in
+this way, several years ago.
+
+\section{The End}
+
+\subsection{Address}
+
+Just in case you want to write to me, here is my address---but
+please note: I am not the {\sc ean} guru. 
+
+\begin{verbatim}
+Peter Willadt
+75177 Pforzheim
+Germany
+email: Willadt@t-online.de
+\end{verbatim}
+
+I also would appreciate if only one version of the material contained
+in this package is distributed. So if you have any corrections,
+suggestions, \&c., please do not hesitate to send them to me to
+incorporate them within this package.
+
+\subsection{Acknowledgement}
+
+I want to express my special thanks to Barbara Beeton for proofreading
+and making valuable suggestions. If there are still any typos or
+illegibilities, that is due to the fact that I had to change some
+things later on.
+
+\begin{thebibliography}{1}
+
+\bibitem{bc:ean}
+Peter Ol{\v{s}}ak.
+\newblock The {\sc ean} barcodes by {\TeX}.
+\newblock {\em TUGboat}, 15(4):459--464, 1994.
+
+\end{thebibliography}
+
+\end{document}
+%</eandoc>
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % EAN documentation ends here                  %%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % general documentation starts here            %%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%<*bcfaq>
+% this file contains answers to frequently asked questions (FAQ)
+% about barcodes and---to some extent---VPL files.
+\documentclass[a4paper]{article}
+\bibliographystyle{alpha}
+
+% macros for the examples
+% These are documented within the text.
+
+% Barcode fonts
+\font\itf=wlitf scaled 1200
+
+% barcodes with depth
+\def\bcbox#1{\lower3pt\hbox{\itf +#1-}}
+
+% barcodes made taller
+\newbox\bsavebox
+\newdimen\bcboxdepth
+\bcboxdepth=4pt
+\def\bdbox#1{\setbox\bsavebox\hbox{\itf +#1-}
+\vbox{\hsize=\wd\bsavebox\offinterlineskip%
+	\copy\bsavebox%
+	\vskip-\ht\bsavebox\vskip\bcboxdepth%
+	\box\bsavebox\vskip-\bcboxdepth}}
+\def\bebox#1{\setbox\bsavebox\hbox{\itf +#1-}
+\vbox{\hsize=\wd\bsavebox\offinterlineskip%
+	\copy\bsavebox%
+	\copy\bsavebox%
+	\vskip-\ht\bsavebox\vskip\bcboxdepth%
+	\box\bsavebox\vskip-\bcboxdepth}}
+
+\def\tbs{{\tt\char92}}
+% makes a typewriter backslash
+\begin{document}
+\title{Barcodes-FAQ}
+\author{Peter Willadt}
+\date{2003-05-24}
+\maketitle
+\begin{abstract}
+
+This file deals with questions about barcode fonts created for
+\TeX{}. Its purpose is not to replace the regular documents, but to add
+informations that may be of no interest for the casual reader.
+
+\end{abstract}
+
+\section{Changelog}
+
+\subsection{Changes of the barcode package in general}
+\begin{tabular}{ll}
+\em Date & \em Change\\
+2003-05-24 & new release with some corrections to codean.pl\\
+           & Thanks to Jacek Ruzycka (uv\_centcom@yahoo.com)\\
+1999-05-29 & added license note to README\\
+1999-05-29 & added install.bat\\
+1998-11-28 & included wlcr39, wlcf39, and wlc93\\
+1998-04-21 & fixed wlitf bug\\
+1998-04-10 & switched partially to docstrip archive\\
+	   & added support for code 11\\
+1998-01-24 & added code 128 in MF format, changed codean.pl\\
+1997-11-08 & changed metrics of {\sc itf} start/stop chars\\
+1997-10-09 & released first version of the barcode package
+\end{tabular}
+
+\subsection{Changes within this document}
+
+\begin{tabular}{ll}
+\em Date & \em Change\\
+1999-05-29 & added short info about install.bat\\
+1998-11-28 & added docs about code 93\\
+1998-04-10 & added docs about code 11\\
+1998-01-24 & added information about code 128\\
+1997-12-08 & added contributions to {\sc ean} coding by Kalvis M. Jansons\\
+	 & changed section on plessey\\
+1997-11-09 & added several items, rearranged sections\\
+1997-11-08 & started writing first version
+\end{tabular}
+
+\section{Introduction}
+
+The barcode package itself can be found on {\tt ctan} in the
+subdirectory\\ {\tt fonts/barcodes/willadt}. It contains---among
+others---several fonts in {\sc vpl} format, so your {\sc dvi} driver
+should be able to handle virtual fonts. If it doesn't, you may perhaps
+use {\em dvicopy} to resolve the references to virtual fonts, or you
+may perhaps upgrade to a more modern \TeX{} package.
+
+\section{What about docs?}
+
+\subsection{Docs about barcodes}
+
+With the barcode package, there comes documentation about {\sc ean}
+fonts. In the README file, there are short examples of the use of
+the other fonts, too. Also the files {\tt examples.tex} shows the look
+and basic usage of the barcodes.
+
+In {\sl TUGboat}, barcoding has been covered in several
+articles \cite{bc:ean,bc:sauter,bc:vulis}. The barcode package itself
+is covered in an article that has appeared in the december issue,
+1997, of {\sl TUGboat}. As TUGboat is making the elder articles available
+online, I recommend looking for it. 
+
+\subsection{Some information about code 128}
+
+Code 128 is able to print all 128 ascii chars. There are a little more
+than a hundred glyphs that are interpreted in three different
+ways. Some of the glyphs are used as shift chars to determine which
+interpretation to use. A checksum is mandatory. To use it, you must
+install {\tt wlc128.mf}.
+
+The preprocessing---switching among the different character sets,
+coding efficiently, calculating the checksum---is handled by the
+newer versions of codean.pl. This is perhaps not as pleasing as to do
+it with \TeX{} alone, but, alas, it works.
+
+The way to run the preprocessor is described in {\tt eandoc.tex}. To
+use code 128, you have to write a line starting with {\tt\tbs cxxviii\{}
+followed by the characters you want to code and followed by a closing
+brace. Non-printing seven-bit ascii characters may be specified in hex
+in C or \TeX{} style, like {\tt\tbs x3f} or \verb|^^3f|. Anything up to
+the rightmost closing brace in this line will be coded---there is no
+brace matching. But you will get a warning message if your text
+includes a right brace. So you may want to code braces in hex form to
+avoid this message. Please note that {\tt codean.pl} does almost no
+checking for errors, so if you intend to produce garbage, there are
+lots of ways. If you need code 128 escape characters, they may be
+included as hex characters with codes starting at 0x80.
+
+\begin{tabular}{lllll}
+\em Input Code & \em C128 number &\multicolumn{3}{c}{\em meaning}\\
+\em(hex) & \em(dec.) & \em Set A & \em Set B & \em Set C\\
+0x80 	& 96 	& FNC3	& FNC3	& 96\\
+0x81	& 97	& FNC2	& FNC2	& 97\\
+0x82	& 98	& SHIFT	& SHIFT	& 98\\
+0x83	& 99	& CODE C& CODE C& 99\\
+0x84	& 100	& CODE B& FNC4	& CODE B\\
+0x85	& 101	& FNC4	& CODE A& CODE A\\
+0x86	& 102	& FNC1	& FNC1	& FNC1\\
+0x87	& 103	& START A& START A& START A\\
+0x88	& 104	& START B& START B& START B\\
+0x89	& 105	& START C& START C& START C\\
+0x8a	& 106	& STOP	& STOP	& STOP
+\end{tabular}
+
+But please keep in mind that {\tt codean.pl} does almost anything for you,
+you should not have the need to insert start/stop codes and the
+like. Only if you use EAN128, you will need {\tt FNC1}. Just to make
+it clear: For your barcode to include {\tt FNC1} you have to write
+\verb|^^86| before preprocessing.
+
+{\tt codean.pl} will insert a sequence of hex digits; the original
+text will be appended to the line as a comment.
+Also, your \TeX{} file has to define some macros. They look like
+this:
+
+\begin{verbatim}
+\font\fntcxx=wlc128 scaled \magstep3
+\def\CXXVIII{\bgroup\fntcxx\let\next\hexchar\next}
+\def\cxxviii{\message{OOPS, use codean.pl}}
+\def\hexchar#1#2{\if#1@
+            \global\let\next\egroup
+            \else\char"#1#2\fi\next}
+\end{verbatim}
+
+If you do not like end recursion, you might use other ones. If
+you dislike the hex format produced by {\tt codean.pl}, you are free to
+change it---as long as you don't redistribute.
+
+\subsection{A little bit about code 11}
+
+Code 11 is a numeric-only barcode. It is almost as space-efficient as
+{\sc itf}, and it comes with a checksum. The checksum should be
+swallowed by the reading device. The checksum is a weighted mod-11
+checksum. There are apparently two kinds of checksum in use: such with
+one checkdigit and such with two checkdigits.
+
+To use code 11, you should include {\tt barcode.sty}. \TeX{} will
+calculate the checksum on its own. If you need two check digits, you
+should say\\
+{\tt\tbs codexichecksumktrue}.\\
+How many check digits you
+actually need should be made clear in the documentation to your
+reading device\footnote{You may also want to check the documentation
+to find out if your reading device supports code 11 at all; code 11 is
+not that common.}. You may code the digits 0--9, and the minus
+sign. The start and stop sign is mapped to the @ character. Here is a
+full example. {Please note: If you do not use \LaTeX{}, you may
+have to supply a definition for {\tt\tbs makeatletter}
+and {\tt\tbs makeatother}}:
+
+\begin{verbatim}
+\input barcodes.sty
+%% with two check digits
+\codexichecksumktrue
+\codxi{12-1234}
+
+%% with only one check digit.
+\codexichecksumkfalse
+\codxi{12-1234}
+\bye
+\end{verbatim}
+
+\subsection{Which Code 39 should I use, there are different versions?}
+
+Well, you may \verb|\input code39| in your \TeX\ document to get the
+macro version. It is absolutely flexible in repect of barcode size and
+so on, but it is made of \TeX\ macros and there are probably
+situations where you may prefer a {\em real} font. So there is {\tt
+wlc39.mf} as a real font, {\tt wlcr39.mf} as a font running sideways, 
+and{\tt wlcf39.vpl} as a full ascii code 39 in vpl format. The
+ltter two fonts are experimental, that means, they are not that much
+tested as the others. 
+
+I recommend using either the \TeX\ macro or {\tt wlc39.mf}. The others
+are too special for normal use, rotation by the graohics driver is
+mor robust than building towers of letters, and full ascii code~39 is
+less than optimal. 
+
+\subsection{About code 93}
+
+Code 93 is a little bit more compact than code 39 (as it uses also the
+gap between the characters), but in other aspects it is quite
+similiar. A checksum with two digits is mandatory. As with code 11,
+checksumming works by weighing the characters different depending on
+their position within the barcode. 
+
+The version of code 93 that is included within the package resorts to
+uppercase ascii, digits, and to some other signs. Start and stop sign
+are mapped to {\tt<} and {\tt>}, respectively.
+
+Full ascii works similiar to full ascii with code 39 (that means with
+escape characters), but fortunately the escape characters are
+different from ordinary characters, so that you can hardly be
+misunderstood. Unfortunately the escape characters are named (\$),
+(\%), (/), and (+), so I decided to map them to opening and closing
+parentheses and brackets, respectively. This may not seem very clever
+when it comes to full ascii, but these characters may also appear as
+checksum characters, so we need them when doing uppercase ascii,
+too. For full ascii, it would be clever to redo the font in a
+completely different way and to map start sign, stop sign and the four
+escape characters to positions above 128, so that any 7 bit ascii
+character can be input directly.
+
+Code 93 is supported by codean.pl in the same way as ean or code 128
+are. You have to write {\tt\tbs xciii\{YOUR DATA 123\}}, run the file
+through {\tt codean.pl}, then you'll get\\
+{\tt\tbs XCIII\{YOUR DATA 123NN\}\%Code93(YOUR DATA 123)}
+
+The NN make up the two check characters. Normally, they are different,
+but in this example they are equal, by incident.
+
+\subsection{Docs about VPL Files}
+
+VPL files are documented in the files {\tt VPtoVF.WEB} and {\tt
+VFtoVP.WEB}. Both files can be found on {\sc ctan} under {\tt
+SYSTEMS/KNUTH}. {\em WEAVE} may be used to produce \TeX{} files. The
+documentation about the VPL/VF file formats is covered within the
+first few sections.
+
+\section{I want other metrics etc.}
+
+\subsection{My barcodes should have depth}
+
+You have got several possibilities to obtain depth. The most simple
+approach may be to set the barcodes with the regular barcode fonts into an
+{\tt\tbs hbox} and then to {\tt\tbs lower} this hbox. 
+
+Let's look at an example:
+
+\begin{verbatim}
+\font\itf=wlitf scaled 1200
+\def\bcbox#1{\lower3pt\hbox{\itf +#1-}}
+ Example:
+{\sc itf} barcode looks like \quad\bcbox{1009}\quad
+for 1009, e.g.
+\end{verbatim}
+
+This code yields the following result:
+
+{\sc itf} barcode looks like \quad\bcbox{1009}\quad for 1009, e.g.
+
+Another approach is to edit the font sources. In case of {\sc vpl}
+files, this is quite painful. Rules in {\sc vpl} files do not have
+depth, so you have to change the characters mapping in a way that you
+add a {\em movedown} before you draw, and a {\em moveup} afterwards.
+You may see the changes for an arbitrary character from {\tt
+WLITF.VPL}:
+
+\begin{verbatim}
+(CHARACTER D48
+   (COMMENT from WLITF.VPL}
+   (CHARWD D 14)     (CHARHT R 10)
+   (CHARDP R  0)     (CHARIC R  0.0)
+   (MAP
+      (SETRULE R 14 R 1)(MOVERIGHT R 1)
+      (SETRULE R 14 R 1)(MOVERIGHT R 1)
+      (SETRULE R 14 R 2)(MOVERIGHT R 2)
+      (SETRULE R 14 R 2)(MOVERIGHT R 2)
+      (SETRULE R 14 R 1)(MOVERIGHT R 1)
+      )
+   )
+\end{verbatim}
+
+This character may be lowered by four units by editing in a way that the
+following lines result. Please note that there were not only the {\em
+moveup} and {\em movedown} commands added, but also the height an
+depth have been changed.
+
+\begin{verbatim}
+(CHARACTER D48
+   (COMMENT Lowered to give some depth)
+   (CHARWD D 14)     (CHARHT R 10)
+   (CHARDP R  4)     (CHARIC R  0.0)
+   (MAP
+      (MOVEDOWN R 4)
+      (SETRULE R 14 R 1)(MOVERIGHT R 1)
+      (SETRULE R 14 R 1)(MOVERIGHT R 1)
+      (SETRULE R 14 R 2)(MOVERIGHT R 2)
+      (SETRULE R 14 R 2)(MOVERIGHT R 2)
+      (SETRULE R 14 R 1)(MOVERIGHT R 1)
+      (MOVEUP R 4)
+      )
+   )
+\end{verbatim}
+
+\subsection{My barcodes are too tall}
+
+For the sake of the person who has to scan the barcodes, barcodes just
+can't be tall enough. If the complete code is as tall as wide, the
+reading device can be twisted against the code at an angle of 45
+degrees. If they are half as high, the angle reduces to 26 degrees.
+
+If you really want short codes, you have to edit the sources. In the
+{\sc vpl} file, you have to change the {\em charht} and the first parameter
+to the {\em setrule} command at well. You also should change the {\em
+designsize} parameter.
+
+For the EAN font, search for {\tt bheight\#} and change {\tt22.85
+mm\#} to the height you need. To get an EAN font without the digits
+(bars only), you also have to edit the character definitions by
+leaving out the last lines (saying {\tt nuller;}, e.g. and you have to
+change the formula for calculating {\tt totheight} to not include the
+height of the digits any more, also you should remove any references
+to {\tt klotz}.
+
+\subsection{My barcodes are not tall enough}
+
+You may also change the sources, like described in the previous
+subsection. But there is another solution that is perhaps more
+practical. The idea is simple that double black is still black and
+that you may overlay several printouts of the same barcode. Here is
+the example code (it may be made taller by adding more copies of the
+barcode box, of course). There is an extra dimension {\em bcboxdepth}
+added to yield depth for the barcodes.
+
+\begin{verbatim}
+\newbox\bsavebox
+\newdimen\bcboxdepth
+\bcboxdepth=4pt
+\def\bdbox#1{\setbox\bsavebox\hbox{\itf +#1-}
+\vbox{\hsize=\wd\bsavebox\copy\bsavebox%
+	\vskip-\ht\bsavebox\vskip\bcboxdepth%
+	\box\bsavebox\vskip-\bcboxdepth}}
+\def\bebox#1{\setbox\bsavebox\hbox{\itf +#1-}
+\vbox{\hsize=\wd\bsavebox\copy\bsavebox%
+	\vskip0pt\copy\bsavebox%
+	\vskip-\ht\bsavebox\vskip\bcboxdepth%
+	\box\bsavebox\vskip-\bcboxdepth}}
+ Example:
+Tall {\sc itf} barcode looks like \quad\bdbox{1009}\quad
+or (still taller) \quad\bebox{1009}\quad for 1009, e.g.
+\end{verbatim}
+
+And here is the result, you may compare it with the output of the
+previous example:
+
+Tall {\sc itf} barcode looks like \quad\bdbox{1009}\quad or (still
+taller) \quad\bebox{1009}\quad for 1009, e.g.
+
+\subsection{My barcodes are too wide/too narrow}
+
+Perhaps you should change the barcode size (by changing
+{\tt\tbs magnification}) and then read the subsections above about too
+tall bars and bars that are not tall enough.
+
+\subsection{My barcodes should run vertically}
+
+Vertically oriented barcode is a good idea for cans, bottles and
+similiar things.
+
+It just depends on your {\sc dvi} driver. Perhaps there is a
+possibility to handle rotation via {\tt\tbs special}, as with {\em
+dvips} and the {\em rotate} macros. For experimantal purposes I have
+included a code 39 version running down instead right ({\tt
+wlcr39.mf}). You may perhaps use it with {\tt\tbs shortstack} or
+similiar. Here is some code I used (successfully) with plain \TeX:
+
+\begin{verbatim}
+\font\testfont=wlcr39 scaled 1200
+\def\bcbax{\let\next\bcbox\vbox\bgroup
+    \offinterlineskip\testfont\setbox0\hbox{@}\hsize=\wd0
+    \noindent{}@\hfil\break\next}
+\def\fertig{@\hfil\break\egroup}
+\def\bcbox#1{\if @#1\let\next\fertig\else#1\hfil\break\fi\next}
+
+Look buddy, this is \bcbax1406632@ code 39 
+stacked and running downwards. 
+\end{verbatim}
+
+\subsection{I heard something about full ascii code 39}
+
+Well, umh, now that you ask\dots The truth is: You may perhaps be able to
+configure your reading device to accept full ascii code~39. Then you may 
+code any 7~bit character you may think of. The bad news is that most of 
+the symbols have to be coded by two
+characters -- and as code 39 has already low density, you should not
+expect to get much use of it. Perhaps you might want to try code 128
+instead---it features full 7-bit ascii without any compromise.
+
+Another anti-feature is that switching to reading full-ascii code~39
+may lead to some bad reads of `normal' code~39. In full ascii, the lower
+case letters, e.g., are made by prepending the uppercase letters with a 
+plus sign, so {\tt+A} is read as {\tt a}. So, if you have got regular
+code~39 that contains such character sequences, and you have switched 
+your reading device to full ascii, you may get bad results. 
+
+But, now that you want it: With the barcode package there comes a font
+{\tt wlcf39.vpl}. You may install it like the other vpl files. It has got
+132 characters and has already taken all the coding for full ascii, so
+when you typ {\tt e,\$4+A}, it will silently be mapped to what you
+would have typed as {\tt+E/L/D/KA}, if you would use the plain code~39
+format\footnote{Please take note: 6 characters are blown up to 9,
+think again about using another code}. In my version of full ascii
+code~39, the start/stop sign is mapped to @@ (or \verb|\char128|). So
+you actually had to add @@ to the front and the end of the example
+string. If you can not exclude that the character sequence @@ appears
+within the text you want to code, you have to avoid ligature
+processing. You may do that like this:
+
+\begin{verbatim}
+\font\fullas=wlcf39 scaled 1728
+\def\alphanolig{\char64\kern0pt}
+\def\printacode#1{{\fullas@@{\catcode`\@=\active%
+	\let @=\alphanolig#1}@@}}
+\end{verbatim}
+
+You also have to escape or circumscribe special characters to make
+them really printable, of course, so that when you wanted a backspace,
+a tab, a space, a dollar sign, a percent sign, and a bell character to
+be coded, you would type something like
+
+\begin{verbatim}
+{\fullas @@\char8\char9\char32\$\%\char7}
+\end{verbatim}
+
+\section{Troubleshooting}
+
+\subsection{My barcodes can't be decoded}
+
+At the very, very first, check if you really have added start and stop
+codes. If you haven't, you're lost. Then check if you have enabled
+decoding of your special barcodes within your reading device. With
+modern scanners, you can disable almost any coding scheme.
+
+At first, try to make them larger. If that does't help, make them
+larger, again. If that will not help, obtain fonts in \TeX{} or
+Metafont format and make them brighter. Or, perhaps better, obtain a
+better printer.
+
+You also should check the contrast between bars and background,
+especially when using a dot matrix printer or coloured background
+or---still worse---red bars.
+
+\subsection{My decoder reads extra digits, sometimes}
+
+I guess you use {\sc itf} barcode with a number of digits that is
+sometimes even and sometimes odd. As {\sc itf} always codes two digits
+at once, you should take care just to code an even number of digits at
+any time. If an excess zero at the beginning of your number is not
+acceptable, you might try another kind of barcode instead of {\sc
+itf}. 
+
+\subsection{Can't run pdf\TeX\ with barcode fonts}
+
+Get a later version of pdf\TeX, and you're done.
+
+\section{Missing items}
+
+\subsection{I am missing two-of-five}
+
+I got specs for two-of-five (three bars). If you want it, let me know;
+I might implement it. For other kinds of two-of-five, I haven't got
+complete specs.
+
+\subsection{I am missing plessey}
+
+I got the specs but I haven't yet got the time to implement them. With
+plessey, there also rise several questions due to the fact that
+plessey has never been officialy standardized. The only thing that is
+absolutely sure about plessey is how binary ones and zeros are
+encoded. There are codes that are more wide-spread. Several modern
+barcode readers can't cope with plessey code.
+
+\subsection{I am missing \dots{} some other barcode}
+
+I have checked out several two-dimensional barcodes. But for most of
+them, support by \TeX{} seems to be rather pointless. Perhaps Metafont
+could be called any time you have to code something to draw the
+symbols, but you might as well use a custom drawing program that comes
+from the barcode vendor. Also, most two-dimensional barcodes (and
+other barcodes not mentioned here) are proprietary. Last not least the
+reading devices I have access to can deal only with a finite range of
+barcodes.
+
+I am sorry, but I haven't got the specs for further barcodes
+not mentioned here. If you could be so kind as to send them to me, I
+might perhaps implement them.
+
+\section{Contributions}
+
+\subsection{EAN without preprocessing}
+
+The following code is due to Kalvis M. Jansons.
+
+It handles printing of {\sc ean} without having to run a
+preprocessor. Not only are the {\sc ean} bars drawn, also the checksum
+checksum is checked. It can be easily
+adapted to non-\LaTeX{} use by omitting anything before \verb|\font|
+
+\begin{verse}
+Kalvis M. Jansons
+
+eMail: \verb|<kalvis@math.ucl.ac.uk>|
+
+\end{verse}
+
+An easy way to use the barcode fonts in \LaTeX{}:
+
+\begin{verbatim}
+\documentclass[a4paper]{article}
+
+\pagestyle{empty}
+
+\setlength{\oddsidemargin}{0pt}
+\setlength{\textwidth}{\paperwidth}
+\addtolength{\textwidth}{-2in}
+\setlength{\marginparwidth}{0pt}
+
+\setlength{\textheight}{\paperheight}
+\addtolength{\textheight}{-2.5in}
+\setlength{\topmargin}{0pt}
+
+\font\eanfont=WLEAN scaled 2000
+\def\ean#1{\vbox{\vskip20pt\eanfont#1\vskip20pt}}
+\newcount\num
+\def\a#1{\num=#1 \advance\num by `A \char\num}
+\def\b#1{\num=#1 \advance\num by `a \char\num}
+\def\c#1{\num=#1 \advance\num by `K \char\num}
+\def\C#1#2#3#4#5#6{\c#1\c#2\c#3\c#4\c#5\c#6}
+
+\def\A#1#2#3#4#5#6#7{\ifcase #7
+{\a#1\a#2\a#3\a#4\a#5\a#6}%
+\or {\a#1\a#2\b#3\a#4\b#5\b#6}%
+\or {\a#1\a#2\b#3\b#4\a#5\b#6}%
+\or {\a#1\a#2\b#3\b#4\b#5\a#6}%
+\or {\a#1\b#2\a#3\a#4\b#5\b#6}%
+\or {\a#1\b#2\b#3\a#4\a#5\b#6}%
+\or {\a#1\b#2\b#3\b#4\a#5\a#6}%
+\or {\a#1\b#2\a#3\b#4\a#5\b#6}%
+\or {\a#1\b#2\a#3\b#4\b#5\a#6}%
+\or {\a#1\b#2\b#3\a#4\b#5\a#6}%
+\fi}
+
+\newcount\cha
+\newcount\chb
+\makeatletter
+\long\def\for{\@for}
+\makeatother
+\gdef\mysix#1#2#3#4#5#6{,#1#2,#3#4,#5#6}
+\gdef\mywork#1#2{\advance\cha by #1 \advance\chb by #2}
+\gdef\barch#1.#2.#3.{
+\xdef\mylist{0#1\mysix#2\mysix#3}
+\cha=0
+\chb=0
+\for \x:=\mylist\do{\expandafter\mywork\x}
+\multiply\cha by 3
+\advance\chb by \cha
+\cha=\chb
+\divide\cha by 10
+\multiply\cha by -10
+\advance\chb by \cha}
+\def\bar#1.#2.#3.{\barch#1.#2.#3.
+	\ifnum\chb>0 #1#2#3 has a bad check sum!\\[20pt]
+	\else \ean{#1 +\A#2#1-\C#3+}\fi}
+\begin{document}
+
+ Examples
+
+\bar3.034325.106199.
+
+\bar4.074400.410000.
+
+\bar5.449000.055521.
+
+\bar5.010027.522336.
+
+\bar8.410005.421052.
+
+\bar9.780192.828941.
+
+\end{document}
+\end{verbatim}
+
+\section{Installation}
+
+Installation is described within the README file, in short.
+Here I assume that you have a TDS compliant \TeX{} installation
+already running.
+
+Installation consists of several steps:
+
+\begin{enumerate}
+ \item unpack barcodes.dtx by running barcodes.ins through \TeX (I
+guess you have already done that, lest you would not be able to read
+this text), like {\tt tex barcodes.ins}
+\item run {\tt vptovf} on all the vpl files, e.g. type something like 
+ {\tt vptovf wlitf.vpl wlitf.vf wlitf.tfm}
+\item if your \TeX\ system does not support automatic generation of 
+{\tt tfm} files, run mf on all the .mf files.
+\item move all the files to appropriate locations
+\item install codean.pl for use with Perl
+\item run the documentation through \LaTeX{}
+\item clean up
+\end{enumerate}
+
+Items 1,2,4,6, and part of 7 can be automatically executed on ms-dos or
+ms windows systems by running {\tt install.bat}. If you do not supply
+any parameters, {\tt install} will install to {\tt C:\char92TeXMF}. If
+you do supply a parameter, it should be the path to your TEXMF tree
+(no trailing backslash, please). 
+
+Here are the appropriate locations mentioned above -- all of them 
+in the TEXMF tree:
+
+\begin{tabular}{ll}
+\em move & \em to\\
+\tt *.mf & \tt fonts/source/public/misc\\
+\tt *.tfm & \tt fonts/tfm/public/misc\\
+\tt *.vf & \tt fonts/vf/public\\
+\tt code39.tex &\tt tex/generic/misc\\
+\tt barcodes.sty &\tt tex/latex/misc\\
+\end{tabular}
+
+Of course other locations might also work, but to me it seems fine 
+this way.
+
+Running plain \TeX{} on {\tt examples.tex} is the ultimate test: This
+will only work when all the installation is well done.
+
+The installation of Perl programs is beyond the scope of this
+documentation. If you do not need code 128, you can go without
+{\tt codean.pl}, especially if you use the macros described above.
+
+\bibliography{bcfaq}
+
+\end{document}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % general documentation ends here              %%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%</bcfaq>
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % bibliography for general documentation       %%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%<*bcfaqbbl>
+\begin{thebibliography}{Sau92}
+
+\bibitem[Ol{\v{s}}94]{bc:ean}
+Peter Ol{\v{s}}ak.
+\newblock The ean barcodes by {\TeX}.
+\newblock {\em TUGboat}, 15(4):459--464, 1994.
+
+\bibitem[Sau92]{bc:sauter}
+John Sauter.
+\newblock Postnet codes using metafont.
+\newblock {\em TUGboat}, 13(4):472--476, 1992.
+
+\bibitem[Vul91]{bc:vulis}
+Dimitri Vulis.
+\newblock {\TeX} and envelopes.
+\newblock {\em TUGboat}, 12(2):279--284, 1991.
+
+\end{thebibliography}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % end of bibliography for general documentation %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%</bcfaqbbl>
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % example sheet starts here                     %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%<*example>
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% This file documents look and use of
+%% the barcodes this package belongs to.
+%% It may be freely used without any 
+%% further permission.
+%% You should have received this file as part of
+%% the barcode package.
+%%
+%% Author: Peter Willadt
+%% Date: 1997-11-29
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Note:
+%% 1. This file has already been run through codean.pl
+%%
+%% 2. You need to have the fonts installed, of course.
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Fonts
+%%
+\font\xlix=wlc39 scaled 2000
+\font\itf=wlitf  scaled 2000
+\font\cdb=wlcdb  scaled 2000
+\font\eanfont=WLEAN scaled 1200
+\font\fntcxx=wlc128 scaled \magstep3
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Inputs
+%%
+\input code39.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Def's
+%%
+%% for EAN
+\def\ean#1{\message{Call codean.pl}}
+\def\eean#1{\message{Call codean.pl}}
+\def\isbn#1{\message{Call codean.pl}}
+\def\embed#1{}
+\def\EAN#1{\vbox{\hsize=0.4\hsize\vskip10pt\eanfont#1\vskip10pt}}
+%% for Code 128
+\def\CXXVIII{\bgroup\fntcxx\let\next\hexchar\next}
+\def\hexchar#1#2{\if#1@\global\let\next\egroup\else\char"#1#2\fi\next}
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Here we go
+\parindent0pt
+Hello, this is a test sheet of the barcode fonts.
+
+At first, we deal with code 39. Code 39 is represented in this package
+both in form of a native font (Metafont-source) and in form of
+\TeX{}-macros. code 39 features low-density alphanumeric encoding.
+
+Here you may see how HELLO looks like in code 39 (the start and stop
+sign is mapped to @, if you're curious, so in the source to this sheet
+I have written {\tt@HELLO@} after having selected the proper
+font). This first example uses the font.
+
+{\xlix@HELLO@}
+
+Another approach is to use \TeX{} macros to make up bars. Here is the
+same HELLO with macros: Please note that for the macro version, you
+have to use the underbar if you want to have a space coded.
+
+\begincodethirtynine{HELLO}\endcodethirtynine
+
+Interleaved two-of-five (ITF for short) features high-density
+numerical-only encoding. Your code has to have an even number of
+digits. The start sign is mapped to $+$, the end sign to $-$. 
+So, to code 0123456789, you type {\tt+0123456789-}, and the result
+looks like this:
+
+{\itf+0123456789-}
+
+If you still have not got enough of barcoding, here is codabar. Here
+you got four sets of start/stop signs that get decoded together with
+the numbers. The start/stop sign pairs are a/t, b/n, c/*, and d/e. So
+{\tt a12345t} looks like this:\bigskip
+
+{\cdb a12345t}
+
+Now you should have a look at code 128. The bars itself look sometimes
+disrupted; this is due to the fact that the widest elements are four
+times as wide as the narrowest. Code 128 enables you to code any 7-bit
+ascii character. With digits only, it is as efficent as itf. The bad
+news is the preprocessing required, so you have to read the docs. The
+following bars mean {\tt Hallo123456}\bigskip
+
+\CXXVIII 6828414C4C4F630C2238506A@@  % Code128(Hallo123456)
+
+
+And, last and perhaps most important, the EAN font. Read {\tt
+eandoc.tex} to find out how these are coded, here is just the output
+of the example code mentioned there:
+\embed{2500000000000}
+
+\line{
+\EAN{4 +AcFHaa-KKLKNK+} % or, without checksum: %(4025700001030)
+\hfil
+\EAN{4 +AcFHaa-KKLKNK+} %(402570000103)
+}
+\line{
+\EAN{2 +FAaaAa-KKLMNT+} % embedded(123)
+\hfil
+\EAN{9 +HiaCaB-LNOOSN+} % ISBN(0201134489)
+}
+
+And that's all. Perhaps you may think that this is not a beautiful
+document---but barcodes aren't beautiful. As long as reading devices
+do not have \ae{}sthetic feelings, I don't regard this as a problem.
+\bye
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % example sheet ends here                       %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%</example>
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % style file starts here                        %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%<*bcsty>
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Options for using barcodes                             %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% documented in bcfaq.tex                                %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% itf stuff
+%% general
+\font\xlix=wlc39 scaled 2000
+\font\fntxciii=wlc93 scaled 2000
+\font\itf=wlitf  scaled 2000
+\font\cdb=wlcdb  scaled 2000
+\font\eanfont=wlean scaled 1200
+\font\fntcxx=wlc128 scaled \magstep3
+%% barcodes with depth
+\def\bcbox#1{\lower3pt\hbox{\itf +#1-}}
+%% barcodes made taller
+\newbox\bsavebox
+\newdimen\bcboxdepth
+\bcboxdepth=4pt
+\def\bdbox#1{\setbox\bsavebox\hbox{\itf +#1-}
+\vbox{\hsize=\wd\bsavebox\offinterlineskip%
+	\copy\bsavebox%
+	\vskip-\ht\bsavebox\vskip\bcboxdepth%
+	\box\bsavebox\vskip-\bcboxdepth}}
+\def\bebox#1{\setbox\bsavebox\hbox{\itf +#1-}
+\vbox{\hsize=\wd\bsavebox\offinterlineskip%
+	\copy\bsavebox%
+	\copy\bsavebox%
+	\vskip-\ht\bsavebox\vskip\bcboxdepth%
+	\box\bsavebox\vskip-\bcboxdepth}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Code 128 stuff
+\font\fntcxx=wlc128 scaled \magstep3
+\def\XCIII#1{\bgroup\fntxciii #1}
+\def\CXXVIII{\bgroup\fntcxx\let\next\hexchar\next}
+\def\cxxviii{\message{OOPS, use codean.pl}}
+\def\hexchar#1#2{\if#1@
+            \global\let\next\egroup
+            \else\char"#1#2\fi\next}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Code 11 stuff
+\font\codxifnt=wlc11 scaled\magstep2
+%% relies on counters \cha and \chb defined below
+\newif\ifcodexichecksumk
+\codexichecksumkfalse
+\makeatletter
+\def\check@xichar{%
+	\ifcodexichecksumk%
+	{\count0=\cha\count1=\count0\divide\count1by11%
+	 \multiply\count1by11\advance\count0by-\count1%
+	 \ifnum10=\count0-\else\relax\the\count0\fi%
+	 \global\advance\chb by\count0\global\advance\cha by\chb%
+	}\fi
+	\chb=\cha\divide\chb by11%
+	\multiply\chb by11\advance\cha by-\chb%
+	\ifnum10=\cha-\else\the\cha\fi%
+}
+\def\csumxi#1{%
+	\if @#1%
+		\let\next\check@xichar%
+	\else	\if-#1\advance\chb by10%
+			\else\advance\chb by#1%
+		\fi%
+		\advance\cha by\chb%
+		#1%
+	\fi%
+	\next%
+}
+\makeatother
+\def\codxi#1{{
+	\codxifnt
+	\cha=0\chb=0%
+	@\let\next\csumxi\expandafter\expandafter\expandafter\csumxi#1@@
+}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% misc things
+\font\codtnfnt=wlc39 scaled\magstep2
+\def\codxxxix#1{{\codtnfnt @#1@}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% EAN stuff
+%% this code comes from Kalvis M. Jansons
+%% eMail: <kalvis@math.ucl.ac.uk>
+%%
+\font\eanfont=WLEAN scaled 2000
+\def\ean#1{\vbox{\vskip20pt\eanfont#1\vskip20pt}}
+\newcount\num
+\def\a#1{\num=#1 \advance\num by `A \char\num}
+\def\b#1{\num=#1 \advance\num by `a \char\num}
+\def\c#1{\num=#1 \advance\num by `K \char\num}
+\def\C#1#2#3#4#5#6{\c#1\c#2\c#3\c#4\c#5\c#6}
+\def\A#1#2#3#4#5#6#7{\ifcase #7
+{\a#1\a#2\a#3\a#4\a#5\a#6}%
+\or {\a#1\a#2\b#3\a#4\b#5\b#6}%
+\or {\a#1\a#2\b#3\b#4\a#5\b#6}%
+\or {\a#1\a#2\b#3\b#4\b#5\a#6}%
+\or {\a#1\b#2\a#3\a#4\b#5\b#6}%
+\or {\a#1\b#2\b#3\a#4\a#5\b#6}%
+\or {\a#1\b#2\b#3\b#4\a#5\a#6}%
+\or {\a#1\b#2\a#3\b#4\a#5\b#6}%
+\or {\a#1\b#2\a#3\b#4\b#5\a#6}%
+\or {\a#1\b#2\b#3\a#4\b#5\a#6}%
+\fi}
+\newcount\cha
+\newcount\chb
+\makeatletter
+\long\def\for{\@for}
+\makeatother
+\gdef\mysix#1#2#3#4#5#6{,#1#2,#3#4,#5#6}
+\gdef\mywork#1#2{\advance\cha by #1 \advance\chb by #2}
+\gdef\barch#1.#2.#3.{
+\xdef\mylist{0#1\mysix#2\mysix#3}
+\cha=0
+\chb=0
+\for \x:=\mylist\do{\expandafter\mywork\x}
+\multiply\cha by 3
+\advance\chb by \cha
+\cha=\chb
+\divide\cha by 10
+\multiply\cha by -10
+\advance\chb by \cha}
+\def\bar#1.#2.#3.{\barch#1.#2.#3.
+	\ifnum\chb>0 #1#2#3 has a bad check sum!\\[20pt]
+	\else \ean{#1 +\A#2#1-\C#3+}\fi}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % style file ends here                          %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%</bcsty>
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % code 39 macro file starts here                %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%<*code39mac>
+%%% ====================================================================
+%%%  @TeX-file{
+%%%     author          = "Peter Willadt",
+%%%     version         = "1",
+%%%     date            = "16 August 1997",
+%%%     time            = "10:00:00 GMT",
+%%%     filename        = "code39.tex",
+%%%     address         = "Peter Willadt
+%%%                        75177 Pforzheim
+%%%                        Germany",
+%%%     email           = "Willadt@t-online.de",
+%%%     codetable       = "ISO/ASCII",
+%%%     keywords        = "Barcode, Code39, TeX",
+%%%     abstract        = "This file contains macros to support the inclusion
+%%%                        of code 39 barcode in TeX documents.",
+%%%  }
+%%% ====================================================================
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% This code supports barcodes in Code 39
+%% Usage:
+%%  For alphanumerical barcodes:
+%%   \begincodethirtynine followed by 
+%%   the stuff to code,
+%%   ended with \endcodethirtynine
+%%  For numerical only code:
+%%   modify the code for pharamceuticals
+%%  For german pharmaceutics:
+%%   \pzncode1234562@ when 1234562 is the
+%%   number to be coded as -1234562.
+%%   this will also verify the checksum
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% This file may be freely used without any 
+%% further permission.
+%% It comes with absolutely no warranty.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% this is the common stuff
+\newdimen\dick
+\newdimen\duenn
+\newdimen\duennbar
+\newdimen\dickbar
+\newdimen\antibleed
+\dick=1mm
+\duenn=0.5mm
+\antibleed=0mm
+\dickbar=\dick
+\advance\dickbar by -\antibleed
+\duennbar=\duenn
+\advance\duennbar by -\antibleed
+% b means bar
+\def\b{\vrule width\duennbar}
+\def\B{\vrule width\dickbar}
+% s means space
+\def\s{\hskip\duenn\hskip\antibleed}
+\def\S{\hskip\dick\hskip\antibleed}
+%%
+ \def\tnzero{\b\s\b\S\B\s\B\s\b\s}
+  \def\tnone{\B\s\b\S\b\s\b\s\B\s}
+  \def\tntwo{\b\s\B\S\b\s\b\s\B\s}
+\def\tnthree{\B\s\B\S\b\s\b\s\b\s}
+ \def\tnfour{\b\s\b\S\B\s\b\s\B\s}
+ \def\tnfive{\B\s\b\S\B\s\b\s\b\s}
+  \def\tnsix{\b\s\B\S\B\s\b\s\b\s}
+\def\tnseven{\b\s\b\S\b\s\B\s\B\s}
+\def\tneight{\B\s\b\S\b\s\B\s\b\s}
+ \def\tnnine{\b\s\B\S\b\s\B\s\b\s}
+ \def\tninestart{\b\S\b\s\B\s\B\s\b\s}
+ \def\tnineminus{\b\S\b\s\b\s\B\s\B\s}
+  \def\tnineplus{\b\S\b\s\b\S\b\S\b\s}
+\def\tninedollar{\b\S\b\S\b\S\b\s\b\s}
+ \def\tnineslash{\b\S\b\S\b\s\b\S\b\s}
+   \def\tninedot{\B\S\b\s\b\s\B\s\b\s}
+\def\tninepercnt{\b\s\b\S\b\S\b\S\b\s}
+ \def\tninespace{\b\S\B\s\b\s\B\s\b\s}
+\def\tninelettera{\B\s\b\s\b\S\b\s\B\s}
+\def\tnineletterb{\b\s\B\s\b\S\b\s\B\s}
+\def\tnineletterc{\B\s\B\s\b\S\b\s\b\s}
+\def\tnineletterd{\b\s\b\s\B\S\b\s\B\s}
+\def\tninelettere{\B\s\b\s\B\S\b\s\b\s}
+\def\tnineletterf{\b\s\B\s\B\S\b\s\b\s}
+\def\tnineletterg{\b\s\b\s\b\S\B\s\B\s}
+\def\tnineletterh{\B\s\b\s\b\S\B\s\b\s}
+\def\tnineletteri{\b\s\B\s\b\S\B\s\b\s}
+\def\tnineletterj{\b\s\b\s\B\S\B\s\b\s}
+\def\tnineletterk{\B\s\b\s\b\s\b\S\B\s}
+\def\tnineletterl{\b\s\B\s\b\s\b\S\B\s}
+\def\tnineletterm{\B\s\B\s\b\s\b\S\b\s}
+\def\tninelettern{\b\s\b\s\B\s\b\S\B\s}
+\def\tninelettero{\B\s\b\s\B\s\b\S\b\s}
+\def\tnineletterp{\b\s\B\s\B\s\b\S\b\s}
+\def\tnineletterq{\b\s\b\s\b\s\B\S\B\s}
+\def\tnineletterr{\B\s\b\s\b\s\B\S\b\s}
+\def\tnineletters{\b\s\B\s\b\s\B\S\b\s}
+\def\tninelettert{\b\s\b\s\B\s\B\S\b\s}
+\def\tnineletteru{\B\S\b\s\b\s\b\s\B\s}
+\def\tnineletterv{\b\S\B\s\b\s\b\s\B\s}
+\def\tnineletterw{\B\S\B\s\b\s\b\s\b\s}
+\def\tnineletterx{\b\S\b\s\B\s\b\s\B\s}
+\def\tninelettery{\B\S\b\s\B\s\b\s\b\s}
+\def\tnineletterz{\b\S\B\s\B\s\b\s\b\s}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% this is the code for 39 mode
+\def\activatethemall{
+	\catcode`\A=\active	\catcode`\B=\active
+	\catcode`\C=\active	\catcode`\D=\active
+	\catcode`\E=\active	\catcode`\F=\active
+	\catcode`\G=\active	\catcode`\H=\active
+	\catcode`\I=\active	\catcode`\J=\active
+	\catcode`\K=\active	\catcode`\L=\active
+	\catcode`\M=\active	\catcode`\N=\active
+	\catcode`\O=\active	\catcode`\P=\active
+	\catcode`\Q=\active	\catcode`\R=\active
+	\catcode`\S=\active	\catcode`\T=\active
+	\catcode`\U=\active	\catcode`\V=\active
+	\catcode`\W=\active	\catcode`\X=\active
+	\catcode`\Y=\active	\catcode`\Z=\active
+	\catcode`+=\active	\catcode`-=\active
+	\catcode`\_=\active	\catcode`.=\active
+	\catcode`\$=\active	\catcode`\%=\active
+	\catcode`\/=\active
+	\catcode`\0=\active	\catcode`\1=\active
+	\catcode`\2=\active	\catcode`\3=\active
+	\catcode`\4=\active	\catcode`\5=\active
+	\catcode`\6=\active	\catcode`\7=\active
+	\catcode`\8=\active	\catcode`\9=\active
+}
+{\activatethemall
+\gdef\begincodethirtynine{
+	\bgroup\activatethemall\strut\tninestart
+	\letA=\tninelettera	\letB=\tnineletterb
+	\letC=\tnineletterc	\letD=\tnineletterd
+	\letE=\tninelettere	\letF=\tnineletterf
+	\letG=\tnineletterg	\letH=\tnineletterh
+	\letI=\tnineletteri	\letJ=\tnineletterj
+	\letK=\tnineletterk	\letL=\tnineletterl
+	\letM=\tnineletterm	\letN=\tninelettern
+	\letO=\tninelettero	\letP=\tnineletterp
+	\letQ=\tnineletterq	\letR=\tnineletterr
+	\letS=\tnineletters	\letT=\tninelettert
+	\letU=\tnineletteru	\letV=\tnineletterv
+	\letW=\tnineletterw	\letX=\tnineletterx
+	\letY=\tninelettery	\letZ=\tnineletterz
+	\let+=\tnineplus	\let-=\tnineminus
+	\let_=\tninespace	\let.=\tninedot
+	\let$=\tninedollar	\let%=\tninepercnt
+	\let/=\tnineslash
+	\let0=\tnzero		\let1=\tnone
+	\let2=\tntwo		\let3=\tnthree
+	\let4=\tnfour		\let5=\tnfive
+	\let6=\tnsix		\let7=\tnseven
+	\let8=\tneight		\let9=\tnnine
+}
+}
+\def\endcodethirtynine{
+	\tninestart\egroup
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% this code is used for german pharmaceutics
+\newcount\ziffern
+\newcount\checksum
+\newcount\multreg
+\def\tndigit#1{%
+  \ifcase#1\tnzero\or\tnone%
+    \or\tntwo\or\tnthree%
+    \or\tnfour\or\tnfive%
+    \or\tnsix\or\tnseven%
+    \or\tneight\or\tnnine%
+    \fi}
+\def\endtncode{%
+  \tninestart%
+  \ifnum\ziffern=9
+    \else\message{wrong digit count}
+  \fi%
+  \ifnum\checksum=0
+    \else\message{wrong checksum}
+  \fi%
+  \egroup}
+\def\nexttn#1{%
+  \advance\ziffern by1
+  \if@#1\let\next\endtncode
+   \else
+   \tndigit#1%
+% begin checksum stuff
+   \ifnum\ziffern=8
+    \multreg=\checksum
+    \divide\multreg by 11
+    \multiply\multreg by 11
+    \advance\checksum by-\multreg
+    \multreg=#1
+    \advance\checksum by-\multreg
+    \ifnum\checksum=10
+        \checksum=0
+    \fi
+   \else
+    \multreg=#1
+    \multiply\multreg by\ziffern
+    \advance\checksum by\multreg
+   \fi%
+  \fi%
+% end checksum stuff
+  \next}
+\def\pzncode{
+  \bgroup
+  \let\next\nexttn
+  \ziffern=1\checksum=0\multreg=0
+  \strut
+  \tninestart\tnineminus%
+  \next%
+}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % code 39 macro file ends here                  %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%</code39mac>
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % MetaFont Code for Code 11 starts here         %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%<*code11mf>
+%% Code 11 in Metafont format
+%% Peter Willadt 1998-04-10
+%% For copyright and the like see the documentation
+%% to the barcode package, from which this file is part of.
+%% If you received only this file,
+%% then maybe someone fooled you.
+%% 
+%% Code 11 requires one or two check digits.
+%% These check digtis are calculated using a weighted mod 11-checksum.
+%% You have to see the docs.
+%% Start and stop chars are mapped to @,
+%% codeable are 0--9 and the minus sign.
+
+mode_setup;
+
+bheight#:=5mm#;
+
+% high res: .264 mm#
+%  med res: .33  mm#
+bwidth#   :=.33  mm#;
+
+designsize         :=bheight#;
+font_slant         :=0;
+font_normal_space  :=8*bwidth#;
+font_extra_space   :=0;
+font_normal_stretch:=0;
+font_normal_shrink :=0;
+font_quad          :=15*bwidth#;
+
+define_pixels(bheight, bwidth);
+
+def CODExichar(expr charnum, spex) =
+	numeric mywid, asval, i;
+	mywid=6;
+	for i= 0 upto 4:
+		asval:=ASCII(substring(i,i+1) of spex);
+		asval:=asval-ASCII("0");
+		mywid:=mywid+asval;
+	endfor;
+	beginchar(charnum, mywid*bwidth#,bheight#,0);
+		y1=y2=0;
+		y3=y4=bheight;
+	numeric myright,myleft,barweight,spcweight;
+	myright:=0;myleft:=0;barweight:=0;spcweight:=0;
+	for i=0 upto 4:
+		asval:=ASCII(substring(i,i+1) of spex);
+		asval:=asval-ASCII("0");
+		myright:=myright+(asval+1)*bwidth;
+		if not odd (i):
+			% actual drawing
+			x1:=myleft-blacker;
+			x4:=x1;
+			x2:=myright+blacker;
+			x3:=x2;
+			fill (z1)--(z2)--(z3)--(z4)--cycle;
+		fi
+		myleft:=myright;
+	endfor;
+	endchar;
+enddef;
+
+CODExichar("-","00100");
+CODExichar("0","00001");
+CODExichar("1","10001");
+CODExichar("2","01001");
+CODExichar("3","11000");
+CODExichar("4","00101");
+CODExichar("5","10100");
+CODExichar("6","01100");
+CODExichar("7","00011");
+CODExichar("8","10010");
+CODExichar("9","10000");
+CODExichar("@","00110");
+
+end;% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % MetaFont Code for Code 11 ends here           %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%</code11mf>
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % MetaFont Code for Code 39 starts here         %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%<*code39mf>
+%% Code 39, in Metafont mode
+%% Willadt 1997-08-17
+mode_setup;
+
+bheight#:=5mm#;
+
+%% high res .2 mm,
+%%  med res .3 mm,
+%%   lo res .4 mm.
+
+bwidth# :=.3mm#;
+
+designsize         :=bheight#;
+font_slant         :=0;
+font_normal_space  :=13*bwidth#;
+font_extra_space   :=0;
+font_normal_stretch:=0;
+font_normal_shrink :=0;
+font_quad          :=13*bwidth#;
+
+define_pixels(bheight, bwidth);
+
+def thirtyninechar(expr charnum, spex) =
+ beginchar(charnum, 13*bwidth#,bheight#,0);
+  numeric myright,myleft;
+  numeric asval, i;
+  myright:=0;myleft:=0;
+  y1=y2=0;y3=y4=bheight;
+  for i=0 upto 11:
+    asval:=ASCII(substring(i,i+1) of spex);
+    exitif asval=-1;
+    asval:=asval-ASCII("0");
+    myright:=myright+asval*bwidth;
+    if not odd (i):
+	% actual drawing
+	x1:=myleft-blacker;
+	x4:=x1;
+	x2:=myright+blacker;
+	x3:=x2;
+	fill (z1)--(z2)--(z3)--(z4)--cycle;
+    fi
+    myleft:=myright;
+  endfor;
+ endchar;
+enddef;
+
+\thirtyninechar("0")("1112212111");
+\thirtyninechar("1")("2112111121");
+\thirtyninechar("2")("1122111121");
+\thirtyninechar("3")("2122111111");
+\thirtyninechar("4")("1112211121");
+\thirtyninechar("5")("2112211111");
+\thirtyninechar("6")("1122211111");
+\thirtyninechar("7")("1112112121");
+\thirtyninechar("8")("2112112111");
+\thirtyninechar("9")("1122112111");
+\thirtyninechar( 64)("1211212111"); % start = @
+\thirtyninechar("-")("1211112121");
+\thirtyninechar("+")("1211121211");
+\thirtyninechar("$")("1212121111");
+\thirtyninechar("/")("1212111211");
+\thirtyninechar(".")("2211112111");
+\thirtyninechar( 37)("1112121211"); % percent
+\thirtyninechar( 32)("1221112111"); % space
+\thirtyninechar("A")("2111121121");
+\thirtyninechar("B")("1121121121");
+\thirtyninechar("C")("2121121111");
+\thirtyninechar("D")("1111221121");
+\thirtyninechar("E")("2111221111");
+\thirtyninechar("F")("1121221111");
+\thirtyninechar("G")("1111122121");
+\thirtyninechar("H")("2111122111");
+\thirtyninechar("I")("1121122111");
+\thirtyninechar("J")("1111222111");
+\thirtyninechar("K")("2111111221");
+\thirtyninechar("L")("1121111221");
+\thirtyninechar("M")("2121111211");
+\thirtyninechar("N")("1111211221");
+\thirtyninechar("O")("2111211211");
+\thirtyninechar("P")("1121211211");
+\thirtyninechar("Q")("1111112221");
+\thirtyninechar("R")("2111112211");
+\thirtyninechar("S")("1121112211");
+\thirtyninechar("T")("1111212211");
+\thirtyninechar("U")("2211111121");
+\thirtyninechar("V")("1221111121");
+\thirtyninechar("W")("2221111111");
+\thirtyninechar("X")("1211211121");
+\thirtyninechar("Y")("2211211111");
+\thirtyninechar("Z")("1221211111");
+
+\end;
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % MetaFont Code for Code 39 ends here           %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%</code39mf>
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % MetaFont Code for Code 128 starts here        %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%<*code128mf>
+%% Code 128, in Metafont mode
+%% This gives a raw font, that should be mapped properly
+%% so read the docs!
+%% Willadt 1997-08-17 
+
+mode_setup;
+
+bheight#:=5mm#;
+
+%% high res: .264 mm#
+%%  med res: .33  mm#
+bwidth#   :=.33  mm#;
+
+designsize         :=bheight#;
+font_slant         :=0;
+font_normal_space  :=11*bwidth#;
+font_extra_space   :=0;
+font_normal_stretch:=0;
+font_normal_shrink :=0;
+font_quad          :=11*bwidth#;
+
+define_pixels(bheight, bwidth);
+
+def CXXVIIIchar(expr charnum, spex) =
+	numeric mywid, asval, i;
+	mywid=0;
+%	for i = 0 upto 8:
+%		asval:=ASCII(substring(i,i+1) of spex);
+%		exitif asval=-1;
+%		asval:=asval-ASCII("0");
+%		mywid:=mywid+asval;
+%	endfor
+%	beginchar(charnum, mywid*bwidth#,bheight#,0);
+	beginchar(charnum, 11*bwidth#,bheight#,0);
+		y1=y2=0;
+		y3=y4=bheight;
+	numeric myright,myleft,barweight,spcweight;
+	myright:=0;myleft:=0;barweight:=0;spcweight:=0;
+	for i=0 upto 8:
+		asval:=ASCII(substring(i,i+1) of spex);
+		exitif asval=-1;
+		asval:=asval-ASCII("0");
+		myright:=myright+asval*bwidth;
+		if not odd (i):
+% check for typos
+%			barweight:=barweight+asval;
+			% actual drawing
+			x1:=myleft-blacker;
+			x4:=x1;
+			x2:=myright+blacker;
+			x3:=x2;
+			fill (z1)--(z2)--(z3)--(z4)--cycle;
+% check for typos
+%		else:
+%		 	spcweight:=spcweight+asval;
+		fi
+		myleft:=myright;
+	endfor;
+% 	check for typos
+%	if not odd(spcweight):	message "error in spc cnt";
+%	fi
+%	if odd(barweight): 	message "error in bar cnt";
+%	fi
+	endchar;
+enddef;
+
+CXXVIIIchar(107,"212222"); % Ersatz fuer Null
+CXXVIIIchar(  0,"212222");
+CXXVIIIchar(  1,"222122");
+CXXVIIIchar(  2,"222221");
+CXXVIIIchar(  3,"121223");
+CXXVIIIchar(  4,"121322");
+CXXVIIIchar(  5,"131222");
+CXXVIIIchar(  6,"122213");
+CXXVIIIchar(  7,"122312");
+CXXVIIIchar(  8,"132212");
+CXXVIIIchar(  9,"221213");
+CXXVIIIchar( 10,"221312");
+CXXVIIIchar( 11,"231212");
+CXXVIIIchar( 12,"112232");
+CXXVIIIchar( 13,"122132");
+CXXVIIIchar( 14,"122231");
+CXXVIIIchar( 15,"113222");
+CXXVIIIchar( 16,"123122");
+CXXVIIIchar( 17,"123221");
+CXXVIIIchar( 18,"223211");
+CXXVIIIchar( 19,"221132");
+CXXVIIIchar( 20,"221231");
+CXXVIIIchar( 21,"213212");
+CXXVIIIchar( 22,"223112");
+CXXVIIIchar( 23,"312131");
+CXXVIIIchar( 24,"311222");
+CXXVIIIchar( 25,"321122");
+CXXVIIIchar( 26,"321221");
+CXXVIIIchar( 27,"312212");
+CXXVIIIchar( 28,"322112");
+CXXVIIIchar( 29,"322211");
+CXXVIIIchar( 30,"212123");
+CXXVIIIchar( 31,"212321");
+CXXVIIIchar( 32,"232121");
+CXXVIIIchar( 33,"111323");
+CXXVIIIchar( 34,"131123");
+CXXVIIIchar( 35,"131321");
+CXXVIIIchar( 36,"112313");
+CXXVIIIchar( 37,"132113");
+CXXVIIIchar( 38,"132311");
+CXXVIIIchar( 39,"211313");
+CXXVIIIchar( 40,"231113");
+CXXVIIIchar( 41,"231311");
+CXXVIIIchar( 42,"112133");
+CXXVIIIchar( 43,"112331");
+CXXVIIIchar( 44,"132131");
+CXXVIIIchar( 45,"113123");
+CXXVIIIchar( 46,"113321");
+CXXVIIIchar( 47,"133121");
+CXXVIIIchar( 48,"313121");
+CXXVIIIchar( 49,"211331");
+CXXVIIIchar( 50,"231131");
+CXXVIIIchar( 51,"213113");
+CXXVIIIchar( 52,"213311");
+CXXVIIIchar( 53,"213131");
+CXXVIIIchar( 54,"311123");
+CXXVIIIchar( 55,"311321");
+CXXVIIIchar( 56,"331121");
+CXXVIIIchar( 57,"312113");
+CXXVIIIchar( 58,"312311");
+CXXVIIIchar( 59,"332111");
+CXXVIIIchar( 60,"314111");
+CXXVIIIchar( 61,"221411");
+CXXVIIIchar( 62,"431111");
+CXXVIIIchar( 63,"111224");
+CXXVIIIchar( 64,"111422");
+CXXVIIIchar( 65,"121124");
+CXXVIIIchar( 66,"121421");
+CXXVIIIchar( 67,"141122");
+CXXVIIIchar( 68,"141221");
+CXXVIIIchar( 69,"112214");
+CXXVIIIchar( 70,"112412");
+CXXVIIIchar( 71,"122114");
+CXXVIIIchar( 72,"122411");
+CXXVIIIchar( 73,"142112");
+CXXVIIIchar( 74,"142211");
+CXXVIIIchar( 75,"241211");
+CXXVIIIchar( 76,"221114");
+CXXVIIIchar( 77,"413111");
+CXXVIIIchar( 78,"241112");
+CXXVIIIchar( 79,"134111");
+CXXVIIIchar( 80,"111242");
+CXXVIIIchar( 81,"121142");
+CXXVIIIchar( 82,"121241");
+CXXVIIIchar( 83,"114212");
+CXXVIIIchar( 84,"124112");
+CXXVIIIchar( 85,"124211");
+CXXVIIIchar( 86,"411212");
+CXXVIIIchar( 87,"421112");
+CXXVIIIchar( 88,"421211");
+CXXVIIIchar( 89,"212141");
+CXXVIIIchar( 90,"214121");
+CXXVIIIchar( 91,"412121");
+CXXVIIIchar( 92,"111143");
+CXXVIIIchar( 93,"111341");
+CXXVIIIchar( 94,"131141");
+CXXVIIIchar( 95,"114113");
+CXXVIIIchar( 96,"114311");
+CXXVIIIchar( 97,"411113");
+CXXVIIIchar( 98,"411311");
+CXXVIIIchar( 99,"113141");
+CXXVIIIchar(100,"114131");
+CXXVIIIchar(101,"311141");
+CXXVIIIchar(102,"411131");
+CXXVIIIchar(103,"211412");
+CXXVIIIchar(104,"211214");
+CXXVIIIchar(105,"211232");
+CXXVIIIchar(106,"2331112");
+
+end;
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % MetaFont Code for Code 128 ends here          %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%</code128mf>
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % MetaFont Code for EAN starts here             %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%<*codeeanmf>
+%% Font for printing EAN Code
+%% For small sizes (on the Deskjet, < 1,0) you have to be
+%% very careful and test if the font is still machine readable.
+%% On write-black-printers, it may be necessary to reduce
+%% the width of black bars by fiddling with
+%% the definition of fb().
+%% For producing EAN Add-ons or codes with variable height,
+%% it would be a good idea to shorten the height of the bars and
+%% to leave the numbers out of the bars-definition, so that you
+%% could stack several bars above each other.
+%% Flexibility would increase, but---on the other hand---
+%% TeX macros for setting EAN code would become even more complicated.
+%
+%% Peter Willadt 1997, September, 21
+%
+% For more information about EAN-Codes, you may consult the Centrale
+% f\"ur Coorganisation in K\"oln, Germany, or one of the associated 
+% organisations in your country. The complete EAN-Handbook costs 
+% about a hundred german marks.
+%
+% Just some information:
+% EAN-Digits consist of seven elements that are either black or white.
+% Each element has the same width.
+% Fonts A, B, and C are differently coded.
+% The first half of the EAN-number is coded in fonts A and B, the second
+% half is coded in font C. The first digit of the EAN-number is not
+% directly coded but will be taken from the alternate uses of characters
+% from font A and font B for the first half.
+% This strange coding is a direct consequence of
+% the ancestry of the EAN-code---it is derived from the american UPC-code
+% (12 digits)---and there had to be a way of compatibly expanding the UPC.
+%
+% The first two digits of the EAN-number code the country of origin of
+% the product, the next five digits (mostly) code the manufacturer, the
+% remaining digits (with the exception of the last) code the product.
+% The last digit of the EAN-number is a checksum.
+% For In-House-Use, you may use EAN starting with 20 to 29.
+%
+% EAN numbers do not contain any qualifiers. From a number, you cannot say
+% which kind of product is coded, unless you contact the manufacturer.
+%
+% Eight digit EAN numbers consist of four digits from font A and four digits
+% from font C. 
+%
+% UPC is EAN with the first digit equal to zero.
+%
+% Here is a table that shows which code to use for the digits 2 to 7 
+% depending on the first digit.
+% The number on the right shows the first digit.
+% A zero in the array means to choose font A, a one means to choose font B.
+% 
+% static UBYTE abtab[10][6]={
+%	{0,0,0,0,0,0},	/* 0 */
+%	{0,0,1,0,1,1},	/* 1 */
+%	{0,0,1,1,0,1},  /* 2 */
+%	{0,0,1,1,1,0},  /* 3 */
+%	{0,1,0,0,1,1},	/* 4 */
+%	{0,1,1,0,0,1},  /* 5 */
+%	{0,1,1,1,0,0},  /* 6 */
+%	{0,1,0,1,0,1},  /* 7 */
+%	{0,1,0,1,1,0},  /* 8 */
+%	{0,1,1,0,1,0}   /* 9 */
+% };
+% This font is coded in a way that requires extensive preprocessing.
+% 0 to 9 yield the digits from 0 to 9
+% A to J yield the codes from charset A
+% a to j yield the codes from charset B
+% K to T yield the codes from charset C
+% + makes the start and stop sign and - the middle sign
+% So, to code the number 2099993098253, you have to write
+% {\eanfont2 +AJjjJd-KTSMPN+}. Please note that the last
+% digit is a checksum.
+% This font is free to be used without any further permission;
+% it comes with no warranty. I strongly recommend to test
+% the readability of barcodes before going into mass production.
+%
+% There should be a Perl routine delivered together with this font
+% that takes a TeX file and replaces EAN numbers by their encoded 
+% equivalent. There also should be a file called EANDOC.TEX
+% that tells you more about that.
+% 
+%% Author
+%% Peter Willadt
+%% 75177 Pforzheim
+%% Germany
+%% email: Willadt@t-online.de
+%
+
+mode_setup;
+
+%% EAN size 1 (100%)
+%
+bheight#:=22.85mm#;
+bdepth#:=1.65mm#;
+bwidth#:=0.33mm#;
+digheight#:=2.75mm#;
+numgap#=1mm#;
+digdiam#=0.9pt#;
+lgap#:= bwidth#+0.5 digdiam#;
+totheight#=bheight#+digheight#+numgap#;
+ndheight#:=totheight#-bheight#-bdepth#;
+define_pixels(ndheight,digheight,numgap,lgap,bwidth);
+define_blacker_pixels(bheight,totheight,digdiam);
+
+font_normal_space=7*bwidth#;
+font_size 10pt#;
+
+def fb(expr posn) =
+	x20:=(posn-1)*bwidth;
+	x21:=x20;
+	x22:=posn*bwidth;
+	x23:=x22;
+	y20:=y22:=digheight+numgap;
+	y21:=y23:=h;
+	fill z20--z21--z23--z22--cycle;
+enddef;
+
+def klotz(expr posn) =
+	x1:=(posn-1)*bwidth;x2:=posn*bwidth;
+	x3:=x2;x4:=x1;
+	y1:=y2:=ndheight;
+	y3:=y4:=digheight+numgap;
+	fill z1--z2--z3--z4--cycle;
+enddef;
+
+def nuller =
+	x1=0.5w;
+	y1=digheight;
+	x2=lgap;
+	y2=0.8y1;
+	x3=x2;
+	y3-y4=y1-y2;
+	y4=0;
+	x4=x1;
+	x5=w-x3;
+	y5=y3;
+	x6=x5;
+	y6=y2;
+	pickup pencircle scaled digdiam;
+	draw z1..{down}z2--z3{down}..z4..{up}z5--z6{up}..cycle;
+enddef;
+
+def einser =
+	x1=x2=0.5w+lgap;
+	x3=2*lgap;
+	y1=0;
+	y2=digheight;
+	y3=0.8digheight;
+	pickup pencircle scaled digdiam;
+	draw z1--z2--z3;
+enddef;
+
+def zweier = 
+	x1=w-lgap;
+	x2=lgap;
+	y1=y2=0;
+	x3=x2;
+	y3=0.15 digheight;
+	x4=w-lgap;
+	y4=0.6 digheight;
+	x5=x4;
+	y5=0.9 digheight;
+	x6=0.5w;
+	y6=digheight;
+	x7=x2;
+	y7=y5;
+	pickup pencircle scaled digdiam;
+	draw z1--z2{up}..z3..z4..z5..z6..z7;
+enddef;
+
+def dreier = 
+	x1=lgap;
+	w-x2=x1;
+	y1=y2=digheight;
+	x3=0.5w;
+	y3=0.6digheight;
+	y4=0.5y3;
+	x4=x2;
+%	y5=0.5digdiam;
+	y5=0;
+	x5=0.5w;
+	x6=x1;
+	y6=0.2 digheight;
+	pickup pencircle scaled digdiam;
+	draw z1--z2--z3{right}..z4..z5..z6;
+enddef;
+
+def vierer =
+	x1=0.6w;y1=digheight;
+	x2=lgap;
+	y2=0.3digheight;
+	y3=y2;
+	w-x3=x2;
+%	w-x4=x4-x1;
+	x4=0.5[x1,x3];
+	x5=x4;
+	y4=0.5digheight;
+	y5=0;
+	pickup pencircle scaled digdiam;
+	draw z1--z2--z3;
+	draw z4--z5;
+enddef;
+
+def fuenfer =
+	x2=lgap;
+	x2=w-x1;
+	y1=y2=digheight;
+	x3=x2;
+	y3=0.7digheight;
+	x4=x1;
+	y3-y4=y4;
+	x5=x2;
+	y5=0;
+	pickup pencircle scaled digdiam;
+	draw z1--z2--z3{right}..z4..{left}z5;
+enddef;
+
+def sechser =
+	x1=0.6w;
+	y1=digheight;
+	x2=lgap;
+	x4=w-x2;
+%	y2=y4=0.3digheight;
+	y2=y4=0.5y5;
+	x3=x5=0.5w;
+	y3=0;
+%	y5=0.6 digheight;
+	y5=x4-x2;
+	pickup pencircle scaled digdiam;
+	draw z2..z3..z4..z5..cycle;
+	draw z1..{down}z2;
+enddef;
+def siebener =
+	x1=lgap;
+	x2=w-x1;
+	y1=y2=digheight;
+	x3=x4=0.5w;
+	y3=0.3digheight;
+	y4=0;
+	pickup pencircle scaled digdiam;
+	draw z1--z2;
+	draw z2..z3...z4;
+enddef;
+def achter =
+	x1=x3=x5=0.5w;
+	y1=digheight;
+	y3=0.6digheight;
+	y5=0;
+	x2=w-x7;
+	x4=w-x6;
+	y2=y7=0.5[y1,y3];
+	y4=y6=0.5[y3,y5];
+	x2=1.5lgap;
+	x4=w-lgap;
+	pickup pencircle scaled digdiam;
+	draw z1..z2..z3..z7..cycle;
+	draw z3..z4..z5..z6..cycle;
+enddef;
+def neuner =
+	x1=0.4w;
+	y1=0;
+	x2=w-lgap;
+	x4=w-x2;
+%	y2=y4=0.7digheight;
+	y2=y4=0.5[y5,y3];
+	x3=x5=0.5w;
+	y3=digheight;
+	y5=0.4 digheight;
+	pickup pencircle scaled digdiam;
+	draw z1..{up}z2;
+	draw z2..z3..z4..z5..cycle;
+enddef;
+beginchar("+",3*bwidth#,totheight#,0); "Das Randzeichen";
+	fb(1); fb(3);
+	klotz(1);
+	klotz(3);
+endchar;
+beginchar("-",5*bwidth#,totheight#,0); "Das Mittenzeichen";
+	fb(2); fb(4);
+	klotz(2);
+	klotz(4);
+endchar;
+
+beginchar("0",7*bwidth#,digheight#,0);
+	nuller;
+endchar;
+
+beginchar("1",7*bwidth#,digheight#,0);
+	einser;
+endchar;
+
+beginchar("2",7*bwidth#,digheight#,0);
+	zweier;
+endchar;
+
+beginchar("3",7*bwidth#,digheight#,0);
+	dreier;
+endchar;
+
+beginchar("4",7*bwidth#,digheight#,0);
+	vierer;
+endchar;
+
+beginchar("5",7*bwidth#,digheight#,0);
+	fuenfer;
+endchar;
+
+beginchar("6",7*bwidth#,digheight#,0);
+	sechser;
+endchar;
+
+beginchar("7",7*bwidth#,digheight#,0);
+	siebener;
+endchar;
+
+beginchar("8",7*bwidth#,digheight#,0);
+	achter;
+endchar;
+
+beginchar("9",7*bwidth#,digheight#,0);
+	neuner;
+endchar;
+
+% Zeichensatz A
+
+beginchar("A",7*bwidth#,totheight#,0); "Die Null (A)";
+	fb(4);fb(5);fb(7);
+	nuller;
+endchar;
+
+beginchar("B",7*bwidth#,totheight#,0); "Die Eins (A)";
+	fb(3);fb(4);fb(7);
+	einser;
+endchar;
+
+beginchar("C",7*bwidth#,totheight#,0); "Die Zwei (A)";
+	fb(3);fb(6);fb(7);
+	zweier;
+endchar;
+beginchar("D",7*bwidth#,totheight#,0); "Die Drei (A)";
+	fb(2);fb(3);fb(4);fb(5);fb(7);
+	dreier;
+endchar;
+beginchar("E",7*bwidth#,totheight#,0); "Die Vier (A)";
+	fb(2);fb(6);fb(7);
+	vierer;
+endchar;
+beginchar("F",7*bwidth#,totheight#,0); "Die Fuenf (A)";
+	fb(2);fb(3);fb(7);
+	fuenfer;
+endchar;	
+beginchar("G",7*bwidth#,totheight#,0); "Die Sechs (A)";
+	fb(2);fb(4);fb(5);fb(6);fb(7);
+	sechser;
+endchar;
+beginchar("H",7*bwidth#,totheight#,0); "Die Sieben (A)";
+	fb(2);fb(3);fb(4);fb(6);fb(7);
+	siebener;
+endchar;
+
+beginchar("I",7*bwidth#,totheight#,0); "Die Acht (A)";
+	fb(2);fb(3);fb(5);fb(6);fb(7);
+	achter;
+endchar;
+
+beginchar("J",7*bwidth#,totheight#,0); "Die Neun (A)";
+	fb(4);fb(6);fb(7);
+	neuner;
+endchar;	
+
+% Zeichensatz B
+
+beginchar("a",7*bwidth#,totheight#,0); "Die Null (B)";
+	fb(2);fb(5);fb(6);fb(7);
+	nuller;
+endchar;
+
+beginchar("b",7*bwidth#,totheight#,0); "Die Eins (B)";
+	fb(2);fb(3);fb(6);fb(7);
+	einser;
+endchar;
+
+beginchar("c",7*bwidth#,totheight#,0); "Die Zwei (B)";
+	fb(3);fb(4);fb(6);fb(7);
+	zweier;
+endchar;
+beginchar("d",7*bwidth#,totheight#,0); "Die Drei (B)";
+	fb(2);fb(7);
+	dreier;
+endchar;
+beginchar("e",7*bwidth#,totheight#,0); "Die Vier (B)";
+	fb(3);fb(4);fb(5);fb(7);
+	vierer;
+endchar;
+beginchar("f",7*bwidth#,totheight#,0); "Die Fuenf (B)";
+	fb(2);fb(3);fb(4);fb(7);
+	fuenfer;
+endchar;	
+beginchar("g",7*bwidth#,totheight#,0); "Die Sechs (B)";
+	fb(5);fb(7);
+	sechser;
+endchar;
+beginchar("h",7*bwidth#,totheight#,0); "Die Sieben (B)";
+	fb(3);fb(7);
+	siebener;
+endchar;
+
+beginchar("i",7*bwidth#,totheight#,0); "Die Acht (B)";
+	fb(4);fb(7);
+	achter;
+endchar;
+
+beginchar("j",7*bwidth#,totheight#,0); "Die Neun (B)";
+	fb(3);fb(5);fb(6);fb(7);
+	neuner;
+endchar;
+
+% Zeichensatz C
+
+beginchar("K",7*bwidth#,totheight#,0); "Die Null (C)";
+	fb(1);fb(2);fb(3);fb(6);
+	nuller;
+endchar;
+
+beginchar("L",7*bwidth#,totheight#,0); "Die Eins (C)";
+	fb(1);fb(2);fb(5);fb(6);
+	einser;
+endchar;
+
+beginchar("M",7*bwidth#,totheight#,0); "Die Zwei (C)";
+	fb(1);fb(2);fb(4);fb(5);
+	zweier;
+endchar;
+beginchar("N",7*bwidth#,totheight#,0); "Die Drei (C)";
+	fb(1);fb(6);
+	dreier;
+endchar;
+beginchar("O",7*bwidth#,totheight#,0); "Die Vier (C)";
+	fb(1);fb(3);fb(4);fb(5);
+	vierer;
+endchar;
+beginchar("P",7*bwidth#,totheight#,0); "Die Fuenf (C)";
+	fb(1);fb(4);fb(5);fb(6);
+	fuenfer;
+endchar;	
+beginchar("Q",7*bwidth#,totheight#,0); "Die Sechs (C)";
+	fb(1);fb(3);
+	sechser;
+endchar;
+beginchar("R",7*bwidth#,totheight#,0); "Die Sieben (C)";
+	fb(1);fb(5);
+	siebener;
+endchar;
+
+beginchar("S",7*bwidth#,totheight#,0); "Die Acht (C)";
+	fb(1);fb(4);
+	achter;
+endchar;
+
+beginchar("T",7*bwidth#,totheight#,0); "Die Neun (C)";
+	fb(1);fb(2);fb(3);fb(5);
+	neuner;
+endchar;
+
+end;
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % MetaFont Code for EAN ends here               %
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%</codeeanmf>
+%<*wlcr39mf>
+% Code 39, in Metafont mode
+% $90^0$ rotated to the right, 
+% make Barcodes run down instead of across.
+% Willadt 1998-04-28
+mode_setup;
+
+bwidth#:=5mm#;
+
+% high res .2 mm,
+%  med res .3 mm,
+%   lo res .4 mm.
+
+bheight# :=.3mm#;
+
+designsize         :=13*bheight#;
+font_slant         :=0;
+font_normal_space  :=bwidth#;
+font_extra_space   :=0;
+font_normal_stretch:=0;
+font_normal_shrink :=0;
+font_quad          :=bwidth#;
+
+define_pixels(bheight, bwidth);
+
+def thirtyninechar(expr charnum, spex) =
+ beginchar(charnum, bwidth#,12*bheight#,bheight#);
+  numeric mytop,mybot;
+  numeric asval, i;
+  mytop:=12*bheight;mybot:=mytop;
+  x1=x2=0;x3=x4=bwidth;
+  for i=0 upto 11:
+    asval:=ASCII(substring(i,i+1) of spex);
+    exitif asval=-1;
+    asval:=asval-ASCII("0");
+    mybot:=mybot-asval*bheight;
+    if not odd (i):
+	% actual drawing
+	y1:=mytop+blacker;
+	y4:=y1;
+	y2:=mybot-blacker;
+	y3:=y2;
+	fill (z1)--(z2)--(z3)--(z4)--cycle;
+    fi
+    mytop:=mybot;
+  endfor;
+ endchar;
+enddef;
+
+\thirtyninechar("0")("1112212111");
+\thirtyninechar("1")("2112111121");
+\thirtyninechar("2")("1122111121");
+\thirtyninechar("3")("2122111111");
+\thirtyninechar("4")("1112211121");
+\thirtyninechar("5")("2112211111");
+\thirtyninechar("6")("1122211111");
+\thirtyninechar("7")("1112112121");
+\thirtyninechar("8")("2112112111");
+\thirtyninechar("9")("1122112111");
+\thirtyninechar( 64)("1211212111"); % start = @
+\thirtyninechar("-")("1211112121");
+\thirtyninechar("+")("1211121211");
+\thirtyninechar("$")("1212121111");
+\thirtyninechar("/")("1212111211");
+\thirtyninechar(".")("2211112111");
+\thirtyninechar( 37)("1112121211"); % percent
+\thirtyninechar( 32)("1221112111"); % space
+\thirtyninechar("A")("2111121121");
+\thirtyninechar("B")("1121121121");
+\thirtyninechar("C")("2121121111");
+\thirtyninechar("D")("1111221121");
+\thirtyninechar("E")("2111221111");
+\thirtyninechar("F")("1121221111");
+\thirtyninechar("G")("1111122121");
+\thirtyninechar("H")("2111122111");
+\thirtyninechar("I")("1121122111");
+\thirtyninechar("J")("1111222111");
+\thirtyninechar("K")("2111111221");
+\thirtyninechar("L")("1121111221");
+\thirtyninechar("M")("2121111211");
+\thirtyninechar("N")("1111211221");
+\thirtyninechar("O")("2111211211");
+\thirtyninechar("P")("1121211211");
+\thirtyninechar("Q")("1111112221");
+\thirtyninechar("R")("2111112211");
+\thirtyninechar("S")("1121112211");
+\thirtyninechar("T")("1111212211");
+\thirtyninechar("U")("2211111121");
+\thirtyninechar("V")("1221111121");
+\thirtyninechar("W")("2221111111");
+\thirtyninechar("X")("1211211121");
+\thirtyninechar("Y")("2211211111");
+\thirtyninechar("Z")("1221211111");
+
+\end;
+%</wlcr39mf>
+%<*code93mf>
+% not complete, yet
+%% Code 93 in Metafont format
+%% Peter Willadt 1998-04-21
+%% For copyright and the like see the documentation
+%% to the barcode package, from which this file is part of.
+%% If you received only this file,
+%% then maybe someone fooled you.
+%% 
+%% Code 93 requires one or two check digits.
+%% These check digtis are calculated using a weighted mod 11-checksum.
+%% You have to see the docs.
+%% Start and stop chars are mapped to < and >, respectively.
+%% codeable are 0--9 , A-Z, -,+, space, dot, $, /, and percent.
+%% To print full ascii, ordinary characters have to be preceeded with
+%% on of four shift characters. Thes shift characters are
+%% ($) mapped to =
+%% (%) mapped to [
+%% (/) mapped to |
+%% (+) mapped to ]
+
+mode_setup;
+
+bheight#:=5mm#;
+
+% high res: .264 mm#
+%  med res: .33  mm#
+bwidth#   :=.33  mm#;
+
+designsize         :=bheight#;
+font_slant         :=0;
+font_normal_space  :=9*bwidth#;
+font_extra_space   :=0;
+font_normal_stretch:=0;
+font_normal_shrink :=0;
+font_quad          :=10*bwidth#;
+
+define_pixels(bheight, bwidth);
+
+def CODExciiichar(expr charnum, spex) =
+	numeric mywid, asval, i;
+	mywid=0;
+	for i= 0 upto 5:
+		asval:=ASCII(substring(i,i+1) of spex);
+		asval:=asval-ASCII("0");
+		mywid:=mywid+asval;
+	endfor;
+	beginchar(charnum, mywid*bwidth#,bheight#,0);
+		y1=y2=0;
+		y3=y4=bheight;
+	numeric myright,myleft,barweight,spcweight;
+	myright:=0;myleft:=0;barweight:=0;spcweight:=0;
+	for i=0 upto 5:
+		asval:=ASCII(substring(i,i+1) of spex);
+		asval:=asval-ASCII("0");
+		myright:=myright+asval*bwidth;
+		if not odd (i):
+			% actual drawing
+			x1:=myleft-blacker;
+			x4:=x1;
+			x2:=myright+blacker;
+			x3:=x2;
+			fill (z1)--(z2)--(z3)--(z4)--cycle;
+		fi
+		myleft:=myright;
+	endfor;
+	endchar;
+enddef;
+
+CODExciiichar("0","131112");
+CODExciiichar("1","111213");
+CODExciiichar("2","111312");
+CODExciiichar("3","111411");
+CODExciiichar("4","121113");
+CODExciiichar("5","121212");
+CODExciiichar("6","121311");
+CODExciiichar("7","111114");
+CODExciiichar("8","131211");
+CODExciiichar("9","141111");
+CODExciiichar("A","211113");
+CODExciiichar("B","211212");
+CODExciiichar("C","211311");
+CODExciiichar("D","221112");
+CODExciiichar("E","221211");
+CODExciiichar("F","231111");
+CODExciiichar("G","112113");
+CODExciiichar("H","112212");
+CODExciiichar("I","112311");
+CODExciiichar("J","122112");
+CODExciiichar("K","132111");
+CODExciiichar("L","111123");
+CODExciiichar("M","111222");
+CODExciiichar("N","111321");
+CODExciiichar("O","121122");
+CODExciiichar("P","131121");
+CODExciiichar("Q","212112");
+CODExciiichar("R","212211");
+CODExciiichar("S","211122");
+CODExciiichar("T","211221");
+CODExciiichar("U","221121");
+CODExciiichar("V","222111");
+CODExciiichar("W","112122");
+CODExciiichar("X","112221");
+CODExciiichar("Y","122121");
+CODExciiichar("Z","123111");
+CODExciiichar("-","121131");
+CODExciiichar(".","311112");
+CODExciiichar( 32,"311211");% space
+CODExciiichar( 36,"321111");% dollar
+CODExciiichar("/","112131");
+CODExciiichar("+","113121");
+CODExciiichar( 37,"211131");% percent
+% % the four escape characters 
+CODExciiichar("(","121221");% ought to be ($)
+CODExciiichar(")","312111");% ought to be (%)
+CODExciiichar("[","311121");% ought to be (/)
+CODExciiichar("]","122211");% ought to be (+)
+CODExciiichar("<","111141");% start sign
+CODExciiichar(">","1111411");% stop sign has extra bar
+
+end;
+%</code93mf>

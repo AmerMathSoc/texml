@@ -1,0 +1,478 @@
+% Copyright (C) 2012 by Werner Moshammer
+% Parts of this code are Copyright (C) 2007 by Michael Ritzert <michael.ritz...@gmail.com>
+% REPLACEMENT FOR THE OLD OCG.STY
+% FOR PDFLATEX AND XELATEX (the old ocg.sys works only with pdflatex)
+% This file may be distributed and/or modified under the LaTeX Project Public License
+
+\NeedsTeXFormat{LaTeX2e}
+\def\ocgpversion{0.4}
+\ProvidesPackage{ocg-p}[2013/01/10 v\ocgpversion\space Optional Content Group in a PDF document]
+% v0.1: 2012/11/01; v0.2: 2012/11/23; v0.3: 2012/12/01; v0.4: 2013/01/10
+\RequirePackage{eso-pic}
+\RequirePackage{ifpdf}
+\RequirePackage{ifxetex}
+\RequirePackage{xkeyval}
+
+\newif\ifocgtabular
+\DeclareOptionX[ocgp]{ocgtabular}{\ocgtabulartrue}
+\DeclareOptionX*{\PackageWarning{ocg-p}{Option unknown: \CurrentOption}}
+\ProcessOptionsX[ocgp]\relax
+
+\ifocgtabular
+  \RequirePackage{datatool}
+  \RequirePackage{tikz}
+  \RequirePackage{listings}
+\fi
+
+\newif\if@ocgp@ifps
+
+\ifpdf
+  \ifnum\pdftexversion<120
+    \PackageError{ocg-p}{%
+      pdfeTeX, version >= 1.20, required%
+    }{%
+       Install a newer version!%
+    }%
+  \fi
+\else
+  \ifxetex
+     %already ok 
+  \else
+    % dvips
+    \@ocgp@ifpstrue
+    \PackageWarningNoLine{ocg-p}{%
+      Only XeLaTeX and pdfLaTeX are supported%
+    }%
+  \fi
+\fi
+
+\def\@ocgp@ocgHandle{\@auxout}
+\newif\if@ocgp@iffirstrun\@ocgp@iffirstruntrue
+
+\newif\if@ocgp@isnestedB\@ocgp@isnestedBfalse % nested OCG begin
+\newif\if@ocgp@isnestedE\@ocgp@isnestedEfalse % nested OCG end
+
+\def\@ocgp@nestedB{%
+  \xdef\@ocgp@ocgorderlist{\@ocgp@ocgorderlist\space[}
+}
+\def\@ocgp@nestedE{%
+  \xdef\@ocgp@ocgorderlist{\@ocgp@ocgorderlist\space]}
+}
+
+
+\providecommand\ocg[3]{} % if running with ocgtools
+\renewenvironment{ocg}[4][]{%
+  \if@ocgp@isnestedB% begin of nested ocg detected
+    \immediate\write\@ocgp@ocgHandle{%
+      \string\@ocgp@nestedB{}%
+    }
+  \fi
+  \global\@ocgp@isnestedBtrue % ocg begin
+  \global\@ocgp@isnestedEfalse % ocg end
+  \if@filesw%
+    \immediate\write\@ocgp@ocgHandle{%
+      \string\@ocgp@newocg{#2}{#3}{#4}{#1}%
+    }%
+  \fi
+  \gdef\@ocgp@curnum{#3}%
+  \ifpdf
+    \pdfliteral{/OC /OC\@ocgp@curnum\space BDC}%
+  \else
+    \if@ocgp@ifps % soon (not implemented yet) POSTSCRIPT
+      \special{ps: mark /_objdef {psocgobj\@ocgp@curnum} /type/stream /OBJ pdfmark}
+      \special{ps: mark {psocgobj\@ocgp@curnum} (/OC /OC\@ocgp@curnum\space BDC) /PUT pdfmark}
+      %\special{ps: mark /OC /OC\@ocgp@curnum\space /BDC pdfmark}%
+    \else
+      \special{pdf: content /OC /OC\@ocgp@curnum\space BDC}%
+    \fi
+  \fi
+  \message{/OC\@ocgp@curnum}%
+  \ignorespaces
+}{%
+  \ifpdf
+    \pdfliteral{EMC}%
+  \else
+    \if@ocgp@ifps % soon (not implemented yet) POSTSCRIPT
+      %\special{ps: mark /EMC pdfmark}%
+      \special{ps: mark {psocgobj\@ocgp@curnum} (EMC) /PUT pdfmark}
+    \else
+      \special{pdf: content EMC}%
+    \fi
+  \fi
+  \if@ocgp@isnestedE% end of nested ocg detected
+    \immediate\write\@ocgp@ocgHandle{%
+      \string\@ocgp@nestedE{}%
+    }
+  \fi
+  \global\@ocgp@isnestedEtrue % ocg end
+  \global\@ocgp@isnestedBfalse % ocg begin
+  \ignorespacesafterend
+}
+
+
+\def\@ocgp@ocglist{}
+\def\@ocgp@ocgofflist{}
+\def\@ocgp@ocgviewlist{} % to switch ocg off in layer toolbar of the viewer
+\gdef\@ocgp@ocgmaplist{}
+\def\@ocgp@ocgorderlist{} % ocgs in first-defined order + hierarchy
+
+\define@choicekey*[ocgp]{ocg}{printocg}[\@ocgp@printbin\@ocgp@printno]{always,never,ifvisible}[ifvisible]{%
+  \ifcase\@ocgp@printno\relax
+    \def\@ocgp@print{/Print<</PrintState /ON>>}%
+  \or%
+    \def\@ocgp@print{/Print<</PrintState /OFF>>}%
+  \or%
+    \def\@ocgp@print{}%
+  \fi%
+}
+\define@choicekey*[ocgp]{ocg}{exportocg}[\@ocgp@exportbin\@ocgp@exportno]{always,never,ifvisible}[ifvisible]{%
+  \ifcase\@ocgp@exportno\relax
+    \def\@ocgp@export{/Export<</ExportState /ON>>}%
+  \or%
+    \def\@ocgp@export{/Export<</ExportState /OFF>>}%
+  \or%
+    \def\@ocgp@export{}%
+  \fi%
+}
+\define@choicekey*[ocgp]{ocg}{listintoolbar}[\@ocgp@listbin\@ocgp@listno]{always,never,iffirstuse}[iffirstuse]{}
+
+\define@choicekey*[ocgp]{ocgaction}{triggerocg}[\@ocgp@actionbin\@ocgp@actionno]{onareaenter,onareaexit,onmousedown,onmouseup,allactions}[onmouseup]{%
+  \ifcase\@ocgp@actionno\relax
+    \def\@ocgp@trigger{/E}%
+  \or%
+    \def\@ocgp@trigger{/X}%
+  \or%
+    \def\@ocgp@trigger{/D}%
+  \or%
+    \def\@ocgp@trigger{/U}%
+  \or%
+    \def\@ocgp@trigger{}%
+  \fi%
+}
+
+\presetkeys[ocgp]{ocg}{printocg=ifvisible,exportocg=ifvisible,listintoolbar=iffirstuse}{}
+\presetkeys[ocgp]{ocgaction}{triggerocg=onmouseup}{}
+
+
+\newcount\@ocgp@num\@ocgp@num=0
+\newcount\@ocgp@tonum\@ocgp@tonum=0
+\newcount\@ocgp@sonum\@ocgp@sonum=0
+
+\def\@ocgp@newocg#1#2#3#4{% #1: OCG name, #2: OC id num, #3: visiblity on/off
+  \if@ocgp@iffirstrun
+    \expandafter\ifx\csname OCG#2\endcsname\relax
+      \expandafter\gdef\csname OCG#2\endcsname{#1}%
+      \global\advance\@ocgp@num by 1
+      \begingroup
+        \setkeys[ocgp]{ocg}{#4}
+        \ifpdf% PDFLATEX
+          \immediate\pdfobj{<< /Type /OCG /Name (#1) /Usage <<%
+            \@ocgp@print%
+            %/View<</ViewState /OFF>> %
+            \@ocgp@export%
+            >> >>}% new ocg
+          \xdef\@ocgp@curocg{\the\pdflastobj\space 0 R}% reference to current ocg id
+        \else
+          \if@ocgp@ifps % soon (not implemented yet) POSTSCRIPT
+            \xdef\@ocgp@curocg{{@ocg\the\@ocgp@num}}% reference to current ocg id
+            \special{ps: mark /_objdef \@ocgp@curocg /type/dict /OBJ pdfmark}  
+            \special{ps: mark \@ocgp@curocg << /Type /OCG /Name (#1)
+              >> /PUT pdfmark}% new ocg
+          \else % XELATEX
+            \xdef\@ocgp@curocg{@ocg\the\@ocgp@num}% reference to current ocg id
+            \special{pdf:obj \@ocgp@curocg\space <</Type/OCG /Name (#1) /Usage <<
+              \@ocgp@print%
+              %/View<</ViewState /OFF>> %
+              \@ocgp@export%
+              >> >>}% new ocg
+          \fi
+        \fi  
+     
+        \expandafter\xdef\csname OCGpdfobj#2\endcsname{\@ocgp@curocg} % for ogcx-package
+        \xdef\@ocgp@ocglist{\@ocgp@ocglist\space\@ocgp@curocg}% list of all OCGs in "first defined" order  
+        \ifnum\@ocgp@listno=1\else
+          \xdef\@ocgp@ocgorderlist{\@ocgp@ocgorderlist\space\@ocgp@curocg} % all OCGs in "first defined" order + hierarchy
+        \fi
+      \endgroup
+      \xdef\@ocgp@ocgmaplist{\@ocgp@ocgmaplist\space/OC#2\space\@ocgp@curocg\space ^^J} % name-to-id mapping
+      \ifnum#3=1 %on
+        % no list of all default-on OCGs needed, because of basestate on
+      \else%
+        \xdef\@ocgp@ocgofflist{\@ocgp@ocgofflist\space\@ocgp@curocg}% list of all default-off OCGs
+      \fi%
+    \else
+      \message{OCG#2 reopened}% layer reopened
+      \begingroup
+        \setkeys[ocgp]{ocg}{#4}
+        \ifnum\@ocgp@listno=0
+          \xdef\@ocgp@ocgobjlist{}%
+          \@ocgp@parseSpaceSeperatedList{#2}%
+          \xdef\@ocgp@ocgorderlist{\@ocgp@ocgorderlist\space\@ocgp@ocgobjlist}
+        \fi
+      \endgroup
+    \fi
+  \fi
+}
+
+
+\AtBeginDocument{% AtEndDocument{% changed because of xetex problem in beamer class
+  \@ocgp@iffirstrunfalse  
+  %\message{... \@ocgp@ocgorderlist ...}
+  \ifpdf % PDFLATEX
+    \pdfcatalog{%
+      /OCProperties <<
+        /OCGs [\@ocgp@ocglist]
+        /D <</BaseState/ON /Order [\@ocgp@ocgorderlist] /OFF [\@ocgp@ocgofflist] /AS [%
+          <</Event/View /OCGs [\@ocgp@ocglist] /Category[/View]>>%
+          <</Event/Print /OCGs [\@ocgp@ocglist] /Category[/Print]>>%
+          <</Event/Export /OCGs [\@ocgp@ocglist] /Category[/Export]>>%
+        ]>>%
+      >>%
+    }
+  \else 
+    \if@ocgp@ifps % soon (not implemented yet) POSTSCRIPT
+      \special{ps: mark {Catalog} <<
+        /OCProperties <<
+          /OCGs [\@ocgp@ocglist]
+          /D <</BaseState/ON /Order [\@ocgp@ocgorderlist] /OFF [\@ocgp@ocgofflist]>>
+        >>
+      >> /PUT pdfmark}%
+    \else % XELATEX
+      \special{pdf:put @catalog <<
+        /OCProperties <<
+          /OCGs [\@ocgp@ocglist]
+          /D <</BaseState/ON /Order [\@ocgp@ocgorderlist] /OFF [\@ocgp@ocgofflist] /AS [% 
+            <</Event/View /OCGs [\@ocgp@ocglist] /Category[/View]>>%
+            <</Event/Print /OCGs [\@ocgp@ocglist] /Category[/Print]>>%
+            <</Event/Export /OCGs [\@ocgp@ocglist] /Category[/Export]>>%
+          ]>>%
+        >>%
+      >>}%
+    \fi
+  \fi   
+}
+
+\AtBeginDocument{%
+  \ifpdf % PDFLATEX
+    \immediate\pdfobj{<<\@ocgp@ocgmaplist\space>>}%
+     \xdef\@ocgp@namesobj{\the\pdflastobj\space 0 R}%
+     % append to pageresources
+     \begingroup
+     \edef\x{\endgroup
+        \pdfpageresources{%
+           \the\pdfpageresources
+           /Properties \@ocgp@namesobj%
+        }%
+     }%
+     \x
+  \else
+    \if@ocgp@ifps % soon (not implemented yet) POSTSCRIPT
+      \AddToShipoutPicture{
+        \special{ps: mark /_objdef {Resources} /type/stream /OBJ pdfmark}
+        \special{ps: mark {Resources} << % it is something wrong here
+        %  /Resources <<
+          /Properties << ^^J%
+          \@ocgp@ocgmaplist
+        %>>
+        >>
+        >> /PUT pdfmark}}%
+    \else  % XELATEX
+      \AddToShipoutPicture{
+        \special{pdf: put @resources <<
+          /Properties << ^^J%
+          \@ocgp@ocgmaplist
+        >>
+        >>}}%
+    \fi
+  \fi
+}
+
+
+% parsing a space-delimited ocgid-list to a space-delimited list of ocg-objects
+\def\@ocgp@parseSpaceSeperatedList#1{\@ocgp@doparseSpaceSeperatedList#1 \relax}
+\def\@ocgp@doparseSpaceSeperatedList#1 #2{%
+  \ifcsname OCGpdfobj#1\endcsname%
+    \xdef\@ocgp@ocgobjlist{\@ocgp@ocgobjlist\space\csname OCGpdfobj#1\endcsname}%
+  \fi
+  \ifx#2\relax
+    %\@ocgp@ocgobjlist % only for debugging reasons
+  \else
+    \expandafter\@ocgp@doparseSpaceSeperatedList
+  \fi
+  #2%
+}
+
+%get the n-th element from a comma separated list
+\newcommand\@ocg@selectElementN[2]{%
+  \newcount\@ocgp@inum\@ocgp@inum=0%
+  \def\@ocgp@tempN{}%
+  \@for\@ocg@i:=#1\do{%
+    \advance\@ocgp@inum by 1\relax
+    \ifnum\@ocgp@inum=#2\relax
+      \edef\@ocgp@tempN{\@ocg@i}%
+    \fi
+  }%
+}
+
+% link to toggle layers in a document without using the layer toolbar of the viewer
+\newcommand\toggleocgs[3][]{%
+  \setocgs[#1]{#2}{}{}{#3}%
+}
+% link to show layers in a document without using the layer toolbar of the viewer
+\newcommand\showocgs[3][]{%
+  \setocgs[#1]{}{#2}{}{#3}%
+}
+% link to hide layers in a document without using the layer toolbar of the viewer
+\newcommand\hideocgs[3][]{%
+  \setocgs[#1]{}{}{#2}{#3}%
+}
+% link to set layers in a document without using the layer toolbar of the viewer
+\newcommand\setocgs[5][]{%
+  \begingroup
+    \setkeys[ocgp]{ocgaction}{#1}%
+    \newcount\@ocgp@aanum\@ocgp@aanum=0
+    \def\@ocgp@actionlist{}%
+    \loop\ifnum\@ocgp@aanum<4
+      \xdef\@ocgp@ocgobjlist{}%
+      \advance\@ocgp@aanum by 1\relax
+      \ifx\\#2\else%
+        \expandafter\@ocg@selectElementN\expandafter{#2}{\@ocgp@aanum}%
+        \ifx\@ocgp@tempN\@empty\else
+          \xdef\@ocgp@ocgobjlist{/Toggle }%
+          \expandafter\@ocgp@parseSpaceSeperatedList\expandafter{\@ocgp@tempN}%
+        \fi
+      \fi
+      \ifx\\#3\else%
+        \expandafter\@ocg@selectElementN\expandafter{#3}{\@ocgp@aanum}%
+        \ifx\@ocgp@tempN\@empty\else
+          \xdef\@ocgp@ocgobjlist{\@ocgp@ocgobjlist /ON }%
+          \expandafter\@ocgp@parseSpaceSeperatedList\expandafter{\@ocgp@tempN}%
+        \fi
+      \fi
+      \ifx\\#4\else%
+        \expandafter\@ocg@selectElementN\expandafter{#4}{\@ocgp@aanum}%
+        \ifx\@ocgp@tempN\@empty\else
+          \xdef\@ocgp@ocgobjlist{\@ocgp@ocgobjlist /OFF }%
+          \expandafter\@ocgp@parseSpaceSeperatedList\expandafter{\@ocgp@tempN}%
+        \fi
+      \fi
+      \ifnum\@ocgp@actionno<4\relax% only one action
+        \def\@ocgp@actionlist{\@ocgp@trigger << /S /SetOCGState /State [\@ocgp@ocgobjlist]>>}%
+        \advance\@ocgp@aanum by 10\relax
+      \else% allactions
+        \ifcase\@ocgp@aanum\relax\or%
+          \def\@ocgp@trigger{/E}%
+        \or%
+          \def\@ocgp@trigger{/X}%
+        \or%
+          \def\@ocgp@trigger{/D}%
+        \or%
+          \def\@ocgp@trigger{/U}%
+        \fi
+        \ifx\@ocgp@ocgobjlist\@empty\else
+          \edef\@ocgp@actionlist{\@ocgp@actionlist\space\@ocgp@trigger << /S /SetOCGState /State [\@ocgp@ocgobjlist]>> }%
+        \fi
+      \fi
+    \repeat
+    \global\advance\@ocgp@sonum by 1\relax
+    \leavevmode%
+    \ifpdf%
+      \pdfstartlink user {%
+        %/Subtype /Link
+        /Subtype /Widget
+        /FT/Btn /Ff 65536
+        /T(setocg\the\@ocgp@sonum)
+        /H/N %Highlightning Mode: N=No;I=Invert;O=Outline;P=Push
+        %/A <</S/SetOCGState /State [\@ocgp@ocgobjlist]>>
+        /AA <<
+           \@ocgp@actionlist
+        >>
+        %/Border [0 0 0]% no border
+      }%
+      #5\pdfendlink%
+    \else%
+      \if@ocgp@ifps % soon (not implemented yet) POSTSCRIPT
+        \special{ps: bann
+          << /Type /Annot
+            %/Subtype /Link
+            /Subtype /Widget
+            /FT/Btn/Ff 65536
+            /T(setocg\the\@ocgp@sonum)
+            /H/N
+            %/Border [0 0 0]% no border
+            %/A <</S/SetOCGState /State [\@ocgp@ocgobjlist]>>%
+            /AA <<
+              \@ocgp@actionlist
+            >>
+          >>}#5% 
+        \special{ps:eann}%
+      \else% XELATEX
+        \special{pdf: bann
+          << /Type /Annot
+            %/Subtype /Link
+            /Subtype /Widget
+            /FT/Btn/Ff 65536
+            /T(setocg\the\@ocgp@sonum)
+            /H/N
+            %/Border [0 0 0]% no border
+            %/A <</S/SetOCGState /State [\@ocgp@ocgobjlist] >>%
+            /AA <<
+              \@ocgp@actionlist
+            >>
+          >>}#5% 
+        \special{pdf:eann}%
+      \fi%
+    \fi%
+  \endgroup
+}
+
+
+
+% environment for a table which can be sorted by clicking on the header
+% IMPLEMENTATION NOT FINISHED (last argument for options)
+\ifocgtabular
+  \lst@RequireAspects{writefile}
+  \lstnewenvironment{ocgtabular}[4][]{
+    \lstset{aboveskip=0pt,belowskip=0pt}
+    \global\advance\@ocgp@tonum by 1\relax
+    \newcommand\setocgtabularheader[2]{%
+      \newcount\@ocgp@thnum\@ocgp@thnum=0%
+      \xdef\@ocgp@ocgobjtlist{}%
+      %\newcount\@ocgp@colindex%
+      \DTLgetcolumnindex{\@ocgp@colindex}{#3}{##1}%
+      \loop\ifnum\@ocgp@thnum<\DTLcolumncount{#3}%
+      \advance\@ocgp@thnum by 1\relax
+        \ifnum\@ocgp@thnum=\@ocgp@colindex\relax\else%
+          \edef\@ocgp@ocgobjtlist{\@ocgp@ocgobjtlist\space ocgtabular\the\@ocgp@tonum o\the\@ocgp@thnum}%
+        \fi%
+      \repeat%
+      \setocgs{}{ocgtabular\the\@ocgp@tonum o\@ocgp@colindex}{\@ocgp@ocgobjtlist}{##2}%
+    }
+    \newcount\@ocgp@tcnum\@ocgp@tcnum=0%
+    \setbox\@tempboxa\hbox\bgroup
+    \lst@BeginWriteFile{\jobname.oct}%
+  }{
+    \lst@EndWriteFile% closes output file
+    \egroup
+    %\vspace{-\baselineskip}%remove line from write-op
+    \begin{tikzpicture}
+    \loop\ifnum\@ocgp@tcnum<\DTLcolumncount{#3}
+    \advance\@ocgp@tcnum by 1\relax
+    \DTLgetkeyforcolumn{\@ocgp@theader}{#3}{\the\@ocgp@tcnum}
+    \message{+++ocgtabular\the\@ocgp@tonum o\the\@ocgp@tcnum +++}
+    \begin{ocg}[listintoolbar=never]{ocgtabular\the\@ocgp@tcnum}{ocgtabular\the\@ocgp@tonum o\the\@ocgp@tcnum}{\ifnum\@ocgp@tcnum=1 1\else 0\fi}
+      \node[] (ocgnode\the\@ocgp@tcnum) {
+        \DTLsort*{\@ocgp@theader}{#3}%
+        \begin{tabular}[#1]{#2}
+          \@@input\jobname.oct%
+          %\input{\jobname.oct}%problems with some commands
+        \end{tabular}
+      };
+    \end{ocg}
+    \repeat
+    \end{tikzpicture}
+  }
+\fi
+
+
+

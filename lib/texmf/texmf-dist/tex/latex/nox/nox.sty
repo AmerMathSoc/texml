@@ -1,0 +1,299 @@
+\NeedsTeXFormat{LaTeX2e}[1995/06/01]
+\ProvidesPackage{nox}[2013/06/09 v1.0 Tabellengebastel (ctansearch/rais)]
+\long\def\readme#1{\newwrite\readme%
+\immediate\openout\readme=readme\relax
+\immediate\write\readme{#1}\immediate\closeout\readme}
+\newcommand*\tn@warn[1]{\PackageWarning{nox}{#1}}% damit man den Paketnamen
+                                % nicht für jede Warnung mitzuschleppen
+                                % braucht
+\newcommand*\tn@info[1]{\PackageInfo{nox}{#1}}
+\newcommand*\tn@table@align{}
+\newif\iftn@cstreset
+\DeclareOption{c}{\renewcommand*\tn@table@align{c}}% Optionen an longtable angepasst 2013-06-09-rais
+\DeclareOption{l}{\renewcommand*\tn@table@align{l}}
+\DeclareOption{r}{\renewcommand*\tn@table@align{r}}
+\DeclareOption{colspecresetstable}{\tn@cstresettrue}% ++ 2013-06-09-rais
+\DeclareOption{colspecstaysintable}{\tn@cstresetfalse}% ++ 2013-06-09-rais
+\DeclareOption*{\tn@warn{Unknown option `\CurrentOption' (ignored)}}
+\ExecuteOptions{l,colspecresetstable}% wg. neuer Option 2013-06-09-rais
+\ProcessOptions\relax
+\RequirePackage{array}
+\RequirePackage{longtable}% wenn schon longtable verwendet wird, dann hier laden und nicht erst im Dokument 2013-06-09-rais
+\newif\iftnresume
+\newtoks\tn@currenttab
+\newcommand*\tn@tmpa{}% wird andernorts überschrieben
+\newcommand*\tn@tmpb{}% wird andernorts überschrieben
+\newcommand*\tn@currentelement{}%
+\newcommand*\tn@addcell{}
+\newcommand*\tn@captiontext{}% wird andernorts überschrieben
+\newcommand*\tn@lintab{}% Platzhalter für die lineare Tabelle
+\newcounter{tn@element}% aktuelles Element
+\newcounter{tn@elements}% bisher abgearbeitete Elemente
+\newcounter{tn@lastelement}% das letzte aktuell zu bearbeitende Element
+\newcounter{tn@tabline}
+\newcounter{tn@tabcol}[tn@tabline]
+\newcounter{tn@tabcell}%addbyctans{9.6.13}
+\newcounter{tn@table}
+\newcounter{tn@tmp}
+\newcommand\deflintab[1]{%
+  \ifnum\value{tn@elements}<\value{tn@element}\relax % Test und Warnung ergänzt,
+% sollten in der bisherigen Tabelle noch unbearbeitete Elemente anstehen
+% (das Gegenstück zu `Current element list exhausted') 2013-06-09-rais
+    \addtocounter{tn@element}{-\value{tn@elements}}%
+    \tn@warn{\arabic{tn@element} elements lost!^^J  %
+      You may have used `\string\deflintab' a little too soon. ^^J
+Missing tntable[x]{y} for \arabic{tn@element} elements}% %addbyctans{9.06.13
+  \fi
+  \def\tn@lintab{#1}%
+  \iftn@cstreset\relax\else %wenn eine Neudefinition der Spaltenanzahl keine neue Tabelle beginnen soll,
+    \stepcounter{table}% beginnt mit einer neuen Tabellendefinition auch eine neue Tabelle 2013-06-09-rais
+  \fi
+  \setcounter{tn@elements}{0}%
+  \setcounter{tn@table}{0}% eigentlich weiss man mit dem \deflintab schon, dass hier
+% eine neue Tabelle beginnt, da kann man die Zähler hier auch schon zurücksetzen 2013-06-09-rais
+  \setcounter{tn@tabline}{0}%
+  \setcounter{tn@tabcol}{0}%
+}
+\let\thetn@table\thetable
+\newcounter{tn@effective@columns}% Anzahl effektiver Spalten
+\setcounter{tn@effective@columns}{3}
+\newcounter{tn@max@columns}% max. Anzahl effektiver Spalten
+\setcounter{tn@max@columns}{12}% oder was weiß ich
+\newlength\numbercolwidth
+\settowidth\numbercolwidth{0}
+\newcommand{\cellflush}{\raggedright}%\raggedleft,\centering addbyctans{5.6.13}
+\newdimen\cellheight%addbyctans{5.6.13}
+\setlength\cellheight{1\baselineskip}%addbyctans{5.6.13}
+\newdimen\basecolskip%addbyctans{5.6.13}
+\setlength\basecolskip{1em}
+\newdimen\cellwidth%addbyctans{5.6.13}
+\setlength\cellwidth{1\basecolskip}%addbyctans{5.6.13}
+\newcommand{\tntabledimen}[2]{
+\setlength\cellheight{#1\baselineskip}%
+\setlength\cellwidth{#2\basecolskip}
+\tn@warn{Current tabledimen: #1\baselineskip #2\basecolskip(\basecolskip=\the\basecolskip)}%
+}%Zusammengefasste cellwidth und cellheight Befehle addbyctans{9.6.13}
+\newcommand{\linenoformat}{\textsuperscript}%addbyctans{5.6.13}
+%%%%% code übernommen aus mbenotes.sty, um in jeder Zelle eine Anmerkung unterbringen
+\@definecounter{cellnote}
+\def\thecellnote{\@arabic\c@cellnote}
+\def\@makecellmark{\hbox{\@textsuperscript{{\tiny[\@thecellmark]}}}}
+\def\makecellmark{\@makecellmark}
+\def\thecellmark{\@thecellmark}
+\newdimen\cellnotesep
+\def\cellnote{\@ifnextchar[\@xcellnote{\stepcounter{cellnote}%
+     \protected@xdef\@thecellmark{\thecellnote}%
+     \@cellnotemark\@cellnotetext}}
+\def\@xcellnote[#1]{
+   \begingroup
+     \c@cellnote=#1\relax
+     \unrestored@protected@xdef\@thecellmark{ \thecellnote}%
+   \endgroup
+   \@cellnotemark\@cellnotetext }
+\let\@doancellnote=0
+\let\@endancellnote=0
+\newwrite\@cellnotes
+\newif\if@cellnotesopen \global\@cellnotesopenfalse
+\def\@opencellnotes{\immediate\openout\@cellnotes=\jobname.nox\relax
+      \global\@cellnotesopentrue}
+\long\def\@cellnotetext#1{%
+     \if@cellnotesopen \else \@opencellnotes \fi
+     \immediate\write\@cellnotes{\@doancellnote{\@thecellmark}}%
+     \begingroup
+        \def\next{#1}%
+        \newlinechar='40
+        \immediate\write\@cellnotes{\meaning\next}%
+     \endgroup
+     \immediate\write\@cellnotes{\@endancellnote}}
+\long\def\addtocellnotes#1{%
+     \if@cellnotesopen \else \@opencellnotes \fi
+     \begingroup
+        \newlinechar='40
+        \let\protect\string
+        \immediate\write\@cellnotes{#1}%
+     \endgroup}
+\def\cellnotemark{%
+   \@ifnextchar[\@xcellnotemark
+     {\stepcounter{cellnote}%
+      \protected@xdef\@thecellmark{\thecellnote}%
+      \@cellnotemark}}
+\def\@xcellnotemark[#1]{%
+   \begingroup
+    \c@cellnote #1\relax
+      \unrestored@protected@xdef\@thecellmark{\thecellnote}%
+   \endgroup
+   \@cellnotemark}
+\def\@cellnotemark{%
+  \leavevmode
+  \ifhmode\edef\@x@sf{\the\spacefactor}\nobreak\fi
+  \makecellmark
+  \ifhmode\spacefactor\@x@sf\fi
+  \relax}
+\def\cellnotetext{
+     \@ifnextchar [\@xcellnotenext
+       {\protected@xdef\@thecellmark{\thecellnote}%
+    \@cellnotetext}}
+\def\@xcellnotenext[#1]{\begingroup \c@cellnote=#1\relax
+   \xdef\@thecellmark{\thecellnote}\endgroup \@cellnotetext}
+\def\@xcellnotenext[#1]{%
+  \begingroup
+     \c@cellnote=#1\relax
+     \unrestored@protected@xdef\@thecellmark{\thecellnote}%
+  \endgroup
+  \@cellnotetext}
+\def\cellnotesname{cellnotes}
+\def\cellnoteheading{\subsubsection*{\footnotesize{\cellnotesname} \@mkboth{\MakeUppercase{\cellnotesname}}{\MakeUppercase{\cellnotesname}}}
+  \mbox{ }\par\vskip-\baselineskip}
+\def\cellnoteformat{\rightskip\z@ \leftskip\z@ \parindent=1.8em
+  \leavevmode\llap{\makecellmark}}
+\def\cellnotesize{\footnotesize}%
+\def\thecellnotes[#1]{\def\cellnotesname{#1}\immediate\closeout\@cellnotes \global\@cellnotesopenfalse
+  \begingroup
+    \makeatletter
+    \edef\@tempa{`\string >}%
+    \ifnum\catcode\@tempa=12%
+      \let\@ResetGT\relax
+    \else
+      \edef\@ResetGT{\noexpand\catcode\@tempa=\the\catcode\@tempa}%
+      \@makeother\>%
+    \fi
+    \def\@doancellnote##1##2>{ \def\@thecellmark{##1}\par\begingroup
+        \@ResetGT
+        \edef\@currentlabel{\csname p@cellnote\endcsname\@thecellmark}%
+        \cellnoteformat}
+    \def\@endancellnote{\par\endgroup}%
+     \cellnoteheading{\small{\textsl{Anm.Tab. \textbf{\cellnotesname} \thetn@table-\alph{tn@table}}}}%Headline für \thecellnotes addbyctans{9.06.13}
+    \cellnotesize
+    \input{\jobname.nox}%
+    \setcounter{cellnote}{0} \vspace{1.8em}
+  \endgroup}
+%%%%%%%%%%%%%%%%%ende code cellnotes addbyctans{9.06.13}
+\newcommand{\celltitle}[1]{\noexpand\textbf{#1}\vskip0.1\baselineskip}%addbyctans{5.6.13}
+                                %gibt der Zelle einen Namen, eine Überschrift
+\newcommand{\celllabel}[1]{\noexpand\textbf{#1}\nox\label{#1}\vskip0.1\baselineskip}%addbyctans{11.6.13}erstellt
+                                %aus dem Namen ein Label
+\newcommand\cell[1]{\tn@warn{`\string\cell' out of proper environment}}
+\newcommand*\seteffectivecolumns[1]{%
+  \ifnum#1>\value{tn@max@columns}\relax
+    \tn@warn{Restricting number of columns to \arabic{tn@max@columns} (you wanted #1)}%
+    \setcounter{tn@effective@columns}{\value{tn@max@columns}}%
+  \else
+    \tn@info{Accepting `#1' as number of columns}%
+    \setcounter{tn@effective@columns}{#1}%
+  \fi
+  \setcounter{tn@tabcol}{0}% den Spaltenzähler zurücksetzen:
+% Nach Neudefinition der Spaltenanzahl ist es IMHO unlogisch, die nächste erste Tabellenzeile
+% an die letzte der vorherigen Teiltabelle anschliessen lassen zu wollen 2013-06-09-rais
+}
+\newenvironment{tntable}[2][]{%
+  \renewcommand\cell[1]{%
+    \ifnum\value{tn@tabcol}=0\relax
+      \linenoformat{\thetn@tabline}%format of tabline addbyctans{5.6.13}
+    \else
+      \iftnresume
+ \ldots
+ \setcounter{tn@tmp}{0}%
+ \edef\tn@tmpa{}%
+ \loop \stepcounter{tn@tmp}\edef\tn@tmpa{\tn@tmpa&}%
+   \ifnum\c@tn@tmp<\c@tn@tabcol\relax\repeat
+ \tn@tmpa
+ \global\tnresumefalse
+      \fi
+    \fi
+    \stepcounter{tn@tabcol}%
+    \ifnum\value{tn@tabcol}>\value{tn@effective@columns}\relax
+      \stepcounter{tn@tabline}% starte neue Zeile
+      \stepcounter{tn@tabcol}%
+      \tabularnewline
+      \linenoformat{\thetn@tabline}%format of tabline addbyctans{5.6.13}
+    \fi
+&\vtop to \cellheight{\nox\vskip0pt %\fenestra addbyctans11.06.13
+##1\vfill\stepcounter{tn@tabcell}}%added
+                                %vtop to scale the cellheight(the height of a
+                                %line) addbyctans {5.6.13} tabcellcounter
+                                %addbyctans{9.6.13}Noch unentschieden, ob vtop
+                                %oder vbox besser ist, oder keins von beiden
+%&\vbox to \cellheight{##1\vfill\stepcounter{tn@tabcell}}%added
+                                %vtop to scale the cellheight(the height of a
+                                %line) addbyctans {5.6.13} tabcellcounter
+                                %addbyctans{9.6.13}
+
+  }%
+  \renewcommand*\thetable{\thetn@table-\alph{tn@table}}%
+  \ifx\relax#1\relax %optionelles Argument leer oder nicht angegeben
+    \iftn@cstreset %konfigurierbar gemacht 2013-06-09-rais
+      \setcounter{tn@table}{0}%
+      \setcounter{tn@tabcol}{0}%
+      \setcounter{tn@tabline}%
+    \fi
+  \else %Test auf `resume':
+    \edef\tn@tmpa{#1}%
+    \edef\tn@tmpb{resume}%
+    \ifx\tn@tmpa\tn@tmpb\relax %bisherige Tabelle soll fortgesetzt werden
+      \tnresumetrue
+      \addtocounter{table}{-1}%
+    \else % weder leer noch `resume:
+      \seteffectivecolumns{#1}% neue Anzahl (eff.) Spalten
+      \iftn@cstreset %++ über Option konfigurierbar gemacht 2013-06-09-rais
+ \setcounter{tn@table}{0}%
+% \setcounter{tn@tabcol}{0}%<-- in \seteffectivecolumns verschoben 2013-06-09-rais
+ \setcounter{tn@tabline}{0}%
+      \else
+ \addtocounter{table}{-1}% neue Spaltenanzahl soll für bisherige Tabelle gelten
+      \fi
+    \fi
+  \fi
+  \refstepcounter{tn@table}%
+%  \ifhmode\par\fi\noindent <-- das ist bei longtable auch nicht mehr notwendig 2013-06-09-rais
+      %\minipage{\linewidth}% damit die
+                           %Tabellenüberschrift nicht vom Körper getrennt
+                           %werden kann,deaktiviert für longtable{5.6.13}
+%  \expandafter\begin{\tn@table@align} auskommentiert und Option an longtable übergeben 2013-06-09-rais
+    \ifx\relax#2\relax
+      \iftnresume\relax
+      \else
+        \tn@warn{Empty caption text for tntable \thetable}%
+   \xdef\tn@captiontext{#2}%
+      \fi
+    \else
+      \xdef\tn@captiontext{#2}%
+    \fi
+%    \def\@captype{table}% damit \caption `weiß', daß es hier um eine Tabelle geht -- auskommentiert, \caption in longtable verschoben 2013-06-09-rais
+    \begin{longtable}[\tn@table@align]{@{}>{\cellflush}p{\numbercolwidth}*{\arabic{tn@effective@columns}}{>{\cellflush}p{\cellwidth}}@{}}%\cellflush addbyctans
+
+      \caption{\tn@captiontext}\\% innerhalb longtable ist \caption mit \\ abzuschliessen 2013-06-09-rais
+}{%
+%\addtocounter{table}{-1}%decrease counter{table}of longtable addbyctans{5.6.13}
+% ^^^ mit der Verschiebung der \caption obsolet geworden 2013-06-09-rais
+  \end{longtable}
+%  \expandafter\end{\tn@table@align} deaktiviert für longtable 2013-06-09-rais
+  %\endminipage deaktiviert für longtable{5.6.13}
+\vskip2\baselineskip }
+\newcommand*\tntab[3][]{%
+  \setcounter{tn@lastelement}{\value{tn@elements}}%
+  \addtocounter{tn@lastelement}{#2}%
+  \setcounter{tn@element}{0}%Schleifenzähler
+  \tn@currenttab={}% und Tabelleninhalt initialisieren
+  \begin{tntable}[#1]{#3}
+    \@for\tn@currentelement:=\tn@lintab\do{%
+      \stepcounter{tn@element}%
+      \ifnum\value{tn@element}>\value{tn@elements}\relax
+ \ifnum\value{tn@element}>\value{tn@lastelement}\relax
+ \else
+   \edef\tn@addcell{\noexpand\tn@currenttab={\the\tn@currenttab\noexpand\cell{\tn@currentelement}}}%
+   \tn@addcell
+ \fi
+      \fi
+   }%
+    \the\tn@currenttab
+  \end{tntable}
+\ifnum\thecellnote>0 \thecellnotes[] \fi%cellnotes werden nur ausgegeben,wenn deren Zähler >0 ist addbyctans{9.06.13}
+  \ifnum\value{tn@element}<\value{tn@lastelement}\relax
+    \tn@warn{Current element list exhausted!^^J
+      You wanted to get \arabic{tn@lastelement}, but only \arabic{tn@element} were present}
+  \fi
+  \setcounter{tn@elements}{\value{tn@lastelement}}% Start für Folgetabelle festlegen
+}%\tntab[Anzahl Spalten]{Anzahl Elemente}{Überschrift}
+\def\nox{\noexpand}%shortcut for \noexpand %addbyctans{9.6.13}
+\def\amp{&} %ampersand für noexpand in Tabellen addbyctans{9.6.13}
+\endinput

@@ -1,0 +1,240 @@
+%%
+%% This is file `versonotes.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% versonotes.dtx  (with options: `package')
+%% versonotes: Notes on verso pages
+%%
+%% Release version 0.3, 2015 December 8.
+%%
+%% Copyright 2014, 2015 Norman Gray <http://nxg.me.uk>
+%%
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%     http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%%
+%% The Current Maintainer of this work is Norman Gray
+%%
+%% This work consists of the files versonotes.dtx and versonotes.ins
+%% and the derived file versonotes.sty.
+%%
+%%%% File: versonotes.dtx
+
+%%%% Source: 1ce01fd3d4fc, 2015-09-16T13:05:15+01:00
+%%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{versonotes}[2015/12/08 v0.3]
+ 
+\newif\if@verso@notesonleft
+\@verso@notesonlefttrue
+\def\verso@resetmergestate{\verso@mergestate=2}
+\DeclareOption{mergecollisions}{\def\verso@resetmergestate{\verso@mergestate=0}}
+\DeclareOption{rectonotes}{\@verso@notesonleftfalse}
+\ProcessOptions
+\long\def\versonote#1{\@bsphack
+  \pdfsavepos
+  \write\@auxout{\string\verso@note{\the\c@page}{\the\pdflastypos sp}\unexpanded{{#1}}}%
+  \@esphack}
+\newdimen\versotextwidth
+  \versotextwidth=\textwidth
+\newdimen\versoleftmargin
+  \versoleftmargin=\paperwidth
+  \advance\versoleftmargin -\textwidth
+  \advance\versoleftmargin -\hoffset
+  \advance\versoleftmargin -1in
+\if@verso@notesonleft
+  \advance\versoleftmargin -\evensidemargin
+  \def\versolayout{
+    \leftskip=0pt plus 1fil
+    \rightskip=0pt
+    \parfillskip=0pt
+    \parindent=0pt
+    \parskip=\medskipamount
+  }
+\else
+  \advance\versoleftmargin -\oddsidemargin
+  \def\versolayout{
+    \leftskip=0pt
+    \rightskip=0pt plus 4em
+    \parindent=0pt
+    \parskip=\medskipamount
+  }
+\fi
+\def\end@versonote{%
+  \write\@auxout{\string\verso@note{\the\c@page}{-1pt}{}}}
+\AtEndDocument{\end@versonote}
+\newtoks\verso@pages
+  \if@verso@notesonleft
+    \verso@pages={}
+  \else
+    \verso@pages={{}}
+  \fi
+\newtoks\verso@currentpage
+\newcount\verso@currentpagenum
+  \verso@currentpagenum=1
+\newcount\verso@currentnotenum
+  \verso@currentnotenum=0
+\newdimen\verso@spacerskip
+  \verso@spacerskip=10pt
+\newif\if@verso@processversonotes
+  \@verso@processversonotesfalse
+\newdimen\verso@pagebottom
+  \verso@pagebottom=1in
+  \advance\verso@pagebottom \topskip
+  \advance\verso@pagebottom \topmargin
+  \advance\verso@pagebottom \headheight
+  \advance\verso@pagebottom \headsep
+  \advance\verso@pagebottom \textheight
+\newdimen\verso@currentposition
+\pdfpageheight=\paperheight
+\long\def\verso@note#1#2#3{%
+  \global\@verso@processversonotestrue
+  \@tempcnta=#1
+  \ifnum\@tempcnta=1
+    \PackageWarning{versopages}{page 1 verso text will be ignored}
+  \fi
+  \@tempdima=#2 % #2 < 0pt is the end-of-document flag
+  \loop
+    \@tempswafalse
+    \ifnum\@tempcnta > \verso@currentpagenum
+      \@tempswatrue
+    \fi
+    \ifdim\@tempdima < 0pt
+      \@tempswatrue
+      \@tempdima=0pt
+    \fi
+    \if@tempswa
+      \edef\@tempa{\the\verso@pages {\the\verso@currentpage}}
+      \global\verso@pages=\expandafter{\@tempa}
+      \advance\verso@currentpagenum 1
+      \verso@currentpage={}
+  \repeat
+  \verso@currentpage=\expandafter{\the\verso@currentpage \\{{#1}{#2}{#3}}}
+  \ifdim\@tempdima=0pt
+    \global\verso@pages=\expandafter{\the\verso@pages {}{}}
+  \fi
+}
+\AtEndDocument{\long\def\verso@note#1#2#3{}}
+\def\verso@testmergenote#1,#2\@nil{
+  \def\@tempa{#1}
+  \ifx\@tempa\@empty
+    \@tempcnta=-1
+  \else
+    \@tempcnta=#1
+  \fi
+  \advance\@tempcnta -1
+  \ifnum\@tempcnta=\verso@currentnotenum
+    \@tempswatrue
+    \xdef\verso@mergenotelist{#2}
+    \immediate\write\@auxout{\string\verso@mergenote{#1}}
+  \else
+    \@tempswafalse
+  \fi
+}
+\newcount\verso@mergestate
+  \verso@resetmergestate
+\newtoks\verso@accumulatenote
+  \verso@accumulatenote={}
+\long\def\verso@setnote#1#2#3{
+  \@tempdima=\paperheight \advance\@tempdima -#2
+  % target position; will become skip to add
+  \@tempdimb=\verso@currentposition
+  \global\advance\verso@currentnotenum 1
+  \expandafter\verso@testmergenote\verso@mergenotelist,\@nil
+  \if@tempswa
+    \verso@accumulatenote=\expandafter{%
+      \the\verso@accumulatenote
+      #3%
+      \quad\P~\nobreak}
+    %\PackageInfo{versonotes}{\typeout{Merging notes on p#1}}
+  \else
+    \setbox0=\vtop{
+      \versolayout
+      \the\verso@accumulatenote
+      #3\par}
+    \verso@accumulatenote={}
+    \ifdim\@tempdima>\verso@currentposition
+      \advance\@tempdima -\verso@currentposition
+      \advance\@tempdima -\ht0
+      \advance\@tempdimb \@tempdima
+      \verso@resetmergestate
+    \else
+      % note: \PackageWarning seems to produce odd effects here
+      \message{^^Jversonotes warning: Moved versonote text on p.#1.}
+      \advance\verso@mergestate 1
+      \ifnum\verso@mergestate=1
+        \immediate\write\@auxout{\string\verso@mergenote{\the\verso@currentnotenum}}
+      \fi
+      \nointerlineskip
+      \vbox to \verso@spacerskip{\vfil
+        \hbox to \hsize{\hfil\vrule height 0.4pt width 10em}
+        \vfil}
+      \advance\@tempdimb \verso@spacerskip
+      \@tempdima=0pt % ...so don't add any more skip
+    \fi
+    \advance\@tempdimb \ht0
+    \advance\@tempdimb \dp0
+    \ifdim\@tempdimb>\verso@pagebottom
+      \message{^^Jversonotes warning: versonote text on p.#1 hit bottom of page.}
+      \advance\@tempdima -\@tempdimb
+      \advance\@tempdima \verso@pagebottom
+      \@tempdimb=\verso@pagebottom
+    \fi
+    \vskip\@tempdima
+    \verso@currentposition=\@tempdimb
+    \nointerlineskip
+    \box0
+  \fi
+}
+\def\verso@mergenotelist{}
+\def\verso@mergenote#1{\xdef\verso@mergenotelist{\verso@mergenotelist #1,}}
+\let\verso@orig@shipout\shipout
+\long\def\verso@processonepage@#1#2\@nil{
+  \def\@tempa{#1}
+  \if@verso@notesonleft
+    \@tempcnta=1
+  \else
+    \@tempcnta=2
+  \fi
+  \ifnum\c@page>\@tempcnta
+    \ifx\@tempa\@empty
+      \verso@orig@shipout\vbox{}
+    \else
+      \begingroup
+        \let\protect\relax
+        \hoffset=-1in \advance\hoffset \versoleftmargin
+        \voffset=-1in
+        \hsize=\versotextwidth
+        \topskip=0pt
+        \topmargin=0pt
+        \headheight=0pt
+        \headsep=0pt
+        \vsize=1000mm % larger than any actual note
+        \normalfont\normalsize
+        \long\def\\##1{\verso@setnote ##1}
+        \verso@orig@shipout\vbox{
+          \verso@currentposition=0pt
+          #1}
+      \endgroup
+    \fi
+  \fi
+  \global\verso@pages={#2}}
+\def\verso@processonepage{
+  \if@verso@processversonotes
+    \expandafter\verso@processonepage@\the\verso@pages\@nil
+  \else
+    \global\let\verso@processonepage\relax
+  \fi
+}
+\def\shipout{\verso@processonepage \verso@orig@shipout}
+\endinput
+%%
+%% End of file `versonotes.sty'.

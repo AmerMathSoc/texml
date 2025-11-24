@@ -1,0 +1,1411 @@
+%% Copyright (C) 2014 Christian Dietrich <stettberger@dokucode.de>
+%% -------------------------------------------------------
+%% 
+%% This package may be distributed and/or modified under the conditions
+%% of the LaTeX Project Public License, either version 1.3c of this
+%% license or (at your option) any later version.  The latest version of
+%% this license is in
+%% 
+%%    http://www.latex-project.org/lppl.txt
+%% 
+%% and version 1.3c or later is part of all distributions of LaTeX
+%% version 2008/05/04 or later.
+%
+% This file contains all opcode implementations
+%
+
+\def\avr@log#1{%
+  \typeout{AVR (\the\avr@instr@executed): #1}%
+}
+
+\def\avr@debug#1{%
+  \typeout{\the\avr@instr@executed:\the\avr@pc: #1}%
+}
+
+\def\avr@error#1{%
+  \avr@dump%
+  \errmessage{\the\avr@pc: #1}\bye%
+}
+
+\newif\ifavrbreak
+\avrbreakfalse
+\newcount\avr@instr@executed
+\def\avr@instr@init{%
+  \avr@instr@executed=0%
+  \avrbreakfalse%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%$
+% Execution Engine
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\avrstep}[1][1]{%
+  \avr@instr@steps{#1}%
+}
+
+\newcommand{\avrrun}{%
+  \avr@instr@run%
+}
+
+\newcommand{\avrsinglestep}{%
+  \avr@instr@singlestep%
+}
+
+\newcommand{\avrinstrcount}{\the\avr@instr@executed}
+
+\def\avr@instr@step{%
+  \avr@code@get{\avr@instr@current}%
+  %\avr@reg@get{\csuse{avr@r24}}{\@@A}%
+  %\avr@reg@get{\csuse{avr@r28}}{\@@B}%
+  %\avr@reg@get{\csuse{avr@r29}}{\@@C}%
+  %\avr@debug{{r24=\@@A} {r28=\@@B} {r29=\@@C}}%
+  %\avr@debug{\avr@instr@current}%
+  % Dispatch Instruction by prefix
+  \expandafter\avr@instr@dispatch\avr@instr@current\@nnil%
+  \advance\avr@instr@executed by 1\relax%
+}
+
+\def\avr@instr@singlestep{%
+   \avr@dump%
+   \typein{Press Enter to Step}%  
+   \avr@instr@step%
+   \avr@singlestep%
+}
+
+\newcount\avr@instr@steps
+\def\avr@instr@stepn#1{%
+  \avr@instr@steps=#1%
+  \def\avr@instr@stepn@helper{%
+    \ifnum \avr@instr@steps > 0%
+      \advance \avr@instr@steps by -1\relax%
+      \avr@instr@step%
+    \else%
+      \let\avr@instr@stepn@helper\relax%
+    \fi%
+    \avr@instr@stepn@helper%
+  }%
+  \avr@instr@stepn@helper%
+}
+
+% Run Forever
+\def\avr@instr@run{%
+  \avr@instr@steps=1%
+  \def\avr@instr@stepn@helper{%
+    \ifnum \avr@instr@steps > 0%
+      \avr@instr@step%
+    \else%
+      \let\avr@instr@stepn@helper\relax%
+    \fi%
+    \avr@instr@stepn@helper%
+  }%
+  \avr@instr@stepn@helper%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Opcode decoding
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\avr@instr@dispatch#1#2#3#4#5#6#7#8#9\@nnil{%
+  \ifcsdef{avr@instr@#1#2#3#4#5#6#7#8#9}{%
+    \csuse{avr@instr@#1#2#3#4#5#6#7#8#9}\@nnil%
+  }{\ifcsdef{avr@instr@#1#2#3#4#5#6#7#8}{%
+    \csuse{avr@instr@#1#2#3#4#5#6#7#8}#9\@nnil%
+  }{\ifcsdef{avr@instr@#1#2#3#4#5#6#7}{%
+    \csuse{avr@instr@#1#2#3#4#5#6#7}#8#9\@nnil%
+  }{\ifcsdef{avr@instr@#1#2#3#4#5#6}{%
+    \csuse{avr@instr@#1#2#3#4#5#6}#7#8#9\@nnil%
+  }{\ifcsdef{avr@instr@#1#2#3#4#5}{%
+    \csuse{avr@instr@#1#2#3#4#5}#6#7#8#9\@nnil%
+  }{\ifcsdef{avr@instr@#1#2#3#4}{%
+    \csuse{avr@instr@#1#2#3#4}#5#6#7#8#9\@nnil%
+  }{\ifcsdef{avr@instr@#1#2#3}{%
+    \csuse{avr@instr@#1#2#3}#4#5#6#7#8#9\@nnil%
+  }{\ifcsdef{avr@instr@#1#2}{%
+    \csuse{avr@instr@#1#2}#3#4#5#6#7#8#9\@nnil%
+  }{\ifcsdef{avr@instr@#1}{%
+    \csuse{avr@instr@#1}#2#3#4#5#6#7#8#9\@nnil%
+  }{% Not found
+    \avr@instr@matchspecial{#1#2#3#4#5#6#7#8#9}%
+  }}}}}}}}}%
+}
+
+\def\avr@instr@matchend#1#2#3#4#5#6#7#8#9\@nnil{%
+  \ifcsdef{avr@instr@#1:#2#3#4#5#6#7#8#9}{%
+    \csuse{avr@instr@#1:#2#3#4#5#6#7#8#9}\@nnil%
+  }{\ifcsdef{avr@instr@#1:#3#4#5#6#7#8#9}{%
+    \csuse{avr@instr@#1:#3#4#5#6#7#8#9}#2\@nnil%
+  }{\ifcsdef{avr@instr@#1:#4#5#6#7#8#9}{%
+    \csuse{avr@instr@#1:#4#5#6#7#8#9}#2#3\@nnil%
+  }{\ifcsdef{avr@instr@#1:#5#6#7#8#9}{%
+    \csuse{avr@instr@#1:#5#6#7#8#9}#2#3#4\@nnil%
+  }{\ifcsdef{avr@instr@#1:#6#7#8#9}{%
+    \csuse{avr@instr@#1:#6#7#8#9}#2#3#4#5\@nnil%
+  }{\ifcsdef{avr@instr@#1:#7#8#9}{%
+    \csuse{avr@instr@#1:#7#8#9}#2#3#4#5#6\@nnil%
+  }{\ifcsdef{avr@instr@#1:#9}{%
+    \csuse{avr@instr@#1:#9}#2#3#4#5#6#7#8\@nnil%
+  }{% Not found
+    \avr@instr@matchspecial{#1#2#3#4#5#6#7#8#9}%
+  }}}}}}}%
+}
+
+\def\avr@instr@matchspecial#1{%
+  \avr@bin@mask{#1}{1101001000001000}{\@@masked}%
+  \avr@bin@mask{#1}{0010110111110111}{\@@args}%
+
+  \ifcsdef{avr@instr@special@\@@masked}{%
+    \def\@tempa{\csuse{avr@instr@special@\@@masked}}%
+    \expandafter\@tempa\@@args\@nnil%
+  }{%
+    \avr@error{Unkown Instruction: #1}%
+  }%
+}
+
+% How long is a specific instruction (for Skip one instr)
+\def\avr@instr@length#1#2{% Addr, Length
+  \avr@code@load{#1}{\@@code}%
+  \avr@bin@and{\@@code}{1111110000001111}{\@@LDS}%
+  \ifdefstring{\@@LDS}{1001000000000000}{%
+    \def#2{2}%
+  }{%
+    \def#2{1}%
+  }%
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Match also from end for these prefixes
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\csdef{avr@instr@1001010}{\avr@instr@matchend{1001010}}
+% POP/PUSH
+\csdef{avr@instr@1001000}{\avr@instr@matchend{1001000}}
+\csdef{avr@instr@1001001}{\avr@instr@matchend{1001001}}
+% LD(XYZ)
+\csdef{avr@instr@1000000}{\avr@instr@matchend{1000000}}
+\csdef{avr@instr@1000001}{\avr@instr@matchend{1000001}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Helpers
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\avr@instr@gen@tworegs#1#2#3#4{%
+  \avr@bin@msb@del{#3}{\avr@ADD@dddd}{\avr@ADD@d}%
+  \avr@bin@msb@del{#4}{\avr@ADD@rrrr}{\avr@ADD@r}%
+  \avr@code@set{#1\avr@ADD@r\avr@ADD@d\avr@ADD@dddd\avr@ADD@rrrr}{#2}%
+}
+
+\def\avr@instr@gen@regconst#1#2#3#4{%
+  \avr@bin@msb@del{#3}{\avr@LDI@dddd}{\avr@LDI@d}%
+  \avr@bin@nibble@high{#4}{\avr@LDI@H}%
+  \avr@bin@nibble@low{#4}{\avr@LDI@L}%
+  \avr@code@set{#1\avr@LDI@H\avr@LDI@dddd\avr@LDI@L}{#2}%
+}
+
+\def\avr@instr@gen@onereg#1#2#3#4{%
+  \avr@code@set{#1#4#2}{#3}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Arithmetic instructions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ADD -- Add without Carry
+\def\avr@instr@ADD{\avr@instr@gen@tworegs{000011}}
+\def\avr@instr@LSL#1#2{\avr@instr@gen@tworegs{000011}{#1}{#2}{#2}}
+\csdef{avr@instr@000011}#1#2#3#4#5#6#7\@nnil{%
+  \def\avr@instr@extracarry{0}%
+  \avr@reg@get{#1#7}{\avr@Rr}%
+  \avr@reg@get{#2#3#4#5#6}{\avr@Rd}%
+  \avr@debug{ADD - \%#2#3#4#5#6 <- #2#3#4#5#6 + \%#1#7}%
+  \avr@debug{ADD - \avr@Rd <- \avr@Rd + \avr@Rr}%
+  \csuse{avr@instr@adder@helper}%
+  \avr@reg@set{\avr@Rx}{#2#3#4#5#6}%
+  \avr@pc@inc%
+}
+
+% ADC -- Add with Carry
+\def\avr@instr@ADC{\avr@instr@gen@tworegs{000111}}
+\def\avr@instr@ROL#1#2{\avr@instr@ADC{#1}{#2}{#2}}
+\csdef{avr@instr@000111}#1#2#3#4#5#6#7\@nnil{%
+  \avr@reg@get{#1#7}{\avr@Rr}%
+  \avr@reg@get{#2#3#4#5#6}{\avr@Rd}%
+  \avr@flag@get C \avr@instr@extracarry%
+  \avr@debug{ADC - \%#2#3#4#5#6 <- #2#3#4#5#6 + \%#1#7}%
+  \avr@debug{ADC - \avr@Rd <- \avr@Rd + \avr@Rr + \avr@instr@extracarry}%
+  \csuse{avr@instr@adder@helper}%
+  % Set the result register
+  \avr@reg@set{\avr@Rx}{#2#3#4#5#6}%
+  \avr@pc@inc%
+}
+
+% SUB -- Substract without carry
+\def\avr@instr@SUB{\avr@instr@gen@tworegs{000110}}
+\csdef{avr@instr@000110}#1#2#3#4#5#6#7\@nnil{%
+  \avr@reg@get{#1#7}{\avr@Rr}%
+  \avr@reg@get{#2#3#4#5#6}{\avr@Rd}%
+  \def\avr@instr@extracarry{1}%
+  \avr@debug{SUB - \%#2#3#4#5#6 <- #2#3#4#5#6 + \%#1#7}%
+  \avr@debug{SUB - \avr@Rd <- \avr@Rd - \avr@Rr}%
+  \csuse{avr@instr@subber@helper}%
+  % Set the result register
+  \avr@reg@set{\avr@Rx}{#2#3#4#5#6}%
+  \avr@pc@inc%
+}
+% SBC - Substract with Carry
+\def\avr@instr@SBC{\avr@instr@gen@tworegs{000010}}
+\csdef{avr@instr@000010}#1#2#3#4#5#6#7\@nnil{%
+  \avr@reg@get{#1#7}{\avr@Rr}%
+  \avr@reg@get{#2#3#4#5#6}{\avr@Rd}%
+  \avr@flag@get C \@@carry%
+  \xdef \avr@instr@extracarry {\avr@bit@negate \@@carry}%
+  \avr@debug{SBC - \%#2#3#4#5#6 <- #2#3#4#5#6 + \%#1#7}%
+  \avr@debug{SBC - \avr@Rd <- \avr@Rd - \avr@Rr - \@@carry}%
+  \csuse{avr@instr@subber@helper}%
+  % Set the result register
+  \avr@reg@set{\avr@Rx}{#2#3#4#5#6}%
+  \avr@pc@inc%
+}
+
+% SUBI - Substract Immediate
+\def\avr@instr@SUBI{\avr@instr@gen@regconst{0101}}
+\csdef{avr@instr@0101}#1#2#3#4#5#6#7#8#9\@nnil{%
+  \avr@reg@get{1#5#6#7#8}{\avr@Rd}%
+  \def\avr@Rr{#1#2#3#4#9}%
+  \def\avr@instr@extracarry{1}%
+  \avr@debug{SUBI - \%#2#3#4#5#6 <- #2#3#4#5#6(=\avr@Rd) - \avr@Rr}%
+  \csuse{avr@instr@subber@helper}%
+  % Set the result register
+  \avr@reg@set{\avr@Rx}{1#5#6#7#8}%
+  \avr@pc@inc%
+}
+
+% SBCI - Substract Immediate with Carry
+\def\avr@instr@SBCI{\avr@instr@gen@regconst{0100}}
+\csdef{avr@instr@0100}#1#2#3#4#5#6#7#8#9\@nnil{%
+  \avr@reg@get{1#5#6#7#8}{\avr@Rd}%
+  \def\avr@Rr{#1#2#3#4#9}%
+  \avr@flag@get C \@@carry%
+  \avr@flag@get Z \@@oldZ%
+  \xdef \avr@instr@extracarry {\avr@bit@negate \@@carry}%
+  \avr@debug{SBCI - \%#2#3#4#5#6 <- #2#3#4#5#6(=\avr@Rd) - \avr@Rr -\@@carry}%
+  \csuse{avr@instr@subber@helper}%
+  \avr@flag@get Z \@@newZ%
+  \avr@flag@set Z {\avr@bit@and \@@oldZ \@@newZ}%
+  % Set the result register
+  \avr@reg@set{\avr@Rx}{1#5#6#7#8}%
+  \avr@pc@inc%
+}
+
+% CP -- Compare without Carry
+\def\avr@instr@CP{\avr@instr@gen@tworegs{000101}}
+\csdef{avr@instr@000101}#1#2#3#4#5#6#7\@nnil{%
+  \avr@reg@get{#1#7}{\avr@Rr}%
+  \avr@reg@get{#2#3#4#5#6}{\avr@Rd}%
+  \def\avr@instr@extracarry{1}%
+  \avr@debug{CP - #2#3#4#5#6(=\avr@Rd) - \%#1#7(=\avr@Rr)}%
+  \csuse{avr@instr@subber@helper}%
+  % Do not set the output register
+  \avr@pc@inc%
+}
+
+% CPC -- Compare with Carry
+\def\avr@instr@CPC{\avr@instr@gen@tworegs{000001}}
+\csdef{avr@instr@000001}#1#2#3#4#5#6#7\@nnil{%
+  \avr@reg@get{#1#7}{\avr@Rr}%
+  \avr@reg@get{#2#3#4#5#6}{\avr@Rd}%
+  \avr@flag@get C \@@carry%
+  \avr@flag@get Z \@@oldZ%
+  \xdef \avr@instr@extracarry {\avr@bit@negate \@@carry}%
+  \avr@debug{CPC - #2#3#4#5#6(=\avr@Rd) - \%#1#7(=\avr@Rr) - \@@carry}%
+  \csuse{avr@instr@subber@helper}%
+  \avr@flag@get Z \@@newZ%
+  \avr@flag@set Z {\avr@bit@and \@@oldZ \@@newZ}%
+  % Do not set the output register
+  \avr@pc@inc%
+}
+
+% CPI - Compare Immediate
+\def\avr@instr@CPI{\avr@instr@gen@regconst{0011}}
+\csdef{avr@instr@0011}#1#2#3#4#5#6#7#8#9\@nnil{%
+  \avr@reg@get{1#5#6#7#8}{\avr@Rd}%
+  \def\avr@Rr{#1#2#3#4#9}%
+  \avr@flag@get C \@@carry%
+  \xdef \avr@instr@extracarry{1}%
+  \avr@debug{CPI - \%#2#3#4#5#6 <- #2#3#4#5#6(=\avr@Rd) - \avr@Rr -\@@carry}%
+  \csuse{avr@instr@subber@helper}%
+  % Set the result register
+  \avr@pc@inc%
+}
+
+\csdef{avr@instr@adder@helper}{%
+  % Convert the Bitstring to Integer values
+  \avr@bin@tocount{\avr@Rd}{\avr@accA}%
+  \avr@bin@tocount{\avr@Rr}{\avr@accB}%
+  \advance \avr@accA by \avr@accB\relax%
+  \advance \avr@accA by \avr@instr@extracarry\relax%
+  \avr@count@modulo@byte{\avr@accA}%
+  \avr@count@tobin@b{\avr@accA}{\avr@Rx}%
+  % Calculate the Flags
+  \let\@@not=\avr@bit@negate%
+  \let\@@and=\avr@bit@and%
+  \let\@@or=\avr@bit@or%
+  %% Carry
+  \avr@bin@msb@get{\avr@Rr}{\@@R}%
+  \avr@bin@msb@get{\avr@Rd}{\@@D}%
+  \avr@bin@msb@get{\avr@Rx}{\@@X}%
+  \avr@debug{{Rr7:\@@R} {Rd7:\@@D} {R7:\@@X}}%
+  % \avr@debug{R: \@@R D: \@@D X:\@@X}%
+  \def\avr@ADD@carry{%
+    \@@or {\@@and \@@R \@@D}%
+          {%
+            \@@or{\@@and \@@R {\@@not \@@X}}%
+                 {\@@and \@@D {\@@not \@@X}}}}%
+  \avr@flag@set C {\avr@ADD@carry}%
+  % Two's Complement Overflow
+  \def\@@tmp{\@@or%
+    {\@@and \@@D {\@@and \@@R {\@@not \@@X}}}%
+    {\@@and {\@@not \@@D} {\@@and {\@@not \@@R} \@@X}}}%
+  \avr@flag@set V \@@tmp%
+  % Half Carry
+  \avr@bin@getbit{\avr@Rr}{3}{\@@R}%
+  \avr@bin@getbit{\avr@Rd}{3}{\@@D}%
+  \avr@bin@getbit{\avr@Rx}{3}{\@@X}%
+  \def\avr@ADD@carry{%
+    \@@or {\@@and \@@D {\@@not \@@X}}%
+          {%
+            \@@or{\@@and \@@R \@@D}%
+                 {\@@and \@@R {\@@not \@@X}}}}%
+  \avr@flag@set H {\avr@ADD@carry}%
+  %% Update Dependend Flags (N, Z, S)
+  \avr@flags@update \avr@Rx%
+}
+
+\csdef{avr@instr@subber@helper}{%
+  % Convert the Bitstring to Integer values
+  \avr@bin@tocount{\avr@Rd}{\avr@accA}%
+  \avr@bin@negate{\avr@Rr}{\@@Rr}%
+  \avr@bin@tocount{\@@Rr}{\avr@accB}%
+  \advance \avr@accA by \avr@accB\relax%
+  \advance \avr@accA by \avr@instr@extracarry\relax%
+  \avr@count@modulo@byte{\avr@accA}%
+  \avr@count@tobin@b{\avr@accA}{\avr@Rx}%
+  % Calculate the Flags
+  \let\@@not=\avr@bit@negate%
+  \let\@@and=\avr@bit@and%
+  \let\@@or=\avr@bit@or%
+  %% Carry
+  \avr@bin@msb@get{\avr@Rr}{\@@R}%
+  \avr@bin@msb@get{\avr@Rd}{\@@D}%
+  \avr@bin@msb@get{\avr@Rx}{\@@X}%
+  \avr@debug{{Rr7:\@@R} {Rd7:\@@D} {R7:\@@X}}%
+  \def\avr@ADD@carry{%
+    \@@or {\@@and {\@@not \@@D} \@@R}%
+          {%
+            \@@or{\@@and \@@R \@@X}%
+                 {\@@and \@@X {\@@not \@@D}}}}%
+  \avr@flag@set C {\avr@ADD@carry}%
+  % Two's Complement Overflow
+  \def\@@tmp{\@@or%
+    {\@@and \@@D {\@@and {\@@not \@@R} {\@@not \@@X}}}%
+    {\@@and {\@@not \@@D} {\@@and \@@R \@@X}}}%
+  \avr@flag@set V \@@tmp%
+  % Half Carry
+  \avr@bin@getbit{\avr@Rr}{3}{\@@R}%
+  \avr@bin@getbit{\avr@Rd}{3}{\@@D}%
+  \avr@bin@getbit{\avr@Rx}{3}{\@@X}%
+  \def\avr@ADD@carry{%
+    \@@or {\@@and {\@@not \@@D} \@@R}%
+          {%
+            \@@or{\@@and \@@R \@@X}%
+                 {\@@and \@@X {\@@not \@@D}}}}%
+  \avr@flag@set H {\avr@ADD@carry}%
+  %% Update Dependend Flags (N, Z, S)
+  \avr@flags@update \avr@Rx%
+}
+
+% INC, DEC
+\def\avr@instr@INC#1#2{\avr@code@set{1001010#20011}{#1}}
+\csdef{avr@instr@1001010:0011}#1\@nnil{%
+  \avr@instr@INCDEC@helper{#1}{1}%
+}
+\def\avr@instr@DEC#1#2{\avr@code@set{1001010#21010}{#1}}
+\csdef{avr@instr@1001010:1010}#1\@nnil{%
+  \avr@instr@INCDEC@helper{#1}{-1}%
+}
+
+\csdef{avr@instr@INCDEC@helper}#1#2{%
+  \avr@reg@get{#1}{\avr@Rd}%
+  \avr@debug{INCDEC #1(=\avr@Rd) +(#2)}%
+  \avr@bin@tocount{\avr@Rd}{\avr@accA}%
+  \advance \avr@accA by #2\relax%
+  \avr@count@modulo@byte{\avr@accA}%
+  \avr@count@tobin@b{\avr@accA}{\avr@Rx}%
+  \ifdefstring{\avr@Rx}{01111111}{%
+    \avr@flag@set V 1%
+  }{%
+    \avr@flag@set V 0%
+  }%
+  \avr@flags@update \avr@Rx%
+  \avr@reg@set{\avr@Rx}{#1}%
+  \avr@pc@inc%
+}
+
+% ADIW
+\def\avr@instr@ADIW#1#2#3{% Reg, K
+  \edef\@@K{#3}%
+  \avr@bin@msb@del{\@@K}{\@@K}{\@@a}%
+  \avr@bin@msb@del{\@@K}{\@@K}{\@@b}%
+  \avr@code@set{10010110\@@a\@@b#2\@@K}{#1}%
+}
+
+\csdef{avr@instr@10010110}#1#2#3#4#5\@nnil{%
+  \def\@@K{00#1#2#5}%
+  \avr@regw@get{11#3#4}{\avr@Rd}%
+  \avr@debug{ADIW #3#4 + \@@K}%
+  \avr@bin@tocount{\avr@Rd}{\avr@accA}%
+  \avr@bin@tocount{\@@K}{\avr@accB}%
+  \advance \avr@accA by \avr@accB\relax%
+  \avr@count@overflow{\avr@accA}%
+  \avr@count@tobin@w{\avr@accA}{\avr@Rx}%
+  % Calculate the Flags
+  \let\@@not=\avr@bit@negate%
+  \let\@@and=\avr@bit@and%
+  \let\@@xor=\avr@bit@xor%
+  \avr@bin@msb@get{\avr@Rx}{\@@X}%
+  \avr@bin@msb@get{\avr@Rd}{\@@D}%
+  % Zero Flag
+  \ifdefstring{\avr@Rx}{0000000000000000}{%
+    \avr@flag@set Z 1%
+  }{%
+    \avr@flag@set Z 0%
+  }%
+  \avr@flag@set C {\@@and {\@@not \@@X} \@@D}%
+  \avr@flag@set N \@@X%
+  \edef\@@V{\@@and {\@@not \@@D} \@@X}%
+  \avr@flag@set V \@@V%
+  \avr@flag@set S {\@@xor \@@X \@@V}%
+  % Set the Result
+  \avr@regw@set{\avr@Rx}{11#3#4}%
+  \avr@pc@inc%
+}
+
+% Substract Immediate From Word
+\def\avr@instr@SBIW#1#2#3{% Reg, K
+  \edef\@@K{#3}%
+  \avr@bin@msb@del{\@@K}{\@@K}{\@@a}%
+  \avr@bin@msb@del{\@@K}{\@@K}{\@@b}%
+  \avr@code@set{10010111\@@a\@@b#2\@@K}{#1}%
+}
+
+\csdef{avr@instr@10010111}#1#2#3#4#5\@nnil{%
+  \def\@@K{00#1#2#5}%
+  \avr@regw@get{11#3#4}{\avr@Rd}%
+  \avr@debug{SBIW #3#4 + \@@K}%
+  \avr@bin@tocount{\avr@Rd}{\avr@accA}%
+  \avr@bin@tocount{\@@K}{\avr@accB}%
+  \advance \avr@accA by -\avr@accB\relax%
+  \avr@count@overflow{\avr@accA}%
+  \avr@count@tobin@w{\avr@accA}{\avr@Rx}%
+  % Calculate the Flags
+  \let\@@not=\avr@bit@negate%
+  \let\@@and=\avr@bit@and%
+  \let\@@xor=\avr@bit@xor%
+  \avr@bin@msb@get{\avr@Rx}{\@@X}%
+  \avr@bin@msb@get{\avr@Rd}{\@@D}%
+  % Zero Flag
+  \ifdefstring{\avr@Rx}{0000000000000000}{%
+    \avr@flag@set Z 1%
+  }{%
+    \avr@flag@set Z 0%
+  }%
+  \avr@flag@set C {\@@and \@@X {\@@not \@@D}}%
+  \avr@flag@set N \@@X%
+  \avr@flag@set V {\@@and {\@@not \@@X} \@@D}%
+  \avr@flag@set S {\@@xor \@@X {\@@and {\@@not \@@D} \@@X}}%
+  % Set the Result
+  \avr@regw@set{\avr@Rx}{11#3#4}%
+  \avr@pc@inc%
+}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Branch Instructions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Encode 6 Bit Value to PC Offset
+\def\avr@instr@jump@enc#1#2{%
+  \avr@count@tmpa=#1%
+  \ifnum #1 < 0%
+     \avr@count@tmpb=\avr@count@tmpa%
+     \avr@count@tmpa=255%
+     \advance \avr@count@tmpa by \avr@count@tmpb\relax%
+     \advance \avr@count@tmpa by 1\relax%
+  \fi%
+  \avr@count@tobin@b{\avr@count@tmpa}{\@@res}%
+  \avr@bin@msb@del{\@@res}{#2}{\@tempa}%
+}
+\def\avr@instr@jump@dec#1#2{%
+  \avr@bin@tocount{0#1}{\avr@count@tmpa}%
+  \ifnum \avr@count@tmpa > 63%
+     \avr@count@tmpb=\avr@count@tmpa%
+     \avr@count@tmpa=-128%
+     \advance \avr@count@tmpa by \avr@count@tmpb\relax%
+  \fi%
+  #2=\avr@count@tmpa\relax%
+}
+
+\def\avr@instr@rjump@dec#1#2{%
+  \avr@bin@tocount{0000#1}{\avr@count@tmpa}%
+  \ifnum \avr@count@tmpa > 2047%
+     \avr@count@tmpb=\avr@count@tmpa%
+     \avr@count@tmpa=-4096%
+     \advance \avr@count@tmpa by \avr@count@tmpb\relax%
+  \fi%
+  #2=\avr@count@tmpa\relax%
+}
+
+% BRBC -- Branch if Bit in SREG is cleared
+\def\avr@instr@BRBC#1#2#3{% ADD PC, Bit, Offset
+  \avr@instr@jump@enc{#3}{\@@offset}%
+  \avr@code@set{111101\@@offset#2}{#1}%
+}
+
+% BRBS -- Branch if Bit in SREG is set
+\def\avr@instr@BRBS#1#2#3{% ADD PC, Bit, Offset
+  \avr@instr@jump@enc{#3}{\@@offset}%
+  \avr@code@set{111100\@@offset#2}{#1}%
+}
+
+% BRCC - Branch if Carry Cleared
+\def\avr@instr@BRCC#1#2{% PC, Offset
+  \avr@instr@BRBC{#1}{000}{#2}%
+}
+% BRSH - Branch if Same or Higher
+\def\avr@instr@BRSH{\avr@instr@BRCC}
+
+% BRCS - Branch if Carry Set
+\def\avr@instr@BRCS#1#2{% PC, Offset
+  \avr@instr@BRBS{#1}{000}{#2}%
+}
+% BRSH - Branch if Lower
+\def\avr@instr@BRLO{\avr@instr@BRCS}
+
+
+% BRHC - Branch if Half Carry Cleared
+\def\avr@instr@BRHC#1#2{% PC, Offset
+  \avr@instr@BRBC{#1}{101}{#2}%
+}
+% BRHS - Branch if Half Carry Set
+\def\avr@instr@BRHS#1#2{% PC, Offset
+  \avr@instr@BRBS{#1}{101}{#2}%
+}
+
+% BRID - Branch if Global Interrupt Disabled
+\def\avr@instr@BRID#1#2{% PC, Offset
+  \avr@instr@BRBC{#1}{111}{#2}%
+}
+% BRIE - Branch if Global Interrupt Enabled
+\def\avr@instr@BRIE#1#2{% PC, Offset
+  \avr@instr@BRBS{#1}{111}{#2}%
+}
+
+% BRMI - Branch if Minus
+\def\avr@instr@BRMI#1#2{% PC, Offset
+  \avr@instr@BRBS{#1}{010}{#2}%
+}
+% BRPL - Branch if Plus
+\def\avr@instr@BRPL#1#2{% PC, Offset
+  \avr@instr@BRBC{#1}{010}{#2}%
+}
+% BRNE - Branch if Not Equal
+\def\avr@instr@BRNE#1#2{% PC, Offset
+  \avr@instr@BRBC{#1}{001}{#2}%
+}
+% BREQ - Branch if Equal
+\def\avr@instr@BREQ#1#2{% PC, Offset
+  \avr@instr@BRBS{#1}{001}{#2}%
+}
+
+% BRTC - Branch if T flag cleared
+\def\avr@instr@BRTC#1#2{% PC, Offset
+  \avr@instr@BRTC{#1}{110}{#2}%
+}
+% BRTS - Branch if T flag set
+\def\avr@instr@BRTS#1#2{% PC, Offset
+  \avr@instr@BRTS{#1}{110}{#2}%
+}
+
+% BRVC - Branch if Overflow flag cleared
+\def\avr@instr@BRVC#1#2{% PC, Offset
+  \avr@instr@BRBC{#1}{011}{#2}%
+}
+% BRVS - Branch if Overflow flag set
+\def\avr@instr@BRVS#1#2{% PC, Offset
+  \avr@instr@BRBS{#1}{011}{#2}%
+}
+
+% BRGE - Branch if greater Equal (signed)
+\def\avr@instr@BRGE#1#2{% PC, Offset
+  \avr@instr@BRBC{#1}{100}{#2}%
+}
+% BRLT - Branch if less than (signed)
+\def\avr@instr@BRLT#1#2{% PC, Offset
+  \avr@instr@BRBS{#1}{100}{#2}%
+}
+
+% #1 = Value to be reached
+\csdef{avr@instr@11110}#1#2#3#4#5#6#7#8#9\@nnil{%
+  \edef\@@required{\avr@bit@negate #1}%
+  \def\@@offset{#2#3#4#5#6#7#8}%
+  \def\@@bit{00000#9}%
+  \avr@sreg@get{\@@sreg}%
+  \avr@bin@tocount{\@@bit}{\avr@count@tmpa}%
+  \edef\@@bit{\the\avr@count@tmpa}%
+  \avr@bin@getbit{\@@sreg}{\@@bit}{\@@found}%
+  \avr@count@tmpa=\@@required%
+  \avr@count@tmpb=\@@found\relax%
+  \avr@debug{BRB{CS} - (\@@sreg[\@@bit] == \@@required) ? +\@@offset : +0}%
+  \ifnum \avr@count@tmpa = \avr@count@tmpb%
+     \avr@instr@jump@dec{\@@offset}{\avr@count@tmpa}%
+     \avr@debug{BRB -- JUMP \the\avr@count@tmpa}%
+     \avr@pc@add{\avr@count@tmpa}%
+  \fi%
+  \avr@pc@inc%
+}
+
+% RJMP
+% #1 = Offset 
+% FIXME latex assembler
+\csdef{avr@instr@1100}#1\@nnil{%
+  \avr@instr@rjump@dec{#1}{\avr@count@tmpa}%
+  \avr@debug{RJMP \the\avr@count@tmpa}%
+  \avr@pc@add{\avr@count@tmpa}%
+  \avr@pc@inc%
+}
+
+% RCALL
+\def\avr@CALL@helper#1{%
+  \edef\@@pc{#1}%
+  \avr@bin@word@low{\@@pc}{\@@low}%
+  \avr@bin@word@high{\@@pc}{\@@high}%
+  \avr@mem@set{\@@low}{\the\avr@stackptr}%
+  \advance\avr@stackptr by -1\relax%
+  \avr@mem@set{\@@high}{\the\avr@stackptr}%
+  \advance\avr@stackptr by -1\relax%
+  \avr@pc@inc%
+  \avr@debug{  done}%
+}
+\csdef{avr@instr@1101}#1\@nnil{%
+  \avr@count@tobin@w{\the\avr@pc}{\@@pc}%
+  \avr@instr@rjump@dec{#1}{\avr@count@tmpa}%
+  \avr@reg@get{\csuse{avr@r24}}{\@@A}%
+  \avr@reg@get{\csuse{avr@r25}}{\@@B}%
+  \avr@reg@get{\csuse{avr@r26}}{\@@C}%
+  \avr@debug{RCALL \the\avr@count@tmpa {r24:\@@A} {r25:\@@B} {r26:\@@C}}%
+  \avr@CALL@helper{\@@pc}%
+  \avr@pc@add{\avr@count@tmpa}%
+}
+
+\def\avr@instr@ICALL#1{\avr@code@set{1001010100001001}{#1}}
+\csdef{avr@instr@1001010100001001}\@nnil{%
+  \avr@count@tobin@w{\the\avr@pc}{\@@pc}%
+  \avr@regw@get{\csuse{avr@Z}}{\@@addr}%
+  \avr@bin@tocount{\@@addr}{\avr@addr}%
+  \avr@reg@get{\csuse{avr@r24}}{\@@A}%
+  \avr@reg@get{\csuse{avr@r25}}{\@@B}%
+  \avr@reg@get{\csuse{avr@r26}}{\@@C}%
+  \avr@debug{ICALL \the\avr@addr {r24:\@@A} {r25:\@@B} {r26:\@@C}}%
+  \avr@CALL@helper{\@@pc}%
+  \avr@pc=\avr@addr%
+}
+
+\def\avr@instr@IJMP#1{\avr@code@set{1001010000001001}{#1}}
+\csdef{avr@instr@1001010000001001}\@nnil{%
+  \avr@count@tobin@w{\the\avr@pc}{\@@pc}%
+  \avr@regw@get{\csuse{avr@Z}}{\@@addr}%
+  \avr@bin@tocount{\@@addr}{\avr@addr}%
+  \avr@reg@get{\csuse{avr@r24}}{\@@a}%
+  \avr@reg@get{\csuse{avr@r25}}{\@@b}%
+  \avr@reg@get{\csuse{avr@r26}}{\@@c}%
+  \avr@debug{IJMP \the\avr@addr {r24:\@@a} {r25:\@@b} {r26:\@@c}}%
+  \avr@pc=\avr@addr%
+}
+
+% RET
+\def\avr@instr@RET#1{%
+  \avr@code@set{1001010100001000}{#1}%
+}
+\csdef{avr@instr@1001010100001000}\@nnil{%
+  \avr@reg@get{\csuse{avr@r24}}{\@@X}%
+  \avr@debug{RET (r24=\@@X)}%
+  \advance\avr@stackptr by 1\relax%
+  \avr@mem@get{\the\avr@stackptr}{\@@high}%
+  \advance\avr@stackptr by 1\relax%
+  \avr@mem@get{\the\avr@stackptr}{\@@low}%
+  \avr@bin@tocount{\@@high \@@low}{\avr@pc}%
+  \avr@pc@inc\relax%
+  \avr@debug{  done }%
+}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Data transfert instructions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% MOV
+\def\avr@instr@MOV{\avr@instr@gen@tworegs{001011}}
+\csdef{avr@instr@001011}#1#2#3#4#5#6#7\@nnil{%
+  \avr@reg@get{#1#7}{\avr@Rr}%
+  \avr@reg@set{\avr@Rr}{#2#3#4#5#6}%
+  \avr@debug{MOV - #2#3#4#5#6 <- #1#7(=\avr@Rr)}%
+  \avr@pc@inc%
+}
+
+% MOVW
+\def\avr@instr@MOVW#1#2#3{%
+  \avr@bin@lsb@del{#2}{\avr@LDI@dddd}{\avr@LDI@d}%
+  \avr@bin@lsb@del{#3}{\avr@LDI@rrrr}{\avr@LDI@r}%
+  \avr@code@set{00000001\avr@LDI@dddd\avr@LDI@rrrr}{#1}%
+}
+\csdef{avr@instr@00000001}#1#2#3#4#5\@nnil{%
+  \avr@reg@get{#50}{\avr@Rr}%
+  \avr@reg@set{\avr@Rr}{#1#2#3#40}%
+  \avr@reg@get{#51}{\avr@Rd}%
+  \avr@reg@set{\avr@Rd}{#1#2#3#41}%
+  \avr@debug{MOV - #1#2#3#4[01] <- #5[01](=\avr@Rr:\avr@Rd)}%
+  \avr@pc@inc%
+}
+
+% PUSH
+\def\avr@instr@PUSH#1#2{% PC, Reg
+  \avr@code@set{1001001#21111}{#1}%
+}
+
+\csdef{avr@instr@1001001:1111}#1\@nnil{%
+  \avr@reg@get{#1}{\avr@Rr}%
+  \avr@debug{PUSH #1(=\avr@Rr)}%
+  \avr@mem@set{\avr@Rr}{\the\avr@stackptr}%
+  \advance\avr@stackptr by -1\relax%
+  \avr@pc@inc%
+}
+
+% POP
+\def\avr@instr@POP#1#2{% PC, Reg
+  \avr@code@set{1001000#21111}{#1}%
+}
+\csdef{avr@instr@1001000:1111}#1\@nnil{%
+  \advance\avr@stackptr by 1\relax%
+  \avr@debug{POP #1}%
+  \avr@mem@get{\the\avr@stackptr}{\avr@Rr}%
+  \avr@reg@set{\avr@Rr}{#1}%
+  \avr@pc@inc%
+}
+
+\newcount\avr@addr
+\def\avr@instr@LDD@helper#1#2#3#4{%
+  % PreIncrement, RegisterW, PostIncrement, Target
+  \avr@regw@get{\csuse{avr@#2}}{\@@addr}%
+  \avr@debug{LD #4 <- *(#1:#2:#3,#2=\@@addr)}%
+  \avr@bin@tocount{\@@addr}{\avr@addr}%
+  \advance \avr@addr by #1\relax%
+  \avr@count@overflow{\avr@addr}\relax%
+  \avr@mem@get{\the\avr@addr}{\avr@Rx}%
+  \advance \avr@addr by #3\relax%
+  \avr@count@overflow{\avr@addr}\relax%
+  \avr@count@tobin@w{\avr@addr}{\@@addr}%
+  \avr@regw@set{\@@addr}{\csuse{avr@#2}}%
+  \avr@reg@set{\avr@Rx}{#4}%
+  \avr@pc@inc%
+}
+
+\def\avr@instr@STS@helper#1#2#3#4{%
+  % PreIncrement, RegisterW, PostIncrement, SourceReg
+  \avr@regw@get{\csuse{avr@#2}}{\@@addr}%
+  \avr@reg@get{#4}{\avr@Rd}%
+  \avr@debug{ST #4 -> *(#1:#2:#3,#2=\@@addr)}%
+  \avr@bin@tocount{\@@addr}{\avr@addr}%
+  \advance \avr@addr by #1\relax%
+  \avr@count@overflow{\avr@addr}\relax%
+  \avr@mem@set{\avr@Rd}{\the\avr@addr}%
+  \advance \avr@addr by #3\relax%
+  \avr@count@overflow{\avr@addr}\relax%
+  \avr@count@tobin@w{\avr@addr}{\@@addr}%
+  \avr@regw@set{\@@addr}{\csuse{avr@#2}}%
+  \avr@pc@inc%
+}
+
+% LD(X)
+\def\avr@instr@LDX{\avr@instr@gen@onereg{1001000}{1100}}
+\def\avr@instr@LDXp{\avr@instr@gen@onereg{1001000}{1101}}
+\def\avr@instr@LDmX{\avr@instr@gen@onereg{1001000}{1110}}
+  
+\csdef{avr@instr@1001000:1100}#1\@nnil{%
+  \avr@instr@LDD@helper{0}{X}{0}{#1}%
+}
+\csdef{avr@instr@1001000:1101}#1\@nnil{%
+  \avr@instr@LDD@helper{0}{X}{1}{#1}%
+}
+\csdef{avr@instr@1001000:1110}#1\@nnil{%
+  \avr@instr@LDD@helper{-1}{X}{0}{#1}%
+}
+
+% LD(Y)
+\def\avr@instr@LDY{\avr@instr@gen@onereg{1000000}{1000}}
+\def\avr@instr@LDYp{\avr@instr@gen@onereg{1001000}{1001}}
+\def\avr@instr@LDmY{\avr@instr@gen@onereg{1001000}{1010}}
+
+\csdef{avr@instr@1000000:1000}#1\@nnil{%
+  \avr@instr@LDD@helper{0}{Y}{0}{#1}%
+}
+\csdef{avr@instr@1001000:1001}#1\@nnil{%
+  \avr@instr@LDD@helper{0}{Y}{1}{#1}%
+}
+\csdef{avr@instr@1001000:1010}#1\@nnil{%
+  \avr@instr@LDD@helper{-1}{Y}{0}{#1}%
+}
+
+% LD(Z)
+\def\avr@instr@LDZ{\avr@instr@gen@onereg{1000000}{0000}}
+\def\avr@instr@LDZp{\avr@instr@gen@onereg{1001000}{0001}}
+\def\avr@instr@LDmZ{\avr@instr@gen@onereg{1001000}{0010}}
+
+\csdef{avr@instr@1000000:0000}#1\@nnil{%
+  \avr@instr@LDD@helper{0}{Z}{0}{#1}%
+}
+\csdef{avr@instr@1001000:0001}#1\@nnil{%
+  \avr@instr@LDD@helper{0}{Z}{1}{#1}%
+}
+\csdef{avr@instr@1001000:0010}#1\@nnil{%
+  \avr@instr@LDD@helper{-1}{Z}{0}{#1}%
+}
+
+% ST(X,Y,Z)
+\def\avr@instr@STX{\avr@instr@gen@onereg{1001001}{1100}}
+\def\avr@instr@STXp{\avr@instr@gen@onereg{1001001}{1101}}
+\def\avr@instr@STmX{\avr@instr@gen@onereg{1001001}{1110}}
+
+\csdef{avr@instr@1001001:1100}#1\@nnil{%
+  \avr@instr@STS@helper{0}{X}{0}{#1}%
+}
+\csdef{avr@instr@1001001:1101}#1\@nnil{%
+  \avr@instr@STS@helper{0}{X}{1}{#1}%
+}
+\csdef{avr@instr@1001001:1110}#1\@nnil{%
+  \avr@instr@STS@helper{-1}{X}{0}{#1}%
+}
+
+\def\avr@instr@STY{\avr@instr@gen@onereg{1000001}{1000}}
+\def\avr@instr@STYp{\avr@instr@gen@onereg{1001001}{1001}}
+\def\avr@instr@STmY{\avr@instr@gen@onereg{1001001}{1010}}
+
+\csdef{avr@instr@1000001:1000}#1\@nnil{%
+  \avr@instr@STS@helper{0}{Y}{0}{#1}%
+}
+\csdef{avr@instr@1001001:1001}#1\@nnil{%
+  \avr@instr@STS@helper{0}{Y}{1}{#1}%
+}
+\csdef{avr@instr@1001001:1010}#1\@nnil{%
+  \avr@instr@STS@helper{-1}{Y}{0}{#1}%
+}
+
+\def\avr@instr@STZ{\avr@instr@gen@onereg{1000001}{0000}}
+\def\avr@instr@STZp{\avr@instr@gen@onereg{1001001}{0001}}
+\def\avr@instr@STmZ{\avr@instr@gen@onereg{1001001}{0010}}
+
+\csdef{avr@instr@1000001:0000}#1\@nnil{%
+  \avr@instr@STS@helper{0}{Z}{0}{#1}%
+}
+\csdef{avr@instr@1001001:0001}#1\@nnil{%
+  \avr@instr@STS@helper{0}{Z}{1}{#1}%
+}
+\csdef{avr@instr@1001001:0010}#1\@nnil{%
+  \avr@instr@STS@helper{-1}{Z}{0}{#1}%
+}
+
+% Special Stores & Loads
+
+% LD R <- Y+q
+\csdef{avr@instr@special@10.0..0.....1...}..#1.#2.#3.#4\@nnil{%
+  \avr@debug{LD reg(#3) <- Y+#1#2#4}%
+  \avr@regw@get{\csuse{avr@Y}}{\@@addr}%
+  \avr@bin@tocount{\@@addr}{\avr@addr}%
+  \avr@bin@tocount{00#1#2#4}{\avr@count@tmpa}%
+  \advance \avr@addr by \avr@count@tmpa\relax%
+  \avr@count@overflow{\avr@addr}\relax%
+  \avr@mem@get{\the\avr@addr}{\avr@Rd}%
+  \avr@reg@set{\avr@Rd}{#3}%
+  \avr@pc@inc%
+}
+
+% LD R <- Z+q
+\csdef{avr@instr@special@10.0..0.....0...}..#1.#2.#3.#4\@nnil{%
+  \avr@debug{LD reg(#3) <- Z+#1#2#4}%
+  \avr@regw@get{\csuse{avr@Z}}{\@@addr}%
+  \avr@bin@tocount{\@@addr}{\avr@addr}%
+  \avr@bin@tocount{00#1#2#4}{\avr@count@tmpa}%
+  \advance \avr@addr by \avr@count@tmpa\relax%
+  \avr@count@overflow{\avr@addr}\relax%
+  \avr@mem@get{\the\avr@addr}{\avr@Rd}%
+  \avr@reg@set{\avr@Rd}{#3}%
+  \avr@pc@inc%
+}
+
+% ST Y+q <- R
+\csdef{avr@instr@special@10.0..1.....1...}..#1.#2.#3.#4\@nnil{%
+  \avr@debug{ST Y+#1#2#4 <- reg(#3)}%
+  \avr@regw@get{\csuse{avr@Y}}{\@@addr}%
+  \avr@reg@get{#3}{\avr@Rd}%
+  \avr@bin@tocount{\@@addr}{\avr@addr}%
+  \avr@bin@tocount{00#1#2#4}{\avr@count@tmpa}%
+  \advance \avr@addr by \avr@count@tmpa\relax%
+  \avr@count@overflow{\avr@addr}\relax%
+  \avr@mem@set{\avr@Rd}{\the\avr@addr}%
+  \avr@pc@inc%
+}
+
+% ST Z+q <- R
+\csdef{avr@instr@special@10.0..1.....0...}..#1.#2.#3.#4\@nnil{%
+  \avr@debug{ST Z+#1#2#4 <- reg(#3)}%
+  \avr@regw@get{\csuse{avr@Z}}{\@@addr}%
+  \avr@reg@get{#3}{\avr@Rd}%
+  \avr@bin@tocount{\@@addr}{\avr@addr}%
+  \avr@bin@tocount{00#1#2#4}{\avr@count@tmpa}%
+  \advance \avr@addr by \avr@count@tmpa\relax%
+  \avr@count@overflow{\avr@addr}\relax%
+  \avr@mem@set{\avr@Rd}{\the\avr@addr}%
+  \avr@pc@inc%
+}
+
+% STS/LTS (16 Bit)
+\def\avr@instr@LDSS#1#2#3{%
+  \avr@bin@nibble@low{0#3}{\@@low}%
+  \avr@bin@nibble@high{0#3}{\@@high}%
+  \avr@bin@msb@del{#2}{\@@dddd}{\@tempa}%
+  \avr@code@set{1010\@@high\@@dddd\@@low}{#1}%
+}
+\def\avr@instr@STSS#1#2#3{%
+  \avr@bin@nibble@low{1#3}{\@@low}%
+  \avr@bin@nibble@high{1#3}{\@@high}%
+  \avr@bin@msb@del{#2}{\@@dddd}{\@tempa}%
+  \avr@code@set{1010\@@high\@@dddd\@@low}{#1}%
+}
+
+\def\avr@instr@LDSTS#1#2#3#4#5#6#7#8\@nnil{%
+  \avr@bin@tocount{{\avr@bit@negate #3}#3#1#2#8}{\avr@addr}%
+  \def\avr@RD{1#4#5#6#7}%
+}
+\csdef{avr@instr@10100}#1\@nnil{%
+  \avr@instr@LDSTS#1\@nnil%
+  \avr@debug{LDSS - \avr@RD <- (\the\avr@addr)}%
+  \avr@mem@get{\the\avr@addr}{\@@value}%
+  \avr@reg@set{\@@value}{\avr@RD}%
+  \avr@pc@inc%
+}
+\csdef{avr@instr@10101}#1\@nnil{%
+  \avr@instr@LDSTS#1\@nnil%
+  \avr@debug{STSS - \avr@RD <- (\the\avr@addr)}%
+  \avr@reg@get{\avr@RD}{\@@value}%
+  \avr@mem@set{\@@value}{\the\avr@addr}%
+  \avr@pc@inc%
+}
+
+% LDS/STS (FULL)
+\def\avr@instr@LDS#1#2#3{%
+  \avr@code@set{1001000#20000}{#1}%
+  \avr@count@tmpa=#1%
+  \advance \avr@count@tmpa by 1\relax%
+  \avr@code@set{#3}{\the\avr@count@tmpa}%
+}
+
+\def\avr@instr@STS#1#2#3{%
+  \avr@code@set{1001001#20000}{#1}%
+  \avr@count@tmpa=#1%
+  \advance \avr@count@tmpa by 1\relax%
+  \avr@code@set{#3}{\the\avr@count@tmpa}%
+}
+
+\csdef{avr@instr@1001001:0000}#1\@nnil{%
+  \avr@pc@inc%
+  \avr@code@get{\@@addr}%
+  \avr@reg@get{#1}{\@@value}%
+  \avr@bin@tocount{\@@addr}{\avr@addr}%
+  \avr@debug{STS - #1 -> (\the\avr@addr)}%
+  \avr@mem@set{\@@value}{\the\avr@addr}%
+  \avr@pc@inc%
+}
+\csdef{avr@instr@1001000:0000}#1\@nnil{%
+  \avr@pc@inc%
+  \avr@code@get{\@@addr}%
+  \avr@bin@tocount{\@@addr}{\avr@addr}%
+  \avr@debug{LDS - #1 <- (\the\avr@addr)}%
+  \avr@mem@get{\the\avr@addr}{\@@value}%
+  \avr@reg@set{\@@value}{#1}%
+  \avr@pc@inc%
+}
+
+% LPM Commands
+\def\avr@instr@LPM#1{\avr@code@set{1001010111001000}{#1}}
+\def\avr@instr@LPMZ{\avr@instr@gen@onereg{1001000}{0100}}
+\def\avr@instr@LPMZp{\avr@instr@gen@onereg{1001000}{0101}}
+
+\csdef{avr@instr@1001010111001000}\@nnil{%
+  \avr@LPM@helper{00000}{0}%
+}
+\csdef{avr@instr@1001000:0100}#1\@nnil{%
+  \avr@LPM@helper{#1}{0}%
+}
+\csdef{avr@instr@1001000:0101}#1\@nnil{%
+  \avr@LPM@helper{#1}{1}%
+}
+\def\avr@LPM@helper#1#2{%
+  \avr@regw@get{\csuse{avr@Z}}{\@@addr}%
+  \avr@bin@lsb@del{\@@addr}{\@@instr}{\@@switch}%
+  \avr@bin@tocount{0\@@instr}{\avr@addr}%
+  \avr@code@load{\the\avr@addr}{\@@code}%
+  \avr@debug{LPM #1 <- code(\the\avr@addr)+\@@switch+#2}%
+  % Increment
+  \avr@bin@tocount{\@@addr}{\avr@addr}%
+  \advance \avr@addr by #2\relax%
+  \avr@count@tobin@w{\avr@addr}{\@@addr}%
+  \avr@regw@set{\@@addr}{\csuse{avr@Z}}%
+  \expandafter \ifnum \@@switch = 1%
+     \avr@bin@word@high{\@@code}{\@@value}%
+  \else%
+     \avr@bin@word@low{\@@code}{\@@value}%
+  \fi%
+  \avr@reg@set{\@@value}{#1}%
+  \avr@pc@inc%
+}
+
+% LDI -- Load Immediate Value
+\def\avr@instr@LDI{\avr@instr@gen@regconst{1110}}
+\def\avr@instr@SER#1#2{\avr@instr@gen@regconst{1110}{#1}{#2}{11111111}}
+\csdef{avr@instr@1110}#1#2#3#4#5#6#7#8#9\@nnil{%
+  \avr@debug{LDI - \%1#5#6#7#8 <- #1#2#3#4#9}%
+  \avr@reg@set{#1#2#3#4#9}{1#5#6#7#8}%
+  \avr@pc@inc%
+}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Misc
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\avr@instr@BREAK#1{% BREAK PC
+  \avr@code@set{1001010110011000}{#1}%
+}
+
+\csdef{avr@instr@1001010110011000}\@nnil{%
+  \avr@debug{BREAK: (\the\avr@instr@executed) instructions}%
+  \avr@instr@steps=0\relax%
+  \avrbreaktrue%
+  \avr@pc@inc%
+}
+
+\def\avr@instr@NOP#1{%
+  \avr@code@set{0000000000000000}{#1}%
+}
+
+\csdef{avr@instr@0000000000000000}\@nnil{%
+  \avr@debug{NOP}%
+  \avr@pc@inc%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Logical Instructions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\avr@instr@bitop@helper{%
+  \avr@debug{\avr@instr@bitop  - {\avr@Rd} AND {\avr@Rr}}%
+  \csuse{avr@bin@\avr@instr@bitop}{\avr@Rr}{\avr@Rd}{\avr@Rx}%
+  \avr@flag@set V 0%
+  \avr@flags@update \avr@Rx%
+}
+
+\def\avr@instr@AND{\avr@instr@gen@tworegs{001000}}
+\def\avr@instr@TST#1#2{\avr@instr@gen@tworegs{001000}{#1}{#2}{#2}}
+\csdef{avr@instr@001000}#1#2#3#4#5#6#7\@nnil{%
+  \avr@reg@get{#1#7}{\avr@Rr}%
+  \avr@reg@get{#2#3#4#5#6}{\avr@Rd}%
+  \def\avr@instr@bitop{and}%
+  \avr@instr@bitop@helper%
+  % Set the result register
+  \avr@reg@set{\avr@Rx}{#2#3#4#5#6}%
+  \avr@pc@inc%
+}
+
+\def\avr@instr@ANDI{\avr@instr@gen@regconst{0111}}
+\csdef{avr@instr@0111}#1#2#3#4#5#6#7#8#9\@nnil{%
+  \avr@reg@get{1#5#6#7#8}{\avr@Rd}%
+  \def\avr@Rr{#1#2#3#4#9}%
+  \def\avr@instr@bitop{and}%
+  \avr@instr@bitop@helper%
+  % Set the result register
+  \avr@reg@set{\avr@Rx}{1#5#6#7#8}%
+  \avr@pc@inc%
+}
+
+
+\def\avr@instr@OR{\avr@instr@gen@tworegs{001010}}
+\csdef{avr@instr@001010}#1#2#3#4#5#6#7\@nnil{%
+  \avr@reg@get{#1#7}{\avr@Rr}%
+  \avr@reg@get{#2#3#4#5#6}{\avr@Rd}%
+  \def\avr@instr@bitop{or}%
+  \avr@instr@bitop@helper%
+  % Set the result register
+  \avr@reg@set{\avr@Rx}{#2#3#4#5#6}%
+  \avr@pc@inc%
+}
+
+\def\avr@instr@ORI{\avr@instr@gen@regconst{0110}}
+\def\avr@instr@SBR{\avr@instr@ORI}
+\csdef{avr@instr@0110}#1#2#3#4#5#6#7#8#9\@nnil{%
+  \avr@reg@get{1#5#6#7#8}{\avr@Rd}%
+  \def\avr@Rr{#1#2#3#4#9}%
+  \def\avr@instr@bitop{or}%
+  \avr@instr@bitop@helper%
+  % Set the result register
+  \avr@reg@set{\avr@Rx}{1#5#6#7#8}%
+  \avr@pc@inc%
+}
+
+\def\avr@instr@EOR{\avr@instr@gen@tworegs{001001}}
+\def\avr@instr@CLR#1#2{\avr@instr@EOR{#1}{#2}{#2}}
+\csdef{avr@instr@001001}#1#2#3#4#5#6#7\@nnil{%
+  \avr@reg@get{#1#7}{\avr@Rr}%
+  \avr@reg@get{#2#3#4#5#6}{\avr@Rd}%
+  \def\avr@instr@bitop{xor}%
+  \avr@instr@bitop@helper%
+  % Set the result register
+  \avr@reg@set{\avr@Rx}{#2#3#4#5#6}%
+  \avr@pc@inc%
+}
+
+\def\avr@instr@BSET#1#2{%
+  \avr@code@set{100101000#21000}{#1}%
+}
+\def\avr@instr@SEC#1{\avr@instr@BSET{#1}{000}}
+\def\avr@instr@SEZ#1{\avr@instr@BSET{#1}{001}}
+\def\avr@instr@SEN#1{\avr@instr@BSET{#1}{010}}
+\def\avr@instr@SEV#1{\avr@instr@BSET{#1}{011}}
+\def\avr@instr@SES#1{\avr@instr@BSET{#1}{100}}
+\def\avr@instr@SEH#1{\avr@instr@BSET{#1}{101}}
+\def\avr@instr@SET#1{\avr@instr@BSET{#1}{110}}
+\def\avr@instr@SEI#1{\avr@instr@BSET{#1}{111}}
+
+
+\def\avr@instr@BCLR#1#2{%
+  \avr@code@set{100101001#21000}{#1}%
+}
+\def\avr@instr@CLC#1{\avr@instr@BCLR{#1}{000}}
+\def\avr@instr@CLZ#1{\avr@instr@BCLR{#1}{001}}
+\def\avr@instr@CLN#1{\avr@instr@BCLR{#1}{010}}
+\def\avr@instr@CLV#1{\avr@instr@BCLR{#1}{011}}
+\def\avr@instr@CLS#1{\avr@instr@BCLR{#1}{100}}
+\def\avr@instr@CLH#1{\avr@instr@BCLR{#1}{101}}
+\def\avr@instr@CLT#1{\avr@instr@BCLR{#1}{110}}
+\def\avr@instr@CLI#1{\avr@instr@BCLR{#1}{111}}
+
+
+
+\def\avr@instr@BSET@helper#1#2{%
+  % BSET
+  \csdef{avr@instr@100101000#11000}\@nnil{%
+    \avr@debug{BSET #1 #2}%
+    \avr@flag@set #2 1%
+    \avr@pc@inc%
+  }%
+  \csdef{avr@instr@100101001#11000}\@nnil{%
+    \avr@debug{BCLR #2}%
+    \avr@flag@set #2 0%
+    \avr@pc@inc%
+  }\relax%
+}
+\avr@instr@BSET@helper{000}{C}
+\avr@instr@BSET@helper{001}{Z}
+\avr@instr@BSET@helper{010}{N}
+\avr@instr@BSET@helper{011}{V}
+\avr@instr@BSET@helper{100}{S}
+\avr@instr@BSET@helper{101}{H}
+\avr@instr@BSET@helper{110}{T}
+\avr@instr@BSET@helper{111}{I}
+
+\def\avr@instr@BST#1#2#3{\avr@code@set{1111101#20#3}{#1}}
+\csdef{avr@instr@1111101}#1#2#3#4#5#6\@nnil{%
+  \avr@reg@get{#1#2#3#4#5}{\avr@Rd}%
+  \avr@bin@tocount{0000#6}{\avr@count@tmpa}%
+  \edef\@@X{\the\avr@count@tmpa}%
+  \avr@debug{BST T <- #1#2#3#4#5(=\avr@Rd):\@@X}%
+  \avr@bin@getbit{\avr@Rd}{\@@X}{\@@T}%
+  \avr@flag@set T \@@T%
+  \avr@pc@inc%
+}
+
+\def\avr@instr@BLD#1#2#3{\avr@code@set{1111100#20#3}{#1}}
+\csdef{avr@instr@1111100}#1#2#3#4#5#6\@nnil{%
+  \avr@bin@tocount{0000#6}{\avr@count@tmpa}%
+  \avr@reg@get{#1#2#3#4#5}{\avr@Rd}%
+  \edef\@@X{\the\avr@count@tmpa}%
+  \avr@flag@get T \@@T%
+  \avr@debug{BLD #1#2#3#4#5(=\avr@Rd) |= \@@T<<\@@X}%|
+  \avr@bin@setbit{\avr@Rd}{\@@X}{\@@T}{\avr@Rd}%
+  \avr@reg@set{\avr@Rd}{#1#2#3#4#5}%
+  \avr@pc@inc%
+}
+
+\def\avr@instr@NEG#1#2{\avr@code@set{1001010#20001}{#1}}
+\csdef{avr@instr@1001010:0001}#1\@nnil{%
+  \avr@reg@get{#1}{\avr@Rr}%
+  \avr@debug{NEG: #1(=\avr@Rr)}%
+  \def\avr@Rd{00000000}%
+  \def\avr@instr@extracarry{1}%
+  \csuse{avr@instr@subber@helper}%
+  % Set the result register
+  \avr@reg@set{\avr@Rx}{#1}%
+  \avr@pc@inc%
+}
+
+\def\avr@instr@COM#1#2{\avr@code@set{1001010#20000}{#1}}
+\csdef{avr@instr@1001010:0000}#1\@nnil{%
+  \avr@reg@get{#1}{\avr@Rr}%
+  \avr@debug{COM: #1(=\avr@Rr)}%
+  \avr@bin@negate{\avr@Rr}{\avr@Rx}%
+  \avr@flag@set C 1%
+  \avr@flag@set V 0%
+  \avr@flags@update \avr@Rx%
+  % Set the result register
+  \avr@reg@set{\avr@Rx}{#1}%
+  \avr@pc@inc%
+}
+
+% Skip if Bit in Register is Set (or not)
+\def\avr@instr@SBRC#1#2#3{\avr@code@set{1111110#20#3}{#1}}
+\def\avr@instr@SBRS#1#2#3{\avr@code@set{1111111#20#3}{#1}}
+
+\def\avr@skip@instr@eq#1#2{%
+  \ifdefstrequal{#1}{#2}{%
+     \avr@pc@inc%
+     \avr@instr@length{\the\avr@pc}{\@@length}%
+     \avr@debug{SKIP (\@@length) instruction}%
+     \avr@pc@add{\@@length}%
+  }{%
+    \avr@pc@inc%
+  }%
+}
+\csdef{avr@instr@111111}#1#2#3#4#5#6#7\@nnil{%
+  \def\@@required{#1}% 1 if if set
+  \avr@reg@get{#2#3#4#5#6}{\avr@Rr}%
+  \avr@bin@tocount{0000#7}{\avr@count@tmpa}%
+  \edef\@@bit{\the\avr@count@tmpa}%
+  \avr@bin@getbit{\avr@Rr}{\@@bit}{\@@found}%
+  \avr@debug{SBR[SC] Skip iff \avr@Rr:\@@bit(\@@found) == \@@required}%
+  \avr@skip@instr@eq{\@@required}{\@@found}%
+}
+
+% CPSE - Compare Skip iff Equal
+\def\avr@instr@CPSE{\avr@instr@gen@tworegs{000100}}
+\csdef{avr@instr@000100}#1#2#3#4#5#6#7\@nnil{%
+  \avr@reg@get{#1#7}{\avr@Rr}%
+  \avr@reg@get{#2#3#4#5#6}{\avr@Rd}%
+  \avr@debug{CPSE -  \avr@Rd + \avr@Rr}%
+  \avr@skip@instr@eq{\avr@Rd}{\avr@Rr}%
+}
+
+% Skip if Bit in IO-Register is Set (or not)
+\def\avr@instr@SBIC#1#2#3{\avr@code@set{10011001#2#3}{#1}}
+\def\avr@instr@SBIS#1#2#3{\avr@code@set{10011011#2#3}{#1}}
+\csdef{avr@instr@10011011}{%
+  \def\@@required{1}% 1 if if set
+  \avr@SBI@helper%
+}
+\csdef{avr@instr@10011001}{%
+  \def\@@required{0}% 0 if if set
+  \avr@SBI@helper%
+}
+\def\avr@SBI@helper#1#2#3#4#5#6\@nnil{%
+  \avr@io@get{0#1#2#3#4#5}{\avr@Rr}%
+  \avr@bin@tocount{00000#6}{\avr@count@tmpa}%
+  \edef\@@bit{\the\avr@count@tmpa}%
+  \avr@bin@getbit{\avr@Rr}{\@@bit}{\@@found}%
+  \avr@debug{SBI[SC] Skip iff \avr@Rr:\@@bit(\@@found) == \@@required}%
+  \avr@skip@instr@eq{\@@required}{\@@found}%
+}
+
+
+% Arithmetic Shift Right
+\def\avr@instr@ASR#1#2{\avr@code@set{1001010#20101}{#1}}
+\csdef{avr@instr@1001010:0101}#1\@nnil{%
+  \avr@reg@get{#1}{\avr@Rr}%
+  \avr@debug{ASR: #1(=\avr@Rr)}%
+  \avr@bin@shiftright@arith{\avr@Rr}{1}{\avr@Rx}{\@@carry}%
+  \avr@bin@msb@get{\avr@Rx}{\@@N}%
+  \avr@flag@set C \@@carry%
+  \avr@flag@set V {\avr@bit@xor \@@carry \@@N}%
+  \avr@flags@update \avr@Rx%
+  \avr@reg@set{\avr@Rx}{#1}%
+  \avr@pc@inc%
+}
+  
+
+% LSL is implemented as ADD
+\def\avr@instr@LSR#1#2{\avr@code@set{1001010#20110}{#1}}
+\csdef{avr@instr@1001010:0110}#1\@nnil{%
+  \avr@reg@get{#1}{\avr@Rr}%
+  \avr@debug{LSR #1(=\avr@Rr)}%
+  \avr@bin@shiftright{\avr@Rr}{1}{\avr@Rx}{\@@carry}%
+  \avr@bin@msb@get{\avr@Rx}{\@@N}%
+  \avr@flag@set C \@@carry%
+  \avr@flag@set V {\avr@bit@xor \@@carry \@@N}%
+  \avr@flags@update \avr@Rx%
+  \avr@reg@set{\avr@Rx}{#1}%
+  \avr@pc@inc%
+}
+
+% ROL is implemented as ADD
+\def\avr@instr@ROR#1#2{\avr@code@set{1001010#20111}{#1}}
+\csdef{avr@instr@1001010:0111}#1\@nnil{%
+  \avr@reg@get{#1}{\avr@Rr}%
+  \avr@flag@get C \@@carry%
+  \avr@debug{ROR: #1(=\@@carry:\avr@Rr)}%
+  \avr@bin@lsb@del{\@@carry\avr@Rr}{\avr@Rx}{\@@carry}%
+  \avr@bin@msb@get{\avr@Rx}{\@@N}%
+  \avr@flag@set C \@@carry%
+  \avr@flag@set V {\avr@bit@xor \@@carry \@@N}%
+  \avr@flags@update \avr@Rx%
+  \avr@reg@set{\avr@Rx}{#1}%
+  \avr@pc@inc%
+}
+
+\def\avr@instr@SWAP#1#2{\avr@code@set{1001010#20010}{#1}}
+\csdef{avr@instr@1001010:0010}#1\@nnil{%
+  \avr@reg@get{#1}{\avr@Rr}%
+  \avr@debug{SWAP: #1(=\avr@Rr)}%
+  \avr@bin@nibble@low{\avr@Rr}{\@@low}%
+  \avr@bin@nibble@high{\avr@Rr}{\@@high}%
+  \avr@reg@set{\@@low \@@high}{#1}%
+  \avr@pc@inc%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Multiplication Commands
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% MUL -- Multiply Unsigned Integers
+\newcount\avr@MUL@A
+\newcount\avr@MUL@B
+
+\def\avr@instr@MUL{\avr@instr@gen@tworegs{100111}}
+\csdef{avr@instr@100111}#1#2#3#4#5#6#7\@nnil{%
+  \avr@reg@get{#1#7}{\avr@Rr}%
+  \avr@reg@get{#2#3#4#5#6}{\avr@Rd}%
+  \avr@bin@tocount{\avr@Rr}{\avr@MUL@A}%
+  \avr@bin@tocount{\avr@Rd}{\avr@MUL@B}%
+  \avr@debug{MUL - \the\avr@MUL@A * \the\avr@MUL@B}%
+  \multiply \avr@MUL@A by \avr@MUL@B\relax%
+  \avr@count@tobin@w{\avr@MUL@A}{\avr@Rx}%
+  \avr@bin@word@low{\avr@Rx}{\@@low}%
+  \avr@bin@word@high{\avr@Rx}{\@@high}%
+  \avr@reg@set{\@@low}{\csuse{avr@r0}}%
+  \avr@reg@set{\@@high}{\csuse{avr@r1}}%
+  % Flags
+  \avr@bin@msb@get{\avr@Rx}{\@@carry}%
+  \avr@flag@set C \@@carry%
+  \ifdefstring{\avr@Rx}{0000000000000000}{%
+    \avr@flag@set Z 1%
+  }{%
+    \avr@flag@set Z 0%
+  }%
+  % Do not set the output register
+  \avr@pc@inc%
+}

@@ -1,0 +1,185 @@
+%%
+%% This is file `randomwalk.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% randomwalk.dtx  (with options: `package')
+%% 
+%% Do not distribute a modified version of this file.
+%% 
+%% Communicate any suggestions for changing this package
+%% to Bruno Le Floch (see the latex-randomwalk repository
+%% on GitHub).
+%% 
+%% File: randomwalk.dtx Copyright (C) 2011-2015 Bruno Le Floch
+%%
+%% It may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License (LPPL), either version 1.3c of this
+%% license or (at your option) any later version.  The latest version
+%% of this license is in the file
+%%
+%%    http://www.latex-project.org/lppl.txt
+%%
+%% -----------------------------------------------------------------------
+\RequirePackage{expl3}[2015/09/11]
+\ProvidesExplPackage
+  {randomwalk.sty} {2015/09/20} {0.4} {Customizable random walks}
+\RequirePackage{xparse}[2015/09/11]
+\RequirePackage{pgfcore}
+\int_const:Nn \c__randomwalk_lcg_last_int { \c_max_int - \c_one }
+\AtBeginDocument
+  {
+    \RequirePackage
+      [
+        first= \c_zero ,
+        last = \c__randomwalk_lcg_last_int ,
+        counter = lcg@rand
+      ]
+      { lcg }
+    \rand
+  }
+\tl_new:N \l__randomwalk_internal_tl
+\int_new:N \l__randomwalk_internal_int
+\int_new:N \l__randomwalk_step_number_int
+\bool_new:N \l__randomwalk_relative_angles_bool
+\bool_new:N \l__randomwalk_degrees_bool
+\bool_new:N \l__randomwalk_revert_random_bool
+\cs_new_protected_nopar:Npn \__randomwalk_next_angle: { }
+\cs_new_protected_nopar:Npn \__randomwalk_next_length: { }
+\fp_new:N \l__randomwalk_angle_fp
+\fp_new:N \l__randomwalk_length_fp
+\dim_new:N \l__randomwalk_x_dim
+\dim_new:N \l__randomwalk_y_dim
+\seq_new:N \l__randomwalk_angles_seq
+\seq_new:N \l__randomwalk_lengths_seq
+\DeclareDocumentCommand \RandomWalk { m }
+  { \randomwalk:n {#1} }
+\cs_new_protected:Npn \randomwalk:n #1
+  {
+    \__randomwalk_setup_defaults:
+    \keys_set:nn { randomwalk } {#1}
+    \__randomwalk_walk:
+  }
+\keys_define:nn { randomwalk }
+  {
+    number .value_required:n = true ,
+    length .value_required:n = true ,
+    angles .value_required:n = true ,
+    number .int_set:N = \l__randomwalk_step_number_int ,
+    length .code:n = { \__randomwalk_setup_length:n {#1} } ,
+    angles .code:n = { \__randomwalk_setup_angles:n {#1} } ,
+    degree .bool_set:N = \l__randomwalk_degrees_bool ,
+    degrees .bool_set:N = \l__randomwalk_degrees_bool ,
+    angles-relative .bool_set:N = \l__randomwalk_relative_angles_bool ,
+    revert-random .bool_set:N = \l__randomwalk_revert_random_bool ,
+  }
+\cs_new_protected_nopar:Npn \__randomwalk_setup_defaults:
+  {
+    \int_set:Nn \l__randomwalk_step_number_int {10}
+    \cs_gset_protected_nopar:Npn \__randomwalk_next_angle:
+      { \__randomwalk_fp_set_rand:Nnn \l__randomwalk_angle_fp { 0 } { 360 } }
+    \cs_gset_protected_nopar:Npn \__randomwalk_next_length:
+      { \fp_set:Nn \l__randomwalk_length_fp {10} }
+    \bool_set_false:N \l__randomwalk_revert_random_bool
+    \bool_set_false:N \l__randomwalk_relative_angles_bool
+    \fp_zero:N \l__randomwalk_angle_fp
+    \fp_zero:N \l__randomwalk_length_fp
+    \dim_zero:N \l__randomwalk_x_dim
+    \dim_zero:N \l__randomwalk_y_dim
+  }
+\cs_new_protected:Npn \__randomwalk_setup_length:n #1
+  {
+    \seq_set_split:Nnn \l__randomwalk_lengths_seq { , } {#1}
+    \seq_set_map:NNn \l__randomwalk_lengths_seq
+      \l__randomwalk_lengths_seq { \dim_to_fp:n {##1} }
+    \cs_gset_protected_nopar:Npn \__randomwalk_next_length:
+      {
+        \__randomwalk_get_rand_seq_item:NN
+          \l__randomwalk_lengths_seq \l__randomwalk_internal_tl
+        \fp_set:Nn \l__randomwalk_length_fp { \l__randomwalk_internal_tl }
+      }
+  }
+\cs_new_protected:Npn \__randomwalk_setup_angles:n #1
+  {
+    \seq_set_split:Nnn \l__randomwalk_angles_seq { , } {#1}
+    \seq_set_map:NNn \l__randomwalk_angles_seq
+      \l__randomwalk_angles_seq { \fp_to_tl:n {##1} }
+    \cs_gset_protected_nopar:Npn \__randomwalk_next_angle:
+      {
+        \__randomwalk_get_rand_seq_item:NN
+          \l__randomwalk_angles_seq \l__randomwalk_internal_tl
+        \bool_if:NF \l__randomwalk_degrees_bool
+          { \tl_put_right:Nn \l__randomwalk_internal_tl { rad } }
+        \bool_if:NTF \l__randomwalk_relative_angles_bool
+          { \fp_add:Nn } { \fp_set:Nn }
+          \l__randomwalk_angle_fp { \l__randomwalk_internal_tl }
+      }
+  }
+\cs_new_protected_nopar:Npn \__randomwalk_walk:
+  {
+    \__randomwalk_walk_start:
+    \prg_replicate:nn { \l__randomwalk_step_number_int }
+      { \__randomwalk_walk_step: }
+    \bool_if:NF \l__randomwalk_revert_random_bool
+      { \int_gset_eq:NN \cr@nd \cr@nd }
+    \__randomwalk_walk_stop:
+  }
+\cs_new_protected_nopar:Npn \__randomwalk_walk_start:
+  {
+    \begin{pgfpicture}
+      \pgfpathmoveto
+        { \pgfpoint { \l__randomwalk_x_dim } { \l__randomwalk_y_dim } }
+  }
+\cs_new_protected_nopar:Npn \__randomwalk_walk_line:
+  {
+    \pgfpathlineto
+      { \pgfpoint { \l__randomwalk_x_dim } { \l__randomwalk_y_dim } }
+  }
+\cs_new_protected_nopar:Npn \__randomwalk_walk_stop:
+  {
+      \pgfusepath { stroke }
+    \end{pgfpicture}
+  }
+\cs_new_protected_nopar:Npn \__randomwalk_walk_step:
+  {
+    \__randomwalk_next_length:
+    \__randomwalk_next_angle:
+    \dim_add:Nn \l__randomwalk_x_dim
+      {
+        \fp_to_dim:n
+          { \l__randomwalk_length_fp * cosd ( \l__randomwalk_angle_fp ) }
+      }
+    \dim_add:Nn \l__randomwalk_y_dim
+      {
+        \fp_to_dim:n
+          { \l__randomwalk_length_fp * sind ( \l__randomwalk_angle_fp ) }
+      }
+    \__randomwalk_walk_line:
+  }
+\cs_new_protected:Npn \__randomwalk_fp_set_rand:Nnn #1#2#3
+  {
+    \rand
+    \fp_set:Nn #1
+      { #2 + (#3 - (#2)) * \c@lcg@rand / \c__randomwalk_lcg_last_int }
+  }
+\cs_new_protected:Npn \__randomwalk_get_rand_seq_item:NN #1#2
+  {
+    \int_set:Nn \l__randomwalk_internal_int { \seq_count:N #1 }
+    \int_compare:nTF { \l__randomwalk_internal_int = 1 }
+      { \tl_set:Nx #2 { \seq_item:Nn #1 { 1 } } }
+      {
+        \rand
+        \tl_set:Nx #2
+          {
+            \seq_item:Nn #1
+              {
+                1 +
+                \int_mod:nn { \c@lcg@rand } { \l__randomwalk_internal_int }
+              }
+          }
+      }
+  }
+%% 
+%%
+%% End of file `randomwalk.sty'.

@@ -1,0 +1,457 @@
+%% This is file `dtk-full.clo',
+%%
+%% LaTeX Class for ``Die TeXnische Komoedie''.
+%%
+%% Copyright (C) 2015-
+%% Rolf Niepraschk, Herbert Voss
+%%
+%% It may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3c
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%    http://www.latex-project.org/lppl.txt
+%% and version 1.3c or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+
+\ProvidesFile{dtk-full.clo}%
+  [2016/04/12 v0.1f dtk class options for full mode (RN)]
+
+\@ifclasslater{scrbook}{2015/09/29}{}{%
+  \ClassError{dtk2}{%
+    Die geladene Version der Dokumentenklasse `scrbook' \MessageBreak
+    (\KOMAScriptVersion) ist zu alt. \MessageBreak
+    Gefordert ist die Version 2015/09/29 oder jünger. \MessageBreak
+    Abbruch}{}%
+}
+
+\RequirePackage{xcolor,multicol,graphicx,tabularx}
+\ifx\pdfvariable\undefined % altes LuaTeX oder kein LuaTeX
+  \usepackage[showzone=false]{datetime2}
+\else
+  \RequirePackage{luatex85}
+  \let\SAVE@pdfcreationdate=\pdfcreationdate
+  \edef\pdfcreationdate{\pdfcreationdate}
+  % v1.4 ist inkompatibel mit LuaTeX 0.95/luatex85
+  \usepackage[showzone=false]{datetime2}
+  \let\pdfcreationdate=\SAVE@pdfcreationdate
+\fi
+
+\newcommand*\AutorenListenName{Autoren/Organisatoren} % auch »Stichwortverzeichnis«?
+\newcommand*\DTK@fancyJournalname{%
+  \color{DTK@fancy}Die \color{black}\TeX\color{DTK@fancy}nische Kom\"odie}
+\newcommand*\DTK@keywords{}
+\newcommand*\keywords[1]{\gdef\DTK@keywords{#1}}
+
+\newcommand*\DTKissueTOmonth[1]{\numexpr#1*3-1\relax}
+
+\ifnum\DTKissue=\z@
+  \def\DTKmonth{0}%
+  \def\DTKmonthName{?????}%
+\else
+  \ifnum\DTKmonth=\z@
+    \edef\DTKmonth{\DTKissueTOmonth{\DTKissue}}%
+  \fi
+  \edef\DTKmonthName{\DTMgermanmonthname{\DTKmonth}}%
+\fi
+\edef\DTKdate{\DTKissue/\DTKyear}%
+\edef\DTKvolume{\the\numexpr\DTKyear-1989+1\relax}%
+\edef\DTKfullIssue{\DTKvolume. Jahrgang\quad
+  Heft \DTKissue/\DTKyear\quad \DTKmonthName\ \DTKyear}%
+\ifDTK@korr@
+  \edef\DTKcorrVersion{\noexpand\normalfont
+    \noexpand\fcolorbox{black}{DTK@marker}{Korrekturversion: \DTMnow}}%
+  \overfullrule=5pt %
+  \RequirePackage[pagewise]{lineno}%
+  \linenumbers
+  \linenumbersep=.8ex %
+  \def\linenumberfont{\normalfont\footnotesize\ttfamily}%
+  \def\thelinenumber{%
+    \fboxsep=.3ex %
+    \fcolorbox{black}{DTK@marker}{\@arabic{\c@page}-\@arabic{\c@linenumber}}%
+  }%
+\fi
+
+\@ifundefined{@LN}{\let\@LN=\@gobbletwo}{}%
+% Wegen .aux-Datei von vorherigem lineno-Lauf
+
+\newcommand*\DTK@backside{%
+  \begingroup
+    \chardef\backside15 %
+    \ch@ck7\backside\write
+    \immediate\openout\backside dtk-ruecken.dat\relax
+    \let\protect=\noexpand
+    \immediate\write\backside{\journalname\space\DTKdate}%
+    \immediate\closeout\backside\relax%
+  \endgroup
+}
+
+\newcommand*\DTK@embedded@begindocumenthook{}
+\newcommand*\AtEmbeddedBeginDocument{%
+  \g@addto@macro\DTK@embedded@begindocumenthook}
+\newcommand*\DTK@embedded@enddocumenthook{}
+\newcommand*\AtEmbeddedEndDocument{%
+  \g@addto@macro\DTK@embedded@enddocumenthook}
+\newcommand*\DTK@local@inputname{}
+\newcommand*\DTK@eat@version[1][]{\ignorespaces}
+\newcommand*\DTK@usepackage[2][]{%  TODO: Besser  \DTK@eat@version
+  \@ifnextchar[%]
+    {\DTK@@usepackage{#1}{#2}}%
+    {\DTK@@usepackage{#1}{#2}[]}%
+}%
+\newcommand*\DTK@@usepackage{}
+\newcommand*\DTK@documentclass[2][]{%
+  \DTK@eat@version
+}
+
+\ifDTKrecord
+  % Testlauf zum Aufsammeln von Paket- und bib-Dateinamen
+  \@ifdefinable\user@packages{%
+    \newwrite\user@packages
+    \immediate\openout\user@packages dtk-userpackages.tex\relax
+    \immediate\write\user@packages{\@percentchar\space *** \DTMnow\space ***}%
+    \AtEndDocument{\immediate\closeout\user@packages\relax}%
+  }
+  \renewcommand*\printbibliography[1][]{}%
+  \newcommand*\DTK@addbibresource[2][]{%
+    \immediate\write\user@packages{%
+      \string\addbibresource[datatype=bibtex,label=DTK\the\c@refsection]{#2}%
+        \@percentchar\space \DTK@local@inputname
+    }%
+  }%
+  \def\DTK@@usepackage#1#2[#3]{%
+    \edef\@tempb{\zap@space#2 \@empty}%
+    \@for\@tempa:=\@tempb\do{%
+      \let\DTK@tempa=\@empty
+      \ifstr{\@tempa}{inputenc}{\let\DTK@tempa=\@percentchar}{%
+        \ifstr{\@tempa}{fontenc}{\let\DTK@tempa=\@percentchar}{}}%
+      \immediate\write\user@packages{%
+        \DTK@tempa\string\usepackage\ifx\relax#1\relax\else[#1]\fi{\@tempa}%
+        \ifx\relax#3\relax\else[#3]\fi\@percentchar\space \DTK@local@inputname
+      }%
+    }%
+    \ignorespaces
+  }%
+  \let\DTK@@Author=\DTK@Author
+  \newcommand*\AutorenListe{}%
+  \let\tableofcontents=\relax
+  \renewcommand\maketitle[1][]{}%
+\else
+  \AtEndOfClass{%
+    \InputIfFileExists{dtk-userpackages.tex}{%
+      \typeout{*************************************^^J%
+               * File `dtk-userpackages.tex' used.^^J%
+               *************************************}%
+    }{}%
+    \shorthandon{"}%
+  }%
+  \AtBeginDocument{\DTK@backside}%
+  \def\DTK@@usepackage#1#2[#3]{}%
+  \newcommand*\DTK@addbibresource[2][]{}%
+  \newcommand*\ORIG@printbibliography{}
+  \let\ORIG@printbibliography=\printbibliography
+  \renewcommand*\printbibliography[1][]{\DTK@bib@true}%
+  \RequirePackage[split,protected]{splitidx} \makeindex
+  \newindex[\AutorenListenName]{autoren}%
+  \newcommand*\AutorenListe{%
+    \clearpage
+    \begingroup
+      %\language\langwohyphens
+      \renewenvironment{theindex}{\theAutoren}{\endtheAutoren}%
+      \printindex[autoren]%
+    \endgroup
+  }%
+  \newcommand\DTK@Author@list[3]{% TODO: Auch "!" und "|" maskieren?
+    \begingroup
+      \def\Email##1{\escape@atsign##1\relax}% herausziehen?!
+      \def\escape@atsign##1@##2\relax{%
+        \noexpand\Email\string{##1\string"@##2\string}%
+      }
+      \makeatletter
+      \scantokens{\protected@edef\x{%
+        \noexpand\sindex[autoren]{#2#1@#1 #2!#3}}}%
+      \x
+    \endgroup
+  }%
+  \let\DTK@Author=\DTK@Author@list
+  \newcommand\DTK@@Author[3]{%
+    \DTK@Author@article{#1}{#2}{#3}%
+    \DTK@Author@list{#1}{#2}{#3}%
+  }
+  \renewcommand\maketitle[1][]{%
+    \thispagestyle{dtk-title}%
+    \global\let\maketitle=\DTK@maketitle
+    \null\newpage
+  }%
+\fi
+
+%%% Laden eines Einzeldokuments
+\newcommand*\DTKinput[1]{%
+  \begingroup
+    \filename@parse{#1}%
+    \edef\jobname{\filename@base}%
+    \@ifundefined{filename@ext}%
+      {\IfFileExists{\jobname.tex}%
+        {\edef\DTK@local@inputname{\jobname.tex}}{}}%
+      {\edef\DTK@local@inputname{#1}}%
+    \let\AtBeginDocument=\AtEmbeddedBeginDocument
+    \let\AtEndDocument=\AtEmbeddedEndDocument
+    \let\DTK@embedded@begindocumenthook=\@empty
+    \let\DTK@embedded@enddocumenthook=\@empty
+    \let\pagestyle=\@gobble
+    \let\thispagestyle=\@gobble
+    \let\listfiles=\relax
+    \let\nofiles=\relax
+    \let\documentclass=\DTK@documentclass
+    \let\usepackage=\DTK@usepackage
+    \let\addbibresource=\DTK@addbibresource
+    \DTK@bib@false
+    \c@footnote=\z@
+    \c@lstlisting=\z@
+    \c@figure=\z@
+    \c@table=\z@
+    \c@equation=\z@
+    \renewenvironment{document}{%
+      \ifDTKrecord\endgroup\expandafter\endinput\fi
+      \DTK@embedded@begindocumenthook\ignorespaces
+    }{%
+      \ifDTK@bib@\ORIG@printbibliography[heading=dtk]\fi
+      \DTK@embedded@enddocumenthook\endinput
+    }%
+    \refsection[DTK\the\c@refsection]%
+      \input{\DTK@local@inputname}%
+    \endrefsection
+  \endgroup
+}
+
+\let\indexspace=\relax
+\renewcommand*\idx@heading{%
+  \chapter{\indexname}%
+  \ifx\index@preamble\relax
+  \else\index@preamble\let\index@preamble=\relax\fi
+}%
+\def\DTK@scan@item#1\subitem#2\relax#3\@nil{%
+  \def\DTK@tempa{#1}\def\DTK@tempb{#2}\def\DTK@tempc{#3}%
+}
+\newenvironment{theAutoren}{%
+  \columnseprule=\z@ \columnsep=10\p@
+  \begin{multicols}{2}[\idx@heading]%
+    \makeatletter
+    \parindent\z@
+    \setlength{\parskip}{\z@ \@plus .3\p@}%
+    \setlength{\parfillskip}{\z@ \@plus 1fil}%
+    \raggedright
+    \def\item##1\@nil{\DTK@scan@item##1\@nil
+      \par\parbox{\columnwidth}{%
+        \textbf{\DTK@tempa}\hfill[\DTK@tempc]\par\DTK@tempb
+      }%
+      \par\bigskip
+    }%
+}{%
+  \end{multicols}%
+}
+
+\newcommand*\DTK@toc@head{%
+  \raisebox{0mm}[0pt][0pt]{%
+    \parbox[t]{\textwidth}{%
+      \normalfont\nointerlineskip
+      \begingroup
+        \Huge\raggedright
+        \DTK@fancyJournalname \\
+      \endgroup
+      \addvspace{\dimexpr5mm-\baselineskip}%
+      \rule{\textwidth}{2pt}\\[0.5mm]%
+      \begingroup
+        \footnotesize\raggedleft
+        \DTKfullIssue \\
+      \endgroup
+    }%
+  }%
+}
+
+\RequirePackage{picture}
+
+\DeclareNewLayer[page,background,mode=picture,contents={%
+  \put(24mm,0.5\dimexpr\layerheight\relax){%
+    \makebox(0,0)[c]{\rotatebox[origin=c]{90}{%
+      \resizebox{14cm}{!}{\Huge\DTK@fancyJournalname}}}%
+    \put(8mm,0){\makebox(0,0)[c]{\rule{0.85mm}{\textheight}}}%
+  }%
+  \put(52mm,145mm){%
+    \parbox[t]{78mm}{%
+      \raggedleft
+      \Huge\dantelogo \\
+      \Large Deutschsprachige \\
+      Anwendervereinigung \TeX\ \eV \\
+      \addvspace{4mm}%
+      \begingroup
+        \raggedright\footnotesize
+        \DTKfullIssue \\
+      \endgroup
+      \addvspace{40mm}%
+      \makebox(0,0)[r]{\Large\DTKcorrVersion}
+    }%
+  }%
+  \put(86mm,27mm){%
+    \begingroup
+      \color[gray]{.8}\resizebox{47mm}{!}{\Huge\DTKdate}%
+    \endgroup
+  }%
+}]{dtk-title-content}
+\DeclareNewPageStyleByLayers{dtk-title}{dtk-title-content}
+
+\deftriplepagestyle{dtk-toc}%
+  {}{\DTK@toc@head}{}%
+  {}{\hfill\normalsize\DTKcorrVersion\hfill\null}{}
+
+\AtEndOfClass{%
+  \renewcommand*\l@part[2]{%
+    \begingroup
+      \addpenalty{-\@highpenalty}%
+      \usekomafont{partentry}%
+      \addvspace{0.5em plus 0pt}% space above part line
+      \@tempdima=1.5em %
+      \advance\leftskip\@tempdima
+      \hskip -\leftskip
+      #1\par
+      \penalty\@highpenalty
+    \endgroup
+    \addvspace{0.2em}%
+  }
+  \renewcommand*\l@chapter[2]{%    TODO: Abstände richtig? "LaTeXifizieren?
+    \begingroup
+      \usekomafont{chapterentry}%
+      \vskip \z@ \@plus.2\p@
+      \@afterindenttrue
+      \interlinepenalty\@M
+      \@tempdimb 2.5em\relax % indent
+      \advance\leftskip \@tempdimb
+      \advance\rightskip \@tempdimb
+      \noindent\hskip -\leftskip
+      \settowidth\@tempdima{\the\c@page}%
+      \hbox to\@tempdimb{\usekomafont{chapterentrypagenumber}%
+        \makebox[\@tempdima][r]{#2}\hss}%
+      #1\par
+    \endgroup
+  }
+}
+
+\setkomafont{chapterentry}{\normalfont\small}
+\setkomafont{chapterentrypagenumber}{\usekomafont{chapterentry}}
+\setkomafont{partentry}{\usekomafont{chapterentry}\bfseries}
+
+\deftocheading{toc}{%
+  \clearpage
+  \thispagestyle{dtk-toc}%
+  \vspace*{16pt}%
+  \let\\=\relax
+  \raggedright
+}
+
+\newcommand*\Part{%
+% [#1]=toc, {#2}=Überschrift, [#3]=Präambel, *=nur Strich
+  \@ifstar{\global\@tempswatrue\DTK@Part}{\global\@tempswafalse\DTK@Part}%
+}
+
+\newcommand\DTK@Part[2][]{%
+  \protected@xdef\DTK@tempa{\ifx\relax#1\relax
+    \noexpand\part{#2}\else\noexpand\part[#1]{#2}\fi}%
+  \DTK@@Part
+}
+
+\newcommand\DTK@@Part[1][]{%
+  \let\DTK@tempb=\partheadendvskip
+  \if@tempswa
+    \setpartpreamble{%
+      \noindent\raisebox{\height}[\height]{\rule{\textwidth}{2pt}}%
+    }%
+    \def\partheadendvskip{%
+      \medskip\par
+    }
+  \fi
+  \ifx\relax#1\relax\else
+    \setpartpreamble{%
+      \noindent\raisebox{\height}[\height]{\rule{\textwidth}{2pt}}\par
+      \usekomafont{section} #1\par
+    }%
+  \fi
+  \DTK@tempa
+  \let\partheadendvskip=\DTK@tempb
+  \bigskip\par
+}
+
+\def\partheadstartvskip{% 12.0pt plus 1.0fil
+  \null\vskip-\baselineskip
+}
+
+\def\partheadendvskip{}
+\let\partheademptypage=\relax% ???
+\let\raggedpart\raggedright
+\def\partpagestyle{plain.scrheadings}
+
+% TODO: sinnhaftigkeit überprüfen; bessere Stammtisch-Umgebung?
+\newenvironment{roll}%
+  {\@ifnextchar[{\r@ll}{\r@ll[0pt]}}%
+  {\end{list}}
+\def\r@ll[#1]{\begin{list}{}{%
+    \labelwidth = #1
+    \leftmargin = \labelwidth
+    \itemsep    = .3ex
+    \let\makelabel=\rolllabel}%
+  }
+\newcommand\rolllabel[1]{\hspace\labelsep \textbf{#1}\hfill}
+
+\RequirePackage{shellesc,filecontents}
+%% [#1]: Optionen für \includegraphics  [#2]: Compiler  #3: Dateiname
+%%
+\def\ErstelleGrafik{\@ifnextchar[{\ErstelleGrafik@i}{\ErstelleGrafik@i[]}}
+\def\ErstelleGrafik@i[#1]{\@ifnextchar[{\ErstelleGrafik@ii[#1]}{%
+  \ErstelleGrafik@ii[#1][xelatex]}}%
+\def\ErstelleGrafik@ii[#1][#2]#3{%
+  \gdef\DTK@dateiname{#3}%
+  \gdef\DTK@grafikOptionen{#1}%
+  \ifx\relax#2\relax\gdef\DTK@compiler{xelatex}\else\gdef\DTK@compiler{#2}\fi
+  \@nameuse{filecontents*}{#3.tex}}%
+\def\endErstelleGrafik{%
+  \@nameuse{endfilecontents*}%
+  \ShellEscape{\DTK@compiler\space\DTK@dateiname}%
+  \expandafter\includegraphics\expandafter[\DTK@grafikOptionen]{\DTK@dateiname}%
+}
+
+\providecommand*\InfoTeX{???}
+
+\newcommand*\MitarbeiterListe{}
+\newcommand*\ErzeugeMitarbeiterListe{%
+  \begingroup
+    \@temptokena{\begin{tabular}[t]{@{}lll@{}}}%
+    \IfFileExists{dtk-mitarbeiter.tex}{%
+        \openin\@inputcheck dtk-mitarbeiter.tex\relax
+        \endlinechar=\m@ne
+        \@tempcnta=\@ne
+        \loop%
+          \read\@inputcheck to \DTK@tempa
+          \ifx\DTK@tempa\@empty\else
+            \ifnum\@tempcnta=3\relax
+              \@tempcnta=\@ne \def\DTK@tempc{\\}%
+            \else
+              \advance\@tempcnta\@ne \def\DTK@tempc{&}%
+            \fi
+            \protected@edef\DTK@tempb{\the\@temptokena\DTK@tempa\DTK@tempc}%
+            \@temptokena\expandafter{\DTK@tempb}%
+          \fi
+        \ifeof\@inputcheck\else
+        \repeat
+        \closein\@inputcheck
+    }{%
+      \@temptokena\expandafter{\the\@temptokena ??? & ??? & ???}%
+    }
+    \@temptokena\expandafter{\the\@temptokena \end{tabular}}%
+    \xdef\MitarbeiterListe{\the\@temptokena}%
+  \endgroup
+}
+
+\ErzeugeMitarbeiterListe \let\ErzeugeMitarbeiterListe=\relax
+
+\newcommand*\DTKschriftenListe{%
+  \DTKrmFontName, \DTKsfFontName, \DTKttFontName\ und \DTKmathFontName}
+
+\endinput

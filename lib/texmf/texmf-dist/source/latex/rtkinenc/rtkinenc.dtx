@@ -1,0 +1,583 @@
+% \CheckSum{407}
+%
+% \iffalse
+%
+%<*driver>
+\documentclass{ltxdoc}
+\DeclareRobustCommand\package[1]{\textsf{#1}}
+\title{The \package{rtkinenc} package}
+\author{Lars Hellstr\"om%
+   \thanks{E-mail: \texttt{Lars.Hellstrom@math.umu.se}}}
+\begin{document}
+\maketitle
+\DocInput{rtkinenc.dtx}
+\end{document}
+%</driver>
+% 
+% \fi
+% 
+% \begin{abstract}
+%   The \package{rtkinenc} package is functionally similar to the 
+%   standard \LaTeX\ package \package{inputenc}---both set up active 
+%   characters so that input character outside 7-bit ASCII are 
+%   converted to the corresponding \LaTeX\ commands. Names of commands 
+%   in \package{rtkinenc} have been selected so that it can read 
+%   \package{inputenc} encoding definition files, and the aim is that 
+%   \package{rtkinenc} should be backwards compatible with 
+%   \package{inputenc}. \package{rtkinenc} is not a new version of 
+%   \package{inputenc} though, nor is it part of standard \LaTeX.
+%   
+%   The main difference between the two packages lies in the view on the 
+%   input. With \package{inputenc}, the non-ASCII characters in the 
+%   input are considered as shorthand representations of the ``true'' 
+%   document contents (usually one or several commands), and the 
+%   conversion is therefore irreversible. With \package{rtkinenc} the 
+%   input file itself is considered the true document, and the 
+%   conversion of non-ASCII characters to \LaTeX\ commands is merely 
+%   done becuase it is the first step on the preferred route to typeset 
+%   output. If the command is for an unavailable text symbol, then it is 
+%   possible to return to the raw input and try some fallback method of 
+%   typesetting the character.
+%   
+%   The \package{inputenc} approach is natural for normal \LaTeX\ 
+%   documents, but the \package{rtkinenc} approach is advantageous for 
+%   program source code, where the \emph{true} meaning of a file is not 
+%   defined by \TeX, but by the compiler, interpreter, or whatever.
+% \end{abstract}
+% 
+% 
+% 
+% \StopEventually{}
+% 
+% \section{Implementation}
+% 
+%    \begin{macrocode}
+%<*pkg>
+\NeedsTeXFormat{LaTeX2e}[1995/12/01]
+\ProvidesPackage{rtkinenc}
+   [2000/01/24 v1.0 Rethinking input encoding package]
+%    \end{macrocode}
+% 
+% 
+% \subsection{Basic machanisms}
+% 
+% 
+% \begin{macro}{\RIE@last@char}
+%   |\RIE@last@char| is a |\count| register for storing the code 
+%   of the raw character currently being typeset. It is minus one 
+%   if no raw character is being typeset. This register should always 
+%   be set globally.
+%    \begin{macrocode}
+\newcount\RIE@last@char
+\global\RIE@last@char=\m@ne
+%    \end{macrocode}
+% \end{macro}
+% 
+% \begin{macro}{\RieC}
+% \begin{macro}{\RIE@char}
+% \begin{macro}{\RIE@text@char}
+% \begin{macro}{\RIE@code@char}
+%   The syntax for the |\RieC| command is
+%   \begin{quote}
+%     |\RieC|\marg{code}\marg{definition}
+%   \end{quote}
+%   Here \meta{code} is assumed to be a sequence of digits giving some 
+%   raw character code, and \meta{definition} is assumed to be robust 
+%   \LaTeX\ code for typesetting (some representation of) that raw 
+%   character. |\RieC| is used as \package{inputenc}'s |\IeC| 
+%   command---an |\RieC| with arguments form the definition of an 
+%   active character---but it carries extra information in the 
+%   \meta{code} argument.
+%   
+%   Depending on what the control sequences |\protect| and |\RIE@char| 
+%   are there are three different things this can do.
+%   \begin{itemize}
+%     \item It can execute the \meta{definition} straight off. This 
+%       happens when |\protect| is |\@typeset@protect| and |\RIE@char| 
+%       is |\RIE@text@char|.
+%     \item It can set |\RIE@last@char| to \meta{code}, then execute 
+%       the \meta{definition}, and finally set |\RIE@last@char| to minus 
+%       one. This happens when |\protect| is |\@typeset@protect| and 
+%       |\RIE@char| is |\RIE@code@char|.
+%       
+%       Setting |\RIE@last@char| like that has the side-effect of 
+%       prohibiting kerns and ligatures between the \meta{defintion} 
+%       and what surrounds it. Therefore it is inapproriate to have 
+%       |\RIE@char| equal to |\RIE@code@char| in many types of text, and 
+%       by default it will not be.
+%     \item It can expand to itself.\footnote{Unless some command in the 
+%       \meta{definition} was defined using \cs{DeclareRobustCommand}, in 
+%       which case it is the one level expansion of that command that 
+%       will expand to itself. It all works out right in the end anyway.}
+%       This happens when |\protect| is not |\@typeset@protect|, e.g.\ 
+%       when writing to a file.
+%   \end{itemize}
+%   
+%   |\RieC| cannot be defined using |\Declare|\-|Robust|\-|Command|, 
+%   since that would insert |\protect|s that would prohibit normal 
+%   kerning and ligaturing. Therefore the command robustness is 
+%   maintained through an ad hoc definition (the |\def|). The reason for 
+%   starting with an |\@ifundefined| is that the user shouldn't get 
+%   less info about a redefinition than he\slash she would with a 
+%   |\Declare|\-|Robust|\-|Command|.
+%    \begin{macrocode}
+\@ifundefined{RieC}{}{%
+   \PackageError{rtkinenc}{Redefining \protect\RieC}{%
+      I had expected \protect\RieC\space to be undefined.\MessageBreak
+      Since it wasn't, there's a chance I have\MessageBreak
+      broken something.\MessageBreak\@ehc
+   }
+}
+\def\RieC{%
+   \ifx \protect\@typeset@protect
+      \expandafter\RIE@char
+   \else
+      \noexpand\RieC
+   \fi
+}
+%    \end{macrocode}
+%    \begin{macrocode}
+\let\RIE@text@char=\@secondoftwo
+\let\RIE@char=\RIE@text@char
+%    \end{macrocode}
+%    \begin{macrocode}
+\def\RIE@code@char#1#2{%
+   \global\RIE@last@char=#1
+   #2%
+   \global\RIE@last@char=\m@ne
+}
+%    \end{macrocode}
+% \end{macro}\end{macro}\end{macro}\end{macro}
+% 
+% \begin{macro}{RieBC}
+% \begin{macro}{RIE@both@char}
+%   The syntax for the |\RieBC| command is
+%   \begin{quote}
+%     |\RieBC|\marg{code}\marg{text definition}\marg{math definition}
+%   \end{quote}
+%   Here \meta{code} is assumed to be a sequence of digits giving some 
+%   raw character code, whereas \meta{text definition} and 
+%   \meta{math definition} are assumed to be robust \LaTeX\ code for 
+%   typesetting (some representation of) that raw character in text and 
+%   math mode, respectively. |\RieBC| is used like |\RieC|, but offers 
+%   the possibility of alternative definitions for increased 
+%   typesetting quality.
+%   
+%    \begin{macrocode}
+\@ifundefined{RieBC}{}{%
+   \PackageError{rtkinenc}{Redefining \protect\RieBC}{%
+      I had expected \protect\RieBC\space to be undefined.\MessageBreak
+      Since it wasn't, there's a chance I have\MessageBreak
+      broken something.\MessageBreak\@ehc
+   }
+}
+\def\RieBC{%
+   \ifx \protect\@typeset@protect
+      \expandafter\RIE@both@char
+   \else
+      \noexpand\RieBC
+   \fi
+}
+%    \end{macrocode}
+%    \begin{macrocode}
+\def\RIE@both@char#1#2#3{%
+   \ifx \RIE@char\RIE@code@char
+      \global\RIE@last@char=#1
+   \fi
+   \ifmmode #3\else #2\fi
+   \ifx \RIE@char\RIE@code@char
+      \global\RIE@last@char=\m@ne
+   \fi
+}
+%    \end{macrocode}
+% \end{macro}\end{macro}
+% 
+% 
+% \begin{macro}{\TextSymbolUnavailable}
+% \begin{macro}{\@@TextSymbolUnavailable}
+% \begin{macro}{\SetUnavailableAction}
+% \begin{macro}{\RIE@symbol@unavailable}
+%   The only way to know whether a particular text command could be 
+%   rendered as intended or not is to seize control of the standard 
+%   \LaTeX\ command |\Text|\-|Symbol|\-|Unavailable|. This command will 
+%   then be given a new definition which selects whether some raw 
+%   character fallback macro or the standard \LaTeX\ error message 
+%   should be given. The raw character fallback macro can be set using 
+%   the |\Set|\-|Unavailable|\-|Action| command.
+%   
+%   Before seizing control of |\Text|\-|Symbol|\-|Unavailable|, one must 
+%   make sure that it does not have its autoload definition. Then the 
+%   \LaTeX\ definition is saved away in |\@@Text|\-|Symbol|\-^^A
+%   |Unavailable|.
+%    \begin{macrocode}
+\def\@tempa{\@autoerr\TextSymbolUnavailable}
+\ifx \@tempa\TextSymbolUnavailable
+   \@autoerr\relax
+\fi
+\let\@@TextSymbolUnavailable=\TextSymbolUnavailable
+%    \end{macrocode}
+%   
+%   Then the new definition is given. It is pretty straightforward.
+%    \begin{macrocode}
+\def\TextSymbolUnavailable{%
+   \ifnum \m@ne<\RIE@last@char
+      \expandafter\RIE@symbol@unavailable \expandafter\RIE@last@char
+   \else
+      \expandafter\@@TextSymbolUnavailable
+   \fi
+}
+\PackageInfo{rtkinenc}{Redefining \protect\TextSymbolUnavailable}
+%    \end{macrocode}
+%   
+%   The |\SetUnavailableAction| command locally defines the |\RIE@|\-^^A
+%   |symbol@|\-|unavailable| macro, which is executed instead of the 
+%   standard \LaTeX\ |\Text|\-|Symbol|\-|Unavailable| when the text 
+%   symbol in case was the representation of a raw input character. 
+%   |\Set|\-|Unavailable|\-|Action| is used as
+%   \begin{quote}
+%     |\SetUnavailableAction|\marg{definition}
+%   \end{quote}
+%   where \meta{definition} is like the last argument of |\newcommand|. 
+%   The \meta{definition} may contain |#1| and |#2|, where |#1| will 
+%   contain the current raw character number and |#2| will contain the 
+%   text command for which no definition could be found.
+%    \begin{macrocode}
+\newcommand\SetUnavailableAction{\def\RIE@symbol@unavailable##1##2}
+%    \end{macrocode}
+%   The default fallback action is to call |\@@Text|\-|Symbol|\-^^A
+%   |Unavailable|, but most of the definition deals with recognizing 
+%   and handling the case that the input character hasn't been 
+%   declared, rather than that its definition is not available. 
+%   Normally, this shouldn't be used at all; instead the user should 
+%   have installed another fallback.
+%    \begin{macrocode}
+\SetUnavailableAction{%
+   \ifx #2\relax
+      \begingroup
+         \let\RIE@char=\RIE@text@char
+         \RIE@undefined{#1}%
+      \endgroup
+   \else
+      \@@TextSymbolUnavailable{#2}%
+   \fi
+}
+%    \end{macrocode}
+% \end{macro}\end{macro}\end{macro}\end{macro}
+%
+% 
+% \begin{macro}{\RIE@undefined}
+%   The |\RIE@undefined| macro is used in the definition of input 
+%   characters which are not defined in the current input encoding. It 
+%   takes one argument, namely the code for the character in question. 
+%   In text mode, this is an error. In code mode, it is passed on to 
+%   the unavailable-action macro |\RIE@|\-|symbol@|\-|unavailable|. The 
+%   default value of |\RIE@|\-|symbol@|\-|unavailable| recognizes the 
+%   |\relax| passed as second argument below as a flag that in reality 
+%   it's the input character that hasn't been defined.
+%    \begin{macrocode}
+\def\RIE@undefined#1{%
+   \ifx \RIE@char\RIE@text@char
+      \PackageError{rtkinenc}{%
+         Input character #1 is undefined\MessageBreak
+         in inputencoding \RIE@encoding}\@eha
+   \else
+      \RIE@symbol@unavailable{#1}\relax
+   \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%  
+% 
+% \begin{macro}{\InputModeCode}
+% \begin{macro}{\InputModeText}
+% \begin{macro}{\IfInputModeCode}
+%   The |\InputModeCode| and |\InputModeText| commands switch to the 
+%   `code' and `text' respectively modes for the \package{rtkinenc} 
+%   package. They both act locally, since it is often convenient to have 
+%   the previous mode restored at the end of an environment.
+%   
+%   The |\IfInputModeCode| command can be used to test which mode the 
+%   \package{rtkinenc} package currently is in. Is is used as
+%   \begin{quote}
+%     |\IfInputModeCode|\marg{code}\marg{text}
+%   \end{quote}
+%   This will expand to \meta{code} or \meta{text} when the current mode 
+%   is code mode or text mode, respectively.
+%    \begin{macrocode}
+\newcommand\InputModeCode{\let\RIE@char=\RIE@code@char}
+\newcommand\InputModeText{\let\RIE@char=\RIE@text@char}
+\newcommand\IfInputModeCode{%
+   \ifx \RIE@char\RIE@code@char
+      \expandafter\@firstoftwo
+   \else
+      \expandafter\@secondoftwo
+   \fi
+}
+%    \end{macrocode}
+% \end{macro}\end{macro}\end{macro}
+% 
+% 
+% \subsection{Setting the input encoding}
+% 
+% The first two commands are identical; the duplication is only for 
+% being compabile with \package{inputenc}. The reason that there are two 
+% different commands in \package{inputenc} is that |\Declare|\-|Input|^^A
+% \-|Math| saves a little memory by not taking special measures to see 
+% to that a space (if there is any) that follows the input character is 
+% not gobbled in case it is written to a temporary file and subsequently 
+% read back. Saving that small amount of memory is not the aim for 
+% \package{rtkinenc}, which is instead using up even more memory by 
+% including the character code in the definition.
+% 
+% \begin{macro}{\DeclareInputText}
+% \begin{macro}{\DeclareInputMath}
+%   These two commands are used as
+%   \begin{quote}
+%     |\DeclareInputText|\marg{slot}\marg{definition}\\
+%     |\DeclareInputMath|\marg{slot}\marg{definition}
+%   \end{quote}
+%   This makes the active character whose character code is 
+%   \meta{slot} a parameterless macro whose expansion is
+%   \begin{quote}
+%     |\RieC|\marg{slot (sanitized)}\marg{definition}
+%   \end{quote}
+%   \meta{slot (sanitized)} has the same numerical value as 
+%   \meta{slot}, but consists only of decimal digits. \meta{definition} 
+%   is the same in both cases.
+%   
+%    \begin{macrocode}
+\expandafter\ifx \csname DeclareInputText\endcsname\relax
+   \begingroup
+      \catcode\z@=13
+      \gdef\DeclareInputText#1#2{%
+         \@inpenc@test
+         \begingroup
+            \uccode\z@=#1%
+            \uppercase{%
+         \endgroup
+            \expandafter\def \expandafter^^@%
+         }\expandafter{\expandafter\RieC \expandafter{\number#1}{#2}}%
+      }%
+   \endgroup
+\else
+   \PackageError{rtkinenc}{\protect\DeclareInputText\space
+      already defined}{\@ehd\MessageBreak 
+      Likely cause: you are already using the inputenc package.}
+\fi
+%    \end{macrocode}
+%    \begin{macrocode}
+\@ifundefined{DeclareInputMath}{%
+   \let\DeclareInputMath=\DeclareInputText
+}{%
+   \PackageError{rtkinenc}{\protect\DeclareInputMath\space
+      already defined}{\@ehd\MessageBreak 
+      Likely cause: you are already using the inputenc package.}
+}
+%    \end{macrocode}
+% \end{macro}\end{macro}
+% 
+% \begin{macro}{\DeclareInputBoth}
+%   The |\DeclareInputBoth| command is similar to |\Declare|\-^^A
+%   |Input|\-|Text| and |\Declare|\-|Input|\-|Math| commands, but it 
+%   offers an extra feature---the text and math definitions of a 
+%   character can be different. |\Declare|\-|Input|\-|Both| is used as
+%   \begin{quote}
+%     |\DeclareInputBoth|\marg{slot}\marg{text}\marg{math}
+%   \end{quote}
+%   where \meta{text} and \meta{math} are the text and math mode 
+%   definitions respectively.
+%    \begin{macrocode}
+\expandafter\ifx \csname DeclareInputBoth\endcsname\relax
+   \begingroup
+      \catcode\z@=13
+      \gdef\DeclareInputBoth#1#2#3{%
+         \@inpenc@test
+         \begingroup
+            \uccode\z@=#1%
+            \uppercase{%
+         \endgroup
+            \expandafter\def \expandafter^^@%
+         }\expandafter{\expandafter\RieBC \expandafter{\number#1}%
+            {#2}{#3}%
+         }%
+      }%
+   \endgroup
+\else
+   \PackageError{rtkinenc}{\protect\DeclareInputBoth\space
+      already defined}\@ehd
+\fi
+%    \end{macrocode}
+% \end{macro}
+% 
+% 
+% \begin{macro}{\inputencoding}
+% \begin{macro}{\@inpenc@test}
+% \begin{macro}{\RIE@encoding}
+%   The |\inputencoding| command sets the current input encoding to be 
+%   the one specified in its only argument. First all characters are 
+%   set to be active and defined as |\RIE@undefined|\marg{slot}, except 
+%   for Null (|^^@|), tab (|^^I|), line feed (|^^J|), form feed (|^^L|), 
+%   carriage return (|^^M|), and space--|~| which are left as they were. 
+%   Then |#1.def| is inputed; this file is expected to contain all the 
+%   |\DeclareInput|\textellipsis\ commands that are needed for the 
+%   wanted input encoding.
+%   
+%   Besides that, |\inputencoding| also does a check to see that the 
+%   file |#1.def| actually did execute some |\DeclareInput|^^A
+%   \textellipsis\ command. Since it wouldn't at all surprise me if 
+%   someone likes to tinker with this test, it is done exactly as in 
+%   \package{inputenc}.
+%   
+%   |\inputencoding| should not be used in horizontal mode since space 
+%   tokens within the file inputed will produce unwanted spaces in the 
+%   output.
+%   
+%   |\RIE@encoding| stores the name of the current input encoding. It is 
+%   used in an error message by |\RIE@undefined|.
+%   
+%    \begin{macrocode}
+\def\inputencoding#1{%
+   \gdef\@inpenc@test{\global\let\@inpenc@test\relax}%
+   \protected@edef\RIE@encoding{#1}%
+   \ifvmode
+      \RIE@loop\^^A\^^H%
+      \RIE@loop\^^K\^^K%
+      \RIE@loop\^^N\^^_%
+      \RIE@loop\^^?\^^ff%
+      \input{#1.def}%
+   \fi
+   \ifx \@inpenc@test\relax \else
+      \PackageWarning{rtkinenc}%
+              {No characters defined\MessageBreak
+               by input encoding change to `#1'}%
+   \fi
+}  
+%    \end{macrocode}
+% \end{macro}\end{macro}\end{macro}
+%
+% \begin{macro}{\RIE@loop}
+%   The |\RIE@loop| command makes characters |#1| to |#2| inclusive 
+%   active and undefined.
+%    \begin{macrocode}
+\begingroup
+   \catcode\z@=\active
+   \gdef\RIE@loop#1#2{%
+      \@tempcnta=`#1\relax
+      \count@=\uccode\z@
+      \loop
+         \catcode\@tempcnta\active
+         \uccode\z@=\@tempcnta
+         \uppercase{%
+            \expandafter\def \expandafter^^@\expandafter{%
+               \expandafter\RIE@undefined\expandafter{\the\@tempcnta}%
+            }%
+         }%
+      \ifnum `#2>\@tempcnta
+         \advance \@tempcnta \@ne
+      \repeat
+      \uccode\z@=\count@
+   }
+\endgroup
+%    \end{macrocode}
+% \end{macro}
+% 
+% 
+% \subsection{Miscellanea}
+% 
+% \begin{macro}{\TypesetHexNumber}
+% \begin{macro}{\TypesetOctalNumber}
+%   In many computer languages, special character escape sequences based 
+%   on character codes must be written with the character code in 
+%   hexadecimal or octal notation. These commands take a \TeX\ number 
+%   in the interval 0--255 as argument and typesets it using the 
+%   hexadecimal (figures |0|--|9| and |a|--|f|) or octal (figures 
+%   |0|--|7|) notation. No font changes or \TeX\ mode changes are made. 
+%   |\TypesetHexNumber| always typesets two characters, 
+%   |\TypesetOctalNumber| always typesets three characters. 
+%   
+%   Care has been taken to see to that every count register can be used 
+%   as the argument of these two macros, and they only make local 
+%   assignments. They do not check that the argument is in range, though.
+%    \begin{macrocode}
+\newcommand\TypesetHexNumber[1]{%
+   \begingroup
+      \count@=#1\relax
+      \chardef\@tempa=\count@
+      \divide \count@ \sixt@@n
+      \ifcase\count@
+         0\or 1\or 2\or 3\or 4\or 5\or 6\or 7\or 8\or 9\or a\or b\or
+         c\or d\or e\else f%
+      \fi
+      \multiply \count@ -\sixt@@n
+      \advance \count@ \@tempa
+      \ifcase\count@
+         0\or 1\or 2\or 3\or 4\or 5\or 6\or 7\or 8\or 9\or a\or b\or
+         c\or d\or e\else f%
+      \fi
+   \endgroup
+}
+%    \end{macrocode}
+%    \begin{macrocode}
+\newcommand\TypesetOctalNumber[1]{%
+   \begingroup
+      \count@=#1\relax
+      \chardef\@tempa=\count@
+      \divide \count@ 64\relax
+      \the\count@
+      \multiply \count@ -64%
+      \advance \count@ \@tempa
+      \chardef\@tempa=\count@
+      \divide \count@ 8\relax
+      \the\count@
+      \multiply \count@ -8%
+      \advance \count@ \@tempa
+      \the\count@
+   \endgroup
+}
+%    \end{macrocode}
+% \end{macro}\end{macro}
+% 
+% \begin{macro}{\verifycharcode}
+%   The |\verifycharcode| command is used as
+%   \begin{quote}
+%     |\verifycharcode|\marg{character}\marg{code}
+%   \end{quote}
+%   Here \meta{character} can be any \meta{character token} (as defined 
+%   in \emph{The \TeX book}); e.g.\ a control sequence whose name 
+%   consists of one charater. \meta{code} can be any valid \meta{number}. 
+%   If \meta{code} is not the character code of the \meta{character}, 
+%   then |\verifycharcode| makes a warning about this.
+%   
+%   The purpose of this command is to detect when the code of some 
+%   character used in a document is changed. Today these things happen 
+%   mainly when transferring a document between two systems which use
+%   different encodings, and it is usually the right thing do. Some 
+%   computer programs (and now I mean the source) do however rely on the 
+%   exact character codes used in them, and documents containing such 
+%   programs may use the |\verifycharcode| to test that none of the 
+%   critical characters have been altered.
+%    \begin{macrocode}
+\newcommand\verifycharcode[2]{%
+   \ifnum `#1=#2 \else
+      \PackageWarning{rtkinenc}{%
+         Input character with code \number#2\MessageBreak
+         should be the character with code \number`#1}%
+   \fi
+}
+%    \end{macrocode}
+% \end{macro}
+% 
+% 
+% \subsection{Option processing}
+% 
+% Each option is interpreted as the name of an input encoding. That 
+% input encoding definition file is inputed.
+% 
+%    \begin{macrocode}
+\DeclareOption*{\inputencoding{\CurrentOption}}
+\ProcessOptions
+%</pkg>
+%    \end{macrocode}
+% 
+% \Finale
+\endinput
