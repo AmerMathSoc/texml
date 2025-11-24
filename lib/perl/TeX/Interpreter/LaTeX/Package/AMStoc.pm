@@ -88,6 +88,8 @@ sub do_label_toc_entries {
                 if (defined($target)) {
                     if (nonempty(my $type = $target->getAttribute('specific-use'))) {
                         $entry->setAttribute('specific-use', $type);
+                    } else {
+                        $entry->setAttribute('specific-use', $target->nodeName);
                     }
 
                     if (nonempty(my $style = $target->getAttribute('style'))) {
@@ -269,12 +271,20 @@ __DATA__
         \startXMLelement{toc}%
             \addXMLid
             \par
-            \startXMLelement{title-group}% TBD: Change to toc-title-group
+\ifNEWappendixes@
+            \startXMLelement{toc-title-group}%
+\else
+            \startXMLelement{title-group}%
+\fi
                 \label{@starttoc:#1}%
                 \startXMLelement{title}%
                     {\xmlpartag{}#2\par}%
                 \endXMLelement{title}%
+\ifNEWappendixes@
+            \endXMLelement{toc-title-group}%
+\else
             \endXMLelement{title-group}%
+\fi
         \endXMLelement{toc}%
         \if@filesw
             \@xp\newwrite\csname tf@#1\endcsname
