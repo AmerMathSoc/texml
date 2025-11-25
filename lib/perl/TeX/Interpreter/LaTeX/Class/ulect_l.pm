@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Class::ulect_l;
 
-# Copyright (C) 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,7 +34,7 @@ package TeX::Interpreter::LaTeX::Class::ulect_l;
 use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -53,6 +55,13 @@ __DATA__
 \LoadClass{amsbook}
 
 \seriesinfo{ulect}{}{}
+
+\def\AMS@publname{University Lecture Series}
+
+\def\AMS@pissn{1047-3998}
+\def\AMS@eissn{2376-919X}
+
+\def\AMS@series@url{https://www.ams.org/ulect-mon}
 
 \endinput
 
