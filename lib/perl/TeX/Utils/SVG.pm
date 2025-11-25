@@ -180,7 +180,7 @@ sub add_title {
 
     my $title = $dom->createElement("title");
 
-    $title->setAttribute('data-source', $data_src);
+    $title->setAttribute('data-texml-source', $data_src);
 
     $title->setAttribute(id => $id);
 
