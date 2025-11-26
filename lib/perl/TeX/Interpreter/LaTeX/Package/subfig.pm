@@ -173,12 +173,13 @@ __DATA__
             \fi
         % \fi
         \ifnum\strcmp{#3}{}=\z@\else
-            \startXMLelement{caption}%
-                \begingroup
+            \begingroup
+                \let\par\@@par
+                \startXMLelement{caption}\par
                     \xmlpartag{p}%
                     #3\par
-                \endgroup
-            \endXMLelement{caption}%
+                \endXMLelement{caption}%
+            \endgroup
         \fi
     \fi
 }
