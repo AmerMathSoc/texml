@@ -342,7 +342,7 @@ sub convert_tex {
         my $pkg = $CFG->val(__PACKAGE__, 'stix_dvi_pkg', 'stix2');
 
         print { $fh } qq{\\RequirePackage{$pkg}\n\n};
-
+    } else {
         print { $fh } qq{\\csname \@namedef\\endcsname{ver\@stix2.sty}{1900/01/01}\n\n};
     }
 
