@@ -342,6 +342,8 @@ sub convert_tex {
         my $pkg = $CFG->val(__PACKAGE__, 'stix_dvi_pkg', 'stix2');
 
         print { $fh } qq{\\RequirePackage{$pkg}\n\n};
+
+        print { $fh } qq{\\csname \@namedef\\endcsname{ver\@stix2.sty}{1900/01/01}\n\n};
     }
 
     if (nonempty(my $docclass = $self->get_docclass())) {
@@ -375,6 +377,7 @@ sub convert_tex {
         print { $fh } qq{\\usepackage{unicode-math}\n};
         print { $fh } qq{\\setmainfont{STIX Two Text}[Ligatures=TeX,Script=Default]\n};
         print { $fh } qq{\\setmathfont{STIX Two Math}\n};
+        print { $fh } qq{\\let\\mathbf\\relax\n};
         print { $fh } qq{\\setmathfontface\\mathbf{STIX Two Text Bold}\n};
         print { $fh } qq{\\setmathfontface\\mathit{STIX Two Text Italic}\n};
         printf { $fh } qq{\\setmathfontface\\mathsf{%s}\n}, MATH_SF_FONT;
