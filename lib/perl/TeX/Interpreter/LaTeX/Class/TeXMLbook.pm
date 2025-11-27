@@ -369,6 +369,7 @@ __DATA__
 \def\appendixname{Appendix}
 
 \def\chapter{%
+    \everypar{}%
     \@chapdef\@chapter\@schapter
 }
 
@@ -419,6 +420,7 @@ __DATA__
 }
 
 \def\chapter@app{%
+    \everypar{}%
     \@chapdef\chapter@app@\chapter@app@
 }
 
