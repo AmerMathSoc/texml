@@ -1732,25 +1732,32 @@ __DATA__
 
 \DeclareTeXMLMathAlphabet\mathnormal
 \DeclareTeXMLMathAlphabet\mathrm
+\DeclareTeXMLMathAlphabet\symrm
 \DeclareTeXMLMathAlphabet\mathbf
+\DeclareTeXMLMathAlphabet\symbf
 % \DeclareTeXMLMathAlphabet\mathbfup
 \DeclareTeXMLMathAlphabet\mathit
 \DeclareTeXMLMathAlphabet\mathbfit
+\DeclareTeXMLMathAlphabet\symbfit
 % \DeclareTeXMLMathAlphabet\mathbfcal
 \DeclareTeXMLMathAlphabet\mathcal
 \DeclareTeXMLMathAlphabet\mathscr
 \DeclareTeXMLMathAlphabet\mathbfscr
 \DeclareTeXMLMathAlphabet\mathsf
+\DeclareTeXMLMathAlphabet\symsf
 \DeclareTeXMLMathAlphabet\mathbfsf
+\DeclareTeXMLMathAlphabet\symbfsf
 % \DeclareTeXMLMathAlphabet\mathbfsfup
 % \DeclareTeXMLMathAlphabet\mathbfit
 \DeclareTeXMLMathAlphabet\mathsfit
+\DeclareTeXMLMathAlphabet\symsfit
 % \DeclareTeXMLMathAlphabet\mathsfup
 \DeclareTeXMLMathAlphabet\mathbb
 % \DeclareTeXMLMathAlphabet\mathbbit
 \DeclareTeXMLMathAlphabet\mathfrak
 \DeclareTeXMLMathAlphabet\mathbffrak
 \DeclareTeXMLMathAlphabet\mathtt
+\DeclareTeXMLMathAlphabet\symtt
 
 \DeclareTeXMLMathAccent\underbrace
 
