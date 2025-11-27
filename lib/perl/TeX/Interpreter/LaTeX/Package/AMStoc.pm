@@ -271,20 +271,12 @@ __DATA__
         \startXMLelement{toc}%
             \addXMLid
             \par
-\ifNEWappendixes@
             \startXMLelement{toc-title-group}%
-\else
-            \startXMLelement{title-group}%
-\fi
                 \label{@starttoc:#1}%
                 \startXMLelement{title}%
                     {\xmlpartag{}#2\par}%
                 \endXMLelement{title}%
-\ifNEWappendixes@
             \endXMLelement{toc-title-group}%
-\else
-            \endXMLelement{title-group}%
-\fi
         \endXMLelement{toc}%
         \if@filesw
             \@xp\newwrite\csname tf@#1\endcsname
