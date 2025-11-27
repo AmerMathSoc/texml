@@ -83,7 +83,6 @@ __DATA__
         \start@XML@section{chapter}{0}{%
             \ifx\chaptername\appendixname\appendixname\fi
         }{#2}%
-        \let\XML@section@tag\default@XML@section@tag %% TBD: remove this line
         \let\footnote\@gobble
         \ifx\chaptername\appendixname
             \@tocwriteb\tocappendix{chapter}{#2}%

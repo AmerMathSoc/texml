@@ -257,9 +257,6 @@ __DATA__
 
 \ProvidesPackage{LTsect}
 
-\newif\ifNEWappendixes@
-\NEWappendixes@false
-
 \newif\if@ams@empty
 
 \def\ams@measure#1{%
@@ -326,10 +323,18 @@ __DATA__
 
 \let\@secnumpunct\@empty
 
+\let\deferred@section@title\@empty
+
+\let\this@section@title\@empty
+
 \def\@sect#1#2#3#4#5#6[#7]#8{%
     \def\@currentreftype{sec}%
     \set@sec@subreftype{#1}%
-    \ams@measure{#8}%
+    \def\this@section@title{#8}%
+    \ifx\this@section@title\@empty
+        \let\this@section@title\deferred@section@title
+    \fi
+    \ams@measure{\this@section@title}%
     \edef\@toclevel{\number#2}%
     \if@texml@deferredsection@
         \if@numbered \st@rredfalse \else \st@rredtrue\fi
@@ -365,7 +370,7 @@ __DATA__
             }%
         \fi
     \fi
-    \start@XML@section{#1}{\@toclevel}{\@svsec}{#8}%
+    \start@XML@section{#1}{\@toclevel}{\@svsec}{}%
     \ifnum#2>\@m \else \@tocwrite{#1}{#8}\fi
 }
 
@@ -425,7 +430,7 @@ __DATA__
 \def\texml@part@level{-1}
 \def\texml@chapter@level{0}
 
-\def\start@XML@section#1#2#3#4{
+\def\start@XML@section#1#2#3#4{%
 % #1 = section type  (part, chapter, section, subsection, etc.)
 % #2 = section level (-1,   0,       1,       2,          etc.)
 % #3 = section label (including punctuation)
@@ -433,7 +438,10 @@ __DATA__
     \par
     \stepXMLid
     \begingroup
-        \ifinXMLelement{\XML@appendix@group@element}% TBD: {app-group}%
+        \ifx\this@section@title\@empty
+            \def\this@section@title{#4}%
+        \fi
+        \ifinXMLelement{app-group}% JATS only, not BITS
             \ifnum#2=1
                 \def\XML@section@tag{app}%
             \fi
@@ -478,14 +486,11 @@ __DATA__
             \let\label\relax
             \let\footnote\relax
             \let\index\relax
-            \protected@xdef\@tempa{#4}%
+            \protected@xdef\this@section@title{\this@section@title}%
         \endgroup
-        \ifx\@tempa\@empty
-            \let\@tempa\deferred@section@title
-        \fi
-        \ifx\@tempa\@empty\else
+        \ifx\this@section@title\@empty\else
             \startXMLelement{title}%
-            \ignorespaces\@tempa\if@ams@inline\@addpunct.\fi
+            \ignorespaces\this@section@title\if@ams@inline\@addpunct.\fi
             \endXMLelement{title}%
         \fi
         \par
@@ -493,6 +498,7 @@ __DATA__
             \endXMLelement{\XML@section@tag heading}%
         \fi
     \endgroup
+    \glet\this@section@title\@empty
     \clear@deferred@section
 }
 

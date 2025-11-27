@@ -490,8 +490,6 @@ __DATA__
 
 \def\section@subreftype@{section}
 
-\def\partname{Part}
-
 %    Specialsection correlates to our inhouse Z-head.
 %    \begin{macrocode}
 % \def\specialsection{\@startsection{section}{1}{}{}{}{}}
@@ -1356,23 +1354,12 @@ __DATA__
 
 \def\appendixname{Appendix}
 
-\ifNEWappendixes@\else
-\def\XML@appendix@group@element{app-group}% TBD: remove this line
-\fi
-
 \def\appendix{%
     \par
     \backmatter
-\ifNEWappendixes@
     \startXMLelement{app-group}%
-\else
-    \startXMLelement{\XML@appendix@group@element}% TBD: {app-group}%
-\fi
     \addXMLid
-\ifNEWappendixes@
     \@push@sectionstack{\texml@app@group@level}{app-group}%
-\fi
-    \@push@sectionstack{\texml@app@group@level}{\XML@appendix@group@element}%
     \c@section\z@
     \c@subsection\z@
     \let\sectionname\appendixname

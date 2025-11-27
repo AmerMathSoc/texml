@@ -283,9 +283,6 @@ __DATA__
         \global\@backmatterfalse
         \startXMLelement{front-matter}%
         \addXMLid
-\ifNEWappendixes@\else
-        \def\XML@section@tag{sec}% TBD: remove this line
-\fi
     \fi
 }
 
@@ -301,9 +298,6 @@ __DATA__
         \addXMLid
         \startXMLelement{book-part}%
         \startXMLelement{body}%
-\ifNEWappendixes@\else
-        \def\XML@section@tag{sec}% TBD: remove this line
-\fi
         \mainmatter@hook
     \fi
 }
@@ -316,11 +310,6 @@ __DATA__
         \global\@backmattertrue
         \startXMLelement{book-back}%
         \addXMLid
-        %% TBD: remove next two lines
-\ifNEWappendixes@\else
-        \def\XML@section@tag{book-app}%
-        \let\default@XML@section@tag\XML@section@tag
-\fi
     \fi
 }
 
@@ -329,8 +318,6 @@ __DATA__
 \def\XML@appendix@group@element{book-app-group}% for cleveref
 
 %% TBD: replace definition of \appendix
-
-\ifNEWappendixes@
 
 \def\appendix{%
     \kernel@ifnextchar[\appendix@{\appendix@[]}%
@@ -360,29 +347,6 @@ __DATA__
     \fi
 }
 
-\else
-
-\def\appendix{%
-    \ifappendix\else
-        \par
-        \backmatter
-        \appendixtrue
-        \startXMLelement{\XML@appendix@group@element}%
-        \addXMLid
-        \@push@sectionstack{-1}{\XML@appendix@group@element}%
-        \c@chapter\z@
-        \c@section\z@
-        \c@subsection\z@
-        \let\chaptername\appendixname
-        \def\thechapter{\@Alph\c@chapter}%
-        \def\@chapterefsubtype{appendix}%
-    \fi
-}
-
-\let\default@XML@section@tag\XML@section@tag %% TBD: remove this line
-
-\fi
-
 \def\@Guess@FM@type#1{%
     \if@frontmatter
         \begingroup
@@ -397,17 +361,9 @@ __DATA__
 
 % TBD: Replace \@chapdef
 
-\ifNEWappendixes@
-
 \def\@chapdef#1#2{%
     \@ifstar {\st@rredtrue\@dblarg{#2}} {\st@rredfalse\@dblarg{#1}}%
 }
-
-\else
-
-\def\@chapdef#1#2{\@ifstar{\@dblarg{#2}}{\@dblarg{#1}}}
-
-\fi
 
 \def\chaptername{Chapter}
 \def\appendixname{Appendix}
@@ -415,8 +371,6 @@ __DATA__
 \def\chapter{%
     \@chapdef\@chapter\@schapter
 }
-
-\ifNEWappendixes@
 
 \def\@chapter[#1]#2{%
     \def\@currentreftype{sec}%
@@ -486,6 +440,8 @@ __DATA__
     \@ams@inlinefalse
     \startXMLelement{book-app}%
         \addXMLid
+        \setXMLattribute{specific-use}{chapter}%
+        \setXMLattribute{disp-level}{\texml@chapter@level}%
         \@push@sectionstack{\texml@book@app@level}{book-app}%
         \startXMLelement{book-part-meta}%
             \startXMLelement{title-group}%
@@ -508,63 +464,7 @@ __DATA__
     \@afterheading
 }
 
-\else
-
-\def\@chapterefsubtype{chapter}
-
-\def\@chapter[#1]#2{%
-    \def\@currentreftype{sec}%
-    \edef\@currentrefsubtype{\@chapterefsubtype}%
-    \def\@toclevel{0}%
-    \@Guess@FM@type{#2}%
-    \let\@secnumber\@empty
-    \ifnum\c@secnumdepth<\@toclevel\relax \else
-        \ifx\thechapter\@empty \else
-            \refstepcounter{chapter}%
-            \edef\@secnumber{\thechapter}%
-        \fi
-    \fi
-    \typeout{\ifx\chaptername\@empty\else\chaptername\space\fi\@secnumber}%
-    \@ams@inlinefalse
-    \start@XML@section{chapter}{0}{%
-        \ifnum\c@secnumdepth<\@toclevel \else
-            \ifx\chaptername\@empty\else
-                \chaptername\space
-            \fi
-        \fi
-        \@secnumber
-    }{#2}%
-    \let\XML@section@tag\default@XML@section@tag
-    \ifx\chaptername\appendixname
-        \@tocwriteb\tocappendix{chapter}{#2}%
-    \else
-        \@tocwriteb\tocchapter{chapter}{#2}%
-    \fi
-    \@afterheading
-}
-
-\def\@schapter[#1]#2{%
-    \let\saved@footnote\footnote
-    \let\footnote\@gobble
-    \typeout{#2}%
-    \@Guess@FM@type{#2}%
-    \def\@toclevel{0}%
-    \let\@secnumber\@empty
-    \let\footnote\saved@footnote
-    \@ams@inlinefalse
-    \start@XML@section{chapter}{0}{}{#2}%
-    \let\XML@section@tag\default@XML@section@tag
-    \let\footnote\@gobble
-    \ifx\chaptername\appendixname
-        \@tocwriteb\tocappendix{chapter}{#2}%
-    \else
-        \@tocwriteb\tocchapter{chapter}{#2}%
-    \fi
-    \let\footnote\saved@footnote
-    \@afterheading
-}
-
-\fi
+\def\partname{Part}
 
 \def\part{\secdef\@part\@spart}
 
@@ -581,6 +481,13 @@ __DATA__
     \start@XML@section{part}{-1}{\partname\space\@secnumber}{#2}%
     \@tocwriteb\tocpart{part}{#2}%
     \@afterheading
+    %%
+    %% If there is any text before the first sectioning command,
+    %% we need to make sure there is still a <sec> element
+    %% wrapping that text.  A \chapter or \section command will
+    %% reset \everypar{}
+    %%
+    \everypar{\subsection*{}}%
 }
 
 \def\@spart#1{%
@@ -591,6 +498,13 @@ __DATA__
     \start@XML@section{part}{-1}{}{#1}%
     \@tocwriteb\tocpart{part}{#1}%
     \@afterheading
+    %%
+    %% If there is any text before the first sectioning command,
+    %% we need to make sure there is still a <sec> element
+    %% wrapping that text.  A \chapter or \section command will
+    %% reset \everypar{}
+    %%
+    \everypar{\subsection*{}}%
 }
 
 \newenvironment{dedication}{%
