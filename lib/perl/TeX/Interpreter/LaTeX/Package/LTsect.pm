@@ -453,6 +453,7 @@ __DATA__
         \fi
         \ifinXMLelement{statement}%
             \startXMLelement{\XML@section@tag heading}%
+            \@texml@warning{#1 nested inside <statement>}%
         \else
             \@pop@sectionstack{#2}%
             \startXMLelement{\XML@section@tag}%
