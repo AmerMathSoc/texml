@@ -254,6 +254,7 @@ __DATA__
 
 \def\@end@BITS@section{%
     \@clear@sectionstack
+    \addtocontents{toc}{\@clear@tocstack}%
     \if@frontmatter
         \endXMLelement{front-matter}%
     \else
@@ -317,8 +318,6 @@ __DATA__
 
 \def\XML@appendix@group@element{book-app-group}% for cleveref
 
-%% TBD: replace definition of \appendix
-
 \def\appendix{%
     \kernel@ifnextchar[\appendix@{\appendix@[]}%
 }
@@ -338,7 +337,7 @@ __DATA__
                 \endXMLelement{title-group}%
             \endXMLelement{book-part-meta}%
         \fi
-        \let\chapter\chapter@app
+        \let\@chapter\@chapter@app
         \c@chapter\z@
         \c@section\z@
         \c@subsection\z@
@@ -359,72 +358,52 @@ __DATA__
     \fi
 }
 
-% TBD: Replace \@chapdef
-
-\def\@chapdef#1#2{%
-    \@ifstar {\st@rredtrue\@dblarg{#2}} {\st@rredfalse\@dblarg{#1}}%
-}
-
 \def\chaptername{Chapter}
 \def\appendixname{Appendix}
 
 \def\chapter{%
     \everypar{}%
-    \@chapdef\@chapter\@schapter
+    \maybe@st@rred{\@dblarg\@chapter}%
 }
 
 \def\@chapter[#1]#2{%
-    \def\@currentreftype{sec}%
-    \edef\@currentrefsubtype{chapter}%
     \let\@toclevel\texml@chapter@level
     \let\@secnumber\@empty
-    \ifnum \c@secnumdepth < \@toclevel \relax \else
-        \ifx\thechapter\@empty \else
-            \refstepcounter{chapter}%
-            \edef\@secnumber{\thechapter}%
+    \let\saved@footnote\footnote
+    \ifst@rred
+        \let\footnote\@gobble@opt
+        \typeout{#2}%
+        \let\footnote\saved@footnote
+    \else
+        \def\@currentreftype{sec}%
+        \edef\@currentrefsubtype{chapter}%
+        \ifnum \c@secnumdepth < \@toclevel \relax \else
+            \ifx\thechapter\@empty \else
+                \refstepcounter{chapter}%
+                \edef\@secnumber{\thechapter}%
+            \fi
         \fi
+        \typeout{\ifx\chaptername\@empty\else\chaptername\space\fi\@secnumber}%
     \fi
-    \typeout{\ifx\chaptername\@empty\else\chaptername\space\fi\@secnumber}%
     \@ams@inlinefalse
     \@Guess@FM@type{#2}%
     \start@XML@section{chapter}{\texml@chapter@level}{%
-        \ifnum\c@secnumdepth<\@toclevel \else
-            \ifx\chaptername\@empty\else
-                \chaptername\space
+        \ifst@rred\else
+            \ifnum\c@secnumdepth<\@toclevel \else
+                \ifx\chaptername\@empty\else
+                    \chaptername\space
+                \fi
             \fi
+            \@secnumber
         \fi
-        \@secnumber
     }{#2}%
+    \let\footnote\@gobble@opt
     \@tocwriteb\tocchapter{chapter}{#2}%
-    \@afterheading
-}
-
-\def\@schapter[#1]#2{%
-    \let\saved@footnote\footnote
-    \let\footnote\@gobble
-    \typeout{#2}%
-    \let\@toclevel\texml@chapter@level
-    \let\@secnumber\@empty
-    \let\footnote\saved@footnote
-    \@ams@inlinefalse
-    \@Guess@FM@type{#2}%
-    \start@XML@section{chapter}{0}{}{#2}%
-    \let\footnote\@gobble
-    \ifx\chaptername\appendixname
-        \@tocwriteb\tocappendix{chapter}{#2}%
-    \else
-        \@tocwriteb\tocchapter{chapter}{#2}%
-    \fi
     \let\footnote\saved@footnote
     \@afterheading
 }
 
-\def\chapter@app{%
-    \everypar{}%
-    \@chapdef\chapter@app@\chapter@app@
-}
-
-\def\chapter@app@[#1]#2{%
+\def\@chapter@app[#1]#2{%
     \@pop@sectionstack{\texml@book@app@level}%
     \def\@currentreftype{sec}%
     \def\@currentrefsubtype{appendix}%
