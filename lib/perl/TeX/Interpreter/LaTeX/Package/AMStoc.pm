@@ -33,7 +33,11 @@ use v5.26.0;
 
 use warnings;
 
+use TeX::Constants qw(:named_args);
+
 use TeX::Token qw(:catcodes);
+
+use TeX::TokenList qw(:factories);
 
 use TeX::Utils::Misc;
 
@@ -42,6 +46,11 @@ use TeX::Utils::Misc;
 ##                             METHODS                              ##
 ##                                                                  ##
 ######################################################################
+
+my sub do_finish_toc;
+my sub do_push_toc_stack;
+my sub do_pop_toc_stack;
+my sub do_clear_toc_stack;
 
 sub install {
     my $class = shift;
@@ -54,6 +63,10 @@ sub install {
 
     $tex->define_csname('@finishtoc' => \&do_finish_toc);
 
+    $tex->define_csname('@push@tocstack'      => \&do_push_toc_stack);
+    $tex->define_pseudo_macro('@pop@tocstack' => \&do_pop_toc_stack);
+    $tex->define_csname('@clear@tocstack'     => \&do_clear_toc_stack);
+
     return;
 }
 
@@ -63,7 +76,56 @@ sub install {
 ##                                                                  ##
 ######################################################################
 
-sub do_label_toc_entries {
+## There should be a cleaner way to create and manage stacks.
+
+sub do_push_toc_stack {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $level = $tex->read_undelimited_parameter(EXPANDED);
+
+    $tex->push_toc_stack($level);
+
+    return;
+}
+
+sub do_pop_toc_stack {
+    my $self = shift;
+
+    my $tex   = shift;
+    my $token = shift;
+
+    my $token_list = new_token_list();
+
+    my $target_level = $tex->read_undelimited_parameter(EXPANDED);
+
+    while (defined(my $level = $tex->pop_toc_stack())) {
+        if ($level >= $target_level) {
+            $tex->end_xml_element("toc-entry");
+        } else {
+            # Popped one level too far.  Back it up.
+
+            $tex->push_toc_stack($level);
+
+            last;
+        }
+    }
+
+    return $token_list;
+}
+
+sub do_clear_toc_stack {
+    my $tex   = shift;
+    my $token = shift;
+
+    while (defined(my $level = $tex->pop_toc_stack())) {
+        $tex->end_xml_element("toc-entry");
+    }
+
+    return;
+}
+
+my sub do_label_toc_entries {
     my $tex   = shift;
     my $token = shift;
 

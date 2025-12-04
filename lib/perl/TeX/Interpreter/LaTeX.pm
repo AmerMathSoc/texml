@@ -143,11 +143,6 @@ sub install {
 
     $tex->define_csname(LoadRawMacros => \&do_load_raw_macros);
 
-    $tex->define_csname('@push@tocstack'  => \&do_push_toc_stack);
-    $tex->define_pseudo_macro('@pop@tocstack'    => \&do_pop_toc_stack);
-    $tex->define_csname('@clear@tocstack' => \&do_clear_toc_stack);
-    # $tex->define_csname('@show@tocstack'  => \&do_show_toc_stack);
-
     $tex->define_csname('TeXML@setliststyle' => \&do_set_list_style);
 
     $tex->define_csname('@filtered@input' => \&do_filtered_input);
@@ -519,55 +514,6 @@ sub do_documentclass {
     $expansion->push(BEGIN_GROUP, $class, END_GROUP);
 
     return $expansion;
-}
-
-## There should be a cleaner way to create and manage stacks.
-
-sub do_push_toc_stack {
-    my $tex   = shift;
-    my $token = shift;
-
-    my $level = $tex->read_undelimited_parameter(EXPANDED);
-
-    $tex->push_toc_stack($level);
-
-    return;
-}
-
-sub do_pop_toc_stack {
-    my $self = shift;
-
-    my $tex   = shift;
-    my $token = shift;
-
-    my $token_list = new_token_list();
-
-    my $target_level = $tex->read_undelimited_parameter(EXPANDED);
-
-    while (defined(my $level = $tex->pop_toc_stack())) {
-        if ($level >= $target_level) {
-            $tex->end_xml_element("toc-entry");
-        } else {
-            # Popped one level too far.  Back it up.
-
-            $tex->push_toc_stack($level);
-
-            last;
-        }
-    }
-
-    return $token_list;
-}
-
-sub do_clear_toc_stack {
-    my $tex   = shift;
-    my $token = shift;
-
-    while (defined(my $level = $tex->pop_toc_stack())) {
-        $tex->end_xml_element("toc-entry");
-    }
-
-    return;
 }
 
 my %LIST_STYLE_TYPE = (alph   => 'a', # 'lower-alpha',
