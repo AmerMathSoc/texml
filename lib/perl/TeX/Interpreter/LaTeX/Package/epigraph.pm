@@ -58,7 +58,7 @@ __DATA__
     \startXMLelement{disp-quote}%
     \setXMLattribute{content-type}{epigraph}%
     #1\par
-    \ifnum\strcmp{#2}{}=0\else
+    \if###2##\else
         \thisxmlpartag{attrib}#2\par
     \fi
     \endXMLelement{disp-quote}%
