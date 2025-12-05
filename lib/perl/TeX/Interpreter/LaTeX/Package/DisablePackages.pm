@@ -103,6 +103,7 @@ __DATA__
 \DisablePackage{stix2}
 \DisablePackage{textcomp}
 \DisablePackage{thm-listof}
+\DisablePackage{tikz-3dplot}
 \DisablePackage{tikz-base}
 \DisablePackage{tikz-fct}
 \DisablePackage{tkz-graph}
