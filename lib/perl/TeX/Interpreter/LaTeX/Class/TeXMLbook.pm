@@ -254,7 +254,6 @@ __DATA__
 
 \def\@end@BITS@section{%
     \@clear@sectionstack
-    \addtocontents{toc}{\@clear@tocstack}%
     \if@frontmatter
         \endXMLelement{front-matter}%
     \else
@@ -305,6 +304,7 @@ __DATA__
 
 \def\backmatter{%
     \if@backmatter\else
+        \addtocontents{toc}{\@clear@tocstack}%
         \@end@BITS@section
         \global\@frontmatterfalse
         \global\@mainmatterfalse
