@@ -35,6 +35,8 @@ use warnings;
 
 use TeX::Constants qw(:named_args);
 
+use TeX::Command::Executable::Assignment qw(:modifiers);
+
 use TeX::Token qw(:catcodes);
 
 use TeX::TokenList qw(:factories);
@@ -121,6 +123,8 @@ sub do_clear_toc_stack {
     while (defined(my $level = $tex->pop_toc_stack())) {
         $tex->end_xml_element("toc-entry");
     }
+
+    $tex->define_simple_macro('@currtoclevel', '-1', MODIFIER_GLOBAL);
 
     return;
 }
