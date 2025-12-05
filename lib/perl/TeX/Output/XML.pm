@@ -222,6 +222,8 @@ sub open_document {
 
     $root_node->setNamespace("http://www.w3.org/1999/xlink", "xlink", 0);
 
+    $root_node->setNamespace("http://www.ams.org/texml", "texml", 0);
+
     my %attr = $tex->get_xml_root_attributes();
 
     while (my ($key, $value) = each %attr) {

@@ -213,6 +213,10 @@ __DATA__
 
 \newtoks\thm@headpunct
 
+\def\thm@prenote{\XMLgeneratedText(}
+\def\thm@postnote{\XMLgeneratedText)}
+\def\thm@notepunct{\XMLgeneratedText.}
+
 \def\th@plain{\thm@headpunct{.}}
 \def\th@definition{\thm@headpunct{.}}
 \def\th@remark{\thm@headpunct{.}}
@@ -239,7 +243,6 @@ __DATA__
 \def\@begintheorem@#1#2#3#4#5[#6]{
     \everypar{}\par
     \texml@inlist@hack@start
-    \xmlpartag{p}
     \startXMLelement{statement}%
     \setXMLattribute{content-type}{theorem \@currenvir}%
     \setXMLattribute{style}{thm#2}%
@@ -248,41 +251,42 @@ __DATA__
     \edef\@currentrefsubtype{\@currenvir}%
     \@nameuse{th@#2}%
     %%
-    %% Inside lists, \xmlpartag is turned off, so we need to make
-    %% sure to turn it back on.  Cf. car-brown2.  TBD: Can we
-    %% insert the equivalent of a \leavevmode here somewhere?
-    %%
-    \xmlpartag{p}%
-    %%
-    \thisxmlpartag{label}%
+    \startXMLelement{label}%
+    \xmlpartag{}%
     \if S#1%
         \if###5##\else
             \refstepcounter@cref[#4]{#5}%
-            \@nameuse{the#4}\@addpunct{.}\space
+            \XMLelement{texml:counter}{\@nameuse{the#4}\@addpunct{\the\thm@headpunct}}\space
         \fi
         %
-        #3%
+        \XMLelement{texml:name}{#3}%
     \else
-        #3%
+        \XMLelement{texml:name}{#3}%
         %
         \if###5##\else
             \refstepcounter@cref[#4]{#5}%
-            \space\@nameuse{the#4}%
+            \space\XMLelement{texml:counter}{\@nameuse{the#4}\@addpunct{\the\thm@headpunct}}%
         \fi
     \fi
     \if###6##\XMLgeneratedText{\the\thm@headpunct}\fi
+    \endXMLelement{label}%
     \par
     \if###6##\else
         \begingroup
-        \xmlpartag{}%
-        \startXMLelement{title}%
-            \XMLgeneratedText(#6\XMLgeneratedText)%
-            \XMLgeneratedText{\the\thm@headpunct}\par
+            \xmlpartag{}%
+            \startXMLelement{title}%
+                \thm@prenote#6\thm@postnote\thm@notepunct\par
             \endXMLelement{title}\par
         \endgroup
     \fi
     \par
     \everypar{}%
+    %%
+    %% Inside lists, \xmlpartag is turned off, so we need to make
+    %% sure to turn it back on.  Cf. car-brown2.  TBD: Can we
+    %% insert the equivalent of a \leavevmode here somewhere?
+    %%
+    \xmlpartag{p}
     \ignorespaces
 }
 
