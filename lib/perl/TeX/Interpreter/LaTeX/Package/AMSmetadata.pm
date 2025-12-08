@@ -39,7 +39,7 @@ use base qw(Exporter);
 
 our %EXPORT_TAGS = (all => [ qw(find_gentag_file) ]);
 
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
+our @EXPORT_OK = $EXPORT_TAGS{all}->@*;
 
 our @EXPORT;
 
@@ -805,13 +805,25 @@ sub add_self_uris {
     return;
 }
 
+## See https://jats.nlm.nih.gov/archiving/tag-library/1.4/attribute/related-article-type.html
+
 my %RELATED_ARTICLE_TYPE = (
     'Addendum'         => 'addendum',
     'Comment'          => 'comment',
+    # ''               => 'commentary',
+    # ''               => 'commentary-article',
+    # ''               => 'companion',
+    'Original Article' => 'corrected-article',
     'Correction'       => 'correction-forward',
     'Corrigendum'      => 'corrigendum-forward',
     'Erratum'          => 'erratum-forward',
-    'Original Article' => 'corrected-article',
+    # ''               => 'in-this-issue',
+    # ''               => 'letter',
+    # ''               => 'partial-retraction',
+    # ''               => 'preprint',
+    'Retraction notice'=> 'retracted-article',
+    # ''               => 'retraction-forward',
+    # ''               => 'version-of-record',
 );
 
 sub add_related_articles {
