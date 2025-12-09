@@ -839,7 +839,7 @@ my %FORWARD_ARTICLE_TYPE = (
     'Corrigendum'      => 'corrigendum-forward',
     'Erratum'          => 'erratum-forward',
     'Original Article' => 'corrected-article',
-    'Retraction notice'=> 'retracted-forward',
+    'Retraction notice'=> 'retraction-forward',
 );
 
 my %BACKWARD_ARTICLE_TYPE = (
