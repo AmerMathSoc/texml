@@ -53,6 +53,8 @@ __DATA__
 
 \LoadClass{amsart}
 
+\RequirePackage{ParseNames}
+
 \let\JATS@subject@group\@empty
 \let\JATS@subject@group@type\@empty
 
