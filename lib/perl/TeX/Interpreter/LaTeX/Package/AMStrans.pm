@@ -161,7 +161,7 @@ __DATA__
     \ifx\AMS@orig@publname\@empty\else
         \par
         \startXMLelement{related-article}
-            \setXMLattribute{related-article-type}{original}%
+            \setXMLattribute{related-article-type}{original-language}%
             \ifx\AMS@orig@language\@empty\else
                 \setXMLattribute{xml:lang}{\AMS@orig@language}%
             \fi
