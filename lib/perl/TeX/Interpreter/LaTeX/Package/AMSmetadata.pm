@@ -805,26 +805,84 @@ sub add_self_uris {
     return;
 }
 
-## See https://jats.nlm.nih.gov/archiving/tag-library/1.4/attribute/related-article-type.html
+## We use the following related-article-types from
+## https://jats.nlm.nih.gov/archiving/tag-library/1.4/attribute/related-article-type.html
+##
+##     addendum
+##     commentary
+##     commentary-article
+##     corrected-article
+##     correction-forward
+##     retracted-article
+##     retraction-forward
+##
+## We do not currently use the following
+##
+##     companion
+##     in-this-issue
+##     letter
+##     partial-retraction
+##     preprint
+##     version-of-record
+##
+## but we do use the following additional values:
+##
+##     corrigendum-forward
+##     erratum-forward
 
-my %RELATED_ARTICLE_TYPE = (
+## Cf. %SIMPLE_LINK_FIELD in PRD::Document::Builder::XML::V2
+
+my %FORWARD_ARTICLE_TYPE = (
     'Addendum'         => 'addendum',
-    'Comment'          => 'comment',
-    # ''               => 'commentary',
-    # ''               => 'commentary-article',
-    # ''               => 'companion',
-    'Original Article' => 'corrected-article',
+    'Comment'          => 'commentary',
     'Correction'       => 'correction-forward',
     'Corrigendum'      => 'corrigendum-forward',
     'Erratum'          => 'erratum-forward',
-    # ''               => 'in-this-issue',
-    # ''               => 'letter',
-    # ''               => 'partial-retraction',
-    # ''               => 'preprint',
-    'Retraction notice'=> 'retracted-article',
-    # ''               => 'retraction-forward',
-    # ''               => 'version-of-record',
+    'Original Article' => 'corrected-article',
+    'Retraction notice'=> 'retracted-forward',
 );
+
+my %BACKWARD_ARTICLE_TYPE = (
+    'Addendum'         => 'corrected-article',
+    'Comment'          => 'commentary-article',
+    'Correction'       => 'corrected-article',
+    'Corrigendum'      => 'corrected-article',
+    'Erratum'          => 'corrected-article',
+    'Retraction notice'=> 'retracted-article',
+);
+
+sub find_related_article_type {
+    my $tex           = shift;
+    my $that_gentag   = shift;
+    my $my_pii        = shift;
+    my $that_label    = shift;
+
+    my $type = $FORWARD_ARTICLE_TYPE{$that_label};
+
+    if ($that_label eq 'Original Article' and nonempty($that_gentag)) {
+        $tex->print_nl("%% Loading $that_label information from $that_gentag");
+
+        my $doc = $BUILDER->convert_xml_file($that_gentag);
+
+        if (! defined $doc) {
+            $tex->print_err("%% FAILED: Could not parse $that_gentag");
+            $tex->error();
+
+            return;
+        }
+
+        for my $related ($doc->get_related_articles()) {
+            my $label = $related->get_label();
+            my $pii   = $related->get_pii();
+
+            if ($pii eq $my_pii) {
+                $type = $BACKWARD_ARTICLE_TYPE{$label};
+            }
+        }
+    }
+
+    return $type;
+}
 
 sub add_related_articles {
     my $tex = shift;
@@ -833,25 +891,29 @@ sub add_related_articles {
     my $parent = shift;
     my $gentag = shift;
 
+    my $my_pii = $gentag->get_pii();
+
     for my $orig ($old_front->findnodes('article-meta/related-article')) {
         $parent->appendChild($orig);
     }
 
     for my $misclink ($gentag->get_related_articles()) {
-        my $label = $misclink->get_label();
-        my $pii   = $misclink->get_pii();
+        my $that_label = $misclink->get_label();
+        my $that_pii   = $misclink->get_pii();
 
-        if (empty $pii) {
+        if (empty $that_pii) {
             $tex->print_err("%% WARNING: No PII in $misclink");
             $tex->error();
 
             return;
         }
 
-        my $type = $RELATED_ARTICLE_TYPE{$label};
+        my $that_gentag = $PUBS->journal_gentag_file({ pii => $that_pii });
+
+        my $type = find_related_article_type($tex, $that_gentag, $my_pii, $that_label);
 
         if (empty $type) {
-            $tex->print_err("%% WARNING: Can't determine related-article-type for '$label'");
+            $tex->print_err("%% WARNING: Can't determine related-article-type for '$that_label'");
             $tex->error();
 
             return;
@@ -860,11 +922,11 @@ sub add_related_articles {
         my $related = append_xml_element($parent, "related-article", undef,
                                          { "related-article-type" => $type });
 
-        append_xml_element($related, 'pub-id', $pii,
+        append_xml_element($related, 'pub-id', $that_pii,
                            { "pub-id-type" => "pii" });
 
-        if (defined (my $gentag = $PUBS->journal_gentag_file({ pii => $pii }))) {
-            my $doc = $BUILDER->convert_xml_file($gentag);
+        if (defined $that_gentag) {
+            my $doc = $BUILDER->convert_xml_file($that_gentag);
 
             my $publication = $doc->get_publication();
 
@@ -891,7 +953,7 @@ sub add_related_articles {
             append_xml_element($related, 'ext-link', $text,
                                { 'xlink:href' => $url });
         } else {
-            $tex->print_err("%% FAILED: Can't find gentag for $label $pii");
+            $tex->print_err("%% FAILED: Can't find gentag for $that_label $that_pii");
 
             $tex->error();
         }
