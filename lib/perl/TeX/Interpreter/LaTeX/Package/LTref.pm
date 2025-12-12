@@ -114,7 +114,7 @@ sub do_resolve_xrefs {
             if ($ref_cmd eq 'hyperref') {
                 my $r = $tex->get_macro_expansion_text("r\@$ref_key");
 
-                $xref->setAttribute('specific-use' => 'undefined');
+                $xref->setAttribute('specific-use' => 'undefined ref');
 
                 if (defined $r) {
                     my ($xml_id, $ref_type) = parse_ref_record($r);
@@ -131,7 +131,7 @@ sub do_resolve_xrefs {
             } elsif ($ref_cmd eq 'nameref') {
                 my $r = $tex->get_macro_expansion_text("r\@$ref_key");
 
-                $xref->setAttribute('specific-use' => 'undefined');
+                $xref->setAttribute('specific-use' => 'undefined ref');
 
                 if (defined $r) {
                     my ($xml_id, $ref_type) = parse_ref_record($r);
@@ -177,7 +177,7 @@ sub do_resolve_xrefs {
 
     # $tex->print_ln();
 
-    my @xrefs = $body->findnodes(qq{descendant::xref[attribute::specific-use="undefined"]});
+    my @xrefs = $body->findnodes(qq{descendant::xref[attribute::specific-use="undefined ref"]});
 
     if (@xrefs) {
         $tex->print_nl("Unable to resolve the following xrefs after $pass tries:");
@@ -516,7 +516,7 @@ __DATA__
         \ifcsname r@#1\endcsname
             \@setref@link@{#1}#2%
         \else
-            \setXMLattribute{specific-use}{undefined}%
+            \setXMLattribute{specific-use}{undefined ref}%
             \texttt{?#1}%
         \fi
         \endXMLelement{xref}%
