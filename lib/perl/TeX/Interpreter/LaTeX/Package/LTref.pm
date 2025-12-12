@@ -44,7 +44,6 @@ use TeX::Interpreter::LaTeX::Types::RefRecord qw(:all);
 my sub do_register_refkey;
 my sub do_resolve_xrefs;
 my sub do_resolve_ref_ranges;
-my sub do_sort_cites;
 
 sub install  {
     my $class = shift;
@@ -57,8 +56,6 @@ sub install  {
 
     $tex->add_output_hook(\&do_resolve_xrefs, 1);
 
-    $tex->add_output_hook(\&do_sort_cites, 2);
-
     $tex->add_output_hook(\&do_resolve_ref_ranges, 9);
 
     $tex->read_package_data();
@@ -66,7 +63,7 @@ sub install  {
     return;
 }
 
-sub do_resolve_xrefs { ## TODO: move cite out of this
+sub do_resolve_xrefs {
     my $xml = shift;
 
     my $tex = $xml->get_tex_engine();
@@ -79,10 +76,9 @@ sub do_resolve_xrefs { ## TODO: move cite out of this
 
     my $pass = 0;
 
-    $tex->print_nl("Resolving \\ref's and \\cite's");
+    $tex->print_nl("Resolving \\ref's");
 
     my $num_xrefs = 0;
-    my $num_cites = 0;
 
     $tex->begingroup();
 
@@ -90,6 +86,8 @@ sub do_resolve_xrefs { ## TODO: move cite out of this
 
     $tex->let_csname('start@xref@group' => '@empty');
     $tex->let_csname('end@xref@group' => '@empty');
+
+    ## TODO: Refine the XPath to exclude citations.
 
     while (my @xrefs = $body->findnodes(qq{descendant::xref[starts-with(attribute::specific-use, "unresolved")]})) {
         if (++$pass > 10) {
@@ -101,108 +99,81 @@ sub do_resolve_xrefs { ## TODO: move cite out of this
         for my $xref (@xrefs) {
             (undef, my $ref_cmd) = split / /, $xref->getAttribute('specific-use');
 
-            if ($ref_cmd eq 'cite') {
-                # Disable 'bysame' processing for amsrefs.
-                $tex->define_simple_macro('prev@names', "");
+            next if $ref_cmd eq 'cite';
 
-                (my $key = $xref->getAttribute("rid")) =~ s{^bibr-}{b\@};
+            my $linked = 1;
 
-                my $token = make_csname_token($key);
+            my $link_att = $xref->getAttribute('linked');
 
-                if (defined $tex->expansion_of($key)) {
-                    my $token_list = TeX::TokenList->new({ tokens => [ $token ] });
+            if (defined $link_att && $link_att eq 'no') {
+                $linked = 0;
+            }
 
-                    my $label = $tex->convert_token_list($token_list);
+            my $ref_key = $xref->getAttribute('ref-key');
 
-                    ## TODO: Why doesn't this work?  \csname not working?
-                    # my $label = $tex->convert_fragment(qq{\\csname $key \\endcsname});
+            if ($ref_cmd eq 'hyperref') {
+                my $r = $tex->get_macro_expansion_text("r\@$ref_key");
 
-                    if (defined $label && $label->hasChildNodes()) {
-                        $xref->setAttribute('specific-use', 'cite');
+                $xref->setAttribute('specific-use' => 'undefined');
 
-                        my $first = $xref->firstChild();
+                if (defined $r) {
+                    my ($xml_id, $ref_type) = parse_ref_record($r);
 
-                        $xref->replaceChild($label, $first);
-
-                        $num_cites++;
+                    if (nonempty($xml_id)) {
+                        $xref->setAttribute(rid => $xml_id);
+                        $xref->setAttribute('specific-use' => $ref_cmd);
+                        $xref->setAttribute('ref-type' => $ref_type);
+                        $xref->removeAttribute('ref-key');
                     }
+
+                    $num_xrefs++;
+                }
+            } elsif ($ref_cmd eq 'nameref') {
+                my $r = $tex->get_macro_expansion_text("r\@$ref_key");
+
+                $xref->setAttribute('specific-use' => 'undefined');
+
+                if (defined $r) {
+                    my ($xml_id, $ref_type) = parse_ref_record($r);
+
+                    if (nonempty($xml_id)) {
+                        $xref->setAttribute(rid => $xml_id);
+                        $xref->setAttribute('specific-use' => $ref_cmd);
+                        $xref->setAttribute('ref-type' => $ref_type);
+                        $xref->removeAttribute('ref-key');
+
+                        my ($title) = $body->findnodes(qq{//*[\@id="$xml_id"]/title});
+
+                        for my $node ($title->childNodes()) {
+                            $xref->appendChild($node->cloneNode(1));
+                        }
+                    }
+
+                    $num_xrefs++;
                 }
             }
             else {
-                my $linked = 1;
+                my $new_node = $tex->convert_fragment(qq{\\${ref_cmd}{$ref_key}});
 
-                my $link_att = $xref->getAttribute('linked');
+                my $flag = $new_node->firstChild()->getAttribute("specific-use");
 
-                if (defined $link_att && $link_att eq 'no') {
-                    $linked = 0;
-                }
+                if (nonempty($flag) && $flag !~ m{^un(defined|resolved)}) {
+                    $num_xrefs++;
 
-                my $ref_key = $xref->getAttribute('ref-key');
-
-                if ($ref_cmd eq 'hyperref') {
-                    my $r = $tex->get_macro_expansion_text("r\@$ref_key");
-
-                    $xref->setAttribute('specific-use' => 'undefined');
-
-                    if (defined $r) {
-                        my ($xml_id, $ref_type) = parse_ref_record($r);
-
-                        if (nonempty($xml_id)) {
-                            $xref->setAttribute(rid => $xml_id);
-                            $xref->setAttribute('specific-use' => $ref_cmd);
-                            $xref->setAttribute('ref-type' => $ref_type);
-                            $xref->removeAttribute('ref-key');
-                        }
-
-                        $num_xrefs++;
-                    }
-                } elsif ($ref_cmd eq 'nameref') {
-                    my $r = $tex->get_macro_expansion_text("r\@$ref_key");
-
-                    $xref->setAttribute('specific-use' => 'undefined');
-
-                    if (defined $r) {
-                        my ($xml_id, $ref_type) = parse_ref_record($r);
-
-                        if (nonempty($xml_id)) {
-                            $xref->setAttribute(rid => $xml_id);
-                            $xref->setAttribute('specific-use' => $ref_cmd);
-                            $xref->setAttribute('ref-type' => $ref_type);
-                            $xref->removeAttribute('ref-key');
-
-                            my ($title) = $body->findnodes(qq{//*[\@id="$xml_id"]/title});
-
-                            for my $node ($title->childNodes()) {
-                                $xref->appendChild($node->cloneNode(1));
-                            }
-                        }
-
-                        $num_xrefs++;
+                    if (! $linked) {
+                        $new_node = $new_node->firstChild()->firstChild()->cloneNode(1);
                     }
                 }
-                else {
-                    my $new_node = $tex->convert_fragment(qq{\\${ref_cmd}{$ref_key}});
 
-                    my $flag = $new_node->firstChild()->getAttribute("specific-use");
-
-                    if (nonempty($flag) && $flag !~ m{^un(defined|resolved)}) {
-                        $num_xrefs++;
-
-                        if (! $linked) {
-                            $new_node = $new_node->firstChild()->firstChild()->cloneNode(1);
-                        }
-                    }
-
-                    $xref->replaceNode($new_node);
-                }
+                $xref->replaceNode($new_node);
             }
+
         }
     }
 
     my $refs  = pluralize("reference", $num_xrefs);
-    my $cites = pluralize("cite", $num_cites);
 
-    $tex->print_nl("Resolved $num_xrefs $refs and $num_cites $cites");
+    $tex->print_nl("Resolved $num_xrefs $refs");
 
     # $tex->print_ln();
 
@@ -212,16 +183,6 @@ sub do_resolve_xrefs { ## TODO: move cite out of this
         $tex->print_nl("Unable to resolve the following xrefs after $pass tries:");
 
         for my $xref (@xrefs) {
-            $tex->print_nl("    $xref");
-        }
-    }
-
-    my @cites = $body->findnodes(qq{descendant::xref[attribute::specific-use="unresolved cite"]});
-
-    if (@cites) {
-        $tex->print_nl("Unable to resolve the following cites:");
-
-        for my $xref (@cites) {
             $tex->print_nl("    $xref");
         }
     }
@@ -379,61 +340,6 @@ sub do_register_refkey {
     return;
 }
 
-sub do_sort_cites {
-    my $xml = shift;
-
-    my $tex = $xml->get_tex_engine();
-
-    return unless $tex->if('TeXMLsortcites@');
-
-    my $handle = $tex->get_output_handle();
-
-    my $body = $handle->get_dom();
-
-    my @groups = $body->findnodes(qq{descendant::cite-group});
-
-    $tex->print_nl("Sorting cite groups");
-
-    my $num_sorted = 0;
-
-    my sub __extract_cite_label {
-        my $xref_node = shift;
-
-        my $label = $xref_node->firstChild();
-
-        return "$label" + 0;
-    }
-
-    for my $cite_group (@groups) {
-        my @xrefs = $cite_group->findnodes(qq{descendant::xref});
-
-        next if @xrefs < 2;
-
-        my @labels = map { $_->firstChild() } @xrefs;
-
-        return unless all { m{^\d+$} } @labels;
-
-        my @new = map { [ __extract_cite_label($_), $_->cloneNode(1) ] } @xrefs;
-
-        my @sorted = sort { $a->[0] <=> $b->[0] } @new;
-
-        for (my $i = 0; $i < @new; $i++) {
-            $xrefs[$i]->replaceNode($sorted[$i]->[1]);
-        }
-
-        $num_sorted++;
-    }
-
-    $tex->print_ln();
-
-    $tex->print_nl(sprintf "Sorted %d cite group%s",
-                   $num_sorted,
-                   $num_sorted == 1 ? "" : "s"
-        );
-
-    return;
-}
-
 1;
 
 __DATA__
@@ -448,12 +354,6 @@ __DATA__
 
 \def\TeXMLNoResolveXrefs{\TeXML@resolveXMLxrefs@false}
 \def\TeXMLNoResolveXrefgroups{\TeXML@resolveXMLxrefgroups@false}
-
-\newif\ifTeXMLsortcites@
-\TeXMLsortcites@false
-
-\def\TeXMLsortCites{\TeXMLsortcites@true}
-\def\TeXMLnoSortCites{\TeXMLsortcites@false}
 
 \let\@currentlabel\@empty
 \let\@currentXMLid\@empty

@@ -33,7 +33,7 @@ use 5.26.0;
 
 use warnings;
 
-sub install  {
+sub install {
     my $class = shift;
 
     my $tex = shift;
