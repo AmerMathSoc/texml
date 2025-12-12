@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::natbib;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Package::natbib;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -50,7 +51,39 @@ __DATA__
 
 \ProvidesPackage{natbib}
 
+\let\@listi\@empty
+
+\expandafter\SaveMacroDefinition\csname cite \endcsname
+\SaveMacroDefinition\@lbibitem
+\SaveMacroDefinition\@bibitem
+\SaveMacroDefinition\@citex
+
 \LoadRawMacros
+
+\expandafter\RestoreMacroDefinition\csname cite \endcsname
+\AtBeginDocument{\RestoreMacroDefinition\@lbibitem}
+\AtBeginDocument{\RestoreMacroDefinition\@bibitem}
+\AtBeginDocument{\RestoreMacroDefinition\@citex}
+
+\@ifpackagewith{natbib}{angle}{%
+    \renewcommand\NAT@open{\textlangle}%
+    \renewcommand\NAT@close{\textrangle}
+}{}
+
+\let\citep\cite
+
+\def\citemid{\XMLgeneratedText{\NAT@sep}\space}
+
+\def\citeleft{%
+    \leavevmode
+    \startXMLelement{cite-group}%
+    \XMLgeneratedText\NAT@open
+}
+
+\def\citeright{%
+    \XMLgeneratedText\NAT@close
+    \endXMLelement{cite-group}%
+}
 
 %% NB: This is just enough to compile spec/plambeck.
 
