@@ -227,7 +227,7 @@ __DATA__
         \start@xref@group
         \startXMLelement{xref}%
             \setXMLattribute{ref-key}{#1}%
-            \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#2}%
+            \setXMLattribute{specific-use}{unresolved ref \expandafter\@gobble\string#2}%
             #3%
         \endXMLelement{xref}%
         \end@xref@group

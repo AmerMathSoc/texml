@@ -51,7 +51,7 @@ sub install {
 
     $tex->package_load_notification();
 
-    $tex->add_output_hook(\&do_resolve_crefs);
+    $tex->add_output_hook(\&do_resolve_crefs, 1);
 
     $tex->read_package_data();
 

@@ -89,7 +89,7 @@ sub do_resolve_xrefs {
 
     ## TODO: Refine the XPath to exclude citations.
 
-    while (my @xrefs = $body->findnodes(qq{descendant::xref[starts-with(attribute::specific-use, "unresolved")]})) {
+    while (my @xrefs = $body->findnodes(qq{descendant::xref[starts-with(attribute::specific-use, "unresolved ref")]})) {
         if (++$pass > 10) {
             $tex->print_nl("resolve_xrefs: Bailing on pass number $pass");
 
@@ -97,7 +97,7 @@ sub do_resolve_xrefs {
         }
 
         for my $xref (@xrefs) {
-            (undef, my $ref_cmd) = split / /, $xref->getAttribute('specific-use');
+            (undef, undef, my $ref_cmd) = split / /, $xref->getAttribute('specific-use');
 
             next if $ref_cmd eq 'cite';
 
@@ -467,7 +467,7 @@ __DATA__
                 \setXMLattribute{linked}{no}%
             \fi
             \setXMLattribute{ref-key}{#1}%
-            \setXMLattribute{specific-use}{unresolved \expandafter\@gobble\string#2}%
+            \setXMLattribute{specific-use}{unresolved ref \expandafter\@gobble\string#2}%
             \xref@right@delim#3\xref@left@delim
         \endXMLelement{xref}%
         \end@xref@group
