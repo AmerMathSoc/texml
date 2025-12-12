@@ -63,7 +63,7 @@ sub do_resolve_cites {
 
     my $tex = $xml->get_tex_engine();
 
-    return unless $tex->if('TeXML@resolveXMLxrefs@');
+    return unless $tex->if('TeXML@resolveXMLcites@');
 
     my $handle = $tex->get_output_handle();
 
@@ -83,7 +83,7 @@ sub do_resolve_cites {
         }
 
         for my $xref (@cites) {
-            (undef, my $cite_cmd) = split / /, $xref->getAttribute('specific-use');
+            (undef, undef, my $cite_cmd) = split / /, $xref->getAttribute('specific-use');
 
             next unless $cite_cmd eq 'cite';
 
@@ -111,6 +111,8 @@ sub do_resolve_cites {
 
                     $num_cites++;
                 }
+            } else {
+                $xref->setAttribute('specific-use', "undefined cite");
             }
         }
     }
@@ -121,7 +123,7 @@ sub do_resolve_cites {
 
     # $tex->print_ln();
 
-    my @cites = $body->findnodes(qq{descendant::xref[attribute::specific-use="unresolved cite"]});
+    my @cites = $body->findnodes(qq{descendant::xref[attribute::specific-use="undefined cite"]});
 
     if (@cites) {
         $tex->print_nl("Unable to resolve the following cites:");
@@ -194,6 +196,12 @@ sub do_sort_cites {
 __DATA__
 
 \ProvidesPackage{LTbibl}
+
+\newif\ifTeXML@resolveXMLcites@
+\TeXML@resolveXMLcites@true
+
+\def\TeXMLResolveCites{\TeXML@resolveXMLcites@true}
+\def\TeXMLNoResolveCites{\TeXML@resolveXMLcites@false}
 
 \newif\ifTeXMLsortcites@
 \TeXMLsortcites@false
@@ -268,7 +276,7 @@ __DATA__
                 \setXMLattribute{rid}{bibr-\@tempa}%
                 \setXMLattribute{ref-type}{bibr}%
                 \@ifundefined{b@\@tempa}{%
-                    \setXMLattribute{specific-use}{unresolved cite}%
+                    \setXMLattribute{specific-use}{unresolved cite cite}%
                     \texttt{?\@tempa}%
                 }{%
                     \setXMLattribute{specific-use}{cite}%

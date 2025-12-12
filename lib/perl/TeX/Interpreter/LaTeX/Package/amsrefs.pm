@@ -478,7 +478,7 @@ __DATA__
 
 \DeclareRobustCommand{\CitePrintUndefined}[1]{%
     \if@TeXMLend\else
-        \setXMLattribute{specific-use}{unresolved cite}%
+        \setXMLattribute{specific-use}{unresolved cite cite}%
     \fi
     \texttt{?#1}%
 }
