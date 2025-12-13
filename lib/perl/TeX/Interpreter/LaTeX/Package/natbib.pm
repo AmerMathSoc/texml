@@ -33,6 +33,10 @@ use v5.26.0;
 
 use warnings;
 
+use TeX::Utils::Misc qw(nonempty);
+
+my sub do_resolve_natbib;
+
 sub install {
     my $class = shift;
 
@@ -40,7 +44,58 @@ sub install {
 
     $tex->package_load_notification();
 
+    $tex->add_output_hook(\&do_resolve_natbib, 1);
+
     $tex->read_package_data();
+
+    return;
+}
+
+sub do_resolve_natbib {
+    my $xml = shift;
+
+    my $tex = $xml->get_tex_engine();
+
+    my $handle = $tex->get_output_handle();
+
+    my $body = $handle->get_dom();
+
+    $tex->print_nl("Resolving natbib \\ref's");
+
+    $tex->begingroup();
+
+    $tex->let_csname('texml@exec@natbib' => 'texml@exec@natbib@resolve');
+
+    for my $ref ($body->findnodes(qq{descendant::natbibref})) {
+        (undef, my $ref_cmd, my $star) = split / /, $ref->getAttribute('specific-use');
+
+        my $tex_cmd = qq{\\${ref_cmd}};
+
+        if (nonempty($star)) {
+            $tex_cmd .= '*';
+        }
+
+        my $pre  = $ref->getAttribute('pretext');
+        my $post = $ref->getAttribute('posttext');
+
+        if (nonempty($post) || nonempty($pre)) {
+            $tex_cmd .= '[' . ($post || '') . ']';
+        }
+
+        if (nonempty($pre)) {
+            $tex_cmd .= '[' . ($pre) . ']';
+        }
+
+        my $ref_key = $ref->getAttribute('ref-key');
+
+        $tex_cmd .= qq{{$ref_key}};
+
+        my $new_node = $tex->convert_fragment($tex_cmd);
+
+        $ref->replaceNode($new_node);
+    }
+
+    $tex->endgroup();
 
     return;
 }
@@ -53,43 +108,132 @@ __DATA__
 
 \let\@listi\@empty
 
-\expandafter\SaveMacroDefinition\csname cite \endcsname
-\SaveMacroDefinition\@lbibitem
-\SaveMacroDefinition\@bibitem
-\SaveMacroDefinition\@citex
-
 \LoadRawMacros
-
-\expandafter\RestoreMacroDefinition\csname cite \endcsname
-\AtBeginDocument{\RestoreMacroDefinition\@lbibitem}
-\AtBeginDocument{\RestoreMacroDefinition\@bibitem}
-\AtBeginDocument{\RestoreMacroDefinition\@citex}
 
 \@ifpackagewith{natbib}{angle}{%
     \renewcommand\NAT@open{\textlangle}%
-    \renewcommand\NAT@close{\textrangle}
+    \renewcommand\NAT@close{\textrangle}%
 }{}
-
-\let\citep\cite
-
-\def\citemid{\XMLgeneratedText{\NAT@sep}\space}
-
-\def\citeleft{%
-    \leavevmode
-    \startXMLelement{cite-group}%
-    \XMLgeneratedText\NAT@open
-}
-
-\def\citeright{%
-    \XMLgeneratedText\NAT@close
-    \endXMLelement{cite-group}%
-}
-
-%% NB: This is just enough to compile spec/plambeck.
 
 %% TODO: This assumes maabook has been loaded.  FIX THIS
 
 \AtBeginDocument{\let\MAA@NAT@wrap\XMLgeneratedText}
+
+\def\NAT@@open{\ifNAT@par\XMLgeneratedText\NAT@open\fi}
+
+\def\NAT@@close{\ifNAT@par\XMLgeneratedText\NAT@close\fi}
+
+\def\NAT@separator{\XMLgeneratedText\NAT@sep}%
+
+%% \setcitestyle and \bibpunct
+
+%% As currently implemented, if there are multiple conflicting uses of
+%% \bibpunct or \setcitestyle (directly or indirectly through
+%% \citestyle), the last one wins.  This is because the values of the
+%% various parameters aren't typically used until do_resolve_natbib()
+%% is run at the end of the compilation phase.
+%%
+%% To allow cite style to be modified on the fly, we would have to
+%% capture the values of each of these parameters in the <natbibref>
+%% element and then restore them in do_resolve_natbib().  It should be
+%% straightforward, but I'm going to defer it until we have an actual
+%% use case, since this seems pretty unlikely to me.
+
+\renewcommand\bibpunct[7][, ]{%
+    \gdef\NAT@open{#2}%
+    \gdef\NAT@close{#3}%
+    \gdef\NAT@sep{#4}%
+    \global\NAT@numbersfalse
+    \ifx #5n%
+        \global\NAT@numberstrue
+        \global\NAT@superfalse
+    \else
+        \ifx #5s%
+            \global\NAT@numberstrue
+            \global\NAT@supertrue
+    \fi\fi
+    %%
+    %% Add \XMLgeneratedText around these.
+    %%
+    \gdef\NAT@aysep{\XMLgeneratedText{#6}}%
+    \gdef\NAT@yrsep{\XMLgeneratedText{#7}}%
+    \gdef\NAT@cmt{\XMLgeneratedText{#1}}%
+    \NAT@@setcites
+}
+
+\def\setcitestyle#1{%
+    \@for\@tempa:=#1\do{%
+        \def\@tempb{round}\ifx\@tempa\@tempb
+            \renewcommand\NAT@open{(}%
+            \renewcommand\NAT@close{)}%
+        \fi
+        \def\@tempb{square}\ifx\@tempa\@tempb
+            \renewcommand\NAT@open{[}%
+            \renewcommand\NAT@close{]}%
+        \fi
+        \def\@tempb{angle}\ifx\@tempa\@tempb
+            %%
+            %% Replace $<$ and $>$
+            %%
+            \renewcommand\NAT@open{\textlangle}%
+            \renewcommand\NAT@close{\textrangle}%
+        \fi
+        \def\@tempb{curly}\ifx\@tempa\@tempb
+            \renewcommand\NAT@open{\{}%
+            \renewcommand\NAT@close{\}}%
+        \fi
+        \def\@tempb{semicolon}\ifx\@tempa\@tempb
+            \renewcommand\NAT@sep{;}%
+        \fi
+        \def\@tempb{colon}\ifx\@tempa\@tempb
+            \renewcommand\NAT@sep{;}%
+        \fi
+        \def\@tempb{comma}\ifx\@tempa\@tempb
+            \renewcommand\NAT@sep{,}%
+        \fi
+        \def\@tempb{authoryear}\ifx\@tempa\@tempb
+            \NAT@numbersfalse
+        \fi
+        \def\@tempb{numbers}\ifx\@tempa\@tempb
+            \NAT@numberstrue
+            \NAT@superfalse
+        \fi
+        \def\@tempb{super}\ifx\@tempa\@tempb
+            \NAT@numberstrue
+            \NAT@supertrue
+        \fi
+        \expandafter\NAT@find@eq\@tempa=\relax\@nil
+        \if\@tempc\relax\else
+            \expandafter\NAT@rem@eq\@tempc
+            \def\@tempb{open}\ifx\@tempa\@tempb
+                \xdef\NAT@open{\@tempc}%
+            \fi
+            \def\@tempb{close}\ifx\@tempa\@tempb
+                \xdef\NAT@close{\@tempc}%
+            \fi
+            %%
+            %% Add \XMLgeneratedText around these.
+            %%
+            \def\@tempb{aysep}\ifx\@tempa\@tempb
+                \xdef\NAT@aysep{\noexpand\XMLgeneratedText{\@tempc}}%
+            \fi
+            \def\@tempb{yysep}\ifx\@tempa\@tempb
+                \xdef\NAT@yrsep{\noexpand\XMLgeneratedText{\@tempc}}%
+            \fi
+            \def\@tempb{notesep}\ifx\@tempa\@tempb
+                \xdef\NAT@cmt{\noexpand\XMLgeneratedText{\@tempc}}%
+            \fi
+            \def\@tempb{citesep}\ifx\@tempa\@tempb
+                \xdef\NAT@sep{\@tempc}%
+            \fi
+        \fi
+    }%
+    \NAT@@setcites
+}
+
+\def\NAT@aysep{\XMLgeneratedText,}%
+\def\NAT@yrsep{\XMLgeneratedText,}%
+\def\NAT@cmt{\XMLgeneratedText, }
 
 \def\hyper@natlinkstart#1{%
     \startXMLelement{xref}%
@@ -114,58 +258,84 @@ __DATA__
     \hyper@natanchorend
 }%
 
-\def\@lbibitem[#1]#2{%
-    \if\relax\@extra@b@citeb\relax\else
-        \@ifundefined{br@#2\@extra@b@citeb}{}{%
-            \@namedef{br@#2}{\@nameuse{br@#2\@extra@b@citeb}}%
-        }%
-    \fi
-    \@ifundefined{b@#2\@extra@b@citeb}{%
-        \def\NAT@num{}%
-    }{%
-        \NAT@parse{#2}%
-    }%
-    \def\NAT@tmp{#1}%
-    \expandafter\let\expandafter\bibitemOpen\csname NAT@b@open@#2\endcsname
-    \expandafter\let\expandafter\bibitemShut\csname NAT@b@shut@#2\endcsname
-    \@ifnum{\NAT@merge>\@ne}{%
-        \NAT@bibitem@first@sw{%
-            \@firstoftwo
-        }{%
-            \@ifundefined{NAT@b*@#2}{%
-                \@firstoftwo
-            }{%
-                \expandafter\def\expandafter\NAT@num\expandafter{\the\c@NAT@ctr}%
-                \@secondoftwo
-            }%
-        }%
-    }{%
-        \@firstoftwo
-    }%
-    {%
-        \global\advance\c@NAT@ctr\@ne
-        \@ifx{\NAT@tmp\@empty}{\@firstoftwo}{%
-            \@secondoftwo
-        }%
-        {%
-            \expandafter\def\expandafter\NAT@num\expandafter{\the\c@NAT@ctr}%
-            \global\NAT@stdbsttrue
-        }{}%
-        \bibitem@fin
-        \item[\hfil\NAT@anchor{#2}{\NAT@num}]%
-        \global\let\NAT@bibitem@first@sw\@secondoftwo
-        \NAT@bibitem@init
-    }%
-    {%
-        \NAT@anchor{#2}{}%
-        \NAT@bibitem@cont
-        \bibitem@fin
-    }%
-    \@ifx{\NAT@tmp\@empty}{%
-        \NAT@wrout{\the\c@NAT@ctr}{}{}{}{#2}%
-    }{%
-        \expandafter\NAT@ifcmd\NAT@tmp(@)(@)\@nil{#2}%
-    }%
+\def\texml@shadow@natbib#1{%
+    \expandafter\let\csname natbib::#1\expandafter\endcsname\csname#1\endcsname
+    \@namedef{#1}{\texml@exec@natbib{#1}}%
+}
+
+\def\texml@exec@natbib@resolve#1{\@nameuse{natbib::#1}}
+
+\def\texml@exec@natbib#1{%
+    \maybe@st@rred{\texml@exec@natbib@{#1}}%
+}
+
+\def\texml@exec@natbib@#1{%
+    \new@ifnextchar[{\texml@exec@natbib@@{#1}}{\texml@exec@natbib@@{#1}[]}%
+}
+
+\def\texml@exec@natbib@@#1[#2]{%
+    \new@ifnextchar[{\texml@exec@natbib@@@{#1}{#2}}{\texml@exec@natbib@@@{#1}{#2}[]}%
+}
+
+%% #1 = cite cmd
+%% #2 = post text
+%% #3 = pre text
+%% #4 = cite key(s)
+
+\def\texml@exec@natbib@@@#1#2[#3]#4{%
+    \startXMLelement{natbibref}%
+        \setXMLattribute{specific-use}{unresolved #1\ifst@rred\space*\fi}%
+        \setXMLattribute{ref-key}{#4}%
+        \if##2##\else
+            \setXMLattribute{posttext}{\detokenize{#2}}%
+        \fi
+        \if###3##\else
+            \setXMLattribute{pretext}{\detokenize{#3}}%
+        \fi
+    \endXMLelement{natbibref}%
+}
+
+\texml@shadow@natbib{Citealp}
+\texml@shadow@natbib{Citealt}
+\texml@shadow@natbib{Citeauthor}
+\texml@shadow@natbib{Citep}
+\texml@shadow@natbib{Citet}
+\texml@shadow@natbib{cite}
+\texml@shadow@natbib{citealp}
+\texml@shadow@natbib{citealt}
+\texml@shadow@natbib{citeauthor}
+\texml@shadow@natbib{citenum}
+\texml@shadow@natbib{citep}
+\texml@shadow@natbib{citet}
+\texml@shadow@natbib{citeyear}
+\texml@shadow@natbib{citeyearpar}
+
+\begingroup
+    \catcode`\:=11
+
+    \glet\natbib::NAT@citex\NAT@citex
+
+    \gdef\NAT@citex[#1][#2]#3{%
+        \startXMLelement{cite-group}%
+            \natbib::NAT@citex[#1][#2]{#3}%
+        \endXMLelement{cite-group}%
+    }
+
+    \glet\natbib::NAT@citexnum\NAT@citexnum
+
+    \gdef\NAT@citexnum[#1][#2]#3{%
+        \startXMLelement{cite-group}%
+            \natbib::NAT@citexnum[#1][#2]{#3}%
+        \endXMLelement{cite-group}%
+    }
+\endgroup
+
+\def\NAT@wrout#1#2#3#4#5{%
+    \begingroup
+        \let~\space
+        \bibcite{#5}{{#1}{#2}{{#3}}{{#4}}}%
+    \endgroup
+    \ignorespaces
 }
 
 %% spec/plambeck chapter bibliographies.  This is probably not good
