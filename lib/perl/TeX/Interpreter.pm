@@ -133,7 +133,7 @@ use TeX::TokenList qw(:factories);
 
 use TeX::Type::GlueSpec qw(:factories);
 
-use TeX::Nodes qw(:factories);
+use TeX::Nodes qw(:factories :constants);
 use TeX::Node::CharNode qw(:factories);
 
 use TeX::Node::HListNode qw(new_null_box);
@@ -8804,12 +8804,10 @@ sub append_char {
     return;
 }
 
-my $UNICODE_SPACE_CHAR = new_character(ord(' '));
-
 sub append_normal_space {
     my $tex = shift;
 
-    $tex->tail_append($UNICODE_SPACE_CHAR);
+    $tex->tail_append(NORMAL_SPACE_CHAR);
 
     return;
 }

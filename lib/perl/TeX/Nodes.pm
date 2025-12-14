@@ -1,6 +1,8 @@
 package TeX::Nodes;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.16.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,12 +31,12 @@ package TeX::Nodes;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use base qw(Exporter);
 
-our %EXPORT_TAGS = (factories => [ qw(new_null_vbox
+our %EXPORT_TAGS = (constants => [ qw(NORMAL_SPACE_CHAR) ],
+                    factories => [ qw(new_null_vbox
                                       new_rule
                                       new_ins
                                       new_mark
@@ -62,14 +64,20 @@ our %EXPORT_TAGS = (factories => [ qw(new_null_vbox
                                       new_end_u_template_node
                                    ) ] );
 
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{factories} } );
+our @EXPORT_OK = ( $EXPORT_TAGS{factories}->@*, 'NORMAL_SPACE_CHAR' );
 
 our @EXPORT = ();
+
+sub NORMAL_SPACE_CHAR() {
+    state $node = new_character(ord(' '));
+
+    return $node;
+}
 
 use TeX::Constants qw(:node_params);
 
 use TeX::Node::AdjustNode;
-use TeX::Node::CharNode;
+use TeX::Node::CharNode qw(:factories);
 use TeX::Node::GlueNode;
 use TeX::Node::GlyphNode;
 use TeX::Node::InsertNode;

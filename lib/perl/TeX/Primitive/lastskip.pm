@@ -1,6 +1,8 @@
 package TeX::Primitive::lastskip;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,14 +31,15 @@ package TeX::Primitive::lastskip;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use base qw(TeX::Primitive::LastItem);
 
 use TeX::Type::GlueSpec qw(make_glue_spec);
 
-use TeX::Constants qw(:scan_types);
+use TeX::Constants qw(:scan_types sp_per_pt);
+
+use TeX::Nodes qw(:constants);
 
 use TeX::Class;
 
@@ -58,10 +61,18 @@ sub read_value {
 
     my $tail = $tex->tail_node();
 
-    if (defined $tail && $tail->is_glue()) {
-        return make_glue_spec($tail->get_width(),
-                              [ $tail->get_stretch(), $tail->get_stretch_order() ],
-                              [ $tail->get_shrink(), $tail->get_shrink_order() ]);
+    if (defined $tail) {
+        if ($tail->is_glue()) {
+            return make_glue_spec($tail->get_width(),
+                                  [ $tail->get_stretch(), $tail->get_stretch_order() ],
+                                  [ $tail->get_shrink(), $tail->get_shrink_order() ]);
+        } elsif (ident($tail) == ident(NORMAL_SPACE_CHAR)) {
+            state $space = make_glue_spec((10 * sp_per_pt)/3,
+                                          1.02666 * sp_per_pt,
+                                          1.80376 * sp_per_pt);
+
+            return $space;
+        }
     }
 
     return make_glue_spec(0, 0, 0);
