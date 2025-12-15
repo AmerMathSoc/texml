@@ -60,13 +60,25 @@ sub do_resolve_natbib {
 
     my $body = $handle->get_dom();
 
-    $tex->print_nl("Resolving natbib \\ref's");
+    my @refs = $body->findnodes(qq{descendant::natbibref});
+
+    my $num_refs = @refs;
+
+    next if $num_refs == 0;
+
+    my $s = $num_refs == 1 ? "" : "'s";
+
+    $tex->print_nl("Resolving $num_refs natbib \\cite$s");
+
+    if ($num_refs > 256) { # arbitrary cutoff
+        $tex->print_nl("(Oh my.  That's alot.  You might want to make yourself a cup of tea.)\n");
+    }
 
     $tex->begingroup();
 
     $tex->let_csname('texml@exec@natbib' => 'texml@exec@natbib@resolve');
 
-    for my $ref ($body->findnodes(qq{descendant::natbibref})) {
+    for my $ref (@refs) {
         (undef, my $ref_cmd, my $star) = split / /, $ref->getAttribute('specific-use');
 
         my $tex_cmd = qq{\\${ref_cmd}};
