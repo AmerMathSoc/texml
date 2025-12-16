@@ -1,6 +1,8 @@
-package TeX::Token;
+package TeX::Token v1.18.0;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -33,15 +35,13 @@ package TeX::Token;
 ## time there should only be a single object with a given catcode and
 ## datum.  This saves memory and speeds up token equality checks.
 
-use strict;
 use warnings;
-
-use version; our $VERSION = qv '1.17.1';
 
 use base qw(Exporter);
 
 our %EXPORT_TAGS = (
     factories => [ qw(make_character_token
+                      make_active_character
                       make_csname_token
                       make_param_ref_token
                       make_comment_token
@@ -193,7 +193,7 @@ END {
     undef @CACHE;
 }
 
-sub __make_token($$;$) {
+sub __make_token {
     my $catcode = shift;
     my $datum   = shift;
 
@@ -230,27 +230,34 @@ sub __make_token($$;$) {
     return $token;
 }
 
-sub make_character_token($$) {
+sub make_character_token {
     my $character = shift;
     my $catcode   = shift;
 
     return __make_token($catcode, $character, 0);
 }
 
-sub make_csname_token($;$) {
+sub make_active_character {
+    my $character = shift;
+    my $flag      = shift;
+
+    return __make_token(CATCODE_ACTIVE, $character, $flag);
+}
+
+sub make_csname_token {
     my $csname  = shift;
     my $flag    = shift;
 
     return __make_token(CATCODE_CSNAME, $csname, $flag);
 }
 
-sub make_anonymous_token($) {
+sub make_anonymous_token {
     my $meaning = shift;
 
     return __make_token(CATCODE_ANONYMOUS, $meaning);
 }
 
-sub make_frozen_token($$) {
+sub make_frozen_token {
     my $name    = shift;
     my $meaning = shift;
 
@@ -261,7 +268,7 @@ sub make_frozen_token($$) {
     return $token;
 }
 
-sub make_param_ref_token($) {
+sub make_param_ref_token {
     my $param_no = shift;
 
     if ($param_no !~ /\A [1-9] \z/x) {
@@ -271,7 +278,7 @@ sub make_param_ref_token($) {
     return __make_token(CATCODE_PARAM_REF, $param_no, 0);
 }
 
-sub make_comment_token($;$) {
+sub make_comment_token {
     my $comment = shift;
     my $flag    = shift;
 
