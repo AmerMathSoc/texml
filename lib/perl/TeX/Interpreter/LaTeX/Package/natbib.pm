@@ -64,7 +64,7 @@ sub do_resolve_natbib {
 
     my $num_refs = @refs;
 
-    next if $num_refs == 0;
+    return if $num_refs == 0;
 
     my $s = $num_refs == 1 ? "" : "'s";
 
