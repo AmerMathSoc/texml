@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Class::stml_l;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Class::stml_l;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -53,6 +54,13 @@ __DATA__
 \LoadClass{amsbook}
 
 \seriesinfo{stml}{}{}
+
+\def\AMS@publname{The Student Mathematical Library}
+
+\def\AMS@pissn{1520-9121}
+\def\AMS@eissn{2376-9173}
+
+\def\AMS@series@url{https://www.ams.org/gsm/}
 
 \def\format@toc@label#1#2{%
     \ignorespaces\if@AMS@tocusesnames@#1 \fi
