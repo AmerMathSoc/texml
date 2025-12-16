@@ -71,7 +71,7 @@ sub do_resolve_natbib {
     $tex->print_nl("Resolving $num_refs natbib \\cite$s");
 
     if ($num_refs > 256) { # arbitrary cutoff
-        $tex->print_nl("(Oh my.  That's alot.  You might want to make yourself a cup of tea.)\n");
+        $tex->print_nl("(Oh my.  That's a lot.  You might want to make yourself a cup of tea.)\n");
     }
 
     $tex->begingroup();
