@@ -1601,7 +1601,17 @@ __DATA__
         \thisxmlpartag{attrib}#1\par
     \endgroup
 }
-\let\aufm\attrib
+
+\newcommand{\aufm}[1]{%
+    \par
+    \begingroup
+        \def\\{\emptyXMLelement{break}}%
+        \startXMLelement{attrib}%
+            \setXMLattribute{specific-use}{aufm}%
+            #1\par
+        \startXMLelement{attrib}%
+    \endgroup
+}
 
 \endinput
 
