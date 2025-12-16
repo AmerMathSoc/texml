@@ -64,10 +64,19 @@ sub do_parse_name {
 
     $prefix = $prefix->get_csname() if $prefix == CATCODE_CSNAME;
 
-    ## TODO: This is going to choke if there is a ~ or control space
-    ## in the name.  Cf. changes to amsclass's do_parse_name().
+    $tex->begingroup;
 
-    my $raw_name = trim($tex->read_undelimited_parameter(EXPANDED));
+    ## We need ~ and \ to expand into "~" so they will be recognized
+    ## as word components in tokenize_namelist().
+
+    $tex->let_active_char("~" => 'relax');
+    $tex->define_simple_macro(" " => "~");
+
+    my $raw_name = $tex->read_undelimited_parameter(EXPANDED);
+
+    $tex->endgroup;
+
+    $raw_name->trim();
 
     my ($given, $von, $surname, $suffix) = parse_name($raw_name);
 
@@ -238,6 +247,18 @@ sub __parse_name_2 {
     my @groups = @_;
 
     return unless @groups;
+
+    my @last = $groups[1]->@*;
+
+    if (@last == 1) {
+        my $jr = $last[0];
+
+        if (is_suffix($jr)) {
+            my ($first, $von, $last) = __parse_name_1($groups[0]);
+
+            return ($first, $von, $last, $jr);
+        }
+    }
 
     my ($von, $last) = __parse_surname($groups[0]->@*);
 
