@@ -1606,11 +1606,13 @@ __DATA__
     \par
     \begingroup
         \def\\{\emptyXMLelement{break}}%
+        \xmlpartag{}%
         \startXMLelement{attrib}%
             \setXMLattribute{specific-use}{aufm}%
             #1\par
-        \startXMLelement{attrib}%
+        \endXMLelement{attrib}%
     \endgroup
+    \par
 }
 
 \endinput
