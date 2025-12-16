@@ -12152,6 +12152,31 @@ sub let_csname {
     return;
 }
 
+sub let_active_char {
+    my $tex = shift;
+
+    my $char       = shift;
+    my $src_csname = shift;
+
+    my $modifier = shift;
+
+    my $eqvt = $tex->get_csname($src_csname);
+
+    my $equiv;
+
+    if (defined $eqvt) {
+        $equiv = $eqvt->get_equiv();
+    } else {
+        $equiv = UNDEFINED_CS;
+    }
+
+    my $eqvt_ptr = \$active_chars_of{ident $tex}->{$char};
+
+    $tex->eq_define($eqvt_ptr, $equiv, $modifier);
+
+    return;
+}
+
 sub define_pseudo_macro {
     my $tex = shift;
 
