@@ -1109,8 +1109,12 @@ __DATA__
                         \this@given\par
                     \fi
                     \ifx\this@suffix\@empty\else
-                        \thisxmlpartag{suffix}
+                        \startXMLelement{suffix}%
+                        \ifnum\this@usecomma=\@ne
+                            \XMLgeneratedText{,}
+                        \fi
                         \this@suffix\par
+                        \endXMLelement{suffix}%
                     \fi
                 \endXMLelement{name}
             \fi

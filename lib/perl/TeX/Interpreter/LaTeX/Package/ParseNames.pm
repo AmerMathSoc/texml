@@ -78,7 +78,7 @@ sub do_parse_name {
 
     $raw_name->trim();
 
-    my ($given, $von, $surname, $suffix) = parse_name($raw_name);
+    my ($given, $von, $surname, $suffix, $use_comma) = parse_name($raw_name);
 
     $surname = "$von $surname" if nonempty($von);
 
@@ -86,13 +86,18 @@ sub do_parse_name {
 
     $string_name = "$given $string_name" if nonempty($given);
 
-    $string_name .= ", $suffix" if nonempty($suffix);
+    if (nonempty($suffix)) {
+        $string_name .= "," if $use_comma;
+
+        $string_name .= " $suffix";
+    }
 
     $tex->define_simple_macro("$prefix\@string\@name", $string_name);
 
     $tex->define_simple_macro("$prefix\@given",   $given);
     $tex->define_simple_macro("$prefix\@surname", $surname);
     $tex->define_simple_macro("$prefix\@suffix",  $suffix);
+    $tex->define_simple_macro("$prefix\@usecomma",  $use_comma);
 
     return;
 }
@@ -214,6 +219,12 @@ sub __parse_name_1 {
 
     return unless @tokens;
 
+    my $jr = "";
+
+    if (is_suffix($tokens[-1])) {
+        $jr = pop @tokens;
+    }
+
     my @first;
     my @von;
 
@@ -238,9 +249,8 @@ sub __parse_name_1 {
     my $first = join " ", @first;
     my $von   = join " ", @von;
     my $last  = join " ", @last;
-    my $jr    = "";
 
-    return ($first, $von, $last, $jr);
+    return ($first, $von, $last, $jr, 0);
 }
 
 sub __parse_name_2 {
@@ -256,7 +266,7 @@ sub __parse_name_2 {
         if (is_suffix($jr)) {
             my ($first, $von, $last) = __parse_name_1($groups[0]);
 
-            return ($first, $von, $last, $jr);
+            return ($first, $von, $last, $jr, 1);
         }
     }
 
@@ -266,7 +276,7 @@ sub __parse_name_2 {
 
     my $jr = "";
 
-    return ($first, $von, $last, $jr);
+    return ($first, $von, $last, $jr, 0);
 }
 
 sub __parse_name_3 {
@@ -280,7 +290,7 @@ sub __parse_name_3 {
 
     my $first = join " ", $groups[2]->@*;
 
-    return ($first, $von, $last, $jr);
+    return ($first, $von, $last, $jr, 1);
 }
 
 sub parse_name {
