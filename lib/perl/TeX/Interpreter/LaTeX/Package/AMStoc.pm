@@ -124,7 +124,7 @@ sub do_clear_toc_stack {
         $tex->end_xml_element("toc-entry");
     }
 
-    $tex->define_simple_macro('@currtoclevel', '-1', MODIFIER_GLOBAL);
+    $tex->define_simple_macro('@currtoclevel', '-1000', MODIFIER_GLOBAL);
 
     return;
 }
@@ -179,7 +179,7 @@ sub do_finish_toc {
     my $fragment = << "EOF";
         \\immediate\\closeout\\tf\@$type
         \\typeout{Generating TOC $type}%
-        \\gdef\\\@currtoclevel{-1}%
+        \\gdef\\\@currtoclevel{-1000}%
         \\let\\\@authorlist\\\@empty
         \\\@input{\\jobname.$type}%
         \\\@clear\@tocstack
@@ -250,7 +250,7 @@ __DATA__
 %%
 %%   \contentsline{chapter} -> \l@chapter -> \@tocline{0}{8pt plus1pt}{0pt}{}{}
 
-\gdef\@currtoclevel{-1}
+\gdef\@currtoclevel{-1000}
 
 \def\@tocline#1#2#3#4#5#6#7{%
     \relax
