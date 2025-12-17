@@ -372,6 +372,24 @@ __DATA__
     \setXMLattribute{id}{\@currentXMLid}%
 }
 
+\newcommand{\XMLlabel}[1]{%
+    \@bsphack
+    \begingroup
+        \addXMLid
+        \let\ref\relax
+        \protected@edef\@tempa{%
+            \noexpand\newlabel{#1}{%
+                {\@currentlabel}%
+                {\@currentXMLid}%
+                {pageref}%
+                {}%
+            }%
+        }%
+    \expandafter\endgroup
+    \@tempa
+    \@esphack
+}
+
 \let\label\relax
 \newcommand{\label}[2][]{%
     \@bsphack
@@ -474,7 +492,7 @@ __DATA__
     \endgroup
 }
 
-\long\def\texml@get@pageref#1#2#3#4{\@latex@warning{Use of \string\pageref}}
+\long\def\texml@get@pageref#1#2#3#4{\@latex@warning{Use of \string\pageref}[loc]}
 
 \DeclareRobustCommand\pageref{%
     \begingroup
@@ -482,7 +500,7 @@ __DATA__
 }
 
 \def\@pageref#1{%
-    \@setref {#1} \pageref {}
+    \@setref {#1} \pageref {}%
 }
 
 % #1 = LABEL
