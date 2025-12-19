@@ -435,33 +435,11 @@ __DATA__
 
 \newswitch{}
 
-\DeclareRobustCommand{\except}[1]{%
-  \if\csname ?@#1\endcsname \expandafter\@gobble
-  \else \expandafter\@firstofone
-  \fi
-}
+\DeclareRobustCommand{\except}[2]{}
 
-\DeclareRobustCommand{\for}[1]{%
-  \if\csname ?@#1\endcsname \expandafter\@firstofone
-  \else \expandafter\@gobble
-  \fi
-}
+\DeclareRobustCommand{\for}[2]{}
 
-\DeclareRobustCommand{\forany}[1]{%
-  \csname for@any@01\endcsname#1,?,\@nil
-}
-
-\@namedef{for@any@\@False}#1,{%
-  \csname for@any@%
-    \csname ?@\zap@space#1 \@empty\endcsname
-  \endcsname
-}
-
-\@namedef{?@?}{x}
-
-\@namedef{for@any@\@True}#1\@nil#2{#2}
-
-\def\for@any@x{\@car\@gobble}
+\DeclareRobustCommand{\forany}[2]{}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
@@ -517,6 +495,8 @@ __DATA__
 }
 
 \def\abstractname{Abstract}
+\def\abstractname@postpunct{\@addpunct.}
+
 \let\AMS@abstract\@empty
 
 % publkey is the in-house abbreviation for the journal or book series,
@@ -1201,7 +1181,7 @@ __DATA__
         \startXMLelement{abstract}
             \ifx\abstractname\@empty\else
                 \thisxmlpartag{title}
-                \abstractname\@addpunct.\par
+                \abstractname\abstractname@postpunct\par
             \fi
             \begingroup
                 \xmlpartag{p}%
@@ -1232,7 +1212,6 @@ __DATA__
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \let\NoTOC\@gobble
-\def\for#1#2{}
 
 \let\upn=\textup
 
