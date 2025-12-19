@@ -1,6 +1,8 @@
 package TeX::Unicode::Translators;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2025 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Unicode::Translators;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use base qw(Exporter);
@@ -133,7 +134,7 @@ END {
 }
 
 use constant {
-    MATH_ROMAN_OFFSET                  => 0x00041, # bold
+    MATH_ROMAN_OFFSET                  => 0x00041, # roman
     MATH_BOLD_OFFSET                   => 0x1D400, # bold
     MATH_ITALIC_OFFSET                 => 0x1D434, # italic
     MATH_BOLD_ITALIC_OFFSET            => 0x1D468, # bold italic
@@ -673,6 +674,9 @@ BEGIN {
         ## stmaryrd
         llbracket => "\x{27E6}",
         rrbracket => "\x{27E7}",
+        ## wasysym
+        thorn => "\x{00FE}",
+        Thorn => "\x{00DE}",
         ##
         TeX => q{TeX},
         );
@@ -1025,6 +1029,9 @@ sub __create_parser {
     $parser->set_handler(r    => make_accenter(COMBINING_RING_ABOVE));
     $parser->set_handler(u    => make_accenter(COMBINING_BREVE));
     $parser->set_handler(v    => make_accenter(COMBINING_CARON));
+    $parser->set_handler(t    => make_accenter(COMBINING_TIE));
+
+    $parser->let(ring => 'r');
 
     ## Extra accents from mathscinet
 
@@ -1033,8 +1040,8 @@ sub __create_parser {
     $parser->set_handler(lfhook => make_accenter(COMBINING_COMMA_BELOW));
     $parser->set_handler(dudot  => make_accenter(COMBINING_DIAERESIS_BELOW));
 
-    $parser->set_handler(udot  => $parser->get_handler(q{d}));
-    $parser->set_handler(polhk => $parser->get_handler(q{k}));
+    $parser->let(udot  => q{d});
+    $parser->let(polhk => q{k});
 
     $parser->let(cyr => '@firstofone');
 
@@ -1062,9 +1069,6 @@ sub __create_parser {
     $parser->set_handler(cirac => make_accenter(COMBINING_CIRCUMFLEX,
                                                 COMBINING_ACUTE));
 
-    $parser->set_handler(xcirac => $parser->get_handler(q{cirac}));
-    $parser->set_handler(xcirgr => $parser->get_handler(q{cirgr}));
-
     $parser->set_handler(cirgr => make_accenter(COMBINING_CIRCUMFLEX,
                                                 COMBINING_GRAVE));
 
@@ -1077,25 +1081,37 @@ sub __create_parser {
     $parser->set_handler(cirvh => make_accenter(COMBINING_CIRCUMFLEX,
                                                 COMBINING_HOOK_ABOVE));
 
+    $parser->let(xcirac => 'cirac');
+    $parser->let(xcirgr => 'cirgr');
+
+    ## Various aliases that sometimes show up in MathSciNet output.
+
+    $parser->let(cftil => 'cirti');
+    $parser->let(cfac => 'cirac');
+    $parser->let(cfgrv => 'cirgr');
+    $parser->let(brevac => 'breac');
+    $parser->let(brevudot => 'breud');
+    $parser->let(cfudot => 'cirud');
+
     # Aliases
 
-    $parser->set_handler(vacute => $parser->get_handler(q{'}));
-    $parser->set_handler(vgrave => $parser->get_handler(q{`}));
-    $parser->set_handler(vhook  => $parser->get_handler(q{h}));
-    $parser->set_handler(vtilde => $parser->get_handler(q{~}));
+    $parser->let(vacute => q{'});
+    $parser->let(vgrave => q{`});
+    $parser->let(vhook  => q{h});
+    $parser->let(vtilde => q{~});
 
     # Math accents
 
-    $parser->set_handler(hat   => $parser->get_handler(q{^}));
-    $parser->set_handler(check => $parser->get_handler(q{v}));
-    $parser->set_handler(breve => $parser->get_handler(q{u}));
-    $parser->set_handler(acute => $parser->get_handler(q{'}));
-    $parser->set_handler(grave => $parser->get_handler(q{`}));
-    $parser->set_handler(tilde => $parser->get_handler(q{~}));
-    $parser->set_handler(bar   => $parser->get_handler(q{=}));
+    $parser->let(hat   => q{^});
+    $parser->let(check => q{v});
+    $parser->let(breve => q{u});
+    $parser->let(acute => q{'});
+    $parser->let(grave => q{`});
+    $parser->let(tilde => q{~});
+    $parser->let(bar   => q{=});
     # $parser->set_handler(vec   => make_accenter(COMBINING_RIGHT_ARROW_ABOVE));
-    $parser->set_handler(dot   => $parser->get_handler(q{.}));
-    $parser->set_handler(ddot  => $parser->get_handler(q{"}));
+    $parser->let(dot   => q{.});
+    $parser->let(ddot  => q{"});
 
     ## There are no standard TeX names for the following.
 
@@ -1114,6 +1130,10 @@ sub __create_parser {
 
     $parser->let(label  => '@gobble');
 
+    $parser->let(href => '@secondoftwo');
+
+    $parser->let(nopunct => sub {});
+
     $parser->let(text   => '@firstofone');
     $parser->let(emph   => '@firstofone');
     $parser->let(textup => '@firstofone');
@@ -1124,6 +1144,10 @@ sub __create_parser {
     $parser->let(textsf => '@firstofone');
     $parser->let(textrm => '@firstofone');
     $parser->let(textnormal => '@firstofone');
+
+    # I think we probably want to avoid uppercase in PDF Outlines, so
+    # I'm going to make this a no-op.
+    $parser->let(MakeUppercase => '@firstofone');
 
     $parser->set_handler(textcolor => \&do_textcolor);
 
@@ -1142,6 +1166,8 @@ sub __create_parser {
     $parser->let(mathpunct => '@firstofone');
     $parser->let(mathrel   => '@firstofone');
 
+    $parser->let(mathit   => '@firstofone');
+
     $parser->let(lowercase => '@firstofone');
     $parser->let(textviet  => '@firstofone');
 
@@ -1150,8 +1176,8 @@ sub __create_parser {
     $parser->set_handler(nonbreakingspace => \&do_control_space);
     $parser->set_handler(space => \&do_control_space);
 
-    $parser->set_handler(footnotemark => \&skip_optional_arg);
-    $parser->set_handler(footnotetext => \&skip_optional_arg);
+    $parser->let(footnotemark => '@gobbleopt');
+    $parser->let(footnotetext => '@gobbleopt');
 
     $parser->set_handler(footnote => \&opt_gobble);
 
@@ -1164,7 +1190,13 @@ sub __create_parser {
     $parser->set_handler(forcelinebreak => \&do_forcebreak);
     $parser->set_handler(goodbreak   => \&do_forcebreak);
 
+    $parser->set_handler(biblist    => sub {});
+    $parser->set_handler(endbiblist => sub {});
+
     $parser->set_handler(bibitem => \&do_bibitem);
+
+    $parser->let(thebibliography    => '@gobble');
+    $parser->let(endthebibliography => '@empty');
 
     $parser->set_handler(numberline => \&do_numberline);
     $parser->set_handler(and        => \&do_and_in_title);
@@ -1187,6 +1219,8 @@ sub __create_parser {
     $parser->set_handler(sb => sub { do_math_script($_[0], $SUBSCRIPT_TOKEN) });
 
     $parser->set_handler(tocauthors => \&do_tocauthors);
+
+    $parser->set_handler(arXiv => \&do_arXiv);
 
     $parser->set_csname_handler(\&do_csname);
 
@@ -1220,6 +1254,8 @@ sub __create_parser {
 ## This is ridiculous, but without the explicit use of utf8::upgrade,
 ## I sometimes get ISOLatin1 strings out of the to_unicode
 ## subroutines.  Weird.
+
+## TBD: This might be obsolete with v5.26.0.  Need to test.
 
 sub __new_utf8_string() {
     my $string = "";
@@ -1705,7 +1741,7 @@ sub do_math_shift_on {
     $parser->let(ssf  => 'mathsf');
 
     $parser->let(boldsymbol   => '@firstofone');
-    $parser->let(operatorname => '@firstofone');
+    $parser->let(operatorname => 'mathrm');
 
     return;
 }
