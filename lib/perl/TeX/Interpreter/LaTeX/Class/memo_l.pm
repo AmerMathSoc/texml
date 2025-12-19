@@ -63,6 +63,8 @@ __DATA__
 
 \def\AMS@series@url{https://www.ams.org/memo/}
 
+\let\abstractname@postpunct\@empty
+
 \endinput
 
 __END__
