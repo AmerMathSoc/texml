@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Class::notices;
 
 use v5.26.0;
 
-# Copyright (C) 2022, 2024, 2025 American Mathematical Society
+# Copyright (C) 2022, 2024-2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -173,7 +173,32 @@ __DATA__
 \disclaimertext{}
 
 % \newcommand{\notiemail}[1]{\texttt{\upshape\nolinkurl{#1}}}
-\newcommand{\notiemail}[1]{\leavevmode\XMLelement{email}{\ignorespaces#1}}
+
+\newcommand{\notiemail}[1]{%
+    \leavevmode
+    \begingroup
+        %% Cf. \Url in url.pm
+        %% Most of this isn't really needed, but should be harmless.
+        %%
+        \fontencoding{UCS}\selectfont
+        \let\do\@makeother \dospecials % verbatim catcodes
+        \catcode`\\=\z@  % Vide infra.
+        \catcode`\{=\@ne % with exceptions
+        \catcode`\}=\tw@
+        \catcode`\ =10 % allow "\url {x}"
+        \let\%\@percentchar
+        \edef\#{\string##}%
+        \edef\&{\string&}%
+        \edef\_{\string_}%
+        \edef\~{\string~}%
+        \edef~{\string~}%
+        \edef\\{\Uchar"005C }%
+}
+
+\necommand{\notiemail@}[1]{%
+        \XMLelement{email}{\ignorespaces#1}}
+    \endgroup
+}
 
 % Doesn't handle catcode changes
 
