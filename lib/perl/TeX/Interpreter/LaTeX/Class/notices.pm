@@ -174,8 +174,7 @@ __DATA__
 
 % \newcommand{\notiemail}[1]{\texttt{\upshape\nolinkurl{#1}}}
 
-\newcommand{\notiemail}[1]{%
-    \leavevmode
+\newcommand{\notiemail}{%
     \begingroup
         %% Cf. \Url in url.pm
         %% Most of this isn't really needed, but should be harmless.
@@ -193,10 +192,12 @@ __DATA__
         \edef\~{\string~}%
         \edef~{\string~}%
         \edef\\{\Uchar"005C }%
+        \notiemail@
 }
 
 \newcommand{\notiemail@}[1]{%
-        \XMLelement{email}{\ignorespaces#1}}
+        \leavevmode
+        \XMLelement{email}{\ignorespaces#1}%
     \endgroup
 }
 
