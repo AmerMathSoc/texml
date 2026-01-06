@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Package::amsrefs;
 
 use 5.26.0;
 
-# Copyright (C) 2022, 2024, 2025 American Mathematical Society
+# Copyright (C) 2022, 2024-2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -336,14 +336,16 @@ __DATA__
         #1\relax
     }%
     \par
-    \startXMLelement{title}%
-    \refname
-    \ifx\chaptername\appendixname
-        \addcontentsline{toc}{chapter}{\protect\tocappendix{}{}{\refname}{\@currentXMLid}}%
-    \else
-        \addcontentsline{toc}{chapter}{\protect\tocchapter{}{}{\refname}{\@currentXMLid}}%
+    \ifx\refname\@empty\else
+        \startXMLelement{title}%
+        \refname
+        \ifx\chaptername\appendixname
+            \addcontentsline{toc}{chapter}{\protect\tocappendix{}{}{\refname}{\@currentXMLid}}%
+        \else
+            \addcontentsline{toc}{chapter}{\protect\tocchapter{}{}{\refname}{\@currentXMLid}}%
+        \fi
+        \endXMLelement{title}%
     \fi
-    \endXMLelement{title}%
     \let\@listpartag\@empty
     \@ifstar{\@biblistsetup}{}%
 }
