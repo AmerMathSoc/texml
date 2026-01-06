@@ -195,7 +195,7 @@ __DATA__
         \edef\\{\Uchar"005C }%
 }
 
-\necommand{\notiemail@}[1]{%
+\newcommand{\notiemail@}[1]{%
         \XMLelement{email}{\ignorespaces#1}}
     \endgroup
 }
