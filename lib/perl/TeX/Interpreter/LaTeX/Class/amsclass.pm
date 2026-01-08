@@ -1484,6 +1484,8 @@ __DATA__
 \def\figurename{Figure}
 \floatname{figure}{\figurename}
 \def\fnum@figure{\figurename\space\thefigure\XMLgeneratedText.}
+\def\listfigurename{List of Figures}
+\let\listoffigures\@empty
 \def\jats@figure@element{fig}
 
 \SaveEnvironmentDefinition{figure}
@@ -1493,6 +1495,8 @@ __DATA__
 \def\tablename{Table}
 \floatname{table}{\tablename}
 \def\fnum@table{\tablename\space\thetable\XMLgeneratedText.}
+\def\listtablename{List of Tables}
+\let\listoftables\@empty
 \def\jats@table@element{table-wrap}
 
 \let\LT@texml@caption@sep\@empty
@@ -1531,10 +1535,6 @@ __DATA__
 \let\tocsubparagraph\tocsection
 \let\tocsubsection\tocsection
 \let\tocsubsubsection\tocsection
-
-\let\listofcontents\@empty
-\let\listoffigures\@empty
-\let\listoftables\@empty
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
