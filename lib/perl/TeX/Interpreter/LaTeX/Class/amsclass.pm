@@ -4,7 +4,7 @@ package TeX::Interpreter::LaTeX::Class::amsclass;
 
 use 5.26.0;
 
-# Copyright (C) 2022, 2024, 2025 American Mathematical Society
+# Copyright (C) 2022, 2024-2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -1460,10 +1460,9 @@ __DATA__
         \usecounter{enumiv}%
         \@listXMLidtrue
     }%
-    \startXMLelement{title}%
-    \refname
-    \endXMLelement{title}%
     \let\@listpartag\@empty
+    \let\@secnumber\@empty
+    \XMLelement{title}{\refname}%
 }{%
     \def\@noitemerr{\@latex@warning{Empty `thebibliography' environment}}%
     \endlist
@@ -1592,6 +1591,10 @@ __DATA__
         \endXMLelement{attrib}%
     \endgroup
     \par
+}
+
+\newcommand{\TeXMLasterism}{%
+    \par\XMLelement{hr}{\setXMLattribute{specific-use}{asterism}}\par
 }
 
 \endinput
