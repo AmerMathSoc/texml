@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Package::LTfntcmd;
 
 use 5.26.0;
 
-# Copyright (C) 2025 American Mathematical Society
+# Copyright (C) 2025, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -33,7 +33,7 @@ use 5.26.0;
 
 use warnings;
 
-sub install  {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -80,6 +80,18 @@ __DATA__
             {\fontencoding{#1}\selectfont##1}%
             \endXMLelement{#4}%
         \fi
+        \endgroup
+    }%
+}
+
+\newcommand{\@declaretextfontcommand}[3][OT1]{%
+    \DeclareRobustCommand#2[1]{%
+        \@nomath#2%
+        \begingroup
+            \leavevmode
+            \startXMLelement{#3}%
+            {\fontencoding{#1}\selectfont##1}%
+            \endXMLelement{#3}%
         \endgroup
     }%
 }
