@@ -335,6 +335,7 @@ __DATA__
         \fi
         \typeout{#2}%
         \startXMLelement{toc}%
+            \setXMLattribute{specific-use}{#1}%
             \addXMLid
             \par
             \startXMLelement{toc-title-group}%
@@ -375,6 +376,8 @@ __DATA__
         \set@toc@entry{#1}{#2}{#3}{#4}%
     \fi
 }
+
+\let\numberline\generic@toc@section
 
 \endinput
 
