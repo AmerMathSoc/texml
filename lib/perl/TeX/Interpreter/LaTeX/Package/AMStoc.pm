@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Package::AMStoc;
 
 use v5.26.0;
 
-# Copyright (C) 2024, 2025 American Mathematical Society
+# Copyright (C) 2024, 2025, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -267,11 +267,6 @@ __DATA__
     \fi
 }
 
-% #1 = section name (Chapter, section, etc.)
-% #2 = label (I, 1, 2.3, etc.)
-% #3 = title
-% #4 = id
-
 \newif\if@AMS@tocusesnames@
 \@AMS@tocusesnames@true
 
@@ -279,6 +274,11 @@ __DATA__
     \ignorespaces\if@AMS@tocusesnames@#1 \fi
     #2\unskip\@addpunct.%
 }
+
+% #1 = section name (Chapter, section, etc.)
+% #2 = label (I, 1, 2.3, etc.)
+% #3 = title
+% #4 = id
 
 \def\set@toc@entry#1#2#3#4{%
     \leavevmode
@@ -355,22 +355,25 @@ __DATA__
 }
 
 \newcommand{\generic@toc@section}[4]{%
-    \ifnum\@toclevel=\@currtoclevel
-        \endXMLelement{toc-entry}%
-        \startXMLelement{toc-entry}%
-    \else
-        \ifnum\@toclevel>\@currtoclevel
+    \ams@measure{#2\ignorespaces#3}%
+    \if@ams@empty\else
+        \ifnum\@toclevel=\@currtoclevel
+            \endXMLelement{toc-entry}%
             \startXMLelement{toc-entry}%
-            \@push@tocstack{\@toclevel}%
         \else
-            \@pop@tocstack{\@toclevel}%
-            %\endXMLelement{toc-entry}%
-            \startXMLelement{toc-entry}%
-            \@push@tocstack{\@toclevel}%
+            \ifnum\@toclevel>\@currtoclevel
+                \startXMLelement{toc-entry}%
+                \@push@tocstack{\@toclevel}%
+            \else
+                \@pop@tocstack{\@toclevel}%
+                %\endXMLelement{toc-entry}%
+                \startXMLelement{toc-entry}%
+                \@push@tocstack{\@toclevel}%
+            \fi
+            \global\let\@currtoclevel\@toclevel
         \fi
-        \global\let\@currtoclevel\@toclevel
+        \set@toc@entry{#1}{#2}{#3}{#4}%
     \fi
-    \set@toc@entry{#1}{#2}{#3}{#4}%
 }
 
 \endinput
