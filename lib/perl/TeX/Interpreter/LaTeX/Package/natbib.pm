@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Package::natbib;
 
 use v5.26.0;
 
-# Copyright (C) 2022, 2025 American Mathematical Society
+# Copyright (C) 2022, 2025, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -295,6 +295,7 @@ __DATA__
 %% #4 = cite key(s)
 
 \def\texml@exec@natbib@@@#1#2[#3]#4{%
+    \leavevmode
     \startXMLelement{natbibref}%
         \setXMLattribute{specific-use}{unresolved #1\ifst@rred\space*\fi}%
         \setXMLattribute{ref-key}{#4}%
@@ -353,7 +354,13 @@ __DATA__
 %% spec/plambeck chapter bibliographies.  This is probably not good
 %% enough in general.
 
-\def\biblist@sec@level{1}
+\@ifundefined{chapter}{%
+    \def\biblist@sec@level{1}%
+}{%
+    \let\biblist@sec@level\texml@chapter@level
+}%
+
+\let\biblist@sec@level\texml@chapter@level
 
 \renewenvironment{thebibliography}[1]{%
     % \if@backmatter
@@ -376,9 +383,7 @@ __DATA__
     % \def\@listlabelname{label}
     \let\@listlabelname\@empty
     \def\@listdefname{mixed-citation}
-    \list{%
-        \@biblabel{\the\c@NAT@ctr}%
-    }{%
+    \list{\@biblabel{\the\c@NAT@ctr}}{%
         \@bibsetup{#1}%
         \global\c@NAT@ctr\z@
         \@listXMLidtrue
@@ -387,10 +392,9 @@ __DATA__
     \let\citeN\cite
     \let\shortcite\cite
     \let\citeasnoun\cite
-    \startXMLelement{title}%
-    \refname
-    \endXMLelement{title}%
     \let\@listpartag\@empty
+    \XMLelement{title}{\refname}%
+    \@ifundefined{chapter}{}{\@tocwriteb\tocchapter{chapter}{\bibname}}%
 }{%
     \bibitem@fin
     %% See above
