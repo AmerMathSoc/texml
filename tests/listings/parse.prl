@@ -1,0 +1,142 @@
+#!/usr/bin/perl -w
+
+use v5.26.0;
+
+our $VERSION = v0.0.0;
+
+use warnings;
+
+use utf8;
+
+my %keyword = map { $_ => 1 } qw(alfa and array begin boolean byte case char const div
+                 do downto else end false file for function get goto
+                 if in integer label maxint mod new not of or pack
+                 packed page program put procedure read readln real
+                 record repeat reset rewrite set text then to true
+                 type unpack until var while with write writeln);
+
+my $number     = qr{\d+(?:.\d+)?};
+my $separator  = qr{;};
+my $op         = qr{(:=|[+/%*-])};
+my $delim      = qr{[()\[\]]};
+my $whitespace = qr{[ ]+};
+my $newline    = qr{\n};
+
+my $identifier = qr{[a-z][a-z0-9_]*}i;
+my $comment    = qr{ ( \{.*?\} | \(\* .*? \*\) )}smx;
+my $string     = qr{}; # ???
+
+my $file = shift;
+
+print << 'EOF';
+\documentclass{amsart}
+
+\begin{document}
+
+\begingroup
+\obeyspaces
+\obeylines
+EOF
+
+open(my $fh, "<", $file) or die "Can't open $file: $!\n";
+
+while (<$fh>) {
+    while(length($_)) {
+        s{^($whitespace)}{} and do {
+            my $ws = $1;
+
+            $ws =~ s{ }{\\ }g;
+
+            # print qq{[whitespace, "$ws"]\n};
+
+            print $ws;
+
+            next;
+        };
+
+        s{^($newline)}{} and do {
+            # print qq{[newline]\n};
+
+            print $1;
+
+            next;
+        };
+
+        s{^($comment)}{} and do {
+            my $comment = $1;
+
+            $comment =~ s{([{}])}{\\$1}g;
+
+            # print qq{[comment, "$comment"]\n};
+
+            print qq{\\textit{$comment}};
+
+            next;
+        };
+
+        s{^($identifier)}{} and do {
+            # print qq{[id, "$1"]\n};
+
+            my $id = $1;
+
+print STDERR qq{id='$id' };
+
+            if ($keyword{lc $id}) {
+print STDERR qq{is a keyword};
+                print qq{\\textbf{$id}};
+            } else {
+                print $id;
+print STDERR qq{is NOT a keyword};
+            }
+print STDERR qq{\n};
+
+            next;
+        };
+
+        s{^($number)}{} and do {
+            # print qq{[number, "$1"]\n};
+
+            print $1;
+
+            next;
+        };
+
+        s{^($separator)}{} and do {
+            # print qq{[separator, "$1"]\n};
+
+            print $1;
+
+            next;
+        };
+
+        s{^($op)}{} and do {
+            # print qq{[operator, "$1"]\n};
+
+            print $1;
+
+            next;
+        };
+
+        s{^($delim)}{} and do {
+            # print qq{[delimiter, "$1"]\n};
+
+            print $1;
+
+            next;
+        };
+
+        die qq{UNEXPECTED INPUT: [$_]\n};
+
+        last;
+    }
+}
+
+close($fh);
+
+print << 'EOF';
+\endgroup
+
+\end{document}
+EOF
+
+__END__
