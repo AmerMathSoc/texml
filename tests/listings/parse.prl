@@ -15,18 +15,36 @@ my %keyword = map { $_ => 1 } qw(alfa and array begin boolean byte case char con
                  record repeat reset rewrite set text then to true
                  type unpack until var while with write writeln);
 
-my $number     = qr{\d+(?:.\d+)?};
-my $separator  = qr{;};
-my $op         = qr{(:=|[+/%*-])};
-my $delim      = qr{[()\[\]]};
-my $whitespace = qr{[ ]+};
-my $newline    = qr{\n};
-
 my $identifier = qr{[a-z][a-z0-9_]*}i;
-my $comment    = qr{ ( \{.*?\} | \(\* .*? \*\) )}smx;
-my $string     = qr{}; # ???
+my $comment    = qr{ (?: \{.*?\} | \(\* .*? \*\) )}smx;
+
+my $b_string = qr{" (?: \\" | [^"] )* "}smx;
+my $d_string = qr{' (?: '' | [^'] )* '}smx;
+
+my $string   = qr{(?: $b_string | $d_string )}smx; # ???
+
+my $token_r = qr{(?: $identifier | $string | $comment )}smx;
 
 my $file = shift;
+
+sub id {
+    my $type = shift;
+    my $token = shift;
+
+    print STDERR qq{[$type, "$token"]\n};
+}
+
+sub output_filler {
+    my $filler = shift;
+
+    return unless length $filler;
+
+    $filler =~ s{ }{\\ }g;
+
+    $filler =~ s{\{}{\\\{}g;
+
+    print $filler;
+}
 
 print << 'EOF';
 \documentclass{amsart}
@@ -42,90 +60,48 @@ open(my $fh, "<", $file) or die "Can't open $file: $!\n";
 
 while (<$fh>) {
     while(length($_)) {
-        s{^($whitespace)}{} and do {
-            my $ws = $1;
+        s{^(.*?)($token_r)}{} and do {
+            my $pre   = $1;
+            my $token = $2;
 
-            $ws =~ s{ }{\\ }g;
+            if (length $pre) {
+                output_filler($pre);
 
-            # print qq{[whitespace, "$ws"]\n};
-
-            print $ws;
-
-            next;
-        };
-
-        s{^($newline)}{} and do {
-            # print qq{[newline]\n};
-
-            print $1;
-
-            next;
-        };
-
-        s{^($comment)}{} and do {
-            my $comment = $1;
-
-            $comment =~ s{([{}])}{\\$1}g;
-
-            # print qq{[comment, "$comment"]\n};
-
-            print qq{\\textit{$comment}};
-
-            next;
-        };
-
-        s{^($identifier)}{} and do {
-            # print qq{[id, "$1"]\n};
-
-            my $id = $1;
-
-print STDERR qq{id='$id' };
-
-            if ($keyword{lc $id}) {
-print STDERR qq{is a keyword};
-                print qq{\\textbf{$id}};
-            } else {
-                print $id;
-print STDERR qq{is NOT a keyword};
+                id(interstitial => $pre);
             }
-print STDERR qq{\n};
+
+            if ($token =~ m{\A$identifier\z}) {
+                if ($keyword{lc $token}) {
+                    id(keyword => $token);
+
+                    print qq{\\textbf{$token}};
+                } else {
+                    id(identifier => $token);
+
+                    print $token;
+                }
+            } elsif ($token =~ m{\A$string\z}) {
+                id(string => $token);
+
+                print qq{\\texttt{$token}};
+            } elsif ($token =~ qr{\A$comment\z}) {
+                id(comment => $token);
+
+                $token =~ s{([{}])}{\\$1}g;
+
+                print qq{\\textit{$token}};
+            } else {
+                id(wtf => $token);
+            }
 
             next;
         };
 
-        s{^($number)}{} and do {
-            # print qq{[number, "$1"]\n};
+        if (length) {
+            output_filler($_);
 
-            print $1;
-
-            next;
-        };
-
-        s{^($separator)}{} and do {
-            # print qq{[separator, "$1"]\n};
-
-            print $1;
-
-            next;
-        };
-
-        s{^($op)}{} and do {
-            # print qq{[operator, "$1"]\n};
-
-            print $1;
-
-            next;
-        };
-
-        s{^($delim)}{} and do {
-            # print qq{[delimiter, "$1"]\n};
-
-            print $1;
-
-            next;
-        };
-
-        die qq{UNEXPECTED INPUT: [$_]\n};
+            id(trailing => $_);
+        }
 
         last;
     }
