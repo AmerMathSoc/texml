@@ -63,17 +63,15 @@ my sub output_lines {
 
         $line_no++;
 
-        print STDERR qq{*** line=[$line]\n};
+        $tex->__DEBUG(qq{line=[$line]\n});
 
-        $line =~ s{\\}{\\textbackslash{}}g;
+        $line =~ s{\\}{\\textbackslash }g;
 
-        $line =~ s{ }{\\space }g;
+        $line =~ s{(*nlb:\\textbackslash) }{\\space }g;
 
-        $line =~ s{([{}])}{\\$1}g;
+        $line =~ s{([{}_\$^])}{\\$1}g;
 
-        print STDERR qq{*** sanitized=[$line]\n};
-
-        #$tex->par();
+        $tex->__DEBUG(qq{sanitized=[$line]\n});
 
         $tex->start_xml_element('line');
 
@@ -151,6 +149,7 @@ __DATA__
     \par
     \startXMLelement{preformat}\par
     \xmlpartag{}%
+    \fontencoding{UCS}\selectfont
     \lstlisting@
 }{%
     \par
