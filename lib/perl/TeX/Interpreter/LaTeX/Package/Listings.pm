@@ -37,6 +37,8 @@ use TeX::Constants qw(carriage_return);
 
 use TeX::Token qw(:catcodes);
 
+use TeX::Utils::Misc qw(nonempty trim);
+
 sub install {
     my $class = shift;
 
@@ -48,11 +50,23 @@ sub install {
 
     $tex->define_csname('lstlisting@' => \&do_lstlisting);
 
+    $tex->define_csname('lstset' => \&do_lstset);
+
+    $tex->define_csname('lstdefinelanguage' => \&do_lstdefinelanguage);
+    $tex->define_csname('lstdefinestyle'    => \&do_lstdefinestyle);
+
     return;
 }
 
-my sub output_lines {
-    my $tex  = shift;
+######################################################################
+##                                                                  ##
+##                            GRUNT WORK                            ##
+##                                                                  ##
+######################################################################
+
+sub output_lines {
+    my $tex   = shift;
+    my $style = shift;
 
     my @lines = @_;
 
@@ -63,7 +77,7 @@ my sub output_lines {
 
         $line_no++;
 
-        $tex->__DEBUG(qq{line=[$line]\n});
+        # $tex->__DEBUG(qq{line=[$line]\n});
 
         $line =~ s{\\}{\\textbackslash }g;
 
@@ -71,7 +85,7 @@ my sub output_lines {
 
         $line =~ s{([{}_\$^])}{\\$1}g;
 
-        $tex->__DEBUG(qq{sanitized=[$line]\n});
+        # $tex->__DEBUG(qq{sanitized=[$line]\n});
 
         $tex->start_xml_element('line');
 
@@ -87,13 +101,125 @@ my sub output_lines {
     return;
 }
 
+sub compile_listings_style {
+    my $tex = shift;
+    my $opt = shift;
+
+    my %style;
+
+    my sub overlay;
+
+    sub overlay {
+        my $pairs = shift;
+
+        for my $pair ($pairs->@*) {
+            my ($k, $v) = $pair->@*;
+
+            if ($k eq 'style') {
+                if (defined(my $eqvt = $tex->get_csname(qq{TeXML_listing_style_$v}))) {
+                    overlay($eqvt->get_equiv()->get_value());
+                }
+            }
+            elsif ($k eq 'language') {
+                if (defined(my $eqvt = $tex->get_csname(qq{TeXML_listing_lang_$v}))) {
+                    overlay($eqvt->get_equiv()->get_value());
+                }
+            }
+            else {
+                $style{$k} = $v;
+            }
+        }
+
+        return;
+    }
+
+    if (defined (my $eqvt = $tex->get_csname(q{TeXML_listing_default}))) {
+        my $pairs = $eqvt->get_equiv()->get_value();
+
+        overlay($pairs);
+    }
+
+    if (nonempty($opt)) {
+        my $pairs = parse_key_pairs($tex, $opt);
+
+        overlay($pairs);
+    }
+
+    return \%style;
+}
+
+my $BALANCED_TEXT = qr{
+    (             # paren group 1 (full string)
+        \{
+            (     # paren group 2 (contents of braces)
+            (?:
+                (?> [^{}]+ )    # Non-parens without backtracking
+               |
+                (?1)            # Recurse to start of paren group 1
+            )*
+            )
+        \}
+    )
+}smx;
+
+sub parse_key_pairs {
+    my $tex = shift;
+    my $raw = shift;
+
+    ## Quick and dirty.  Maybe too quick and dirty.
+
+    my @key_pairs;
+
+    return \@key_pairs unless defined $raw;
+
+    $raw = trim($raw);
+
+    $raw .= ',' unless $raw =~ m{,\z};
+
+    while (nonempty($raw)) {
+        $raw =~ s{^([a-z]+)[ =]*}{}ismx and do {
+            my $key = $1;
+
+            my $value;
+
+            if ($raw =~ s{\A$BALANCED_TEXT\s*,\s*}{}smx) {
+                $value = trim($2);
+            } elsif ($raw =~ s{\A([^,]+),\s*}{}smx) {
+                $value = trim($1);
+            } else {
+                die qq{Bad: [$raw]\n};
+            }
+
+            push @key_pairs, [ $key, $value ];
+        };
+    }
+
+    return \@key_pairs;
+}
+
+sub read_key_pairs {
+    my $tex = shift;
+
+    ## Quick and dirty.  Maybe too quick and dirty.
+
+    my $raw = $tex->read_undelimited_parameter();
+
+    return parse_key_pairs($tex, $raw);
+}
+
+######################################################################
+##                                                                  ##
+##                              MACROS                              ##
+##                                                                  ##
+######################################################################
+
 sub do_lstlisting {
     my $tex   = shift;
     my $token = shift;
 
-    # $tex->__DEBUG("token=$token");
-
     my $opt = $tex->scan_optional_argument();
+
+    my $style = compile_listings_style($tex, $opt);
 
     $tex->ignorespaces();
 
@@ -117,7 +243,7 @@ sub do_lstlisting {
             last;
         }
 
-        if ($next == CATCODE_ACTIVE && $next eq '') {
+        if ($next == CATCODE_ACTIVE && $next eq "\r") {
             push @lines, $line if defined $line;
 
             $line = "";
@@ -130,7 +256,44 @@ sub do_lstlisting {
 
     $tex->endgroup();
 
-    output_lines($tex, @lines);
+    output_lines($tex, $style, @lines);
+
+    return;
+}
+
+sub do_lstset {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $key_pairs = read_key_pairs($tex);
+
+    $tex->define_csname(q{TeXML_listing_default}, $key_pairs);
+
+    return;
+}
+
+sub do_lstdefinelanguage {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $lang_name = $tex->read_undelimited_parameter();
+
+    my $key_pairs = read_key_pairs($tex);
+
+    $tex->define_csname(qq{TeXML_listing_lang_$lang_name}, $key_pairs);
+
+    return;
+}
+
+sub do_lstdefinestyle {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $style_name = $tex->read_undelimited_parameter();
+
+    my $key_pairs = read_key_pairs($tex);
+
+    $tex->define_csname(qq{TeXML_listing_style_$style_name}, $key_pairs);
 
     return;
 }
@@ -140,10 +303,6 @@ sub do_lstlisting {
 __DATA__
 
 \ProvidesPackage{Listings}
-
-% \LoadRawMacros
-
-\let\lstset\@gobble
 
 \newenvironment{lstlisting}{%
     \par
@@ -155,6 +314,10 @@ __DATA__
     \par
     \endXMLelement{preformat}\par
 }
+
+# TODO:
+#     \lstinline
+#     \lstinputlisting
 
 \endinput
 
