@@ -64,11 +64,109 @@ sub install {
 ##                                                                  ##
 ######################################################################
 
+sub compile_string {
+    my $spec = shift;
+
+    if ($spec =~ m{\[b\](.)}) {
+        my $char = $1;
+
+        $char =~ s{^\\}{};
+
+        my $re = qq{$char (?: \\\\$char | [^$char] )* $char};
+
+        return qr{$re}osmx;
+    }
+
+    return;
+}
+
+sub compile_comment {
+    my $spec = shift;
+
+    if ($spec =~ m{\[l\]\{(.*?)\}}) {
+        my $char = $1;
+
+        $char =~ s{^\\}{};
+
+        return qr{\Q$char\E.*\z};
+    }
+
+    return;
+}
+
+sub compile_parser {
+    my $style = shift;
+
+    my %re;
+
+    my $mod = '';
+
+    if ($style->{sensitive} =~ m{^t}i) {
+        $mod = '(?i)'
+    }
+
+    my $raw_identifier = qr{[a-z_][a-z0-9_]*};
+
+    my @other_keywords;
+
+    if (defined (my $okws = $style->{otherkeywords})) {
+        @other_keywords = map { quotemeta } $okws->@*;
+
+        my $re = sprintf qq{${mod}(?:%s)}, join("|", @other_keywords);
+
+        $re{other_keyword} = qr{$re}o;
+    }
+
+    my @keywords;
+
+    if (defined (my $kws = $style->{keywords})) {
+        @keywords = map { quotemeta } $kws->@*;
+
+        my $re = sprintf qq{${mod}(?:%s)}, join("|", @keywords);
+
+        $re{keyword} = qr{$re}o;
+    }
+
+    {
+        my $re = sprintf qq{${mod}(?:%s)}, join("|", @other_keywords, @keywords, $raw_identifier);
+
+        $re{identifier} = qr{$re}o;
+    }
+
+    my @strings;
+
+    if (defined (my $strings = $style->{string})) {
+        @strings = map { compile_string($_) } $strings->@*;
+
+        my $re = sprintf qq{(?:%s)}, join("|", @strings);
+
+        $re{string} = qr{$re}o;
+    }
+
+    my @comments;
+
+    if (defined (my $comments = $style->{comment})) {
+        @comments = map { compile_comment($_) } $comments->@*;
+
+        my $re = sprintf qq{(?:%s)}, join("|", @comments);
+
+        $re{comment} = qr{$re}o;
+    }
+
+    return \%re;
+}
+
 sub output_lines {
     my $tex   = shift;
     my $style = shift;
 
     my @lines = @_;
+
+    my $re = compile_parser($style);
+
+    while (my ($k, $v) = each $re->%*) {
+        $tex->__DEBUG("$k => $v");
+    }
 
     my $line_no = 0;
 
@@ -101,11 +199,17 @@ sub output_lines {
     return;
 }
 
+my sub split_list {
+    my $list = shift;
+
+    return map { trim($_) } split /\s*,\s*/, trim($list);
+}
+
 sub compile_listings_style {
     my $tex = shift;
     my $opt = shift;
 
-    my %style;
+    my %style = (sensitive => 't');
 
     my sub overlay;
 
@@ -115,15 +219,17 @@ sub compile_listings_style {
         for my $pair ($pairs->@*) {
             my ($k, $v) = $pair->@*;
 
-            if ($k eq 'style') {
-                if (defined(my $eqvt = $tex->get_csname(qq{TeXML_listing_style_$v}))) {
+            if ($k eq 'style' || $k eq 'language') {
+                if (defined(my $eqvt = $tex->get_csname(qq{TeXML_listing_${k}_\L${v}\Q}))) {
                     overlay($eqvt->get_equiv()->get_value());
                 }
             }
-            elsif ($k eq 'language') {
-                if (defined(my $eqvt = $tex->get_csname(qq{TeXML_listing_lang_$v}))) {
-                    overlay($eqvt->get_equiv()->get_value());
-                }
+            elsif ($k =~ m{\A(keywords|comment|string)\z}) {
+                $style{$k} = [ split_list($v) ];
+            } elsif ($k =~ m{\Amore(keywords|comment|string)\z}) {
+                push $style{$1}->@*, split_list($v);
+            } elsif ($k eq 'otherkeywords') {
+                $style{$k} = [ split_list($v) ];
             }
             else {
                 $style{$k} = $v;
@@ -221,6 +327,10 @@ sub do_lstlisting {
 
     my $style = compile_listings_style($tex, $opt);
 
+    while (my ($k, $v) = each $style->%*) {
+        $tex->__DEBUG("$k => [$v]");
+    }
+
     $tex->ignorespaces();
 
     my @lines;
@@ -276,11 +386,11 @@ sub do_lstdefinelanguage {
     my $tex   = shift;
     my $token = shift;
 
-    my $lang_name = $tex->read_undelimited_parameter();
+    my $lang_name = lc $tex->read_undelimited_parameter();
 
     my $key_pairs = read_key_pairs($tex);
 
-    $tex->define_csname(qq{TeXML_listing_lang_$lang_name}, $key_pairs);
+    $tex->define_csname(qq{TeXML_listing_language_$lang_name}, $key_pairs);
 
     return;
 }
@@ -289,7 +399,7 @@ sub do_lstdefinestyle {
     my $tex   = shift;
     my $token = shift;
 
-    my $style_name = $tex->read_undelimited_parameter();
+    my $style_name = lc $tex->read_undelimited_parameter();
 
     my $key_pairs = read_key_pairs($tex);
 
@@ -315,9 +425,9 @@ __DATA__
     \endXMLelement{preformat}\par
 }
 
-# TODO:
-#     \lstinline
-#     \lstinputlisting
+% TODO:
+%     \lstinline
+%     \lstinputlisting
 
 \endinput
 
