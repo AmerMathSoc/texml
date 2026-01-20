@@ -55,6 +55,14 @@ sub install {
     $tex->define_csname('lstdefinelanguage' => \&do_lstdefinelanguage);
     $tex->define_csname('lstdefinestyle'    => \&do_lstdefinestyle);
 
+    $tex->define_csname(TeXML_listing_default => [
+                            [ sensitive       => 'true' ],
+                            [ numbers         => 'none' ],
+                            [ stepnumber      => 1 ],
+                            [ firstnumber     => 1 ],
+                            [ numberfirstline => 'false' ],
+                        ]);
+
     return;
 }
 
@@ -64,16 +72,45 @@ sub install {
 ##                                                                  ##
 ######################################################################
 
+my $BALANCED_TEXT = qr{
+    (             # paren group 1 (full string)
+        \{
+            (     # paren group 2 (contents of braces)
+            (?:
+                (?> \\[{}] )
+               |
+                (?> [^{}] )    # Non-parens without backtracking
+               |
+                (?1)            # Recurse to start of paren group 1
+            )*
+            )
+        \}
+    )
+}smx;
+
 sub compile_string {
     my $spec = shift;
 
+    my sub parse_char {
+        my $char;
+
+        if ($spec =~ s{\A$BALANCED_TEXT}{}) {
+            $char = $2;
+
+            $char =~ s{\\(.)}{$1}g;
+        } elsif ($spec =~ s{\A\\(.)}{}) {
+            $char = $1;
+        } elsif ($spec =~ s{\A(.)}{}) {
+            $char = $1;
+        }
+
+        return quotemeta(trim($char));
+    }
+
     if ($spec =~ s{\A\[(.+?)\]}{}) {
         my $type = $1;
-        my $char = $spec;
 
-        $char =~ s{\A\{.+?\}\z}{$1};
-
-        $char =~ s{^\\}{};
+        my $char = parse_char();
 
         my $re;
 
@@ -85,6 +122,13 @@ sub compile_string {
         }
         elsif ($type eq 'bd') {
             $re = qq{$char (?: \\\\$char | ${char}{2} | [^$char] )* $char};
+        }
+        elsif ($type eq 's') {
+            my $char2 = $spec;
+
+            $char2 = parse_char();
+
+            $re = qq{$char (?: .*?) $char2};
         }
         else {
             die qq{Invalid type '$type'\n};
@@ -121,9 +165,7 @@ sub compile_parser {
 
     my $mod = '';
 
-    if ($style->{sensitive} =~ m{^t}i) {
-        $mod = '(?i)'
-    }
+    $mod = '(?i)' if ($style->{sensitive} // 'true') =~ m{^f}i;
 
     my $raw_identifier = qr{[a-z_][a-z0-9_]*}i;
 
@@ -182,26 +224,13 @@ sub compile_parser {
     return \%re;
 }
 
-# sub output_filler {
-#     my $filler = shift;
-#
-#     return unless length $filler;
-#
-#     $filler =~ s{ }{\\ }g;
-#     $filler =~ s{\$}{\\\$}g;
-#
-#     $filler =~ s{\{}{\\\{}g;
-#
-#     return $filler;
-# }
-
 sub id {
     my $tex = shift;
 
     my $type = shift;
     my $token = shift;
 
-    $tex->__DEBUG(qq{[$type, "$token"]});
+    # $tex->__DEBUG(qq{[$type, "$token"]});
 }
 
 sub apply_style {
@@ -300,6 +329,8 @@ sub annotate_line {
         last;
     }
 
+#    $tex->__DEBUG(qq{annotated=[$out]});
+
     return $out;
 }
 
@@ -312,25 +343,53 @@ sub output_lines {
     my $re = compile_parser($style);
 
     while (my ($k, $v) = each $re->%*) {
-        $tex->__DEBUG("re($k) => $v");
+        # $tex->__DEBUG("re($k) => $v");
     }
 
-    my $line_no = 0;
+    my $first_no = ($style->{firstnumber} // 1);
+
+    my $numbered = ($style->{numbers} // 'n') =~ m{^[lr]};
+
+    my $step = $style->{stepnumber} // 1;
+
+    my $number_first = ($style->{numberfirstline} // 'f') =~ m{^t};
+
+    my $modulus = $first_no == 1 ? 1 : 0;
+
+    my $line_no = $first_no - 1;
 
     for my $line (@lines) {
-        return unless defined $line;
-
-        $tex->start_xml_element('line');
+        # return unless defined $line;
 
         $line_no++;
 
-        $tex->set_xml_attribute(lineno => $line_no);
+        $tex->start_xml_element('texml:line');
+
+        if ($numbered && $step != 0) {
+            my $number_this_line = $step == 1;
+
+            if (! $number_this_line) {
+                if ($line_no == $first_no && $number_first) {
+                    $number_this_line = 1;
+                } else {
+                    if ($first_no == 1) {
+                        $number_this_line = ($line_no % $step == 1);
+                    } else {
+                        $number_this_line = ($line_no % $step == 0);
+                    }
+                }
+            }
+
+            if ($number_this_line) {
+                $tex->set_xml_attribute(lineno => $line_no);
+            }
+        }
 
         my $annotated = annotate_line($tex, $style, $re, $line);
 
         $tex->process_string($annotated);
 
-        $tex->end_xml_element('line');
+        $tex->end_xml_element('texml:line');
 
         $tex->par();
     }
@@ -348,7 +407,7 @@ sub compile_listings_style {
     my $tex = shift;
     my $opt = shift;
 
-    my %style = (sensitive => 't');
+    my %style;
 
     my sub overlay;
 
@@ -392,20 +451,6 @@ sub compile_listings_style {
 
     return \%style;
 }
-
-my $BALANCED_TEXT = qr{
-    (             # paren group 1 (full string)
-        \{
-            (     # paren group 2 (contents of braces)
-            (?:
-                (?> [^{}]+ )    # Non-parens without backtracking
-               |
-                (?1)            # Recurse to start of paren group 1
-            )*
-            )
-        \}
-    )
-}smx;
 
 sub parse_key_pairs {
     my $tex = shift;
@@ -466,10 +511,6 @@ sub do_lstlisting {
 
     my $style = compile_listings_style($tex, $opt);
 
-    # while (my ($k, $v) = each $style->%*) {
-    #     $tex->__DEBUG("$k => [$v]");
-    # }
-
     $tex->ignorespaces();
 
     my @lines;
@@ -528,7 +569,7 @@ sub do_lstset {
 
     push @pairs, $new_pairs->@*;
 
-    $tex->define_csname(q{TeXML_listing_default}, \@pairs);
+    $tex->define_csname(TeXML_listing_default => \@pairs);
 
     return;
 }
@@ -537,11 +578,19 @@ sub do_lstdefinelanguage {
     my $tex   = shift;
     my $token = shift;
 
-    my $lang_name = lc $tex->read_undelimited_parameter();
+    my $dialect = $tex->scan_optional_argument() // '';
+
+    my $lang_name = $tex->read_undelimited_parameter();
+
+    if (nonempty $dialect) {
+        $lang_name = qq{[$dialect]$lang_name};
+    }
+
+    $tex->__DEBUG(qq{lang_name=[$lang_name]});
 
     my $key_pairs = read_key_pairs($tex);
 
-    $tex->define_csname(qq{TeXML_listing_language_$lang_name}, $key_pairs);
+    $tex->define_csname(qq{TeXML_listing_language_\L$lang_name\Q}, $key_pairs);
 
     return;
 }
@@ -567,14 +616,14 @@ __DATA__
 
 \newenvironment{lstlisting}{%
     \par
-    \startXMLelement{preformat}\par
+    \startXMLelement{texml:lstlisting}\par
     \xmlpartag{}%
     \fontencoding{UCS}\selectfont
     \UCSchardef\\"005C
     \lstlisting@
 }{%
     \par
-    \endXMLelement{preformat}\par
+    \endXMLelement{texml:lstlisting}\par
 }
 
 % TODO:
