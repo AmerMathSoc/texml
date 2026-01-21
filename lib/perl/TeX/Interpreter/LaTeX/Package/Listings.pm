@@ -1,5 +1,7 @@
 package TeX::Interpreter::LaTeX::Package::Listings;
 
+use utf8;
+
 use 5.26.0;
 
 # Copyright (C) 2026 American Mathematical Society
@@ -72,7 +74,7 @@ sub install {
 ##                                                                  ##
 ######################################################################
 
-my $BALANCED_TEXT = qr{
+my $BALANCED_TEXT = qr{ # Adapted from perlre man page
     (             # paren group 1 (full string)
         \{
             (     # paren group 2 (contents of braces)
@@ -88,77 +90,128 @@ my $BALANCED_TEXT = qr{
     )
 }smx;
 
-sub compile_string {
-    my $spec = shift;
+sub make_delim_parser {
+    my $tex      = shift;
+    my $string_r = shift;
 
-    my sub parse_char {
-        my $char;
+    return sub {
+        my $delim;
 
-        if ($spec =~ s{\A$BALANCED_TEXT}{}) {
-            $char = $2;
+        if ($string_r->$* =~ s{\A$BALANCED_TEXT}{}) {
+            $delim = $2;
 
-            $char =~ s{\\(.)}{$1}g;
-        } elsif ($spec =~ s{\A\\(.)}{}) {
-            $char = $1;
-        } elsif ($spec =~ s{\A(.)}{}) {
-            $char = $1;
+            $delim =~ s{\\([#$%^&_])}{$1}g;
+        } elsif ($string_r->$* =~ s{\A\\(.)}{}) {
+            $delim = $1;
+        } elsif ($string_r->$* =~ s{\A(.)}{}) {
+            $delim = $1;
+        } else {
+            $tex->error_message(qq{Empty delimiter});
+
+            return;
         }
 
-        return quotemeta(trim($char));
-    }
+        $delim = trim($delim);
+
+        my $initial = substr($delim, 0, 1);
+
+        return ( quotemeta($delim), quotemeta($initial) );
+    };
+}
+
+sub compile_string {
+    my $tex  = shift;
+    my $spec = shift;
+
+    my $parser = make_delim_parser($tex, \$spec);
 
     if ($spec =~ s{\A\[(.+?)\]}{}) {
         my $type = $1;
 
-        my $char = parse_char();
+        my ($delim) = $parser->();
 
         my $re;
 
         if ($type eq 'b') {
-            $re = qq{$char (?: \\\\$char | [^$char] )* $char};
+            $re = qq{$delim (?: \\\\$delim | [^$delim] )* $delim};
         }
         elsif ($type eq 'd') {
-            $re = qq{$char (?: ${char}{2} | [^$char] )* $char};
+            $re = qq{$delim (?: ${delim}{2} | [^$delim] )* $delim};
         }
         elsif ($type eq 'bd') {
-            $re = qq{$char (?: \\\\$char | ${char}{2} | [^$char] )* $char};
+            $re = qq{$delim (?: \\\\$delim | ${delim}{2} | [^$delim] )* $delim};
         }
+        # elsif ($type eq 'm') {
+        #     $re = qq{(*nlb:[a-zA-z])$delim (?: ${delim}{2} | [^$delim] )* $delim};
+        # }
         elsif ($type eq 's') {
-            my $char2 = $spec;
+            my ($delim2) = $parser->();
 
-            $char2 = parse_char();
-
-            $re = qq{$char (?: .*?) $char2};
+            $re = qq{$delim (?:.*?) $delim2};
         }
         else {
-            die qq{Invalid type '$type'\n};
-            exit 42;
+            $tex->error_message(qq{Invalid type '$type'});
+
+            return;
         }
 
         return qr{$re}smx;
     } else {
-        die qq{Invalid spec '$spec'\n};
-        exit 42;
+        $tex->error_message({Invalid spec '$spec'});
+
+        return;
     }
 
     return;
 }
 
 sub compile_comment {
+    my $tex  = shift;
     my $spec = shift;
 
-    if ($spec =~ m{\[l\]\{(.*?)\}}) {
-        my $char = $1;
+    my $parser = make_delim_parser($tex, \$spec);
 
-        $char =~ s{^\\}{};
+    if ($spec =~ s{\A\[(.+?)\]}{}) {
+        my $type = $1;
 
-        return qr{\Q$char\E.*\z}smx;
+        my ($delim, $init) = $parser->();
+
+        my $re;
+
+        if ($type eq 'l') {
+            $re = qq{$delim.*};
+        }
+        elsif ($type eq 's') {
+            my ($delim2) = $parser->();
+
+            $re = qq{$delim (?:.*?) $delim2};
+        }
+        elsif ($type eq 'n') {
+            my ($delim2, $init2) = $parser->();
+
+            $re = qq{ ( $delim (?: (?>[^$init$init2]) | (?-1) )* $delim2 )};
+        }
+        # elsif ($type eq 'f') {
+        #     😖
+        # }
+        else {
+            $tex->error_message(qq{Invalid comment type '$type'});
+
+            return;
+        }
+
+        return qr{$re}smx;
+    } else {
+        $tex->error_message(qq{Invalid comment spec '$spec'});
+
+        return;
     }
 
     return;
 }
 
 sub compile_parser {
+    my $tex   = shift;
     my $style = shift;
 
     my %re;
@@ -198,7 +251,7 @@ sub compile_parser {
     my @strings;
 
     if (defined (my $strings = $style->{string})) {
-        @strings = map { compile_string($_) } $strings->@*;
+        @strings = map { compile_string($tex, $_) } $strings->@*;
 
         my $re = sprintf qq{(?:%s)}, join("|", @strings);
 
@@ -208,7 +261,7 @@ sub compile_parser {
     my @comments;
 
     if (defined (my $comments = $style->{comment})) {
-        @comments = map { compile_comment($_) } $comments->@*;
+        @comments = map { compile_comment($tex, $_) } $comments->@*;
 
         my $re = sprintf qq{(?:%s)}, join("|", @comments);
 
@@ -231,6 +284,8 @@ sub id {
     my $token = shift;
 
     # $tex->__DEBUG(qq{[$type, "$token"]});
+
+    return;
 }
 
 sub apply_style {
@@ -329,8 +384,6 @@ sub annotate_line {
         last;
     }
 
-#    $tex->__DEBUG(qq{annotated=[$out]});
-
     return $out;
 }
 
@@ -340,11 +393,11 @@ sub output_lines {
 
     my @lines = @_;
 
-    my $re = compile_parser($style);
+    my $re = compile_parser($tex, $style);
 
-    while (my ($k, $v) = each $re->%*) {
+    # while (my ($k, $v) = each $re->%*) {
         # $tex->__DEBUG("re($k) => $v");
-    }
+    # }
 
     my $first_no = ($style->{firstnumber} // 1);
 
@@ -477,7 +530,9 @@ sub parse_key_pairs {
             } elsif ($raw =~ s{\A([^,]+),\s*}{}smx) {
                 $value = trim($1);
             } else {
-                die qq{Bad: [$raw]\n};
+                $tex->error_message(qq{Bad key-pair input [$raw]});
+
+                last;
             }
 
             push @key_pairs, [ $key, $value ];
@@ -585,8 +640,6 @@ sub do_lstdefinelanguage {
     if (nonempty $dialect) {
         $lang_name = qq{[$dialect]$lang_name};
     }
-
-    $tex->__DEBUG(qq{lang_name=[$lang_name]});
 
     my $key_pairs = read_key_pairs($tex);
 
