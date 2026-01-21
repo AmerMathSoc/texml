@@ -141,6 +141,11 @@ sub compile_string {
         elsif ($type eq 'bd') {
             $re = qq{$delim (?: \\\\$delim | ${delim}{2} | [^$delim] )* $delim};
         }
+        #
+        # We can't implement m-type strings with the current
+        # architecture we can't look behind since we remove input as
+        # we consume it.
+        #
         # elsif ($type eq 'm') {
         #     $re = qq{(*nlb:[a-zA-z])$delim (?: ${delim}{2} | [^$delim] )* $delim};
         # }
