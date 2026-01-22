@@ -349,8 +349,6 @@ __DATA__
 
 \PassOptionsToPackage{nameinlink}{cleveref}
 
-\RequirePackage{AMStoc}
-
 \RequirePackage{OLDfont}
 
 \RequirePackage{amsmath}

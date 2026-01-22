@@ -1,8 +1,8 @@
-package TeX::Interpreter::LaTeX::Package::AMStoc;
+package TeX::Interpreter::LaTeX::Package::LTtoc;
 
 use v5.26.0;
 
-# Copyright (C) 2024, 2025, 2026 American Mathematical Society
+# Copyright (C) 2024-2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -233,7 +233,7 @@ EOF
 
 __DATA__
 
-\ProvidesClass{AMStoc}
+\ProvidesClass{LTtoc}
 
 \def\@tocwrite#1{\@xp\@tocwriteb\csname toc#1\endcsname{#1}}
 

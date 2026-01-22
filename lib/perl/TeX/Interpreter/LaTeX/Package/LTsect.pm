@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Package::LTsect;
 
 use 5.26.0;
 
-# Copyright (C) 2025 American Mathematical Society
+# Copyright (C) 2025, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -256,6 +256,8 @@ sub normalize_disp_level {
 __DATA__
 
 \ProvidesPackage{LTsect}
+
+\RequirePackage{LTtoc}
 
 \newif\if@ams@empty
 
