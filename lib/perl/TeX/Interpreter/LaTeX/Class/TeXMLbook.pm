@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Class::TeXMLbook;
 
 use 5.26.0;
 
-# Copyright (C) 2022, 2024, 2025 American Mathematical Society
+# Copyright (C) 2022, 2024-2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -330,7 +330,8 @@ __DATA__
         \startXMLelement{book-app-group}%
         \addXMLid
         \@push@sectionstack{\texml@book@app@group@level}{book-app-group}%
-        \ifnum\strcmp{#1}{} = 0 \else
+        \ams@measure{#1}%
+        \if@ams@empty\else
             \startXMLelement{book-part-meta}%
                 \startXMLelement{title-group}%
                     \thisxmlpartag{title}#1\par
@@ -426,17 +427,21 @@ __DATA__
         \@push@sectionstack{\texml@book@app@level}{book-app}%
         \startXMLelement{book-part-meta}%
             \startXMLelement{title-group}%
-                \ifnum\strcmp{\appendixname\@secnumber}{}=0 \else
+                \ams@measure{\appendixname\@secnumber}%
+                \if@ams@empty\else
                     \thisxmlpartag{label}%
                     \ifx\appendixname\@empty\else
                         \appendixname\space
                     \fi
                     \@secnumber\par
                 \fi
-                \ifnum\strcmp{#2}{}=0 \else
-                    \thisxmlpartag{title}%
-                    #2\par
-                \fi
+                \begingroup
+                    \ams@measure{#2}%
+                    \if@ams@empty\else
+                        \thisxmlpartag{title}%
+                        #2\par
+                    \fi
+                \endgroup
             \endXMLelement{title-group}%
         \endXMLelement{book-part-meta}%
         \startXMLelement{body}%
