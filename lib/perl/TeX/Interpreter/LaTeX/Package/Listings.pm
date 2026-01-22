@@ -352,7 +352,7 @@ sub annotate_line {
             } elsif (defined $comment_rx && $token =~ qr{\A$comment_rx\z}) {
                 id($tex, comment => $token);
 
-                $token =~ s{([{}])}{\\$1}g;
+                # $token =~ s{([{}])}{\\$1}g;
 
                 $out .= apply_style($token, $comment_style);
             } elsif ($token =~ m{\A$id_rx\z}) {
@@ -571,6 +571,9 @@ sub do_lstlisting {
 
     my $style = compile_listings_style($tex, $opt);
 
+    $tex->set_xml_attribute(numbers => $style->{numbers});
+    $tex->set_xml_attribute(frame => $style->{frame});
+
     $tex->ignorespaces();
 
     my @lines;
@@ -674,6 +677,9 @@ __DATA__
 
 \newenvironment{lstlisting}{%
     \par
+    \startXMLelement{fig}\par
+    \setXMLattribute{specific-use}{lstlisting}%
+    \setXMLattribute{content-type}{code}%
     \startXMLelement{texml:lstlisting}\par
     \xmlpartag{}%
     \fontencoding{UCS}\selectfont
@@ -682,6 +688,7 @@ __DATA__
 }{%
     \par
     \endXMLelement{texml:lstlisting}\par
+    \endXMLelement{fig}\par
 }
 
 % TODO:
@@ -691,3 +698,65 @@ __DATA__
 \endinput
 
 __END__
+
+As embodied in annotate_line(), the listings.sty package recognizes 4
+types of distinguished content that can be styled independently:
+
+1. identifiers
+2. keywords
+3. comments
+4. strings
+
+The simplest versions of these are mostly implemented by texml.
+
+In addition, there is a 'basicstyle' that applies to the entire
+listing that I have not yet implemented, partly because getting it to
+work correctly with the individual styles will require resolution of
+texml #196.
+
+Currently the individual styles are implemented by adding the
+appropriate font and styled-content tags directly to the output.  An
+alternative would be to mark the content with bespoke tags (<lst:id>,
+<lst:kwd>, <lst:comment>, <lst:string>) and generate CSS to style
+those, if that would provide any benefits.
+
+The numbers, firstnumber, stepnumber, and numberfirstline option are
+implemented, *BUT* in a way that is not entirely compatible with
+listings.sty.  This is because the listings.sty implementation is at
+present extremely inconsistent and buggy.  If we encounter any use
+cases that rely upon the buggy behaviour, we'll deal with it then.
+
+The numbers parameter can be one of three values: none, left, or
+right.
+
+The listings package has an impressive number of customizable
+parameters, many of which are mercifully irrelevant for our purposes,
+but there are a number that we should do something with.
+
+Notably, there are a bunch of parameters controlling frames that we
+should figure out how to handle.  For now I just pass the value of
+frame as an attribute.
+
+Here's the full list, but I think
+the only essential ones are frame and the colors.
+
+    frame=<none|leftline|topline|bottomline|lines|single|shadowbox>
+    frame=<subset of trblTRBL>
+
+    frameround=<t|f><t|f><t|f><t|f>     # rounded corners
+
+    backgroundcolor
+    rulecolor
+    fillcolor
+    rulesepcolor
+
+    framesep=<dimen>
+    rulesep=<dimen>
+    framerule=<dimen>
+
+    framexleftmargin=<dimen>
+    framexrightmargin=<dimen>
+    framextopmargin=<dimen>
+    framexbottommargin=<dimen>
+
+There are also a bunch of other options I need to implement.
