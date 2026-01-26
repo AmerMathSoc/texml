@@ -58,6 +58,7 @@ sub install {
     $tex->define_csname('lstdefinestyle'    => \&do_lstdefinestyle);
 
     $tex->define_csname(TeXML_listing_default => [
+                            [ texcl           => 'false' ],
                             [ sensitive       => 'true' ],
                             [ numbers         => 'none' ],
                             [ stepnumber      => 1 ],
@@ -119,7 +120,7 @@ sub make_delim_parser {
     };
 }
 
-sub compile_string {
+sub compile_string_rx {
     my $tex  = shift;
     my $spec = shift;
 
@@ -170,7 +171,7 @@ sub compile_string {
     return;
 }
 
-sub compile_comment {
+sub compile_comment_rx {
     my $tex  = shift;
     my $spec = shift;
 
@@ -184,17 +185,27 @@ sub compile_comment {
         my $re;
 
         if ($type eq 'l') {
-            $re = qq{$delim.*};
+            $re = qq{(?<ldelim>$delim)(?<comment>.*)};
         }
         elsif ($type eq 's') {
             my ($delim2) = $parser->();
 
-            $re = qq{$delim (?:.*?) $delim2};
+            $re = qq{(?<ldelim>$delim) (?<comment>.*?) (?<rdelim>$delim2)};
         }
         elsif ($type eq 'n') {
             my ($delim2, $init2) = $parser->();
 
-            $re = qq{ ( $delim (?: (?>[^$init$init2]) | (?-1) )* $delim2 )};
+            $re = qq{ (
+                        (?<ldelim>$delim)
+                        (?<comment> (?: (?>[^$init$init2]) | (?-3) )* )
+                        (?<rdelim>$delim2)
+                      ) };
+
+            # $re = qq{ (
+            #             (?<ldelim>$delim)
+            #             (?: (?<comment>(?>[^$init$init2]) | (?-1)) )*
+            #             (?<rdelim>$delim2)
+            #           )};
         }
         # elsif ($type eq 'f') {
         #     😖
@@ -256,7 +267,7 @@ sub compile_parser {
     my @strings;
 
     if (defined (my $strings = $style->{string})) {
-        @strings = map { compile_string($tex, $_) } $strings->@*;
+        @strings = map { compile_string_rx($tex, $_) } $strings->@*;
 
         my $re = sprintf qq{(?:%s)}, join("|", @strings);
 
@@ -266,7 +277,7 @@ sub compile_parser {
     my @comments;
 
     if (defined (my $comments = $style->{comment})) {
-        @comments = map { compile_comment($tex, $_) } $comments->@*;
+        @comments = map { compile_comment_rx($tex, $_) } $comments->@*;
 
         my $re = sprintf qq{(?:%s)}, join("|", @comments);
 
@@ -352,7 +363,10 @@ sub annotate_line {
             } elsif (defined $comment_rx && $token =~ qr{\A$comment_rx\z}) {
                 id($tex, comment => $token);
 
-                # $token =~ s{([{}])}{\\$1}g;
+                print STDERR qq{*** ldelim='$+{ldelim}'\n}  if defined $+{ldelim};
+                print STDERR qq{*** comment='$+{comment}'\n} if defined $+{comment};
+                print STDERR qq{*** rdelim='$+{rdelim}'\n}  if defined $+{rdelim};
+                print STDERR qq{\n};
 
                 $out .= apply_style($token, $comment_style);
             } elsif ($token =~ m{\A$id_rx\z}) {
