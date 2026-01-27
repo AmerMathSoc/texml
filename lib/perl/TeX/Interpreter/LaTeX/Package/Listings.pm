@@ -203,7 +203,11 @@ my sub compile_string_rx {
         if ($type eq 'b') {
             $re = qq{$delim (?: \\\\$delim | [^$delim] )* $delim};
         }
-        elsif ($type eq 'd') {
+        elsif ($type eq 'd' || $type eq 'm') {
+            if ($type eq 'm') {
+                $tex->error_message(qq{Replacing unsupported type-$type string by by type-d});
+            }
+
             $re = qq{$delim (?: ${delim}{2} | [^$delim] )* $delim};
         }
         elsif ($type eq 'bd') {
