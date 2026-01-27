@@ -50,6 +50,7 @@ use TeX::Utils::Misc;
 ######################################################################
 
 my sub do_finish_toc;
+my sub do_finish_toc_list;
 my sub do_push_toc_stack;
 my sub do_pop_toc_stack;
 my sub do_clear_toc_stack;
@@ -64,6 +65,7 @@ sub install {
     $tex->read_package_data();
 
     $tex->define_csname('@finishtoc' => \&do_finish_toc);
+    $tex->define_csname('@finishtoc@list' => \&do_finish_toc_list);
 
     $tex->define_csname('@push@tocstack'      => \&do_push_toc_stack);
     $tex->define_pseudo_macro('@pop@tocstack' => \&do_pop_toc_stack);
@@ -229,6 +231,66 @@ EOF
     return;
 }
 
+sub do_finish_toc_list {
+    my $tex   = shift;
+    my $token = shift;
+
+    my $type   = $tex->read_undelimited_parameter(1);
+    my $xml_id = $tex->read_undelimited_parameter();
+
+    my $fragment = << "EOF";
+        \\immediate\\closeout\\tf\@$type
+        \\typeout{Generating TOC $type}%
+        \\let\\numberline\\generic\@toc\@item
+        \\texml\@toc\@list{$type}%
+        \\\@input{\\jobname.$type}%
+        \\endtexml\@toc\@list
+EOF
+
+    ## See https://github.com/AmerMathSoc/texml/issues/259 for an
+    ## explanation of why we don't call convert_fragment() directly.
+
+    my $at_cat = $tex->get_catcode(ord('@'));
+
+    $tex->set_catcode(ord('@'), CATCODE_LETTER);
+
+    my $t_list = $tex->tokenize($fragment);
+
+    my $new = $tex->convert_token_list($t_list);
+
+    $tex->set_catcode(ord('@'), $at_cat);
+
+    my $handle = $tex->get_output_handle();
+
+    my $body = $handle->get_dom();
+
+    my $toc_list = $body->findnodes(qq{//*[\@id='$xml_id']});
+
+    my $num_found = $toc_list->size();
+
+    if ($num_found == 0) {
+        $tex->print_err("Unable to finish TOC $type: can't find XML element '$xml_id'");
+
+        $tex->error();
+
+        return;
+    }
+
+    if ($num_found > 1) {
+        $tex->print_err("That's weird.  I found $num_found XML elements with ID '$xml_id'.  I'll use the first one");
+
+        $tex->error();
+    }
+
+    my $toc = $toc_list->get_node(0);
+
+    $toc->appendChild($new);
+
+    # do_label_toc_entries($tex);
+
+    return;
+}
+
 1;
 
 __DATA__
@@ -378,6 +440,39 @@ __DATA__
 }
 
 \let\numberline\generic@toc@section
+
+\def\@starttoc@list#1#2{%
+    \begingroup
+        \chapter*{#2}%
+        \addXMLid
+        \if@filesw
+            \@xp\newwrite\csname tf@#1\endcsname
+            \immediate\@xp\openout\csname tf@#1\endcsname \jobname.#1\relax
+            \AtTeXMLend*{\@nx\@finishtoc@list{#1}{\@currentXMLid}}
+        \fi
+        \global\@nobreakfalse
+    \endgroup
+    \newpage
+}
+
+\newenvironment{texml@toc@list}[1]{%
+    \par
+    \startXMLelement{def-list}%
+        \setXMLattribute{content-type}{toc #1}%
+}{%
+    \endXMLelement{def-list}%
+    \par
+}
+
+\newcommand{\generic@toc@item}[4]{%
+    \par
+    \startXMLelement{def-item}\par
+        \setXMLattribute{rid}{#4}%
+        \XMLelement{term}{#2}%
+        \XMLelement{def}{#3}%
+    \endXMLelement{def-item}%
+    \par
+}
 
 \endinput
 
