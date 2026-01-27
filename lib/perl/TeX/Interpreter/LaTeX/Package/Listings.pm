@@ -91,6 +91,12 @@ my $BALANCED_TEXT = qr{ # Adapted from perlre man page
     )
 }smx;
 
+my sub parse_boolean {
+    my $bool = shift;
+
+    return $bool =~ m{\At}i;
+}
+
 sub make_delim_parser {
     my $tex      = shift;
     my $string_r = shift;
@@ -291,7 +297,7 @@ sub compile_parser {
     return \%re;
 }
 
-sub id {
+my sub id {
     my $tex = shift;
 
     my $type = shift;
@@ -305,16 +311,13 @@ sub id {
 sub apply_style {
     my $token = shift;
     my $style = shift;
-    my $live  = shift;
 
-    if (! $live) {
-        $token =~ s{\\}{\\\\}g;
+    $token =~ s{\\}{\\\\}g;
 
-        $token =~ s{ }{\\ }g;
-        $token =~ s{\$}{\\\$}g;
+    $token =~ s{ }{\\ }g;
+    $token =~ s{\$}{\\\$}g;
 
-        $token =~ s{([{}])}{\\$1}g;
-    }
+    $token =~ s{([{}])}{\\$1}g;
 
     if (defined $style) {
         return qq{{${style}{$token}}};
@@ -329,9 +332,7 @@ sub annotate_line {
     my $re    = shift;
     my $in    = shift;
 
-    my $out;
-
-    my $texcl      = ($style->{texcl} =~ m{^\At}i);
+    my $texcl      = parse_boolean($style->{texcl});
 
     my $token_rx   = $re->{token};
 
@@ -348,6 +349,8 @@ sub annotate_line {
     my $comment_style = $style->{commentstyle};
     my $string_style  = $style->{stringstyle};
 
+    my $out;
+
     while(length($in)) {
         $in =~ s{^(.*?)($token_rx)}{} and do {
             my $pre   = $1;
@@ -359,57 +362,53 @@ sub annotate_line {
                 id($tex, interstitial => $pre);
             }
 
+            my $style;
+
             if (defined $string_rx && $token =~ m{\A$string_rx\z}) {
                 id($tex, string => $token);
 
-                $out .= apply_style($token, $string_style);
+                $style = $string_style;
             } elsif (defined $comment_rx && $token =~ qr{\A$comment_rx\z}) {
                 id($tex, comment => $token);
 
                 if ($texcl && defined $+{ldelim}) {
                     if (defined (my $ldelim = $+{ldelim})) {
                         $out .= apply_style($ldelim, $comment_style);
-
-                        # print STDERR qq{*** ldelim='$+{ldelim}'\n};
                     }
 
                     if (defined (my $comment = $+{comment})) {
                         $out .= $comment;
-
-                        # print STDERR qq{*** comment='$+{comment}'\n};
                     }
 
                     if (defined (my $rdelim = $+{rdelim})) {
                         $out .= apply_style($rdelim, $comment_style);
-
-                        # print STDERR qq{*** rdelim='$+{rdelim}'\n};
                     }
 
-                    # print STDERR qq{\n};
+                    next;
                 } else {
-                    $out .= apply_style($token, $comment_style);
+                    $style = $comment_style;
                 }
             } elsif ($token =~ m{\A$id_rx\z}) {
                 if (defined $kwd_rx && $token =~ m{\A$kwd_rx\z}) {
                     id($tex, keyword => $token);
 
-                    $out .= apply_style($token, $kwd_style);
+                    $style = $kwd_style;
                 }
                 elsif (defined $okwd_rx && $token =~ m{\A$okwd_rx\z}) {
                     id($tex, other_keyword => $token);
 
-                    $out .= apply_style($token, $kwd_style);
+                    $style = $kwd_style;
                 }
                 else {
                     id($tex, identifier => $token);
 
-                    $out .= apply_style($token, $id_style);
+                    $style = $id_style;
                 }
             } else {
                 id($tex, wtf => $token);
-
-                $out .= $token;
             }
+
+            $out .= apply_style($token, $style);
 
             next;
         };
@@ -444,7 +443,7 @@ sub output_lines {
 
     my $step = $style->{stepnumber} // 1;
 
-    my $number_first = ($style->{numberfirstline} // 'f') =~ m{^t};
+    my $number_first = parse_boolean($style->{numberfirstline} // 'f');
 
     my $modulus = $first_no == 1 ? 1 : 0;
 
