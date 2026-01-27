@@ -180,26 +180,30 @@ sub compile_comment_rx {
     if ($spec =~ s{\A\[(.+?)\]}{}) {
         my $type = $1;
 
-        my ($delim, $init) = $parser->();
+        my ($ldelim, $init) = $parser->();
 
         my $re;
 
         if ($type eq 'l') {
-            $re = qq{(?<ldelim>$delim)(?<comment>.*)};
+            $re = qq{(?<ldelim>$ldelim)(?<comment>.*)};
         }
         elsif ($type eq 's') {
-            my ($delim2) = $parser->();
+            my ($rdelim) = $parser->();
 
-            $re = qq{(?<ldelim>$delim) (?<comment>.*?) (?<rdelim>$delim2)};
+            # $re = qq{(?<ldelim>$ldelim) (?<comment>.*?) (?<rdelim>$rdelim)};
+
+            $re = qq{$ldelim .*? $rdelim};
         }
         elsif ($type eq 'n') {
-            my ($delim2, $init2) = $parser->();
+            my ($rdelim, $init2) = $parser->();
 
-            $re = qq{ (
-                        (?<ldelim>$delim)
-                        (?<comment> (?: (?>[^$init$init2]) | (?-3) )* )
-                        (?<rdelim>$delim2)
-                      ) };
+            # $re = qq{ (
+            #             (?<ldelim>$ldelim)
+            #             (?<comment> (?: (?>[^$init$init2]) | (?-3) )* )
+            #             (?<rdelim>$rdelim)
+            #           ) };
+
+            $re = qq{ ( $ldelim (?: (?>[^$init$init2]) | (?-1) )* $rdelim ) };
         }
         # elsif ($type eq 'f') {
         #     😖
@@ -362,26 +366,26 @@ sub annotate_line {
             } elsif (defined $comment_rx && $token =~ qr{\A$comment_rx\z}) {
                 id($tex, comment => $token);
 
-                if ($texcl) {
+                if ($texcl && defined $+{ldelim}) {
                     if (defined (my $ldelim = $+{ldelim})) {
                         $out .= apply_style($ldelim, $comment_style);
 
-                        print STDERR qq{*** ldelim='$+{ldelim}'\n};
+                        # print STDERR qq{*** ldelim='$+{ldelim}'\n};
                     }
 
                     if (defined (my $comment = $+{comment})) {
                         $out .= $comment;
 
-                        print STDERR qq{*** comment='$+{comment}'\n};
+                        # print STDERR qq{*** comment='$+{comment}'\n};
                     }
 
                     if (defined (my $rdelim = $+{rdelim})) {
                         $out .= apply_style($rdelim, $comment_style);
 
-                        print STDERR qq{*** rdelim='$+{rdelim}'\n};
+                        # print STDERR qq{*** rdelim='$+{rdelim}'\n};
                     }
 
-                    print STDERR qq{\n};
+                    # print STDERR qq{\n};
                 } else {
                     $out .= apply_style($token, $comment_style);
                 }
