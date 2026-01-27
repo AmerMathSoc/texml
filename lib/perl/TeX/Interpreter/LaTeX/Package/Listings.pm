@@ -66,6 +66,7 @@ sub install {
     $tex->define_csname('lstdefinestyle'    => \&do_lstdefinestyle);
 
     $tex->define_csname(TeXML_listing_default => [
+                            [ gobble          => 0 ],
                             [ texcl           => 'false' ],
                             [ mathescape      => 'false' ],
                             [ sensitive       => 'true' ],
@@ -412,6 +413,12 @@ my sub annotate_line {
     my $style = shift;
     my $re    = shift;
     my $in    = shift;
+
+    if (defined(my $gobble = $style->{gobble})) {
+        if ($gobble =~ m{\A\d+\z} && $gobble > 0) {
+            substr($in, 0, $gobble) = '';
+        }
+    }
 
     my $token_rx   = $re->{token};
 
