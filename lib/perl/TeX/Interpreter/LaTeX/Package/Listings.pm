@@ -41,6 +41,14 @@ use TeX::Token qw(:catcodes);
 
 use TeX::Utils::Misc qw(nonempty trim);
 
+my sub do_lstlisting;
+my sub do_lstset;
+my sub do_lstdefinelanguage;
+my sub do_lstdefinestyle;
+
+# TBD: my sub do_lstinline;
+# TBD: my sub do_lstinputlisting;
+
 sub install {
     my $class = shift;
 
@@ -59,6 +67,7 @@ sub install {
 
     $tex->define_csname(TeXML_listing_default => [
                             [ texcl           => 'false' ],
+                            [ mathescape      => 'false' ],
                             [ sensitive       => 'true' ],
                             [ numbers         => 'none' ],
                             [ stepnumber      => 1 ],
@@ -91,13 +100,65 @@ my $BALANCED_TEXT = qr{ # Adapted from perlre man page
     )
 }smx;
 
+my sub parse_key_pairs {
+    my $tex = shift;
+    my $raw = shift;
+
+    ## Quick and dirty.  Maybe too quick and dirty.
+
+    my @key_pairs;
+
+    return \@key_pairs unless defined $raw;
+
+    $raw = trim($raw);
+
+    $raw .= ',' unless $raw =~ m{,\z};
+
+    while (nonempty($raw)) {
+        $raw =~ s{^([a-z]+)[ =]*}{}ismx and do {
+            my $key = $1;
+
+            my $value;
+
+            if ($raw =~ s{\A,}{}smx) {
+                $value = 'true';
+            }
+            elsif ($raw =~ s{\A$BALANCED_TEXT\s*,\s*}{}smx) {
+                $value = trim($2);
+            }
+            elsif ($raw =~ s{\A([^,]+),\s*}{}smx) {
+                $value = trim($1);
+            }
+            else {
+                $tex->error_message(qq{Bad key-pair input [$raw]});
+
+                last;
+            }
+
+            push @key_pairs, [ $key, $value ];
+        };
+    }
+
+    return \@key_pairs;
+}
+
+my sub read_key_pairs {
+    my $tex = shift;
+
+    ## Quick and dirty.  Maybe too quick and dirty.
+
+    my $raw = $tex->read_undelimited_parameter();
+
+    return parse_key_pairs($tex, $raw);
+}
+
 my sub parse_boolean {
     my $bool = shift;
 
-    return $bool =~ m{\At}i;
+    return defined $bool && $bool =~ m{\At}i;
 }
 
-sub make_delim_parser {
+my sub make_delim_parser {
     my $tex      = shift;
     my $string_r = shift;
 
@@ -107,7 +168,7 @@ sub make_delim_parser {
         if ($string_r->$* =~ s{\A$BALANCED_TEXT}{}) {
             $delim = $2;
 
-            $delim =~ s{\\([#$%^&_])}{$1}g;
+            $delim =~ s{\\([{}#$%])}{$1}g;
         } elsif ($string_r->$* =~ s{\A\\(.)}{}) {
             $delim = $1;
         } elsif ($string_r->$* =~ s{\A(.)}{}) {
@@ -126,7 +187,7 @@ sub make_delim_parser {
     };
 }
 
-sub compile_string_rx {
+my sub compile_string_rx {
     my $tex  = shift;
     my $spec = shift;
 
@@ -177,7 +238,7 @@ sub compile_string_rx {
     return;
 }
 
-sub compile_comment_rx {
+my sub compile_comment_rx {
     my $tex  = shift;
     my $spec = shift;
 
@@ -230,7 +291,7 @@ sub compile_comment_rx {
     return;
 }
 
-sub compile_parser {
+my sub compile_parser {
     my $tex   = shift;
     my $style = shift;
 
@@ -238,9 +299,19 @@ sub compile_parser {
 
     my $mod = '';
 
-    $mod = '(?i)' if ($style->{sensitive} // 'true') =~ m{^f}i;
+    $mod = '(?i)' if parse_boolean($style->{sensitive} // 'true');
 
     my $raw_identifier = qr{[a-z_][a-z0-9_]*}i;
+
+    my @math;
+
+    if (parse_boolean($style->{mathescape})) {
+        my $re = qr{\$.*?\$};
+
+        push @math, $re;
+
+        $re{math} = $re;
+    }
 
     my @other_keywords;
 
@@ -249,7 +320,7 @@ sub compile_parser {
 
         my $re = sprintf qq{${mod}(?:%s)}, join("|", @other_keywords);
 
-        $re{other_keyword} = qr{$re}o;
+        $re{other_keyword} = qr{$re};
     }
 
     my @keywords;
@@ -259,13 +330,13 @@ sub compile_parser {
 
         my $re = sprintf qq{${mod}(?:%s)}, join("|", @keywords);
 
-        $re{keyword} = qr{$re}o;
+        $re{keyword} = qr{$re};
     }
 
     {
         my $re = sprintf qq{${mod}(?:%s)}, join("|", @other_keywords, @keywords, $raw_identifier);
 
-        $re{identifier} = qr{$re}o;
+        $re{identifier} = qr{$re};
     }
 
     my @strings;
@@ -275,7 +346,7 @@ sub compile_parser {
 
         my $re = sprintf qq{(?:%s)}, join("|", @strings);
 
-        $re{string} = qr{$re}o;
+        $re{string} = qr{$re};
     }
 
     my @comments;
@@ -285,14 +356,17 @@ sub compile_parser {
 
         my $re = sprintf qq{(?:%s)}, join("|", @comments);
 
-        $re{comment} = qr{$re}o;
+        $re{comment} = qr{$re};
     }
 
-    my @tokens = (@comments, @strings, @other_keywords, @keywords, $raw_identifier);
+    my @tokens = (@comments, @strings,
+                  @math,
+                  @other_keywords, @keywords,
+                  $raw_identifier);
 
     my $re = sprintf qq{(?:%s)}, join("|", @tokens);
 
-    $re{token} = qr{$re}o;
+    $re{token} = qr{$re};
 
     return \%re;
 }
@@ -308,31 +382,32 @@ my sub id {
     return;
 }
 
-sub apply_style {
-    my $token = shift;
-    my $style = shift;
+my sub verbatim {
+    my $s = shift;
 
-    $token =~ s{\\}{\\\\}g;
+    $s =~ s{([{}\\\$ ])}{\\$1}g;
 
-    $token =~ s{ }{\\ }g;
-    $token =~ s{\$}{\\\$}g;
-
-    $token =~ s{([{}])}{\\$1}g;
-
-    if (defined $style) {
-        return qq{{${style}{$token}}};
-    }
-
-    return $token;
+    return $s;
 }
 
-sub annotate_line {
+my sub apply_style {
+    my $in    = shift;
+    my $style = shift;
+
+    my $out = verbatim($in);
+
+    if (defined $style) {
+        return qq{{${style}{$out}}};
+    }
+
+    return $out;
+}
+
+my sub annotate_line {
     my $tex   = shift;
     my $style = shift;
     my $re    = shift;
     my $in    = shift;
-
-    my $texcl      = parse_boolean($style->{texcl});
 
     my $token_rx   = $re->{token};
 
@@ -343,11 +418,16 @@ sub annotate_line {
     my $string_rx  = $re->{string};
     my $comment_rx = $re->{comment};
 
+    my $math_rx    = $re->{math};
+
     my $basic_style   = $style->{basicstyle};
     my $kwd_style     = $style->{keywordstyle};
     my $id_style      = $style->{identifierstyle};
     my $comment_style = $style->{commentstyle};
     my $string_style  = $style->{stringstyle};
+
+    my $texcl      = parse_boolean($style->{texcl});
+    my $mathescape = parse_boolean($style->{mathescape});
 
     my $out;
 
@@ -357,23 +437,31 @@ sub annotate_line {
             my $token = $2;
 
             if (length $pre) {
-                $out .= apply_style($pre);
-
                 id($tex, interstitial => $pre);
+
+                $out .= apply_style($pre);
             }
 
             my $style;
 
-            if (defined $string_rx && $token =~ m{\A$string_rx\z}) {
+            if (defined $math_rx && $token =~ m{\A$math_rx\z}) {
+                id($tex, math => $token);
+
+                $out .= $token;
+
+                next;
+            } elsif (defined $string_rx && $token =~ m{\A$string_rx\z}) {
                 id($tex, string => $token);
 
                 $style = $string_style;
             } elsif (defined $comment_rx && $token =~ qr{\A$comment_rx\z}) {
+                $style = $comment_style;
+
                 id($tex, comment => $token);
 
                 if ($texcl && defined $+{ldelim}) {
                     if (defined (my $ldelim = $+{ldelim})) {
-                        $out .= apply_style($ldelim, $comment_style);
+                        $out .= apply_style($ldelim, $style);
                     }
 
                     if (defined (my $comment = $+{comment})) {
@@ -381,11 +469,34 @@ sub annotate_line {
                     }
 
                     if (defined (my $rdelim = $+{rdelim})) {
-                        $out .= apply_style($rdelim, $comment_style);
+                        $out .= apply_style($rdelim, $style);
                     }
 
                     next;
-                } else {
+                }
+                elsif (defined $math_rx) {
+                    while (length($token)) {
+                        $token =~ s{\A(.*?)($math_rx)}{}smx and do {
+                            my $pre  = $1;
+                            my $math = $2;
+
+                            if (length($pre)) {
+                                $out .= apply_style($pre, $style);
+                            }
+
+                            $out .= $math;
+
+                            next;
+                        };
+
+                        $out .= apply_style($token, $style);
+
+                        last;
+                    }
+
+                    next;
+                }
+                else {
                     $style = $comment_style;
                 }
             } elsif ($token =~ m{\A$id_rx\z}) {
@@ -414,9 +525,9 @@ sub annotate_line {
         };
 
         if (length $in) {
-            $out .= apply_style($in);
-
             id($tex, trailing => $in);
+
+            $out .= apply_style($in);
         }
 
         last;
@@ -425,7 +536,7 @@ sub annotate_line {
     return $out;
 }
 
-sub output_lines {
+my sub output_lines {
     my $tex   = shift;
     my $style = shift;
 
@@ -443,7 +554,7 @@ sub output_lines {
 
     my $step = $style->{stepnumber} // 1;
 
-    my $number_first = parse_boolean($style->{numberfirstline} // 'f');
+    my $number_first = parse_boolean($style->{numberfirstline});
 
     my $modulus = $first_no == 1 ? 1 : 0;
 
@@ -494,7 +605,7 @@ my sub split_list {
     return map { trim($_) } split /\s*,\s*/, trim($list);
 }
 
-sub compile_listings_style {
+my sub compile_listings_style {
     my $tex = shift;
     my $opt = shift;
 
@@ -543,53 +654,6 @@ sub compile_listings_style {
     return \%style;
 }
 
-sub parse_key_pairs {
-    my $tex = shift;
-    my $raw = shift;
-
-    ## Quick and dirty.  Maybe too quick and dirty.
-
-    my @key_pairs;
-
-    return \@key_pairs unless defined $raw;
-
-    $raw = trim($raw);
-
-    $raw .= ',' unless $raw =~ m{,\z};
-
-    while (nonempty($raw)) {
-        $raw =~ s{^([a-z]+)[ =]*}{}ismx and do {
-            my $key = $1;
-
-            my $value;
-
-            if ($raw =~ s{\A$BALANCED_TEXT\s*,\s*}{}smx) {
-                $value = trim($2);
-            } elsif ($raw =~ s{\A([^,]+),\s*}{}smx) {
-                $value = trim($1);
-            } else {
-                $tex->error_message(qq{Bad key-pair input [$raw]});
-
-                last;
-            }
-
-            push @key_pairs, [ $key, $value ];
-        };
-    }
-
-    return \@key_pairs;
-}
-
-sub read_key_pairs {
-    my $tex = shift;
-
-    ## Quick and dirty.  Maybe too quick and dirty.
-
-    my $raw = $tex->read_undelimited_parameter();
-
-    return parse_key_pairs($tex, $raw);
-}
-
 ######################################################################
 ##                                                                  ##
 ##                              MACROS                              ##
@@ -616,7 +680,7 @@ sub do_lstlisting {
     $tex->set_catcode(ord(' '), CATCODE_ACTIVE);
     $tex->set_catcode(carriage_return, CATCODE_ACTIVE);
 
-    $tex->set_catcode(ord('$'), CATCODE_OTHER);
+#    $tex->set_catcode(ord('$'), CATCODE_OTHER);
 
     my $line;
 
