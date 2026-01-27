@@ -1076,6 +1076,7 @@ __DATA__
     \ifx\this@name\@empty\else
         \startXMLelement{contrib}
         \setXMLattribute{contrib-type}{\author@contrib@type}
+           \let\textviet\@firstofone % hack
             \texml@parse@name\this{\this@name}%
             %
             \ifx\this@surname\@empty\else
