@@ -144,8 +144,8 @@ sub compile_string_rx {
         }
         #
         # We can't implement m-type strings with the current
-        # architecture we can't look behind since we remove input as
-        # we consume it.
+        # architecture; since we remove input as we consume it, we
+        # can't look behind.
         #
         # elsif ($type eq 'm') {
         #     $re = qq{(*nlb:[a-zA-z])$delim (?: ${delim}{2} | [^$delim] )* $delim};
@@ -200,12 +200,6 @@ sub compile_comment_rx {
                         (?<comment> (?: (?>[^$init$init2]) | (?-3) )* )
                         (?<rdelim>$delim2)
                       ) };
-
-            # $re = qq{ (
-            #             (?<ldelim>$delim)
-            #             (?: (?<comment>(?>[^$init$init2]) | (?-1)) )*
-            #             (?<rdelim>$delim2)
-            #           )};
         }
         # elsif ($type eq 'f') {
         #     😖
@@ -307,13 +301,16 @@ sub id {
 sub apply_style {
     my $token = shift;
     my $style = shift;
+    my $live  = shift;
 
-    $token =~ s{\\}{\\\\}g;
+    if (! $live) {
+        $token =~ s{\\}{\\\\}g;
 
-    $token =~ s{ }{\\ }g;
-    $token =~ s{\$}{\\\$}g;
+        $token =~ s{ }{\\ }g;
+        $token =~ s{\$}{\\\$}g;
 
-    $token =~ s{([{}])}{\\$1}g;
+        $token =~ s{([{}])}{\\$1}g;
+    }
 
     if (defined $style) {
         return qq{{${style}{$token}}};
@@ -329,6 +326,8 @@ sub annotate_line {
     my $in    = shift;
 
     my $out;
+
+    my $texcl      = ($style->{texcl} =~ m{^\At}i);
 
     my $token_rx   = $re->{token};
 
@@ -363,12 +362,29 @@ sub annotate_line {
             } elsif (defined $comment_rx && $token =~ qr{\A$comment_rx\z}) {
                 id($tex, comment => $token);
 
-                print STDERR qq{*** ldelim='$+{ldelim}'\n}  if defined $+{ldelim};
-                print STDERR qq{*** comment='$+{comment}'\n} if defined $+{comment};
-                print STDERR qq{*** rdelim='$+{rdelim}'\n}  if defined $+{rdelim};
-                print STDERR qq{\n};
+                if ($texcl) {
+                    if (defined (my $ldelim = $+{ldelim})) {
+                        $out .= apply_style($ldelim, $comment_style);
 
-                $out .= apply_style($token, $comment_style);
+                        print STDERR qq{*** ldelim='$+{ldelim}'\n};
+                    }
+
+                    if (defined (my $comment = $+{comment})) {
+                        $out .= $comment;
+
+                        print STDERR qq{*** comment='$+{comment}'\n};
+                    }
+
+                    if (defined (my $rdelim = $+{rdelim})) {
+                        $out .= apply_style($rdelim, $comment_style);
+
+                        print STDERR qq{*** rdelim='$+{rdelim}'\n};
+                    }
+
+                    print STDERR qq{\n};
+                } else {
+                    $out .= apply_style($token, $comment_style);
+                }
             } elsif ($token =~ m{\A$id_rx\z}) {
                 if (defined $kwd_rx && $token =~ m{\A$kwd_rx\z}) {
                     id($tex, keyword => $token);
