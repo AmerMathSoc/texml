@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::NLM;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,21 +31,14 @@ package TeX::Interpreter::LaTeX::Package::NLM;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
 
     $tex->package_load_notification();
-
-    # Restore some primitives that are modified for MathJax.
-
-    for my $primitive (qw(noalign omit)) {
-        $tex->primitive($primitive);
-    }
 
     $tex->read_package_data();
 
@@ -58,6 +53,7 @@ __DATA__
 
 \newenvironment{NLMnote}[2][publishers-note]{%
     \par
+    \@clear@sectionstack
     \startXMLelement{notes}%
     \addXMLid
     \setXMLattribute{notes-type}{#1}%
