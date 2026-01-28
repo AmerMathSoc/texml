@@ -88,7 +88,7 @@ sub install {
 my $BALANCED_TEXT = qr{ # Adapted from perlre man page
     (             # paren group 1 (full string)
         \{
-            (     # paren group 2 (contents of braces)
+            (?<balanced>     # paren group 2 (contents of braces)
             (?:
                 (?> \\[{}] )
                |
@@ -125,7 +125,7 @@ my sub parse_key_pairs {
                 $value = 'true';
             }
             elsif ($raw =~ s{\A$BALANCED_TEXT\s*,\s*}{}smx) {
-                $value = trim($2);
+                $value = trim($+{balanced});
             }
             elsif ($raw =~ s{\A([^,]+),\s*}{}smx) {
                 $value = trim($1);
@@ -167,7 +167,7 @@ my sub make_delim_parser {
         my $delim;
 
         if ($string_r->$* =~ s{\A$BALANCED_TEXT}{}) {
-            $delim = $2;
+            $delim = $+{balanced};
 
             $delim =~ s{\\([{}#$%])}{$1}g;
         } elsif ($string_r->$* =~ s{\A\\(.)}{}) {
@@ -308,6 +308,27 @@ my sub compile_parser {
 
     my $raw_identifier = qr{[a-z_][a-z0-9_]*}i;
 
+    my @literate;
+
+    if (defined(my $literate = $style->{literate})) {
+        my %subs;
+
+        while ($literate =~ s{\A \s* $BALANCED_TEXT $BALANCED_TEXT \d+ \s*}{}smx) {
+            my $in  = $-{balanced}->[0];
+            my $out = $-{balanced}->[1];
+
+            push @literate, quotemeta($in);
+
+            $subs{$in} = $out;
+        }
+
+        $re{literate_subs} = \%subs;
+
+        my $re = sprintf qq{(?:%s)}, join("|", @literate);
+
+        $re{literate} = qr{$re};
+    }
+
     my @math;
 
     if (parse_boolean($style->{mathescape})) {
@@ -390,7 +411,7 @@ my sub compile_parser {
     }
 
     my @tokens = (@comments, @strings,
-                  @math, @ltx,
+                  @literate, @math, @ltx,
                   @other_keywords, @keywords,
                   $raw_identifier);
 
@@ -454,6 +475,9 @@ my sub annotate_line {
     my $string_rx  = $re->{string};
     my $comment_rx = $re->{comment};
 
+    my $literate_rx   = $re->{literate};
+    my $literate_subs = $re->{literate_subs};
+
     my $math_rx    = $re->{math};
     my $ltx_rx     = $re->{latex};
 
@@ -481,7 +505,16 @@ my sub annotate_line {
 
             my $style;
 
-            if (defined $ltx_rx && $token =~ m{\A$ltx_rx\z}) {
+            if (defined $literate_rx && $token =~ m{\A($literate_rx)\z}) {
+                my $in = $1;
+
+                id($tex, literate => $in);
+
+                $out .= $literate_subs->{$in};
+
+                next;
+            }
+            elsif (defined $ltx_rx && $token =~ m{\A$ltx_rx\z}) {
                 my $ltx = $+{ltx};
 
                 id($tex, latex => $ltx);
@@ -521,6 +554,11 @@ my sub annotate_line {
 
                     next;
                 }
+                ##
+                ## TODO: This isn't right because processing of
+                ## math_rx preempts processing of literate
+                ## substitutions, so we need to rework this.
+                ##
                 elsif (defined $ltx_rx || defined $math_rx) {
                     my @res;
 
@@ -539,6 +577,30 @@ my sub annotate_line {
                             }
 
                             $out .= $ltx;
+
+                            next;
+                        };
+
+                        $out .= apply_style($token, $style);
+
+                        last;
+                    }
+
+                    next;
+                }
+                elsif (defined($literate_rx)) {
+                    while (length($token)) {
+                        $token =~ s{\A(.*?)($literate_rx)}{}smx and do {
+                            my $pre = $1;
+                            my $in  = $2;
+
+                            if (length($pre)) {
+                                $out .= apply_style($pre, $style);
+                            }
+
+                            my $sub = $literate_subs->{$in};
+
+                            $out .= $sub;
 
                             next;
                         };
