@@ -311,11 +311,36 @@ my sub compile_parser {
     my @math;
 
     if (parse_boolean($style->{mathescape})) {
-        my $re = qr{\$.*?\$};
+        my $re = q{(?<ltx>\$.*?\$)};
 
         push @math, $re;
 
-        $re{math} = $re;
+        $re{math} = qr{$re};
+    }
+
+    my @ltx;
+
+    if (defined(my $escapechar = $style->{escapechar})) {
+        my $p = make_delim_parser($tex, \$escapechar);
+
+        my ($delim) = $p->();
+
+        push @ltx, qq{$delim(?<ltx>.*?)$delim};
+    }
+
+    if (defined(my $delims = $style->{escapeinside})) {
+        my $p = make_delim_parser($tex, \$delims);
+
+        my ($ldelim) = $p->();
+        my ($rdelim) = $p->();
+
+        push @ltx, qq{$ldelim(?<ltx>.*?)$rdelim};
+    }
+
+    if (@ltx) {
+        my $re = sprintf qq{(?:%s)}, join("|", @ltx);
+
+        $re{latex} = qr{$re};
     }
 
     my @other_keywords;
@@ -365,7 +390,7 @@ my sub compile_parser {
     }
 
     my @tokens = (@comments, @strings,
-                  @math,
+                  @math, @ltx,
                   @other_keywords, @keywords,
                   $raw_identifier);
 
@@ -390,7 +415,7 @@ my sub id {
 my sub verbatim {
     my $s = shift;
 
-    $s =~ s{([{}\\\$ ])}{\\$1}g;
+    $s =~ s{([\\{}\$~ ])}{\\$1}g;
 
     return $s;
 }
@@ -430,6 +455,7 @@ my sub annotate_line {
     my $comment_rx = $re->{comment};
 
     my $math_rx    = $re->{math};
+    my $ltx_rx     = $re->{latex};
 
     my $basic_style   = $style->{basicstyle};
     my $kwd_style     = $style->{keywordstyle};
@@ -455,13 +481,23 @@ my sub annotate_line {
 
             my $style;
 
-            if (defined $math_rx && $token =~ m{\A$math_rx\z}) {
+            if (defined $ltx_rx && $token =~ m{\A$ltx_rx\z}) {
+                my $ltx = $+{ltx};
+
+                id($tex, latex => $ltx);
+
+                $out .= $ltx;
+
+                next;
+            }
+            elsif (defined $math_rx && $token =~ m{\A$math_rx\z}) {
                 id($tex, math => $token);
 
                 $out .= $token;
 
                 next;
-            } elsif (defined $string_rx && $token =~ m{\A$string_rx\z}) {
+            }
+            elsif (defined $string_rx && $token =~ m{\A$string_rx\z}) {
                 id($tex, string => $token);
 
                 $style = $string_style;
@@ -485,17 +521,24 @@ my sub annotate_line {
 
                     next;
                 }
-                elsif (defined $math_rx) {
+                elsif (defined $ltx_rx || defined $math_rx) {
+                    my @res;
+
+                    push @res, $ltx_rx  if defined $ltx_rx;
+                    push @res, $math_rx if defined $math_rx;
+
+                    my $rx = sprintf qq{(?:%s)}, join("|", @res);
+
                     while (length($token)) {
-                        $token =~ s{\A(.*?)($math_rx)}{}smx and do {
-                            my $pre  = $1;
-                            my $math = $2;
+                        $token =~ s{\A(.*?)($rx)}{}smx and do {
+                            my $pre = $1;
+                            my $ltx = $+{ltx};
 
                             if (length($pre)) {
                                 $out .= apply_style($pre, $style);
                             }
 
-                            $out .= $math;
+                            $out .= $ltx;
 
                             next;
                         };
@@ -506,9 +549,6 @@ my sub annotate_line {
                     }
 
                     next;
-                }
-                else {
-                    $style = $comment_style;
                 }
             } elsif ($token =~ m{\A$id_rx\z}) {
                 if (defined $kwd_rx && $token =~ m{\A$kwd_rx\z}) {
@@ -554,10 +594,6 @@ my sub output_lines {
     my @lines = @_;
 
     my $re = compile_parser($tex, $style);
-
-    # while (my ($k, $v) = each $re->%*) {
-        # $tex->__DEBUG("re($k) => $v");
-    # }
 
     my $first_no = ($style->{firstnumber} // 1);
 
@@ -688,10 +724,12 @@ sub do_lstlisting {
 
     $tex->begingroup();
 
-    $tex->set_catcode(ord(' '), CATCODE_ACTIVE);
+    $tex->set_catcode(ord(' '),        CATCODE_ACTIVE);
     $tex->set_catcode(carriage_return, CATCODE_ACTIVE);
 
-#    $tex->set_catcode(ord('$'), CATCODE_OTHER);
+    for my $char ('#', '%', '&', '^', '_') {
+        $tex->set_catcode(ord($char), CATCODE_OTHER);
+    }
 
     my $line;
 
@@ -826,7 +864,8 @@ Currently the individual styles are implemented by adding the
 appropriate font and styled-content tags directly to the output.  An
 alternative would be to mark the content with bespoke tags (<lst:id>,
 <lst:kwd>, <lst:comment>, <lst:string>) and generate CSS to style
-those, if that would provide any benefits.
+those, if that would provide any benefits.  (On further reflection, I
+doubt this makes sense.)
 
 The numbers, firstnumber, stepnumber, and numberfirstline option are
 implemented, *BUT* in a way that is not entirely compatible with
