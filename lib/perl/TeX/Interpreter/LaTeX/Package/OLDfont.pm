@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::OLDfont;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Interpreter::LaTeX::Package::OLDfont;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use TeX::Token qw(:catcodes :factories);
@@ -40,7 +41,7 @@ use TeX::Node::CharNode qw(new_character);
 
 use TeX::Constants qw(:save_stack_codes :token_types);
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -58,6 +59,21 @@ sub install ( $ ) {
     $tex->define_csname(sf => make_font_declaration("sans-serif"));
 
     $tex->define_csname(sl => make_font_declaration("styled-content", "oblique") );
+
+    ## These aliases aren't strictly correct, but they will have to do
+    ## until resolution of https://github.com/AmerMathSoc/texml/issues/196
+
+    $tex->let_csname(rmfamily => 'rm');
+    $tex->let_csname(sffamily => 'sf');
+    $tex->let_csname(ttfamily => 'tt');
+
+    $tex->let_csname(bfseries => 'bf');
+    # $tex->let_csname(mdseries => '??');
+
+    # $tex->let_csname(upshape => '??');
+    $tex->let_csname(slshape  => 'sl');
+    $tex->let_csname(scshape  => 'sc');
+    $tex->let_csname(itshape  => 'it');
 
     return;
 }
