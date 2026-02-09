@@ -64,6 +64,22 @@ my $BUILDER;
 
 use constant ALI_NS => 'http://www.niso.org/schemas/ali/1.0/';
 
+my %MONTH_TO_INT = (January   =>  1,
+                    February  =>  2,
+                    March     =>  3,
+                    April     =>  4,
+                    May       =>  5,
+                    June      =>  6,
+                    July      =>  7,
+                    August    =>  8,
+                    September =>  9,
+                    October   => 10,
+                    November  => 11,
+                    December  => 12);
+
+my @INT_TO_MONTH = qw(NULL January February March April May June July
+                           August September October November December);
+
 ######################################################################
 ##                                                                  ##
 ##                            UTILITIES                             ##
@@ -352,7 +368,9 @@ sub append_date {
     my $date_type  = shift;
 
     my $pub_format = shift;
-    my $date_tag   = shift || "date";
+    my $date_tag   = shift // "date";
+
+    my $string_date = shift // $date->to_string();;
 
     my $date_element = append_xml_element($parent, $date_tag);
 
@@ -382,6 +400,8 @@ sub append_date {
     append_xml_element($date_element, "day", $day) if nonempty($day) && $day > -1;
     append_xml_element($date_element, "month", $month) if nonempty($month) && $month > -1;
     append_xml_element($date_element, "year", $year);
+
+    append_xml_element($date_element, "string-date", $string_date);
 
     return;
 }
@@ -619,14 +639,22 @@ my sub add_history {
 
     if (nonempty(my $issue_date = $gentag->get_issuedate())) {
         if (nonempty(my $year = $issue_date->get_year())) {
+            my $string_date = $year;
+
+            my $month;
+
             if ($year > 0) {
-                if (nonempty($issue_date->get_month())) {
+                if (nonempty($month = $issue_date->get_month())) {
+                    $string_date = $month . $string_date;
+
                     if (empty($issue_date->get_day())) {
                         $issue_date->set_day(1);
                     }
                 }
 
-                append_date($tex, $history, $issue_date, "issue-date");
+                append_date($tex,
+                            $history, $issue_date, "issue-date",
+                            undef, undef, $string_date);
             }
         }
     } else {
@@ -1251,19 +1279,6 @@ sub append_article_categories {
 
     return;
 }
-
-my %MONTH_TO_INT = (January   =>  1,
-                    February  =>  2,
-                    March     =>  3,
-                    April     =>  4,
-                    May       =>  5,
-                    June      =>  6,
-                    July      =>  7,
-                    August    =>  8,
-                    September =>  9,
-                    October   => 10,
-                    November  => 11,
-                    December  => 12);
 
 sub add_article_citation {
     my $tex = shift;

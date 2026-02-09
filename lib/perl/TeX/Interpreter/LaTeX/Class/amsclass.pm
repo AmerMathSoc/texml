@@ -556,6 +556,7 @@ __DATA__
 \def\issueinfo#1#2#3#4{%
     \gdef\AMS@volumeno{#1}%
     \xdef\AMS@issue{\number0#2}%
+    \gdef\AMS@issue@fullmonth{#3}%
     \gdef\AMS@issue@month{}%
     \@ifnotempty{#3}{\xdef\AMS@issue@month{\TEXML@month@int{#3}}}%
     \gdef\AMS@issue@year{#4}%
@@ -966,6 +967,7 @@ __DATA__
             \thisxmlpartag{day}\texml@day\par
             \thisxmlpartag{month}\texml@month\par
             \thisxmlpartag{year}\texml@year\par
+            \thisxmlpartag{string-date}#2\par
             \setXMLattribute{date-type}{#1}%
             \AMS@pad@date\texml@day
             \AMS@pad@date\texml@month
@@ -1013,6 +1015,14 @@ __DATA__
             \fi
             \thisxmlpartag{year}%
             \AMS@issue@year\par
+            %
+            \thisxmlpartag{string-date}%
+            \ifx\AMS@issue@fullmonth\@empty\else
+                \AMS@issue@fullmonth\space
+            \fi
+            \AMS@issue@year
+            \par
+            %
             \AMS@pad@date\AMS@issue@day
             \AMS@pad@date\AMS@issue@month
             \setXMLattribute{iso-8601-date}{%
