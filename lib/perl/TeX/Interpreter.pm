@@ -2831,16 +2831,18 @@ sub unsave {
         ## hid a bug for a while.)
 
         while (defined(my $record = $tex->pop_save_stack())) {
-            if ($tex->tracing_groups() > 1) {
-                my $string = $record->to_string();
-                # $tex->DEBUG("unsave: popping $string");
-            }
-
             if (! ref($record)) {
                 croak "'$record' is not a SaveRecord";
             }
 
-            if ($record->get_type() == level_boundary) {
+            if ($tex->tracing_groups() > 1) {
+                my $string = $record->to_string();
+                $tex->DEBUG("unsave: popping $string");
+            }
+
+            my $save_type = $record->get_type();
+
+            if ($save_type == level_boundary) {
                 $group_type = $tex->cur_group();
                 $line_no    = $record->get_line();
 
@@ -2851,7 +2853,6 @@ sub unsave {
             }
 
             my $eqvt_ptr  = $record->get_index();
-            my $save_type = $record->get_type();
 
             if ($save_type == insert_token) {
                 $tex->back_input($eqvt_ptr);
