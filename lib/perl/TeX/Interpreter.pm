@@ -2,7 +2,7 @@ package TeX::Interpreter;
 
 use v5.26.0;
 
-# Copyright (C) 2022-2025 American Mathematical Society
+# Copyright (C) 2022-2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -80,6 +80,8 @@ use File::Basename;
 use File::Spec::Functions;
 
 use List::Util qw(none uniq);
+
+use Scalar::Util qw(blessed);
 
 use TeX::Utils::SVG;
 use TeX::Utils::Misc;
@@ -1258,7 +1260,7 @@ sub get_nest_ptr {
     return $#{ $semantic_nest_of{ident $tex} };
 }
 
-package ListStateRecord {
+package TeX::Interpreter::ListStateRecord {
     use TeX::Class;
 
     my %mode_of         :ATTR(:name<mode>);
@@ -1309,17 +1311,23 @@ package ListStateRecord {
     }
 }
 
+my sub new_list_state_record {
+    my $state = shift;
+
+    return TeX::Interpreter::ListStateRecord->new($state);
+}
+
 sub init_semantic_nest {
     my $tex = shift;
 
-    my $list = ListStateRecord->new({ mode         => vmode,
-                                      mode_line    => 0,
-                                      list         => [],
-                                      prev_graf    => 0,
-                                      prev_depth   => 0,
-                                      space_factor => 0,
-                                      clang        => 0,
-                                    });
+    my $list = new_list_state_record({ mode         => vmode,
+                                       mode_line    => 0,
+                                       list         => [],
+                                       prev_graf    => 0,
+                                       prev_depth   => 0,
+                                       space_factor => 0,
+                                       clang        => 0,
+                                     });
 
     $tex->set_cur_list($list);
 
@@ -1570,7 +1578,7 @@ use constant FROZEN_DONT_EXPAND_TOKEN
 use constant FROZEN_CR_TOKEN
     => make_csname_token("cr");
 
-package EQVT {
+package TeX::Interpreter::EQVT {
     use TeX::Class;
 
     my %level_of :COUNTER(:name<level>);
@@ -1583,7 +1591,7 @@ package EQVT {
     }
 }
 
-package EQVT::Data {
+package TeX::Interpreter::EQVT::Data {
     use TeX::Class;
 
     my %value_of :ATTR(:name<value>);
@@ -1595,7 +1603,13 @@ package EQVT::Data {
     }
 }
 
-sub make_eqvt( $$ ) {
+my sub new_eqvt_data {
+    my $value = shift;
+
+    return TeX::Interpreter::EQVT::Data->new({ value => $value });
+}
+
+my sub make_eqvt {
     my $equiv = shift;
     my $level = shift;
 
@@ -1604,11 +1618,11 @@ sub make_eqvt( $$ ) {
 
     if (defined($equiv)) {
         if ( ref($equiv) eq '' || ref($equiv) eq 'ARRAY'|| ref($equiv) eq 'TeX::Type::GlueSpec' || ref($equiv) eq 'TeX::TokenList') {
-            $equiv = EQVT::Data->new({ value => $equiv });
+            $equiv = new_eqvt_data($equiv);
         }
     }
 
-    return EQVT->new({ equiv => $equiv, level => $level });
+    return TeX::Interpreter::EQVT->new({ equiv => $equiv, level => $level });
 }
 
 sub init_eqtb {
@@ -2290,7 +2304,7 @@ sub __init_special_parameters {
     my %special_integers;
 
     for my $csname ($tex->__list_special_integers()) {
-        $special_integers{$csname} = EQVT::Data->new({ value => 0 });
+        $special_integers{$csname} = new_eqvt_data(0);
 
         my $param = make_integer_parameter($csname, $special_integers{$csname});
 
@@ -2303,7 +2317,7 @@ sub __init_special_parameters {
     my %special_dimens;
 
     for my $csname ($tex->__list_special_dimens()) {
-        $special_dimens{$csname} = EQVT::Data->new({ value => 0 });
+        $special_dimens{$csname} = new_eqvt_data(0);
 
         my $param = make_dimen_parameter($csname, $special_dimens{$csname});
 
@@ -2483,13 +2497,18 @@ sub primitive {
 ##                                                                  ##
 ######################################################################
 
+# Most elements of the save_stack are instances of SaveRecord, but
+# hbox, vbox, and scan_spec() put other values on it, so we can't put
+# a :type specifier here.  (We could, of course, move those uses to a
+# different stack.
+
 my %save_stack_of :ARRAY(:name<save_stack> :push<__push_save_stack> :pop<__pop_save_stack>);
 
 my %cur_level_of     :COUNTER(:name<cur_level>);
 my %cur_group_of     :COUNTER(:name<cur_group>);
 my %cur_boundary_of  :COUNTER(:name<cur_boundary>);
 
-package SaveRecord {
+package TeX::Interpreter::SaveRecord {
     use TeX::Class;
 
     use TeX::Constants qw(:save_stack_codes group_type);
@@ -2523,6 +2542,18 @@ package SaveRecord {
     }
 }
 
+my sub new_save_record {
+    my $data = shift;
+
+    return TeX::Interpreter::SaveRecord->new($data);
+}
+
+my sub is_save_record {
+    my $obj = shift;
+
+    return blessed $obj && $obj->isa("TeX::Interpreter::SaveRecord");
+}
+
 sub push_save_stack {
     my $tex = shift;
 
@@ -2533,7 +2564,7 @@ sub push_save_stack {
     if ($tex->tracing_groups() > 1) {
         my $save_ptr = $tex->save_ptr();
 
-        $value = $value->to_string() if eval { $value->isa("SaveRecord") };
+        $value = $value->to_string() if is_save_record($value);
 
         $tex->DEBUG("push_save_stack:");
         $tex->DEBUG("  save_stack($save_ptr) = $value");
@@ -2550,7 +2581,7 @@ sub pop_save_stack {
     my $value = $tex->__pop_save_stack();
 
     if ($tex->tracing_groups() > 1) {
-        my $string = eval { $value->isa("SaveRecord") } ? $value->to_string() : $value;
+        my $string = is_save_record($value) ? $value->to_string() : $value;
 
         $tex->DEBUG("pop_save_stack:");
         $tex->DEBUG("  save_stack($save_ptr) = $string");
@@ -2591,7 +2622,7 @@ sub new_save_level {
 
     my $line_no = $tex->input_line_no();
 
-    my $save_record = SaveRecord->new({ type  => level_boundary,
+    my $save_record = new_save_record({ type  => level_boundary,
                                         level => $tex->cur_group(),
                                         index => $tex->cur_boundary(),
                                         line  => $line_no });
@@ -2706,7 +2737,7 @@ sub eq_save {
 
     my $eqvt_level = $eqvt->level();
 
-    my $save_record = SaveRecord->new({ type  => restore_old_value,
+    my $save_record = new_save_record({ type  => restore_old_value,
                                         level => $eqvt_level,
                                         index => $eqvt_ptr });
 
@@ -2800,7 +2831,7 @@ sub save_for_after {
 
     my $token = shift;
 
-    my $save_record = SaveRecord->new({ type  => insert_token,
+    my $save_record = new_save_record({ type  => insert_token,
                                         level => level_zero,
                                         index => $token });
 
@@ -2831,7 +2862,7 @@ sub unsave {
         ## hid a bug for a while.)
 
         while (defined(my $record = $tex->pop_save_stack())) {
-            if (! ref($record)) {
+            if (! is_save_record($record)) {
                 croak "'$record' is not a SaveRecord";
             }
 
@@ -2917,7 +2948,7 @@ sub show_save_stack {
     for (my $i = 0; $i < @stack; $i++) {
         my $record = $stack[$i];
 
-        $record = $record->to_string() if eval { $record->isa("SaveRecord") };
+        $record = $record->to_string() if is_save_record($record);
 
         # if ($i == $cur_boundary) {
         #     $tex->DEBUG(" *save_stack($i) = $record");
@@ -3230,7 +3261,7 @@ sub print_cmd_chr {
 ##                                                                  ##
 ######################################################################
 
-package InStateRecord {
+package TeX::Interpreter::InStateRecord {
     use TeX::Class;
 
     use TeX::Constants qw(:file_types);
@@ -3263,7 +3294,13 @@ package InStateRecord {
     }
 }
 
-my %input_stack_of :ARRAY(:name<input_stack> :type<InStateRecord>);
+my sub new_in_state_record {
+    my $data = shift;
+
+    return TeX::Interpreter::InStateRecord->new($data);
+}
+
+my %input_stack_of :ARRAY(:name<input_stack> :type<TeX::Interpreter::InStateRecord>);
 
 my %align_state_of :COUNTER(:name<align_state> :default<ALIGN_NO_COLUMN>);
 
@@ -3369,7 +3406,7 @@ sub show_context {
 sub push_input {
     my $tex = shift;
 
-    my $saved = InStateRecord->new({
+    my $saved = new_in_state_record({
         lexer_state => $tex->lexer_state(),
         line_no     => $tex->input_line_no(),
         char_no     => $tex->input_char_no(),
@@ -5697,7 +5734,7 @@ sub scan_rule_spec {
 ##                                                                  ##
 ######################################################################
 
-my %read_file_of :ARRAY(:name<read_file> :type<InStateRecord>);
+my %read_file_of :ARRAY(:name<read_file> :type<TeX::Interpreter::InStateRecord>);
 my %read_open_of :ARRAY(:name<read_open> :default_value<closed>);
 
 my %long_state_of :COUNTER(:name<long_state> :default<long_call>);
@@ -5737,11 +5774,11 @@ sub openin {
 
     if (defined $path) {
         if (my $fh = $tex->a_open_in($path)) {
-            my $record = InStateRecord->new({ file_name => $path,
-                                              file_handle => $fh,
-                                              file_type   => openin_file,
-                                              line_no     => 0,
-                                            });
+            my $record = new_in_state_record({ file_name => $path,
+                                               file_handle => $fh,
+                                               file_type   => openin_file,
+                                               line_no     => 0,
+                                              });
 
             $tex->set_read_file($fileno, $record);
             $tex->set_read_open($fileno, just_open);
@@ -6094,12 +6131,12 @@ sub tokenize {
 ##                                                                  ##
 ######################################################################
 
-my %cond_ptr_of   :ATTR(:name<cond_ptr> :type<CondStateRecord>);
+my %cond_ptr_of   :ATTR(:name<cond_ptr> :type<TeX::Interpreter::CondStateRecord>);
 my %if_limit_of   :COUNTER(:name<if_limit>  :default<normal>);
 my %if_line_of    :COUNTER(:name<if_line>   :default<0>);
 my %skip_line_of  :COUNTER(:name<skip_line> :default<0>);
 
-package CondStateRecord {
+package TeX::Interpreter::CondStateRecord {
     use TeX::Class;
 
     my %cur_if_of     :ATTR(:name<cur_if> :type<TeX::Token>);
@@ -6107,7 +6144,13 @@ package CondStateRecord {
     my %if_limit_of   :COUNTER(:name<if_limit>);
     my %if_line_of    :COUNTER(:name<if_line>);
 
-    my %link_of       :ATTR(:name<link> :type<CondStateRecord>);
+    my %link_of       :ATTR(:name<link> :type<TeX::Interpreter::CondStateRecord>);
+}
+
+my sub new_cond_state_record {
+    my $data = shift;
+
+    return TeX::Interpreter::CondStateRecord->new($data);
 }
 
 sub pass_text {
@@ -6152,11 +6195,11 @@ sub push_cond_stack {
     my $cur_if  = shift;
     my $cur_tok = shift;
 
-    my $p = CondStateRecord->new({ cur_if   => $cur_tok,
-                                   if_limit => $tex->if_limit(),
-                                   if_line  => $tex->if_line(),
-                                   link     => $tex->get_cond_ptr(),
-                                 });
+    my $p = new_cond_state_record({ cur_if   => $cur_tok,
+                                    if_limit => $tex->if_limit(),
+                                    if_line  => $tex->if_line(),
+                                    link     => $tex->get_cond_ptr(),
+                                   });
 
     $tex->set_cond_ptr($p);
 
@@ -6404,7 +6447,7 @@ my %use_mathjax_of :BOOLEAN(:name<use_mathjax> :default<false>);
 
 my %output_hooks_of :ARRAY(:name<output_hook> :add<*custom*>);
 
-package OutputRecord {
+package TeX::Interpreter::OutputRecord {
     use TeX::Class;
 
     my %handle_of    :ATTR(:name<handle>);
@@ -6421,6 +6464,12 @@ package OutputRecord {
                        $self->get_file_name() || '<undef>',
                        $self->get_ext() || '<undef>');
     }
+}
+
+sub make_output_record {
+    my $data = shift;
+
+    return TeX::Interpreter::OutputRecord->new($data);
 }
 
 sub add_output_hook {
@@ -6769,10 +6818,10 @@ sub push_output {
 
     $tex->end_par();
 
-    my $saved = OutputRecord->new({ handle    => $tex->get_output_handle(),
-                                    module    => $tex->get_output_module(),
-                                    file_name => $tex->get_output_file_name(),
-                                    ext       => $tex->get_output_ext(),
+    my $saved = make_output_record({ handle    => $tex->get_output_handle(),
+                                     module    => $tex->get_output_module(),
+                                     file_name => $tex->get_output_file_name(),
+                                     ext       => $tex->get_output_ext(),
                                   });
 
     $tex->push_output_stack($saved);
@@ -7069,10 +7118,10 @@ sub vpackage {
 ##                                                                  ##
 ######################################################################
 
-my %align_stack_of   :ARRAY(:name<align_stack>  :type<Alignment>);
-my %cur_alignment_of :ATTR(:name<cur_alignment> :type<Alignment>);
+my %align_stack_of   :ARRAY(:name<align_stack>  :type<TeX::Interpreter::Alignment>);
+my %cur_alignment_of :ATTR(:name<cur_alignment> :type<TeX::Interpreter::Alignment>);
 
-package SpanRecord {
+package TeX::Interpreter::SpanRecord {
     use TeX::Class;
 
     ## Tag each SpanRecord with a unique id for use by
@@ -7128,14 +7177,24 @@ package SpanRecord {
     }
 }
 
-package Alignment {
+my sub new_span_record {
+    my $num_rows = shift;
+    my $num_cols = shift;
+
+    return TeX::Interpreter::SpanRecord->new({ state    => 0,
+                                               num_cols => $num_cols,
+                                               num_rows => $num_rows,
+                                               cur_col  => 1 });
+}
+
+package TeX::Interpreter::Alignment {
     use TeX::Constants qw(:booleans);
 
     use TeX::Class;
 
     use TeX::Utils::Misc;
 
-    my %cols_of :ARRAY(:name<col> :type<AlignRecord>);
+    my %cols_of :ARRAY(:name<col> :type<TeX::Interpreter::AlignRecord>);
 
     my %col_ptr_of  :COUNTER(:name<col_ptr>  :default<0>);
     my %loop_ptr_of :COUNTER(:name<loop_ptr> :default<-1>);
@@ -7198,16 +7257,6 @@ package Alignment {
         }
 
         return;
-    }
-
-    sub new_span_record( $$ ) {
-        my $num_rows = shift;
-        my $num_cols = shift;
-
-        return SpanRecord->new({ state    => 0,
-                                 num_cols => $num_cols,
-                                 num_rows => $num_rows,
-                                 cur_col  => 1 });
     }
 
     sub cur_span_record {
@@ -7360,7 +7409,7 @@ package Alignment {
     };
 }
 
-package AlignRecord {
+package TeX::Interpreter::AlignRecord {
     use TeX::Class;
 
     my %u_part_of :ATTR(:name<u_part> :type<TeX::TokenList>);
@@ -7528,7 +7577,7 @@ sub scan_align_preamble {
 
     my $cur_cmd; # left_brace
 
-    my $align = Alignment->new();
+    my $align = TeX::Interpreter::Alignment->new();
 
     # cur_align := align_head;
     # cur_loop  := null;
@@ -7546,7 +7595,7 @@ sub scan_align_preamble {
         #   |car_ret|, looking for changes in the tabskip glue; append
         #   an alignrecord to the preamble list@>;
 
-        my $cur_col = AlignRecord->new();
+        my $cur_col = TeX::Interpreter::AlignRecord->new();
 
         $tex->scan_u_template($align, $cur_col);
 

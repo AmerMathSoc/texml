@@ -1,6 +1,8 @@
 package TeX::Primitive::Parameter;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -31,7 +33,6 @@ package TeX::Primitive::Parameter;
 
 ## Abstract base class for built-in parameters.
 
-use strict;
 use warnings;
 
 use base qw(TeX::Command::Executable::Assignment
@@ -206,7 +207,9 @@ sub assign_value {
 
     my $eqvt_ptr = $self->get_eqvt_ptr();
 
-    if (eval { $eqvt_ptr->isa("EQVT::Data") }) { ## special dimen or integer
+    if (eval { $eqvt_ptr->isa("TeX::Interpreter::EQVT::Data") }) {
+        ## special dimen or integer
+
         $eqvt_ptr->set_value($value);
     } else {
         $tex->eq_define($eqvt_ptr, $value, $modifier);
@@ -223,7 +226,9 @@ sub read_value {
 
     my $eqvt_ptr = $self->get_eqvt_ptr();
 
-    if (eval{ $eqvt_ptr->isa("EQVT::Data") }) { ## special dimen or integer
+    if (eval{ $eqvt_ptr->isa("TeX::Interpreter::EQVT::Data") }) {
+        ## special dimen or integer
+
         return $eqvt_ptr->get_value();
     } else {
         return ${ $eqvt_ptr }->get_equiv()->get_value();
