@@ -646,6 +646,10 @@ my sub annotate_line {
         last;
     }
 
+    if (nonempty($out) && nonempty($basic_style)) {
+        $out = qq{{$basic_style $out}};
+    }
+
     return $out;
 }
 
@@ -918,9 +922,8 @@ types of distinguished content that can be styled independently:
 The simplest versions of these are mostly implemented by texml.
 
 In addition, there is a 'basicstyle' that applies to the entire
-listing that I have not yet implemented, partly because getting it to
-work correctly with the individual styles will require resolution of
-texml #196.
+listing.  This is partially implemented; full consistency with LaTeX
+depends on texml #196.
 
 Currently the individual styles are implemented by adding the
 appropriate font and styled-content tags directly to the output.  An
@@ -968,4 +971,5 @@ the only essential ones are frame and the colors.
     framextopmargin=<dimen>
     framexbottommargin=<dimen>
 
-There are also a bunch of other options I need to implement.
+There are also a bunch of other options that could be implemented, but
+that can be driven by actual use cases.
