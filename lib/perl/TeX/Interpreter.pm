@@ -2520,7 +2520,7 @@ package TeX::Interpreter::SaveRecord {
 
     my %saved_eqvt_of :ATTR(:name<saved_eqvt>);
 
-    sub to_string {
+    sub to_string :STRINGIFY {
         my $self = shift;
 
         my $type  = $self->get_type();
@@ -2533,6 +2533,8 @@ package TeX::Interpreter::SaveRecord {
             return "{ restore_zero }";
         } elsif ($type == insert_token) {
             return "{ insert_token: $index }";
+        } elsif ($type == close_tag) {
+            return "{ close_tag: $index }";
         } elsif ($type == level_boundary) {
             return sprintf("{ level_boundary: group = %s, prev_boundary = %d }",
                            group_type($level), $index);
@@ -2840,6 +2842,27 @@ sub save_for_after {
     return;
 }
 
+## The stack is processed in a last-in, first-out order, but tokens
+## queued by \aftergroup are inserted using back_input(), which
+## effectively turns them into a first-in, first-out queue.  When we
+## close XML tags, they need to be processed in LIFO order, so we
+## can't use the \aftergroup mechanism for them.  Instead, we
+## introduce a new SaveRecord type, close_tag.
+
+sub defer_close_tag {
+    my $tex = shift;
+
+    my $qName = shift;
+
+    my $save_record = new_save_record({ type  => close_tag,
+                                        level => level_zero,
+                                        index => $qName });
+
+    $tex->push_save_stack($save_record);
+
+    return;
+}
+
 sub unsave {
     my $tex = shift;
 
@@ -2855,23 +2878,22 @@ sub unsave {
     if ($tex->cur_level() > level_one) {
         $tex->decr_cur_level();
 
-        ## Check if it's defined so that a raw box-related value of 0
-        ## on the stack doesn't abort prematurely.  (Such a value
-        ## should never be encountered here, but bugs do happen, and
-        ## failure to check for defined values instead of true values
-        ## hid a bug for a while.)
+        ## Check if the value is defined not just true so that a raw
+        ## box-related value of 0 on the stack doesn't abort
+        ## prematurely.  (Such a value should never be encountered
+        ## here, but bugs do happen, and failure to check for defined
+        ## values instead of true values hid a bug for a while.)
 
         while (defined(my $record = $tex->pop_save_stack())) {
             if (! is_save_record($record)) {
                 croak "'$record' is not a SaveRecord";
             }
 
-            if ($tex->tracing_groups() > 1) {
-                my $string = $record->to_string();
-                $tex->DEBUG("unsave: popping $string");
-            }
-
             my $save_type = $record->get_type();
+
+            if ($tex->tracing_groups() > 1) {
+                $tex->DEBUG("unsave: popping $record");
+            }
 
             if ($save_type == level_boundary) {
                 $group_type = $tex->cur_group();
@@ -2883,11 +2905,17 @@ sub unsave {
                 last;
             }
 
-            my $eqvt_ptr  = $record->get_index();
+            my $index = $record->get_index();
 
-            if ($save_type == insert_token) {
-                $tex->back_input($eqvt_ptr);
-            } else {
+            if ($save_type == close_tag) { # index = qName
+                $tex->end_xml_element($index);
+
+                next;
+            }
+
+            if ($save_type == insert_token) { # index = TeX::Token
+                $tex->back_input($index);
+            } else { # index = eqvt_ptr
                 my $saved_eqvt;
 
                 if ($save_type == restore_old_value) {
@@ -2896,8 +2924,8 @@ sub unsave {
                     $saved_eqvt = UNDEFINED_CS;
                 }
 
-                if ( ${ $eqvt_ptr }->level() != level_one) {
-                    ${ $eqvt_ptr } = $saved_eqvt;
+                if ( $index->$*->level() != level_one) {
+                    $index->$* = $saved_eqvt;
                 }
             }
         }
@@ -11903,6 +11931,7 @@ sub __list_xml_extensions {
               setCSSproperty
               addXMLclass
               addXMLcomment
+              deferXMLclosetag
               deleteXMLclass
               endXMLelement
               ifinXMLelement
