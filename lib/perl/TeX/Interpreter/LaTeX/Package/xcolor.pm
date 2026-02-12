@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::xcolor;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,13 +31,14 @@ package TeX::Interpreter::LaTeX::Package::xcolor;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use TeX::Utils::Misc;
 use TeX::Token qw(:catcodes);
 
-sub install ( $ ) {
+my sub do_TML_current_color;
+
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -139,7 +142,7 @@ __DATA__
 }
 
 \def\text@TML@color@#1#2{%
-    \aftergroup\XCOLOR@end@styled
+    \deferXMLclosetag{styled-content}%
     \startXMLelement{styled-content}%
     \set@texml@color@attribute{text-color}{#1{#2}}%
     \ignorespaces
