@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::float;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Package::float;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -60,6 +61,13 @@ __DATA__
 
 \RestoreMacroDefinition\@xfloat
 \RestoreMacroDefinition\caption
+
+\let\texml@saved@newfloat\newfloat
+
+\def\newfloat#1#2#3{%
+    \@namedef{texml@backext@#3}{#1}%
+    \texml@saved@newfloat{#1}{#2}{#3}%
+}
 
 \def\float@end{\end@float}
 \def\float@dblend{\end@float}
