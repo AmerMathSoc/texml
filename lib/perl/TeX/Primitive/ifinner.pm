@@ -49,7 +49,7 @@ sub expand {
 
     $tex->push_cond_stack($self, $cur_tok);
 
-    my $bool = false;
+    my $bool = $tex->get_cur_mode() < 0;
 
     if ($tex->tracing_macros() & TRACING_MACRO_COND) {
         $tex->begin_diagnostic();
