@@ -63,17 +63,17 @@ sub install {
     ## These aliases aren't strictly correct, but they will have to do
     ## until resolution of https://github.com/AmerMathSoc/texml/issues/196
 
-    # $tex->let_csname(rmfamily => 'rm');
-    # $tex->let_csname(sffamily => 'sf');
-    # $tex->let_csname(ttfamily => 'tt');
-    # 
-    # $tex->let_csname(bfseries => 'bf');
-    # # $tex->let_csname(mdseries => '??');
-    # 
-    # # $tex->let_csname(upshape => '??');
-    # $tex->let_csname(slshape  => 'sl');
-    # $tex->let_csname(scshape  => 'sc');
-    # $tex->let_csname(itshape  => 'it');
+    $tex->let_csname(rmfamily => 'rm');
+    $tex->let_csname(sffamily => 'sf');
+    $tex->let_csname(ttfamily => 'tt');
+
+    $tex->let_csname(bfseries => 'bf');
+    # $tex->let_csname(mdseries => '??');
+
+    # $tex->let_csname(upshape => '??');
+    $tex->let_csname(slshape  => 'sl');
+    $tex->let_csname(scshape  => 'sc');
+    $tex->let_csname(itshape  => 'it');
 
     return;
 }
@@ -137,9 +137,7 @@ sub make_font_declaration {
 
             $tex->begin_token_list($begin, macro);
 
-            my $end = sub { $tex->end_xml_element($qName) };
-
-            $tex->save_for_after(make_anonymous_token($end));
+            $tex->defer_close_tag($qName);
         }
 
         return;
