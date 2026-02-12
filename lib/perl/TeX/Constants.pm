@@ -1,6 +1,8 @@
 package TeX::Constants;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +31,6 @@ package TeX::Constants;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
 use base qw(Exporter);
@@ -40,13 +41,13 @@ our @EXPORT;
 
 use constant;
 
-sub install($\%) {
+my sub install {
     my $tag_name = shift;
     my $hash_ref = shift;
 
     constant->import($hash_ref);
 
-    $EXPORT_TAGS{$tag_name} = [ keys %{ $hash_ref } ];
+    $EXPORT_TAGS{$tag_name} = [ keys $hash_ref->%* ];
 
     return;
 }
@@ -59,7 +60,7 @@ my %MODULE_CODES = (
     ALREADY_LOADED => 2,
 );
 
-install module_codes => %MODULE_CODES;
+install module_codes => \%MODULE_CODES;
 
 my %TRACING_MACRO_CODES = (
     TRACING_MACRO_NONE  => 0,
@@ -71,7 +72,7 @@ my %TRACING_MACRO_CODES = (
     TRACING_ALIGN       => 32,
     );
 
-install tracing_macro_codes => %TRACING_MACRO_CODES;
+install tracing_macro_codes => \%TRACING_MACRO_CODES;
 
 my %FILE_TYPES = (
     terminal       =>  0,
@@ -84,21 +85,21 @@ my %FILE_TYPES = (
     pseudo_file2   => 16,    # scantextokens
     );
 
-install file_types => %FILE_TYPES;
+install file_types => \%FILE_TYPES;
 
 my %BOOLEANS = (
     false => 0,
     true  => 1,
     );
 
-install booleans => %BOOLEANS;
+install booleans => \%BOOLEANS;
 
 my %NAMED_ARGS = (
     EXPANDED   => 1,
     UNINDENTED => 1,
     );
 
-install named_args => %NAMED_ARGS;
+install named_args => \%NAMED_ARGS;
 
 ## TBD: Are these the best names for these constants?
 
@@ -109,11 +110,11 @@ my %ALIGN_STATES =  (
     ALIGN_FLAG      =>   500000,
     );
 
-install align_states => %ALIGN_STATES;
+install align_states => \%ALIGN_STATES;
 
-$EXPORT_TAGS{all} = [ map { @{ $_ } } values %EXPORT_TAGS ];
+$EXPORT_TAGS{all} = [ map { $_->@* } values %EXPORT_TAGS ];
 
-@EXPORT_OK = ( @{ $EXPORT_TAGS{all} } );
+@EXPORT_OK = $EXPORT_TAGS{all}->@*;
 
 ######################################################################
 ##                                                                  ##
@@ -129,7 +130,7 @@ my %TYPE_BOUNDS = (
     last_unicode_char  => 0x10FFFF,
 );
 
-install type_bounds => %TYPE_BOUNDS;
+install type_bounds => \%TYPE_BOUNDS;
 
 use constant null_code                     => 0;
 use constant carriage_return               => 015;
@@ -144,7 +145,7 @@ my %SELECTOR_CODES = (
     new_string   => 21,
 );
 
-install selector_codes => %SELECTOR_CODES;
+install selector_codes => \%SELECTOR_CODES;
 
 my %INTERACTION_MODES = (
     batch_mode       => 0,
@@ -153,7 +154,7 @@ my %INTERACTION_MODES = (
     error_stop_mode  => 3,
 );
 
-install interaction_modes => %INTERACTION_MODES;
+install interaction_modes => \%INTERACTION_MODES;
 
 my %HISTORY_CODES = (
     spotless             => 0,
@@ -162,13 +163,13 @@ my %HISTORY_CODES = (
     fatal_error_stop     => 3,
 );
 
-install history_codes => %HISTORY_CODES;
+install history_codes => \%HISTORY_CODES;
 
 my %PENALTIES = (
     inf_bad       =>  10000,
 );
 
-install penalties => %PENALTIES;
+install penalties => \%PENALTIES;
 
 my %NODE_PARAMS = (
     normal                        => 0,
@@ -182,7 +183,7 @@ my %NODE_PARAMS = (
     before                        => 0,
 );
 
-install node_params => %NODE_PARAMS;
+install node_params => \%NODE_PARAMS;
 
 ######################################################################
 ##                                                                  ##
@@ -218,7 +219,7 @@ my %COMMAND_CODES = (
     level_one                     => 1,     # level_zero + 1,
     );
 
-install command_codes => %COMMAND_CODES;
+install command_codes => \%COMMAND_CODES;
 
 ######################################################################
 ##                                                                  ##
@@ -231,10 +232,11 @@ my %SAVE_STACK_CODES = (
     restore_zero        =>  1,
     insert_token        =>  2,
     level_boundary      =>  3,
-    bottom_level        =>  0,
+    close_tag           =>  4, # texml extension
     ##
     ## Group types
     ##
+    bottom_level        =>  0,
     simple_group        =>  1,
     hbox_group          =>  2,
     adjusted_hbox_group =>  3,
@@ -248,7 +250,7 @@ my %SAVE_STACK_CODES = (
     math_left_group     => 16,
     );
 
-install save_stack_codes => %SAVE_STACK_CODES;
+install save_stack_codes => \%SAVE_STACK_CODES;
 
 my @GROUP_TYPE = ("bottom level",
                   "simple",
@@ -268,13 +270,13 @@ my @GROUP_TYPE = ("bottom level",
                   "math shift",
                   "math left");
 
-sub group_type( $ ) {
+sub group_type {
     my $group_code = shift;
 
     return $GROUP_TYPE[$group_code] || "Unknown group code '$group_code'";
 }
 
-push @{ $EXPORT_TAGS{save_stack_codes} }, qw(group_type);
+push $EXPORT_TAGS{save_stack_codes}->@*, qw(group_type);
 
 ######################################################################
 ##                                                                  ##
@@ -289,7 +291,7 @@ my %LEXER_STATES = (
     new_line    => 33, # 3 + max_char_code + max_char_code
     );
 
-install lexer_states => %LEXER_STATES;
+install lexer_states => \%LEXER_STATES;
 
 ######################################################################
 ##                                                                  ##
@@ -305,7 +307,7 @@ my %SCANNER_STATUSES = (
     absorbing => 5,
     );
 
-install scanner_statuses => %SCANNER_STATUSES;
+install scanner_statuses => \%SCANNER_STATUSES;
 
 ######################################################################
 ##                                                                  ##
@@ -334,7 +336,7 @@ my %TOKEN_TYPES = (
     every_eof_text     => 32,
     );
 
-install token_types => %TOKEN_TYPES;
+install token_types => \%TOKEN_TYPES;
 
 my %MARK_CODES = (
     top_mark_code         => 0,
@@ -344,7 +346,7 @@ my %MARK_CODES = (
     split_bot_mark_code   => 4,
     );
 
-install mark_codes => %MARK_CODES;
+install mark_codes => \%MARK_CODES;
 
 ######################################################################
 ##                                                                  ##
@@ -364,7 +366,7 @@ my %SCAN_TYPES = (
     xml_tag_val => 6,
     );
 
-install scan_types => %SCAN_TYPES;
+install scan_types => \%SCAN_TYPES;
 
 ######################################################################
 ##                                                                  ##
@@ -390,7 +392,7 @@ my %IF_CODES = (
     or_code       =>  4,
     );
 
-install if_codes => %IF_CODES;
+install if_codes => \%IF_CODES;
 
 ######################################################################
 ##                                                                  ##
@@ -418,7 +420,7 @@ my %BOX_PARAMS = (
     vtop_code     => 4,
     );
 
-install box_params => %BOX_PARAMS;
+install box_params => \%BOX_PARAMS;
 
 ######################################################################
 ##                                                                  ##
@@ -430,7 +432,7 @@ install box_params => %BOX_PARAMS;
 
 my %EXTRAS = (sp_per_pt => 2**16);
 
-install extras => %EXTRAS;
+install extras => \%EXTRAS;
 
 my %MATH_CLASSES = (
     MATH_ORD    =>  0,
@@ -445,7 +447,7 @@ my %MATH_CLASSES = (
     MATH_INNER  =>  9,
 );
 
-install math_classes => %MATH_CLASSES;
+install math_classes => \%MATH_CLASSES;
 
 ######################################################################
 ##                                                                  ##
@@ -457,7 +459,7 @@ my %XETEX_CONSTANTS = (
     number_math_families => 256, # TBD: engine specific
     );
 
-install xetex => %XETEX_CONSTANTS;
+install xetex => \%XETEX_CONSTANTS;
 
 ######################################################################
 ##                                                                  ##
@@ -497,7 +499,7 @@ my %UNICODE_ACCENTS = (
     COMBINING_YPOGEGRAMMENI        => "COMBINING GREEK YPOGEGRAMMENI",
 );
 
-install unicode_accents => %UNICODE_ACCENTS;
+install unicode_accents => \%UNICODE_ACCENTS;
 
 ######################################################################
 ##                                                                  ##
@@ -507,9 +509,9 @@ install unicode_accents => %UNICODE_ACCENTS;
 
 my @EXPORT_MISC = qw(carriage_return invalid_code null_code split_first_mark_code var_code UCS);
 
-$EXPORT_TAGS{all} = [ @EXPORT_MISC, map { @{ $_ } } values %EXPORT_TAGS ];
+$EXPORT_TAGS{all} = [ @EXPORT_MISC, map { $_->@* } values %EXPORT_TAGS ];
 
-@EXPORT_OK = ( @{ $EXPORT_TAGS{all} }, @EXPORT_MISC );
+@EXPORT_OK = ( $EXPORT_TAGS{all}->@*, @EXPORT_MISC );
 
 1;
 
