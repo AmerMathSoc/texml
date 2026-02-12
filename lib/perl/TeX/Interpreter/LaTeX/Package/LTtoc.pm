@@ -459,6 +459,8 @@ __DATA__
     \par
     \startXMLelement{def-list}%
         \setXMLattribute{content-type}{toc #1}%
+        \edef\@currentreftype{\@nameuse{texml@backext@#1}}%
+        \let\@currentrefsubtype\@currentreftype
 }{%
     \endXMLelement{def-list}%
     \par
@@ -466,9 +468,15 @@ __DATA__
 
 \newcommand{\generic@toc@item}[4]{%
     \par
-    \startXMLelement{def-item}\par
-        \setXMLattribute{rid}{#4}%
-        \XMLelement{term}{#2}%
+    \startXMLelement{def-item}%
+        \XMLelement{term}{%
+            \startXMLelement{xref}%
+                \setXMLattribute{rid}{#4}%
+                \setXMLattribute{ref-type}{\@currentreftype}%
+                \setXMLattribute{ref-subtype}{\@currentrefsubtype}%
+                #2%
+            \endXMLelement{xref}%
+        }%
         \XMLelement{def}{#3}%
     \endXMLelement{def-item}%
     \par
