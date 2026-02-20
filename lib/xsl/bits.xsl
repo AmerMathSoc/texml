@@ -73,29 +73,6 @@
 
 <xsl:template match="front-matter/sec/title"/>
 
-<xsl:template match="book-back/sec">
-    <book-part id="{@id}" disp-level="{@disp-level}">
-        <book-part-meta>
-            <title-group>
-                <xsl:copy-of select="title"/>
-            </title-group>
-        </book-part-meta>
-        <body>
-            <xsl:apply-templates/>
-        </body>
-    </book-part>
-</xsl:template>
-
-<xsl:template match="book-back/sec/title"/>
-
-<xsl:template match="book-back/sec/ref-list">
-    <sec>
-        <ref-list>
-            <xsl:apply-templates select="@*|node()"/>
-        </ref-list>
-    </sec>
-</xsl:template>
-
 <!-- Default template: copy other content verbatim -->
 
 <xsl:template match="@*|node()">
