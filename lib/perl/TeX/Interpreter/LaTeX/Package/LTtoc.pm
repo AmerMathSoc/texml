@@ -190,9 +190,9 @@ EOF
     ## See https://github.com/AmerMathSoc/texml/issues/259 for an
     ## explanation of why we don't call convert_fragment() directly.
 
-    my $at_cat = $tex->get_catcode(ord('@'));
+    my $at_cat = $tex->the_at_catcode();
 
-    $tex->set_catcode(ord('@'), CATCODE_LETTER);
+    $tex->makeatletter();
 
     my $t_list = $tex->tokenize($fragment);
 
@@ -252,7 +252,7 @@ EOF
 
     my $at_cat = $tex->get_catcode(ord('@'));
 
-    $tex->set_catcode(ord('@'), CATCODE_LETTER);
+    $tex->makeatletter();
 
     my $t_list = $tex->tokenize($fragment);
 
@@ -444,7 +444,6 @@ __DATA__
 \def\@starttoc@list#1#2{%
     \begingroup
         \chapter*{#2}%
-        \addXMLid
         \if@filesw
             \@xp\newwrite\csname tf@#1\endcsname
             \immediate\@xp\openout\csname tf@#1\endcsname \jobname.#1\relax

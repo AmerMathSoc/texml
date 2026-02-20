@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Class::amsbook;
 
 use 5.26.0;
 
-# Copyright (C) 2022, 2024, 2025 American Mathematical Society
+# Copyright (C) 2022, 2024-2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -36,7 +36,8 @@ use warnings;
 use TeX::Command::Executable::Assignment qw(:modifiers);
 
 use TeX::Utils::LibXML;
-use TeX::Utils::Misc;
+
+my sub move_drm;
 
 sub install {
     my $class = shift;
@@ -45,7 +46,54 @@ sub install {
 
     $tex->class_load_notification();
 
+    $tex->add_output_hook(\&move_drm);
+
     $tex->read_package_data();
+
+    return;
+}
+
+## move_drm() is not elegant.  Surely there's a better way to get the
+## DRM notice in the right place.
+
+sub move_drm {
+    my $xml = shift;
+
+    my $dom = $xml->get_dom();
+
+    my $drm = find_unique_node($dom, q{/descendant::notes[@notes-type="publishers-note"]}, 1);
+
+    return unless defined $drm;
+
+    my @tocs = $dom->findnodes(q{/descendant::def-list[starts-with(@content-type, "toc")]});
+
+    return unless @tocs;
+
+    my $final = $tocs[-1];
+
+    my $sec = $final->parentNode;
+
+    $drm->parentNode->removeChild($drm);
+
+    $sec->parentNode->insertAfter($drm, $sec);
+
+    my $toc = find_unique_node($dom, q{/descendant::toc[@specific-use="toc"]}, 1);
+
+    return unless defined $toc;
+
+    my $drm_toc = find_unique_node($toc, q{/descendant::toc-entry[@specific-use="epub-opening-page"]}, 1);
+
+    return unless $drm_toc;
+
+    my $sec_id = $sec->getAttribute('id');
+
+    my $nav_ptr = find_unique_node($toc, qq{/descendant::nav-pointer[\@rid='$sec_id']}, 1);
+
+    return unless defined $nav_ptr;
+
+    $toc->removeChild($drm_toc);
+
+    $toc->insertAfter($drm_toc, $nav_ptr->parentNode);
 
     return;
 }
@@ -75,6 +123,7 @@ __DATA__
 \def\tableofcontents{%
     \makededication
     \@starttoc{toc}\contentsname
+    \glet\AMS@authors\@empty
     \insertAMSDRMstatement
 }
 

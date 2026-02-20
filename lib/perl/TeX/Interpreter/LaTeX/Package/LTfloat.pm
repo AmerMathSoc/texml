@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Package::LTfloat;
 
 use 5.26.0;
 
-# Copyright (C) 2025 American Mathematical Society
+# Copyright (C) 2025, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -35,7 +35,7 @@ use warnings;
 
 my sub normalize_figures;
 
-sub install  {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -233,6 +233,11 @@ __DATA__
             \startXMLelement{label}%
             \ignorespaces\@templabel\unskip
             \endXMLelement{label}%
+            \addcontentsline{\csname ext@#1\endcsname}{#1}{%
+                \protect\numberline{}{\csname the#1\endcsname}%
+                                   {#2}%
+                                   {\@currentXMLid}%
+            }%
         \fi
     \fi
     \if###3##\else

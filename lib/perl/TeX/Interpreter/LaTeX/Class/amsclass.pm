@@ -1494,8 +1494,8 @@ __DATA__
 \floatname{figure}{\figurename}
 \def\fnum@figure{\figurename\space\thefigure\XMLgeneratedText.}
 \def\listfigurename{List of Figures}
-\let\listoffigures\@empty
 \def\jats@figure@element{fig}
+\def\listoffigures{\@starttoc@list{lof}\listfigurename}
 
 \SaveEnvironmentDefinition{figure}
 \SaveEnvironmentDefinition{figure*}
@@ -1505,8 +1505,8 @@ __DATA__
 \floatname{table}{\tablename}
 \def\fnum@table{\tablename\space\thetable\XMLgeneratedText.}
 \def\listtablename{List of Tables}
-\let\listoftables\@empty
 \def\jats@table@element{table-wrap}
+\def\listoftables{\@starttoc@list{lot}\listtablename}
 
 \let\LT@texml@caption@sep\@empty
 
@@ -1527,7 +1527,7 @@ __DATA__
 \def\l@paragraph    {\@tocline{4}{0pt}{1pc}{7pc}{}}
 \def\l@subparagraph {\@tocline{5}{0pt}{1pc}{7pc}{}}
 
-\def\l@figure{\@tocline{0}{3pt plus2pt}{0pt}{1.5pc}{}}
+\let\l@figure\@firstoftwo
 \let\l@table=\l@figure
 
 \providecommand{\setTrue}[1]{}
