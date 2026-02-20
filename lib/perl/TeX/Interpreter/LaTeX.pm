@@ -190,6 +190,28 @@ sub scan_optional_argument {
     return;
 }
 
+sub makeatletter {
+    my $tex = shift;
+
+    $tex->set_catcode(ord('@'), CATCODE_LETTER);
+
+    return;
+}
+
+sub makeatother {
+    my $tex = shift;
+
+    $tex->set_catcode(ord('@'), CATCODE_OTHER);
+
+    return;
+}
+
+sub the_at_catcode {
+    my $tex = shift;
+
+    return $tex->get_catcode(ord('@'));
+}
+
 ######################################################################
 ##                                                                  ##
 ##                         [53] EXTENSIONS                          ##
