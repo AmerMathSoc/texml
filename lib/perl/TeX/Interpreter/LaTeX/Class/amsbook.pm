@@ -106,7 +106,7 @@ __DATA__
 
 \ProcessOptions
 
-\LoadClass{TeXMLbook}
+\LoadClass{BITS}
 
 \publisherName{American Mathematical Society}
 \publisherAddress{Providence, Rhode Island}

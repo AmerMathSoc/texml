@@ -1,4 +1,4 @@
-package TeX::Interpreter::LaTeX::Class::TeXMLbook;
+package TeX::Interpreter::LaTeX::Class::BITS;
 
 use 5.26.0;
 
@@ -38,7 +38,8 @@ use TeX::Command::Executable::Assignment qw(:modifiers);
 use TeX::Utils::LibXML;
 use TeX::Utils::Misc;
 
-# TeXMLbook is the common base for amsbook and maabook.
+# BITS is the common base for amsbook and maabook.  All(?) of the
+# BITS-specific code is here.
 
 sub install {
     my $class = shift;
@@ -56,7 +57,7 @@ sub install {
 
 __DATA__
 
-\ProvidesClass{TeXMLbook}
+\ProvidesClass{BITS}
 
 \ProcessOptions
 

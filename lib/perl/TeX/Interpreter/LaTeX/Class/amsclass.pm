@@ -543,7 +543,7 @@ __DATA__
 % implicit -- they can be derived either from the filename or the DOI
 % (the publ_key can also be inferred from the document class.)
 
-%% \seriesinfo{publ_key}{volume_id}{volume_no} is defined in TeXMLbook
+%% \seriesinfo{publ_key}{volume_id}{volume_no} is defined in BITS
 
 \def\publinfo#1#2#3{%
     \gdef\AMS@publkey{#1}%

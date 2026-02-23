@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Class::maabook;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,10 +31,9 @@ package TeX::Interpreter::LaTeX::Class::maabook;
 # USA
 # email: tech-support@ams.org
 
-use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -54,7 +55,7 @@ __DATA__
 
 % \@@input maabook.cls
 
-\LoadClass{TeXMLbook}
+\LoadClass{BITS}
 
 \RequirePackage{ifxetex}
 \RequirePackage{amsgen}
