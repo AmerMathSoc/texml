@@ -71,7 +71,7 @@ sub move_drm {
 
     my $final = $tocs[-1];
 
-    my $sec = $final->parentNode;
+    my $sec = $final->parentNode->parentNode;
 
     $drm->parentNode->removeChild($drm);
 

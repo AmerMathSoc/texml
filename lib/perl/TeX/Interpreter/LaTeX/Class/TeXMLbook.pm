@@ -80,8 +80,6 @@ __DATA__
 
 \setXMLroot{book}
 
-\setXSLfile{bits}
-
 \RequirePackage{NLM}
 
 \RequirePackage{hyperref}
@@ -252,6 +250,16 @@ __DATA__
     \glet\output@book@meta\@empty
 }
 
+\def\BITS@open@main@matter{%
+    \startXMLelement{book-part}%
+    \startXMLelement{body}%
+}
+
+\def\BITS@close@main@matter{%
+    \endXMLelement{body}%
+    \endXMLelement{book-part}%
+}
+
 \def\@end@BITS@section{%
     \@clear@sectionstack
     \addtocontents{toc}{\@clear@tocstack}%
@@ -259,8 +267,7 @@ __DATA__
         \endXMLelement{front-matter}%
     \else
         \if@mainmatter
-            \endXMLelement{body}%
-            \endXMLelement{book-part}%
+            \BITS@close@main@matter
             \endXMLelement{book-body}%
         \else
             \if@backmatter
@@ -282,6 +289,7 @@ __DATA__
         \global\@frontmattertrue
         \global\@mainmatterfalse
         \global\@backmatterfalse
+        \let\@chapter\@chapter@front
         \startXMLelement{front-matter}%
         \addXMLid
     \fi
@@ -295,10 +303,10 @@ __DATA__
         \global\@frontmatterfalse
         \global\@mainmattertrue
         \global\@backmatterfalse
+        \let\@chapter\@chapter@main
         \startXMLelement{book-body}%
         \addXMLid
-        \startXMLelement{book-part}%
-        \startXMLelement{body}%
+        \BITS@open@main@matter
         \mainmatter@hook
     \fi
 }
@@ -354,6 +362,10 @@ __DATA__
             \let\protect\@empty
             \ifnum\stricmp{#1}{Preface}=\z@
                 \gdef\this@XML@section@tag{preface}%
+            \else
+                \ifnum\stricmp{#1}{Foreword}=\z@
+                    \gdef\this@XML@section@tag{foreword}%
+                \fi
             \fi
         \endgroup
     \fi
@@ -367,7 +379,7 @@ __DATA__
     \maybe@st@rred{\@dblarg\@chapter}%
 }
 
-\def\@chapter[#1]#2{%
+\def\@chapter@main[#1]#2{%
     \let\@toclevel\texml@chapter@level
     \let\@secnumber\@empty
     \let\saved@footnote\footnote
@@ -404,10 +416,44 @@ __DATA__
     \@afterheading
 }
 
-\def\@chapter@app[#1]#2{%
+\let\@chapter\@chapter@main
+
+\newif\iflabel@unumbered@parts@
+\label@unumbered@parts@false
+
+\def\@chapter@front{%
+    \def\BITS@part@element{front-matter-part}%
+    \def\BITS@part@body@element{named-book-part-body}%
+    \label@unumbered@parts@false
+    \let\BITS@book@part@name\chaptername
+    \def\texml@refsubtype{chapter}%
+    \BITS@book@part
+}
+
+% \def\@chapter@main{%
+%     \def\BITS@part@element{book-part}%
+%     \def\BITS@part@body@element{body}%
+%     \label@unumbered@parts@false
+%     \let\BITS@book@part@name\chaptername
+%     \def\texml@refsubtype{chapter}%
+%     \BITS@book@part
+% }
+
+\def\@chapter@app{%
+    \def\BITS@part@element{book-app}%
+    \def\BITS@part@body@element{body}%
+    \label@unumbered@parts@true
+    \let\BITS@book@part@name\appendixname
+    \def\texml@refsubtype{appendix}%
+    \BITS@book@part
+}
+
+\let\BITS@book@part@name\@empty
+
+\def\BITS@book@part[#1]#2{%
     \@pop@sectionstack{\texml@book@app@level}%
     \def\@currentreftype{sec}%
-    \def\@currentrefsubtype{appendix}%
+    \def\@currentrefsubtype{\texml@refsubtype}% **
     \let\@toclevel\texml@chapter@level
     \let\@secnumber\@empty
     \ifst@rred\else
@@ -418,22 +464,30 @@ __DATA__
             \fi
         \fi
     \fi
-    \typeout{\ifx\appendixname\@empty\else\appendixname\space\fi\@secnumber}%
+    \typeout{\ifx\BITS@book@part@name\@empty\else\BITS@book@part@name\space\fi\@secnumber}%
     \@ams@inlinefalse
-    \startXMLelement{book-app}%
+    \@Guess@FM@type{#2}%
+    \ifx\this@XML@section@tag\@empty\else
+        \let\BITS@part@element\this@XML@section@tag
+        \glet\this@XML@section@tag\@empty
+    \fi
+    \startXMLelement{\BITS@part@element}% **
         \addXMLid
         \setXMLattribute{specific-use}{chapter}%
         \setXMLattribute{disp-level}{\texml@chapter@level}%
-        \@push@sectionstack{\texml@book@app@level}{book-app}%
+        \@push@sectionstack{\texml@book@app@level}{\BITS@part@element}% **
         \startXMLelement{book-part-meta}%
+            \iflabel@unumbered@parts@\st@rredfalse\fi
             \startXMLelement{title-group}%
-                \ams@measure{\appendixname\@secnumber}%
-                \if@ams@empty\else
-                    \thisxmlpartag{label}%
-                    \ifx\appendixname\@empty\else
-                        \appendixname\space
+                \ifst@rred\else
+                    \ams@measure{\BITS@book@part@name\@secnumber}%
+                    \if@ams@empty\else
+                        \thisxmlpartag{label}%
+                        \ifx\BITS@book@part@name\@empty\else
+                            \BITS@book@part@name\space
+                        \fi
+                        \@secnumber\par
                     \fi
-                    \@secnumber\par
                 \fi
                 \begingroup
                     \ams@measure{#2}%
@@ -444,8 +498,8 @@ __DATA__
                 \endgroup
             \endXMLelement{title-group}%
         \endXMLelement{book-part-meta}%
-        \startXMLelement{body}%
-        \@push@sectionstack{\texml@book@app@body@level}{body}%
+        \startXMLelement{\BITS@part@body@element}% **
+        \@push@sectionstack{\texml@book@app@body@level}{\BITS@part@body@element}% **
     \@tocwriteb\tocappendix{chapter}{#2}%
     \@afterheading
 }
@@ -453,6 +507,20 @@ __DATA__
 \def\partname{Part}
 
 \def\part{\secdef\@part\@spart}
+
+% \def\part{%
+%     \everypar{}%
+%     \maybe@st@rred{\@dblarg\@part}%
+% }
+
+% \def\@part{%
+%     \def\BITS@part@element{book-part}%
+%     \def\BITS@part@body@element{body}%
+%     \label@unumbered@parts@false
+%     \let\BITS@book@part@name\partname
+%     \def\texml@refsubtype{part}%
+%     \BITS@book@part
+% }
 
 \def\@part[#1]#2{%
     \let\@toclevel\texml@part@level
@@ -559,3 +627,50 @@ __DATA__
 \endinput
 
 __END__
+
+front-matter:
+   (ack | bio | dedication | fn-group | glossary | toc | toc-group |
+    front-matter-part | foreword | preface | notes | ref-list |
+    xi:include)+
+
+    \chapter -> front-matter-part | foreword | preface
+
+book-body: (book-part | xi:include)+
+
+    \part    -> sec [NB: should be book-part???]
+    \chapter -> sec [NB: should be book-part???]
+
+book-back:
+
+   (book-part | ack | book-app | book-app-group
+    | floats-group | index | index-group | ref-list | xi:include | bio
+    | dedication | fn-group | glossary | toc | toc-group | notes)+
+
+    \chapter -> book-part [shouldn't occur at top-level?]
+
+    \appendix -> book-app-group
+
+book-app-group:
+   (book-part-meta?,
+    (address | alternatives | answer | answer-set | array | boxed-text
+     | chem-struct-wrap | code | explanation | fig | fig-group |
+     graphic | media | name-address-wrap | preformat | question |
+     question-wrap | question-wrap-group | supplementary-material |
+     table-wrap | table-wrap-group | disp-formula | disp-formula-group
+     | def-list | list | tex-math | mml:math | p | related-article |
+     related-object | ack | disp-quote | speech | statement |
+     verse-group | x)*,
+    (sec)*,
+    (book-app)+
+   )
+
+    \chapter -> book-app
+
+===========================================================================
+
+front-matter-part: (book-part-meta?, named-book-part-body?, back?)
+foreword:          (book-part-meta?, named-book-part-body?, back?)
+preface:           (book-part-meta?, named-book-part-body?, back?)
+
+book-part:         (book-part-meta?, front-matter?,  body?, back?)
+book-app:          (book-part-meta?, front-matter?,  body?, back?)

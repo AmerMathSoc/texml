@@ -250,7 +250,7 @@ EOF
     ## See https://github.com/AmerMathSoc/texml/issues/259 for an
     ## explanation of why we don't call convert_fragment() directly.
 
-    my $at_cat = $tex->get_catcode(ord('@'));
+    my $at_cat = $tex->the_at_catcode();
 
     $tex->makeatletter();
 
@@ -258,7 +258,7 @@ EOF
 
     my $new = $tex->convert_token_list($t_list);
 
-    $tex->set_catcode(ord('@'), $at_cat);
+    $tex->set_at_catcode($at_cat);
 
     my $handle = $tex->get_output_handle();
 
@@ -284,7 +284,7 @@ EOF
 
     my $toc = $toc_list->get_node(0);
 
-    $toc->appendChild($new);
+    $toc->lastChild->appendChild($new);
 
     # do_label_toc_entries($tex);
 

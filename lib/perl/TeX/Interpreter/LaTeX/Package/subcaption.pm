@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Package::subcaption;
 
-# Copyright (C) 2022, 2024 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2024, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -29,9 +31,9 @@ package TeX::Interpreter::LaTeX::Package::subcaption;
 # USA
 # email: tech-support@ams.org
 
-use strict;
+use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -55,6 +57,8 @@ __DATA__
 \def\jats@table@element{table-wrap-group}
 
 \newcounter{subfigure}
+\def\ext@subfigure{lof}
+
 \def\thesubfigure{\XMLgeneratedText(\alph{subfigure}\XMLgeneratedText)}
 
 \newenvironment{subfigure}[2][]{%
@@ -79,6 +83,7 @@ __DATA__
 \newcommand*\subcaption@label{\caption@withoptargs\subcaption@@label}
 
 \newcounter{subtable}
+\def\ext@subtable{lot}
 \def\thesubtable{\XMLgeneratedText(\alph{subtable}\XMLgeneratedText)}
 
 \newenvironment{subtable}[2][]{%
