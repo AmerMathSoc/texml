@@ -318,6 +318,7 @@ __DATA__
         \global\@frontmatterfalse
         \global\@mainmatterfalse
         \global\@backmattertrue
+        \let\@chapter\@chapter@main
         \startXMLelement{book-back}%
         \addXMLid
     \fi
@@ -638,8 +639,8 @@ front-matter:
 
 book-body: (book-part | xi:include)+
 
-    \part    -> sec [NB: should be book-part???]
-    \chapter -> sec [NB: should be book-part???]
+    \part    -> sec [NB: should be book-part]
+    \chapter -> sec [NB: should be book-part]
 
 book-back:
 
@@ -669,9 +670,21 @@ book-app-group:
 
 ===========================================================================
 
-front-matter-part: (book-part-meta?, named-book-part-body?, back?)
-foreword:          (book-part-meta?, named-book-part-body?, back?)
-preface:           (book-part-meta?, named-book-part-body?, back?)
+So, in the front matter, \chapter generates one of these:
 
-book-part:         (book-part-meta?, front-matter?,  body?, back?)
-book-app:          (book-part-meta?, front-matter?,  body?, back?)
+    <front-matter-part/>: (book-part-meta?, named-book-part-body?, back?)
+    <foreword/>:          (book-part-meta?, named-book-part-body?, back?)
+    <preface/>:           (book-part-meta?, named-book-part-body?, back?)
+
+In the main matter, \chapter and \part generate
+
+    <book-part/>:         (book-part-meta?, front-matter?,  body?, back?)
+
+In the back matter, \chapter continues to generate <book-part> until
+\appendix, at which point it starts to generate
+
+    <book-app/>:          (book-part-meta?, front-matter?,  body?, back?)
+
+At present we don't generate <front-matter/> or <back/> inside these
+elements, but that will change once we implement support for
+collections and proceedings.
