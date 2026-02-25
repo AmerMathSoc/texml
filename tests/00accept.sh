@@ -8,7 +8,7 @@ fi
 
 for test_file in $test_files
 do
-    test_name=${test_file%.*}
+    test_name=${test_file%%.*}
 
     echo -n $test_name...
 
