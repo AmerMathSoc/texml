@@ -499,7 +499,6 @@ __DATA__
     \startXMLelement{\BITS@part@element}%
         \addXMLid
         \setXMLattribute{specific-use}{\texml@refsubtype}%
-        \setXMLattribute{disp-level}{\@toclevel}%
         \@push@sectionstack{\@toclevel}{\BITS@part@element}%
         \startXMLelement{book-part-meta}%
             \iflabel@unumbered@parts@\st@rredfalse\fi

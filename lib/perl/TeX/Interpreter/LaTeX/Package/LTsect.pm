@@ -33,8 +33,6 @@ use 5.26.0;
 
 use warnings;
 
-use List::Util qw(min);
-
 use TeX::Constants qw(:named_args);
 
 use TeX::TokenList qw(:factories);
@@ -45,7 +43,6 @@ use TeX::Utils::XML;
 my sub add_toc_alt_titles;
 my sub add_section_alt_titles;
 my sub add_title_group_alt_titles;
-my sub normalize_disp_level;
 
 my sub do_push_section_stack;
 my sub do_pop_section_stack;
@@ -63,8 +60,6 @@ sub install  {
     $tex->add_output_hook(\&add_toc_alt_titles, 10);
     $tex->add_output_hook(\&add_section_alt_titles, 10);
     $tex->add_output_hook(\&add_title_group_alt_titles, 10);
-
-    $tex->add_output_hook(\&normalize_disp_level);
 
     $tex->define_csname('@push@sectionstack'      => \&do_push_section_stack);
     $tex->define_pseudo_macro('@pop@sectionstack' => \&do_pop_section_stack);
@@ -223,32 +218,6 @@ sub add_title_group_alt_titles {
     }
 
     return;
-}
-
-sub normalize_disp_level {
-    my $xml = shift;
-
-    my $dom = $xml->get_dom();
-
-    my $min_disp_level = 100;
-
-    for my $node ($dom->findnodes("/descendant::*[\@disp-level]")) {
-        my $level = $node->getAttribute('disp-level');
-
-        $min_disp_level = min($min_disp_level, $level);
-    }
-
-    return if $min_disp_level == 1;
-
-    my $delta = 1 - $min_disp_level;
-
-    for my $node ($dom->findnodes("/descendant::*[\@disp-level]")) {
-        my $prev_level = $node->getAttribute('disp-level');
-
-        $node->setAttribute('disp-level', $prev_level + $delta);
-    }
-
-    return
 }
 
 1;
@@ -466,7 +435,6 @@ __DATA__
             \startXMLelement{\XML@section@tag}%
         \fi
         \setXMLattribute{id}{\@currentXMLid}%
-        \setXMLattribute{disp-level}{#2}%
         \setXMLattribute{specific-use}{#1}%
         \ifx\XML@section@specific@style\@empty\else
             \setXMLattribute{style}{\XML@section@specific@style}%
