@@ -337,6 +337,7 @@ __DATA__
         \par
         \backmatter
         \appendixtrue
+        \@pop@sectionstack{\texml@book@app@group@level}%
         \startXMLelement{book-app-group}%
         \addXMLid
         \@push@sectionstack{\texml@book@app@group@level}{book-app-group}%
@@ -429,6 +430,8 @@ __DATA__
     \label@unumbered@parts@false
     \let\BITS@book@part@name\chaptername
     \def\texml@refsubtype{chapter}%
+    \let\BITS@part@toclevel\texml@chapter@level
+    \def\BITS@part@counter{chapter}%
     \BITS@book@part
 }
 
@@ -438,6 +441,8 @@ __DATA__
 %     \label@unumbered@parts@false
 %     \let\BITS@book@part@name\chaptername
 %     \def\texml@refsubtype{chapter}%
+%     \let\BITS@part@toclevel\texml@chapter@level
+%     \def\BITS@part@counter{chapter}%
 %     \BITS@book@part
 % }
 
@@ -447,22 +452,40 @@ __DATA__
     \label@unumbered@parts@true
     \let\BITS@book@part@name\appendixname
     \def\texml@refsubtype{appendix}%
+    \let\BITS@part@toclevel\texml@chapter@level
+    \def\BITS@part@counter{chapter}%
     \BITS@book@part
 }
+
+% \def\part{%
+%     \everypar{}%
+%     \maybe@st@rred{\@dblarg\@part}%
+% }
+
+% \def\@part{%
+%     \def\BITS@part@element{book-part}%
+%     \def\BITS@part@body@element{body}%
+%     \label@unumbered@parts@false
+%     \let\BITS@book@part@name\partname
+%     \def\texml@refsubtype{part}%
+%     \let\BITS@part@toclevel\texml@part@level
+%     \def\BITS@part@counter{part}%
+%     \BITS@book@part
+% }
 
 \let\BITS@book@part@name\@empty
 
 \def\BITS@book@part[#1]#2{%
-    \@pop@sectionstack{\texml@book@app@level}%
+    \let\@toclevel\BITS@part@toclevel
+    \@pop@sectionstack{\@toclevel}%
     \def\@currentreftype{sec}%
-    \def\@currentrefsubtype{\texml@refsubtype}% **
-    \let\@toclevel\texml@chapter@level
+    \let\@currentrefsubtype\texml@refsubtype
     \let\@secnumber\@empty
     \ifst@rred\else
         \ifnum \c@secnumdepth < \@toclevel \relax \else
-            \ifx\thechapter\@empty \else
-                \refstepcounter{chapter}%
-                \edef\@secnumber{\thechapter}%
+            \expandafter\ifx\csname the\BITS@part@counter\endcsname\@empty \else
+                \refstepcounter{\BITS@part@counter}%
+                \edef\@secnumber{\csname the\BITS@part@counter\endcsname}%
             \fi
         \fi
     \fi
@@ -473,11 +496,11 @@ __DATA__
         \let\BITS@part@element\this@XML@section@tag
         \glet\this@XML@section@tag\@empty
     \fi
-    \startXMLelement{\BITS@part@element}% **
+    \startXMLelement{\BITS@part@element}%
         \addXMLid
-        \setXMLattribute{specific-use}{chapter}%
-        \setXMLattribute{disp-level}{\texml@chapter@level}%
-        \@push@sectionstack{\texml@book@app@level}{\BITS@part@element}% **
+        \setXMLattribute{specific-use}{\texml@refsubtype}%
+        \setXMLattribute{disp-level}{\@toclevel}%
+        \@push@sectionstack{\@toclevel}{\BITS@part@element}%
         \startXMLelement{book-part-meta}%
             \iflabel@unumbered@parts@\st@rredfalse\fi
             \startXMLelement{title-group}%
@@ -500,29 +523,15 @@ __DATA__
                 \endgroup
             \endXMLelement{title-group}%
         \endXMLelement{book-part-meta}%
-        \startXMLelement{\BITS@part@body@element}% **
-        \@push@sectionstack{\texml@book@app@body@level}{\BITS@part@body@element}% **
-    \@tocwriteb\tocappendix{chapter}{#2}%
+        \startXMLelement{\BITS@part@body@element}%
+        \@push@sectionstack{\the\numexpr \@toclevel + 1}{\BITS@part@body@element}%
+    \expandafter\@tocwriteb\csname toc\texml@refsubtype\endcsname{\texml@refsubtype}{#2}%
     \@afterheading
 }
 
 \def\partname{Part}
 
 \def\part{\secdef\@part\@spart}
-
-% \def\part{%
-%     \everypar{}%
-%     \maybe@st@rred{\@dblarg\@part}%
-% }
-
-% \def\@part{%
-%     \def\BITS@part@element{book-part}%
-%     \def\BITS@part@body@element{body}%
-%     \label@unumbered@parts@false
-%     \let\BITS@book@part@name\partname
-%     \def\texml@refsubtype{part}%
-%     \BITS@book@part
-% }
 
 \def\@part[#1]#2{%
     \let\@toclevel\texml@part@level

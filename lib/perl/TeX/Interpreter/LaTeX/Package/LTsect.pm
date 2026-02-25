@@ -423,14 +423,14 @@ __DATA__
 
 \def\XML@appendix@group@element{app-group}
 
-\def\texml@book@app@group@level{-4}
-\def\texml@book@app@level{-3}
-\def\texml@book@app@body@level{-2}
+\def\texml@book@app@group@level{-6}
+\def\texml@book@app@level{-5}
+\def\texml@book@app@body@level{-4}
 
 \let\texml@app@group@level\texml@book@app@group@level
 
-\def\texml@part@level{-1}
-\def\texml@chapter@level{0}
+\def\texml@part@level{-3}
+\def\texml@chapter@level{-1}
 
 \def\start@XML@section#1#2#3#4{%
 % #1 = section type  (part, chapter, section, subsection, etc.)

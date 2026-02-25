@@ -1527,6 +1527,8 @@ __DATA__
 \def\l@paragraph    {\@tocline{4}{0pt}{1pc}{7pc}{}}
 \def\l@subparagraph {\@tocline{5}{0pt}{1pc}{7pc}{}}
 
+\let\l@appendix\l@chapter
+
 \let\l@figure\@firstoftwo
 \let\l@table=\l@figure
 
