@@ -35,9 +35,6 @@ use warnings;
 
 use TeX::Command::Executable::Assignment qw(:modifiers);
 
-use TeX::Utils::LibXML;
-use TeX::Utils::Misc;
-
 # BITS is the common base for amsbook and maabook.  All(?) of the
 # BITS-specific code is here.
 
@@ -81,12 +78,24 @@ __DATA__
 
 \setXMLroot{book}
 
-\RequirePackage{NLM}
+\newenvironment{BITSnote}[2][publishers-note]{%
+    \par
+    \@clear@sectionstack
+    \startXMLelement{notes}%
+    \addXMLid
+    \setXMLattribute{notes-type}{#1}%
+    \addcontentsline{toc}{chapter}{\protect\tocchapter{}{}{#2}{\@currentXMLid}}%
+    \thisxmlpartag{title}#2\par
+}{%
+    \par
+    \endXMLelement{notes}%
+    \par
+}
 
 \RequirePackage{hyperref}
 
 \def\insertAMSDRMstatement{%
-    \begin{NLMnote}{Publisher's Notice}
+    \begin{BITSnote}{Publisher's Notice}
     \setXMLattribute{specific-use}{epub-opening-page}
     The \href{https://www.ams.org/}{American Mathematical Society} has
     provided this ebook to you without Digital Rights Management (DRM)
@@ -94,7 +103,7 @@ __DATA__
     devices.  This ebook is for your personal use only and must not be
     made publicly available in any way.  You may not copy, reproduce,
     or upload this ebook except to read it on your personal devices.
-    \end{NLMnote}
+    \end{BITSnote}
     \glet\insertAMSDRMstatement\@empty
 }
 
@@ -647,8 +656,8 @@ front-matter:
 
 book-body: (book-part | xi:include)+
 
-    \part    -> sec [NB: should be book-part]
-    \chapter -> sec [NB: should be book-part]
+    \part    -> book-part [NB: was sec]
+    \chapter -> book-part [NB: was sec]
 
 book-back:
 
