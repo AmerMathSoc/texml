@@ -412,14 +412,19 @@ __DATA__
 
 \clear@deferred@section
 
-% -4 book-app-group | app-group
-% -3 book-app       [like a \chapter, but we need room for the <body>]
-% -2 body
-% -1 part
-%  0 chapter
+% -6 book-app-group | app-group
+% -5 book-app       [like a \chapter, but we need room for the <body>]
+% -4 body
+% -3 part
+% -1 chapter
 %  1 section
 %  2 subsection
 %  etc.
+
+% Note the gaps between part and chapter and between chapter and
+% section to leave room for the <body/> element of a
+% <front-matter-part>, <book-part/>, or <book-app/>.  See the last
+% \@push@sectionstack in \BITS@book@part in BITS.pm.
 
 \def\XML@appendix@group@element{app-group}
 
@@ -434,7 +439,7 @@ __DATA__
 
 \def\start@XML@section#1#2#3#4{%
 % #1 = section type  (part, chapter, section, subsection, etc.)
-% #2 = section level (-1,   0,       1,       2,          etc.)
+% #2 = section level (-3,   -1,      1,       2,          etc.)
 % #3 = section label (including punctuation)
 % #4 = section title
     \par
