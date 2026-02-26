@@ -921,8 +921,6 @@ __DATA__
             \begingroup
                 \edef\@tempa{\TeXMLisoBgoltimestamp}%
                 \setXMLattribute{iso-8601-date}{\@tempa}%
-                \thisxmlpartag{string-date}
-                    \@tempa\par
             \endgroup
         \endXMLelement{date}
     \fi
@@ -967,7 +965,6 @@ __DATA__
             \thisxmlpartag{day}\texml@day\par
             \thisxmlpartag{month}\texml@month\par
             \thisxmlpartag{year}\texml@year\par
-            \thisxmlpartag{string-date}#2\par
             \setXMLattribute{date-type}{#1}%
             \AMS@pad@date\texml@day
             \AMS@pad@date\texml@month
@@ -1015,14 +1012,6 @@ __DATA__
             \fi
             \thisxmlpartag{year}%
             \AMS@issue@year\par
-            %
-            \thisxmlpartag{string-date}%
-            \ifx\AMS@issue@fullmonth\@empty\else
-                \AMS@issue@fullmonth\space
-            \fi
-            \AMS@issue@year
-            \par
-            %
             \AMS@pad@date\AMS@issue@day
             \AMS@pad@date\AMS@issue@month
             \setXMLattribute{iso-8601-date}{%

@@ -197,7 +197,6 @@ __DATA__
                 \thisxmlpartag{day}\texml@day\par
                 \thisxmlpartag{month}\texml@month\par
                 \thisxmlpartag{year}\texml@year\par
-                \thisxmlpartag{string-date}\AMS@dateposted\par
                 \setXMLattribute{publication-format}{electronic}%
                 \AMS@pad@date\texml@day
                 \AMS@pad@date\texml@month
@@ -339,14 +338,6 @@ __DATA__
                     \fi
                     \thisxmlpartag{year}%
                     \AMS@issue@year\par
-                    %
-                    \thisxmlpartag{string-date}%
-                    \ifx\AMS@issue@fullmonth\@empty\else
-                        \AMS@issue@fullmonth\space
-                    \fi
-                    \AMS@issue@year
-                    \par
-                    %
                 \endXMLelement{date}
             \fi
             %% TBD: Add received, posted, etc.

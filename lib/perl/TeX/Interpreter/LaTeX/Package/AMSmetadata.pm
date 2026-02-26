@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Package::AMSmetadata;
 
 use 5.26.0;
 
-# Copyright (C) 2022, 2024, 2025 American Mathematical Society
+# Copyright (C) 2022, 2024-2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -370,8 +370,6 @@ sub append_date {
     my $pub_format = shift;
     my $date_tag   = shift // "date";
 
-    my $string_date = shift // $date->to_string();;
-
     my $date_element = append_xml_element($parent, $date_tag);
 
     if (defined $date_type) {
@@ -400,8 +398,6 @@ sub append_date {
     append_xml_element($date_element, "day", $day) if nonempty($day) && $day > -1;
     append_xml_element($date_element, "month", $month) if nonempty($month) && $month > -1;
     append_xml_element($date_element, "year", $year);
-
-    append_xml_element($date_element, "string-date", $string_date);
 
     return;
 }
@@ -639,14 +635,8 @@ my sub add_history {
 
     if (nonempty(my $issue_date = $gentag->get_issuedate())) {
         if (nonempty(my $year = $issue_date->get_year())) {
-            my $string_date = $year;
-
-            my $month;
-
             if ($year > 0) {
-                if (nonempty($month = $issue_date->get_month())) {
-                    $string_date = $month . $string_date;
-
+                if (nonempty(my $month = $issue_date->get_month())) {
                     if (empty($issue_date->get_day())) {
                         $issue_date->set_day(1);
                     }
@@ -654,7 +644,7 @@ my sub add_history {
 
                 append_date($tex,
                             $history, $issue_date, "issue-date",
-                            undef, undef, $string_date);
+                            undef, undef);
             }
         }
     } else {
