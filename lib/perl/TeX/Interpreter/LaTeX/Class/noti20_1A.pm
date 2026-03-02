@@ -1,6 +1,8 @@
 package TeX::Interpreter::LaTeX::Class::noti20_1A;
 
-# Copyright (C) 2022 American Mathematical Society
+use v5.26.0;
+
+# Copyright (C) 2022, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,7 +34,7 @@ package TeX::Interpreter::LaTeX::Class::noti20_1A;
 use strict;
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -49,6 +51,10 @@ sub install ( $ ) {
 __DATA__
 
 \ProvidesClass{noti20_1A}
+
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{notices}}
+
+\ProcessOptions
 
 \LoadClass{notices}
 

@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Class::spectrum;
 
 use 5.26.0;
 
-# Copyright (C) 2022, 2025 American Mathematical Society
+# Copyright (C) 2022, 2025, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -33,7 +33,7 @@ use 5.26.0;
 
 use warnings;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -50,6 +50,10 @@ sub install ( $ ) {
 __DATA__
 
 \ProvidesClass{spectrum}
+
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{maabook}}
+
+\ProcessOptions
 
 \LoadClass{maabook}
 

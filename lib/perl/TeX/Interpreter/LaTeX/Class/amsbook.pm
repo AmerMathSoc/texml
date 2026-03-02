@@ -104,6 +104,8 @@ __DATA__
 
 \ProvidesClass{amsbook}
 
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{BITS}}
+
 \ProcessOptions
 
 \LoadClass{BITS}

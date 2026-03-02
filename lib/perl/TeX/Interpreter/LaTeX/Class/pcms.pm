@@ -51,6 +51,10 @@ __DATA__
 
 \ProvidesClass{pcms}
 
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsproc}}
+
+\ProcessOptions
+
 \LoadClass{amsproc}
 
 \seriesinfo{pcms}{}{}

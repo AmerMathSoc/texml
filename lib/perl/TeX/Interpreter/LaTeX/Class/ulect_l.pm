@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Class::ulect_l;
 
 use v5.26.0;
 
-# Copyright (C) 2024, 2025 American Mathematical Society
+# Copyright (C) 2024-2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -51,6 +51,10 @@ sub install {
 __DATA__
 
 \ProvidesClass{ulect_l}
+
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsbook}}
+
+\ProcessOptions
 
 \LoadClass{amsbook}
 

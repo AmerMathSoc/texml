@@ -53,7 +53,11 @@ __DATA__
 
 \ProvidesClass{maabook}
 
-% \@@input maabook.cls
+\DeclareOption{collection}{}% Shadow BITS
+
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{BITS}}
+
+\ProcessOptions
 
 \LoadClass{BITS}
 

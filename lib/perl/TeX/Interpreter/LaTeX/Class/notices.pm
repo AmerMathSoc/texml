@@ -51,6 +51,10 @@ __DATA__
 
 \ProvidesClass{notices}
 
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
+
+\ProcessOptions
+
 \LoadClass{amsart}
 
 \RequirePackage{ParseNames}
