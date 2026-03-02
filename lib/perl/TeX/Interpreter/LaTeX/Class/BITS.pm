@@ -33,8 +33,6 @@ use 5.26.0;
 
 use warnings;
 
-use TeX::Command::Executable::Assignment qw(:modifiers);
-
 # BITS is the common base for amsbook and maabook.  All(?) of the
 # BITS-specific code is here.
 
@@ -56,6 +54,8 @@ __DATA__
 
 \ProvidesClass{BITS}
 
+\DeclareOption{collection}{}
+
 \ProcessOptions
 
 \newcounter{chapter}
@@ -73,8 +73,8 @@ __DATA__
 
 \def\bibname{Bibliography}
 
-\setXMLdoctype{-//NLM//DTD BITS Book Interchange DTD v2.1 20180401//EN}
-              {BITS-book2.dtd}
+\setXMLdoctype{-//NLM//DTD BITS Book Interchange DTD v2.2 20250930//EN}
+              {BITS-book2-2.dtd}
 
 \setXMLroot{book}
 
@@ -260,16 +260,6 @@ __DATA__
     \glet\output@book@meta\@empty
 }
 
-\def\BITS@open@main@matter{%
-    \startXMLelement{book-part}%
-    \startXMLelement{body}%
-}
-
-\def\BITS@close@main@matter{%
-    \endXMLelement{body}%
-    \endXMLelement{book-part}%
-}
-
 \def\@end@BITS@section{%
     \@clear@sectionstack
     \addtocontents{toc}{\@clear@tocstack}%
@@ -277,7 +267,6 @@ __DATA__
         \endXMLelement{front-matter}%
     \else
         \if@mainmatter
-            \BITS@close@main@matter
             \endXMLelement{book-body}%
         \else
             \if@backmatter
@@ -316,7 +305,6 @@ __DATA__
         \let\@chapter\@chapter@main
         \startXMLelement{book-body}%
         \addXMLid
-        \BITS@open@main@matter
         \mainmatter@hook
     \fi
 }
@@ -391,45 +379,6 @@ __DATA__
     \maybe@st@rred{\@dblarg\@chapter}%
 }
 
-\def\@chapter@main[#1]#2{%
-    \let\@toclevel\texml@chapter@level
-    \let\@secnumber\@empty
-    \let\saved@footnote\footnote
-    \ifst@rred
-        \let\footnote\@gobble@opt
-        \typeout{#2}%
-        \let\footnote\saved@footnote
-    \else
-        \def\@currentreftype{sec}%
-        \edef\@currentrefsubtype{chapter}%
-        \ifnum \c@secnumdepth < \@toclevel \relax \else
-            \ifx\thechapter\@empty \else
-                \refstepcounter{chapter}%
-                \edef\@secnumber{\thechapter}%
-            \fi
-        \fi
-        \typeout{\ifx\chaptername\@empty\else\chaptername\space\fi\@secnumber}%
-    \fi
-    \@ams@inlinefalse
-    \@Guess@FM@type{#2}%
-    \start@XML@section{chapter}{\texml@chapter@level}{%
-        \ifst@rred\else
-            \ifnum\c@secnumdepth<\@toclevel \else
-                \ifx\chaptername\@empty\else
-                    \chaptername\space
-                \fi
-            \fi
-            \@secnumber
-        \fi
-    }{#2}%
-    \let\footnote\@gobble@opt
-    \@tocwriteb\tocchapter{chapter}{#2}%
-    \let\footnote\saved@footnote
-    \@afterheading
-}
-
-\let\@chapter\@chapter@main
-
 \newif\iflabel@unumbered@parts@
 \label@unumbered@parts@false
 
@@ -441,19 +390,19 @@ __DATA__
     \def\texml@refsubtype{chapter}%
     \let\BITS@part@toclevel\texml@chapter@level
     \def\BITS@part@counter{chapter}%
-    \BITS@book@part
+    \start@BITS@book@part
 }
 
-% \def\@chapter@main{%
-%     \def\BITS@part@element{book-part}%
-%     \def\BITS@part@body@element{body}%
-%     \label@unumbered@parts@false
-%     \let\BITS@book@part@name\chaptername
-%     \def\texml@refsubtype{chapter}%
-%     \let\BITS@part@toclevel\texml@chapter@level
-%     \def\BITS@part@counter{chapter}%
-%     \BITS@book@part
-% }
+\def\@chapter@main{%
+    \def\BITS@part@element{book-part}%
+    \def\BITS@part@body@element{body}%
+    \label@unumbered@parts@false
+    \let\BITS@book@part@name\chaptername
+    \def\texml@refsubtype{chapter}%
+    \let\BITS@part@toclevel\texml@chapter@level
+    \def\BITS@part@counter{chapter}%
+    \start@BITS@book@part
+}
 
 \def\@chapter@app{%
     \def\BITS@part@element{book-app}%
@@ -463,34 +412,50 @@ __DATA__
     \def\texml@refsubtype{appendix}%
     \let\BITS@part@toclevel\texml@chapter@level
     \def\BITS@part@counter{chapter}%
-    \BITS@book@part
+    \start@BITS@book@part
 }
 
-% \def\part{%
-%     \everypar{}%
-%     \maybe@st@rred{\@dblarg\@part}%
-% }
+\let\@chapter\@chapter@main
 
-% \def\@part{%
-%     \def\BITS@part@element{book-part}%
-%     \def\BITS@part@body@element{body}%
-%     \label@unumbered@parts@false
-%     \let\BITS@book@part@name\partname
-%     \def\texml@refsubtype{part}%
-%     \let\BITS@part@toclevel\texml@part@level
-%     \def\BITS@part@counter{part}%
-%     \BITS@book@part
-% }
+\def\partname{Part}
+
+\def\part{%
+    \everypar{}%
+    \maybe@st@rred{\@dblarg\@part}%
+}
+
+\def\@part{%
+    \def\BITS@part@element{book-part}%
+    \def\BITS@part@body@element{body}%
+    \label@unumbered@parts@false
+    \let\BITS@book@part@name\partname
+    \def\texml@refsubtype{part}%
+    \let\BITS@part@toclevel\texml@part@level
+    \def\BITS@part@counter{part}%
+    \start@BITS@book@part
+}
 
 \let\BITS@book@part@name\@empty
 
-\def\BITS@book@part[#1]#2{%
+\def\start@BITS@book@part[#1]#2{%
+    \clear@chapter@info
+    \def\AMS@title{#1}%
+    \BITS@book@part
+}
+
+\def\BITS@book@part{%
     \let\@toclevel\BITS@part@toclevel
     \@pop@sectionstack{\@toclevel}%
     \def\@currentreftype{sec}%
     \let\@currentrefsubtype\texml@refsubtype
     \let\@secnumber\@empty
-    \ifst@rred\else
+    \ifst@rred
+        %% TBD: Hmmm.
+        \begingroup
+            \let\@elt\@stpelt
+            \csname cl@\BITS@part@counter\endcsname
+        \endgroup
+    \else
         \ifnum \c@secnumdepth < \@toclevel \relax \else
             \expandafter\ifx\csname the\BITS@part@counter\endcsname\@empty \else
                 \refstepcounter{\BITS@part@counter}%
@@ -500,7 +465,7 @@ __DATA__
     \fi
     \typeout{\ifx\BITS@book@part@name\@empty\else\BITS@book@part@name\space\fi\@secnumber}%
     \@ams@inlinefalse
-    \@Guess@FM@type{#2}%
+    \@Guess@FM@type{\AMS@title}%
     \ifx\this@XML@section@tag\@empty\else
         \let\BITS@part@element\this@XML@section@tag
         \glet\this@XML@section@tag\@empty
@@ -509,8 +474,27 @@ __DATA__
         \addXMLid
         \setXMLattribute{specific-use}{\texml@refsubtype}%
         \@push@sectionstack{\@toclevel}{\BITS@part@element}%
-        \startXMLelement{book-part-meta}%
+        \output@bits@book@part@meta
+        \startXMLelement{\BITS@part@body@element}%
+        \edef\BITS@part@body@level{\the\numexpr \@toclevel + 1}%
+        \@push@sectionstack{\BITS@part@body@level}{\BITS@part@body@element}%
+    \expandafter\@tocwriteb\csname toc\texml@refsubtype\endcsname{\texml@refsubtype}{\AMS@title}%
+    \clear@chapter@info
+    \@afterheading
+}
+
+\def\output@bits@book@part@meta{%
+    \startXMLelement{book-part-meta}%
+        \begingroup
+            \xmlpartag{}%
             \iflabel@unumbered@parts@\st@rredfalse\fi
+            \ifx\AMS@DOI\@empty\else
+                \startXMLelement{book-part-id}%
+                    \setXMLattribute{book-part-id-type}{doi}%
+                    \setXMLattribute{assigning-authority}{crossref}%
+                    \AMS@DOI\par
+                \endXMLelement{book-part-id}\par
+            \fi
             \startXMLelement{title-group}%
                 \ifst@rred\else
                     \ams@measure{\BITS@book@part@name\@secnumber}%
@@ -523,61 +507,21 @@ __DATA__
                     \fi
                 \fi
                 \begingroup
-                    \ams@measure{#2}%
+                    \ams@measure{\AMS@title}%
                     \if@ams@empty\else
                         \thisxmlpartag{title}%
-                        #2\par
+                        \AMS@title\par
                     \fi
                 \endgroup
             \endXMLelement{title-group}%
-        \endXMLelement{book-part-meta}%
-        \startXMLelement{\BITS@part@body@element}%
-        \@push@sectionstack{\the\numexpr \@toclevel + 1}{\BITS@part@body@element}%
-    \expandafter\@tocwriteb\csname toc\texml@refsubtype\endcsname{\texml@refsubtype}{#2}%
-    \@afterheading
-}
-
-\def\partname{Part}
-
-\def\part{\secdef\@part\@spart}
-
-\def\@part[#1]#2{%
-    \let\@toclevel\texml@part@level
-    \ifnum\c@secnumdepth<\@toclevel\relax
-        \let\@secnumber\@empty
-    \else
-        \refstepcounter{part}%
-        \def\@secnumber{\thepart}%
-    \fi
-    \typeout{\partname\space\@secnumber}%
-    \@ams@inlinefalse
-    \start@XML@section{part}{-1}{\partname\space\@secnumber}{#2}%
-    \@tocwriteb\tocpart{part}{#2}%
-    \@afterheading
-    %%
-    %% If there is any text before the first sectioning command,
-    %% we need to make sure there is still a <sec> element
-    %% wrapping that text.  A \chapter or \section command will
-    %% reset \everypar{}
-    %%
-    \everypar{\subsection*{}}%
-}
-
-\def\@spart#1{%
-    \typeout{#1}%
-    \let\@secnumber\@empty
-    \let\@toclevel\texml@part@level
-    \@ams@inlinefalse
-    \start@XML@section{part}{-1}{}{#1}%
-    \@tocwriteb\tocpart{part}{#1}%
-    \@afterheading
-    %%
-    %% If there is any text before the first sectioning command,
-    %% we need to make sure there is still a <sec> element
-    %% wrapping that text.  A \chapter or \section command will
-    %% reset \everypar{}
-    %%
-    \everypar{\subsection*{}}%
+            \xmlpartag{}%
+            \output@contrib@groups
+            \output@abstract@meta
+            \output@keyword@meta
+            \output@subjclass@meta
+            \output@funding@group
+        \endgroup
+    \endXMLelement{book-part-meta}%
 }
 
 \newenvironment{dedication}{%
@@ -641,6 +585,21 @@ __DATA__
 }{%
     \def\@noitemerr{\@latex@warning{Empty `thebibliography' environment}}%
     \endlist
+}
+
+\@ifclasswith{BITS}{collection}{}{\endinput}
+
+\def\start@BITS@book@part[#1]#2{%
+    \clear@chapter@info
+    \def\AMS@title{#2}%
+}
+
+\let\maketitle\BITS@book@part
+
+\renewcommand{\bib@backmatter}{%
+    \@pop@sectionstack{\BITS@part@body@level}%
+    \startXMLelement{back}%
+    \@push@sectionstack{\BITS@part@body@level}{back}%
 }
 
 \endinput

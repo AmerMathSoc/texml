@@ -635,11 +635,9 @@ __DATA__
 \def\LCCN{\gdef\AMS@lccn}
 \let\AMS@lccn\@empty
 
-\def\curraddrname{{\itshape Current address}}
-\def\emailaddrname{{\itshape Email address}}
-\def\urladdrname{{\itshape URL}}
-
-% \let\@date\@empty
+\def\curraddrname{\textit{Current address}}
+\def\emailaddrname{\textit{Email address}}
+\def\urladdrname{\textit{URL}}
 
 \def\keywordsname{Key words and phrases}
 \def\keywords{\gdef\AMS@keywords}
@@ -862,7 +860,7 @@ __DATA__
 % sort of support for it later, though.
 
 \def\editor#1{%
-    \ifx\AMS@editorlist\@empty
+    \ifx\AMS@editors\@empty
         \gdef\AMS@editors{\start@author\author@name{#1}}%
     \else
         \g@addto@macro\AMS@editors{\end@author\start@author\author@name{#1}}%
@@ -874,7 +872,7 @@ __DATA__
 \def\translname{Translated by}
 
 \def\translator#1{%
-    \ifx\@empty\@translators
+    \ifx\@empty\AMS@translators
         \def\AMS@translators{\author@name{#1}}%
     \else
         \g@addto@macro\AMS@translators{\and\author@name{#1}}%
@@ -882,6 +880,8 @@ __DATA__
 }
 
 \let\AMS@translators=\@empty
+
+%%* TODO: do something with \contrib
 
 \newif\ifresetcontrib
 \resetcontribfalse
@@ -903,6 +903,33 @@ __DATA__
 }
 
 \def\@wraptoccontribs#1#2{}
+
+\def\clear@chapter@info{%
+    \AMS@num@authors\z@
+    \let\AMS@authors\@empty
+    \let\AMS@editors\@empty
+    \let\AMS@translators\@empty
+    \let\AMS@contribs\@empty
+    \let\AMS@abstract\@empty
+    \let\AMS@manid\@empty
+    \let\AMS@start@page\@empty
+    \let\AMS@end@page\@empty
+    \let\AMS@datereceived\@empty
+    \let\AMS@dateaccepted\@empty
+    \let\AMS@datepreposted\@empty
+    \let\AMS@dateposted\@empty
+    \let\AMS@short@title\@empty
+    \let\AMS@title\@empty
+    \let\AMS@subtitle\@empty
+    \let\AMS@DOI\@empty
+    \let\AMS@keywords\@empty
+    \let\AMS@dedication\@empty
+    \let\AMS@copyrightyear\@empty
+    \let\AMS@copyrightholder\@empty
+    \let\AMS@thanks\@empty
+    \let\this@subjclass\@empty
+    \let\this@msc@year\@empty
+}
 
 \let\markleft\@gobble
 
@@ -1044,6 +1071,9 @@ __DATA__
     \fi
 }
 
+\newcount\jats@contrib@aff
+\jats@contrib@aff\z@
+
 \def\clear@author{%
     \let\this@name\@empty
     \let\this@address\@empty
@@ -1124,16 +1154,18 @@ __DATA__
                     \this@bio
                 \endXMLelement{bio}\par
             \fi
+            \global\advance\jats@contrib@aff\@ne
             \ifx\this@address\@empty\else
-                \startXMLelement{aff}
-                    \this@address
-                \endXMLelement{aff}\par
+                \startXMLelement{xref}
+                    \setXMLattribute{ref-type}{aff}%
+                    \setXMLattribute{rid}{aff\the\jats@contrib@aff_0l}%
+                \endXMLelement{xref}\par
             \fi
             \ifx\this@curaddress\@empty\else
-                \startXMLelement{aff}
-                    \setXMLattribute{specific-use}{current}
-                    \this@curaddress
-                \endXMLelement{aff}\par
+                \startXMLelement{xref}
+                    \setXMLattribute{ref-type}{aff}%
+                    \setXMLattribute{rid}{aff\the\jats@contrib@aff_1l}%
+                \endXMLelement{xref}\par
             \fi
             \ifx\this@email\@empty\else
                 \startXMLelement{email}
@@ -1146,6 +1178,19 @@ __DATA__
                 \endXMLelement{uri}\par
             \fi
         \endXMLelement{contrib}\par
+        \ifx\this@address\@empty\else
+            \startXMLelement{aff}
+                \setXMLattribute{id}{aff\the\jats@contrib@aff_0l}%
+                \this@address
+            \endXMLelement{aff}\par
+        \fi
+        \ifx\this@curaddress\@empty\else
+            \startXMLelement{aff}
+                \setXMLattribute{id}{aff\the\jats@contrib@aff_1l}%
+                \setXMLattribute{specific-use}{current}
+                \this@curaddress
+            \endXMLelement{aff}\par
+        \fi
     \fi
 }
 
@@ -1157,6 +1202,18 @@ __DATA__
             \startXMLelement{contrib-group}
             \setXMLattribute{content-type}{authors}
                 \AMS@authors
+                \end@author\par
+            \endXMLelement{contrib-group}
+        \endgroup
+    \fi
+    \ifx\AMS@editors\@empty\else
+        \begingroup
+            \let\start@author\start@author@
+            \let\end@author\end@author@
+            \def\author@contrib@type{editor}%
+            \startXMLelement{contrib-group}
+            \setXMLattribute{content-type}{editors}
+                \AMS@editors
                 \end@author\par
             \endXMLelement{contrib-group}
         \endgroup
@@ -1421,20 +1478,13 @@ __DATA__
     \section*%
 }
 
-\newif\if@sec@bibliographies@
-\@sec@bibliographies@false
-
 \def\sec@bibliography@level{1}
 
 \newcommand{\bib@backmatter}{%
-    \if@sec@bibliographies@
-        \@pop@sectionstack{\sec@bibliography@level}%
+    \if@backmatter
+        \@clear@sectionstack
     \else
-        \if@backmatter
-            \@clear@sectionstack
-        \else
-            \backmatter
-        \fi
+        \backmatter
     \fi
 }
 
