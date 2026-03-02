@@ -134,6 +134,13 @@ sub INITIALIZE {
     return;
 }
 
+my sub do_opt_gobble;
+my sub do_load_if_module_exists;
+my sub do_load_raw_macros;
+my sub do_filtered_input;
+my sub do_documentclass;
+my sub do_files_with_at_ptions;
+
 sub install {
     my $tex = shift;
 
@@ -151,6 +158,7 @@ sub install {
     $tex->define_csname(leavevmode => $tex->load_primitive('leavevmode'));
 
     $tex->define_pseudo_macro(documentclass => \&do_documentclass);
+    $tex->define_pseudo_macro('@fileswith@ptions' => \&do_files_with_at_ptions);
 
     return;
 }
@@ -455,7 +463,10 @@ sub do_load_if_module_exists {
 
     my $type = $ext eq 'cls' ? 'Class' : 'Package';
 
-    $name =~ s{-}{_}g;
+    # I think this is redundant now that it is handled by
+    # do_files_with_at_ptions().
+
+    # $name =~ s{-}{_}g;
 
     my $class = "TeX::Interpreter::LaTeX::${type}::$name";
 
@@ -520,6 +531,33 @@ sub do_load_raw_macros {
     $tex->process_file($path);
 
     return;
+}
+
+sub do_files_with_at_ptions {
+    my $self = shift;
+
+    my $tex   = shift;
+    my $token = shift;
+
+    my $ext   = $tex->read_undelimited_parameter();
+    my $opt   = $tex->scan_optional_argument();
+    my $file  = $tex->read_undelimited_parameter(EXPANDED);
+
+    # We need to sanitize the class or package name here rather than
+    # in do_load_if_module_exists() so the option-passing mechanism
+    # works.
+
+    $file = $tex->tokenize($file =~ s{-}{_}gr);
+
+    my $expansion = new_token_list(make_csname_token('ltx@fileswith@ptions'));
+
+    $expansion->push($ext);
+
+    $expansion->push(BEGIN_OPT, $opt, END_OPT);
+
+    $expansion->push(BEGIN_GROUP, $file, END_GROUP);
+
+    return $expansion;
 }
 
 sub do_documentclass {
@@ -1108,6 +1146,7 @@ __DATA__
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \let\ltx@documentclass\documentclass
+\let\ltx@fileswith@ptions\@fileswith@ptions
 
 \let\@classoptionslist\@empty
 
