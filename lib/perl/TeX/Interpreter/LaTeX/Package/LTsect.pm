@@ -158,12 +158,23 @@ my sub add_alt_title {
 
                 $alt_title->appendText($utf8);
 
-                $parent->insertAfter($alt_title, $title);
+                my $ref_node = $title;
+
+                my $next = $title->nextSibling();
+
+                if (defined $next && $next->nodeName eq 'subtitle') {
+                    $ref_node = $next;
+                }
+
+                $parent->insertAfter($alt_title, $ref_node);
             }
         }
     }
 
     for my $title ($parent->findnodes("subtitle")) { # There should be at most one
+        ## alt-subtitle is not a valid JATS/BITS element, but it feels
+        ## like something we need.
+
         my $utf8 = xml_to_utf8_string($title);
 
         if (nonempty($utf8)) {
