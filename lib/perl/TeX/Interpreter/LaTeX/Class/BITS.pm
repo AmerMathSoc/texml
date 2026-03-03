@@ -439,7 +439,7 @@ __DATA__
 
 \def\start@BITS@book@part[#1]#2{%
     \clear@chapter@info
-    \def\AMS@title{#1}%
+    \def\AMS@title{#2}%
     \BITS@book@part
 }
 
