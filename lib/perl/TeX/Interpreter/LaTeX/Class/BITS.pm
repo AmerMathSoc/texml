@@ -476,6 +476,7 @@ __DATA__
         \@push@sectionstack{\@toclevel}{\BITS@part@element}%
         \output@bits@book@part@meta
         \startXMLelement{\BITS@part@body@element}%
+        \everypar{\jats@empty@section}%
         \edef\BITS@part@body@level{\the\numexpr \@toclevel + 1}%
         \@push@sectionstack{\BITS@part@body@level}{\BITS@part@body@element}%
     \expandafter\@tocwriteb\csname toc\texml@refsubtype\endcsname{\texml@refsubtype}{\AMS@title}%

@@ -1359,6 +1359,11 @@ __DATA__
 
 \AtEndDocument{\end@component}
 
+\def\jats@empty@section{%
+    \section*{}%
+    \setXMLattribute{specific-use}{section untagged}%
+}
+
 \def\frontmatter{%
     \if@frontmatter\else
         \end@component
@@ -1378,7 +1383,7 @@ __DATA__
         %% wrapping that text.  A \chapter or \section command will
         %% reset \everypar{}
         %%
-        \everypar{\section*{}}%
+        \everypar{\jats@empty@section}%
     \fi
 }
 
