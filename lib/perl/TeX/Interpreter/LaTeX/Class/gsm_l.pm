@@ -98,7 +98,6 @@ __DATA__
     % \chaptermark{#2}%
     % \addtocontents{lof}{\protect\addvspace{10\p@}}%
     % \addtocontents{lot}{\protect\addvspace{10\p@}}%
-    \@afterheading
 }
 
 \endinput

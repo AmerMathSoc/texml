@@ -481,7 +481,6 @@ __DATA__
         \@push@sectionstack{\BITS@part@body@level}{\BITS@part@body@element}%
     \expandafter\@tocwriteb\csname toc\texml@refsubtype\endcsname{\texml@refsubtype}{\AMS@title}%
     \clear@chapter@info
-    \@afterheading
 }
 
 \def\output@bits@book@part@meta{%
