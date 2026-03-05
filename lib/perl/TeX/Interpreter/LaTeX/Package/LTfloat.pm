@@ -235,7 +235,7 @@ __DATA__
             \endXMLelement{label}%
             \addcontentsline{\csname ext@#1\endcsname}{#1}{%
                 \protect\numberline{}{\csname the#1\endcsname}%
-                                   {#2}%
+                                   {\detokenize{#2}}%
                                    {\@currentXMLid}%
             }%
         \fi
