@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Package::DisablePackages;
 
 use v5.26.0;
 
-# Copyright (C) 2022, 2024, 2025 American Mathematical Society
+# Copyright (C) 2022, 2024-2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -99,6 +99,7 @@ __DATA__
 \DisablePackage{pxfonts}
 \DisablePackage{rawfonts}
 \DisablePackage{shaderef}
+\DisablePackage{spath3}
 \DisablePackage{stix}
 \DisablePackage{stix2}
 \DisablePackage{textcomp}
