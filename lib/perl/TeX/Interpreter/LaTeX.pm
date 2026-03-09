@@ -932,6 +932,7 @@ __DATA__
 \UCSchardef\textquotedblright"201D
 \UCSchardef\textquoteleft"2018
 \UCSchardef\textquoteright"2019
+\UCSchardef\textquotesingle"2018
 \UCSchardef\textrangle"232A
 \UCSchardef\textrecipe"211E
 \UCSchardef\textreferencemark"203B
