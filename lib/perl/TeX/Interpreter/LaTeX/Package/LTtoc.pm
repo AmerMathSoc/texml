@@ -457,6 +457,7 @@ __DATA__
 \newenvironment{texml@toc@list}[1]{%
     \par
     \startXMLelement{def-list}%
+        \addXMLid
         \setXMLattribute{content-type}{toc #1}%
         \edef\@currentreftype{\@nameuse{texml@backext@#1}}%
         \let\@currentrefsubtype\@currentreftype
