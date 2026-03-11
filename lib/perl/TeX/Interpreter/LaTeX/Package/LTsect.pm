@@ -266,9 +266,9 @@ __DATA__
 % LEVEL = \@m if *-ed
 
 \def\@startsection#1#2#3#4#5#6{%
+    \par
     \everypar{}%
     \leavevmode
-    \par
     \def\@tempa{\@dblarg{\@sect{#1}{#2}{#3}{#4}{#5}{#6}}}%
     \@ifstar{\st@rredtrue\@tempa}{\st@rredfalse\@tempa}%
 }
