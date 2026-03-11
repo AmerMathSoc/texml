@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Package::hyperref;
 
 use v5.26.0;
 
-# Copyright (C) 2022, 2025 American Mathematical Society
+# Copyright (C) 2022, 2025, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -162,6 +162,7 @@ __DATA__
         \setbox\@tempboxa\hbox{\fontencoding{UCS}\selectfont#2}%
         \TeXML@NormalizeURL\@tempboxa
         \leavevmode
+    \leavevmode %%% WHYYY???
         \startXMLelement{ext-link}%
         \setXMLattribute{xlink:href}{\boxtostring\@tempboxa}%
         % The extra braces around the arg are to handle things like \tt.
@@ -224,6 +225,7 @@ __DATA__
 
 \def\@sethyperref#1#2#3{%
         \leavevmode
+    \leavevmode %%% WHYYY???
         \start@xref@group
         \startXMLelement{xref}%
             \setXMLattribute{ref-key}{#1}%
@@ -248,6 +250,7 @@ __DATA__
 
 \def\hypertarget#1#2{%
     \leavevmode
+    \leavevmode %%% WHYYY???
     \startXMLelement{target}%
     \setXMLattribute{id}{#1}%
     \setXMLattribute{target-type}{text}%
@@ -257,6 +260,7 @@ __DATA__
 
 \def\hyperlink#1#2{%
     \leavevmode
+    \leavevmode %%% WHYYY???
     \startXMLelement{xref}%
     \setXMLattribute{rid}{#1}%
     \setXMLattribute{ref-type}{text}%
