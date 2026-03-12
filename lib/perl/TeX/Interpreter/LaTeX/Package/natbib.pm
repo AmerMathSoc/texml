@@ -363,11 +363,12 @@ __DATA__
 \let\biblist@sec@level\texml@chapter@level
 
 \renewenvironment{thebibliography}[1]{%
-    % \if@backmatter
-    %     \@clear@sectionstack
-    % \else
-    %     \backmatter
-    % \fi
+    \if@backmatter
+        \@clear@sectionstack
+    \else
+        \backmatter
+    \fi
+    \everypar{}%
     %% I'm not sure what to do with \bibpreamble or if it should even be
     %% here to begin with, so I'm going to disable it for now.  Ditto
     %% \bibpostamble below.
@@ -376,8 +377,6 @@ __DATA__
     %         \bibpreamble\par
     %     \endgroup
     % \fi
-% \section*{}%
-\@pop@sectionstack{\biblist@sec@level}%
     \def\@listelementname{ref-list}%
     \def\@listitemname{ref}%
     % \def\@listlabelname{label}
@@ -388,7 +387,7 @@ __DATA__
         \global\c@NAT@ctr\z@
         \@listXMLidtrue
     }%
-     \let\NAT@bibitem@first@sw\@firstoftwo
+    \let\NAT@bibitem@first@sw\@firstoftwo
     \let\citeN\cite
     \let\shortcite\cite
     \let\citeasnoun\cite

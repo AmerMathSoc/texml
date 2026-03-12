@@ -1383,7 +1383,7 @@ __DATA__
         %% wrapping that text.  A \chapter or \section command will
         %% reset \everypar{}
         %%
-        \everypar{\jats@empty@section}%
+        \everypar{\jats@empty@section\everypar{}}%
     \fi
 }
 
@@ -1495,6 +1495,7 @@ __DATA__
 
 \newenvironment{thebibliography}[1]{%
     \bib@backmatter
+    \everypar{}%
     %% I'm not sure what to do with \bibintro or if it should even be
     %% here to begin with, so I'm going to disable it for now.
     % \ifx\@empty\bibintro \else
@@ -1515,6 +1516,7 @@ __DATA__
     }%
     \let\@listpartag\@empty
     \let\@secnumber\@empty
+    \addXMLid
     \XMLelement{title}{\refname}%
 }{%
     \def\@noitemerr{\@latex@warning{Empty `thebibliography' environment}}%

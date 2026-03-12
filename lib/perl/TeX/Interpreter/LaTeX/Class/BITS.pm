@@ -555,11 +555,8 @@ __DATA__
 \def\refname{Bibliography}
 
 \renewenvironment{thebibliography}[1]{%
-    \if@backmatter
-        \@clear@sectionstack
-    \else
-        \backmatter
-    \fi
+    \bib@backmatter
+    \everypar{}%
     % \@bibtitlestyle
     \ifx\@empty\bibintro \else
         \begingroup
