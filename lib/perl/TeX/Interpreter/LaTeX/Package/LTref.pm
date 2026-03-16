@@ -2,7 +2,7 @@ package TeX::Interpreter::LaTeX::Package::LTref;
 
 use 5.26.0;
 
-# Copyright (C) 2025 American Mathematical Society
+# Copyright (C) 2025, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -241,7 +241,7 @@ sub do_resolve_ref_ranges {
             my $t_subtype = $last_record->get_subtype;
 
             if (defined $subtype && $subtype ne $t_subtype) {
-                $tex->print_err("Initial xref-group subtype '$subtype' does not match terminal subtype group '$t_subtype'");
+                $tex->print_err("Initial xref-group subtype '$subtype' for '$first' does not match terminal subtype group '$t_subtype' for '$last'");
 
                 $tex->error();
 
