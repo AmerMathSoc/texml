@@ -55,7 +55,10 @@ __DATA__
 
 \def\epigraph#1#2{%
     \par
-    \leavevmode
+    \edef\@tempa{\the\everypar}% TBD
+    \ifx\@tempa\@empty\else
+        \leavevmode
+    \fi
     \startXMLelement{disp-quote}%
     \setXMLattribute{content-type}{epigraph}%
     #1\par
