@@ -306,6 +306,7 @@ __DATA__
         \startXMLelement{book-body}%
         \addXMLid
         \mainmatter@hook
+        \everypar{\jats@empty@section}%
     \fi
 }
 
@@ -440,14 +441,14 @@ __DATA__
 \def\start@BITS@book@part[#1]#2{%
     \clear@chapter@info
     \def\AMS@title{#2}%
+    \def\@currentreftype{sec}%
+    \let\@currentrefsubtype\texml@refsubtype
     \BITS@book@part
 }
 
 \def\BITS@book@part{%
     \let\@toclevel\BITS@part@toclevel
     \@pop@sectionstack{\@toclevel}%
-    \def\@currentreftype{sec}%
-    \let\@currentrefsubtype\texml@refsubtype
     \let\@secnumber\@empty
     \ifst@rred
         %% TBD: Hmmm.
@@ -589,6 +590,8 @@ __DATA__
 \def\start@BITS@book@part[#1]#2{%
     \clear@chapter@info
     \def\AMS@title{#2}%
+    \def\@currentreftype{sec}%
+    \let\@currentrefsubtype\texml@refsubtype
 }
 
 \let\maketitle\BITS@book@part
