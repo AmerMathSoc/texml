@@ -39,6 +39,8 @@ use TeX::Constants qw(carriage_return);
 
 use TeX::Token qw(:catcodes);
 
+use TeX::Command::Executable::Assignment qw(:modifiers);
+
 use TeX::Utils::Misc qw(nonempty trim);
 
 my sub do_lstlisting;
@@ -733,6 +735,7 @@ my sub compile_listings_style {
             my ($k, $v) = $pair->@*;
 
             if ($k eq 'style' || $k eq 'language') {
+                $style{$k} = $v;
                 if (defined(my $eqvt = $tex->get_csname(qq{TeXML_listing_${k}_\L${v}\Q}))) {
                     overlay($eqvt->get_equiv()->get_value());
                 }
@@ -780,6 +783,22 @@ sub do_lstlisting {
     my $opt = $tex->scan_optional_argument();
 
     my $style = compile_listings_style($tex, $opt);
+
+    # while (my ($k, $v) = each $style->%*) {
+    #     $tex->__DEBUG(qq{'$k' => '$v'});
+    # }
+
+    if (defined(my $language = $style->{language})) {
+        $tex->set_xml_attribute(lstlanguage => $language);
+    }
+
+    if (defined(my $caption = $style->{caption})) {
+        $tex->define_simple_macro('lst@caption', $caption, MODIFIER_GLOBAL);
+    }
+
+    if (defined(my $label = $style->{label})) {
+        $tex->define_simple_macro('lst@label', $label, MODIFIER_GLOBAL);
+    }
 
     $tex->set_xml_attribute(numbers => $style->{numbers});
     $tex->set_xml_attribute(frame => $style->{frame});
@@ -887,19 +906,48 @@ __DATA__
 
 \ProvidesPackage{Listings}
 
+\DeclareOption{numberbychapter}{}
+
+\ProcessOptions
+
+\@ifundefined{thechapter}{%
+    \newcounter{lstlisting}
+}{%
+    \newcounter{lstlisting}[chapter]
+    \def\thelstlisting{\thechapter.\@arabic\c@lstlisting}
+}
+
+\def\lstlistingname{Listing}
+
 \newenvironment{lstlisting}{%
     \par
     \startXMLelement{fig}\par
+    \addXMLid
     \setXMLattribute{specific-use}{lstlisting}%
     \setXMLattribute{content-type}{code}%
     \startXMLelement{texml:lstlisting}\par
     \xmlpartag{}%
     \fontencoding{UCS}\selectfont
     \UCSchardef\\"005C
+    \let\lst@caption\@empty
+    \let\lst@label\@empty
     \lstlisting@
 }{%
     \par
     \endXMLelement{texml:lstlisting}\par
+    \ifx\lst@caption\@empty\else
+        \refstepcounter{lstlisting}%
+        \def\@currentreftype{listing}%
+        \def\@currentrefsubtype{listing}%
+        \ifx\lst@label\@empty\else
+            \label{\lst@label}%
+        \fi
+        %% Quick and dirty
+        \thisxmlpartag{label}\lstlistingname\space \thelstlisting\par
+        \startXMLelement{caption}%
+            \lst@caption
+        \endXMLelement{caption}\par
+    \fi
     \endXMLelement{fig}\par
 }
 
