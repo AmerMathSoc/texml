@@ -469,6 +469,7 @@ __DATA__
 \newcommand{\generic@toc@item}[4]{%
     \par
     \startXMLelement{def-item}%
+        \addXMLid
         \XMLelement{term}{%
             \startXMLelement{xref}%
                 \setXMLattribute{rid}{#4}%
