@@ -209,7 +209,6 @@ __DATA__
 
 \newcommand{\notiurl}[2][\@empty]{%
     \begingroup
-        \upshape\ttfamily
         \ifx\@empty#1%
             \href{https://#2}{\nolinkurl{#2}}%
         \else
