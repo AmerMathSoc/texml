@@ -192,6 +192,24 @@ __DATA__
     \glet\output@collection@meta\@empty
 }
 
+\def\format@BITS@isbn#1#2{%
+    \startXMLelement{isbn}%
+        \if###1##\else
+            \setXMLattribute{publication-format}{#1}%
+        \fi
+        #2%
+    \endXMLelement{isbn}\par
+}
+
+\def\output@BITS@isbns{%
+    \ifx\texml@isbns\@empty\else
+        \begingroup
+            \let\texml@isbn\format@BITS@isbn
+            \texml@isbns
+        \endgroup
+    \fi
+}
+
 \def\output@book@meta{%
     % Add just enough to allow texml to find the gentag file.
     \startXMLelement{book-meta}%
@@ -251,6 +269,7 @@ __DATA__
                 \endXMLelement{book-issue-number}\par
             \fi
         \fi
+        \output@BITS@isbns
         \output@abstract@meta
         \output@keyword@meta
         \output@subjclass@meta

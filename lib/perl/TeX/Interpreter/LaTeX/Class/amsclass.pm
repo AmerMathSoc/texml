@@ -535,6 +535,23 @@ __DATA__
 \let\AMS@pissn\@empty
 \let\AMS@eissn\@empty
 
+\let\texml@isbns\@empty
+
+% For AMS books, the type (optional) argument will be one of the
+% following:
+%     electronic
+%     epub
+%     google
+%     indian
+%     print
+%     softcover
+
+\newcommand{\ISBN}[2][print]{%
+    \g@addto@macro\texml@isbns{\texml@isbn{#1}{#2}}%
+}
+
+\let\texml@isbn\@gobbletwo
+
 % Conference papers use \publinfo  and \pagespan.
 % Journal articles  use \issueinfo and \pagespan.
 % Monographs        use \seriesinfo.
