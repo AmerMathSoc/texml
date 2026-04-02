@@ -6696,9 +6696,19 @@ sub more_name {
 sub scan_file_name {
     my $tex = shift;
 
-    my $token = $tex->get_next_non_blank_non_call_token();
+    my $token = $tex->get_next_non_blank_non_relax_non_call_token();
+
+    $tex->back_input($token);
+
+    if ($token == CATCODE_BEGIN_GROUP) {
+        my $filename = $tex->scan_toks(false, true);
+
+        return "$filename"; # This should be good enough.  Hopefully.
+    }
 
     my $file_name;
+
+    $token = $tex->get_next_non_blank_non_call_token();
 
     while ($tex->more_name($token)) {
         $file_name .= $token->get_char();
