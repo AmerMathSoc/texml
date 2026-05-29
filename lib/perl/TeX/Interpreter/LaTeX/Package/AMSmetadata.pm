@@ -1475,7 +1475,7 @@ sub append_article_meta {
         append_xml_element($meta, volume => $volume);
     }
 
-    if (nonempty(my $number = $gentag->get_number())) {
+    if (nonempty(my $number = $gentag->get_number() =~ s{^0+}{}r)) {
         append_xml_element($meta, issue => $number);
     }
 
