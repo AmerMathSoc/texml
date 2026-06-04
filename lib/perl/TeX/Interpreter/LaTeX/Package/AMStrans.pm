@@ -263,7 +263,7 @@ __DATA__
 
 %% Temporarily disable \output@translated@article until we're ready for it.
 
-% \let\output@translated@article\output@translated@article@real
+\let\output@translated@article\output@translated@article@real
 
 % russian.dtx
 
