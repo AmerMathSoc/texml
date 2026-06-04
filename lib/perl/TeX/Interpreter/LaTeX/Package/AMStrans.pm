@@ -90,7 +90,9 @@ __DATA__
 
 % \originfo{34}{4}{}{2022}
 
-% The month doesn't seem to be used, but implement it just in case.
+% The month doesn't seem to be used, so let's just ignore it.  We
+% could add it, but then we'd have to deal with the language issue and
+% decide how to display it.
 
 \let\AMS@orig@volume\@empty
 \let\AMS@orig@issue\@empty
@@ -100,7 +102,7 @@ __DATA__
 \def\originfo#1#2#3#4{%
     \gdef\AMS@orig@volume{#1}%
     \xdef\AMS@orig@issue{\number0#2}%
-    \gdef\AMS@orig@month{}
+    % \gdef\AMS@orig@month{}
     \@ifnotempty{#3}{\xdef\AMS@orig@month{\TEXML@month@int{#3}}}%
     \gdef\AMS@orig@year{#4}%
 }
