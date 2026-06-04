@@ -143,7 +143,7 @@ __DATA__
 \def\format@translated@authors{%
     \ifx\AMS@orig@authors\@empty\else
         \begingroup
-            \ifnum\strcmp{\AMS@orig@language}{}=0
+            \ifx\AMS@orig@language\@empty
                 \let\AMS@orig@author\format@orig@name
             \else
                 \let\AMS@orig@author\format@orig@name@ru
