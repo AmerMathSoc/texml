@@ -835,7 +835,12 @@ __DATA__
 
 \let\AMS@thanks\@empty
 
-\newcommand{\thanks}[1]{\g@addto@macro\AMS@thanks{\thanks{#1}}}
+\newcommand{\thanks}[1]{%
+    \ams@measure{#1}%
+    \if@ams@empty\else
+        \g@addto@macro\AMS@thanks{\thanks{#1}}%
+    \fi
+}
 
 \def\output@funding@group{%
     \ifx\AMS@thanks\@empty\else
