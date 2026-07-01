@@ -158,18 +158,6 @@ __DATA__
 
 \def\thanks{\authorbio}
 
-\def\commbytext{\def\@commbytext}
-
-% \def\@commbytext{Communicated by \emph{Notices} Associate Editor }
-% \def\commby{\gdef\AMS@commby}
-
-%% \def\@commbytext{Communicated by}
-\def\commby#1{%
-    \if###1##\else
-        \gdef\AMS@commby{\emph{Notices} Associate Editor #1}%
-    \fi
-}
-
 \newcommand{\disclaimertext}{%
     \gdef\@disclaimertext
 }

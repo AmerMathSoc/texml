@@ -67,6 +67,11 @@ __DATA__
 
 \ProcessOptions
 
+\@ifclasswith{amsart}{noalt}{%
+    \typeout{*** amsart: TURNING OFF ALT TEXT}%
+}{%
+}
+
 \newcounter{section}
 \newcounter{figure}
 \newcounter{table}
@@ -94,8 +99,10 @@ __DATA__
 
 \let\AMS@commby\@empty
 
-\def\@commbytext{Communicated by}
-\def\commby{\gdef\AMS@commby}
+\def\commbytext{\def\@commbytext}
+\def\@commbytext{Communicated by \emph{Notices} Associate Editor }
+
+\def\commby{\def\AMS@commby}
 
 \def\ISSN{}
 
