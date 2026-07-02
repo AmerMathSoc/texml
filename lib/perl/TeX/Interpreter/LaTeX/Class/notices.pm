@@ -208,6 +208,7 @@ __DATA__
 \def\notidoi#1{\PrintDOI{10.1090/noti/#1}}
 
 \newcommand{\authorgraphics}[1][0pt]{%
+  \backmatter
   \let\endauthorgraphics\relax%
   \par
   \begingroup
