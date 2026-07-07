@@ -473,6 +473,15 @@ __DATA__
     \thisxmlpartag{title}#1\par
 }
 
+\newcommand{\pullquote}[3][0]{%
+    \par
+    \startXMLelement{disp-quote}%
+    \setXMLattribute{content-type}{pullquote}
+    #3
+    \par
+    \endXMLelement{disp-quote}%
+}
+
 \endinput
 
 __END__
