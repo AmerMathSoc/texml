@@ -2,7 +2,7 @@ package TeX::Utils::SVG;
 
 use v5.26.0;
 
-# Copyright (C) 2022, 2025 American Mathematical Society
+# Copyright (C) 2022, 2025, 2026 American Mathematical Society
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -370,6 +370,11 @@ sub convert_tex {
     # }
 
     print { $fh } $preamble;
+
+    print { $fh } qq{\\makeatletter\n\n};
+    print { $fh } qq{\\renewcommand{\\footnotemark}{\\GenericError{}{*** texml error: Can't use \\string\\footnotemark\\space inside SVG}\@ehd}\n\n};
+    print { $fh } qq{\\renewcommand{\\footnote}{\\GenericError{}{*** texml error: Can't use \\string\\footnote\\space inside SVG}\@ehd}\n\n};
+    print { $fh } qq{\\makeatother\n\n};
 
     print { $fh } q{\providecommand{\extrarowheight}{\dimen0 }}, "\n";
 
