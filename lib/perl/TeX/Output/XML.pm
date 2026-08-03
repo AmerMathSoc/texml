@@ -37,6 +37,8 @@ use FindBin;
 
 use List::Util qw(min uniq);
 
+use List::MoreUtils qw(duplicates);
+
 use TeX::Node::CharNode qw(:factories);
 
 use TeX::Utils::XML;
@@ -402,6 +404,30 @@ sub run_hooks {
     return;
 }
 
+sub flag_duplicate_ids {
+    my $self = shift;
+
+    my $dom = $self->get_dom();
+
+    my @ids = $dom->findnodes(q{//attribute::id});
+
+    map { s{^\s*id="(.*?)"\s*$}{$1} } @ids;
+
+    if (my @dups = duplicates @ids) {
+        my $tex = $self->get_tex_engine();
+
+        $tex->print_ln;
+
+        for my $id (@dups) {
+            $tex->print_err(qq{Duplicate XML id: '$id'})
+        }
+
+        $tex->print_ln;
+    }
+
+    return;
+}
+
 sub finalize_document {
     my $self = shift;
 
@@ -410,6 +436,8 @@ sub finalize_document {
     $self->delete_empty_paragraphs();
 
     $self->normalize_ids();
+
+    $self->flag_duplicate_ids();
 
     return;
 }
