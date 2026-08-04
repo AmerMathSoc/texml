@@ -210,6 +210,8 @@ __DATA__
     \leavevmode
     \startXMLelement{styled-content}%
     \set@texml@color@attribute{border-color}{#1{#2}}%
+    \setXMLattribute{border-width}{thin}%
+    \setXMLattribute{border-style}{solid}%
     \edef\@tempa{%
         \noexpand\set@texml@color@attribute{background-color}%
                                            {\if###3###1\else#3\fi{#4}}
