@@ -395,6 +395,7 @@ __DATA__
 \def\appendixname{Appendix}
 
 \def\chapter{%
+    \par
     \everypar{}%
     \maybe@st@rred{\@dblarg\@chapter}%
 }
