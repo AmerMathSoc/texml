@@ -441,6 +441,7 @@ __DATA__
 \def\partname{Part}
 
 \def\part{%
+    \par
     \everypar{}%
     \maybe@st@rred{\@dblarg\@part}%
 }
