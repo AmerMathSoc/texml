@@ -43,7 +43,7 @@ use TeX::Token qw(:catcodes);
 
 use TeX::Utils::LibXML;
 
-sub install ( $ ) {
+sub install {
     my $class = shift;
 
     my $tex = shift;
@@ -353,11 +353,13 @@ __DATA__
 \renewenvironment{bibsection}[1][\refname]{%
     % \backmatter
     \protected@edef\refname{#1}%
+    \let\jats@empty@section\@empty
 }{}
 
 \renewenvironment{bibchapter}[1][\bibname]{%
     % \backmatter
     \protected@edef\refname{#1}%
+    \let\jats@empty@section\@empty
 }{}
 
 \let\current@raw@bib\@empty
