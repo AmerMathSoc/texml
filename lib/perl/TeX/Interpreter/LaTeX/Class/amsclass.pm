@@ -1381,9 +1381,15 @@ __DATA__
 
 \AtEndDocument{\end@component}
 
+% \jats@empty@section is used inside \everypar, which means that when
+% it is invoked, we are in hmode.  However, \section throws us back
+% into vmode, which means that we need to force ourselves back into
+% hmode when \section is done.
+
 \def\jats@empty@section{%
     \section*{}%
     \setXMLattribute{specific-use}{section untagged}%
+    \leavevmode
 }
 
 \def\frontmatter{%
