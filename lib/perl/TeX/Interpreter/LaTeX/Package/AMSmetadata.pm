@@ -246,18 +246,16 @@ sub do_add_ams_metadata {
         $gentag_file = eval { find_gentag_file($dom) };
 
         if ($@) {
-            $tex->print_nl("%% FAILED: $@");
-            $tex->print_ln();
-            $tex->print_ln();
+            $tex->print_err("%% FAILED: $@");
+            $tex->error();
 
             return;
         }
     }
 
     if (empty($gentag_file) || ! -e $gentag_file) {
-        $tex->print_nl("%% FAILED: No gentag file!");
-        $tex->print_ln();
-        $tex->print_ln();
+        $tex->print_err("%% FAILED: No gentag file!");
+        $tex->error();
 
         return;
     }
