@@ -79,6 +79,41 @@ __DATA__
     \global\everypar{}%
 }
 
+\def\init@newbooks{%
+  % \setpermissiontext{}
+  \title{New Books Offered by the AMS}
+  \def\pubhead{\zhead*}
+  \def\npublines{\def\@npublines}
+  \def\@npublines{11}
+}
+
+\newenvironment{npub}[5]{%
+    \def\nurl{#1}%
+    \def\ngraphic{#4}%
+    \def\nauth##1{\textbf{##1}}%
+    \def\nplace##1{\emph{##1}}%
+    \def\reviewedwork@titlefont{%
+      \sffamily\bfseries
+      \fontsize{11}{12pt}\selectfont
+      \color{Aheadcolor}%
+    }%
+    \def\reviewedwork@authorfont{}%
+    \parindent\z@
+    \parskip\medskipamount
+    \vskip-1.5\baselineskip
+    \featureditem
+      \title{#2}
+      \subtitle{#3}
+      \authors{#5}
+      \graphic{\ngraphic}
+      \lines{\@npublines}
+    \endfeatureditem
+}{%
+    \par
+    \notiurl{bookstore.ams.org/\nurl}
+    \par
+}
+
 \endinput
 
 __END__
