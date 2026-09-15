@@ -61,8 +61,8 @@ sub do_tcolorbox_opts {
 
     $tex->let_csname('texml@tcb@title' => '@empty');
 
-    $tex->define_simple_macro('texml@tcb@colframe' => 'black');
-    $tex->define_simple_macro('texml@tcb@colback'  => 'lightgray');
+    $tex->define_simple_macro('texml@tcb@colframe' => 'black!75!white');
+    $tex->define_simple_macro('texml@tcb@colback'  => 'black!5!white');
 
     if ($opt_arg) {
         my $opts = parse_key_pairs($tex, $opt_arg);
