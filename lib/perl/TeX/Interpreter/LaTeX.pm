@@ -785,6 +785,9 @@ __DATA__
 
 \UCSchardef\nobreakspace"00A0
 
+\protected\def\linebreak{\@testopt{\@no@lnbk-}4}
+\protected\def\nolinebreak{\@testopt\@no@lnbk4}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                  %%
 %%                           LTFILES.DTX                            %%
