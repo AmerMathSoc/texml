@@ -1705,7 +1705,11 @@ sub create_book_meta {
         }
     }
 
-    add_permissions($tex, $meta, $gentag);
+    my $permissions = copy_element($old_meta, $meta, 'permissions');
+
+    if (! defined $permissions) {
+        add_permissions($tex, $meta, $gentag);
+    }
 
     add_self_uris($tex, $meta, $gentag);
 
