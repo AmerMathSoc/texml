@@ -270,6 +270,7 @@ __DATA__
             \fi
         \fi
         \output@BITS@isbns
+        \output@permissions@meta
         \output@abstract@meta
         \output@keyword@meta
         \output@subjclass@meta
